@@ -69,9 +69,9 @@ export default function HomePage() {
   }
 
   const quickActions = [
-    { icon: MessageCircle, label: '开始对话', desc: '与AI分身交流', color: '#00f5ff', path: '/pages/chat/index' },
-    { icon: GraduationCap, label: '学习中心', desc: '探索新知识', color: '#bf00ff', path: '/pages/learn/index' },
-    { icon: Target, label: '任务管理', desc: '追踪目标进度', color: '#ff6b6b', path: '/pages/learn/index' }
+    { icon: MessageCircle, label: '开始对话', desc: '与AI分身交流', color: '#00f5ff', path: '/pages/chat/index', isTab: true },
+    { icon: GraduationCap, label: '学习中心', desc: '探索新知识', color: '#bf00ff', path: '/pages/learn/index', isTab: true },
+    { icon: Target, label: '任务管理', desc: '追踪目标进度', color: '#ff6b6b', path: '/pages/task/index', isTab: false }
   ]
 
   const features = [
@@ -220,7 +220,7 @@ export default function HomePage() {
                 <View 
                   key={idx}
                   className="action-card"
-                  onClick={() => switchTab({ url: action.path })}
+                  onClick={() => action.isTab ? switchTab({ url: action.path }) : navigateTo({ url: action.path })}
                 >
                   <View 
                     className="action-icon"

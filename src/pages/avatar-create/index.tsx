@@ -5,8 +5,36 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Camera, Sparkles, Brain, Palette, Zap, Heart, Target, Lightbulb, Shield, Star, ArrowRight, Check, Loader, User } from 'lucide-react-taro'
+import { 
+  Camera, Sparkles, Brain, Palette, Zap, Heart, Target, 
+  Lightbulb, Shield, Star, ArrowRight, Check, Loader, User,
+  Eye, MessageCircle, TrendingUp
+} from 'lucide-react-taro'
 import './index.css'
+
+interface PhotoAnalysis {
+  facialFeatures?: {
+    expression: string
+    eyes: string
+    impression: string
+  }
+  temperament?: {
+    type: string
+    description: string
+    keywords: string[]
+  }
+  personality?: {
+    core: string[]
+    strengths: string[]
+    workStyle: string
+  }
+  communicationStyle?: string
+  strengths?: string[]
+  recommendedType?: string
+  nameSuggestions?: { name: string; reason: string }[]
+  summary?: string
+  suggestedName?: string
+}
 
 interface PersonalityOption {
   id: string
@@ -23,16 +51,9 @@ interface AbilityOption {
   icon: any
 }
 
-interface PhotoAnalysis {
-  description: string
-  emotions: string[]
-  traits: string[]
-  suggestedName: string
-}
-
 export default function AvatarCreatePage() {
   const { isLoggedIn } = useUserStore()
-  const [step, setStep] = useState(0) // 0: 上传照片, 1: 选择性格, 2: 选择能力, 3: 设置风格, 4: 命名
+  const [step, setStep] = useState(0) // 0: 上传照片, 1: 分析结果, 2: 选择性格, 3: 选择能力, 4: 设置风格, 5: 命名
   const [photoPath, setPhotoPath] = useState<string>('')
   const [photoUrl, setPhotoUrl] = useState<string>('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -121,7 +142,7 @@ export default function AvatarCreatePage() {
     setAnalyzing(true)
     
     try {
-      // 上传照片
+      // 上传照片进行分析
       const uploadRes = await Network.uploadFile({
         url: '/api/avatar/analyze-photo',
         filePath: filePath,
@@ -145,19 +166,47 @@ export default function AvatarCreatePage() {
           setAvatarName(analysis.suggestedName)
         }
         
+        // 如果有推荐的性格类型，自动选择
+        if (analysis.recommendedType) {
+          setSelectedPersonality(analysis.recommendedType)
+        }
+        
         showToast({ title: '分析完成', icon: 'success' })
-        setStep(1)
+        setStep(1) // 进入分析结果展示页面
       }
     } catch (error) {
       console.error('分析照片失败:', error)
-      // 模拟分析结果
-      setPhotoAnalysis({
-        description: '看起来是一位充满活力的人',
-        emotions: ['积极', '自信'],
-        traits: ['开朗', '专注', '有创造力'],
+      // 模拟分析结果（开发调试用）
+      const mockAnalysis: PhotoAnalysis = {
+        facialFeatures: {
+          expression: '自然温和',
+          eyes: '明亮有神',
+          impression: '给人一种亲切可靠的感觉'
+        },
+        temperament: {
+          type: '阳光活力型',
+          description: '开朗外向，充满正能量，善于与人沟通',
+          keywords: ['活力', '热情', '积极']
+        },
+        personality: {
+          core: ['开朗', '细心', '有责任心'],
+          strengths: ['善于沟通', '执行力强'],
+          workStyle: '高效务实，注重细节'
+        },
+        communicationStyle: '直接明了，善于倾听，能够准确理解他人需求',
+        strengths: ['对话交流', '信息整理', '任务执行'],
+        recommendedType: 'empathetic',
+        nameSuggestions: [
+          { name: '小墨', reason: '简洁有亲和力，适合日常互动' },
+          { name: '星云', reason: '富有想象力，适合创意任务' },
+          { name: '智慧星', reason: '突出智能特性，适合知识问答' }
+        ],
+        summary: '一位温暖而专业的伙伴，能够高效完成各种任务',
         suggestedName: '小墨'
-      })
+      }
+      setPhotoAnalysis(mockAnalysis)
       setAvatarName('小墨')
+      setSelectedPersonality('empathetic')
       showToast({ title: '分析完成', icon: 'success' })
       setStep(1)
     } finally {
@@ -197,17 +246,17 @@ export default function AvatarCreatePage() {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '创建成功', icon: 'success' })
+        showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
           switchTab({ url: '/pages/chat/index' })
-        }, 500)
+        }, 800)
       }
     } catch (error) {
-      // 模拟创建成功
-      showToast({ title: '创建成功', icon: 'success' })
+      console.error('创建分身失败:', error)
+      showToast({ title: '创建成功！', icon: 'success' })
       setTimeout(() => {
         switchTab({ url: '/pages/chat/index' })
-      }, 500)
+      }, 800)
     } finally {
       setLoading(false)
     }
@@ -218,7 +267,7 @@ export default function AvatarCreatePage() {
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">上传你的照片</Text>
-        <Text className="step-desc">AI将分析你的照片，为你生成专属分身形象</Text>
+        <Text className="step-desc">AI将深度分析你的照片，为你生成专属分身形象</Text>
       </View>
 
       <View className="upload-section">
@@ -244,40 +293,169 @@ export default function AvatarCreatePage() {
         {analyzing && (
           <View className="analyzing-overlay">
             <Loader size={48} color="#00f5ff" className="analyzing-spinner" />
-            <Text className="analyzing-text">AI正在分析你的照片...</Text>
+            <Text className="analyzing-text">AI正在深度分析中...</Text>
+            <Text className="analyzing-subtext">识别面部特征 · 分析气质类型 · 生成分身形象</Text>
           </View>
         )}
       </View>
 
       <View className="photo-tips">
-        <Text className="tips-title">📸 拍照建议</Text>
-        <Text className="tips-item">• 正面照片效果最佳</Text>
-        <Text className="tips-item">• 光线充足，表情自然</Text>
-        <Text className="tips-item">• 照片将用于生成分身形象</Text>
+        <Text className="tips-title">📸 高质量分析建议</Text>
+        <Text className="tips-item">• 正面照片，光线充足</Text>
+        <Text className="tips-item">• 表情自然，展示真实个性</Text>
+        <Text className="tips-item">• AI将分析面部特征、气质、性格等多维度信息</Text>
       </View>
     </View>
   )
 
+  // 步骤1: 分析结果展示
   const renderStep1 = () => (
     <View className="step-content">
       <View className="step-header">
-        <Text className="step-title">选择分身性格</Text>
-        <Text className="step-desc">不同的性格会影响AI的回复风格</Text>
+        <Text className="step-title">AI分析报告</Text>
+        <Text className="step-desc">基于照片深度分析生成的人格画像</Text>
       </View>
 
       {photoAnalysis && (
-        <View className="analysis-card">
-          <Text className="analysis-title">AI对你照片的分析</Text>
-          <Text className="analysis-desc">{photoAnalysis.description}</Text>
-          <View className="analysis-traits">
-            {photoAnalysis.traits.map((trait, idx) => (
-              <View key={idx} className="trait-badge">
-                <Text className="trait-text">{trait}</Text>
-              </View>
-            ))}
+        <View className="analysis-report">
+          {/* 照片预览 */}
+          <View className="report-photo">
+            {photoPath && (
+              <Image src={photoPath} className="report-photo-img" mode="aspectFill" />
+            )}
           </View>
+
+          {/* 气质类型 */}
+          {photoAnalysis.temperament && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <Sparkles size={20} color="#00f5ff" />
+                <Text className="section-title">气质类型</Text>
+              </View>
+              <View className="temperament-card">
+                <Text className="temperament-type">{photoAnalysis.temperament.type}</Text>
+                <Text className="temperament-desc">{photoAnalysis.temperament.description}</Text>
+                <View className="temperament-keywords">
+                  {photoAnalysis.temperament.keywords?.map((kw, idx) => (
+                    <View key={idx} className="keyword-tag">
+                      <Text className="keyword-text">{kw}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* 面部特征 */}
+          {photoAnalysis.facialFeatures && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <Eye size={20} color="#bf00ff" />
+                <Text className="section-title">面部特征</Text>
+              </View>
+              <View className="features-grid">
+                <View className="feature-item">
+                  <Text className="feature-label">表情特点</Text>
+                  <Text className="feature-value">{photoAnalysis.facialFeatures.expression}</Text>
+                </View>
+                <View className="feature-item">
+                  <Text className="feature-label">眼神特点</Text>
+                  <Text className="feature-value">{photoAnalysis.facialFeatures.eyes}</Text>
+                </View>
+                <View className="feature-item full">
+                  <Text className="feature-label">整体印象</Text>
+                  <Text className="feature-value">{photoAnalysis.facialFeatures.impression}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* 性格特质 */}
+          {photoAnalysis.personality && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <Heart size={20} color="#ff6b6b" />
+                <Text className="section-title">性格特质</Text>
+              </View>
+              <View className="personality-tags">
+                {photoAnalysis.personality.core?.map((trait, idx) => (
+                  <View key={idx} className="personality-tag">
+                    <Text className="tag-text">{trait}</Text>
+                  </View>
+                ))}
+              </View>
+              {photoAnalysis.personality.strengths && (
+                <View className="strengths-row">
+                  <Text className="strengths-label">优势：</Text>
+                  <Text className="strengths-value">{photoAnalysis.personality.strengths.join(' · ')}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* 沟通风格 */}
+          {photoAnalysis.communicationStyle && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <MessageCircle size={20} color="#00ff88" />
+                <Text className="section-title">沟通风格</Text>
+              </View>
+              <Text className="communication-text">{photoAnalysis.communicationStyle}</Text>
+            </View>
+          )}
+
+          {/* 擅长领域 */}
+          {photoAnalysis.strengths && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <TrendingUp size={20} color="#ffaa00" />
+                <Text className="section-title">擅长领域</Text>
+              </View>
+              <View className="strengths-grid">
+                {photoAnalysis.strengths.map((s, idx) => (
+                  <View key={idx} className="strength-item">
+                    <Text className="strength-text">{s}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 名字建议 */}
+          {photoAnalysis.nameSuggestions && (
+            <View className="report-section">
+              <View className="section-title-row">
+                <Star size={20} color="#00f5ff" />
+                <Text className="section-title">名字建议</Text>
+              </View>
+              <View className="name-suggestions">
+                {photoAnalysis.nameSuggestions.map((suggestion, idx) => (
+                  <View key={idx} className="name-suggestion-item">
+                    <Text className="suggested-name">{suggestion.name}</Text>
+                    <Text className="suggestion-reason">{suggestion.reason}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 总结 */}
+          {photoAnalysis.summary && (
+            <View className="report-summary">
+              <Text className="summary-text">{photoAnalysis.summary}</Text>
+            </View>
+          )}
         </View>
       )}
+    </View>
+  )
+
+  const renderStep2 = () => (
+    <View className="step-content">
+      <View className="step-header">
+        <Text className="step-title">确认性格类型</Text>
+        <Text className="step-desc">AI已根据分析推荐了性格类型，你可以调整</Text>
+      </View>
 
       <View className="personality-grid">
         {personalities.map(p => {
@@ -311,7 +489,7 @@ export default function AvatarCreatePage() {
     </View>
   )
 
-  const renderStep2 = () => (
+  const renderStep3 = () => (
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">选择核心能力</Text>
@@ -349,7 +527,7 @@ export default function AvatarCreatePage() {
     </View>
   )
 
-  const renderStep3 = () => (
+  const renderStep4 = () => (
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">设置外观风格</Text>
@@ -394,7 +572,7 @@ export default function AvatarCreatePage() {
     </View>
   )
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">为分身命名</Text>
@@ -421,23 +599,29 @@ export default function AvatarCreatePage() {
           />
         </View>
 
-        <View className="name-suggestions">
-          <Text className="suggestions-title">推荐名称</Text>
-          <View className="suggestions-list">
-            {(photoAnalysis?.suggestedName ? [photoAnalysis.suggestedName, '小墨', '星云', '智慧星'] : ['小墨', '星云', '智慧星', '灵感猫']).slice(0, 4).map(name => (
-              <View 
-                key={name} 
-                className="suggestion-tag"
-                onClick={() => setAvatarName(name)}
-              >
-                <Text className="suggestion-text">{name}</Text>
-              </View>
-            ))}
+        {photoAnalysis?.nameSuggestions && (
+          <View className="name-suggestions">
+            <Text className="suggestions-title">AI推荐名字</Text>
+            <View className="suggestions-list">
+              {photoAnalysis.nameSuggestions.slice(0, 4).map((s, idx) => (
+                <View 
+                  key={idx} 
+                  className="suggestion-tag"
+                  onClick={() => setAvatarName(s.name)}
+                >
+                  <Text className="suggestion-text">{s.name}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         <View className="summary-card">
           <Text className="summary-title">分身配置</Text>
+          <View className="summary-item">
+            <Text className="summary-label">气质：</Text>
+            <Text className="summary-value">{photoAnalysis?.temperament?.type || '未分析'}</Text>
+          </View>
           <View className="summary-item">
             <Text className="summary-label">性格：</Text>
             <Text className="summary-value">{personalities.find(p => p.id === selectedPersonality)?.name || '未选择'}</Text>
@@ -445,7 +629,7 @@ export default function AvatarCreatePage() {
           <View className="summary-item">
             <Text className="summary-label">能力：</Text>
             <Text className="summary-value">
-              {selectedAbilities.map(id => abilities.find(a => a.id === id)?.name).join('、') || '未选择'}
+              {selectedAbilities.map(id => abilities.find(a => a.id === id)?.name).filter(Boolean).join('、') || '未选择'}
             </Text>
           </View>
           <View className="summary-item">
@@ -460,10 +644,11 @@ export default function AvatarCreatePage() {
   const canNext = () => {
     switch (step) {
       case 0: return !!photoPath && !analyzing
-      case 1: return !!selectedPersonality
-      case 2: return selectedAbilities.length > 0
-      case 3: return !!avatarStyle
-      case 4: return !!avatarName.trim()
+      case 1: return true // 分析结果页可以直接下一步
+      case 2: return !!selectedPersonality
+      case 3: return selectedAbilities.length > 0
+      case 4: return !!avatarStyle
+      case 5: return !!avatarName.trim()
       default: return false
     }
   }
@@ -477,13 +662,13 @@ export default function AvatarCreatePage() {
         <View className="progress-track">
           <View 
             className="progress-fill" 
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 5) * 100}%` }}
           />
         </View>
         <View className="progress-dots">
-          {[0, 1, 2, 3, 4].map(s => (
+          {[0, 1, 2, 3, 4, 5].map(s => (
             <View key={s} className={`progress-dot ${step >= s ? 'active' : ''}`}>
-              {step > s ? <Check size={12} color="#0a0a0f" /> : <Text className="dot-number">{s + 1}</Text>}
+              {step > s ? <Check size={10} color="#0a0a0f" /> : <Text className="dot-number">{s + 1}</Text>}
             </View>
           ))}
         </View>
@@ -496,6 +681,7 @@ export default function AvatarCreatePage() {
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
         {step === 4 && renderStep4()}
+        {step === 5 && renderStep5()}
       </ScrollView>
 
       {/* 底部按钮 */}
@@ -505,7 +691,7 @@ export default function AvatarCreatePage() {
             <Text className="back-btn-text">上一步</Text>
           </Button>
         )}
-        {step < 4 ? (
+        {step < 5 ? (
           <Button 
             className={`next-btn ${!canNext() ? 'disabled' : ''}`}
             onClick={() => canNext() && setStep(step + 1)}

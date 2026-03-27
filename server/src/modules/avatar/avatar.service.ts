@@ -20,18 +20,25 @@ export class AvatarService {
   async createAvatar(userId: string, avatarData: Record<string, any>) {
     const client = getSupabaseClient()
     
+    // 从图片分析结果构建分身配置
+    const photoAnalysis = avatarData.photo_analysis || {}
+    
     const { data, error } = await client
       .from('avatars')
       .insert({
         user_id: userId,
         name: avatarData.name || '我的AI分身',
-        description: avatarData.description || '',
+        description: this.generateDescription(photoAnalysis, avatarData),
         avatar_url: avatarData.photo_url || avatarData.avatar_url || '',
-        personality: avatarData.personality || '',
+        personality: avatarData.personality || photoAnalysis.recommendedType || 'friendly',
         skills: avatarData.abilities || avatarData.skills || [],
         config: {
-          style: avatarData.style,
-          photo_analysis: avatarData.photo_analysis,
+          style: avatarData.style || 'tech',
+          photo_analysis: photoAnalysis,
+          // 从图片分析中提取的个性化配置
+          temperament: photoAnalysis.temperament,
+          communicationStyle: photoAnalysis.communicationStyle,
+          strengths: photoAnalysis.strengths,
         },
         level: 1,
         exp: 0,
@@ -48,10 +55,28 @@ export class AvatarService {
   }
 
   /**
-   * 上传照片并分析
-   * 1. 上传照片到对象存储
-   * 2. 使用视觉模型分析照片
-   * 3. 返回分析结果和照片URL
+   * 生成分身描述
+   */
+  private generateDescription(photoAnalysis: any, avatarData: any): string {
+    const parts: string[] = []
+    
+    if (photoAnalysis.temperament?.type) {
+      parts.push(`气质类型：${photoAnalysis.temperament.type}`)
+    }
+    
+    if (photoAnalysis.strengths?.length > 0) {
+      parts.push(`擅长：${photoAnalysis.strengths.join('、')}`)
+    }
+    
+    if (photoAnalysis.communicationStyle) {
+      parts.push(`沟通风格：${photoAnalysis.communicationStyle}`)
+    }
+    
+    return parts.join(' | ') || '一个友好、乐于助人的AI分身'
+  }
+
+  /**
+   * 上传照片并进行深度分析
    */
   async analyzePhoto(file: Express.Multer.File) {
     console.log('开始分析照片:', file.originalname, file.mimetype, file.size)
@@ -73,8 +98,8 @@ export class AvatarService {
     
     console.log('生成照片URL:', photoUrl)
     
-    // 3. 使用视觉模型分析照片
-    const analysis = await this.analyzePhotoWithVision(photoUrl)
+    // 3. 使用视觉模型进行深度分析
+    const analysis = await this.deepAnalyzePhoto(photoUrl)
     
     return {
       photoUrl,
@@ -84,80 +109,154 @@ export class AvatarService {
   }
 
   /**
-   * 使用视觉模型分析照片
+   * 深度分析照片 - 多维度人格画像
    */
-  private async analyzePhotoWithVision(photoUrl: string) {
+  private async deepAnalyzePhoto(photoUrl: string) {
     try {
       const config = new Config()
       const client = new LLMClient(config)
       
+      const analysisPrompt = `你是一位专业的AI分身形象设计师和人格分析师。请仔细分析这张照片中人物的特征，用于创建一个高度个性化的AI分身。
+
+请从以下维度进行深度分析：
+
+## 1. 面部特征分析
+- 表情特点（自然/微笑/严肃等）
+- 眼神特点（温和/锐利/深邃等）
+- 整体面部印象
+
+## 2. 气质类型判断
+根据面部特征和表情，判断气质类型（从以下选项中选择）：
+- 阳光活力型：开朗外向，充满正能量
+- 沉稳内敛型：深思熟虑，稳重可靠
+- 创意艺术型：思维活跃，富有想象
+- 专业精英型：干练高效，目标明确
+- 温暖治愈型：善解人意，富有同理心
+
+## 3. 性格特征推断
+基于面部表情和神态，推断3-5个核心性格特质
+
+## 4. 沟通风格预测
+预测这个人在沟通时可能的特点：
+- 语言风格（简洁/详尽/幽默/严肃）
+- 表达方式（直接/委婉/理性/感性）
+- 倾听习惯（耐心/主动/互动型）
+
+## 5. 擅长领域建议
+根据气质和特征，推荐分身可能擅长的能力领域
+
+## 6. 分身命名建议
+根据整体分析，建议3个合适的分身名字，并说明理由
+
+请以JSON格式返回，格式如下：
+{
+  "facialFeatures": {
+    "expression": "表情描述",
+    "eyes": "眼神描述",
+    "impression": "整体印象"
+  },
+  "temperament": {
+    "type": "气质类型",
+    "description": "气质描述",
+    "keywords": ["关键词1", "关键词2"]
+  },
+  "personality": {
+    "core": ["核心特质1", "核心特质2", "核心特质3"],
+    "strengths": ["优点1", "优点2"],
+    "workStyle": "工作风格描述"
+  },
+  "communicationStyle": "沟通风格描述",
+  "strengths": ["擅长领域1", "擅长领域2", "擅长领域3"],
+  "recommendedType": "推荐的分身类型(creative/analytical/empathetic/strategic)",
+  "nameSuggestions": [
+    { "name": "名字1", "reason": "理由" },
+    { "name": "名字2", "reason": "理由" },
+    { "name": "名字3", "reason": "理由" }
+  ],
+  "summary": "一句话总结这个人的特点",
+  "suggestedName": "最推荐的名字"
+}
+
+注意：
+1. 请只返回JSON，不要有其他文字
+2. 分析要基于照片特征，客观且积极正面
+3. 如果无法识别面部（如非人物照片），请返回合理的默认值`
+
       const messages = [
         {
           role: 'user' as const,
           content: [
-            {
-              type: 'text' as const,
-              text: `请分析这张照片中人物的特征，用于创建AI分身形象。请从以下几个方面分析：
-
-1. 整体印象：用一句话描述这个人的气质特征
-2. 情感特质：列出2-3个可能的性格特点
-3. 建议的AI分身名字：根据照片特征建议1个合适的名字
-
-请以JSON格式返回，格式如下：
-{
-  "description": "整体印象描述",
-  "emotions": ["特质1", "特质2"],
-  "traits": ["性格特点1", "性格特点2", "性格特点3"],
-  "suggestedName": "建议的名字"
-}
-
-注意：请只返回JSON，不要有其他文字。`,
-            },
+            { type: 'text' as const, text: analysisPrompt },
             {
               type: 'image_url' as const,
               image_url: {
                 url: photoUrl,
-                detail: 'low' as const, // 使用低细节以节省token
+                detail: 'high' as const, // 使用高细节进行深度分析
               },
             },
           ],
         },
       ]
       
+      console.log('开始调用视觉模型进行深度分析...')
+      
       const response = await client.invoke(messages, {
         model: 'doubao-seed-1-6-vision-250815',
         temperature: 0.7,
       })
       
-      console.log('视觉模型响应:', response.content)
+      console.log('视觉模型响应长度:', response.content.length)
       
       // 解析JSON响应
       try {
-        // 尝试提取JSON
         const jsonMatch = response.content.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
-          return JSON.parse(jsonMatch[0])
+          const analysis = JSON.parse(jsonMatch[0])
+          console.log('解析成功，气质类型:', analysis.temperament?.type)
+          return analysis
         }
       } catch (parseError) {
         console.error('解析JSON失败:', parseError)
       }
       
-      // 如果解析失败，返回默认分析
-      return {
-        description: '看起来是一位充满活力的人',
-        emotions: ['积极', '自信'],
-        traits: ['开朗', '专注', '有创造力'],
-        suggestedName: '小墨',
-      }
+      // 如果解析失败，返回智能默认分析
+      return this.getDefaultAnalysis()
     } catch (error) {
       console.error('视觉模型分析失败:', error)
-      // 返回默认分析结果
-      return {
-        description: '看起来是一位有魅力的人',
-        emotions: ['温暖', '友善'],
-        traits: ['细心', '有耐心', '善于思考'],
-        suggestedName: '小墨',
-      }
+      return this.getDefaultAnalysis()
+    }
+  }
+
+  /**
+   * 获取默认分析结果
+   */
+  private getDefaultAnalysis() {
+    return {
+      facialFeatures: {
+        expression: '自然温和',
+        eyes: '明亮有神',
+        impression: '给人一种亲切可靠的感觉'
+      },
+      temperament: {
+        type: '阳光活力型',
+        description: '开朗外向，充满正能量，善于与人沟通',
+        keywords: ['活力', '热情', '积极']
+      },
+      personality: {
+        core: ['开朗', '细心', '有责任心'],
+        strengths: ['善于沟通', '执行力强'],
+        workStyle: '高效务实，注重细节'
+      },
+      communicationStyle: '直接明了，善于倾听，能够准确理解他人需求',
+      strengths: ['对话交流', '信息整理', '任务执行'],
+      recommendedType: 'empathetic',
+      nameSuggestions: [
+        { name: '小墨', reason: '简洁有亲和力，适合日常互动' },
+        { name: '星云', reason: '富有想象力，适合创意任务' },
+        { name: '智慧星', reason: '突出智能特性，适合知识问答' }
+      ],
+      summary: '一位温暖而专业的伙伴，能够高效完成各种任务',
+      suggestedName: '小墨'
     }
   }
 
@@ -217,11 +316,8 @@ export class AvatarService {
   async addExperience(avatarId: string, exp: number) {
     const client = getSupabaseClient()
     
-    // 获取当前分身信息
     const avatar = await this.getAvatarById(avatarId)
     const newExp = avatar.exp + exp
-    
-    // 计算新等级（每100经验升一级）
     const newLevel = Math.floor(newExp / 100) + 1
     
     const { data, error } = await client
@@ -239,7 +335,6 @@ export class AvatarService {
       throw new Error(`更新分身经验失败: ${error.message}`)
     }
     
-    // 记录进化日志
     if (newLevel > avatar.level) {
       await client.from('avatar_evolution').insert({
         avatar_id: avatarId,
@@ -256,13 +351,11 @@ export class AvatarService {
 
   private calculateRewards(level: number) {
     const rewards: Record<string, any> = {}
-    
     if (level >= 2) rewards.theme_unlock = ['dark', 'light']
     if (level >= 3) rewards.skill_slots = 3
     if (level >= 5) rewards.advanced_skills = true
     if (level >= 7) rewards.custom_personality = true
     if (level >= 10) rewards.premium_features = true
-    
     return rewards
   }
 

@@ -6,7 +6,8 @@ export default defineAppConfig({
     'pages/chat/index',
     'pages/learn/index',
     'pages/social/index',
-    'pages/profile/index'
+    'pages/profile/index',
+    'pages/task/index'
   ],
   window: {
     backgroundTextStyle: 'dark',
