@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { Tool, ToolContext, ToolResult } from '../tools.interface'
+import { Tool, ToolExecutionContext, ToolResult } from '../tools.interface'
 import { getSupabaseClient } from '../../../storage/database/supabase-client'
 
 @Injectable()
@@ -25,7 +25,7 @@ export class QueryDataTool implements Tool {
     }
   }
 
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+  async execute(params: Record<string, any>, context: ToolExecutionContext): Promise<ToolResult> {
     try {
       const { data_type, filter = {}, limit = 10 } = params
       

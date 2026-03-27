@@ -3,6 +3,7 @@ import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
 import { ToolsRegistry } from './tools.registry'
 import { 
   ToolContext, 
+  ToolExecutionContext,
   AgentStep, 
   AgentExecutionResult,
   ToolResult
@@ -31,10 +32,11 @@ export class AgentService {
     const steps: AgentStep[] = []
     const toolsUsed: string[] = []
     
-    const context: ToolContext = {
+    const context: ToolExecutionContext = {
       userId,
       avatarId,
       conversationId,
+      taskId,
       headers
     }
 

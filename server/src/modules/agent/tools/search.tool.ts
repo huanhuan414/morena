@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { SearchClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
-import { Tool, ToolContext, ToolResult } from '../tools.interface'
+import { Tool, ToolExecutionContext, ToolResult } from '../tools.interface'
 
 @Injectable()
 export class SearchTool implements Tool {
@@ -20,7 +20,7 @@ export class SearchTool implements Tool {
     }
   }
 
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+  async execute(params: Record<string, any>, context: ToolExecutionContext): Promise<ToolResult> {
     try {
       const query = params.query
       const count = params.count || 5

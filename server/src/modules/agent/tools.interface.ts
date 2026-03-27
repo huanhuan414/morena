@@ -3,22 +3,40 @@
  * 定义 Agent 可以调用的所有工具
  */
 
-export interface Tool {
-  name: string
+// 旧版参数格式（兼容）
+export type ToolParameters = Record<string, {
+  type: string
   description: string
-  parameters: Record<string, {
+  required?: boolean
+}> | {
+  type: 'object'
+  properties: Record<string, {
     type: string
     description: string
-    required: boolean
+    default?: any
   }>
-  execute: (params: Record<string, any>, context: ToolContext) => Promise<ToolResult>
+  required: string[]
 }
+
+export interface ITool {
+  name: string
+  description: string
+  parameters: ToolParameters
+  execute: (params: Record<string, any>, context: ToolExecutionContext) => Promise<ToolResult>
+}
+
+// 兼容旧接口
+export type Tool = ITool
 
 export interface ToolContext {
   userId: string
   avatarId: string
   conversationId: string
   headers?: Record<string, string>
+}
+
+export interface ToolExecutionContext extends ToolContext {
+  taskId: string
 }
 
 export interface ToolResult {

@@ -420,3 +420,107 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* 结果展示样式 */
+
+/* 图片结果 */
+.result-image-container {
+  margin-top: 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.result-image {
+  width: 100%;
+  display: block;
+}
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.meta-text {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 视频结果 */
+.result-video-container {
+  margin-top: 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.result-video {
+  width: 100%;
+  display: block;
+}
+
+/* 文档结果 */
+.result-document {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(0, 245, 255, 0.05);
+  border: 2px solid rgba(0, 245, 255, 0.1);
+  border-radius: 20px;
+  margin-top: 16px;
+}
+
+.document-info {
+  flex: 1;
+}
+
+.document-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.document-desc {
+  display: block;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 报告结果 */
+.result-report {
+  margin-top: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.report-content {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+/* 学习状态指示器 */
+.learning-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
+  margin-top: 12px;
+}
+
+.learning-text {
+  font-size: 20px;
+  color: #8b5cf6;
+}

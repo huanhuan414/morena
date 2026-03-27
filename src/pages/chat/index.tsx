@@ -1,11 +1,11 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search } from 'lucide-react-taro'
+import { Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video, ExternalLink } from 'lucide-react-taro'
 import './index.css'
 
 interface Message {
@@ -54,6 +54,13 @@ interface Task {
     title?: string
     content?: string
     type?: string
+    url?: string
+    style?: string
+    size?: string
+    duration?: number
+    ratio?: string
+    resolution?: string
+    hasAudio?: boolean
   }
   logs: TaskLog[]
   created_at: string
@@ -455,10 +462,75 @@ export default function ChatPage() {
               <Check size={16} color="#10b981" />
               <Text className="task-title">任务完成</Text>
             </View>
-            {activeTask.result?.summary && (
+            
+            {/* 图片结果展示 */}
+            {activeTask.result?.type === 'image' && activeTask.result?.url && (
+              <View className="result-image-container">
+                <Image 
+                  src={activeTask.result.url} 
+                  className="result-image" 
+                  mode="widthFix"
+                  onClick={() => {
+                    // 点击预览大图
+                    const imageUrl = activeTask.result?.url
+                    if (imageUrl) {
+                      Taro.previewImage({
+                        current: imageUrl,
+                        urls: [imageUrl]
+                      })
+                    }
+                  }}
+                />
+                <View className="result-meta">
+                  <ImageIcon size={12} color="#8b5cf6" />
+                  <Text className="meta-text">{activeTask.result.style || 'AI生成图片'}</Text>
+                </View>
+              </View>
+            )}
+            
+            {/* 视频结果展示 */}
+            {activeTask.result?.type === 'video' && activeTask.result?.url && (
+              <View className="result-video-container">
+                <video 
+                  src={activeTask.result.url}
+                  className="result-video"
+                  controls
+                  playsInline
+                  poster=""
+                />
+                <View className="result-meta">
+                  <Video size={12} color="#10b981" />
+                  <Text className="meta-text">{activeTask.result.duration || 5}秒 · {activeTask.result.ratio || '16:9'}</Text>
+                </View>
+              </View>
+            )}
+            
+            {/* 文档结果展示 */}
+            {activeTask.result?.type === 'document' && activeTask.result?.title && (
+              <View className="result-document">
+                <FileText size={24} color="#00f5ff" />
+                <View className="document-info">
+                  <Text className="document-title">{activeTask.result.title}</Text>
+                  <Text className="document-desc">{activeTask.result.summary || '点击查看详情'}</Text>
+                </View>
+                <ExternalLink size={16} color="#00f5ff" />
+              </View>
+            )}
+            
+            {/* 报告结果展示 */}
+            {activeTask.result?.type === 'report' && activeTask.result?.content && (
+              <View className="result-report">
+                <Text className="report-content">{activeTask.result.content}</Text>
+              </View>
+            )}
+            
+            {/* 默认摘要展示 */}
+            {activeTask.result?.summary && !['image', 'video', 'document', 'report'].includes(activeTask.result.type || '') && (
               <Text className="task-summary">{activeTask.result.summary}</Text>
             )}
-            {activeTask.result?.title && (
+            
+            {/* 文档标题 */}
+            {activeTask.result?.title && activeTask.result?.type !== 'image' && activeTask.result?.type !== 'video' && activeTask.result?.type !== 'document' && (
               <View className="task-result">
                 <FileText size={14} color="#00f5ff" />
                 <Text className="result-title">{activeTask.result.title}</Text>

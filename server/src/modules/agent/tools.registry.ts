@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import { Tool, ToolContext, ToolResult, ToolCallRequest } from './tools.interface'
+import { Tool, ToolContext, ToolResult, ToolCallRequest, ToolExecutionContext } from './tools.interface'
 import { SearchTool } from './tools/search.tool'
 import { SendMessageTool } from './tools/send-message.tool'
 import { CreateDocumentTool } from './tools/create-document.tool'
 import { QueryDataTool } from './tools/query-data.tool'
+import { GenerateImageTool } from './tools/generate-image.tool'
+import { GenerateVideoTool } from './tools/generate-video.tool'
 
 @Injectable()
 export class ToolsRegistry {
@@ -13,13 +15,17 @@ export class ToolsRegistry {
     private readonly searchTool: SearchTool,
     private readonly sendMessageTool: SendMessageTool,
     private readonly createDocumentTool: CreateDocumentTool,
-    private readonly queryDataTool: QueryDataTool
+    private readonly queryDataTool: QueryDataTool,
+    private readonly generateImageTool: GenerateImageTool,
+    private readonly generateVideoTool: GenerateVideoTool
   ) {
     // 注册所有工具
     this.register(searchTool)
     this.register(sendMessageTool)
     this.register(createDocumentTool)
     this.register(queryDataTool)
+    this.register(generateImageTool)
+    this.register(generateVideoTool)
   }
 
   private register(tool: Tool) {
@@ -45,7 +51,7 @@ export class ToolsRegistry {
   /**
    * 执行工具调用
    */
-  async executeTool(request: ToolCallRequest, context: ToolContext): Promise<ToolResult> {
+  async executeTool(request: ToolCallRequest, context: ToolExecutionContext): Promise<ToolResult> {
     const tool = this.tools.get(request.tool)
     
     if (!tool) {

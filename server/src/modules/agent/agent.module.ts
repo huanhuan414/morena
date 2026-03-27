@@ -6,6 +6,8 @@ import { SearchTool } from './tools/search.tool'
 import { SendMessageTool } from './tools/send-message.tool'
 import { CreateDocumentTool } from './tools/create-document.tool'
 import { QueryDataTool } from './tools/query-data.tool'
+import { GenerateImageTool } from './tools/generate-image.tool'
+import { GenerateVideoTool } from './tools/generate-video.tool'
 
 @Module({
   controllers: [AgentController],
@@ -15,7 +17,9 @@ import { QueryDataTool } from './tools/query-data.tool'
     SearchTool,
     SendMessageTool,
     CreateDocumentTool,
-    QueryDataTool
+    QueryDataTool,
+    GenerateImageTool,
+    GenerateVideoTool
   ],
   exports: [AgentService]
 })
