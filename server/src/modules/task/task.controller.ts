@@ -49,7 +49,8 @@ export class TaskController {
     @Headers('x-user-id') userId: string,
     @Param('id') taskId: string
   ) {
-    const task = await this.taskService.getTaskById(taskId, userId)
+    // userId 可选，只通过 taskId 查询
+    const task = await this.taskService.getTaskById(taskId)
     
     return {
       code: 200,

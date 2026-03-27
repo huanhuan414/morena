@@ -161,7 +161,9 @@ export default function ChatPage() {
   // 获取最新任务状态
   const fetchTaskStatus = async (taskId: string): Promise<Task | null> => {
     try {
-      const res = await Network.request({ url: `/api/task/${taskId}` })
+      const res = await Network.request({ 
+        url: `/api/task/${taskId}`
+      })
       if (res.data?.code === 200) {
         return res.data.data
       }

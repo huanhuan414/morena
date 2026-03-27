@@ -76,18 +76,28 @@ export class TaskService {
   /**
    * 获取任务详情
    */
-  async getTaskById(taskId: string, userId: string) {
+  async getTaskById(taskId: string, userId?: string) {
     const client = getSupabaseClient()
     
-    const { data, error } = await client
+    let query = client
       .from('tasks')
       .select('*')
       .eq('id', taskId)
-      .eq('user_id', userId)
-      .single()
+    
+    // 如果提供了userId，则添加过滤条件
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+    
+    const { data, error } = await query.maybeSingle()
     
     if (error) {
+      console.error('获取任务详情失败:', error)
       throw new Error(`获取任务详情失败: ${error.message}`)
+    }
+    
+    if (!data) {
+      throw new Error('任务不存在')
     }
     
     return data
