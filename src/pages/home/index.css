@@ -6,17 +6,17 @@
 
 .bg-glow {
   position: absolute;
-  top: -100px;
-  left: -100px;
-  right: -100px;
-  height: 400px;
+  top: -200px;
+  left: -200px;
+  right: -200px;
+  height: 800px;
   background: radial-gradient(ellipse at center top, rgba(0, 245, 255, 0.12) 0%, transparent 60%),
               radial-gradient(ellipse at 20% 20%, rgba(191, 0, 255, 0.08) 0%, transparent 40%);
   pointer-events: none;
 }
 
 .welcome-section {
-  padding: 60px 24px 24px;
+  padding: 120px 48px 48px;
   position: relative;
   z-index: 1;
 }
@@ -24,26 +24,26 @@
 .user-info {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 48px;
 }
 
 .avatar-wrap {
-  width: 56px;
-  height: 56px;
-  margin-right: 16px;
+  width: 112px;
+  height: 112px;
+  margin-right: 32px;
 }
 
 .user-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  border: 2px solid rgba(0, 245, 255, 0.3);
+  width: 112px;
+  height: 112px;
+  border-radius: 36px;
+  border: 4px solid rgba(0, 245, 255, 0.3);
 }
 
 .avatar-placeholder {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
+  width: 112px;
+  height: 112px;
+  border-radius: 36px;
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   display: flex;
   align-items: center;
@@ -51,7 +51,7 @@
 }
 
 .avatar-text {
-  font-size: 24px;
+  font-size: 48px;
   font-weight: 700;
   color: #0a0a0f;
 }
@@ -62,33 +62,33 @@
 
 .greeting-text {
   display: block;
-  font-size: 22px;
+  font-size: 44px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .greeting-sub {
-  font-size: 14px;
+  font-size: 28px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .progress-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
-  padding: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  border-radius: 48px;
+  padding: 40px;
 }
 
 .progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 40px;
 }
 
 .progress-title {
-  font-size: 16px;
+  font-size: 32px;
   font-weight: 600;
   color: #fff;
 }
@@ -96,14 +96,14 @@
 .streak-badge {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   background: rgba(255, 170, 0, 0.15);
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 8px 24px;
+  border-radius: 24px;
 }
 
 .streak-text {
-  font-size: 12px;
+  font-size: 24px;
   color: #ffaa00;
 }
 
@@ -119,48 +119,48 @@
 
 .stat-value {
   display: block;
-  font-size: 28px;
+  font-size: 56px;
   font-weight: 700;
   color: #00f5ff;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .stat-divider {
-  width: 1px;
-  height: 40px;
+  width: 2px;
+  height: 80px;
   background: rgba(255, 255, 255, 0.08);
 }
 
 .main-scroll {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 400px);
   position: relative;
   z-index: 1;
 }
 
 .section {
-  padding: 24px;
+  padding: 48px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 40px;
 }
 
 .section-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 36px;
   font-weight: 600;
   color: #fff;
 }
@@ -168,54 +168,54 @@
 .section-action {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .action-text {
-  font-size: 14px;
+  font-size: 28px;
   color: #00f5ff;
 }
 
 /* 空状态 */
 .empty-avatars {
   background: rgba(255, 255, 255, 0.02);
-  border: 2px dashed rgba(0, 245, 255, 0.2);
-  border-radius: 24px;
-  padding: 40px 24px;
+  border: 4px dashed rgba(0, 245, 255, 0.2);
+  border-radius: 48px;
+  padding: 80px 48px;
   text-align: center;
 }
 
 .empty-icon {
-  margin-bottom: 16px;
+  margin-bottom: 32px;
 }
 
 .empty-title {
   display: block;
-  font-size: 18px;
+  font-size: 36px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 }
 
 .empty-desc {
-  font-size: 14px;
+  font-size: 28px;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 24px;
+  margin-bottom: 48px;
 }
 
 .create-btn {
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 24px;
-  padding: 16px 32px;
+  border-radius: 48px;
+  padding: 32px 64px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   border: none;
-  box-shadow: 0 4px 20px rgba(0, 245, 255, 0.3);
+  box-shadow: 0 8px 40px rgba(0, 245, 255, 0.3);
 }
 
 .create-btn-text {
-  font-size: 15px;
+  font-size: 30px;
   font-weight: 600;
   color: #0a0a0f;
 }
@@ -223,29 +223,29 @@
 /* 分身卡片滚动 */
 .avatars-scroll {
   white-space: nowrap;
-  margin: 0 -24px;
-  padding: 0 24px;
+  margin: 0 -48px;
+  padding: 0 48px;
 }
 
 .avatar-card {
   display: inline-block;
-  width: 140px;
+  width: 280px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 20px 16px;
-  margin-right: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 48px;
+  padding: 40px 32px;
+  margin-right: 24px;
   text-align: center;
   vertical-align: top;
 }
 
 .avatar-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
+  width: 128px;
+  height: 128px;
+  border-radius: 40px;
   background: rgba(0, 245, 255, 0.1);
-  border: 1px solid rgba(0, 245, 255, 0.2);
-  margin: 0 auto 12px;
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  margin: 0 auto 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -259,10 +259,10 @@
 
 .avatar-name {
   display: block;
-  font-size: 15px;
+  font-size: 30px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -270,13 +270,13 @@
 .avatar-level {
   display: inline-block;
   background: rgba(0, 245, 255, 0.15);
-  padding: 4px 10px;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  margin-bottom: 16px;
 }
 
 .level-text {
-  font-size: 12px;
+  font-size: 24px;
   color: #00f5ff;
 }
 
@@ -284,32 +284,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .count-text {
-  font-size: 12px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .add-card {
   background: rgba(255, 255, 255, 0.02);
-  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border: 4px dashed rgba(255, 255, 255, 0.1);
 }
 
 .add-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
+  width: 128px;
+  height: 128px;
+  border-radius: 40px;
   background: rgba(255, 255, 255, 0.03);
-  margin: 0 auto 12px;
+  margin: 0 auto 24px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .add-text {
-  font-size: 14px;
+  font-size: 28px;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -317,22 +317,22 @@
 .quick-actions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 24px;
 }
 
 .action-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  padding: 20px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  border-radius: 40px;
+  padding: 40px 32px;
   text-align: center;
 }
 
 .action-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  margin: 0 auto 12px;
+  width: 112px;
+  height: 112px;
+  border-radius: 32px;
+  margin: 0 auto 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -340,34 +340,34 @@
 
 .action-label {
   display: block;
-  font-size: 14px;
+  font-size: 28px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .action-desc {
-  font-size: 11px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 /* 功能亮点 */
 .features-section {
-  padding-bottom: 40px;
+  padding-bottom: 80px;
 }
 
 .features-grid {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  border-radius: 48px;
   overflow: hidden;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 32px 40px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.04);
 }
 
 .feature-item:last-child {
@@ -375,14 +375,14 @@
 }
 
 .feature-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 88px;
+  height: 88px;
+  border-radius: 28px;
   background: rgba(0, 245, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 14px;
+  margin-right: 28px;
 }
 
 .feature-content {
@@ -391,17 +391,17 @@
 
 .feature-title {
   display: block;
-  font-size: 15px;
+  font-size: 30px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .feature-desc {
-  font-size: 12px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .bottom-space {
-  height: 100px;
+  height: 200px;
 }
