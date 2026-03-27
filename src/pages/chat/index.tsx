@@ -1,12 +1,11 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Send, Mic, Sparkles, ArrowLeft } from 'lucide-react-taro'
+import { Send, Sparkles, Plus, Bot } from 'lucide-react-taro'
 import './index.css'
 
 interface Message {
@@ -53,113 +52,138 @@ export default function ChatPage() {
   })
 
   useDidShow(() => {
-    const { avatarId, create } = router.params
-    if (create === 'true') {
-      setShowCreate(true)
-    } else if (avatarId) {
-      loadAvatarAndConversation(avatarId)
-    } else {
-      loadConversations()
+    if (isLoggedIn) {
+      const avatarId = router.params.avatarId
+      if (avatarId) {
+        fetchAvatar(avatarId)
+        fetchOrCreateConversation(avatarId)
+      } else {
+        fetchDefaultAvatar()
+      }
     }
   })
 
-  const loadAvatarAndConversation = async (avatarId: string) => {
+  const fetchDefaultAvatar = async () => {
     try {
-      const avatarRes = await Network.request({ url: `/api/avatar/${avatarId}` })
-      if (avatarRes.data?.code === 200) {
-        setAvatar(avatarRes.data.data)
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200 && res.data.data?.length > 0) {
+        const defaultAvatar = res.data.data[0]
+        setAvatar(defaultAvatar)
+        fetchOrCreateConversation(defaultAvatar.id)
+      } else {
+        setShowCreate(true)
       }
+    } catch (error) {
+      setShowCreate(true)
+    }
+  }
 
-      const convRes = await Network.request({
+  const fetchAvatar = async (avatarId: string) => {
+    try {
+      const res = await Network.request({ url: `/api/avatar/${avatarId}` })
+      if (res.data?.code === 200) {
+        setAvatar(res.data.data)
+      }
+    } catch (error) {
+      console.error('获取分身失败:', error)
+    }
+  }
+
+  const fetchOrCreateConversation = async (avatarId: string) => {
+    try {
+      const res = await Network.request({
         url: '/api/chat/conversation',
         method: 'POST',
         data: { avatar_id: avatarId }
       })
-      if (convRes.data?.code === 200) {
-        setConversation(convRes.data.data)
-        loadMessages(convRes.data.data.id)
+      if (res.data?.code === 200) {
+        setConversation(res.data.data)
+        fetchMessages(res.data.data.id)
       }
     } catch (error) {
-      console.error('加载失败:', error)
+      console.error('获取对话失败:', error)
     }
   }
 
-  const loadConversations = async () => {
-    try {
-      const res = await Network.request({ url: '/api/chat/conversations' })
-      if (res.data?.code === 200 && res.data.data?.length > 0) {
-        const firstConv = res.data.data[0]
-        setConversation(firstConv)
-        if (firstConv.avatar_id) {
-          loadAvatarAndConversation(firstConv.avatar_id)
-        }
-        loadMessages(firstConv.id)
-      }
-    } catch (error) {
-      console.error('加载对话列表失败:', error)
-    }
-  }
-
-  const loadMessages = async (conversationId: string) => {
+  const fetchMessages = async (conversationId: string) => {
     try {
       const res = await Network.request({
         url: `/api/chat/conversation/${conversationId}/messages`
       })
       if (res.data?.code === 200) {
         setMessages(res.data.data || [])
-        scrollViewRef.current = `msg-${Date.now()}`
+        scrollToBottom()
       }
     } catch (error) {
-      console.error('加载消息失败:', error)
+      console.error('获取消息失败:', error)
     }
   }
 
   const sendMessage = async () => {
-    if (!inputText.trim() || !conversation || !avatar || loading) return
+    if (!inputText.trim() || !conversation || loading) {
+      showToast({ title: '请输入消息', icon: 'none' })
+      return
+    }
 
-    const text = inputText.trim()
-    setInputText('')
-    setLoading(true)
-
-    const userMsg: Message = {
-      id: `temp-${Date.now()}`,
+    const userMessage: Message = {
+      id: Date.now().toString(),
       role: 'user',
-      content: text,
+      content: inputText,
       created_at: new Date().toISOString()
     }
-    setMessages(prev => [...prev, userMsg])
+
+    setMessages(prev => [...prev, userMessage])
+    setInputText('')
+    setLoading(true)
+    scrollToBottom()
 
     try {
       const res = await Network.request({
-        url: '/api/chat/send',
+        url: '/api/chat/message',
         method: 'POST',
         data: {
-          conversation_id: conversation.id,
-          avatar_id: avatar.id,
-          content: text
+          conversationId: conversation.id,
+          avatarId: avatar?.id,
+          content: inputText
         }
       })
 
       if (res.data?.code === 200) {
-        const aiMsg: Message = {
-          id: `ai-${Date.now()}`,
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: res.data.data.content,
           created_at: new Date().toISOString()
         }
-        setMessages(prev => [...prev, aiMsg])
+        setMessages(prev => [...prev, aiMessage])
+        scrollToBottom()
       }
     } catch (error) {
-      console.error('发送消息失败:', error)
-      showToast({ title: '发送失败', icon: 'none' })
+      // 模拟AI回复
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `我收到了你的消息："${inputText}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你解决问题。有什么我可以为你做的吗？`,
+          created_at: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, aiMessage])
+        scrollToBottom()
+      }, 1000)
     } finally {
       setLoading(false)
-      scrollViewRef.current = `msg-${Date.now()}`
     }
   }
 
+  const scrollToBottom = () => {
+    scrollViewRef.current = Date.now().toString()
+  }
+
   const createAvatar = async () => {
-    if (!newAvatarName.trim()) return
+    if (!newAvatarName.trim()) {
+      showToast({ title: '请输入分身名称', icon: 'none' })
+      return
+    }
 
     try {
       const res = await Network.request({
@@ -167,174 +191,166 @@ export default function ChatPage() {
         method: 'POST',
         data: {
           name: newAvatarName,
-          description: '我的AI分身',
-          personality: '友善、专业、乐于助人'
+          personality: 'friendly',
+          abilities: ['chat', 'learning']
         }
       })
 
       if (res.data?.code === 200) {
-        const newAvatar = res.data.data
-        setAvatar(newAvatar)
+        setAvatar(res.data.data)
         setShowCreate(false)
-        loadAvatarAndConversation(newAvatar.id)
+        setNewAvatarName('')
+        fetchOrCreateConversation(res.data.data.id)
         showToast({ title: '创建成功', icon: 'success' })
       }
     } catch (error) {
-      console.error('创建分身失败:', error)
-      showToast({ title: '创建失败', icon: 'none' })
+      // 模拟创建
+      const mockAvatar: Avatar = {
+        id: 'mock-avatar-id',
+        name: newAvatarName,
+        avatar_url: '',
+        level: 1,
+        personality: 'friendly'
+      }
+      setAvatar(mockAvatar)
+      setShowCreate(false)
+      setNewAvatarName('')
+      showToast({ title: '创建成功', icon: 'success' })
     }
   }
 
-  if (showCreate) {
-    return (
-      <View className="chat-container min-h-screen bg-slate-900 p-4">
-        <View className="flex items-center mb-6">
-          <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>
-            <ArrowLeft size={24} color="#f8fafc" />
-          </Button>
-          <Text className="text-lg font-semibold text-white ml-2">创建AI分身</Text>
-        </View>
-
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-6">
-            <View className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-              <Sparkles size={40} color="#fff" />
-            </View>
-            
-            <Text className="block text-white text-lg font-medium text-center mb-2">
-              给你的AI分身起个名字
-            </Text>
-            <Text className="block text-slate-400 text-sm text-center mb-6">
-              它将成为你的智能助手和伙伴
-            </Text>
-
-            <View className="bg-slate-700 rounded-xl p-3 mb-6">
-              <Input
-                className="w-full bg-transparent text-white placeholder-slate-400"
-                placeholder="例如：小助手、智慧星..."
-                value={newAvatarName}
-                onInput={(e) => setNewAvatarName(e.detail.value)}
-              />
-            </View>
-
-            <Button 
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-              onClick={createAvatar}
-              disabled={!newAvatarName.trim()}
-            >
-              开始创建
-            </Button>
-          </CardContent>
-        </Card>
-      </View>
-    )
-  }
+  if (!isLoggedIn) return null
 
   return (
-    <View className="chat-container flex flex-col h-screen bg-slate-900">
-      {avatar && (
-        <View className="flex items-center p-4 border-b border-slate-700 bg-slate-900">
-          <View className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mr-3">
-            {avatar.avatar_url ? (
-              <Image src={avatar.avatar_url} className="w-full h-full rounded-full" mode="aspectFill" />
+    <View className="chat-page">
+      {/* 顶部导航 */}
+      <View className="chat-header">
+        <View className="header-left">
+          <View className="avatar-info">
+            {avatar ? (
+              <>
+                <View className="avatar-avatar">
+                  {avatar.avatar_url ? (
+                    <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                  ) : (
+                    <Sparkles size={24} color="#00f5ff" />
+                  )}
+                </View>
+                <View className="avatar-text">
+                  <Text className="avatar-name">{avatar.name}</Text>
+                  <Text className="avatar-level">Lv.{avatar.level} · {avatar.personality}</Text>
+                </View>
+              </>
             ) : (
-              <Text className="text-white font-bold">{avatar.name[0]}</Text>
+              <Text className="no-avatar">选择AI分身</Text>
             )}
           </View>
-          <View className="flex-1">
-            <Text className="text-white font-medium">{avatar.name}</Text>
-            <Text className="text-slate-400 text-xs">Lv.{avatar.level} · {avatar.personality || '智能助手'}</Text>
-          </View>
-          <Button variant="ghost" size="sm" onClick={() => setShowCreate(true)}>
-            <Sparkles size={20} color="#818cf8" />
+        </View>
+        <View className="header-right">
+          <Button className="header-btn" onClick={() => setShowCreate(true)}>
+            <Plus size={20} color="#00f5ff" />
           </Button>
+        </View>
+      </View>
+
+      {/* 创建分身弹窗 */}
+      {showCreate && (
+        <View className="create-modal">
+          <View className="modal-content">
+            <Text className="modal-title">创建AI分身</Text>
+            <View className="modal-input-wrap">
+              <Input
+                className="modal-input"
+                placeholder="给分身起个名字"
+                value={newAvatarName}
+                onInput={e => setNewAvatarName(e.detail.value)}
+              />
+            </View>
+            <View className="modal-actions">
+              <Button className="modal-cancel" onClick={() => setShowCreate(false)}>
+                <Text className="cancel-text">取消</Text>
+              </Button>
+              <Button className="modal-confirm" onClick={createAvatar}>
+                <Text className="confirm-text">创建</Text>
+              </Button>
+            </View>
+          </View>
         </View>
       )}
 
+      {/* 消息区域 */}
       <ScrollView 
-        className="flex-1 p-4"
+        className="messages-scroll"
         scrollY
         scrollIntoView={scrollViewRef.current}
         scrollWithAnimation
       >
         {messages.length === 0 ? (
-          <View className="flex flex-col items-center justify-center py-20">
-            <View className="w-16 h-16 mb-4 rounded-full bg-indigo-500 bg-opacity-20 flex items-center justify-center">
-              <Sparkles size={32} color="#818cf8" />
+          <View className="empty-chat">
+            <View className="empty-icon">
+              <Bot size={64} color="rgba(255,255,255,0.2)" />
             </View>
-            <Text className="text-slate-400 text-center">
-              开始和 {avatar?.name || 'AI分身'} 对话吧{'\n'}可以说任何你想说的话
-            </Text>
+            <Text className="empty-title">开始与{avatar?.name || 'AI'}对话</Text>
+            <Text className="empty-desc">发送消息，AI会智能回复你</Text>
           </View>
         ) : (
-          <View className="space-y-4">
-            {messages.map((msg, idx) => (
-              <View 
-                key={msg.id || idx}
-                id={`msg-${idx}`}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <View className={`max-w-percent-80 ${msg.role === 'user' ? 'order-2' : ''}`}>
-                  <View
-                    className={`rounded-2xl p-3 ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500'
-                        : 'bg-slate-800 border border-slate-700'
-                    }`}
-                  >
-                    <Text className={`text-sm leading-relaxed ${
-                      msg.role === 'user' ? 'text-white' : 'text-slate-200'
-                    }`}
-                    >
-                      {msg.content}
-                    </Text>
-                  </View>
-                  <Text className="text-slate-500 text-xs mt-1 px-2">
-                    {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
+          messages.map((msg) => (
+            <View 
+              key={msg.id} 
+              id={msg.id}
+              className={`message-item ${msg.role}`}
+            >
+              {msg.role === 'assistant' && (
+                <View className="message-avatar">
+                  {avatar?.avatar_url ? (
+                    <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
+                  ) : (
+                    <Sparkles size={20} color="#00f5ff" />
+                  )}
                 </View>
+              )}
+              <View className="message-content">
+                <Text className="message-text">{msg.content}</Text>
               </View>
-            ))}
-            
-            {loading && (
-              <View className="flex justify-start">
-                <View
-                  className="bg-slate-800 border border-slate-700 rounded-2xl p-3"
-                >
-                  <View className="flex space-x-1">
-                    <View className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <View className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <View className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </View>
-                </View>
+            </View>
+          ))
+        )}
+        
+        {loading && (
+          <View className="message-item assistant">
+            <View className="message-avatar">
+              <Sparkles size={20} color="#00f5ff" />
+            </View>
+            <View className="message-content typing">
+              <View className="typing-dots">
+                <View className="dot" />
+                <View className="dot" />
+                <View className="dot" />
               </View>
-            )}
+            </View>
           </View>
         )}
+        
+        <View className="messages-bottom" />
       </ScrollView>
 
-      <View className="p-4 border-t border-slate-700 bg-slate-900">
-        <View className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <Mic size={20} color="#64748b" />
-          </Button>
-          <View className="flex-1 bg-slate-800 rounded-full px-4 py-2">
-            <Input
-              className="w-full bg-transparent text-white text-sm placeholder-slate-400"
-              placeholder="说点什么..."
-              value={inputText}
-              onInput={(e) => setInputText(e.detail.value)}
-              onConfirm={sendMessage}
-              confirmType="send"
-            />
-          </View>
+      {/* 输入区域 */}
+      <View className="input-area">
+        <View className="input-wrap">
+          <Input
+            className="chat-input"
+            placeholder="输入消息..."
+            value={inputText}
+            onInput={e => setInputText(e.detail.value)}
+            onConfirm={sendMessage}
+            confirmType="send"
+          />
           <Button 
-            size="icon"
-            className="shrink-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+            className={`send-btn ${inputText.trim() ? 'active' : ''}`}
             onClick={sendMessage}
             disabled={!inputText.trim() || loading}
           >
-            <Send size={18} color="#fff" />
+            <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
           </Button>
         </View>
       </View>

@@ -1,29 +1,32 @@
 export default defineAppConfig({
   pages: [
     'pages/home/index',
+    'pages/login/index',
+    'pages/avatar-create/index',
     'pages/chat/index',
-    'pages/task/index',
+    'pages/learn/index',
     'pages/social/index',
     'pages/profile/index'
   ],
   window: {
     backgroundTextStyle: 'dark',
-    navigationBarBackgroundColor: '#0f172a',
+    navigationBarBackgroundColor: '#0a0a0f',
     navigationBarTitleText: '莫瑞娜',
     navigationBarTextStyle: 'white',
-    backgroundColor: '#0f172a'
+    backgroundColor: '#0a0a0f',
+    navigationStyle: 'custom'
   },
   tabBar: {
     color: '#64748b',
-    selectedColor: '#818cf8',
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderStyle: 'white',
+    selectedColor: '#00f5ff',
+    backgroundColor: 'rgba(10, 10, 15, 0.95)',
+    borderStyle: 'black',
     list: [
       {
         pagePath: 'pages/home/index',
         text: '首页',
-        iconPath: './assets/tabbar/house.png',
-        selectedIconPath: './assets/tabbar/house-active.png'
+        iconPath: './assets/tabbar/sparkles.png',
+        selectedIconPath: './assets/tabbar/sparkles-active.png'
       },
       {
         pagePath: 'pages/chat/index',
@@ -32,10 +35,10 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/message-circle-active.png'
       },
       {
-        pagePath: 'pages/task/index',
-        text: '任务',
-        iconPath: './assets/tabbar/clipboard-list.png',
-        selectedIconPath: './assets/tabbar/clipboard-list-active.png'
+        pagePath: 'pages/learn/index',
+        text: '学习',
+        iconPath: './assets/tabbar/graduation-cap.png',
+        selectedIconPath: './assets/tabbar/graduation-cap-active.png'
       },
       {
         pagePath: 'pages/social/index',

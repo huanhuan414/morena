@@ -1,0 +1,401 @@
+.learn-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-section {
+  position: relative;
+  padding: 60px 24px 24px;
+  margin-bottom: 0;
+}
+
+.stats-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: radial-gradient(ellipse at center top, rgba(0, 245, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.stats-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.stats-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stats-grid {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 20px 16px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-item.main-stat {
+  position: relative;
+}
+
+.stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: #00f5ff;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 4px;
+}
+
+/* Tab切换 */
+.tabs-section {
+  display: flex;
+  padding: 0 24px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  transition: all 0.3s ease;
+}
+
+.tab-item.active {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.15);
+}
+
+.tab-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tab-item.active .tab-text {
+  color: #00f5ff;
+}
+
+.content-scroll {
+  flex: 1;
+  padding-bottom: 100px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 24px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.section-more {
+  font-size: 13px;
+  color: #00f5ff;
+}
+
+/* 课程列表 */
+.courses-list {
+  padding: 0 24px;
+}
+
+.course-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.course-card.locked {
+  opacity: 0.6;
+}
+
+.course-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.course-category {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.category-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.course-level {
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.level-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.course-title {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.course-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 16px;
+}
+
+.course-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.progress-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
+  border-radius: 3px;
+}
+
+.progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00f5ff;
+  min-width: 40px;
+  text-align: right;
+}
+
+.course-meta {
+  display: flex;
+  gap: 16px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.locked-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 学习路径 */
+.paths-list {
+  padding: 0 24px;
+}
+
+.path-card {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.path-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(0, 245, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.number-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #00f5ff;
+}
+
+.path-content {
+  flex: 1;
+}
+
+.path-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.path-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.path-level {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.path-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.path-courses, .path-duration {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.path-dot {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.path-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 成就 */
+.achievements-section {
+  padding: 0 24px;
+}
+
+.achievement-count {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.achievement-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.achievement-card.unlocked {
+  border-color: rgba(0, 245, 255, 0.2);
+}
+
+.achievement-card.locked {
+  opacity: 0.5;
+}
+
+.achievement-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.achievement-card.unlocked .achievement-icon {
+  background: rgba(0, 245, 255, 0.1);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.2);
+}
+
+.achievement-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.achievement-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+}
+
+.achievement-date {
+  font-size: 11px;
+  color: #00f5ff;
+}
+
+.bottom-space {
+  height: 40px;
+}

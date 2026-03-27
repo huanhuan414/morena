@@ -1,9 +1,9 @@
-# 莫瑞娜（Morina）设计指南
+# 莫瑞娜（Morina）设计指南 V2.0
 
 ## 品牌定位
 
 **应用名称**：莫瑞娜（Morina）AI原生人机共生自动协同矩阵生态平台  
-**设计风格**：未来科技风、AI原生、人机共生、高级质感  
+**设计风格**：霓虹赛博朋克 / 未来科技感 / 沉浸式体验  
 **目标用户**：追求AI效率工具的创作者、企业用户、科技爱好者  
 **核心理念**：AI分身全自动协同，解放人力，提升创造力
 
@@ -11,105 +11,150 @@
 
 ## 配色方案
 
-### 主色板（科技蓝紫渐变）
+### 主色板（霓虹渐变）
 
 | 用途 | 色值 | Tailwind类名 | 说明 |
 |------|------|--------------|------|
-| 主色 | #6366f1 | `bg-indigo-500` / `text-indigo-500` | AI智能、科技感 |
-| 主色渐变起始 | #818cf8 | `bg-indigo-400` | 渐变亮部 |
-| 主色渐变结束 | #4f46e5 | `bg-indigo-600` | 渐变暗部 |
-| 强调色 | #a855f7 | `bg-purple-500` | 创意、魔法效果 |
-| 强调色渐变 | #c084fc → #9333ea | `from-purple-400 to-purple-600` | 渐变效果 |
+| 霓虹青 | #00f5ff | `text-cyan-400` | 科技感、未来感 |
+| 霓虹紫 | #bf00ff | `text-purple-500` | AI智能、创造力 |
+| 霓虹粉 | #ff00aa | `text-pink-500` | 能量、活力 |
+| 电光蓝 | #0088ff | `text-blue-500` | 信息、链接 |
+| 主渐变 | cyan-400 → purple-500 | `from-cyan-400 to-purple-500` | 核心渐变 |
 
-### 中性色
+### 背景色系
 
 | 用途 | 色值 | Tailwind类名 |
 |------|------|--------------|
-| 主文本 | #f8fafc | `text-slate-50` |
-| 次文本 | #cbd5e1 | `text-slate-300` |
-| 辅助文本 | #64748b | `text-slate-500` |
-| 背景主色 | #0f172a | `bg-slate-900` |
-| 背景次色 | #1e293b | `bg-slate-800` |
-| 背景卡片 | rgba(30, 41, 59, 0.8) | `bg-slate-800/80` |
-| 边框 | rgba(148, 163, 184, 0.2) | `border-slate-600/20` |
+| 主背景 | #0a0a0f | `bg-[#0a0a0f]` |
+| 卡片背景 | rgba(20, 20, 30, 0.8) | `bg-[#14141e]/80` |
+| 表面层 | rgba(30, 30, 50, 0.6) | `bg-[#1e1e32]/60` |
+| 边框发光 | rgba(0, 245, 255, 0.3) | `border-cyan-400/30` |
 
 ### 语义色
 
 | 用途 | 色值 | Tailwind类名 |
 |------|------|--------------|
-| 成功 | #10b981 | `bg-emerald-500` / `text-emerald-500` |
-| 警告 | #f59e0b | `bg-amber-500` / `text-amber-500` |
-| 错误 | #ef4444 | `bg-red-500` / `text-red-500` |
-| 信息 | #3b82f6 | `bg-blue-500` / `text-blue-500` |
+| 成功 | #00ff88 | `text-emerald-400` |
+| 警告 | #ffaa00 | `text-amber-400` |
+| 错误 | #ff4466 | `text-red-400` |
+| 信息 | #00aaff | `text-blue-400` |
 
-### 深色模式（默认）
+---
+
+## 视觉效果
+
+### 霓虹发光效果
 
 ```css
-/* 全局深色背景 */
-background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+/* 霓虹发光边框 */
+.neon-border {
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.1),
+              inset 0 0 20px rgba(0, 245, 255, 0.05);
+}
 
-/* 磨砂玻璃效果 */
-backdrop-filter: blur(20px);
-background: rgba(30, 41, 59, 0.6);
-border: 1px solid rgba(148, 163, 184, 0.1);
+/* 霓虹发光文字 */
+.neon-text {
+  text-shadow: 0 0 10px currentColor,
+               0 0 20px currentColor,
+               0 0 40px currentColor;
+}
 
-/* 发光效果 */
-box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+/* 霓虹按钮 */
+.neon-button {
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.4),
+              0 0 60px rgba(191, 0, 255, 0.2);
+}
+```
+
+### 玻璃拟态
+
+```css
+.glass-card {
+  backdrop-filter: blur(20px);
+  background: rgba(20, 20, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+```
+
+### 渐变背景
+
+```css
+/* 页面背景 */
+.page-bg {
+  background: radial-gradient(ellipse at top, #1a0a2e 0%, #0a0a0f 50%),
+              radial-gradient(ellipse at bottom, #0a1a2e 0%, #0a0a0f 50%);
+}
+
+/* 动态网格背景 */
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
 ```
 
 ---
 
 ## 字体规范
 
-| 层级 | Tailwind类名 | 字号 | 行高 | 字重 |
+| 层级 | Tailwind类名 | 字号 | 字重 | 场景 |
 |------|--------------|------|------|------|
-| H1 | `text-4xl font-bold` | 36px | 1.2 | 700 |
-| H2 | `text-2xl font-semibold` | 24px | 1.3 | 600 |
-| H3 | `text-xl font-semibold` | 20px | 1.4 | 600 |
-| H4 | `text-lg font-medium` | 18px | 1.5 | 500 |
-| Body | `text-base` | 16px | 1.6 | 400 |
-| Caption | `text-sm` | 14px | 1.5 | 400 |
-| Micro | `text-xs` | 12px | 1.4 | 400 |
+| 超大标题 | `text-5xl font-bold` | 48px | 700 | 登录页品牌 |
+| 大标题 | `text-3xl font-bold` | 30px | 700 | 页面标题 |
+| 中标题 | `text-xl font-semibold` | 20px | 600 | 卡片标题 |
+| 正文 | `text-base` | 16px | 400 | 普通文本 |
+| 小字 | `text-sm` | 14px | 400 | 辅助信息 |
+| 微型 | `text-xs` | 12px | 400 | 标签、时间 |
 
 ---
 
-## 间距系统
+## 组件规范
 
-| 类型 | Tailwind类名 | 值 |
-|------|--------------|-----|
-| 页面边距 | `px-4` / `py-6` | 16px / 24px |
-| 卡片内边距 | `p-4` / `p-6` | 16px / 24px |
-| 列表间距 | `gap-3` / `gap-4` | 12px / 16px |
-| 组件间距 | `space-y-4` | 16px |
+### 按钮样式
 
----
+```tsx
+// 主要按钮 - 霓虹渐变
+<Button className="bg-gradient-to-r from-cyan-400 to-purple-500 text-white font-semibold rounded-full px-8 py-3 shadow-lg shadow-cyan-500/30">
+  开始体验
+</Button>
 
-## 组件使用原则
+// 次要按钮 - 玻璃拟态
+<Button className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-full px-8 py-3">
+  了解更多
+</Button>
 
-### 必须优先使用 `@/components/ui/*`
+// 图标按钮 - 发光
+<Button className="bg-cyan-400/20 border border-cyan-400/40 rounded-full p-3 shadow-lg shadow-cyan-400/20">
+  <Icon size={20} color="#00f5ff" />
+</Button>
+```
 
-所有通用UI组件必须从组件库导入，禁止用 `View/Text` 手搓：
+### 卡片样式
 
-- **按钮**：`Button` / `ButtonGroup` — 所有操作按钮
-- **输入框**：`Input` / `Textarea` / `InputGroup` — 所有文本输入
-- **卡片**：`Card` 系列 — 信息卡片、列表项容器
-- **标签**：`Badge` — 状态标识、分类标签
-- **切换**：`Tabs` — 分段切换、频道页
-- **弹窗**：`Dialog` / `AlertDialog` / `Drawer` — 所有弹层交互
-- **提示**：`Toast` / `Sonner` — 操作反馈、轻提示
-- **加载**：`Skeleton` — 加载态占位
-- **进度**：`Progress` — 任务进度、上传进度
-- **列表**：`ScrollArea` — 滚动区域、列表容器
-- **分隔**：`Separator` — 内容分割线
+```tsx
+// 玻璃拟态卡片
+<View className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-5 shadow-xl">
+  ...
+</View>
 
-### 页面实现前必做
+// 发光卡片
+<View className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-400/30 rounded-2xl p-4 shadow-lg shadow-cyan-500/10">
+  ...
+</View>
+```
 
-创建/重写页面前，先拆分UI单元并映射到组件库：
+### 输入框样式
 
-1. 列出页面需要的所有UI单元（按钮、输入框、卡片、标签等）
-2. 逐个检查 `src/components/ui` 是否已有对应组件
-3. 优先从 `@/components/ui/*` 导入使用
-4. 仅当组件库缺失时才考虑自行实现
+```tsx
+// 玻璃输入框
+<View className="backdrop-blur-xl bg-white/5 border border-white/20 rounded-2xl px-4 py-3">
+  <Input className="w-full bg-transparent text-white placeholder:text-white/40" />
+</View>
+```
 
 ---
 
@@ -119,161 +164,124 @@ box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
 
 | Tab | 页面路径 | 图标 | 说明 |
 |-----|----------|------|------|
-| 首页 | `pages/home/index` | House | 分身概览、快捷入口 |
+| 首页 | `pages/home/index` | Sparkles | 分身入口、快捷操作 |
 | 对话 | `pages/chat/index` | MessageCircle | AI对话、语音交互 |
-| 任务 | `pages/task/index` | ClipboardList | 任务管理、进度追踪 |
+| 学习 | `pages/learn/index` | GraduationCap | 学习路径、进度追踪 |
 | 广场 | `pages/social/index` | Users | 社交广场、动态流 |
 | 我的 | `pages/profile/index` | User | 个人中心、设置 |
 
-### TabBar 配置
+### 页面流程
 
-```typescript
-tabBar: {
-  color: '#64748b',
-  selectedColor: '#818cf8',
-  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-  borderStyle: 'white',
-  list: [
-    { pagePath: 'pages/home/index', text: '首页', iconPath: './assets/tabbar/house.png', selectedIconPath: './assets/tabbar/house-active.png' },
-    { pagePath: 'pages/chat/index', text: '对话', iconPath: './assets/tabbar/message-circle.png', selectedIconPath: './assets/tabbar/message-circle-active.png' },
-    { pagePath: 'pages/task/index', text: '任务', iconPath: './assets/tabbar/clipboard-list.png', selectedIconPath: './assets/tabbar/clipboard-list-active.png' },
-    { pagePath: 'pages/social/index', text: '广场', iconPath: './assets/tabbar/users.png', selectedIconPath: './assets/tabbar/users-active.png' },
-    { pagePath: 'pages/profile/index', text: '我的', iconPath: './assets/tabbar/user.png', selectedIconPath: './assets/tabbar/user-active.png' }
-  ]
-}
+```
+启动 → 登录/注册 → 首页 → 创建分身 → 对话/学习
 ```
 
 ---
 
-## 视觉效果规范
+## 核心页面设计
 
-### 磨砂玻璃效果
+### 1. 登录注册页
 
-```css
-.glass-card {
-  backdrop-filter: blur(20px);
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.1);
-  border-radius: 16px;
-}
-```
+- 全屏渐变背景 + 动态网格
+- 品牌Logo + 霓虹标题
+- 玻璃拟态登录卡片
+- 微信一键登录 + 手机号登录
 
-### 渐变效果
+### 2. 首页
 
-```css
-/* 主色渐变背景 */
-.gradient-bg {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-}
+- 顶部：用户欢迎 + 学习进度环
+- 中部：AI分身卡片（左右滑动）
+- 底部：快捷操作入口（对话/学习/任务）
 
-/* 文字渐变 */
-.text-gradient {
-  background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-```
+### 3. 创建分身页
 
-### 发光效果
+- 分步引导：选择性格 → 选择能力 → 设置外观 → 命名
+- 每步卡片选择器 + 进度指示
+- 最终预览 + 创建按钮
 
-```css
-/* 主色发光 */
-.glow-primary {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
-}
+### 4. 对话页
 
-/* 悬停发光增强 */
-.glow-primary:hover {
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
-}
-```
+- 顶部：分身信息 + 切换按钮
+- 中部：消息流（气泡式）
+- 底部：输入框 + 语音按钮 + 快捷指令
 
-### 动画效果
+### 5. 学习中心
+
+- 学习路径可视化
+- 课程卡片列表
+- 学习进度统计
+- 成就徽章展示
+
+---
+
+## 动画规范
 
 ```css
-/* 淡入 */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* 淡入上移 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* 脉冲 */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
-  50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+/* 霓虹脉冲 */
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 245, 255, 0.6),
+                0 0 60px rgba(191, 0, 255, 0.3);
+  }
 }
 
-/* 打字指示器 */
+/* 渐变流动 */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 打字指示 */
 @keyframes typing {
-  0%, 60%, 100% { opacity: 0.3; }
-  30% { opacity: 1; }
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
 }
 ```
-
----
-
-## 空状态与加载态
-
-### 空状态
-
-```tsx
-<View className="flex flex-col items-center justify-center py-20">
-  <Inbox size={64} color="#64748b" className="mb-4" />
-  <Text className="text-slate-400 text-base">暂无数据</Text>
-</View>
-```
-
-### 加载态
-
-```tsx
-<View className="flex items-center justify-center py-20">
-  <View className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-</View>
-```
-
-### 骨架屏
-
-```tsx
-<View className="space-y-4">
-  <Skeleton className="h-16 w-full rounded-xl" />
-  <Skeleton className="h-32 w-full rounded-xl" />
-  <Skeleton className="h-24 w-full rounded-xl" />
-</View>
-```
-
----
-
-## 小程序约束
-
-- **主包体积**：≤ 2MB，非核心页面使用分包
-- **总包体积**：≤ 20MB
-- **图片优化**：使用 CDN，懒加载，压缩质量 80%
-- **性能优化**：虚拟列表、防抖节流、减少 setData
-- **动画优化**：CSS 动画优先，避免频繁重排重绘
 
 ---
 
 ## 图标规范
 
-使用 `lucide-react-taro` 图标库，统一风格：
+使用 `lucide-react-taro` 图标库：
 
-- **尺寸**：默认 24px，小图标 16px，大图标 32px
-- **颜色**：使用 Tailwind 颜色类名或 `color` 属性
-- **描边**：默认 2px，细线条 1.5px
+- **尺寸**：默认 24px，小图标 18px，大图标 32px
+- **颜色**：霓虹色系（cyan-400 / purple-400 / pink-400）
+- **风格**：线性图标，统一描边 2px
 
-常用图标映射：
-- 首页：`House`
-- 对话：`MessageCircle`
-- 任务：`ClipboardList`
-- 社交：`Users`
-- 我的：`User`
-- 设置：`Settings`
-- 添加：`Plus`
-- 搜索：`Search`
-- 分享：`Share2`
-- 编辑：`Edit`
-- 删除：`Trash2`
-- 成功：`CheckCircle`
-- 警告：`AlertTriangle`
-- 错误：`XCircle`
-- 信息：`Info`
+常用图标：
+- AI分身：`Sparkles` / `Bot` / `Brain`
+- 对话：`MessageCircle` / `Send` / `Mic`
+- 学习：`GraduationCap` / `BookOpen` / `Trophy`
+- 社交：`Users` / `Heart` / `Share2`
+- 设置：`Settings` / `Bell` / `Shield`
+
+---
+
+## 小程序约束
+
+- **主包体积**：≤ 2MB
+- **图片优化**：使用CDN，懒加载
+- **性能优化**：虚拟列表、防抖节流
+- **动画优化**：CSS动画优先，避免频繁重排

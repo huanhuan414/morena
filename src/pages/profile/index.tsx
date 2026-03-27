@@ -1,25 +1,39 @@
-import { View, Text, Image } from '@tarojs/components'
-import { useLoad, useDidShow , navigateTo, reLaunch, showModal } from '@tarojs/taro'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Zap, Bell, Shield, Info } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, Award, TrendingUp, CircleQuestionMark } from 'lucide-react-taro'
 import './index.css'
+
+interface UserStats {
+  avatarCount: number
+  taskCount: number
+  postCount: number
+  followingCount: number
+  followerCount: number
+  totalXp: number
+  level: number
+}
 
 export default function ProfilePage() {
   const { userInfo, logout, isLoggedIn } = useUserStore()
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<UserStats>({
     avatarCount: 0,
     taskCount: 0,
     postCount: 0,
     followingCount: 0,
-    followerCount: 0
+    followerCount: 0,
+    totalXp: 0,
+    level: 1
   })
 
-  useLoad(() => {})
+  useLoad(() => {
+    if (!isLoggedIn) {
+      navigateTo({ url: '/pages/login/index' })
+    }
+  })
 
   useDidShow(() => {
     if (isLoggedIn) {
@@ -45,157 +59,135 @@ export default function ProfilePage() {
       success: (res) => {
         if (res.confirm) {
           logout()
-          reLaunch({ url: '/pages/home/index' })
+          reLaunch({ url: '/pages/login/index' })
         }
       }
     })
   }
 
   const menuItems = [
-    {
-      title: '分身管理',
-      icon: <Sparkles size={20} color="#818cf8" />,
-      path: '/pages/chat/index',
-      desc: '管理你的AI分身'
-    },
-    {
-      title: '任务中心',
-      icon: <Zap size={20} color="#a855f7" />,
-      path: '/pages/task/index',
-      desc: '查看任务进度'
-    },
-    {
-      title: '消息通知',
-      icon: <Bell size={20} color="#f59e0b" />,
-      desc: '查看系统通知'
-    },
-    {
-      title: '账户安全',
-      icon: <Shield size={20} color="#10b981" />,
-      desc: '隐私与安全设置'
-    },
-    {
-      title: '帮助中心',
-      icon: <Info size={20} color="#3b82f6" />,
-      desc: '常见问题解答'
-    },
-    {
-      title: '关于我们',
-      icon: <Info size={20} color="#64748b" />,
-      desc: '版本信息'
-    }
+    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/home/index' },
+    { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/learn/index' },
+    { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/learn/index' },
+    { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '' },
+    { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '' },
+    { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '' },
+    { title: '关于我们', icon: Info, desc: '版本 v1.0.0', color: '#64748b', path: '' }
   ]
 
+  if (!isLoggedIn) return null
+
   return (
-    <View className="profile-container min-h-screen bg-slate-900 pb-20">
+    <View className="profile-page">
+      {/* 顶部背景 */}
+      <View className="profile-bg">
+        <View className="bg-glow" />
+      </View>
+
       {/* 用户信息卡片 */}
-      <View className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-600 pt-12 pb-8 px-4">
-        <View className="flex items-center">
-          <View className="w-16 h-16 rounded-full bg-white bg-opacity-20 flex items-center justify-center mr-4 border-2 border-white border-opacity-30">
+      <View className="user-card">
+        <View className="user-header">
+          <View className="user-avatar-wrap">
             {userInfo?.avatar ? (
-              <Image src={userInfo.avatar} className="w-full h-full rounded-full" mode="aspectFill" />
+              <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
             ) : (
-              <Text className="text-white text-2xl font-bold">
-                {userInfo?.nickname?.[0] || 'U'}
-              </Text>
+              <View className="avatar-placeholder">
+                <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+              </View>
             )}
-          </View>
-          <View className="flex-1">
-            <View className="flex items-center">
-              <Text className="text-white text-xl font-semibold">{userInfo?.nickname || '莫瑞娜用户'}</Text>
-              <Badge variant="secondary" className="ml-2 bg-white bg-opacity-20 text-white">
-                Lv.{userInfo?.level || 1}
-              </Badge>
+            <View className="level-badge">
+              <Text className="level-text">Lv.{stats.level}</Text>
             </View>
-            <Text className="text-white text-white-opacity-70 text-sm mt-1">
-              {userInfo?.bio || 'AI原生人机共生协同平台'}
-            </Text>
           </View>
-          <Button variant="ghost" size="icon" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-            <Settings size={24} color="#fff" />
+          <View className="user-info">
+            <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+            <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+          </View>
+          <Button className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+            <Settings size={20} color="rgba(255,255,255,0.6)" />
           </Button>
         </View>
 
-        {/* 统计 */}
-        <View className="grid grid-cols-4 gap-4 mt-6 bg-white bg-opacity-10 rounded-xl p-4">
-          <StatItem label="分身" value={stats.avatarCount} />
-          <StatItem label="任务" value={stats.taskCount} />
-          <StatItem label="动态" value={stats.postCount} />
-          <StatItem label="积分" value={userInfo?.credits || 0} />
+        {/* 统计数据 */}
+        <View className="stats-row">
+          <View className="stat-item" onClick={() => switchTab({ url: '/pages/home/index' })}>
+            <Text className="stat-value">{stats.avatarCount}</Text>
+            <Text className="stat-label">AI分身</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-item" onClick={() => switchTab({ url: '/pages/learn/index' })}>
+            <Text className="stat-value">{stats.taskCount}</Text>
+            <Text className="stat-label">任务</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
+            <Text className="stat-value">{stats.postCount}</Text>
+            <Text className="stat-label">动态</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-item">
+            <Text className="stat-value">{stats.followerCount}</Text>
+            <Text className="stat-label">粉丝</Text>
+          </View>
+        </View>
+
+        {/* 经验进度 */}
+        <View className="xp-section">
+          <View className="xp-header">
+            <Text className="xp-title">经验值</Text>
+            <Text className="xp-value">{stats.totalXp} XP</Text>
+          </View>
+          <View className="xp-bar">
+            <View className="xp-fill" style={{ width: '60%' }} />
+          </View>
+          <Text className="xp-hint">再获得 400 XP 升级</Text>
         </View>
       </View>
 
-      {/* 经验进度 */}
-      <View className="px-4 -mt-4">
-        <Card className="bg-slate-800 border-slate-700">
-          <CardContent className="p-4">
-            <View className="flex items-center justify-between mb-2">
-              <Text className="text-slate-400 text-sm">成长值</Text>
-              <Text className="text-indigo-400 text-sm">
-                {userInfo?.exp || 0} / {(userInfo?.level || 1) * 100}
-              </Text>
-            </View>
-            <View className="h-2 bg-slate-700 rounded-full overflow-hidden">
-              <View 
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-                style={{ width: `${((userInfo?.exp || 0) % 100)}%` }}
-              />
-            </View>
-            <Text className="text-slate-500 text-xs mt-2">
-              距离 Lv.{(userInfo?.level || 1) + 1} 还需 {((userInfo?.level || 1) * 100 - (userInfo?.exp || 0))} 经验
-            </Text>
-          </CardContent>
-        </Card>
-      </View>
+      <ScrollView className="menu-scroll" scrollY>
+        {/* 功能菜单 */}
+        <View className="menu-section">
+          <View className="menu-grid">
+            {menuItems.map((item, idx) => {
+              const Icon = item.icon
+              return (
+                <View 
+                  key={idx}
+                  className="menu-item"
+                  onClick={() => item.path && switchTab({ url: item.path })}
+                >
+                  <View className="menu-left">
+                    <View className="menu-icon" style={{ background: `${item.color}15` }}>
+                      <Icon size={22} color={item.color} />
+                    </View>
+                    <View className="menu-text">
+                      <Text className="menu-title">{item.title}</Text>
+                      <Text className="menu-desc">{item.desc}</Text>
+                    </View>
+                  </View>
+                  <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
+                </View>
+              )
+            })}
+          </View>
+        </View>
 
-      {/* 菜单列表 */}
-      <View className="px-4 mt-4">
-        <Card className="bg-slate-800 border-slate-700 overflow-hidden">
-          {menuItems.map((item, idx) => (
-            <View 
-              key={idx}
-              className={`flex items-center p-4 ${idx > 0 ? 'border-t border-slate-700' : ''}`}
-              onClick={() => item.path && navigateTo({ url: item.path })}
-            >
-              <View className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center mr-3">
-                {item.icon}
-              </View>
-              <View className="flex-1">
-                <Text className="text-white text-sm font-medium">{item.title}</Text>
-                <Text className="text-slate-500 text-xs">{item.desc}</Text>
-              </View>
-              <ChevronRight size={20} color="#64748b" />
-            </View>
-          ))}
-        </Card>
-      </View>
+        {/* 退出按钮 */}
+        <View className="logout-section">
+          <Button className="logout-btn" onClick={handleLogout}>
+            <LogOut size={18} color="rgba(255,255,255,0.5)" />
+            <Text className="logout-text">退出登录</Text>
+          </Button>
+        </View>
 
-      {/* 退出登录 */}
-      <View className="px-4 mt-6">
-        <Button 
-          variant="outline"
-          className="w-full border-slate-700 text-slate-400"
-          onClick={handleLogout}
-        >
-          <LogOut size={18} color="#94a3b8" className="mr-2" />
-          退出登录
-        </Button>
-      </View>
+        {/* 版本信息 */}
+        <View className="version-section">
+          <Text className="version-text">莫瑞娜 v1.0.0</Text>
+          <Text className="version-copyright">AI原生人机共生协同平台</Text>
+        </View>
 
-      {/* 版本信息 */}
-      <View className="mt-8 text-center">
-        <Text className="text-slate-600 text-xs">莫瑞娜 v1.0.0</Text>
-        <Text className="text-slate-700 text-xs mt-1">AI原生人机共生协同平台</Text>
-      </View>
-    </View>
-  )
-}
-
-function StatItem({ label, value }: { label: string; value: number }) {
-  return (
-    <View className="text-center">
-      <Text className="block text-white text-xl font-bold">{value}</Text>
-      <Text className="block text-white text-white-opacity-60 text-xs">{label}</Text>
+        <View className="bottom-space" />
+      </ScrollView>
     </View>
   )
 }

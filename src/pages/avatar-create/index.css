@@ -1,0 +1,463 @@
+.create-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+  padding-top: 80px;
+  padding-bottom: 120px;
+}
+
+.progress-bar {
+  padding: 0 24px;
+  margin-bottom: 32px;
+}
+
+.progress-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-dots {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.progress-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-dot.active {
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  border-color: #00f5ff;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+}
+
+.dot-number {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.progress-dot.active .dot-number {
+  color: #0a0a0f;
+  font-weight: 600;
+}
+
+.step-scroll {
+  flex: 1;
+  padding: 0 24px;
+}
+
+.step-content {
+  padding-bottom: 40px;
+}
+
+.step-header {
+  margin-bottom: 32px;
+}
+
+.step-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.step-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 性格选择 */
+.personality-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.personality-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px 20px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.personality-card.selected {
+  background: rgba(0, 245, 255, 0.08);
+  border-color: rgba(0, 245, 255, 0.4);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.15);
+}
+
+.personality-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.personality-icon.glow {
+  background: rgba(0, 245, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+}
+
+.personality-name {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.personality-desc {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 16px;
+}
+
+.traits-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trait-tag {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.selected-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 245, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 能力选择 */
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.ability-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+}
+
+.ability-card.selected {
+  background: rgba(0, 245, 255, 0.08);
+  border-color: rgba(0, 245, 255, 0.3);
+}
+
+.ability-icon-wrap {
+  margin-bottom: 12px;
+}
+
+.ability-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.ability-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ability-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 245, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selected-count {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.count-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 风格选择 */
+.style-grid {
+  display: flex;
+  gap: 16px;
+}
+
+.style-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.style-card.selected {
+  border-color: rgba(0, 245, 255, 0.4);
+}
+
+.style-preview {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.style-orb {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.style-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.style-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.style-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #00f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 命名页面 */
+.name-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.avatar-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 40px;
+  background: rgba(0, 245, 255, 0.1);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.preview-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 60px;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.2) 0%, transparent 70%);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.name-input-wrap {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.name-input {
+  width: 100%;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+}
+
+.name-suggestions {
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.suggestions-title {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.suggestions-list {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.suggestion-tag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 10px 20px;
+}
+
+.suggestion-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.summary-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.summary-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  width: 60px;
+}
+
+.summary-value {
+  font-size: 14px;
+  color: #00f5ff;
+}
+
+/* 底部按钮 */
+.bottom-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 24px;
+  padding-bottom: 40px;
+  background: linear-gradient(to top, #0a0a0f 60%, transparent);
+  display: flex;
+  gap: 16px;
+}
+
+.back-btn {
+  flex: 1;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+}
+
+.back-btn-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+}
+
+.next-btn, .create-btn {
+  flex: 2;
+  height: 52px;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  border-radius: 26px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.next-btn.disabled, .create-btn.disabled {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.next-btn-text, .create-btn-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0a0a0f;
+}
+
+.next-btn.disabled .next-btn-text,
+.create-btn.disabled .create-btn-text {
+  color: #666;
+}

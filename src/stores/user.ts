@@ -1,6 +1,20 @@
 import { create } from 'zustand'
-import Taro from '@tarojs/taro'
+import { setStorageSync, getStorageSync, removeStorageSync } from '@tarojs/taro'
 import { Network } from '@/network'
+
+interface User {
+  id: string
+  openid?: string
+  nickname: string
+  avatar: string
+  phone?: string
+  bio?: string
+  level?: number
+  exp?: number
+  credits?: number
+  created_at?: string
+  updated_at?: string
+}
 
 interface UserState {
   userInfo: User | null
@@ -8,23 +22,10 @@ interface UserState {
   isLoggedIn: boolean
   setUserInfo: (info: User) => void
   setToken: (token: string) => void
+  setLoggedIn: (status: boolean) => void
   logout: () => void
   login: (code: string) => Promise<void>
   loadUserFromStorage: () => Promise<void>
-}
-
-interface User {
-  id: string
-  openid: string
-  nickname: string
-  avatar: string
-  phone?: string
-  bio?: string
-  level: number
-  exp: number
-  credits: number
-  created_at: string
-  updated_at?: string
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -35,13 +36,15 @@ export const useUserStore = create<UserState>((set, get) => ({
   setUserInfo: (info) => set({ userInfo: info, isLoggedIn: true }),
 
   setToken: (token) => {
-    Taro.setStorageSync('token', token)
+    setStorageSync('token', token)
     set({ token })
   },
 
+  setLoggedIn: (status) => set({ isLoggedIn: status }),
+
   logout: () => {
-    Taro.removeStorageSync('token')
-    Taro.removeStorageSync('userInfo')
+    removeStorageSync('token')
+    removeStorageSync('userInfo')
     set({ userInfo: null, token: '', isLoggedIn: false })
   },
 
@@ -57,7 +60,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         const { user, token } = res.data.data
         get().setToken(token)
         get().setUserInfo(user)
-        Taro.setStorageSync('userInfo', user)
+        setStorageSync('userInfo', user)
       } else {
         throw new Error(res.data?.message || '登录失败')
       }
@@ -69,8 +72,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   loadUserFromStorage: async () => {
     try {
-      const token = Taro.getStorageSync('token')
-      const userInfo = Taro.getStorageSync('userInfo')
+      const token = getStorageSync('token')
+      const userInfo = getStorageSync('userInfo')
       
       if (token && userInfo) {
         set({ token, userInfo, isLoggedIn: true })

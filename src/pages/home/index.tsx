@@ -1,13 +1,10 @@
-import { View, Text, Image } from '@tarojs/components'
-import { useLoad, useDidShow , login as taroLogin, navigateTo, switchTab } from '@tarojs/taro'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { useLoad, useDidShow, navigateTo, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Sparkles, Zap, Users, ClipboardList, ChevronRight, Plus } from 'lucide-react-taro'
+import { Sparkles, MessageCircle, GraduationCap, Plus, Bot, Brain, Target, Zap, ChevronRight, TrendingUp, Award } from 'lucide-react-taro'
 import './index.css'
 
 interface Avatar {
@@ -15,251 +12,260 @@ interface Avatar {
   name: string
   avatar_url: string
   level: number
-  exp: number
-  status: string
+  personality: string
+  conversation_count: number
 }
 
-interface Stats {
-  avatarCount: number
-  taskCount: number
-  postCount: number
-  followingCount: number
-  followerCount: number
+interface LearningProgress {
+  total_hours: number
+  courses_completed: number
+  skills_learned: number
+  streak_days: number
 }
 
 export default function HomePage() {
-  const { userInfo, isLoggedIn, login } = useUserStore()
+  const { userInfo, isLoggedIn } = useUserStore()
   const [avatars, setAvatars] = useState<Avatar[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [learningProgress, setLearningProgress] = useState<LearningProgress>({
+    total_hours: 0,
+    courses_completed: 0,
+    skills_learned: 0,
+    streak_days: 0
+  })
 
   useLoad(() => {
-    console.log('Home page loaded.')
+    if (!isLoggedIn) {
+      navigateTo({ url: '/pages/login/index' })
+    }
   })
 
   useDidShow(() => {
     if (isLoggedIn) {
-      fetchData()
-    } else {
-      autoLogin()
+      fetchAvatars()
+      fetchLearningProgress()
     }
   })
 
-  const autoLogin = async () => {
+  const fetchAvatars = async () => {
     try {
-      const { code } = await taroLogin()
-      await login(code)
-      await fetchData()
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200) {
+        setAvatars(res.data.data || [])
+      }
     } catch (error) {
-      console.error('自动登录失败:', error)
-      setLoading(false)
+      console.error('获取分身列表失败:', error)
     }
   }
 
-  const fetchData = async () => {
-    setLoading(true)
+  const fetchLearningProgress = async () => {
     try {
-      const [avatarsRes, statsRes] = await Promise.all([
-        Network.request({ url: '/api/avatar' }),
-        Network.request({ url: '/api/user/stats' })
-      ])
-      
-      if (avatarsRes.data?.code === 200) {
-        setAvatars(avatarsRes.data.data || [])
-      }
-      if (statsRes.data?.code === 200) {
-        setStats(statsRes.data.data)
+      const res = await Network.request({ url: '/api/user/learning-progress' })
+      if (res.data?.code === 200) {
+        setLearningProgress(res.data.data)
       }
     } catch (error) {
-      console.error('获取数据失败:', error)
-    } finally {
-      setLoading(false)
+      console.error('获取学习进度失败:', error)
     }
   }
 
-  if (!isLoggedIn && !loading) {
-    return (
-      <View className="home-container flex flex-col items-center justify-center min-h-screen bg-slate-900 px-4">
-        <View className="text-center mb-8">
-          <View className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-            <Sparkles size={40} color="#fff" />
-          </View>
-          <Text className="block text-2xl font-bold text-white mb-2">莫瑞娜</Text>
-          <Text className="block text-slate-400">AI原生人机共生协同平台</Text>
-        </View>
-        <Button 
-          className="w-full max-w-xs bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full py-6"
-          onClick={autoLogin}
-        >
-          <Text className="text-lg">微信一键登录</Text>
-        </Button>
-      </View>
-    )
+  const quickActions = [
+    { icon: MessageCircle, label: '开始对话', desc: '与AI分身交流', color: '#00f5ff', path: '/pages/chat/index' },
+    { icon: GraduationCap, label: '学习中心', desc: '探索新知识', color: '#bf00ff', path: '/pages/learn/index' },
+    { icon: Target, label: '任务管理', desc: '追踪目标进度', color: '#ff6b6b', path: '/pages/learn/index' }
+  ]
+
+  const features = [
+    { icon: Brain, title: 'AI分身', desc: '打造专属智能助手' },
+    { icon: Zap, title: '自动协同', desc: '任务自动执行' },
+    { icon: TrendingUp, title: '持续进化', desc: '能力不断提升' }
+  ]
+
+  const handleCreateAvatar = () => {
+    navigateTo({ url: '/pages/avatar-create/index' })
+  }
+
+  const handleStartChat = (avatarId?: string) => {
+    if (avatarId) {
+      navigateTo({ url: `/pages/chat/index?avatarId=${avatarId}` })
+    } else {
+      switchTab({ url: '/pages/chat/index' })
+    }
+  }
+
+  if (!isLoggedIn) {
+    return null
   }
 
   return (
-    <View className="home-container min-h-screen bg-slate-900 pb-20">
-      {/* 顶部渐变背景 */}
-      <View className="h-48 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-600 relative overflow-hidden">
-        <View className="absolute inset-0">
-          <View className="absolute top-10 left-10 w-32 h-32 bg-white bg-opacity-20 rounded-full blur-3xl" />
-          <View className="absolute bottom-10 right-10 w-40 h-40 bg-purple-400 bg-opacity-30 rounded-full blur-3xl" />
-        </View>
-        <View className="relative z-10 p-4 pt-12">
-          <View className="flex items-center justify-between">
-            <View>
-              <Text className="block text-white text-xl font-semibold mb-1">
-                {userInfo?.nickname || '莫瑞娜用户'}
-              </Text>
-              <Text className="block text-white text-white-opacity-70 text-sm">
-                Lv.{userInfo?.level || 1} · {userInfo?.exp || 0} 经验
-              </Text>
-            </View>
-            {userInfo?.avatar && (
-              <View className="w-12 h-12 rounded-full overflow-hidden border-2 border-white border-opacity-30">
-                <Image src={userInfo.avatar} className="w-full h-full" mode="aspectFill" />
+    <View className="home-page">
+      {/* 顶部背景装饰 */}
+      <View className="bg-glow" />
+
+      {/* 欢迎区域 */}
+      <View className="welcome-section">
+        <View className="user-info">
+          <View className="avatar-wrap">
+            {userInfo?.avatar ? (
+              <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+            ) : (
+              <View className="avatar-placeholder">
+                <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
               </View>
             )}
           </View>
+          <View className="user-greeting">
+            <Text className="greeting-text">你好，{userInfo?.nickname || '探索者'}</Text>
+            <Text className="greeting-sub">今天想和AI分身做什么？</Text>
+          </View>
         </View>
-      </View>
 
-      {/* 统计卡片 */}
-      <View className="px-4 -mt-6 relative z-20">
-        <View className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
-          <View className="grid grid-cols-4 gap-4">
-            <StatItem icon={<Users size={20} color="#818cf8" />} label="分身" value={stats?.avatarCount || 0} />
-            <StatItem icon={<ClipboardList size={20} color="#818cf8" />} label="任务" value={stats?.taskCount || 0} />
-            <StatItem icon={<Zap size={20} color="#818cf8" />} label="动态" value={stats?.postCount || 0} />
-            <StatItem icon={<Sparkles size={20} color="#818cf8" />} label="积分" value={userInfo?.credits || 0} />
+        {/* 学习进度概览 */}
+        <View className="progress-card">
+          <View className="progress-header">
+            <Text className="progress-title">学习进度</Text>
+            <View className="streak-badge">
+              <Award size={14} color="#ffaa00" />
+              <Text className="streak-text">{learningProgress.streak_days}天连续</Text>
+            </View>
+          </View>
+          <View className="progress-stats">
+            <View className="stat-item">
+              <Text className="stat-value">{learningProgress.total_hours}</Text>
+              <Text className="stat-label">学习小时</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-item">
+              <Text className="stat-value">{learningProgress.courses_completed}</Text>
+              <Text className="stat-label">完成课程</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-item">
+              <Text className="stat-value">{learningProgress.skills_learned}</Text>
+              <Text className="stat-label">技能解锁</Text>
+            </View>
           </View>
         </View>
       </View>
 
-      {/* 我的分身 */}
-      <View className="px-4 mt-6">
-        <View className="flex items-center justify-between mb-3">
-          <Text className="text-lg font-semibold text-white">我的分身</Text>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-indigo-400"
-            onClick={() => navigateTo({ url: '/pages/chat/index?create=true' })}
-          >
-            <Plus size={18} color="#818cf8" />
-            <Text className="ml-1 text-indigo-400">创建</Text>
-          </Button>
-        </View>
-        
-        {loading ? (
-          <View className="space-y-3">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
+      <ScrollView className="main-scroll" scrollY>
+        {/* AI分身区域 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-wrap">
+              <Sparkles size={20} color="#00f5ff" />
+              <Text className="section-title">我的AI分身</Text>
+            </View>
+            <View className="section-action" onClick={handleCreateAvatar}>
+              <Text className="action-text">创建分身</Text>
+              <Plus size={16} color="#00f5ff" />
+            </View>
           </View>
-        ) : avatars.length === 0 ? (
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="p-6 text-center">
-              <Sparkles size={48} color="#64748b" className="mx-auto mb-3" />
-              <Text className="block text-slate-400 mb-2">还没有创建分身</Text>
-              <Button 
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-                onClick={() => navigateTo({ url: '/pages/chat/index?create=true' })}
-              >
-                创建第一个AI分身
+
+          {avatars.length === 0 ? (
+            <View className="empty-avatars" onClick={handleCreateAvatar}>
+              <View className="empty-icon">
+                <Bot size={48} color="rgba(255,255,255,0.3)" />
+              </View>
+              <Text className="empty-title">还没有AI分身</Text>
+              <Text className="empty-desc">点击创建你的第一个AI分身</Text>
+              <Button className="create-btn">
+                <Plus size={18} color="#0a0a0f" />
+                <Text className="create-btn-text">立即创建</Text>
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <View className="space-y-3">
-            {avatars.map(avatar => (
-              <Card 
-                key={avatar.id}
-                className="bg-slate-800 border-slate-700"
-                onClick={() => navigateTo({ url: `/pages/chat/index?avatarId=${avatar.id}` })}
-              >
-                <CardContent className="p-4">
-                  <View className="flex items-center">
-                    <View className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mr-3">
-                      {avatar.avatar_url ? (
-                        <Image src={avatar.avatar_url} className="w-full h-full rounded-full" mode="aspectFill" />
-                      ) : (
-                        <Text className="text-white text-xl font-bold">{avatar.name[0]}</Text>
-                      )}
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex items-center">
-                        <Text className="text-white font-medium">{avatar.name}</Text>
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          Lv.{avatar.level}
-                        </Badge>
-                      </View>
-                      <Text className="text-slate-400 text-sm mt-1">
-                        {avatar.exp} 经验 · {avatar.status === 'active' ? '活跃中' : '休息中'}
-                      </Text>
-                    </View>
-                    <ChevronRight size={20} color="#64748b" />
+            </View>
+          ) : (
+            <ScrollView className="avatars-scroll" scrollX>
+              {avatars.map(avatar => (
+                <View 
+                  key={avatar.id} 
+                  className="avatar-card"
+                  onClick={() => handleStartChat(avatar.id)}
+                >
+                  <View className="avatar-avatar">
+                    {avatar.avatar_url ? (
+                      <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                    ) : (
+                      <Sparkles size={32} color="#00f5ff" />
+                    )}
                   </View>
-                </CardContent>
-              </Card>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* 快捷入口 */}
-      <View className="px-4 mt-6">
-        <Text className="text-lg font-semibold text-white mb-3">快捷入口</Text>
-        <View className="grid grid-cols-2 gap-3">
-          <QuickEntry 
-            icon={<ClipboardList size={24} color="#818cf8" />}
-            title="任务管理"
-            desc="查看所有任务"
-            onClick={() => switchTab({ url: '/pages/task/index' })}
-          />
-          <QuickEntry 
-            icon={<Users size={24} color="#a855f7" />}
-            title="社交广场"
-            desc="发现精彩内容"
-            onClick={() => switchTab({ url: '/pages/social/index' })}
-          />
+                  <Text className="avatar-name">{avatar.name}</Text>
+                  <View className="avatar-level">
+                    <Text className="level-text">Lv.{avatar.level}</Text>
+                  </View>
+                  <View className="chat-count">
+                    <MessageCircle size={12} color="rgba(255,255,255,0.4)" />
+                    <Text className="count-text">{avatar.conversation_count || 0}次对话</Text>
+                  </View>
+                </View>
+              ))}
+              <View className="avatar-card add-card" onClick={handleCreateAvatar}>
+                <View className="add-icon">
+                  <Plus size={32} color="rgba(255,255,255,0.3)" />
+                </View>
+                <Text className="add-text">创建分身</Text>
+              </View>
+            </ScrollView>
+          )}
         </View>
-      </View>
-    </View>
-  )
-}
 
-function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <View className="text-center">
-      <View className="mb-1">{icon}</View>
-      <Text className="block text-white font-semibold text-lg">{value}</Text>
-      <Text className="block text-slate-400 text-xs">{label}</Text>
-    </View>
-  )
-}
-
-function QuickEntry({ icon, title, desc, onClick }: { 
-  icon: React.ReactNode
-  title: string
-  desc: string
-  onClick: () => void 
-}) {
-  return (
-    <Card 
-      className="bg-slate-800 border-slate-700"
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <View className="flex items-center">
-          <View className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center mr-3">
-            {icon}
+        {/* 快捷操作 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">快捷操作</Text>
           </View>
-          <View>
-            <Text className="block text-white font-medium text-sm">{title}</Text>
-            <Text className="block text-slate-400 text-xs">{desc}</Text>
+          <View className="quick-actions">
+            {quickActions.map((action, idx) => {
+              const Icon = action.icon
+              return (
+                <View 
+                  key={idx}
+                  className="action-card"
+                  onClick={() => switchTab({ url: action.path })}
+                >
+                  <View 
+                    className="action-icon"
+                    style={{ 
+                      background: `${action.color}15`,
+                      boxShadow: `0 0 20px ${action.color}20`
+                    }}
+                  >
+                    <Icon size={24} color={action.color} />
+                  </View>
+                  <Text className="action-label">{action.label}</Text>
+                  <Text className="action-desc">{action.desc}</Text>
+                </View>
+              )
+            })}
           </View>
         </View>
-      </CardContent>
-    </Card>
+
+        {/* 功能亮点 */}
+        <View className="section features-section">
+          <View className="section-header">
+            <Text className="section-title">平台能力</Text>
+          </View>
+          <View className="features-grid">
+            {features.map((feature, idx) => {
+              const Icon = feature.icon
+              return (
+                <View key={idx} className="feature-item">
+                  <View className="feature-icon">
+                    <Icon size={22} color="#00f5ff" />
+                  </View>
+                  <View className="feature-content">
+                    <Text className="feature-title">{feature.title}</Text>
+                    <Text className="feature-desc">{feature.desc}</Text>
+                  </View>
+                  <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* 底部留白 */}
+        <View className="bottom-space" />
+      </ScrollView>
+    </View>
   )
 }
