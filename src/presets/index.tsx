@@ -1,5 +1,6 @@
 import { useLaunch } from '@tarojs/taro';
 import { PropsWithChildren } from 'react';
+import { useUserStore } from '@/stores/user';
 import { injectH5Styles } from './h5-styles';
 import { devDebug } from './dev-debug';
 import { H5Container } from './h5-container';
@@ -10,6 +11,8 @@ import {
 import { IS_H5_ENV } from './env';
 
 export const Preset = ({ children }: PropsWithChildren) => {
+  const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage);
+
   if (IS_H5_ENV) {
     initializeH5ErrorHandling();
   }
@@ -17,6 +20,8 @@ export const Preset = ({ children }: PropsWithChildren) => {
   useLaunch(() => {
     devDebug();
     injectH5Styles();
+    // 应用启动时加载用户信息
+    loadUserFromStorage();
   });
 
   if (IS_H5_ENV) {

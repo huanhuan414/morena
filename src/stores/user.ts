@@ -33,7 +33,10 @@ export const useUserStore = create<UserState>((set, get) => ({
   token: '',
   isLoggedIn: false,
 
-  setUserInfo: (info) => set({ userInfo: info, isLoggedIn: true }),
+  setUserInfo: (info) => {
+    setStorageSync('userInfo', info)
+    set({ userInfo: info, isLoggedIn: true })
+  },
 
   setToken: (token) => {
     setStorageSync('token', token)
