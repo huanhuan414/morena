@@ -37,4 +37,14 @@ export class UserController {
       message: '获取成功'
     }
   }
+
+  @Get('learning-progress')
+  async getLearningProgress(@Headers('x-user-id') userId: string) {
+    const progress = await this.userService.getLearningProgress(userId)
+    return {
+      code: 200,
+      data: progress,
+      message: '获取成功'
+    }
+  }
 }

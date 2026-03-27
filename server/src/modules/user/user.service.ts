@@ -78,4 +78,49 @@ export class UserService {
       followerCount: followerCount || 0
     }
   }
+
+  async getLearningProgress(userId: string) {
+    const client = getSupabaseClient()
+    
+    // 获取用户学习数据
+    const { data: user } = await client
+      .from('users')
+      .select('level, exp')
+      .eq('id', userId)
+      .single()
+    
+    // 获取学习会话数量（模拟学习时长）
+    const { count: learningSessions } = await client
+      .from('conversations')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    
+    // 计算学习小时数（每10次对话约1小时）
+    const totalHours = Math.floor((learningSessions || 0) / 10)
+    
+    // 获取完成的任务数作为课程完成数
+    const { count: completedTasks } = await client
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+    
+    // 获取分身等级作为技能解锁数
+    const { data: avatars } = await client
+      .from('avatars')
+      .select('level')
+      .eq('user_id', userId)
+    
+    const skillsLearned = avatars?.reduce((sum, a) => sum + (a.level || 1), 0) || 0
+    
+    // 计算连续学习天数（模拟，基于最近活跃度）
+    const streakDays = Math.min(Math.floor((learningSessions || 0) / 3), 30)
+    
+    return {
+      total_hours: totalHours,
+      courses_completed: completedTasks || 0,
+      skills_learned: skillsLearned,
+      streak_days: streakDays
+    }
+  }
 }
