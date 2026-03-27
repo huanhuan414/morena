@@ -314,3 +314,109 @@
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   box-shadow: 0 8px 30px rgba(0, 245, 255, 0.3);
 }
+
+/* Agent 任务状态卡片 */
+.task-card {
+  margin: 24px 0;
+  background: rgba(0, 245, 255, 0.05);
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  border-radius: 32px;
+  padding: 32px;
+}
+
+.task-card.completed {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.task-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.task-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5ff, #bf00ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 60px;
+  text-align: right;
+}
+
+.task-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.log-text {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  flex: 1;
+}
+
+.task-summary {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.task-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.result-title {
+  font-size: 26px;
+  color: #00f5ff;
+  font-weight: 500;
+}
+
+/* 加载动画 */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

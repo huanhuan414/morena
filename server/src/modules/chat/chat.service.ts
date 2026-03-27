@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { AgentService } from '../agent/agent.service'
 
 @Injectable()
 export class ChatService {
+  constructor(
+    @Inject(forwardRef(() => AgentService)) private readonly agentService: AgentService
+  ) {}
   async createConversation(userId: string, avatarId: string, title?: string) {
     const client = getSupabaseClient()
     
@@ -165,15 +169,46 @@ export class ChatService {
     // 更新分身学习数据
     await this.updateAvatarLearning(avatarId, content, response.content)
     
-    // 检查是否需要创建任务
+    // 检查是否需要创建简单任务（提醒类）
     const taskInfo = this.detectTaskIntent(content, response.content)
-    if (taskInfo) {
+    if (taskInfo && !response.content.includes('开始执行任务')) {
       await this.createTaskFromChat(userId, avatarId, taskInfo)
+    }
+    
+    // 检查是否需要执行复杂任务（Agent 执行）
+    let taskId: string | undefined
+    if (response.content.includes('开始执行任务')) {
+      // 创建任务记录并返回 taskId
+      const { data: task } = await client
+        .from('tasks')
+        .insert({
+          user_id: userId,
+          avatar_id: avatarId,
+          title: `🤖 ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+          description: content,
+          task_type: 'agent',
+          priority: 'high',
+          status: 'pending',
+          progress: 0,
+          params: { source: 'chat_agent' },
+          result: {},
+          logs: []
+        })
+        .select()
+        .single()
+      
+      if (task) {
+        taskId = task.id
+        // 异步执行任务，不阻塞响应
+        this.executeAgentTaskWithTaskId(task.id, userId, avatarId, conversationId, content, headers)
+          .catch(err => console.error('Agent 任务执行失败:', err))
+      }
     }
     
     return {
       role: 'assistant',
-      content: response.content
+      content: response.content,
+      taskId
     }
   }
 
@@ -323,34 +358,40 @@ ${personalityDesc}
 - 情感陪伴和聊天
 - 创作内容（文章、文案、创意等）
 
-### 2. 任务执行（重要！）
-当用户说以下类型的句子时，你应该主动询问是否需要创建任务：
-- "帮我..." / "提醒我..." / "记得..."
-- "明天..." / "下周..." / "等会儿..."
-- "我要..." / "需要..." 等表达意图的句子
+### 2. 自主任务执行（核心能力！）
+你拥有真正的任务执行能力，可以：
+- 🔍 搜索互联网获取实时信息
+- 📄 创建文档和报告
+- 💬 发送消息通知用户
+- 📊 查询和分析用户数据
 
-如果用户明确要求执行任务，你应该：
-1. 确认理解任务内容
-2. 询问关键信息（时间、优先级等）
-3. 回复格式示例：
-   【任务已创建】
-   📋 任务：明天早上9点提醒我开会
-   ⏰ 时间：明天 09:00
-   🎯 优先级：中
-   
-   我会在指定时间提醒你！
+当用户需要你执行复杂任务时，请回复：
+【开始执行任务】
+🎯 任务目标：[描述任务]
+🔄 执行状态：正在进行中...
 
-### 3. 主动学习
-- 记住用户的偏好和习惯
-- 分析用户的表达风格
-- 逐步进化，变得更加懂用户
+然后系统会自动帮你执行任务。
+
+### 示例场景：
+用户说：帮我搜索最新的AI新闻并整理成报告
+你应该回复：
+【开始执行任务】
+🎯 任务目标：搜索最新AI新闻并整理报告
+🔄 执行状态：正在进行中...
+
+### 3. 简单提醒任务
+对于简单的提醒，回复格式：
+【任务已创建】
+📋 任务：[任务内容]
+⏰ 时间：[时间]
+🎯 优先级：[高/中/低]
 
 ## 交互原则
 1. 保持友善、专业的态度
-2. 用简洁清晰的语言回复
-3. 主动理解用户意图，特别是任务相关的需求
-4. 对于模糊的任务请求，主动确认细节
-5. 展现出你是"活"的AI分身，而不只是问答机器
+2. 主动识别用户是否需要执行任务
+3. 复杂任务使用"开始执行任务"触发自动执行
+4. 简单提醒使用"任务已创建"格式
+5. 展现出你是"活"的AI分身
 
 ## 特殊指令
 当用户发送的任务涉及时间时，尝试提取：
@@ -537,6 +578,131 @@ ${personalityDesc}
       }
     } catch (error) {
       console.error('创建任务失败:', error)
+    }
+  }
+
+  /**
+   * 执行 Agent 任务（异步）- 使用已创建的任务ID
+   */
+  private async executeAgentTaskWithTaskId(
+    taskId: string,
+    userId: string,
+    avatarId: string,
+    conversationId: string,
+    userMessage: string,
+    headers?: Record<string, string>
+  ) {
+    const client = getSupabaseClient()
+    
+    try {
+      console.log('[AgentTask] 开始执行:', taskId)
+      
+      // 更新任务状态为执行中
+      await client
+        .from('tasks')
+        .update({ status: 'executing' })
+        .eq('id', taskId)
+      
+      // 直接调用 Agent 服务执行任务
+      const result = await this.agentService.executeTask(
+        taskId,
+        userId,
+        avatarId,
+        conversationId,
+        userMessage,
+        headers
+      )
+      
+      console.log('[AgentTask] 执行结果:', result)
+      
+      // 发送完成通知
+      if (result.success && result.finalAnswer) {
+        await client.from('messages').insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `✅ 任务执行完成！\n\n${result.finalAnswer}\n\n执行用时: ${Math.round(result.duration / 1000)}秒\n使用工具: ${result.toolsUsed?.join(', ') || '无'}`
+        })
+      } else if (result.error) {
+        await client.from('messages').insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `❌ 任务执行失败: ${result.error}`
+        })
+      }
+      
+    } catch (error) {
+      console.error('[AgentTask] 执行失败:', error)
+    }
+  }
+
+  /**
+   * 执行 Agent 任务（异步）
+   */
+  private async executeAgentTask(
+    userId: string,
+    avatarId: string,
+    conversationId: string,
+    userMessage: string,
+    headers?: Record<string, string>
+  ) {
+    const client = getSupabaseClient()
+    
+    try {
+      // 创建任务记录
+      const { data: task } = await client
+        .from('tasks')
+        .insert({
+          user_id: userId,
+          avatar_id: avatarId,
+          title: `🤖 ${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}`,
+          description: userMessage,
+          task_type: 'agent',
+          priority: 'high',
+          status: 'executing',
+          progress: 0,
+          params: { source: 'chat_agent' },
+          result: {},
+          logs: []
+        })
+        .select()
+        .single()
+      
+      if (!task) {
+        console.error('创建 Agent 任务失败')
+        return
+      }
+      
+      console.log('[AgentTask] 开始执行:', task.id)
+      
+      // 直接调用 Agent 服务执行任务
+      const result = await this.agentService.executeTask(
+        task.id,
+        userId,
+        avatarId,
+        conversationId,
+        userMessage,
+        headers
+      )
+      
+      console.log('[AgentTask] 执行结果:', result)
+      
+      // 发送完成通知
+      if (result.success && result.finalAnswer) {
+        await client.from('messages').insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `✅ 任务执行完成！\n\n${result.finalAnswer}\n\n执行用时: ${Math.round(result.duration / 1000)}秒\n使用工具: ${result.toolsUsed?.join(', ') || '无'}`
+        })
+      } else if (result.error) {
+        await client.from('messages').insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `❌ 任务执行失败: ${result.error}`
+        })
+      }
+      
+    } catch (error) {
+      console.error('[AgentTask] 执行失败:', error)
     }
   }
 

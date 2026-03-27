@@ -8,9 +8,10 @@ import { AvatarModule } from './modules/avatar/avatar.module';
 import { UserModule } from './modules/user/user.module';
 import { TaskModule } from './modules/task/task.module';
 import { SocialModule } from './modules/social/social.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
-  imports: [OrderModule, ChatModule, AuthModule, AvatarModule, UserModule, TaskModule, SocialModule],
+  imports: [OrderModule, ChatModule, AuthModule, AvatarModule, UserModule, TaskModule, SocialModule, AgentModule],
   controllers: [AppController],
   providers: [AppService],
 })

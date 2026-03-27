@@ -1,11 +1,11 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Send, Sparkles, Plus, Bot } from 'lucide-react-taro'
+import { Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search } from 'lucide-react-taro'
 import './index.css'
 
 interface Message {
@@ -33,6 +33,33 @@ interface Avatar {
   personality: string
 }
 
+interface TaskLog {
+  tool?: string
+  action?: string
+  success?: boolean
+  thought?: string
+  observation?: string
+  timestamp: string
+}
+
+interface Task {
+  id: string
+  title: string
+  description: string
+  task_type: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  progress: number
+  result?: {
+    summary?: string
+    title?: string
+    content?: string
+    type?: string
+  }
+  logs: TaskLog[]
+  created_at: string
+  completed_at?: string
+}
+
 export default function ChatPage() {
   const router = useRouter()
   const { isLoggedIn } = useUserStore()
@@ -43,7 +70,9 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [newAvatarName, setNewAvatarName] = useState('')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
   const scrollViewRef = useRef<string>('')
+  const taskPollingRef = useRef<NodeJS.Timeout | null>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -62,6 +91,16 @@ export default function ChatPage() {
       }
     }
   })
+
+  // 清理任务轮询
+  useEffect(() => {
+    return () => {
+      if (taskPollingRef.current) {
+        clearInterval(taskPollingRef.current)
+        taskPollingRef.current = null
+      }
+    }
+  }, [])
 
   const fetchDefaultAvatar = async () => {
     try {
@@ -119,6 +158,49 @@ export default function ChatPage() {
     }
   }
 
+  // 获取最新任务状态
+  const fetchTaskStatus = async (taskId: string): Promise<Task | null> => {
+    try {
+      const res = await Network.request({ url: `/api/task/${taskId}` })
+      if (res.data?.code === 200) {
+        return res.data.data
+      }
+      return null
+    } catch (error) {
+      console.error('获取任务状态失败:', error)
+      return null
+    }
+  }
+
+  // 开始轮询任务状态
+  const startTaskPolling = (taskId: string) => {
+    const poll = async () => {
+      const task = await fetchTaskStatus(taskId)
+      if (task) {
+        setActiveTask(task)
+        scrollToBottom()
+        
+        if (task.status === 'completed' || task.status === 'failed') {
+          // 任务完成，停止轮询
+          if (taskPollingRef.current) {
+            clearInterval(taskPollingRef.current)
+            taskPollingRef.current = null
+          }
+          
+          // 刷新消息列表
+          if (conversation) {
+            fetchMessages(conversation.id)
+          }
+        }
+      }
+    }
+    
+    // 立即执行一次
+    poll()
+    // 每3秒轮询一次
+    taskPollingRef.current = setInterval(poll, 3000)
+  }
+
   const sendMessage = async () => {
     if (!inputText.trim() || !conversation || loading) {
       showToast({ title: '请输入消息', icon: 'none' })
@@ -157,6 +239,11 @@ export default function ChatPage() {
         }
         setMessages(prev => [...prev, aiMessage])
         scrollToBottom()
+        
+        // 检查是否触发了 Agent 任务
+        if (res.data.data.taskId) {
+          startTaskPolling(res.data.data.taskId)
+        }
       }
     } catch (error) {
       // 模拟AI回复
@@ -328,6 +415,53 @@ export default function ChatPage() {
                 <View className="dot" />
               </View>
             </View>
+          </View>
+        )}
+        
+        {/* Agent 任务状态卡片 */}
+        {activeTask && (activeTask.status === 'running' || activeTask.status === 'pending') && (
+          <View className="task-card">
+            <View className="task-header">
+              <Loader size={16} className="animate-spin" color="#00f5ff" />
+              <Text className="task-title">{activeTask.title}</Text>
+            </View>
+            <View className="task-progress">
+              <View className="progress-bar">
+                <View className="progress-fill" style={{ width: `${activeTask.progress}%` }} />
+              </View>
+              <Text className="progress-text">{activeTask.progress}%</Text>
+            </View>
+            {activeTask.logs && activeTask.logs.length > 0 && (
+              <View className="task-logs">
+                {activeTask.logs.filter(log => log.tool).slice(-3).map((log, idx) => (
+                  <View key={idx} className="log-item">
+                    {log.tool === 'search' && <Search size={12} color="#8b5cf6" />}
+                    {log.tool === 'create_document' && <FileText size={12} color="#10b981" />}
+                    <Text className="log-text">{log.action}</Text>
+                    {log.success && <Check size={12} color="#10b981" />}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+        
+        {/* 任务完成卡片 */}
+        {activeTask && activeTask.status === 'completed' && (
+          <View className="task-card completed">
+            <View className="task-header">
+              <Check size={16} color="#10b981" />
+              <Text className="task-title">任务完成</Text>
+            </View>
+            {activeTask.result?.summary && (
+              <Text className="task-summary">{activeTask.result.summary}</Text>
+            )}
+            {activeTask.result?.title && (
+              <View className="task-result">
+                <FileText size={14} color="#00f5ff" />
+                <Text className="result-title">{activeTask.result.title}</Text>
+              </View>
+            )}
           </View>
         )}
         
