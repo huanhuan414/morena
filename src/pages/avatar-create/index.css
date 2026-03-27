@@ -1,47 +1,204 @@
-/* 分析报告页面 - 现代科技风设计 */
+/* 分身创建页面 - 基于750rpx设计稿 */
 
-.step-content {
-  padding-bottom: 40px;
+.create-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
 }
 
+/* 进度条区域 */
+.progress-bar {
+  padding: 32rpx;
+  padding-top: 80rpx;
+}
+
+.progress-track {
+  height: 8rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4rpx;
+  overflow: hidden;
+  margin-bottom: 32rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
+}
+
+.progress-dots {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20rpx;
+}
+
+.progress-dot {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-dot.active {
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  border-color: #00f5ff;
+  box-shadow: 0 0 20rpx rgba(0, 245, 255, 0.4);
+}
+
+.dot-number {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.progress-dot.active .dot-number {
+  color: #0a0a0f;
+  font-weight: 600;
+}
+
+/* 滚动区域 */
+.step-scroll {
+  flex: 1;
+  padding: 0 32rpx;
+  padding-bottom: 160rpx;
+}
+
+.step-content {
+  padding-bottom: 60rpx;
+}
+
+/* 步骤头部 */
 .step-header {
-  margin-bottom: 32px;
+  margin-bottom: 48rpx;
   text-align: center;
 }
 
 .step-title {
   display: block;
-  font-size: 36px;
+  font-size: 44rpx;
   font-weight: 700;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 12px;
+  color: #fff;
+  margin-bottom: 16rpx;
 }
 
 .step-desc {
-  font-size: 24px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
-/* 分析报告容器 */
-.analysis-report {
-  background: linear-gradient(180deg, rgba(0, 245, 255, 0.03) 0%, rgba(191, 0, 255, 0.03) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 24px;
-  margin-bottom: 24px;
+/* 上传区域 */
+.upload-section {
+  margin-bottom: 40rpx;
+  position: relative;
 }
 
-/* 照片预览 */
+.upload-area {
+  width: 100%;
+  height: 400rpx;
+  border-radius: 32rpx;
+  border: 2rpx dashed rgba(0, 245, 255, 0.3);
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.02) 0%, rgba(191, 0, 255, 0.02) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.upload-text {
+  font-size: 32rpx;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.upload-hint {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 32rpx;
+}
+
+.analyzing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 10, 15, 0.95);
+  border-radius: 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+}
+
+.analyzing-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #00f5ff;
+}
+
+.analyzing-subtext {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 0 40rpx;
+}
+
+.photo-tips {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 32rpx;
+}
+
+.tips-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #00f5ff;
+  margin-bottom: 16rpx;
+}
+
+.tips-item {
+  display: block;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.8;
+  margin-bottom: 8rpx;
+}
+
+/* 分析报告 */
+.analysis-report {
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.03) 0%, rgba(191, 0, 255, 0.03) 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
 .report-photo {
   width: 100%;
-  height: 240px;
-  border-radius: 16px;
+  height: 320rpx;
+  border-radius: 24rpx;
   overflow: hidden;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  margin-bottom: 32rpx;
 }
 
 .report-photo-img {
@@ -49,81 +206,80 @@
   height: 100%;
 }
 
-/* 报告区块 */
 .report-section {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .section-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #fff;
 }
 
-/* 气质类型卡片 */
+/* 气质类型 */
 .temperament-card {
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.08) 0%, rgba(191, 0, 255, 0.08) 100%);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 20rpx;
+  padding: 24rpx;
 }
 
 .temperament-type {
   display: block;
-  font-size: 22px;
+  font-size: 32rpx;
   font-weight: 700;
   color: #00f5ff;
-  margin-bottom: 8px;
+  margin-bottom: 12rpx;
 }
 
 .temperament-desc {
-  font-size: 14px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
-  margin-bottom: 12px;
+  margin-bottom: 16rpx;
 }
 
 .temperament-keywords {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12rpx;
 }
 
 .keyword-tag {
   background: rgba(0, 245, 255, 0.15);
-  border: 1px solid rgba(0, 245, 255, 0.3);
-  border-radius: 16px;
-  padding: 6px 14px;
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: 24rpx;
+  padding: 8rpx 20rpx;
 }
 
 .keyword-text {
-  font-size: 13px;
+  font-size: 24rpx;
   color: #00f5ff;
 }
 
-/* 面部特征网格 */
+/* 面部特征 */
 .features-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 16rpx;
 }
 
 .feature-item {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 16rpx;
+  padding: 20rpx;
 }
 
 .feature-item.full {
@@ -132,13 +288,13 @@
 
 .feature-label {
   display: block;
-  font-size: 12px;
+  font-size: 22rpx;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 6px;
+  margin-bottom: 8rpx;
 }
 
 .feature-value {
-  font-size: 14px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
 }
@@ -147,19 +303,19 @@
 .personality-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
 }
 
 .personality-tag {
   background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 170, 0, 0.15) 100%);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  border-radius: 16px;
-  padding: 8px 16px;
+  border: 1rpx solid rgba(255, 107, 107, 0.3);
+  border-radius: 24rpx;
+  padding: 12rpx 24rpx;
 }
 
 .tag-text {
-  font-size: 14px;
+  font-size: 26rpx;
   font-weight: 500;
   color: #ff6b6b;
 }
@@ -167,43 +323,43 @@
 .strengths-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12rpx;
 }
 
 .strengths-label {
-  font-size: 13px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .strengths-value {
-  font-size: 13px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.7);
 }
 
 /* 沟通风格 */
 .communication-text {
-  font-size: 15px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.8;
 }
 
-/* 擅长领域网格 */
+/* 擅长领域 */
 .strengths-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12rpx;
 }
 
 .strength-item {
   background: linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(0, 255, 136, 0.1) 100%);
-  border: 1px solid rgba(255, 170, 0, 0.2);
-  border-radius: 12px;
-  padding: 12px;
+  border: 1rpx solid rgba(255, 170, 0, 0.2);
+  border-radius: 16rpx;
+  padding: 16rpx;
   text-align: center;
 }
 
 .strength-text {
-  font-size: 13px;
+  font-size: 24rpx;
   font-weight: 500;
   color: #ffaa00;
 }
@@ -212,28 +368,28 @@
 .name-suggestions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16rpx;
 }
 
 .name-suggestion-item {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 14px;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  border-radius: 16rpx;
+  padding: 20rpx;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16rpx;
 }
 
 .suggested-name {
-  font-size: 18px;
+  font-size: 32rpx;
   font-weight: 600;
   color: #00f5ff;
-  min-width: 60px;
+  min-width: 100rpx;
 }
 
 .suggestion-reason {
-  font-size: 13px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.5);
   flex: 1;
 }
@@ -241,127 +397,32 @@
 /* 总结 */
 .report-summary {
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(191, 0, 255, 0.1) 100%);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 20rpx;
+  padding: 28rpx;
   text-align: center;
-  margin-top: 20px;
+  margin-top: 24rpx;
 }
 
 .summary-text {
-  font-size: 16px;
+  font-size: 28rpx;
   color: #fff;
   font-weight: 500;
   line-height: 1.6;
-}
-
-/* 上传区域 */
-.upload-section {
-  margin-bottom: 24px;
-  position: relative;
-}
-
-.upload-area {
-  width: 100%;
-  height: 280px;
-  border-radius: 20px;
-  border: 2px dashed rgba(0, 245, 255, 0.3);
-  background: linear-gradient(180deg, rgba(0, 245, 255, 0.02) 0%, rgba(191, 0, 255, 0.02) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.upload-area.with-photo {
-  border: none;
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.upload-text {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 500;
-}
-
-.upload-hint {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.preview-image {
-  width: 100%;
-  height: 100%;
-  border-radius: 20px;
-}
-
-.analyzing-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 15, 0.95);
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-}
-
-.analyzing-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #00f5ff;
-}
-
-.analyzing-subtext {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
-  text-align: center;
-  padding: 0 20px;
-}
-
-.photo-tips {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.tips-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 600;
-  color: #00f5ff;
-  margin-bottom: 12px;
-}
-
-.tips-item {
-  display: block;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.8;
 }
 
 /* 性格选择 */
 .personality-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 24rpx;
 }
 
 .personality-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 28rpx;
   position: relative;
-  transition: all 0.2s ease;
 }
 
 .personality-card.selected {
@@ -370,14 +431,14 @@
 }
 
 .personality-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
   background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 20rpx;
 }
 
 .personality-icon.glow {
@@ -386,39 +447,39 @@
 
 .personality-name {
   display: block;
-  font-size: 17px;
+  font-size: 30rpx;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 6px;
+  margin-bottom: 8rpx;
 }
 
 .personality-desc {
   display: block;
-  font-size: 13px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 14px;
+  margin-bottom: 20rpx;
 }
 
 .traits-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8rpx;
 }
 
 .trait-tag {
-  font-size: 11px;
+  font-size: 20rpx;
   color: rgba(255, 255, 255, 0.5);
   background: rgba(255, 255, 255, 0.05);
-  padding: 4px 10px;
-  border-radius: 10px;
+  padding: 6rpx 14rpx;
+  border-radius: 16rpx;
 }
 
 .selected-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 24px;
-  height: 24px;
+  top: 16rpx;
+  right: 16rpx;
+  width: 36rpx;
+  height: 36rpx;
   border-radius: 50%;
   background: rgba(0, 245, 255, 0.2);
   display: flex;
@@ -430,14 +491,14 @@
 .ability-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 20rpx;
 }
 
 .ability-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  padding: 24rpx;
   position: relative;
 }
 
@@ -447,28 +508,28 @@
 }
 
 .ability-icon-wrap {
-  margin-bottom: 10px;
+  margin-bottom: 16rpx;
 }
 
 .ability-name {
   display: block;
-  font-size: 15px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
 }
 
 .ability-desc {
-  font-size: 12px;
+  font-size: 22rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .ability-check {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 20px;
-  height: 20px;
+  top: 12rpx;
+  right: 12rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
   background: rgba(0, 245, 255, 0.2);
   display: flex;
@@ -477,30 +538,30 @@
 }
 
 .selected-count {
-  margin-top: 20px;
+  margin-top: 32rpx;
   text-align: center;
-  padding: 12px;
+  padding: 20rpx;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  border-radius: 20rpx;
 }
 
 .count-text {
-  font-size: 14px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* 风格选择 */
 .style-grid {
   display: flex;
-  gap: 12px;
+  gap: 20rpx;
 }
 
 .style-card {
   flex: 1;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 24rpx;
   text-align: center;
   position: relative;
 }
@@ -511,42 +572,42 @@
 
 .style-preview {
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 12px;
+  height: 140rpx;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
 }
 
 .style-orb {
-  width: 60px;
-  height: 60px;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
 }
 
 .style-name {
   display: block;
-  font-size: 15px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
 }
 
 .style-desc {
-  font-size: 12px;
+  font-size: 22rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .style-check {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 20px;
-  height: 20px;
+  top: 12rpx;
+  right: 12rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
   background: #00f5ff;
   display: flex;
@@ -562,23 +623,26 @@
 }
 
 .avatar-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 40px;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 48rpx;
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(191, 0, 255, 0.1) 100%);
-  border: 2px solid rgba(0, 245, 255, 0.3);
+  border: 2rpx solid rgba(0, 245, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 40rpx;
   position: relative;
   overflow: hidden;
 }
 
 .preview-glow {
   position: absolute;
-  inset: -20px;
-  border-radius: 60px;
+  top: -30rpx;
+  left: -30rpx;
+  right: -30rpx;
+  bottom: -30rpx;
+  border-radius: 80rpx;
   background: radial-gradient(circle, rgba(0, 245, 255, 0.15) 0%, transparent 70%);
   animation: pulse 2s ease-in-out infinite;
 }
@@ -586,7 +650,7 @@
 .preview-avatar-img {
   width: 100%;
   height: 100%;
-  border-radius: 40px;
+  border-radius: 48rpx;
 }
 
 @keyframes pulse {
@@ -597,71 +661,71 @@
 .name-input-wrap {
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 20px;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
 }
 
 .name-input {
   width: 100%;
   background: transparent;
   color: #fff;
-  font-size: 18px;
+  font-size: 32rpx;
   text-align: center;
 }
 
-.name-suggestions {
+.name-suggestions-box {
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 40rpx;
 }
 
 .suggestions-title {
   display: block;
-  font-size: 13px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 12px;
+  margin-bottom: 20rpx;
   text-align: center;
 }
 
 .suggestions-list {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 16rpx;
   flex-wrap: wrap;
 }
 
 .suggestion-tag {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 10px 18px;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 24rpx;
+  padding: 16rpx 28rpx;
 }
 
 .suggestion-text {
-  font-size: 14px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .summary-card {
   width: 100%;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 20px;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  border-radius: 24rpx;
+  padding: 28rpx;
 }
 
 .summary-title {
   display: block;
-  font-size: 15px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 16px;
+  margin-bottom: 24rpx;
 }
 
 .summary-item {
   display: flex;
-  margin-bottom: 10px;
+  margin-bottom: 16rpx;
 }
 
 .summary-item:last-child {
@@ -669,70 +733,16 @@
 }
 
 .summary-label {
-  font-size: 14px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
-  width: 60px;
+  width: 120rpx;
   flex-shrink: 0;
 }
 
 .summary-value {
-  font-size: 14px;
+  font-size: 26rpx;
   color: #00f5ff;
   flex: 1;
-}
-
-/* 进度条 */
-.progress-bar {
-  padding: 0 20px;
-  margin-bottom: 24px;
-}
-
-.progress-track {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.progress-dots {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 10px;
-}
-
-.progress-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.progress-dot.active {
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  border-color: #00f5ff;
-  box-shadow: 0 0 16px rgba(0, 245, 255, 0.4);
-}
-
-.dot-number {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.progress-dot.active .dot-number {
-  color: #0a0a0f;
-  font-weight: 600;
 }
 
 /* 底部按钮 */
@@ -741,44 +751,44 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px 20px;
-  padding-bottom: 34px;
+  padding: 24rpx 32rpx;
+  padding-bottom: 60rpx;
   background: linear-gradient(to top, #0a0a0f 80%, transparent);
   display: flex;
-  gap: 12px;
+  gap: 20rpx;
 }
 
 .back-btn {
   flex: 1;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
+  height: 88rpx;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1rpx solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 44rpx !important;
 }
 
 .back-btn-text {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 15px;
+  font-size: 28rpx;
 }
 
 .next-btn, .create-btn {
   flex: 2;
-  height: 48px;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 24px;
-  border: none;
+  height: 88rpx;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%) !important;
+  border-radius: 44rpx !important;
+  border: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12rpx;
 }
 
 .next-btn.disabled, .create-btn.disabled {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .next-btn-text, .create-btn-text {
-  font-size: 15px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #0a0a0f;
 }
@@ -786,19 +796,4 @@
 .next-btn.disabled .next-btn-text,
 .create-btn.disabled .create-btn-text {
   color: #666;
-}
-
-/* 页面容器 */
-.create-page {
-  min-height: 100vh;
-  background: #0a0a0f;
-  display: flex;
-  flex-direction: column;
-  padding-top: 60px;
-  padding-bottom: 120px;
-}
-
-.step-scroll {
-  flex: 1;
-  padding: 0 16px;
 }
