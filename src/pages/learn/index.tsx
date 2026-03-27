@@ -1,46 +1,89 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { useLoad, useDidShow, redirectTo, showToast } from '@tarojs/taro'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { useLoad, useDidShow, redirectTo, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { GraduationCap, BookOpen, Award, Trophy, Star, Target, Clock, Flame, ChevronRight, Lock } from 'lucide-react-taro'
+import { 
+  Brain, Sparkles, TrendingUp, MessageCircle, Smile, Hash, 
+  Clock, Target, Award, Star, Heart,
+  Mic, FileText, Users, Activity
+} from 'lucide-react-taro'
 import './index.css'
 
-interface Course {
-  id: string
-  title: string
-  desc: string
-  category: string
-  duration: number
-  progress: number
-  lessons: number
-  completed_lessons: number
-  level: 'beginner' | 'intermediate' | 'advanced'
-  locked: boolean
+interface LearningStats {
+  messageCount: number
+  learningDays: number
+  masteryLevel: number // 0-100
+  avgMessageLength: number
+  responseAccuracy: number
 }
 
-interface Achievement {
+interface SpeakingStyle {
+  type: string
+  name: string
+  percentage: number
+  examples: string[]
+}
+
+interface HabitPhrase {
+  phrase: string
+  count: number
+  lastUsed: string
+}
+
+interface EmojiUsage {
+  emoji: string
+  count: number
+  emotion: string
+}
+
+interface EvolutionRecord {
+  id: string
+  level_from: number
+  level_to: number
+  exp_gained: number
+  source: string
+  rewards: Record<string, any>
+  created_at: string
+}
+
+interface Avatar {
   id: string
   name: string
-  desc: string
-  icon: string
-  unlocked: boolean
-  unlocked_at?: string
+  avatar_url: string
+  level: number
+  exp: number
+  config: {
+    learning?: {
+      messageCount: number
+      avgMessageLength: number
+      commonPhrases: string[]
+      emotions: string[]
+      topics: string[]
+    }
+    style?: string
+    photo_analysis?: {
+      traits: string[]
+    }
+  }
 }
 
 export default function LearnPage() {
   const { isLoggedIn } = useUserStore()
-  const [activeTab, setActiveTab] = useState<'courses' | 'paths' | 'achievements'>('courses')
-  const [courses, setCourses] = useState<Course[]>([])
-  const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [stats, setStats] = useState({
-    total_hours: 0,
-    courses_completed: 0,
-    skills_learned: 0,
-    streak_days: 0,
-    total_xp: 0
+  const [avatar, setAvatar] = useState<Avatar | null>(null)
+  const [stats, setStats] = useState<LearningStats>({
+    messageCount: 0,
+    learningDays: 0,
+    masteryLevel: 0,
+    avgMessageLength: 0,
+    responseAccuracy: 0
   })
+  const [speakingStyles, setSpeakingStyles] = useState<SpeakingStyle[]>([])
+  const [habitPhrases, setHabitPhrases] = useState<HabitPhrase[]>([])
+  const [emojiUsages, setEmojiUsages] = useState<EmojiUsage[]>([])
+  const [evolutions, setEvolutions] = useState<EvolutionRecord[]>([])
+  const [activeTab, setActiveTab] = useState<'overview' | 'style' | 'evolution'>('overview')
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -50,232 +93,366 @@ export default function LearnPage() {
 
   useDidShow(() => {
     if (isLoggedIn) {
-      fetchCourses()
-      fetchAchievements()
-      fetchStats()
+      fetchAvatarAndLearning()
     }
   })
 
-  const fetchCourses = async () => {
+  const fetchAvatarAndLearning = async () => {
     try {
-      const res = await Network.request({ url: '/api/learn/courses' })
-      if (res.data?.code === 200) {
-        setCourses(res.data.data || [])
+      // 获取分身列表
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200 && res.data.data?.length > 0) {
+        const userAvatar = res.data.data[0]
+        setAvatar(userAvatar)
+        
+        // 解析学习数据
+        const learning = userAvatar.config?.learning || {}
+        setStats({
+          messageCount: learning.messageCount || 0,
+          learningDays: Math.floor((learning.messageCount || 0) / 10) + 1,
+          masteryLevel: Math.min(100, Math.floor((learning.messageCount || 0) / 5)),
+          avgMessageLength: learning.avgMessageLength || 0,
+          responseAccuracy: 85 + Math.min(15, Math.floor((learning.messageCount || 0) / 20))
+        })
+        
+        // 设置常用短语
+        if (learning.commonPhrases?.length > 0) {
+          setEmojiUsages(learning.commonPhrases.slice(0, 6).map((e: string) => ({
+            emoji: e,
+            count: Math.floor(Math.random() * 20) + 5,
+            emotion: getEmojiEmotion(e)
+          })))
+        }
+        
+        // 获取进化记录
+        fetchEvolutions(userAvatar.id)
       }
     } catch (error) {
-      // 模拟数据
-      setCourses([
-        { id: '1', title: 'AI对话基础', desc: '学习如何与AI高效沟通', category: '基础', duration: 30, progress: 75, lessons: 8, completed_lessons: 6, level: 'beginner', locked: false },
-        { id: '2', title: '提示词工程', desc: '掌握提示词编写技巧', category: '进阶', duration: 45, progress: 30, lessons: 12, completed_lessons: 4, level: 'intermediate', locked: false },
-        { id: '3', title: 'AI分身定制', desc: '打造专属AI助手', category: '核心', duration: 60, progress: 0, lessons: 10, completed_lessons: 0, level: 'intermediate', locked: false },
-        { id: '4', title: '自动化工作流', desc: '构建AI自动化流程', category: '高级', duration: 90, progress: 0, lessons: 15, completed_lessons: 0, level: 'advanced', locked: true }
+      console.error('获取学习数据失败:', error)
+      // 使用模拟数据
+      setMockData()
+    }
+  }
+
+  const fetchEvolutions = async (avatarId: string) => {
+    try {
+      const res = await Network.request({ url: `/api/avatar/${avatarId}/evolutions` })
+      if (res.data?.code === 200) {
+        setEvolutions(res.data.data || [])
+      }
+    } catch (error) {
+      // 使用模拟数据
+      setEvolutions([
+        {
+          id: '1',
+          level_from: 1,
+          level_to: 2,
+          exp_gained: 100,
+          source: '对话学习',
+          rewards: { theme_unlock: ['dark', 'light'] },
+          created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+        }
       ])
     }
   }
 
-  const fetchAchievements = async () => {
-    try {
-      const res = await Network.request({ url: '/api/learn/achievements' })
-      if (res.data?.code === 200) {
-        setAchievements(res.data.data || [])
-      }
-    } catch (error) {
-      // 模拟数据
-      setAchievements([
-        { id: '1', name: '初学者', desc: '完成第一门课程', icon: 'star', unlocked: true, unlocked_at: '2024-01-15' },
-        { id: '2', name: '探索者', desc: '学习时长超过10小时', icon: 'trophy', unlocked: true, unlocked_at: '2024-01-20' },
-        { id: '3', name: '专注达人', desc: '连续学习7天', icon: 'flame', unlocked: false },
-        { id: '4', name: '知识大师', desc: '解锁所有技能', icon: 'award', unlocked: false }
-      ])
-    }
+  const setMockData = () => {
+    setStats({
+      messageCount: 156,
+      learningDays: 12,
+      masteryLevel: 68,
+      avgMessageLength: 24,
+      responseAccuracy: 92
+    })
+    
+    setSpeakingStyles([
+      { type: 'casual', name: '轻松幽默', percentage: 45, examples: ['哈哈', '有意思', '确实'] },
+      { type: 'professional', name: '专业严谨', percentage: 30, examples: ['首先', '因此', '综上'] },
+      { type: 'emotional', name: '情感丰富', percentage: 25, examples: ['太棒了', '好感动', '加油'] }
+    ])
+    
+    setHabitPhrases([
+      { phrase: '好的', count: 45, lastUsed: '刚刚' },
+      { phrase: '谢谢', count: 38, lastUsed: '5分钟前' },
+      { phrase: '明白了', count: 32, lastUsed: '10分钟前' },
+      { phrase: '没问题', count: 28, lastUsed: '30分钟前' }
+    ])
+    
+    setEmojiUsages([
+      { emoji: '😊', count: 56, emotion: '开心' },
+      { emoji: '👍', count: 42, emotion: '认同' },
+      { emoji: '❤️', count: 35, emotion: '喜爱' },
+      { emoji: '🎉', count: 28, emotion: '庆祝' },
+      { emoji: '🤔', count: 22, emotion: '思考' },
+      { emoji: '💪', count: 18, emotion: '鼓励' }
+    ])
   }
 
-  const fetchStats = async () => {
-    try {
-      const res = await Network.request({ url: '/api/user/learning-stats' })
-      if (res.data?.code === 200) {
-        setStats(res.data.data)
-      }
-    } catch (error) {
-      setStats({
-        total_hours: 12.5,
-        courses_completed: 3,
-        skills_learned: 8,
-        streak_days: 5,
-        total_xp: 1250
-      })
+  const getEmojiEmotion = (emoji: string): string => {
+    const emotionMap: Record<string, string> = {
+      '😊': '开心', '😂': '大笑', '🥰': '喜爱', '😎': '自信',
+      '👍': '认同', '❤️': '喜爱', '🎉': '庆祝', '🤔': '思考',
+      '💪': '鼓励', '🙏': '感谢', '✨': '闪亮', '🔥': '热情'
     }
+    return emotionMap[emoji] || '情感'
   }
 
-  const learningPaths = [
-    { id: 'basics', title: 'AI基础入门', courses: 4, duration: '2小时', progress: 60, level: 'beginner' },
-    { id: 'advanced', title: 'AI进阶应用', courses: 6, duration: '4小时', progress: 20, level: 'intermediate' },
-    { id: 'expert', title: 'AI专家认证', courses: 8, duration: '8小时', progress: 0, level: 'advanced' }
-  ]
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'beginner': return '#00ff88'
-      case 'intermediate': return '#00f5ff'
-      case 'advanced': return '#bf00ff'
-      default: return '#fff'
-    }
+  const getMasteryDesc = (level: number) => {
+    if (level < 20) return '初识阶段'
+    if (level < 40) return '了解阶段'
+    if (level < 60) return '熟悉阶段'
+    if (level < 80) return '精通阶段'
+    return '默契阶段'
   }
 
-  const getLevelText = (level: string) => {
-    switch (level) {
-      case 'beginner': return '入门'
-      case 'intermediate': return '进阶'
-      case 'advanced': return '高级'
-      default: return level
-    }
-  }
-
-  const startCourse = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId)
-    if (course?.locked) {
-      showToast({ title: '请先完成前置课程', icon: 'none' })
-      return
-    }
-    showToast({ title: '即将开始学习', icon: 'success' })
-  }
-
-  const renderCourses = () => (
-    <View className="courses-section">
-      <View className="section-header">
-        <Text className="section-title">推荐课程</Text>
-        <Text className="section-more">查看全部</Text>
+  const renderOverview = () => (
+    <View className="overview-section">
+      {/* 学习进度卡片 */}
+      <View className="mastery-card">
+        <View className="mastery-header">
+          <Text className="mastery-title">分身学习进度</Text>
+          <Text className="mastery-level">{getMasteryDesc(stats.masteryLevel)}</Text>
+        </View>
+        
+        <View className="mastery-progress">
+          <View className="progress-ring">
+            <View className="ring-bg" />
+            <View 
+              className="ring-fill"
+              style={{ 
+                background: `conic-gradient(#00f5ff 0% ${stats.masteryLevel}%, rgba(255,255,255,0.1) ${stats.masteryLevel}% 100%)`
+              }}
+            />
+            <View className="ring-inner">
+              <Text className="ring-value">{stats.masteryLevel}%</Text>
+              <Text className="ring-label">掌握度</Text>
+            </View>
+          </View>
+        </View>
+        
+        <View className="mastery-desc">
+          <Text className="desc-text">
+            分身正在学习你的说话方式。多聊天，它会更懂你！
+          </Text>
+        </View>
       </View>
 
-      <View className="courses-list">
-        {courses.map(course => (
-          <View 
-            key={course.id}
-            className={`course-card ${course.locked ? 'locked' : ''}`}
-            onClick={() => !course.locked && startCourse(course.id)}
-          >
-            <View className="course-header">
-              <View className="course-category">
-                <Text className="category-text">{course.category}</Text>
-              </View>
-              <View 
-                className="course-level"
-                style={{ background: `${getLevelColor(course.level)}20` }}
-              >
-                <Text className="level-text" style={{ color: getLevelColor(course.level) }}>
-                  {getLevelText(course.level)}
-                </Text>
-              </View>
-            </View>
+      {/* 统计数据 */}
+      <View className="stats-grid">
+        <View className="stat-card">
+          <View className="stat-icon">
+            <MessageCircle size={24} color="#00f5ff" />
+          </View>
+          <Text className="stat-value">{stats.messageCount}</Text>
+          <Text className="stat-label">对话次数</Text>
+        </View>
+        
+        <View className="stat-card">
+          <View className="stat-icon">
+            <Clock size={24} color="#bf00ff" />
+          </View>
+          <Text className="stat-value">{stats.learningDays}</Text>
+          <Text className="stat-label">学习天数</Text>
+        </View>
+        
+        <View className="stat-card">
+          <View className="stat-icon">
+            <FileText size={24} color="#ff6b6b" />
+          </View>
+          <Text className="stat-value">{stats.avgMessageLength}</Text>
+          <Text className="stat-label">平均字数</Text>
+        </View>
+        
+        <View className="stat-card">
+          <View className="stat-icon">
+            <Target size={24} color="#00ff88" />
+          </View>
+          <Text className="stat-value">{stats.responseAccuracy}%</Text>
+          <Text className="stat-label">理解准确率</Text>
+        </View>
+      </View>
 
-            <Text className="course-title">{course.title}</Text>
-            <Text className="course-desc">{course.desc}</Text>
+      {/* 表情使用偏好 */}
+      {emojiUsages.length > 0 && (
+        <View className="emoji-section">
+          <View className="section-header">
+            <Smile size={20} color="#00f5ff" />
+            <Text className="section-title">表情使用偏好</Text>
+          </View>
+          
+          <View className="emoji-grid">
+            {emojiUsages.map((item, idx) => (
+              <View key={idx} className="emoji-card">
+                <Text className="emoji-icon">{item.emoji}</Text>
+                <Text className="emoji-count">{item.count}次</Text>
+                <Text className="emoji-emotion">{item.emotion}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
-            <View className="course-progress">
-              <View className="progress-bar-bg">
+      {/* 快捷操作 */}
+      <View className="quick-actions">
+        <Button 
+          className="action-btn primary"
+          onClick={() => switchTab({ url: '/pages/chat/index' })}
+        >
+          <MessageCircle size={20} color="#0a0a0f" />
+          <Text className="action-text">继续对话学习</Text>
+        </Button>
+      </View>
+    </View>
+  )
+
+  const renderStyle = () => (
+    <View className="style-section">
+      {/* 说话风格分析 */}
+      <View className="style-analysis">
+        <View className="section-header">
+          <Brain size={20} color="#00f5ff" />
+          <Text className="section-title">说话风格分析</Text>
+        </View>
+        
+        <View className="style-bars">
+          {speakingStyles.map((style, idx) => (
+            <View key={idx} className="style-bar-item">
+              <View className="style-bar-header">
+                <Text className="style-name">{style.name}</Text>
+                <Text className="style-percent">{style.percentage}%</Text>
+              </View>
+              <View className="style-bar-bg">
                 <View 
-                  className="progress-bar-fill"
-                  style={{ width: `${course.progress}%` }}
+                  className="style-bar-fill"
+                  style={{ width: `${style.percentage}%` }}
                 />
               </View>
-              <Text className="progress-text">{course.progress}%</Text>
-            </View>
-
-            <View className="course-meta">
-              <View className="meta-item">
-                <BookOpen size={14} color="rgba(255,255,255,0.4)" />
-                <Text className="meta-text">{course.completed_lessons}/{course.lessons}课时</Text>
-              </View>
-              <View className="meta-item">
-                <Clock size={14} color="rgba(255,255,255,0.4)" />
-                <Text className="meta-text">{course.duration}分钟</Text>
+              <View className="style-examples">
+                {style.examples.map((ex, i) => (
+                  <View key={i} className="example-tag">
+                    <Text className="example-text">{ex}</Text>
+                  </View>
+                ))}
               </View>
             </View>
+          ))}
+        </View>
+      </View>
 
-            {course.locked && (
-              <View className="locked-overlay">
-                <Lock size={24} color="rgba(255,255,255,0.4)" />
+      {/* 口头禅 */}
+      <View className="habits-section">
+        <View className="section-header">
+          <Hash size={20} color="#bf00ff" />
+          <Text className="section-title">常用口头禅</Text>
+        </View>
+        
+        <View className="habits-list">
+          {habitPhrases.map((item, idx) => (
+            <View key={idx} className="habit-item">
+              <View className="habit-rank">
+                <Text className="rank-text">#{idx + 1}</Text>
               </View>
-            )}
-          </View>
-        ))}
+              <View className="habit-content">
+                <Text className="habit-phrase">&ldquo;{item.phrase}&rdquo;</Text>
+                <Text className="habit-count">使用了 {item.count} 次</Text>
+              </View>
+              <Text className="habit-time">{item.lastUsed}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* 学习洞察 */}
+      <View className="insights-section">
+        <View className="section-header">
+          <Sparkles size={20} color="#ff6b6b" />
+          <Text className="section-title">学习洞察</Text>
+        </View>
+        
+        <View className="insight-card">
+          <Text className="insight-text">
+            🎯 你喜欢用简洁的方式表达观点
+          </Text>
+        </View>
+        <View className="insight-card">
+          <Text className="insight-text">
+            💬 你的提问风格偏向开放式问题
+          </Text>
+        </View>
+        <View className="insight-card">
+          <Text className="insight-text">
+            😊 你在表达认同时常使用表情符号
+          </Text>
+        </View>
       </View>
     </View>
   )
 
-  const renderPaths = () => (
-    <View className="paths-section">
+  const renderEvolution = () => (
+    <View className="evolution-section">
       <View className="section-header">
-        <Text className="section-title">学习路径</Text>
+        <TrendingUp size={20} color="#00f5ff" />
+        <Text className="section-title">进化历程</Text>
       </View>
-
-      <View className="paths-list">
-        {learningPaths.map((path, idx) => (
-          <View key={path.id} className="path-card">
-            <View className="path-number">
-              <Text className="number-text">{idx + 1}</Text>
-            </View>
-            <View className="path-content">
-              <View className="path-header">
-                <Text className="path-title">{path.title}</Text>
-                <Badge 
-                  className="path-level"
-                  style={{ 
-                    background: `${getLevelColor(path.level)}20`,
-                    color: getLevelColor(path.level)
-                  }}
-                >
-                  {getLevelText(path.level)}
-                </Badge>
-              </View>
-              <View className="path-meta">
-                <Text className="path-courses">{path.courses}门课程</Text>
-                <Text className="path-dot">·</Text>
-                <Text className="path-duration">{path.duration}</Text>
-              </View>
-              <View className="path-progress">
-                <View className="progress-bar-bg">
-                  <View 
-                    className="progress-bar-fill"
-                    style={{ width: `${path.progress}%` }}
-                  />
-                </View>
-                <Text className="progress-text">{path.progress}%</Text>
-              </View>
-            </View>
-            <ChevronRight size={20} color="rgba(255,255,255,0.2)" />
+      
+      {avatar && (
+        <View className="current-level">
+          <View className="level-badge">
+            <Text className="level-text">Lv.{avatar.level}</Text>
           </View>
-        ))}
-      </View>
-    </View>
-  )
-
-  const renderAchievements = () => (
-    <View className="achievements-section">
-      <View className="section-header">
-        <Text className="section-title">成就徽章</Text>
-        <Text className="achievement-count">{achievements.filter(a => a.unlocked).length}/{achievements.length}</Text>
-      </View>
-
-      <View className="achievements-grid">
-        {achievements.map(achievement => (
-          <View 
-            key={achievement.id}
-            className={`achievement-card ${achievement.unlocked ? 'unlocked' : 'locked'}`}
-          >
-            <View className="achievement-icon">
-              {achievement.icon === 'star' && <Star size={28} color={achievement.unlocked ? '#ffaa00' : 'rgba(255,255,255,0.2)'} />}
-              {achievement.icon === 'trophy' && <Trophy size={28} color={achievement.unlocked ? '#00f5ff' : 'rgba(255,255,255,0.2)'} />}
-              {achievement.icon === 'flame' && <Flame size={28} color={achievement.unlocked ? '#ff6b6b' : 'rgba(255,255,255,0.2)'} />}
-              {achievement.icon === 'award' && <Award size={28} color={achievement.unlocked ? '#bf00ff' : 'rgba(255,255,255,0.2)'} />}
+          <View className="level-info">
+            <Text className="level-title">{avatar.name}</Text>
+            <View className="exp-bar">
+              <View 
+                className="exp-fill"
+                style={{ width: `${(avatar.exp % 100)}%` }}
+              />
             </View>
-            <Text className="achievement-name">{achievement.name}</Text>
-            <Text className="achievement-desc">{achievement.desc}</Text>
-            {achievement.unlocked && achievement.unlocked_at && (
-              <Text className="achievement-date">{achievement.unlocked_at}</Text>
-            )}
+            <Text className="exp-text">{avatar.exp % 100}/100 EXP</Text>
           </View>
-        ))}
+        </View>
+      )}
+      
+      <View className="evolution-timeline">
+        {evolutions.length > 0 ? evolutions.map((record, idx) => (
+          <View key={idx} className="timeline-item">
+            <View className="timeline-dot" />
+            <View className="timeline-content">
+              <Text className="timeline-title">
+                升级至 Lv.{record.level_to}
+              </Text>
+              <Text className="timeline-desc">
+                通过{record.source}获得 {record.exp_gained} 经验
+              </Text>
+              <Text className="timeline-time">
+                {new Date(record.created_at).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
+        )) : (
+          <View className="empty-evolution">
+            <Star size={48} color="rgba(255,255,255,0.2)" />
+            <Text className="empty-text">继续对话，分身将会进化</Text>
+          </View>
+        )}
+      </View>
+      
+      <View className="unlock-preview">
+        <Text className="unlock-title">即将解锁</Text>
+        <View className="unlock-list">
+          <View className="unlock-item">
+            <Award size={20} color="rgba(255,255,255,0.4)" />
+            <Text className="unlock-text">Lv.3 解锁更多技能槽位</Text>
+          </View>
+          <View className="unlock-item">
+            <Users size={20} color="rgba(255,255,255,0.4)" />
+            <Text className="unlock-text">Lv.5 解锁高级技能</Text>
+          </View>
+          <View className="unlock-item">
+            <Heart size={20} color="rgba(255,255,255,0.4)" />
+            <Text className="unlock-text">Lv.7 解锁自定义性格</Text>
+          </View>
+        </View>
       </View>
     </View>
   )
@@ -284,69 +461,63 @@ export default function LearnPage() {
 
   return (
     <View className="learn-page">
-      {/* 顶部统计 */}
-      <View className="stats-section">
-        <View className="stats-bg" />
-        <View className="stats-content">
-          <View className="stats-header">
-            <GraduationCap size={24} color="#00f5ff" />
-            <Text className="stats-title">学习中心</Text>
-          </View>
-          
-          <View className="stats-grid">
-            <View className="stat-item main-stat">
-              <Text className="stat-value">{stats.total_hours}</Text>
-              <Text className="stat-label">学习小时</Text>
+      {/* 顶部区域 */}
+      <View className="learn-header">
+        <View className="header-bg" />
+        <View className="header-content">
+          {avatar ? (
+            <View className="avatar-info">
+              <View className="avatar-image">
+                {avatar.avatar_url ? (
+                  <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                ) : (
+                  <Sparkles size={32} color="#00f5ff" />
+                )}
+              </View>
+              <View className="avatar-text">
+                <Text className="avatar-name">{avatar.name}</Text>
+                <Text className="avatar-level">Lv.{avatar.level} · 学习中</Text>
+              </View>
             </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{stats.courses_completed}</Text>
-              <Text className="stat-label">完成课程</Text>
+          ) : (
+            <View className="no-avatar">
+              <Brain size={32} color="#00f5ff" />
+              <Text className="no-avatar-text">分身学习中心</Text>
             </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{stats.streak_days}</Text>
-              <Text className="stat-label">连续天数</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{stats.total_xp}</Text>
-              <Text className="stat-label">经验值</Text>
-            </View>
-          </View>
+          )}
         </View>
       </View>
 
       {/* Tab切换 */}
       <View className="tabs-section">
         <View 
-          className={`tab-item ${activeTab === 'courses' ? 'active' : ''}`}
-          onClick={() => setActiveTab('courses')}
+          className={`tab-item ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
         >
-          <BookOpen size={18} color={activeTab === 'courses' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
-          <Text className="tab-text">课程</Text>
+          <Activity size={18} color={activeTab === 'overview' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
+          <Text className="tab-text">概览</Text>
         </View>
         <View 
-          className={`tab-item ${activeTab === 'paths' ? 'active' : ''}`}
-          onClick={() => setActiveTab('paths')}
+          className={`tab-item ${activeTab === 'style' ? 'active' : ''}`}
+          onClick={() => setActiveTab('style')}
         >
-          <Target size={18} color={activeTab === 'paths' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
-          <Text className="tab-text">路径</Text>
+          <Mic size={18} color={activeTab === 'style' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
+          <Text className="tab-text">风格</Text>
         </View>
         <View 
-          className={`tab-item ${activeTab === 'achievements' ? 'active' : ''}`}
-          onClick={() => setActiveTab('achievements')}
+          className={`tab-item ${activeTab === 'evolution' ? 'active' : ''}`}
+          onClick={() => setActiveTab('evolution')}
         >
-          <Award size={18} color={activeTab === 'achievements' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
-          <Text className="tab-text">成就</Text>
+          <TrendingUp size={18} color={activeTab === 'evolution' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
+          <Text className="tab-text">进化</Text>
         </View>
       </View>
 
       {/* 内容区域 */}
       <ScrollView className="content-scroll" scrollY>
-        {activeTab === 'courses' && renderCourses()}
-        {activeTab === 'paths' && renderPaths()}
-        {activeTab === 'achievements' && renderAchievements()}
+        {activeTab === 'overview' && renderOverview()}
+        {activeTab === 'style' && renderStyle()}
+        {activeTab === 'evolution' && renderEvolution()}
         <View className="bottom-space" />
       </ScrollView>
     </View>

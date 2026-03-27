@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
@@ -15,6 +17,36 @@ export class AvatarController {
       code: 200,
       data: avatar,
       message: '创建成功'
+    }
+  }
+
+  /**
+   * 上传照片并分析
+   * 用户上传照片 → 上传到对象存储 → 视觉模型分析 → 返回分析结果
+   */
+  @Post('analyze-photo')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('photo', {
+    storage: memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 最大10MB
+  }))
+  async analyzePhoto(@UploadedFile() file: Express.Multer.File) {
+    console.log('收到照片分析请求:', file?.originalname, file?.size)
+    
+    if (!file) {
+      return {
+        code: 400,
+        message: '请上传照片',
+        data: null
+      }
+    }
+
+    const result = await this.avatarService.analyzePhoto(file)
+    
+    return {
+      code: 200,
+      data: result,
+      message: '分析成功'
     }
   }
 

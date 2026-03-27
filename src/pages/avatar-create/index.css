@@ -3,13 +3,13 @@
   background: #0a0a0f;
   display: flex;
   flex-direction: column;
-  padding-top: 160px;
+  padding-top: 120px;
   padding-bottom: 240px;
 }
 
 .progress-bar {
   padding: 0 48px;
-  margin-bottom: 64px;
+  margin-bottom: 48px;
 }
 
 .progress-track {
@@ -30,15 +30,15 @@
 .progress-dots {
   display: flex;
   justify-content: space-between;
-  padding: 0 40px;
+  padding: 0 20px;
 }
 
 .progress-dot {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  border: 4px solid rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -51,7 +51,7 @@
 }
 
 .dot-number {
-  font-size: 24px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -70,15 +70,15 @@
 }
 
 .step-header {
-  margin-bottom: 64px;
+  margin-bottom: 48px;
 }
 
 .step-title {
   display: block;
-  font-size: 56px;
+  font-size: 48px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .step-desc {
@@ -86,18 +86,143 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* 照片上传区域 */
+.upload-section {
+  margin-bottom: 48px;
+  position: relative;
+}
+
+.upload-area {
+  width: 100%;
+  height: 600px;
+  border-radius: 40px;
+  border: 3px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.upload-area.with-photo {
+  border: none;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.upload-text {
+  font-size: 32px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.upload-hint {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 40px;
+}
+
+.analyzing-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.9);
+  border-radius: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.analyzing-text {
+  font-size: 28px;
+  color: #00f5ff;
+}
+
+.photo-tips {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  padding: 32px;
+}
+
+.tips-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.tips-item {
+  display: block;
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+}
+
+/* AI分析卡片 */
+.analysis-card {
+  background: rgba(0, 245, 255, 0.05);
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  border-radius: 32px;
+  padding: 32px;
+  margin-bottom: 32px;
+}
+
+.analysis-title {
+  display: block;
+  font-size: 26px;
+  font-weight: 600;
+  color: #00f5ff;
+  margin-bottom: 16px;
+}
+
+.analysis-desc {
+  display: block;
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20px;
+}
+
+.analysis-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.trait-badge {
+  background: rgba(0, 245, 255, 0.15);
+  border-radius: 20px;
+  padding: 8px 20px;
+}
+
+.trait-text {
+  font-size: 24px;
+  color: #00f5ff;
+}
+
 /* 性格选择 */
 .personality-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 32px;
+  gap: 24px;
 }
 
 .personality-card {
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 40px;
-  padding: 48px 40px;
+  border-radius: 32px;
+  padding: 32px;
   position: relative;
   transition: all 0.3s ease;
 }
@@ -109,14 +234,14 @@
 }
 
 .personality-icon {
-  width: 112px;
-  height: 112px;
-  border-radius: 32px;
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .personality-icon.glow {
@@ -126,39 +251,39 @@
 
 .personality-name {
   display: block;
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .personality-desc {
   display: block;
-  font-size: 26px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .traits-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 8px;
 }
 
 .trait-tag {
-  font-size: 22px;
+  font-size: 20px;
   color: rgba(255, 255, 255, 0.5);
   background: rgba(255, 255, 255, 0.05);
-  padding: 8px 20px;
-  border-radius: 20px;
+  padding: 6px 14px;
+  border-radius: 16px;
 }
 
 .selected-badge {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: rgba(0, 245, 255, 0.2);
   display: flex;
@@ -170,14 +295,14 @@
 .ability-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 20px;
 }
 
 .ability-card {
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 32px;
-  padding: 40px;
+  border-radius: 28px;
+  padding: 28px;
   position: relative;
 }
 
@@ -187,28 +312,28 @@
 }
 
 .ability-icon-wrap {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .ability-name {
   display: block;
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .ability-desc {
-  font-size: 24px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .ability-check {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(0, 245, 255, 0.2);
   display: flex;
@@ -217,27 +342,27 @@
 }
 
 .selected-count {
-  margin-top: 48px;
+  margin-top: 32px;
   text-align: center;
 }
 
 .count-text {
-  font-size: 28px;
+  font-size: 26px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 /* 风格选择 */
 .style-grid {
   display: flex;
-  gap: 32px;
+  gap: 24px;
 }
 
 .style-card {
   flex: 1;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 40px;
-  padding: 40px;
+  border-radius: 32px;
+  padding: 28px;
   text-align: center;
   position: relative;
 }
@@ -249,41 +374,41 @@
 .style-preview {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 32px;
+  border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
   border: 2px solid rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
 }
 
 .style-orb {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
 }
 
 .style-name {
   display: block;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .style-desc {
-  font-size: 24px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .style-check {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #00f5ff;
   display: flex;
@@ -299,24 +424,31 @@
 }
 
 .avatar-preview {
-  width: 240px;
-  height: 240px;
-  border-radius: 80px;
+  width: 200px;
+  height: 200px;
+  border-radius: 60px;
   background: rgba(0, 245, 255, 0.1);
   border: 4px solid rgba(0, 245, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 64px;
+  margin-bottom: 48px;
   position: relative;
+  overflow: hidden;
 }
 
 .preview-glow {
   position: absolute;
-  inset: -40px;
-  border-radius: 120px;
+  inset: -30px;
+  border-radius: 100px;
   background: radial-gradient(circle, rgba(0, 245, 255, 0.2) 0%, transparent 70%);
   animation: pulse 2s ease-in-out infinite;
+}
+
+.preview-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 60px;
 }
 
 @keyframes pulse {
@@ -328,48 +460,48 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 40px;
-  padding: 40px;
-  margin-bottom: 48px;
+  border-radius: 32px;
+  padding: 28px;
+  margin-bottom: 32px;
 }
 
 .name-input {
   width: 100%;
   background: transparent;
   color: #fff;
-  font-size: 36px;
+  font-size: 32px;
   text-align: center;
 }
 
 .name-suggestions {
   width: 100%;
-  margin-bottom: 64px;
+  margin-bottom: 48px;
 }
 
 .suggestions-title {
   display: block;
-  font-size: 26px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: center;
 }
 
 .suggestions-list {
   display: flex;
   justify-content: center;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
 .suggestion-tag {
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 32px;
-  padding: 20px 40px;
+  border-radius: 28px;
+  padding: 16px 28px;
 }
 
 .suggestion-text {
-  font-size: 28px;
+  font-size: 26px;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -377,21 +509,21 @@
   width: 100%;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 40px;
-  padding: 48px;
+  border-radius: 32px;
+  padding: 32px;
 }
 
 .summary-title {
   display: block;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .summary-item {
   display: flex;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .summary-item:last-child {
@@ -399,13 +531,13 @@
 }
 
 .summary-label {
-  font-size: 28px;
+  font-size: 26px;
   color: rgba(255, 255, 255, 0.4);
-  width: 120px;
+  width: 100px;
 }
 
 .summary-value {
-  font-size: 28px;
+  font-size: 26px;
   color: #00f5ff;
 }
 
@@ -415,36 +547,36 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 40px 48px;
+  padding: 32px 48px;
   padding-bottom: 80px;
   background: linear-gradient(to top, #0a0a0f 60%, transparent);
   display: flex;
-  gap: 32px;
+  gap: 24px;
 }
 
 .back-btn {
   flex: 1;
-  height: 104px;
+  height: 96px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 52px;
+  border-radius: 48px;
 }
 
 .back-btn-text {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 32px;
+  font-size: 30px;
 }
 
 .next-btn, .create-btn {
   flex: 2;
-  height: 104px;
+  height: 96px;
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 52px;
+  border-radius: 48px;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .next-btn.disabled, .create-btn.disabled {
@@ -452,7 +584,7 @@
 }
 
 .next-btn-text, .create-btn-text {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 600;
   color: #0a0a0f;
 }

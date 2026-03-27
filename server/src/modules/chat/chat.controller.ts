@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers, Req } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Headers, Req, Sse, MessageEvent } from '@nestjs/common'
+import { Observable } from 'rxjs'
+import { map } from 'rxjs/operators'
 import { ChatService } from './chat.service'
 
 @Controller('chat')
@@ -58,6 +60,41 @@ export class ChatController {
       data: message,
       message: '发送成功'
     }
+  }
+
+  /**
+   * 流式对话接口
+   * 使用 Server-Sent Events (SSE) 实现流式输出
+   */
+  @Sse('stream')
+  async streamMessage(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { conversation_id: string; avatar_id: string; content: string },
+    @Req() req: any
+  ): Promise<Observable<MessageEvent>> {
+    const headers = req.headers
+    
+    return new Observable(subscriber => {
+      (async () => {
+        try {
+          const generator = this.chatService.sendMessageStream(
+            body.conversation_id,
+            userId,
+            body.avatar_id,
+            body.content,
+            headers
+          )
+          
+          for await (const chunk of generator) {
+            subscriber.next({ data: chunk } as MessageEvent)
+          }
+          
+          subscriber.complete()
+        } catch (error) {
+          subscriber.error(error)
+        }
+      })()
+    })
   }
 
   @Delete('conversation/:id')
