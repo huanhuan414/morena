@@ -139,11 +139,11 @@ export default function ChatPage() {
 
     try {
       const res = await Network.request({
-        url: '/api/chat/message',
+        url: '/api/chat/send',
         method: 'POST',
         data: {
-          conversationId: conversation.id,
-          avatarId: avatar?.id,
+          conversation_id: conversation.id,
+          avatar_id: avatar?.id,
           content: inputText
         }
       })

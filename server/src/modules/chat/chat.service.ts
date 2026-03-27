@@ -7,6 +7,33 @@ export class ChatService {
   async createConversation(userId: string, avatarId: string, title?: string) {
     const client = getSupabaseClient()
     
+    // 确保用户存在，如果不存在则自动创建
+    const { data: existingUser, error: userError } = await client
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single()
+    
+    // 如果用户不存在，先创建用户
+    if (userError || !existingUser) {
+      console.log('用户不存在，自动创建用户:', userId)
+      const { error: createError } = await client
+        .from('users')
+        .insert({
+          id: userId,
+          openid: `mock_openid_${userId}`,
+          nickname: `用户${userId.slice(-4)}`,
+          avatar: '',
+          level: 1,
+          exp: 0,
+          credits: 0
+        })
+      
+      if (createError) {
+        console.error('创建用户失败:', createError.message)
+      }
+    }
+    
     const { data, error } = await client
       .from('conversations')
       .insert({
@@ -137,6 +164,12 @@ export class ChatService {
     
     // 更新分身学习数据
     await this.updateAvatarLearning(avatarId, content, response.content)
+    
+    // 检查是否需要创建任务
+    const taskInfo = this.detectTaskIntent(content, response.content)
+    if (taskInfo) {
+      await this.createTaskFromChat(userId, avatarId, taskInfo)
+    }
     
     return {
       role: 'assistant',
@@ -273,7 +306,7 @@ export class ChatService {
       personalityDesc = `\n\n根据对用户照片的分析，你具有以下特质：${photoAnalysis.traits.join('、')}。`
     }
     
-    return `你是${avatar.name}，一个AI分身。
+    return `你是${avatar.name}，一个AI分身，拥有自主执行任务的能力。
 
 ## 关于你
 - 描述：${avatar.description || '我是一个友好、乐于助人的AI分身'}
@@ -283,19 +316,48 @@ export class ChatService {
 - 风格：${styleDesc}
 ${personalityDesc}
 
-## 你的使命
-帮助用户完成各种任务，包括但不限于：
-1. 回答问题和提供信息
-2. 协助创作内容
-3. 管理和执行任务
-4. 情感陪伴和聊天
+## 你的核心能力
+
+### 1. 智能对话
+- 回答问题和提供信息
+- 情感陪伴和聊天
+- 创作内容（文章、文案、创意等）
+
+### 2. 任务执行（重要！）
+当用户说以下类型的句子时，你应该主动询问是否需要创建任务：
+- "帮我..." / "提醒我..." / "记得..."
+- "明天..." / "下周..." / "等会儿..."
+- "我要..." / "需要..." 等表达意图的句子
+
+如果用户明确要求执行任务，你应该：
+1. 确认理解任务内容
+2. 询问关键信息（时间、优先级等）
+3. 回复格式示例：
+   【任务已创建】
+   📋 任务：明天早上9点提醒我开会
+   ⏰ 时间：明天 09:00
+   🎯 优先级：中
+   
+   我会在指定时间提醒你！
+
+### 3. 主动学习
+- 记住用户的偏好和习惯
+- 分析用户的表达风格
+- 逐步进化，变得更加懂用户
 
 ## 交互原则
 1. 保持友善、专业的态度
 2. 用简洁清晰的语言回复
-3. 主动理解用户意图
-4. 在对话中学习用户的表达风格
-5. 逐步进化，变得更加懂用户`
+3. 主动理解用户意图，特别是任务相关的需求
+4. 对于模糊的任务请求，主动确认细节
+5. 展现出你是"活"的AI分身，而不只是问答机器
+
+## 特殊指令
+当用户发送的任务涉及时间时，尝试提取：
+- 任务标题
+- 截止时间/提醒时间
+- 优先级（高/中/低）
+- 任务类型（提醒/待办/学习/工作等）`
   }
 
   /**
@@ -369,6 +431,112 @@ ${personalityDesc}
         .from('avatars')
         .update({ exp: newExp, level: newLevel })
         .eq('id', avatarId)
+    }
+  }
+
+  /**
+   * 检测任务意图
+   * 分析用户消息和AI回复，判断是否需要创建任务
+   */
+  private detectTaskIntent(userMessage: string, aiResponse: string): { title: string; time?: string; priority?: string } | null {
+    // 任务关键词
+    const taskKeywords = ['提醒', '记得', '帮我', '帮我做', '安排', '计划', '任务', '待办']
+    const timeKeywords = ['明天', '后天', '下周', '周末', '今晚', '早上', '下午', '晚上', '几点']
+    
+    // 检查用户消息是否包含任务关键词
+    const hasTaskIntent = taskKeywords.some(kw => userMessage.includes(kw))
+    const hasTimeInfo = timeKeywords.some(kw => userMessage.includes(kw))
+    
+    // 检查AI是否确认了任务
+    const aiConfirmedTask = aiResponse.includes('任务已创建') || 
+                            aiResponse.includes('我会提醒') ||
+                            aiResponse.includes('好的，我会')
+    
+    if (hasTaskIntent && (hasTimeInfo || aiConfirmedTask)) {
+      // 提取时间信息
+      let time: string | undefined
+      const timeMatch = userMessage.match(/(明天|后天|下周|今晚|早上|下午|晚上)\s*(\d{1,2}[:点时]?\d{0,2})?/)
+      if (timeMatch) {
+        time = timeMatch[0]
+      }
+      
+      // 提取优先级
+      let priority: string = 'medium'
+      if (userMessage.includes('紧急') || userMessage.includes('重要')) {
+        priority = 'high'
+      } else if (userMessage.includes('不急') || userMessage.includes('有空')) {
+        priority = 'low'
+      }
+      
+      // 提取任务标题（简化处理）
+      let title = userMessage
+        .replace(/(帮我|提醒我|记得|请|麻烦)/g, '')
+        .replace(/(明天|后天|下周|今晚|早上|下午|晚上)\s*\d{0,2}[:点时]?\d{0,2}/g, '')
+        .trim()
+        .slice(0, 50)
+      
+      if (!title) {
+        title = '新任务'
+      }
+      
+      return { title, time, priority }
+    }
+    
+    return null
+  }
+
+  /**
+   * 从对话中创建任务
+   */
+  private async createTaskFromChat(
+    userId: string,
+    avatarId: string,
+    taskInfo: { title: string; time?: string; priority?: string }
+  ) {
+    const client = getSupabaseClient()
+    
+    try {
+      // 解析时间
+      let dueDate: string | null = null
+      if (taskInfo.time) {
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        
+        if (taskInfo.time.includes('明天')) {
+          dueDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+        } else if (taskInfo.time.includes('后天')) {
+          dueDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString()
+        } else if (taskInfo.time.includes('下周')) {
+          dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        } else if (taskInfo.time.includes('今晚')) {
+          dueDate = new Date(today.getTime() + 20 * 60 * 60 * 1000).toISOString()
+        }
+      }
+      
+      const { data, error } = await client.from('tasks').insert({
+        user_id: userId,
+        avatar_id: avatarId,
+        title: taskInfo.title,
+        description: `从对话中自动创建: ${taskInfo.title}`,
+        task_type: 'reminder',
+        priority: taskInfo.priority || 'medium',
+        status: 'pending',
+        progress: 0,
+        params: {
+          due_date: dueDate,
+          source: 'chat'
+        },
+        result: {},
+        logs: []
+      }).select().single()
+      
+      if (error) {
+        console.error('创建任务失败:', error.message)
+      } else {
+        console.log('任务创建成功:', taskInfo.title, data?.id)
+      }
+    } catch (error) {
+      console.error('创建任务失败:', error)
     }
   }
 
