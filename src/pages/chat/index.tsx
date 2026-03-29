@@ -1,11 +1,14 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video, ExternalLink } from 'lucide-react-taro'
+import { 
+  Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video, ExternalLink,
+  Mic, History, X, Settings, Copy
+} from 'lucide-react-taro'
 import './index.css'
 
 interface Message {
@@ -23,6 +26,8 @@ interface Conversation {
     name: string
     avatar_url: string
   }
+  created_at: string
+  updated_at: string
 }
 
 interface Avatar {
@@ -69,45 +74,94 @@ interface Task {
 
 export default function ChatPage() {
   const router = useRouter()
-  const { isLoggedIn } = useUserStore()
+  const { isLoggedIn, userInfo } = useUserStore()
   const [avatar, setAvatar] = useState<Avatar | null>(null)
   const [conversation, setConversation] = useState<Conversation | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [newAvatarName, setNewAvatarName] = useState('')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
   const scrollViewRef = useRef<string>('')
   const taskPollingRef = useRef<NodeJS.Timeout | null>(null)
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
+
+  const isWeapp = getEnv() === ENV_TYPE.WEAPP
 
   useLoad(() => {
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/home/index' })
+    }
+    
+    // 初始化录音管理器
+    if (isWeapp) {
+      recorderManagerRef.current = Taro.getRecorderManager()
+      recorderManagerRef.current.onStop((res) => {
+        const { tempFilePath, duration } = res
+        handleRecordingComplete(tempFilePath, duration)
+      })
+      recorderManagerRef.current.onError((err) => {
+        console.error('录音失败:', err)
+        showToast({ title: '录音失败', icon: 'none' })
+        setIsRecording(false)
+      })
     }
   })
 
   useDidShow(() => {
     if (isLoggedIn) {
       const avatarId = router.params.avatarId
+      const command = router.params.command
+      
       if (avatarId) {
         fetchAvatar(avatarId)
         fetchOrCreateConversation(avatarId)
       } else {
         fetchDefaultAvatar()
       }
+      
+      // 如果有快速指令，自动发送
+      if (command) {
+        setTimeout(() => {
+          setInputText(decodeURIComponent(command))
+        }, 500)
+      }
+      
+      // 获取历史对话列表
+      fetchConversations()
     }
   })
 
-  // 清理任务轮询
+  // 清理任务轮询和录音定时器
   useEffect(() => {
     return () => {
       if (taskPollingRef.current) {
         clearInterval(taskPollingRef.current)
         taskPollingRef.current = null
       }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+        recordingTimerRef.current = null
+      }
     }
   }, [])
+
+  const fetchConversations = async () => {
+    try {
+      const res = await Network.request({ url: '/api/chat/conversations' })
+      if (res.data?.code === 200) {
+        setConversations(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取对话列表失败:', error)
+    }
+  }
 
   const fetchDefaultAvatar = async () => {
     try {
@@ -163,6 +217,13 @@ export default function ChatPage() {
     } catch (error) {
       console.error('获取消息失败:', error)
     }
+  }
+
+  // 切换对话
+  const switchConversation = async (conv: Conversation) => {
+    setConversation(conv)
+    await fetchMessages(conv.id)
+    setShowHistory(false)
   }
 
   // 获取最新任务状态
@@ -224,6 +285,7 @@ export default function ChatPage() {
     }
 
     setMessages(prev => [...prev, userMessage])
+    const messageText = inputText
     setInputText('')
     setLoading(true)
     scrollToBottom()
@@ -235,7 +297,7 @@ export default function ChatPage() {
         data: {
           conversation_id: conversation.id,
           avatar_id: avatar?.id,
-          content: inputText
+          content: messageText
         }
       })
 
@@ -253,6 +315,9 @@ export default function ChatPage() {
         if (res.data.data.taskId) {
           startTaskPolling(res.data.data.taskId)
         }
+        
+        // 刷新对话列表
+        fetchConversations()
       }
     } catch (error) {
       // 模拟AI回复
@@ -260,7 +325,7 @@ export default function ChatPage() {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: `我收到了你的消息："${inputText}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你解决问题。有什么我可以为你做的吗？`,
+          content: `我收到了你的消息："${messageText}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你解决问题。有什么我可以为你做的吗？`,
           created_at: new Date().toISOString()
         }
         setMessages(prev => [...prev, aiMessage])
@@ -315,13 +380,113 @@ export default function ChatPage() {
     }
   }
 
+  // 语音录制
+  const startRecording = async () => {
+    if (!isWeapp) {
+      showToast({ title: '语音输入仅支持小程序', icon: 'none' })
+      return
+    }
+
+    try {
+      setIsRecording(true)
+      setRecordingDuration(0)
+      
+      // 开始计时
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1)
+      }, 1000)
+      
+      // 开始录音
+      recorderManagerRef.current?.start({
+        format: 'mp3',
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        encodeBitRate: 96000
+      })
+    } catch (error) {
+      console.error('开始录音失败:', error)
+      showToast({ title: '录音失败', icon: 'none' })
+      setIsRecording(false)
+    }
+  }
+
+  const stopRecording = () => {
+    if (isRecording && recorderManagerRef.current) {
+      recorderManagerRef.current.stop()
+      setIsRecording(false)
+      
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+        recordingTimerRef.current = null
+      }
+    }
+  }
+
+  // 录音完成处理
+  const handleRecordingComplete = async (tempFilePath: string, duration: number) => {
+    if (duration < 1000) {
+      showToast({ title: '录音时间太短', icon: 'none' })
+      return
+    }
+
+    showToast({ title: '正在识别...', icon: 'loading', duration: 5000 })
+    
+    try {
+      // 上传音频文件进行识别
+      const uploadRes = await Network.uploadFile({
+        url: '/api/audio/asr',
+        filePath: tempFilePath,
+        name: 'audio'
+      })
+      
+      console.log('[Chat] 语音识别响应:', uploadRes.data)
+      
+      // 解析响应数据
+      let result: any = uploadRes.data
+      if (typeof result === 'string') {
+        try {
+          result = JSON.parse(result)
+        } catch (e) {
+          console.error('[Chat] 解析响应失败:', e)
+        }
+      }
+      
+      if (result?.code === 200 && result.data?.text) {
+        setInputText(result.data.text)
+        showToast({ title: '识别成功', icon: 'success' })
+      } else {
+        showToast({ title: '识别失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('语音识别失败:', error)
+      showToast({ title: '识别失败', icon: 'none' })
+    }
+  }
+
+  // 复制消息
+  const copyMessage = (content: string) => {
+    Taro.setClipboardData({
+      data: content,
+      success: () => {
+        showToast({ title: '已复制', icon: 'success' })
+      }
+    })
+  }
+
   if (!isLoggedIn) return null
 
   return (
     <View className="chat-page">
+      {/* 背景效果 */}
+      <View className="bg-glow" />
+      <View className="grid-overlay" />
+
       {/* 顶部导航 */}
       <View className="chat-header">
         <View className="header-left">
+          <Button className="header-btn" onClick={() => setShowHistory(true)}>
+            <History size={22} color="#00f5ff" />
+          </Button>
           <View className="avatar-info">
             {avatar ? (
               <>
@@ -334,7 +499,10 @@ export default function ChatPage() {
                 </View>
                 <View className="avatar-text">
                   <Text className="avatar-name">{avatar.name}</Text>
-                  <Text className="avatar-level">Lv.{avatar.level} · {avatar.personality}</Text>
+                  <View className="avatar-status">
+                    <View className="status-dot" />
+                    <Text className="status-text">在线</Text>
+                  </View>
                 </View>
               </>
             ) : (
@@ -344,15 +512,61 @@ export default function ChatPage() {
         </View>
         <View className="header-right">
           <Button className="header-btn" onClick={() => setShowCreate(true)}>
-            <Plus size={20} color="#00f5ff" />
+            <Plus size={22} color="#00f5ff" />
+          </Button>
+          <Button className="header-btn">
+            <Settings size={22} color="rgba(255,255,255,0.6)" />
           </Button>
         </View>
       </View>
 
+      {/* 历史记录抽屉 */}
+      {showHistory && (
+        <View className="history-drawer-mask" onClick={() => setShowHistory(false)}>
+          <View className="history-drawer" onClick={e => e.stopPropagation()}>
+            <View className="drawer-header">
+              <Text className="drawer-title">历史对话</Text>
+              <Button className="drawer-close" onClick={() => setShowHistory(false)}>
+                <X size={24} color="rgba(255,255,255,0.6)" />
+              </Button>
+            </View>
+            <ScrollView className="drawer-content" scrollY>
+              {conversations.length === 0 ? (
+                <View className="empty-history">
+                  <Bot size={48} color="rgba(255,255,255,0.2)" />
+                  <Text className="empty-text">暂无历史对话</Text>
+                </View>
+              ) : (
+                conversations.map(conv => (
+                  <View 
+                    key={conv.id} 
+                    className={`history-item ${conversation?.id === conv.id ? 'active' : ''}`}
+                    onClick={() => switchConversation(conv)}
+                  >
+                    <View className="history-icon">
+                      <Sparkles size={18} color="#00f5ff" />
+                    </View>
+                    <View className="history-info">
+                      <Text className="history-title">{conv.title || '新对话'}</Text>
+                      <Text className="history-time">
+                        {new Date(conv.updated_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    {conversation?.id === conv.id && (
+                      <View className="history-active-dot" />
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
       {/* 创建分身弹窗 */}
       {showCreate && (
-        <View className="create-modal">
-          <View className="modal-content">
+        <View className="create-modal" onClick={() => setShowCreate(false)}>
+          <View className="modal-content" onClick={e => e.stopPropagation()}>
             <Text className="modal-title">创建AI分身</Text>
             <View className="modal-input-wrap">
               <Input
@@ -384,10 +598,41 @@ export default function ChatPage() {
         {messages.length === 0 ? (
           <View className="empty-chat">
             <View className="empty-icon">
-              <Bot size={64} color="rgba(255,255,255,0.2)" />
+              <View className="empty-avatar-glow">
+                {avatar?.avatar_url ? (
+                  <Image src={avatar.avatar_url} className="empty-avatar-img" mode="aspectFill" />
+                ) : (
+                  <Sparkles size={64} color="#00f5ff" />
+                )}
+              </View>
             </View>
             <Text className="empty-title">开始与{avatar?.name || 'AI'}对话</Text>
-            <Text className="empty-desc">发送消息，AI会智能回复你</Text>
+            <Text className="empty-desc">发送消息或使用语音输入</Text>
+            
+            {/* 快捷建议 */}
+            <View className="quick-suggestions">
+              <View 
+                className="suggestion-chip"
+                onClick={() => setInputText('帮我搜索最新的AI新闻')}
+              >
+                <Search size={16} color="#00f5ff" />
+                <Text className="suggestion-text">搜索AI新闻</Text>
+              </View>
+              <View 
+                className="suggestion-chip"
+                onClick={() => setInputText('帮我生成一张创意图片')}
+              >
+                <ImageIcon size={16} color="#bf00ff" />
+                <Text className="suggestion-text">生成图片</Text>
+              </View>
+              <View 
+                className="suggestion-chip"
+                onClick={() => setInputText('帮我写一份工作报告')}
+              >
+                <FileText size={16} color="#00ff88" />
+                <Text className="suggestion-text">写工作报告</Text>
+              </View>
+            </View>
           </View>
         ) : (
           messages.map((msg) => (
@@ -401,13 +646,35 @@ export default function ChatPage() {
                   {avatar?.avatar_url ? (
                     <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
                   ) : (
-                    <Sparkles size={20} color="#00f5ff" />
+                    <Sparkles size={24} color="#00f5ff" />
                   )}
                 </View>
               )}
-              <View className="message-content">
+              <View className="message-bubble">
                 <Text className="message-text">{msg.content}</Text>
+                <View className="message-footer">
+                  <Text className="message-time">
+                    {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  {msg.role === 'assistant' && (
+                    <Button 
+                      className="message-action"
+                      onClick={() => copyMessage(msg.content)}
+                    >
+                      <Copy size={14} color="rgba(255,255,255,0.4)" />
+                    </Button>
+                  )}
+                </View>
               </View>
+              {msg.role === 'user' && (
+                <View className="message-user-avatar">
+                  {userInfo?.avatar ? (
+                    <Image src={userInfo.avatar} className="msg-avatar-img" mode="aspectFill" />
+                  ) : (
+                    <Text className="user-avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+                  )}
+                </View>
+              )}
             </View>
           ))
         )}
@@ -415,9 +682,13 @@ export default function ChatPage() {
         {loading && (
           <View className="message-item assistant">
             <View className="message-avatar">
-              <Sparkles size={20} color="#00f5ff" />
+              {avatar?.avatar_url ? (
+                <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
+              ) : (
+                <Sparkles size={24} color="#00f5ff" />
+              )}
             </View>
-            <View className="message-content typing">
+            <View className="message-bubble typing">
               <View className="typing-dots">
                 <View className="dot" />
                 <View className="dot" />
@@ -431,7 +702,7 @@ export default function ChatPage() {
         {activeTask && (activeTask.status === 'running' || activeTask.status === 'pending') && (
           <View className="task-card">
             <View className="task-header">
-              <Loader size={16} className="animate-spin" color="#00f5ff" />
+              <Loader size={18} className="animate-spin" color="#00f5ff" />
               <Text className="task-title">{activeTask.title}</Text>
             </View>
             <View className="task-progress">
@@ -444,10 +715,12 @@ export default function ChatPage() {
               <View className="task-logs">
                 {activeTask.logs.filter(log => log.tool).slice(-3).map((log, idx) => (
                   <View key={idx} className="log-item">
-                    {log.tool === 'search' && <Search size={12} color="#8b5cf6" />}
-                    {log.tool === 'create_document' && <FileText size={12} color="#10b981" />}
+                    {log.tool === 'search' && <Search size={14} color="#8b5cf6" />}
+                    {log.tool === 'create_document' && <FileText size={14} color="#10b981" />}
+                    {log.tool === 'generate_image' && <ImageIcon size={14} color="#bf00ff" />}
+                    {log.tool === 'generate_video' && <Video size={14} color="#ff00aa" />}
                     <Text className="log-text">{log.action}</Text>
-                    {log.success && <Check size={12} color="#10b981" />}
+                    {log.success && <Check size={14} color="#10b981" />}
                   </View>
                 ))}
               </View>
@@ -459,7 +732,7 @@ export default function ChatPage() {
         {activeTask && activeTask.status === 'completed' && (
           <View className="task-card completed">
             <View className="task-header">
-              <Check size={16} color="#10b981" />
+              <Check size={18} color="#10b981" />
               <Text className="task-title">任务完成</Text>
             </View>
             
@@ -471,7 +744,6 @@ export default function ChatPage() {
                   className="result-image" 
                   mode="widthFix"
                   onClick={() => {
-                    // 点击预览大图
                     const imageUrl = activeTask.result?.url
                     if (imageUrl) {
                       Taro.previewImage({
@@ -482,7 +754,7 @@ export default function ChatPage() {
                   }}
                 />
                 <View className="result-meta">
-                  <ImageIcon size={12} color="#8b5cf6" />
+                  <ImageIcon size={14} color="#bf00ff" />
                   <Text className="meta-text">{activeTask.result.style || 'AI生成图片'}</Text>
                 </View>
               </View>
@@ -499,7 +771,7 @@ export default function ChatPage() {
                   poster=""
                 />
                 <View className="result-meta">
-                  <Video size={12} color="#10b981" />
+                  <Video size={14} color="#ff00aa" />
                   <Text className="meta-text">{activeTask.result.duration || 5}秒 · {activeTask.result.ratio || '16:9'}</Text>
                 </View>
               </View>
@@ -508,12 +780,12 @@ export default function ChatPage() {
             {/* 文档结果展示 */}
             {activeTask.result?.type === 'document' && activeTask.result?.title && (
               <View className="result-document">
-                <FileText size={24} color="#00f5ff" />
+                <FileText size={28} color="#00f5ff" />
                 <View className="document-info">
                   <Text className="document-title">{activeTask.result.title}</Text>
                   <Text className="document-desc">{activeTask.result.summary || '点击查看详情'}</Text>
                 </View>
-                <ExternalLink size={16} color="#00f5ff" />
+                <ExternalLink size={18} color="#00f5ff" />
               </View>
             )}
             
@@ -528,14 +800,6 @@ export default function ChatPage() {
             {activeTask.result?.summary && !['image', 'video', 'document', 'report'].includes(activeTask.result.type || '') && (
               <Text className="task-summary">{activeTask.result.summary}</Text>
             )}
-            
-            {/* 文档标题 */}
-            {activeTask.result?.title && activeTask.result?.type !== 'image' && activeTask.result?.type !== 'video' && activeTask.result?.type !== 'document' && (
-              <View className="task-result">
-                <FileText size={14} color="#00f5ff" />
-                <Text className="result-title">{activeTask.result.title}</Text>
-              </View>
-            )}
           </View>
         )}
         
@@ -545,22 +809,49 @@ export default function ChatPage() {
       {/* 输入区域 */}
       <View className="input-area">
         <View className="input-wrap">
-          <Input
-            className="chat-input"
-            placeholder="输入消息..."
-            value={inputText}
-            onInput={e => setInputText(e.detail.value)}
-            onConfirm={sendMessage}
-            confirmType="send"
-          />
+          {isWeapp && (
+            <Button 
+              className={`voice-btn ${isRecording ? 'recording' : ''}`}
+              onClick={isRecording ? stopRecording : startRecording}
+              onTouchStart={isRecording ? undefined : startRecording}
+              onTouchEnd={isRecording ? stopRecording : undefined}
+            >
+              {isRecording ? (
+                <View className="recording-indicator">
+                  <View className="recording-wave" />
+                  <Text className="recording-time">{recordingDuration}s</Text>
+                </View>
+              ) : (
+                <Mic size={22} color="rgba(255,255,255,0.6)" />
+              )}
+            </Button>
+          )}
+          <View className="input-container">
+            <Input
+              className="chat-input"
+              placeholder={isWeapp ? "输入或语音..." : "输入消息..."}
+              value={inputText}
+              onInput={e => setInputText(e.detail.value)}
+              onConfirm={sendMessage}
+              confirmType="send"
+            />
+          </View>
           <Button 
             className={`send-btn ${inputText.trim() ? 'active' : ''}`}
             onClick={sendMessage}
             disabled={!inputText.trim() || loading}
           >
-            <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
+            <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
           </Button>
         </View>
+        
+        {/* 录音提示 */}
+        {isRecording && (
+          <View className="recording-tip">
+            <View className="tip-dot" />
+            <Text className="tip-text">松开发送，上滑取消</Text>
+          </View>
+        )}
       </View>
     </View>
   )
