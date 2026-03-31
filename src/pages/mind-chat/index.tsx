@@ -821,9 +821,9 @@ export default function MindChatPage() {
               )}
             </View>
           ) : (
-            <View className="text-input-area">
+            <View className="text-input-box">
               <Input
-                className="text-input"
+                className="text-input-control"
                 placeholder="输入消息..."
                 placeholderClass="text-input-placeholder"
                 value={inputText}
