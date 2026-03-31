@@ -1,15 +1,28 @@
 import { ITool, ToolExecutionContext, ToolResult } from '../tools.interface'
-import { ImageGenerationClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
+import { ImageGenerationClient, Config, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../../storage/database/supabase-client'
 
 /**
  * 图片生成工具
- * 使用豆包大模型生成高质量图片
+ * 使用豆包大模型生成高质量图片，并上传到火山引擎CDN
  */
 export class GenerateImageTool implements ITool {
   name = 'generate_image'
   description = '根据文本描述生成高质量图片，支持2K/4K分辨率，可用于海报、插画、产品设计等场景'
   
+  private storage: S3Storage
+
+  constructor() {
+    // 初始化火山引擎CDN存储
+    this.storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      accessKey: process.env.VOLC_ACCESS_KEY || '',
+      secretKey: process.env.VOLC_SECRET_KEY || '',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
+      region: 'cn-beijing',
+    })
+  }
+
   parameters = {
     type: 'object' as const,
     properties: {
@@ -76,8 +89,35 @@ export class GenerateImageTool implements ITool {
         throw new Error(helper.errorMessages.join('; ') || '图片生成失败')
       }
 
-      const imageUrl = helper.imageUrls[0]
-      console.log('[GenerateImageTool] 图片生成成功:', imageUrl)
+      const originalUrl = helper.imageUrls[0]
+      console.log('[GenerateImageTool] 图片生成成功:', originalUrl)
+
+      // 更新进度：正在上传到CDN
+      await client
+        .from('tasks')
+        .update({
+          progress: 60,
+          logs: client.rpc('array_append', {
+            arr: 'logs',
+            value: {
+              tool: 'generate_image',
+              action: '正在上传到火山引擎CDN...',
+              timestamp: new Date().toISOString()
+            }
+          })
+        })
+        .eq('id', taskId)
+
+      // 上传到火山引擎CDN
+      const imageKey = await this.storage.uploadFromUrl({ url: originalUrl, timeout: 30000 })
+      console.log('[GenerateImageTool] 上传CDN成功, key:', imageKey)
+
+      // 生成CDN访问URL
+      const cdnUrl = await this.storage.generatePresignedUrl({
+        key: imageKey,
+        expireTime: 86400 * 30 // 30天有效期
+      })
+      console.log('[GenerateImageTool] CDN URL:', cdnUrl)
 
       // 保存生成的图片记录到数据库
       const { data: imageRecord } = await client
@@ -88,11 +128,13 @@ export class GenerateImageTool implements ITool {
           task_id: taskId,
           type: 'image',
           prompt: prompt,
-          url: imageUrl,
+          url: cdnUrl,
+          storage_key: imageKey,
           metadata: {
             size,
             style,
-            model: response.model
+            model: response.model,
+            original_url: originalUrl
           }
         })
         .select()
@@ -105,7 +147,8 @@ export class GenerateImageTool implements ITool {
           progress: 100,
           result: {
             type: 'image',
-            url: imageUrl,
+            url: cdnUrl,
+            key: imageKey,
             prompt,
             style,
             size,
@@ -119,12 +162,13 @@ export class GenerateImageTool implements ITool {
       return {
         success: true,
         data: {
-          url: imageUrl,
+          url: cdnUrl,
+          key: imageKey,
           prompt,
           style,
           size
         },
-        message: `图片已生成成功！${imageUrl}`
+        message: `图片已生成成功！`
       }
     } catch (error) {
       console.error('[GenerateImageTool] 生成失败:', error)

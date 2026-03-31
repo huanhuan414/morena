@@ -10,9 +10,21 @@ import { TaskModule } from './modules/task/task.module';
 import { SocialModule } from './modules/social/social.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { AudioModule } from './modules/audio/audio.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
-  imports: [OrderModule, ChatModule, AuthModule, AvatarModule, UserModule, TaskModule, SocialModule, AgentModule, AudioModule],
+  imports: [
+    StorageModule,
+    OrderModule, 
+    ChatModule, 
+    AuthModule, 
+    AvatarModule, 
+    UserModule, 
+    TaskModule, 
+    SocialModule, 
+    AgentModule, 
+    AudioModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

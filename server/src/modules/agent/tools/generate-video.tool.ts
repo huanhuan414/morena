@@ -1,15 +1,28 @@
 import { ITool, ToolExecutionContext, ToolResult } from '../tools.interface'
-import { VideoGenerationClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
+import { VideoGenerationClient, Config, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../../storage/database/supabase-client'
 
 /**
  * 视频生成工具
- * 使用豆包大模型生成高质量视频
+ * 使用豆包大模型生成高质量视频，并上传到火山引擎CDN
  */
 export class GenerateVideoTool implements ITool {
   name = 'generate_video'
   description = '根据文本描述生成高质量视频，支持4-12秒时长，可生成带音频的视频，适用于短视频、动画、广告等场景'
   
+  private storage: S3Storage
+
+  constructor() {
+    // 初始化火山引擎CDN存储
+    this.storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      accessKey: process.env.VOLC_ACCESS_KEY || '',
+      secretKey: process.env.VOLC_SECRET_KEY || '',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
+      region: 'cn-beijing',
+    })
+  }
+
   parameters = {
     type: 'object' as const,
     properties: {
@@ -111,13 +124,37 @@ export class GenerateVideoTool implements ITool {
         generateAudio
       })
 
-      const videoUrl = response.videoUrl
+      const originalUrl = response.videoUrl
 
-      if (!videoUrl) {
+      if (!originalUrl) {
         throw new Error(response.response?.error_message || '视频生成失败')
       }
 
-      console.log('[GenerateVideoTool] 视频生成成功:', videoUrl)
+      console.log('[GenerateVideoTool] 视频生成成功:', originalUrl)
+
+      // 更新进度：正在上传到CDN
+      await client
+        .from('tasks')
+        .update({
+          progress: 70,
+          logs: [{
+            tool: 'generate_video',
+            action: '正在上传到火山引擎CDN...',
+            timestamp: new Date().toISOString()
+          }]
+        })
+        .eq('id', taskId)
+
+      // 上传到火山引擎CDN
+      const videoKey = await this.storage.uploadFromUrl({ url: originalUrl, timeout: 60000 })
+      console.log('[GenerateVideoTool] 上传CDN成功, key:', videoKey)
+
+      // 生成CDN访问URL
+      const cdnUrl = await this.storage.generatePresignedUrl({
+        key: videoKey,
+        expireTime: 86400 * 30 // 30天有效期
+      })
+      console.log('[GenerateVideoTool] CDN URL:', cdnUrl)
 
       // 保存生成的视频记录到数据库
       const { data: videoRecord } = await client
@@ -128,13 +165,15 @@ export class GenerateVideoTool implements ITool {
           task_id: taskId,
           type: 'video',
           prompt: prompt,
-          url: videoUrl,
+          url: cdnUrl,
+          storage_key: videoKey,
           metadata: {
             duration,
             ratio,
             resolution,
             hasAudio: generateAudio,
-            firstFrameUrl
+            firstFrameUrl,
+            original_url: originalUrl
           }
         })
         .select()
@@ -147,7 +186,8 @@ export class GenerateVideoTool implements ITool {
           progress: 100,
           result: {
             type: 'video',
-            url: videoUrl,
+            url: cdnUrl,
+            key: videoKey,
             prompt,
             duration,
             ratio,
@@ -163,13 +203,14 @@ export class GenerateVideoTool implements ITool {
       return {
         success: true,
         data: {
-          url: videoUrl,
+          url: cdnUrl,
+          key: videoKey,
           prompt,
           duration,
           ratio,
           resolution
         },
-        message: `视频已生成成功！${videoUrl}`
+        message: `视频已生成成功！`
       }
     } catch (error) {
       console.error('[GenerateVideoTool] 生成失败:', error)
