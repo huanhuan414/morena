@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { formatTime } from '@/utils/time'
 import { 
   Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video,
   Mic, History, X, Settings, Copy
@@ -558,7 +559,7 @@ export default function ChatPage() {
                     <View className="history-info">
                       <Text className="history-title">{conv.title || '新对话'}</Text>
                       <Text className="history-time">
-                        {new Date(conv.updated_at).toLocaleDateString()}
+                        {formatTime(conv.updated_at)}
                       </Text>
                     </View>
                     {conversation?.id === conv.id && (

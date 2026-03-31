@@ -44,7 +44,8 @@ export class ChatService {
         user_id: userId,
         avatar_id: avatarId,
         title: title || '新对话',
-        context: []
+        context: [],
+        updated_at: new Date().toISOString()
       })
       .select()
       .single()
@@ -103,7 +104,7 @@ export class ChatService {
     // 获取对话上下文
     const { data: conversation } = await client
       .from('conversations')
-      .select('context')
+      .select('context, title')
       .eq('id', conversationId)
       .single()
     
@@ -155,12 +156,21 @@ export class ChatService {
       { role: 'assistant', content: response.content }
     ]
     
+    // 生成对话标题（如果是第一次对话）
+    const updateData: any = {
+      context: newContext,
+      updated_at: new Date().toISOString()
+    }
+    
+    // 如果对话标题是"新对话"，根据第一条消息生成标题
+    if (conversation?.title === '新对话' || !conversation?.title) {
+      const title = content.length <= 30 ? content : content.substring(0, 30) + '...'
+      updateData.title = title
+    }
+    
     await client
       .from('conversations')
-      .update({
-        context: newContext,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', conversationId)
     
     // 增加分身经验
@@ -228,7 +238,7 @@ export class ChatService {
     // 获取对话上下文
     const { data: conversation } = await client
       .from('conversations')
-      .select('context')
+      .select('context, title')
       .eq('id', conversationId)
       .single()
     
@@ -301,12 +311,21 @@ export class ChatService {
       { role: 'assistant', content: fullResponse }
     ]
     
+    // 生成对话标题（如果是第一次对话）
+    const updateData: any = {
+      context: newContext,
+      updated_at: new Date().toISOString()
+    }
+    
+    // 如果对话标题是"新对话"，根据第一条消息生成标题
+    if (conversation?.title === '新对话' || !conversation?.title) {
+      const title = content.length <= 30 ? content : content.substring(0, 30) + '...'
+      updateData.title = title
+    }
+    
     await client
       .from('conversations')
-      .update({
-        context: newContext,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', conversationId)
     
     // 增加分身经验
