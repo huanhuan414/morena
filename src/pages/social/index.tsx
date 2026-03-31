@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu } from '@tarojs/taro'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Network } from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -42,15 +42,20 @@ interface AvatarStats {
   postCount: number
   likeCount: number
   commentCount: number
+  orderCount: number
+  totalEarnings: number
 }
 
 export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [avatarStats, setAvatarStats] = useState<AvatarStats>({
     postCount: 0,
     likeCount: 0,
-    commentCount: 0
+    commentCount: 0,
+    orderCount: 0,
+    totalEarnings: 0
   })
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -59,6 +64,8 @@ export default function SocialPage() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePostId, setSharePostId] = useState<string | null>(null)
   const [hasAvatars, setHasAvatars] = useState<boolean | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const statsCardRef = useRef<any>(null)
 
   useLoad(() => {
     showShareMenu({
@@ -71,14 +78,25 @@ export default function SocialPage() {
   })
 
   usePullDownRefresh(() => {
-    fetchData().finally(() => {
+    fetchData(true).finally(() => {
       stopPullDownRefresh()
     })
   })
 
-  const fetchData = async () => {
-    await fetchAvatarRelatedPosts(1)
-    await checkAvatars()
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true)
+      setIsUpdating(true)
+    }
+    
+    try {
+      await fetchAvatarRelatedPosts(1, isRefresh)
+      await checkAvatars()
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      setTimeout(() => setIsUpdating(false), 1500)
+    }
   }
 
   const checkAvatars = async () => {
@@ -93,8 +111,8 @@ export default function SocialPage() {
     }
   }
 
-  const fetchAvatarRelatedPosts = async (pageNum: number) => {
-    if (!hasMore && pageNum > 1) return
+  const fetchAvatarRelatedPosts = async (pageNum: number, isRefresh = false) => {
+    if (!hasMore && pageNum > 1 && !isRefresh) return
     
     setLoading(true)
     try {
@@ -107,7 +125,13 @@ export default function SocialPage() {
         const postList = data.posts || []
         
         if (data.stats) {
-          setAvatarStats(data.stats)
+          setAvatarStats({
+            postCount: data.stats.postCount || 0,
+            likeCount: data.stats.likeCount || 0,
+            commentCount: data.stats.commentCount || 0,
+            orderCount: data.stats.orderCount || 0,
+            totalEarnings: data.stats.totalEarnings || 0
+          })
         }
         
         const postsWithComments = await Promise.all(
@@ -134,7 +158,7 @@ export default function SocialPage() {
           })
         )
         
-        if (pageNum === 1) {
+        if (pageNum === 1 || isRefresh) {
           setPosts(postsWithComments)
         } else {
           setPosts(prev => [...prev, ...postsWithComments])
@@ -192,7 +216,7 @@ export default function SocialPage() {
         showToast({ title: '评论成功', icon: 'success' })
         setCommentInput('')
         setActivePostId(null)
-        fetchAvatarRelatedPosts(1)
+        fetchAvatarRelatedPosts(1, true)
       }
     } catch (error) {
       console.error('评论失败:', error)
@@ -320,7 +344,10 @@ export default function SocialPage() {
           <Text className="header-title">我的分身</Text>
           <Text className="header-subtitle">分身互动过的内容</Text>
         </View>
-        <View className="refresh-btn" onClick={() => fetchData()}>
+        <View 
+          className={`refresh-btn ${refreshing ? 'rotating' : ''}`} 
+          onClick={() => fetchData(true)}
+        >
           <RefreshCw size={20} color="#00f5ff" />
         </View>
       </View>
@@ -328,14 +355,38 @@ export default function SocialPage() {
       <ScrollView 
         className="social-scroll"
         scrollY
+        refresherEnabled
+        refresherTriggered={refreshing}
+        onRefresherRefresh={() => fetchData(true)}
         onScrollToLower={() => hasAvatars && fetchAvatarRelatedPosts(page + 1)}
       >
         {hasAvatars === false ? (
           renderNoAvatarGuide()
         ) : (
           <>
-            {/* AI分身数据统计 */}
-            <View className="stats-card">
+            {/* 收益统计卡片 - 带跑马灯特效 */}
+            <View 
+              ref={statsCardRef}
+              className={`stats-card ${isUpdating ? 'updating' : ''}`}
+            >
+              {/* 收益区域 */}
+              <View className="earnings-section">
+                <Text className="earnings-title">今日收益</Text>
+                <View className="earnings-row">
+                  <View className="earning-item">
+                    <DollarSign size={20} color="#00ff88" />
+                    <Text className="earning-value">¥{avatarStats.totalEarnings.toFixed(2)}</Text>
+                    <Text className="earning-label">总收入</Text>
+                  </View>
+                  <View className="earning-item">
+                    <TrendingUp size={20} color="#00f5ff" />
+                    <Text className="earning-value">{avatarStats.orderCount}</Text>
+                    <Text className="earning-label">接单数</Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* 互动统计 */}
               <View className="stats-row">
                 <View className="stat-item">
                   <Text className="stat-value">{avatarStats.postCount}</Text>
@@ -516,7 +567,7 @@ export default function SocialPage() {
           </>
         )}
 
-        {loading && (
+        {loading && !refreshing && (
           <View className="loading-state">
             <Text className="loading-text">加载中...</Text>
           </View>

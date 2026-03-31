@@ -9,7 +9,7 @@ import { Sparkles, Phone, Shield, ChevronRight } from 'lucide-react-taro'
 import './index.css'
 
 export default function LoginPage() {
-  const { setUserInfo } = useUserStore()
+  const { setUserInfo, setToken } = useUserStore()
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -84,8 +84,14 @@ export default function LoginPage() {
       })
       
       if (res.data?.code === 200) {
-        const { user, isNewUser } = res.data.data
+        const { user, token, isNewUser } = res.data.data
+        
+        // 保存token和用户信息到本地存储
+        if (token) {
+          setToken(token)
+        }
         setUserInfo(user)
+        
         showToast({ 
           title: isNewUser ? '注册成功' : '登录成功', 
           icon: 'success' 

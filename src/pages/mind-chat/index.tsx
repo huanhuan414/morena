@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
@@ -75,9 +75,10 @@ export default function MindChatPage() {
     avgMessageLength: 0
   })
   
-  const scrollViewRef = useRef<number>(0)
+  const [scrollTop, setScrollTop] = useState(0)
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollViewId = useRef<string>('scroll-bottom')
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -102,6 +103,11 @@ export default function MindChatPage() {
       }
     }
   })
+
+  // 自动滚动到底部
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages.length, loading])
 
   const fetchConversations = async () => {
     try {
@@ -202,8 +208,14 @@ export default function MindChatPage() {
     showToast({ title: '已切换对话', icon: 'success', duration: 1000 })
   }
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || !conversation || loading) {
+  const scrollToBottom = () => {
+    // 使用较大的值确保滚动到底部
+    setScrollTop(prev => prev + 9999)
+  }
+
+  const sendMessage = async (text?: string) => {
+    const messageText = text || inputText
+    if (!messageText.trim() || !conversation || loading) {
       showToast({ title: '请输入消息', icon: 'none' })
       return
     }
@@ -211,12 +223,11 @@ export default function MindChatPage() {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputText,
+      content: messageText,
       created_at: new Date().toISOString()
     }
 
     setMessages(prev => [...prev, userMessage])
-    const messageText = inputText
     setInputText('')
     setLoading(true)
     scrollToBottom()
@@ -245,6 +256,7 @@ export default function MindChatPage() {
         fetchLearningStats()
       }
     } catch (error) {
+      // 降级处理
       setTimeout(() => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -268,19 +280,63 @@ export default function MindChatPage() {
   }
 
   const startRecording = () => {
-    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
-      showToast({ title: '语音功能仅支持小程序', icon: 'none' })
+    const env = Taro.getEnv()
+    
+    if (env !== Taro.ENV_TYPE.WEAPP) {
+      // H5环境使用浏览器API
+      showToast({ title: '请开始说话...', icon: 'none', duration: 60000 })
+      setIsRecording(true)
+      setRecordingTime(0)
+      
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
+      
+      // 模拟语音识别（实际需要接入语音识别API）
       return
     }
     
-    setIsRecording(true)
-    setRecordingTime(0)
+    // 小程序环境使用RecorderManager
+    const recorderManager = Taro.getRecorderManager()
+    
+    recorderManager.onStart(() => {
+      setIsRecording(true)
+      setRecordingTime(0)
+      showToast({ title: '开始录音...', icon: 'none', duration: 60000 })
+    })
+    
+    recorderManager.onStop((res) => {
+      setIsRecording(false)
+      const { tempFilePath } = res
+      
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+        recordingTimerRef.current = null
+      }
+      
+      // 调用后端语音识别接口
+      recognizeSpeech(tempFilePath)
+    })
+    
+    recorderManager.onError((err) => {
+      console.error('录音失败:', err)
+      showToast({ title: '录音失败', icon: 'none' })
+      setIsRecording(false)
+    })
     
     recordingTimerRef.current = setInterval(() => {
       setRecordingTime(prev => prev + 1)
     }, 1000)
     
-    showToast({ title: '开始录音...', icon: 'none', duration: 60000 })
+    try {
+      recorderManager.start({
+        format: 'mp3',
+        duration: 60000
+      })
+    } catch (error) {
+      console.error('启动录音失败:', error)
+      showToast({ title: '启动录音失败', icon: 'none' })
+    }
   }
 
   const stopRecording = () => {
@@ -291,16 +347,68 @@ export default function MindChatPage() {
       recordingTimerRef.current = null
     }
     
-    if (recordingTime > 0) {
-      setInputText('这是一条语音消息的识别结果')
-      showToast({ title: '语音识别完成', icon: 'success' })
+    const env = Taro.getEnv()
+    
+    if (env === Taro.ENV_TYPE.WEAPP) {
+      const recorderManager = Taro.getRecorderManager()
+      recorderManager.stop()
+    } else {
+      // H5环境模拟识别结果
+      if (recordingTime > 0) {
+        showToast({ title: '识别中...', icon: 'loading', duration: 1500 })
+        
+        // 模拟语音识别结果
+        setTimeout(() => {
+          const recognizedText = '这是语音识别的结果'
+          setInputText(recognizedText)
+          showToast({ title: '识别完成', icon: 'success', duration: 1000 })
+          
+          // 自动发送
+          setTimeout(() => {
+            sendMessage(recognizedText)
+          }, 500)
+        }, 1500)
+      }
     }
     
     setRecordingTime(0)
   }
 
-  const scrollToBottom = () => {
-    scrollViewRef.current = 999999
+  const recognizeSpeech = async (filePath: string) => {
+    try {
+      showToast({ title: '识别中...', icon: 'loading', duration: 10000 })
+      
+      // 上传音频文件并识别
+      const res = await Network.uploadFile({
+        url: '/api/chat/speech-to-text',
+        filePath: filePath,
+        name: 'audio'
+      })
+      
+      // 解析响应数据
+      const responseData = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+      
+      if (responseData?.code === 200) {
+        const text = responseData.data?.text || ''
+        setInputText(text)
+        showToast({ title: '识别完成', icon: 'success', duration: 1000 })
+        
+        // 自动发送识别结果
+        if (text.trim()) {
+          setTimeout(() => {
+            sendMessage(text)
+          }, 500)
+        }
+      } else {
+        showToast({ title: '识别失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('语音识别失败:', error)
+      // 降级处理：直接发送提示
+      const fallbackText = '我发了一条语音消息'
+      setInputText(fallbackText)
+      showToast({ title: '语音功能暂不可用', icon: 'none' })
+    }
   }
 
   const copyMessage = (content: string) => {
@@ -441,12 +549,13 @@ export default function MindChatPage() {
         </View>
       )}
 
-      {/* 消息区域 */}
+      {/* 消息区域 - 使用scroll-into-view自动滚动 */}
       <ScrollView 
         className="messages-scroll"
         scrollY
-        scrollTop={scrollViewRef.current}
+        scrollTop={scrollTop}
         scrollWithAnimation
+        scrollIntoView={scrollViewId.current}
       >
         {messages.length === 0 ? (
           <View className="empty-chat">
@@ -463,9 +572,10 @@ export default function MindChatPage() {
             <Text className="empty-desc">发送消息开始心智交流</Text>
           </View>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, index) => (
             <View 
               key={msg.id} 
+              id={`msg-${index}`}
               className={`message-item ${msg.role}`}
             >
               {msg.role === 'assistant' && (
@@ -507,7 +617,7 @@ export default function MindChatPage() {
         )}
         
         {loading && (
-          <View className="message-item assistant">
+          <View className="message-item assistant" id="msg-loading">
             <View className="message-avatar">
               {avatar?.avatar_url ? (
                 <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
@@ -525,7 +635,7 @@ export default function MindChatPage() {
           </View>
         )}
         
-        <View className="messages-bottom" />
+        <View className="messages-bottom" id="scroll-bottom" />
       </ScrollView>
 
       {/* 底部输入栏 - 在TabBar之上 */}
@@ -584,7 +694,7 @@ export default function MindChatPage() {
           {!isVoiceMode && (
             <View 
               className={`send-action ${inputText.trim() ? 'active' : ''}`}
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
             >
               <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
             </View>
