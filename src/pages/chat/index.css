@@ -648,6 +648,28 @@
   margin-top: 16px;
   border-radius: 16px;
   overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.images-scroll {
+  white-space: nowrap;
+  display: flex;
+  padding: 12px;
+  gap: 12px;
+}
+
+.result-image {
+  width: 100%;
+  border-radius: 16px;
+  display: block;
+}
+
+.result-image-multi {
+  width: 240px;
+  height: 240px;
+  border-radius: 12px;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .result-image {
@@ -682,9 +704,47 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* 搜索结果展示 */
+.result-search-container {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-result-item {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  border-left: 3px solid #00f5ff;
+}
+
+.search-result-title {
+  display: block;
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.search-result-snippet {
+  display: block;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.search-result-link {
+  font-size: 20px;
+  color: #00f5ff;
+  text-decoration: underline;
+}
+
+/* 文档结果展示 */
 .result-document {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 20px;
   background: rgba(0, 0, 0, 0.3);
@@ -701,32 +761,44 @@
   font-size: 26px;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.document-desc {
+.document-content {
+  display: block;
   font-size: 22px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin-top: 12px;
+  white-space: pre-wrap;
 }
 
-.result-report {
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 16px;
+/* 消息结果展示 */
+.result-message {
+  padding: 16px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 12px;
   margin-top: 16px;
+  border-left: 3px solid #10b981;
 }
 
-.report-content {
+.result-message-text {
   font-size: 24px;
-  line-height: 1.6;
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* 摘要容器 */
+.result-summary-container {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  margin-top: 12px;
 }
 
 .task-summary {
   font-size: 24px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .task-result {

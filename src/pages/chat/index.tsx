@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
-  Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video, ExternalLink,
+  Send, Sparkles, Plus, Bot, Loader, Check, FileText, Search, Image as ImageIcon, Video,
   Mic, History, X, Settings, Copy
 } from 'lucide-react-taro'
 import './index.css'
@@ -66,6 +66,15 @@ interface Task {
     ratio?: string
     resolution?: string
     hasAudio?: boolean
+    images?: string[]
+    items?: Array<{
+      title: string
+      snippet?: string
+      url?: string
+    }>
+    message?: string
+    count?: number
+    documentId?: string
   }
   logs: TaskLog[]
   created_at: string
@@ -739,23 +748,43 @@ export default function ChatPage() {
             {/* 图片结果展示 */}
             {activeTask.result?.type === 'image' && activeTask.result?.url && (
               <View className="result-image-container">
-                <Image 
-                  src={activeTask.result.url} 
-                  className="result-image" 
-                  mode="widthFix"
-                  onClick={() => {
-                    const imageUrl = activeTask.result?.url
-                    if (imageUrl) {
+                {/* 支持多图展示 */}
+                {activeTask.result.images && activeTask.result.images.length > 1 ? (
+                  <ScrollView className="images-scroll" scrollX>
+                    {activeTask.result.images.map((img: string, idx: number) => (
+                      <Image 
+                        key={idx}
+                        src={img} 
+                        className="result-image-multi" 
+                        mode="aspectFill"
+                        onClick={() => {
+                          Taro.previewImage({
+                            current: img,
+                            urls: activeTask.result?.images || [img]
+                          })
+                        }}
+                      />
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Image 
+                    src={activeTask.result.url} 
+                    className="result-image" 
+                    mode="widthFix"
+                    onClick={() => {
                       Taro.previewImage({
-                        current: imageUrl,
-                        urls: [imageUrl]
+                        current: activeTask.result?.url || '',
+                        urls: [activeTask.result?.url || '']
                       })
-                    }
-                  }}
-                />
+                    }}
+                  />
+                )}
                 <View className="result-meta">
                   <ImageIcon size={14} color="#bf00ff" />
-                  <Text className="meta-text">{activeTask.result.style || 'AI生成图片'}</Text>
+                  <Text className="meta-text">
+                    {activeTask.result?.style || 'AI生成图片'}
+                    {activeTask.result?.size && ` · ${activeTask.result.size}`}
+                  </Text>
                 </View>
               </View>
             )}
@@ -769,11 +798,40 @@ export default function ChatPage() {
                   controls
                   playsInline
                   poster=""
+                  style={{ width: '100%', borderRadius: '12px' }}
                 />
                 <View className="result-meta">
                   <Video size={14} color="#ff00aa" />
-                  <Text className="meta-text">{activeTask.result.duration || 5}秒 · {activeTask.result.ratio || '16:9'}</Text>
+                  <Text className="meta-text">
+                    {activeTask.result.duration || 5}秒
+                    {activeTask.result.ratio && ` · ${activeTask.result.ratio}`}
+                    {activeTask.result.hasAudio && ' · 含音频'}
+                  </Text>
                 </View>
+              </View>
+            )}
+            
+            {/* 搜索结果展示 */}
+            {activeTask.result?.type === 'search' && activeTask.result?.items && (
+              <View className="result-search-container">
+                {activeTask.result.items.slice(0, 5).map((item: any, idx: number) => (
+                  <View key={idx} className="search-result-item">
+                    <Text className="search-result-title">{item.title}</Text>
+                    {item.snippet && (
+                      <Text className="search-result-snippet">{item.snippet}</Text>
+                    )}
+                    {item.url && (
+                      <Text 
+                        className="search-result-link"
+                        onClick={() => {
+                          Taro.setClipboardData({ data: item.url })
+                        }}
+                      >
+                        查看链接
+                      </Text>
+                    )}
+                  </View>
+                ))}
               </View>
             )}
             
@@ -783,9 +841,17 @@ export default function ChatPage() {
                 <FileText size={28} color="#00f5ff" />
                 <View className="document-info">
                   <Text className="document-title">{activeTask.result.title}</Text>
-                  <Text className="document-desc">{activeTask.result.summary || '点击查看详情'}</Text>
+                  {activeTask.result.content && (
+                    <Text className="document-content">{activeTask.result.content}</Text>
+                  )}
                 </View>
-                <ExternalLink size={18} color="#00f5ff" />
+              </View>
+            )}
+            
+            {/* 消息结果展示 */}
+            {activeTask.result?.type === 'message' && activeTask.result?.message && (
+              <View className="result-message">
+                <Text className="result-message-text">✅ {activeTask.result.message}</Text>
               </View>
             )}
             
@@ -797,8 +863,10 @@ export default function ChatPage() {
             )}
             
             {/* 默认摘要展示 */}
-            {activeTask.result?.summary && !['image', 'video', 'document', 'report'].includes(activeTask.result.type || '') && (
-              <Text className="task-summary">{activeTask.result.summary}</Text>
+            {activeTask.result?.summary && !['image', 'video', 'document', 'search', 'message', 'report'].includes(activeTask.result.type || '') && (
+              <View className="result-summary-container">
+                <Text className="task-summary">{activeTask.result.summary}</Text>
+              </View>
             )}
           </View>
         )}

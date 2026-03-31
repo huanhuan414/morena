@@ -60,6 +60,7 @@ export class AgentService {
       let currentStep = 0
       let isComplete = false
       let finalAnswer = ''
+      let lastToolResult: ToolResult | null = null
       let messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `请执行任务：${taskDescription}` }
@@ -107,6 +108,7 @@ export class AgentService {
           
           step.result = toolResult
           step.observation = toolResult.message
+          lastToolResult = toolResult
           
           if (!toolsUsed.includes(parsed.tool)) {
             toolsUsed.push(parsed.tool)
@@ -140,8 +142,11 @@ export class AgentService {
         finalAnswer = '任务执行达到最大步数限制，可能需要人工介入。'
       }
 
-      // 更新任务状态
-      await this.updateTaskStatus(taskId, 'completed', 100, finalAnswer)
+      // 构建详细结果
+      const result = this.buildTaskResult(lastToolResult, finalAnswer, toolsUsed)
+
+      // 更新任务状态（包含详细结果）
+      await this.updateTaskStatusWithResult(taskId, 'completed', 100, result)
 
       // 记录执行日志
       await this.saveExecutionLogs(taskId, steps)
@@ -169,6 +174,61 @@ export class AgentService {
         error: error.message
       }
     }
+  }
+
+  /**
+   * 构建任务结果
+   */
+  private buildTaskResult(
+    lastToolResult: ToolResult | null,
+    finalAnswer: string,
+    toolsUsed: string[]
+  ): any {
+    const result: any = {
+      summary: finalAnswer
+    }
+
+    // 如果最后一个工具有返回数据，提取详细信息
+    if (lastToolResult?.data) {
+      const data = lastToolResult.data
+
+      // 图片生成结果
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        result.type = 'image'
+        result.url = data.imageUrls[0]
+        result.style = data.style
+        result.size = data.size
+        result.images = data.imageUrls
+      }
+      // 视频生成结果
+      else if (data.videoUrl) {
+        result.type = 'video'
+        result.url = data.videoUrl
+        result.duration = data.duration
+        result.ratio = data.ratio
+        result.hasAudio = data.hasAudio
+      }
+      // 搜索结果
+      else if (data.results && Array.isArray(data.results)) {
+        result.type = 'search'
+        result.items = data.results
+        result.count = data.results.length
+      }
+      // 文档创建结果
+      else if (data.documentId) {
+        result.type = 'document'
+        result.title = data.title
+        result.content = data.content
+        result.documentId = data.documentId
+      }
+      // 消息发送结果
+      else if (data.messageId) {
+        result.type = 'message'
+        result.message = data.message
+      }
+    }
+
+    return result
   }
 
   /**
@@ -333,6 +393,34 @@ ${toolsDescription}
     
     if (result) {
       updateData.result = { summary: result }
+    }
+    
+    if (status === 'completed') {
+      updateData.completed_at = new Date().toISOString()
+    }
+    
+    await client
+      .from('tasks')
+      .update(updateData)
+      .eq('id', taskId)
+  }
+
+  /**
+   * 更新任务状态（包含详细结果）
+   */
+  private async updateTaskStatusWithResult(
+    taskId: string, 
+    status: string, 
+    progress: number,
+    result: any
+  ) {
+    const client = getSupabaseClient()
+    
+    const updateData: any = {
+      status,
+      progress,
+      result,
+      updated_at: new Date().toISOString()
     }
     
     if (status === 'completed') {
