@@ -22,37 +22,42 @@
 }
 
 .user-card {
-  margin: -240px 40px 0;
+  margin: -240px 16px 0;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 56px;
-  padding: 48px;
+  border-radius: 32px;
+  padding: 24px;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
 }
 
 .user-header {
   display: flex;
   align-items: center;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .user-avatar-wrap {
   position: relative;
-  margin-right: 32px;
+  margin-right: 16px;
+  flex-shrink: 0;
 }
 
 .user-avatar {
-  width: 144px;
-  height: 144px;
-  border-radius: 48px;
-  border: 4px solid rgba(0, 245, 255, 0.3);
+  width: 64px;
+  height: 64px;
+  border-radius: 24px;
+  border: 2px solid rgba(0, 245, 255, 0.3);
 }
 
 .avatar-placeholder {
-  width: 144px;
-  height: 144px;
-  border-radius: 48px;
+  width: 64px;
+  height: 64px;
+  border-radius: 24px;
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   display: flex;
   align-items: center;
@@ -60,157 +65,178 @@
 }
 
 .avatar-text {
-  font-size: 56px;
+  font-size: 28px;
   font-weight: 700;
   color: #0a0a0f;
 }
 
 .level-badge {
   position: absolute;
-  bottom: -8px;
+  bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  padding: 4px 24px;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(0, 245, 255, 0.3);
+  padding: 2px 12px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 245, 255, 0.3);
 }
 
 .level-text {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   color: #0a0a0f;
 }
 
 .user-info {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .user-name {
   display: block;
-  font-size: 44px;
+  font-size: 20px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-id {
-  font-size: 26px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-btn {
-  width: 88px;
-  height: 88px;
+  width: 40px;
+  height: 40px;
   background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .stats-row {
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 40px;
-  padding: 32px;
-  margin-bottom: 40px;
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .stat-item {
   flex: 1;
   text-align: center;
+  min-width: 0;
 }
 
 .stat-value {
   display: block;
-  font-size: 44px;
+  font-size: 20px;
   font-weight: 700;
   color: #00f5ff;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 24px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .stat-divider {
-  width: 2px;
-  height: 64px;
+  width: 1px;
+  height: 32px;
   background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .xp-section {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 32px;
-  padding: 32px;
+  border-radius: 16px;
+  padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .xp-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .xp-title {
-  font-size: 28px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .xp-value {
-  font-size: 28px;
+  font-size: 14px;
   font-weight: 600;
   color: #00f5ff;
 }
 
 .xp-bar {
-  height: 12px;
+  height: 8px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .xp-fill {
   height: 100%;
   background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .xp-hint {
-  font-size: 24px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
 }
 
 .menu-scroll {
   flex: 1;
-  padding: 48px 40px;
-  padding-bottom: 240px;
+  padding: 48px 20px;
+  padding-bottom: 200px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .menu-section {
   background: rgba(255, 255, 255, 0.02);
-  border: 2px solid rgba(255, 255, 255, 0.05);
-  border-radius: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
   overflow: hidden;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .menu-grid {
-  padding: 16px 0;
+  padding: 8px 0;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 36px 40px;
+  padding: 36px 24px;
   border-bottom: 2px solid rgba(255, 255, 255, 0.04);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .menu-item:last-child {
@@ -221,74 +247,87 @@
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .menu-icon {
-  width: 88px;
-  height: 88px;
-  border-radius: 28px;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 28px;
+  margin-right: 20px;
+  flex-shrink: 0;
 }
 
 .menu-text {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .menu-title {
   display: block;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 500;
   color: #fff;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-desc {
-  font-size: 26px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .logout-section {
-  padding: 0 40px;
-  margin-bottom: 48px;
+  padding: 0 16px;
+  margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .logout-btn {
   width: 100%;
-  height: 104px;
+  height: 48px;
   background: rgba(255, 100, 100, 0.1);
-  border: 2px solid rgba(255, 100, 100, 0.2);
-  border-radius: 32px;
+  border: 1px solid rgba(255, 100, 100, 0.2);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .logout-text {
-  font-size: 30px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.5);
 }
 
 .version-section {
   text-align: center;
-  padding: 40px 0;
+  padding: 20px 0;
 }
 
 .version-text {
   display: block;
-  font-size: 24px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.25);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .version-copyright {
-  font-size: 22px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.2);
 }
 
 .bottom-space {
-  height: 80px;
+  height: 40px;
 }
