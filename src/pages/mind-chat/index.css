@@ -795,3 +795,87 @@
 .text-input-placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
+
+/* Agent 模式相关样式 */
+.quick-action.agent-active {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 245, 255, 0.2));
+  border: 1rpx solid rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.2);
+}
+
+.agent-mode-indicator {
+  position: absolute;
+  right: 24rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4rpx 16rpx;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 245, 255, 0.2));
+  border: 1rpx solid rgba(0, 255, 136, 0.3);
+  border-radius: 16rpx;
+}
+
+.agent-mode-text {
+  font-size: 20rpx;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.text-input-box {
+  position: relative;
+}
+
+/* Agent 执行结果卡片 */
+.agent-result-card {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border: 1rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 16rpx;
+}
+
+.agent-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.agent-step-item:last-child {
+  border-bottom: none;
+}
+
+.agent-step-badge {
+  padding: 4rpx 12rpx;
+  background: rgba(0, 245, 255, 0.1);
+  border-radius: 12rpx;
+  font-size: 20rpx;
+  color: #00f5ff;
+  flex-shrink: 0;
+}
+
+.agent-step-content {
+  flex: 1;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.agent-config-required {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: rgba(255, 170, 0, 0.1);
+  border: 1rpx solid rgba(255, 170, 0, 0.3);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.agent-config-btn {
+  padding: 8rpx 24rpx;
+  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: #0a0a0f;
+  font-weight: 600;
+}

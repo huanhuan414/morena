@@ -5,9 +5,10 @@ import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
+import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, FileText
+  MessageCircle, Mic, Keyboard, Loader, FileText, Cpu
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -28,6 +29,7 @@ interface Message {
     media_keys?: string[]
     media_urls?: Record<string, string>
     media?: MessageMedia[]
+    agent_result?: AgentResult
   }
 }
 
@@ -48,6 +50,28 @@ interface Conversation {
   }
   created_at: string
   updated_at: string
+}
+
+// Agent 执行步骤
+interface ReActStep {
+  step_index: number
+  thought: string
+  action?: string
+  action_input?: any
+  observation?: any
+  requires_config?: boolean
+  config_platform?: PlatformType
+  config_fields?: any[]
+}
+
+// Agent 执行结果
+interface AgentResult {
+  success: boolean
+  finalAnswer: string
+  steps: ReActStep[]
+  requiresConfig: boolean
+  configPlatform?: PlatformType
+  configFields?: any[]
 }
 
 interface Avatar {
@@ -104,6 +128,11 @@ export default function MindChatPage() {
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const eventSourceRef = useRef<any>(null)
+  
+  // Agent 相关状态
+  const [isAgentMode, setIsAgentMode] = useState(false)
+  const [showConfigDialog, setShowConfigDialog] = useState(false)
+  const [configPlatform, setConfigPlatform] = useState<PlatformType | null>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -276,8 +305,76 @@ export default function MindChatPage() {
   }
 
   const sendStreamMessage = async (content: string) => {
-    return new Promise<void>((resolve, reject) => {
-      // 使用普通请求 + 轮询模拟（实际生产环境建议使用 WebSocket）
+    return new Promise<void>(async (resolve, reject) => {
+      // 检测是否是 Agent 任务（包含操作关键词）
+      const agentKeywords = ['帮我', '创建', '删除', '发布', '生成', '写', '画', '更新', '查看', '列表', '任务', '订单', '文章', '视频', '图片', '公众号', '小红书', 'B站', '微博', '抖音', '视频号']
+      const shouldUseAgent = agentKeywords.some(keyword => content.includes(keyword))
+      
+      if (shouldUseAgent && isAgentMode) {
+        // 使用 Agent 执行任务
+        try {
+          setCurrentStatus('Agent 思考中...')
+          
+          const res = await Network.request({
+            url: '/api/agent/execute',
+            method: 'POST',
+            data: {
+              avatar_id: avatar?.id,
+              task_description: content,
+              conversation_id: conversation?.id
+            }
+          })
+          
+          console.log('Agent 执行结果:', res)
+          
+          const result = res.data?.data as AgentResult
+          
+          if (result) {
+            // 构建 Agent 回复消息
+            let replyContent = result.finalAnswer
+            
+            if (result.steps.length > 0) {
+              const stepsSummary = result.steps
+                .filter(s => s.action)
+                .map(s => `• ${s.action}: ${s.observation?.success ? '✓' : '✗'}`)
+                .join('\n')
+              
+              if (stepsSummary) {
+                replyContent = `${result.finalAnswer}\n\n执行步骤：\n${stepsSummary}`
+              }
+            }
+            
+            const aiMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: replyContent,
+              created_at: new Date().toISOString(),
+              metadata: { agent_result: result }
+            }
+            
+            setMessages(prev => [...prev, aiMessage])
+            setLoading(false)
+            setCurrentStatus('')
+            scrollToBottom()
+            
+            // 如果需要配置，打开配置弹窗
+            if (result.requiresConfig && result.configPlatform) {
+              setConfigPlatform(result.configPlatform)
+              setShowConfigDialog(true)
+            }
+            
+            resolve()
+          } else {
+            reject(new Error('Agent 执行失败'))
+          }
+        } catch (err) {
+          console.error('Agent 执行失败:', err)
+          reject(err)
+        }
+        return
+      }
+      
+      // 普通对话
       Network.request({
         url: '/api/chat/send',
         method: 'POST',
@@ -784,6 +881,12 @@ export default function MindChatPage() {
       {/* 底部输入栏 */}
       <View className="input-bar">
         <View className="input-left">
+          <View 
+            className={`quick-action ${isAgentMode ? 'agent-active' : ''}`}
+            onClick={() => setIsAgentMode(!isAgentMode)}
+          >
+            <Cpu size={24} color={isAgentMode ? '#00ff88' : 'rgba(255,255,255,0.6)'} />
+          </View>
           <View className="quick-action" onClick={toggleVoiceMode}>
             {isVoiceMode ? (
               <Keyboard size={24} color="rgba(255,255,255,0.6)" />
@@ -824,13 +927,18 @@ export default function MindChatPage() {
             <View className="text-input-box">
               <Input
                 className="text-input-control"
-                placeholder="输入消息..."
+                placeholder={isAgentMode ? "告诉AI要做什么..." : "输入消息..."}
                 placeholderClass="text-input-placeholder"
                 value={inputText}
                 onInput={(e: any) => setInputText(e.detail.value)}
                 onConfirm={() => sendMessage()}
                 confirmType="send"
               />
+              {isAgentMode && (
+                <View className="agent-mode-indicator">
+                  <Text className="agent-mode-text">Agent</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -846,6 +954,23 @@ export default function MindChatPage() {
           )}
         </View>
       </View>
+      
+      {/* 平台配置弹窗 */}
+      {configPlatform && (
+        <PlatformConfigDialog
+          open={showConfigDialog}
+          platform={configPlatform}
+          onClose={() => {
+            setShowConfigDialog(false)
+            setConfigPlatform(null)
+          }}
+          onSuccess={() => {
+            setShowConfigDialog(false)
+            setConfigPlatform(null)
+            showToast({ title: '配置成功，请重新执行任务', icon: 'success' })
+          }}
+        />
+      )}
     </View>
   )
 }
