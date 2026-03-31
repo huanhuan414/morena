@@ -97,7 +97,7 @@ export default function ChatPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
-  const scrollViewRef = useRef<string>('')
+  const scrollViewRef = useRef<number>(0)
   const taskPollingRef = useRef<NodeJS.Timeout | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
@@ -210,17 +210,34 @@ export default function ChatPage() {
 
   const fetchOrCreateConversation = async (avatarId: string) => {
     try {
-      const res = await Network.request({
-        url: '/api/chat/conversation',
-        method: 'POST',
-        data: { avatar_id: avatarId }
-      })
-      if (res.data?.code === 200) {
-        setConversation(res.data.data)
-        fetchMessages(res.data.data.id)
+      console.log('[Chat] fetchOrCreateConversation - avatarId:', avatarId)
+      
+      // 先获取历史对话列表
+      const conversationsRes = await Network.request({ url: '/api/chat/conversations' })
+      console.log('[Chat] 历史对话列表:', conversationsRes.data)
+      
+      if (conversationsRes.data?.code === 200 && conversationsRes.data.data?.length > 0) {
+        // 有历史对话，加载最新的一个
+        const latestConv = conversationsRes.data.data[0]
+        console.log('[Chat] 加载最新对话:', latestConv.id, latestConv.title)
+        setConversation(latestConv)
+        await fetchMessages(latestConv.id)
+      } else {
+        // 没有历史对话，创建新对话
+        console.log('[Chat] 没有历史对话，创建新对话')
+        const res = await Network.request({
+          url: '/api/chat/conversation',
+          method: 'POST',
+          data: { avatar_id: avatarId }
+        })
+        if (res.data?.code === 200) {
+          console.log('[Chat] 新对话创建成功:', res.data.data.id)
+          setConversation(res.data.data)
+          setMessages([])
+        }
       }
     } catch (error) {
-      console.error('获取对话失败:', error)
+      console.error('[Chat] 获取对话失败:', error)
     }
   }
 
@@ -376,7 +393,8 @@ export default function ChatPage() {
   }
 
   const scrollToBottom = () => {
-    scrollViewRef.current = Date.now().toString()
+    // 使用一个大数值滚动到底部
+    scrollViewRef.current = 999999
   }
 
   const createAvatar = async () => {
@@ -631,7 +649,7 @@ export default function ChatPage() {
       <ScrollView 
         className="messages-scroll"
         scrollY
-        scrollIntoView={scrollViewRef.current}
+        scrollTop={scrollViewRef.current}
         scrollWithAnimation
       >
         {messages.length === 0 ? (
@@ -677,7 +695,6 @@ export default function ChatPage() {
           messages.map((msg) => (
             <View 
               key={msg.id} 
-              id={msg.id}
               className={`message-item ${msg.role}`}
             >
               {msg.role === 'assistant' && (
