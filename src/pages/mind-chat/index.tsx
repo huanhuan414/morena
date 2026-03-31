@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
+import { Input } from '@/components/ui/input'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, FileText
@@ -85,7 +86,7 @@ export default function MindChatPage() {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [isVoiceMode, setIsVoiceMode] = useState(true)
+  const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [learningStats, setLearningStats] = useState<LearningStats>({
@@ -820,15 +821,14 @@ export default function MindChatPage() {
               )}
             </View>
           ) : (
-            <View className="text-input-area">
-              <input
-                className="text-input"
-                placeholder="输入消息..."
-                value={inputText}
-                onInput={(e: any) => setInputText(e.detail.value)}
-                onKeyDown={(e: any) => e.key === 'Enter' && sendMessage()}
-              />
-            </View>
+            <Input
+              className="text-input-area-override"
+              placeholder="输入消息..."
+              value={inputText}
+              onInput={(e: any) => setInputText(e.detail.value)}
+              onConfirm={() => sendMessage()}
+              confirmType="send"
+            />
           )}
         </View>
 
