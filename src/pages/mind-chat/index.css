@@ -9,7 +9,7 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
+  padding-bottom: 140px;
   box-sizing: border-box;
 }
 
@@ -352,8 +352,8 @@
 .messages-scroll {
   flex: 1;
   width: 100%;
-  padding: 0 24rpx;
-  padding-bottom: 160rpx;
+  padding: 0 12px;
+  padding-bottom: 130px;
   position: relative;
   z-index: 5;
   box-sizing: border-box;
@@ -647,32 +647,33 @@
 /* 底部输入栏 - 固定在TabBar之上 */
 .input-bar {
   position: fixed;
-  bottom: calc(100rpx + env(safe-area-inset-bottom));
+  bottom: 50px;
   left: 0;
   right: 0;
-  height: 140rpx;
+  height: 70px;
   background: linear-gradient(to top, rgba(10, 10, 15, 0.98) 0%, rgba(10, 10, 15, 0.95) 100%);
   border-top: 2rpx solid rgba(0, 245, 255, 0.1);
   display: flex;
   align-items: center;
-  padding: 16rpx 24rpx;
+  padding: 8px 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
   z-index: 100;
   box-sizing: border-box;
 }
 
 .input-left, .input-right {
-  width: 100rpx;
+  width: 50px;
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
 .quick-action, .send-action {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 24rpx;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: rgba(30, 30, 45, 0.8);
-  border: 2rpx solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -685,17 +686,17 @@
 
 .input-center {
   flex: 1;
-  padding: 0 16rpx;
+  padding: 0 8px;
   min-width: 0;
 }
 
 /* 语音输入区域 */
 .voice-input-area {
   width: 100%;
-  height: 80rpx;
+  height: 40px;
   background: rgba(30, 30, 45, 0.8);
-  border: 2rpx solid rgba(255, 255, 255, 0.1);
-  border-radius: 40rpx;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -769,11 +770,11 @@
 /* 文本输入区域 - 与登录页面一致 */
 .text-input-box {
   width: 100%;
-  height: 80rpx;
+  height: 40px;
   background: rgba(255, 255, 255, 0.03);
-  border: 2rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 40rpx;
-  padding: 0 32rpx;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -789,7 +790,7 @@
   height: 100%;
   background: transparent;
   color: #fff;
-  font-size: 28rpx;
+  font-size: 14px;
 }
 
 .text-input-placeholder {
