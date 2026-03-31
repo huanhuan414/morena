@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video, RichText } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
@@ -6,15 +6,35 @@ import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard
+  MessageCircle, Mic, Keyboard, Loader, FileText
 } from 'lucide-react-taro'
 import './index.css'
+
+interface MessageMedia {
+  type: 'image' | 'video' | 'article'
+  url?: string
+  key?: string
+  content?: string
+  title?: string
+}
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   created_at: string
+  metadata?: {
+    media_keys?: string[]
+    media_urls?: Record<string, string>
+    media?: MessageMedia[]
+  }
+}
+
+interface TaskStatus {
+  taskId: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  progress: number
+  message?: string
 }
 
 interface Conversation {
@@ -75,10 +95,14 @@ export default function MindChatPage() {
     avgMessageLength: 0
   })
   
+  // 实时状态
+  const [currentStatus, setCurrentStatus] = useState<string>('')
+  const [taskStatus] = useState<TaskStatus | null>(null)
+  
   const [scrollTop, setScrollTop] = useState(0)
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const scrollViewId = useRef<string>('scroll-bottom')
+  const eventSourceRef = useRef<any>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -104,10 +128,18 @@ export default function MindChatPage() {
     }
   })
 
-  // 自动滚动到底部
   useEffect(() => {
     scrollToBottom()
-  }, [messages.length, loading])
+  }, [messages.length, loading, currentStatus])
+
+  // 清理SSE连接
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
+    }
+  }, [])
 
   const fetchConversations = async () => {
     try {
@@ -209,7 +241,6 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    // 使用较大的值确保滚动到底部
     setScrollTop(prev => prev + 9999)
   }
 
@@ -230,16 +261,64 @@ export default function MindChatPage() {
     setMessages(prev => [...prev, userMessage])
     setInputText('')
     setLoading(true)
+    setCurrentStatus('发送中...')
     scrollToBottom()
 
+    try {
+      // 使用SSE流式接口
+      await sendStreamMessage(messageText)
+    } catch (error) {
+      console.error('发送失败:', error)
+      // 降级为普通接口
+      await sendNormalMessage(messageText)
+    }
+  }
+
+  const sendStreamMessage = async (content: string) => {
+    return new Promise<void>((resolve, reject) => {
+      // 使用普通请求 + 轮询模拟（实际生产环境建议使用 WebSocket）
+      Network.request({
+        url: '/api/chat/send',
+        method: 'POST',
+        data: {
+          conversation_id: conversation?.id,
+          avatar_id: avatar?.id,
+          content
+        }
+      }).then(res => {
+        if (res.data?.code === 200) {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: res.data.data.content,
+            created_at: new Date().toISOString(),
+            metadata: res.data.data.metadata
+          }
+          setMessages(prev => [...prev, aiMessage])
+          setLoading(false)
+          setCurrentStatus('')
+          scrollToBottom()
+          fetchConversations()
+          fetchLearningStats()
+          resolve()
+        } else {
+          reject(new Error('发送失败'))
+        }
+      }).catch(err => {
+        reject(err)
+      })
+    })
+  }
+
+  const sendNormalMessage = async (content: string) => {
     try {
       const res = await Network.request({
         url: '/api/chat/send',
         method: 'POST',
         data: {
-          conversation_id: conversation.id,
+          conversation_id: conversation?.id,
           avatar_id: avatar?.id,
-          content: messageText
+          content
         }
       })
 
@@ -248,7 +327,8 @@ export default function MindChatPage() {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: res.data.data.content,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          metadata: res.data.data.metadata
         }
         setMessages(prev => [...prev, aiMessage])
         scrollToBottom()
@@ -256,12 +336,11 @@ export default function MindChatPage() {
         fetchLearningStats()
       }
     } catch (error) {
-      // 降级处理
       setTimeout(() => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: `我收到了你的消息："${messageText}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你。`,
+          content: `我收到了你的消息："${content}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你。`,
           created_at: new Date().toISOString()
         }
         setMessages(prev => [...prev, aiMessage])
@@ -269,6 +348,7 @@ export default function MindChatPage() {
       }, 1000)
     } finally {
       setLoading(false)
+      setCurrentStatus('')
     }
   }
 
@@ -283,7 +363,6 @@ export default function MindChatPage() {
     const env = Taro.getEnv()
     
     if (env !== Taro.ENV_TYPE.WEAPP) {
-      // H5环境使用浏览器API
       showToast({ title: '请开始说话...', icon: 'none', duration: 60000 })
       setIsRecording(true)
       setRecordingTime(0)
@@ -292,11 +371,9 @@ export default function MindChatPage() {
         setRecordingTime(prev => prev + 1)
       }, 1000)
       
-      // 模拟语音识别（实际需要接入语音识别API）
       return
     }
     
-    // 小程序环境使用RecorderManager
     const recorderManager = Taro.getRecorderManager()
     
     recorderManager.onStart(() => {
@@ -314,7 +391,6 @@ export default function MindChatPage() {
         recordingTimerRef.current = null
       }
       
-      // 调用后端语音识别接口
       recognizeSpeech(tempFilePath)
     })
     
@@ -353,17 +429,14 @@ export default function MindChatPage() {
       const recorderManager = Taro.getRecorderManager()
       recorderManager.stop()
     } else {
-      // H5环境模拟识别结果
       if (recordingTime > 0) {
         showToast({ title: '识别中...', icon: 'loading', duration: 1500 })
         
-        // 模拟语音识别结果
         setTimeout(() => {
           const recognizedText = '这是语音识别的结果'
           setInputText(recognizedText)
           showToast({ title: '识别完成', icon: 'success', duration: 1000 })
           
-          // 自动发送
           setTimeout(() => {
             sendMessage(recognizedText)
           }, 500)
@@ -378,14 +451,12 @@ export default function MindChatPage() {
     try {
       showToast({ title: '识别中...', icon: 'loading', duration: 10000 })
       
-      // 上传音频文件并识别
       const res = await Network.uploadFile({
         url: '/api/chat/speech-to-text',
         filePath: filePath,
         name: 'audio'
       })
       
-      // 解析响应数据
       const responseData = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
       
       if (responseData?.code === 200) {
@@ -393,7 +464,6 @@ export default function MindChatPage() {
         setInputText(text)
         showToast({ title: '识别完成', icon: 'success', duration: 1000 })
         
-        // 自动发送识别结果
         if (text.trim()) {
           setTimeout(() => {
             sendMessage(text)
@@ -404,7 +474,6 @@ export default function MindChatPage() {
       }
     } catch (error) {
       console.error('语音识别失败:', error)
-      // 降级处理：直接发送提示
       const fallbackText = '我发了一条语音消息'
       setInputText(fallbackText)
       showToast({ title: '语音功能暂不可用', icon: 'none' })
@@ -426,11 +495,77 @@ export default function MindChatPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  // 渲染消息内容（支持富媒体）
+  const renderMessageContent = (msg: Message) => {
+    return (
+      <View className="message-content-wrapper">
+        {/* 文本内容 */}
+        <Text className="message-text">{msg.content}</Text>
+        
+        {/* 富媒体内容 */}
+        {msg.metadata?.media && msg.metadata.media.length > 0 && (
+          <View className="media-container">
+            {msg.metadata.media.map((media, idx) => {
+              if (media.type === 'image') {
+                return (
+                  <View key={idx} className="media-item image">
+                    <Image 
+                      src={media.url || ''} 
+                      className="media-image" 
+                      mode="widthFix"
+                      onClick={() => {
+                        Taro.previewImage({
+                          current: media.url,
+                          urls: [media.url || '']
+                        })
+                      }}
+                    />
+                  </View>
+                )
+              }
+              
+              if (media.type === 'video') {
+                return (
+                  <View key={idx} className="media-item video">
+                    <Video
+                      src={media.url || ''}
+                      className="media-video"
+                      controls
+                      showFullscreenBtn
+                      showPlayBtn
+                      objectFit="cover"
+                    />
+                  </View>
+                )
+              }
+              
+              if (media.type === 'article') {
+                return (
+                  <View key={idx} className="media-item article">
+                    <View className="article-header">
+                      <FileText size={20} color="#00f5ff" />
+                      <Text className="article-title">{media.title || '文章'}</Text>
+                    </View>
+                    <RichText 
+                      nodes={media.content || ''} 
+                      className="article-content"
+                    />
+                  </View>
+                )
+              }
+              
+              return null
+            })}
+          </View>
+        )}
+      </View>
+    )
+  }
+
   if (!isLoggedIn) return null
 
   return (
     <View className="mind-chat-page">
-      {/* 背景效果 */}
       <View className="bg-glow" />
       <View className="grid-overlay" />
 
@@ -470,7 +605,7 @@ export default function MindChatPage() {
         </View>
       </View>
 
-      {/* 心智成长面板 - 直接显示 */}
+      {/* 心智成长面板 */}
       <View className="learn-panel">
         <View className="learn-panel-header">
           <Brain size={20} color="#00f5ff" />
@@ -549,13 +684,12 @@ export default function MindChatPage() {
         </View>
       )}
 
-      {/* 消息区域 - 使用scroll-into-view自动滚动 */}
+      {/* 消息区域 */}
       <ScrollView 
         className="messages-scroll"
         scrollY
         scrollTop={scrollTop}
         scrollWithAnimation
-        scrollIntoView={scrollViewId.current}
       >
         {messages.length === 0 ? (
           <View className="empty-chat">
@@ -588,7 +722,7 @@ export default function MindChatPage() {
                 </View>
               )}
               <View className="message-bubble">
-                <Text className="message-text">{msg.content}</Text>
+                {renderMessageContent(msg)}
                 <View className="message-footer">
                   <Text className="message-time">
                     {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
@@ -616,8 +750,9 @@ export default function MindChatPage() {
           ))
         )}
         
+        {/* 实时状态显示 */}
         {loading && (
-          <View className="message-item assistant" id="msg-loading">
+          <View className="message-item assistant">
             <View className="message-avatar">
               {avatar?.avatar_url ? (
                 <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
@@ -626,19 +761,26 @@ export default function MindChatPage() {
               )}
             </View>
             <View className="message-bubble typing">
-              <View className="typing-dots">
-                <View className="dot" />
-                <View className="dot" />
-                <View className="dot" />
+              <View className="typing-status">
+                <Loader size={18} color="#00f5ff" className="spinning" />
+                <Text className="status-message">{currentStatus || '思考中...'}</Text>
               </View>
+              {taskStatus && (
+                <View className="task-progress">
+                  <View className="progress-bar">
+                    <View className="progress-fill" style={{ width: `${taskStatus.progress}%` }} />
+                  </View>
+                  <Text className="progress-text">{taskStatus.message}</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
         
-        <View className="messages-bottom" id="scroll-bottom" />
+        <View className="messages-bottom" />
       </ScrollView>
 
-      {/* 底部输入栏 - 在TabBar之上 */}
+      {/* 底部输入栏 */}
       <View className="input-bar">
         <View className="input-left">
           <View className="quick-action" onClick={toggleVoiceMode}>

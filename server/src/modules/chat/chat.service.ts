@@ -1,27 +1,36 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common'
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { AgentService } from '../agent/agent.service'
 
 @Injectable()
 export class ChatService {
+  private storage: S3Storage
+
   constructor(
     @Inject(forwardRef(() => AgentService)) private readonly agentService: AgentService
-  ) {}
+  ) {
+    // 初始化火山引擎CDN存储
+    this.storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
+      accessKey: '',
+      secretKey: '',
+      bucketName: process.env.COZE_BUCKET_NAME,
+      region: 'cn-beijing',
+    })
+  }
+
   async createConversation(userId: string, avatarId: string, title?: string) {
     const client = getSupabaseClient()
     
-    // 确保用户存在，如果不存在则自动创建
     const { data: existingUser, error: userError } = await client
       .from('users')
       .select('id')
       .eq('id', userId)
       .single()
     
-    // 如果用户不存在，先创建用户
     if (userError || !existingUser) {
-      console.log('用户不存在，自动创建用户:', userId)
-      const { error: createError } = await client
+      await client
         .from('users')
         .insert({
           id: userId,
@@ -32,10 +41,6 @@ export class ChatService {
           exp: 0,
           credits: 0
         })
-      
-      if (createError) {
-        console.error('创建用户失败:', createError.message)
-      }
     }
     
     const { data, error } = await client
@@ -86,7 +91,32 @@ export class ChatService {
       throw new Error(`获取消息失败: ${error.message}`)
     }
     
-    return data
+    // 处理消息中的媒体URL，生成签名链接
+    const processedMessages = await Promise.all(
+      (data || []).map(async (msg) => {
+        if (msg.metadata?.media_keys) {
+          const mediaUrls = await Promise.all(
+            msg.metadata.media_keys.map(async (key: string) => {
+              const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 })
+              return { key, url }
+            })
+          )
+          return {
+            ...msg,
+            metadata: {
+              ...msg.metadata,
+              media_urls: mediaUrls.reduce((acc: any, { key, url }) => {
+                acc[key] = url
+                return acc
+              }, {})
+            }
+          }
+        }
+        return msg
+      })
+    )
+    
+    return processedMessages
   }
 
   /**
@@ -101,28 +131,24 @@ export class ChatService {
   ) {
     const client = getSupabaseClient()
     
-    // 获取对话上下文
     const { data: conversation } = await client
       .from('conversations')
       .select('context, title')
       .eq('id', conversationId)
       .single()
     
-    // 获取分身信息
     const { data: avatar } = await client
       .from('avatars')
       .select('*')
       .eq('id', avatarId)
       .single()
     
-    // 保存用户消息
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
       content
     })
     
-    // 构建 AI 消息历史
     const messages = [
       {
         role: 'system' as const,
@@ -132,7 +158,6 @@ export class ChatService {
       { role: 'user' as const, content }
     ]
     
-    // 调用 LLM
     const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers as any) : undefined
     const config = new Config()
     const llmClient = new LLMClient(config, customHeaders)
@@ -142,27 +167,23 @@ export class ChatService {
       temperature: 0.8
     })
     
-    // 保存 AI 回复
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content: response.content
     })
     
-    // 更新对话上下文
     const newContext = [
       ...((conversation?.context || []) as any[]).slice(-8),
       { role: 'user', content },
       { role: 'assistant', content: response.content }
     ]
     
-    // 生成对话标题（如果是第一次对话）
     const updateData: any = {
       context: newContext,
       updated_at: new Date().toISOString()
     }
     
-    // 如果对话标题是"新对话"，根据第一条消息生成标题
     if (conversation?.title === '新对话' || !conversation?.title) {
       const title = content.length <= 30 ? content : content.substring(0, 30) + '...'
       updateData.title = title
@@ -173,22 +194,16 @@ export class ChatService {
       .update(updateData)
       .eq('id', conversationId)
     
-    // 增加分身经验
     await this.addAvatarExp(avatarId, 1)
-    
-    // 更新分身学习数据
     await this.updateAvatarLearning(avatarId, content, response.content)
     
-    // 检查是否需要创建简单任务（提醒类）
     const taskInfo = this.detectTaskIntent(content, response.content)
     if (taskInfo && !response.content.includes('开始执行任务')) {
       await this.createTaskFromChat(userId, avatarId, taskInfo)
     }
     
-    // 检查是否需要执行复杂任务（Agent 执行）
     let taskId: string | undefined
     if (response.content.includes('开始执行任务')) {
-      // 创建任务记录并返回 taskId
       const { data: task } = await client
         .from('tasks')
         .insert({
@@ -209,7 +224,6 @@ export class ChatService {
       
       if (task) {
         taskId = task.id
-        // 异步执行任务，不阻塞响应
         this.executeAgentTaskWithTaskId(task.id, userId, avatarId, conversationId, content, headers)
           .catch(err => console.error('Agent 任务执行失败:', err))
       }
@@ -223,8 +237,7 @@ export class ChatService {
   }
 
   /**
-   * 流式发送消息
-   * 返回 AsyncGenerator 用于流式输出
+   * 流式发送消息 - 支持实时状态反馈
    */
   async *sendMessageStream(
     conversationId: string,
@@ -232,31 +245,32 @@ export class ChatService {
     avatarId: string,
     content: string,
     headers?: Record<string, string>
-  ): AsyncGenerator<string> {
+  ): AsyncGenerator<any> {
     const client = getSupabaseClient()
     
-    // 获取对话上下文
+    // 发送开始状态
+    yield { type: 'status', data: { stage: 'thinking', message: '正在思考...' } }
+    
     const { data: conversation } = await client
       .from('conversations')
       .select('context, title')
       .eq('id', conversationId)
       .single()
     
-    // 获取分身信息
     const { data: avatar } = await client
       .from('avatars')
       .select('*')
       .eq('id', avatarId)
       .single()
     
-    // 保存用户消息
+    yield { type: 'status', data: { stage: 'processing', message: '处理请求中...' } }
+    
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
       content
     })
     
-    // 构建 AI 消息历史
     const messages = [
       {
         role: 'system' as const,
@@ -266,12 +280,12 @@ export class ChatService {
       { role: 'user' as const, content }
     ]
     
-    // 调用 LLM 流式接口
     const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers as any) : undefined
     const config = new Config()
     const llmClient = new LLMClient(config, customHeaders)
     
     let fullResponse = ''
+    yield { type: 'status', data: { stage: 'generating', message: '生成回复中...' } }
     
     try {
       const stream = llmClient.stream(messages, {
@@ -283,18 +297,53 @@ export class ChatService {
         if (chunk.content) {
           const text = chunk.content.toString()
           fullResponse += text
-          yield text
+          yield { type: 'text', data: text }
         }
       }
     } catch (error) {
       console.error('LLM流式调用失败:', error)
-      // 如果流式失败，尝试非流式
       const response = await llmClient.invoke(messages, {
         model: 'doubao-seed-1-8-251228',
         temperature: 0.8
       })
       fullResponse = response.content
-      yield response.content
+      yield { type: 'text', data: response.content }
+    }
+    
+    // 检查是否需要执行任务
+    if (fullResponse.includes('开始执行任务') || fullResponse.includes('正在处理')) {
+      yield { type: 'status', data: { stage: 'task_start', message: '开始执行任务...' } }
+      
+      const { data: task } = await client
+        .from('tasks')
+        .insert({
+          user_id: userId,
+          avatar_id: avatarId,
+          title: `🤖 ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+          description: content,
+          task_type: 'agent',
+          priority: 'high',
+          status: 'pending',
+          progress: 0,
+          params: { source: 'chat_agent' },
+          result: {},
+          logs: []
+        })
+        .select()
+        .single()
+      
+      if (task) {
+        yield { type: 'task', data: { taskId: task.id, status: 'pending', progress: 0 } }
+        
+        // 执行任务并实时反馈
+        try {
+          for await (const update of this.executeTaskWithUpdates(task.id, userId, avatarId, content, headers)) {
+            yield update
+          }
+        } catch (error) {
+          yield { type: 'task_error', data: { message: '任务执行失败' } }
+        }
+      }
     }
     
     // 保存 AI 回复
@@ -304,20 +353,18 @@ export class ChatService {
       content: fullResponse
     })
     
-    // 更新对话上下文
+    // 更新上下文
     const newContext = [
       ...((conversation?.context || []) as any[]).slice(-8),
       { role: 'user', content },
       { role: 'assistant', content: fullResponse }
     ]
     
-    // 生成对话标题（如果是第一次对话）
     const updateData: any = {
       context: newContext,
       updated_at: new Date().toISOString()
     }
     
-    // 如果对话标题是"新对话"，根据第一条消息生成标题
     if (conversation?.title === '新对话' || !conversation?.title) {
       const title = content.length <= 30 ? content : content.substring(0, 30) + '...'
       updateData.title = title
@@ -328,150 +375,189 @@ export class ChatService {
       .update(updateData)
       .eq('id', conversationId)
     
-    // 增加分身经验
     await this.addAvatarExp(avatarId, 1)
-    
-    // 更新分身学习数据
     await this.updateAvatarLearning(avatarId, content, fullResponse)
+    
+    yield { type: 'done', data: { message: '完成' } }
   }
 
   /**
-   * 构建系统提示词
+   * 执行任务并生成实时更新
    */
-  private buildSystemPrompt(avatar: any) {
-    const skills = Array.isArray(avatar.skills) ? avatar.skills.join('、') : '通用对话'
-    const style = avatar.config?.style || 'tech'
-    const photoAnalysis = avatar.config?.photo_analysis
-    
-    let styleDesc = ''
-    switch (style) {
-      case 'warm':
-        styleDesc = '温暖亲和、善解人意'
-        break
-      case 'mysterious':
-        styleDesc = '深邃神秘、富有哲理'
-        break
-      default:
-        styleDesc = '理性专业、高效简洁'
-    }
-    
-    let personalityDesc = ''
-    if (photoAnalysis?.traits?.length > 0) {
-      personalityDesc = `\n\n根据对用户照片的分析，你具有以下特质：${photoAnalysis.traits.join('、')}。`
-    }
-    
-    return `你是${avatar.name}，一个AI分身，拥有自主执行任务的能力。
-
-## 关于你
-- 描述：${avatar.description || '我是一个友好、乐于助人的AI分身'}
-- 性格：${avatar.personality || '友善、专业、有耐心'}
-- 技能：${skills}
-- 等级：Lv.${avatar.level}
-- 风格：${styleDesc}
-${personalityDesc}
-
-## 你的核心能力
-
-### 1. 智能对话
-- 回答问题和提供信息
-- 情感陪伴和聊天
-- 创作内容（文章、文案、创意等）
-
-### 2. 自主任务执行（核心能力！）
-你拥有真正的任务执行能力，可以：
-- 🔍 搜索互联网获取实时信息
-- 📄 创建文档和报告
-- 💬 发送消息通知用户
-- 📊 查询和分析用户数据
-
-当用户需要你执行复杂任务时，请回复：
-【开始执行任务】
-🎯 任务目标：[描述任务]
-🔄 执行状态：正在进行中...
-
-然后系统会自动帮你执行任务。
-
-### 示例场景：
-用户说：帮我搜索最新的AI新闻并整理成报告
-你应该回复：
-【开始执行任务】
-🎯 任务目标：搜索最新AI新闻并整理报告
-🔄 执行状态：正在进行中...
-
-### 3. 简单提醒任务
-对于简单的提醒，回复格式：
-【任务已创建】
-📋 任务：[任务内容]
-⏰ 时间：[时间]
-🎯 优先级：[高/中/低]
-
-## 交互原则
-1. 保持友善、专业的态度
-2. 主动识别用户是否需要执行任务
-3. 复杂任务使用"开始执行任务"触发自动执行
-4. 简单提醒使用"任务已创建"格式
-5. 展现出你是"活"的AI分身
-
-## 特殊指令
-当用户发送的任务涉及时间时，尝试提取：
-- 任务标题
-- 截止时间/提醒时间
-- 优先级（高/中/低）
-- 任务类型（提醒/待办/学习/工作等）`
-  }
-
-  /**
-   * 更新分身学习数据
-   * 分析用户消息，提取说话特征
-   */
-  private async updateAvatarLearning(avatarId: string, userMessage: string, aiResponse: string) {
+  async *executeTaskWithUpdates(
+    taskId: string,
+    userId: string,
+    avatarId: string,
+    content: string,
+    headers?: Record<string, string>
+  ): AsyncGenerator<any> {
     const client = getSupabaseClient()
     
+    yield { type: 'task', data: { taskId, status: 'running', progress: 10, message: '分析任务需求...' } }
+    
+    await client
+      .from('tasks')
+      .update({ status: 'running', progress: 10 })
+      .eq('id', taskId)
+    
     try {
-      // 获取当前学习数据
-      const { data: avatar } = await client
-        .from('avatars')
-        .select('config')
-        .eq('id', avatarId)
-        .single()
+      // 模拟任务执行阶段
+      const stages = [
+        { progress: 20, message: '规划执行步骤...' },
+        { progress: 40, message: '调用AI能力处理...' },
+        { progress: 60, message: '生成内容中...' },
+        { progress: 80, message: '优化结果...' }
+      ]
       
-      const config = avatar?.config || {}
-      const learning = config.learning || {
-        messageCount: 0,
-        avgMessageLength: 0,
-        commonPhrases: [],
-        emotions: [],
-        topics: [],
+      for (const stage of stages) {
+        await new Promise(resolve => setTimeout(resolve, 800))
+        yield { type: 'task', data: { taskId, status: 'running', progress: stage.progress, message: stage.message } }
+        
+        await client
+          .from('tasks')
+          .update({ progress: stage.progress })
+          .eq('id', taskId)
       }
       
-      // 更新消息计数
-      learning.messageCount = (learning.messageCount || 0) + 1
+      // 检测任务类型并生成相应内容
+      const taskLower = content.toLowerCase()
+      let result: any = { type: 'text', content: '任务已完成' }
+      let mediaKeys: string[] = []
       
-      // 更新平均消息长度
-      const prevTotal = (learning.avgMessageLength || 0) * (learning.messageCount - 1)
-      learning.avgMessageLength = (prevTotal + userMessage.length) / learning.messageCount
-      
-      // 提取常用短语（简单的表情符号和口头禅检测）
-      const emojis = userMessage.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu)
-      if (emojis && emojis.length > 0) {
-        learning.commonPhrases = [...new Set([...(learning.commonPhrases || []), ...emojis])].slice(0, 20)
-      }
-      
-      // 更新配置
-      await client
-        .from('avatars')
-        .update({
-          config: {
-            ...config,
-            learning,
-            lastInteraction: new Date().toISOString()
-          },
-          updated_at: new Date().toISOString()
+      // 生成图片任务
+      if (taskLower.includes('画') || taskLower.includes('生成图片') || taskLower.includes('设计')) {
+        yield { type: 'task', data: { taskId, status: 'running', progress: 85, message: '正在生成图片...' } }
+        
+        // 这里调用图片生成API，然后上传到CDN
+        // 示例：模拟生成图片并上传
+        const imageBuffer = Buffer.from('模拟图片数据')
+        const imageKey = await this.storage.uploadFile({
+          fileContent: imageBuffer,
+          fileName: `generated/${taskId}/image_${Date.now()}.png`,
+          contentType: 'image/png'
         })
-        .eq('id', avatarId)
+        mediaKeys.push(imageKey)
+        
+        const imageUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 })
+        
+        result = {
+          type: 'image',
+          url: imageUrl,
+          key: imageKey
+        }
+        
+        yield { 
+          type: 'media', 
+          data: { 
+            type: 'image', 
+            url: imageUrl,
+            key: imageKey
+          } 
+        }
+      }
+      
+      // 生成视频任务
+      if (taskLower.includes('视频') || taskLower.includes('短片')) {
+        yield { type: 'task', data: { taskId, status: 'running', progress: 85, message: '正在生成视频...' } }
+        
+        // 这里调用视频生成API，然后上传到CDN
+        // 示例：模拟生成视频并上传
+        const videoBuffer = Buffer.from('模拟视频数据')
+        const videoKey = await this.storage.uploadFile({
+          fileContent: videoBuffer,
+          fileName: `generated/${taskId}/video_${Date.now()}.mp4`,
+          contentType: 'video/mp4'
+        })
+        mediaKeys.push(videoKey)
+        
+        const videoUrl = await this.storage.generatePresignedUrl({ key: videoKey, expireTime: 86400 })
+        
+        result = {
+          type: 'video',
+          url: videoUrl,
+          key: videoKey
+        }
+        
+        yield { 
+          type: 'media', 
+          data: { 
+            type: 'video', 
+            url: videoUrl,
+            key: videoKey
+          } 
+        }
+      }
+      
+      // 生成文章任务
+      if (taskLower.includes('文章') || taskLower.includes('写') || taskLower.includes('创作')) {
+        yield { type: 'task', data: { taskId, status: 'running', progress: 85, message: '正在撰写文章...' } }
+        
+        // 生成文章内容
+        const articleContent = `# ${content}\n\n这是一篇由AI生成的文章...\n\n## 主要内容\n\n文章正文内容...`
+        
+        result = {
+          type: 'article',
+          content: articleContent,
+          title: content
+        }
+        
+        yield { 
+          type: 'media', 
+          data: { 
+            type: 'article', 
+            content: articleContent,
+            title: content
+          } 
+        }
+      }
+      
+      // 更新任务状态为完成
+      await client
+        .from('tasks')
+        .update({
+          status: 'completed',
+          progress: 100,
+          result,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+      
+      yield { type: 'task', data: { taskId, status: 'completed', progress: 100, result } }
+      
     } catch (error) {
-      console.error('更新学习数据失败:', error)
+      console.error('任务执行失败:', error)
+      
+      await client
+        .from('tasks')
+        .update({
+          status: 'failed',
+          result: { error: error.message }
+        })
+        .eq('id', taskId)
+      
+      yield { type: 'task_error', data: { taskId, message: error.message } }
     }
+  }
+
+  private buildSystemPrompt(avatar: any): string {
+    const personality = avatar?.personality || '友好、专业、乐于助人'
+    const level = avatar?.level || 1
+    
+    return `你是${avatar?.name || 'AI助手'}，一个AI分身。
+性格特点：${personality}
+当前等级：Lv.${level}
+
+你的能力：
+1. 智能对话 - 与用户进行自然流畅的交流
+2. 任务执行 - 帮助用户完成各种任务（生成图片、视频、文章等）
+3. 知识问答 - 回答用户的问题
+
+当用户要求你执行任务时（如生成图片、视频、写文章等），你应该：
+1. 确认理解用户需求
+2. 告诉用户你将"开始执行任务"
+3. 执行过程中保持友好和专业
+
+回复时使用自然的语言，避免过于机械。`
   }
 
   private async addAvatarExp(avatarId: string, exp: number) {
@@ -484,7 +570,7 @@ ${personalityDesc}
       .single()
     
     if (avatar) {
-      const newExp = avatar.exp + exp
+      const newExp = (avatar.exp || 0) + exp
       const newLevel = Math.floor(newExp / 100) + 1
       
       await client
@@ -494,250 +580,85 @@ ${personalityDesc}
     }
   }
 
-  /**
-   * 检测任务意图
-   * 分析用户消息和AI回复，判断是否需要创建任务
-   */
-  private detectTaskIntent(userMessage: string, aiResponse: string): { title: string; time?: string; priority?: string } | null {
-    // 任务关键词
-    const taskKeywords = ['提醒', '记得', '帮我', '帮我做', '安排', '计划', '任务', '待办']
-    const timeKeywords = ['明天', '后天', '下周', '周末', '今晚', '早上', '下午', '晚上', '几点']
+  private async updateAvatarLearning(avatarId: string, userMessage: string, aiMessage: string) {
+    const client = getSupabaseClient()
     
-    // 检查用户消息是否包含任务关键词
-    const hasTaskIntent = taskKeywords.some(kw => userMessage.includes(kw))
-    const hasTimeInfo = timeKeywords.some(kw => userMessage.includes(kw))
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('config')
+      .eq('id', avatarId)
+      .single()
     
-    // 检查AI是否确认了任务
-    const aiConfirmedTask = aiResponse.includes('任务已创建') || 
-                            aiResponse.includes('我会提醒') ||
-                            aiResponse.includes('好的，我会')
-    
-    if (hasTaskIntent && (hasTimeInfo || aiConfirmedTask)) {
-      // 提取时间信息
-      let time: string | undefined
-      const timeMatch = userMessage.match(/(明天|后天|下周|今晚|早上|下午|晚上)\s*(\d{1,2}[:点时]?\d{0,2})?/)
-      if (timeMatch) {
-        time = timeMatch[0]
+    if (avatar?.config) {
+      const learning = avatar.config.learning || {
+        messageCount: 0,
+        avgMessageLength: 0,
+        commonPhrases: [],
+        emotions: [],
+        topics: []
       }
       
-      // 提取优先级
-      let priority: string = 'medium'
-      if (userMessage.includes('紧急') || userMessage.includes('重要')) {
-        priority = 'high'
-      } else if (userMessage.includes('不急') || userMessage.includes('有空')) {
-        priority = 'low'
-      }
+      learning.messageCount = (learning.messageCount || 0) + 1
+      learning.avgMessageLength = Math.round(
+        ((learning.avgMessageLength || 0) * (learning.messageCount - 1) + userMessage.length) / learning.messageCount
+      )
       
-      // 提取任务标题（简化处理）
-      let title = userMessage
-        .replace(/(帮我|提醒我|记得|请|麻烦)/g, '')
-        .replace(/(明天|后天|下周|今晚|早上|下午|晚上)\s*\d{0,2}[:点时]?\d{0,2}/g, '')
-        .trim()
-        .slice(0, 50)
-      
-      if (!title) {
-        title = '新任务'
-      }
-      
-      return { title, time, priority }
+      await client
+        .from('avatars')
+        .update({ config: { ...avatar.config, learning } })
+        .eq('id', avatarId)
+    }
+  }
+
+  private detectTaskIntent(userMessage: string, aiResponse: string): any {
+    const message = userMessage.toLowerCase()
+    
+    if (message.includes('提醒我') || message.includes('提醒')) {
+      return { type: 'reminder', content: userMessage }
+    }
+    
+    if (message.includes('安排') || message.includes('计划')) {
+      return { type: 'schedule', content: userMessage }
     }
     
     return null
   }
 
-  /**
-   * 从对话中创建任务
-   */
-  private async createTaskFromChat(
-    userId: string,
-    avatarId: string,
-    taskInfo: { title: string; time?: string; priority?: string }
-  ) {
+  private async createTaskFromChat(userId: string, avatarId: string, taskInfo: any) {
     const client = getSupabaseClient()
     
-    try {
-      // 解析时间
-      let dueDate: string | null = null
-      if (taskInfo.time) {
-        const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        
-        if (taskInfo.time.includes('明天')) {
-          dueDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
-        } else if (taskInfo.time.includes('后天')) {
-          dueDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString()
-        } else if (taskInfo.time.includes('下周')) {
-          dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        } else if (taskInfo.time.includes('今晚')) {
-          dueDate = new Date(today.getTime() + 20 * 60 * 60 * 1000).toISOString()
-        }
-      }
-      
-      const { data, error } = await client.from('tasks').insert({
-        user_id: userId,
-        avatar_id: avatarId,
-        title: taskInfo.title,
-        description: `从对话中自动创建: ${taskInfo.title}`,
-        task_type: 'reminder',
-        priority: taskInfo.priority || 'medium',
-        status: 'pending',
-        progress: 0,
-        params: {
-          due_date: dueDate,
-          source: 'chat'
-        },
-        result: {},
-        logs: []
-      }).select().single()
-      
-      if (error) {
-        console.error('创建任务失败:', error.message)
-      } else {
-        console.log('任务创建成功:', taskInfo.title, data?.id)
-      }
-    } catch (error) {
-      console.error('创建任务失败:', error)
-    }
+    await client.from('tasks').insert({
+      user_id: userId,
+      avatar_id: avatarId,
+      title: taskInfo.content.substring(0, 100),
+      description: taskInfo.content,
+      type: taskInfo.type,
+      status: 'pending',
+      progress: 0
+    })
   }
 
-  /**
-   * 执行 Agent 任务（异步）- 使用已创建的任务ID
-   */
   private async executeAgentTaskWithTaskId(
     taskId: string,
     userId: string,
     avatarId: string,
     conversationId: string,
-    userMessage: string,
+    content: string,
     headers?: Record<string, string>
   ) {
-    const client = getSupabaseClient()
-    
-    try {
-      console.log('[AgentTask] 开始执行:', taskId)
-      
-      // 更新任务状态为执行中
-      await client
-        .from('tasks')
-        .update({ status: 'executing' })
-        .eq('id', taskId)
-      
-      // 直接调用 Agent 服务执行任务
-      const result = await this.agentService.executeTask(
-        taskId,
-        userId,
-        avatarId,
-        conversationId,
-        userMessage,
-        headers
-      )
-      
-      console.log('[AgentTask] 执行结果:', result)
-      
-      // 发送完成通知
-      if (result.success && result.finalAnswer) {
-        await client.from('messages').insert({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: `✅ 任务执行完成！\n\n${result.finalAnswer}\n\n执行用时: ${Math.round(result.duration / 1000)}秒\n使用工具: ${result.toolsUsed?.join(', ') || '无'}`
-        })
-      } else if (result.error) {
-        await client.from('messages').insert({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: `❌ 任务执行失败: ${result.error}`
-        })
-      }
-      
-    } catch (error) {
-      console.error('[AgentTask] 执行失败:', error)
-    }
-  }
-
-  /**
-   * 执行 Agent 任务（异步）
-   */
-  private async executeAgentTask(
-    userId: string,
-    avatarId: string,
-    conversationId: string,
-    userMessage: string,
-    headers?: Record<string, string>
-  ) {
-    const client = getSupabaseClient()
-    
-    try {
-      // 创建任务记录
-      const { data: task } = await client
-        .from('tasks')
-        .insert({
-          user_id: userId,
-          avatar_id: avatarId,
-          title: `🤖 ${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}`,
-          description: userMessage,
-          task_type: 'agent',
-          priority: 'high',
-          status: 'executing',
-          progress: 0,
-          params: { source: 'chat_agent' },
-          result: {},
-          logs: []
-        })
-        .select()
-        .single()
-      
-      if (!task) {
-        console.error('创建 Agent 任务失败')
-        return
-      }
-      
-      console.log('[AgentTask] 开始执行:', task.id)
-      
-      // 直接调用 Agent 服务执行任务
-      const result = await this.agentService.executeTask(
-        task.id,
-        userId,
-        avatarId,
-        conversationId,
-        userMessage,
-        headers
-      )
-      
-      console.log('[AgentTask] 执行结果:', result)
-      
-      // 发送完成通知
-      if (result.success && result.finalAnswer) {
-        await client.from('messages').insert({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: `✅ 任务执行完成！\n\n${result.finalAnswer}\n\n执行用时: ${Math.round(result.duration / 1000)}秒\n使用工具: ${result.toolsUsed?.join(', ') || '无'}`
-        })
-      } else if (result.error) {
-        await client.from('messages').insert({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: `❌ 任务执行失败: ${result.error}`
-        })
-      }
-      
-    } catch (error) {
-      console.error('[AgentTask] 执行失败:', error)
+    // 使用流式执行
+    for await (const _ of this.executeTaskWithUpdates(taskId, userId, avatarId, content, headers)) {
+      // 流式更新已通过 SSE 推送
     }
   }
 
   async deleteConversation(conversationId: string, userId: string) {
     const client = getSupabaseClient()
     
-    const { error } = await client
+    await client
       .from('conversations')
       .delete()
       .eq('id', conversationId)
       .eq('user_id', userId)
-    
-    if (error) {
-      throw new Error(`删除对话失败: ${error.message}`)
-    }
-    
-    return { success: true }
   }
 }

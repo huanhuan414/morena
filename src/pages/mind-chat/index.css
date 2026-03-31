@@ -520,6 +520,129 @@
   width: 100%;
 }
 
+/* 消息内容包装器 */
+.message-content-wrapper {
+  width: 100%;
+}
+
+/* 富媒体容器 */
+.media-container {
+  margin-top: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  width: 100%;
+}
+
+.media-item {
+  width: 100%;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.media-item.image {
+  max-width: 100%;
+}
+
+.media-image {
+  width: 100%;
+  min-height: 200rpx;
+  max-height: 600rpx;
+  display: block;
+}
+
+.media-item.video {
+  width: 100%;
+}
+
+.media-video {
+  width: 100%;
+  height: 400rpx;
+  display: block;
+}
+
+.media-item.article {
+  padding: 24rpx;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1rpx solid rgba(0, 245, 255, 0.2);
+}
+
+.article-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.article-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.article-content {
+  font-size: 26rpx;
+  line-height: 44rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 打字状态显示 */
+.typing-status {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+}
+
+.status-message {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 旋转动画 */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 任务进度 */
+.task-progress {
+  margin-top: 16rpx;
+  width: 100%;
+}
+
+.progress-bar {
+  height: 8rpx;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8rpx;
+  overflow: hidden;
+  margin-bottom: 8rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f5ff, #bf00ff);
+  border-radius: 8rpx;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* 底部输入栏 - 固定在TabBar之上 */
 .input-bar {
   position: fixed;
