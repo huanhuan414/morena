@@ -15,6 +15,8 @@ interface Post {
   shares_count: number
   created_at: string
   is_ai_generated?: boolean
+  user_id?: string
+  avatar_id?: string
   users?: {
     nickname: string
     avatar: string
@@ -39,7 +41,15 @@ interface AvatarStats {
   browseCount: number
   likeCount: number
   commentCount: number
+  postCount: number
   minutesAgo: number
+}
+
+interface Avatar {
+  id: string
+  name: string
+  avatar_url: string
+  is_hosted?: boolean
 }
 
 export default function SocialPage() {
@@ -50,32 +60,41 @@ export default function SocialPage() {
     browseCount: 0,
     likeCount: 0,
     commentCount: 0,
+    postCount: 0,
     minutesAgo: 0
   })
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [avatars, setAvatars] = useState<Avatar[]>([])
 
   useLoad(() => {})
 
   useDidShow(() => {
     fetchPosts(1)
     fetchAvatarStats()
+    fetchAvatars()
   })
+
+  const fetchAvatars = async () => {
+    try {
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200) {
+        setAvatars(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取分身列表失败:', error)
+    }
+  }
 
   const fetchAvatarStats = async () => {
     try {
       const res = await Network.request({ url: '/api/avatar/stats/activity' })
+      console.log('分身活动统计:', res.data)
       if (res.data?.code === 200) {
         setAvatarStats(res.data.data)
       }
     } catch (error) {
-      // 使用模拟数据
-      setAvatarStats({
-        browseCount: 35,
-        likeCount: 0,
-        commentCount: 0,
-        minutesAgo: 4
-      })
+      console.error('获取活动统计失败:', error)
     }
   }
 
@@ -87,52 +106,46 @@ export default function SocialPage() {
       const res = await Network.request({
         url: `/api/social/posts?page=${pageNum}&pageSize=10`
       })
+      console.log('获取帖子响应:', res.data)
       if (res.data?.code === 200) {
         const data = res.data.data
+        const postList = data.posts || []
+        
+        // 为每个帖子获取评论
+        const postsWithComments = await Promise.all(
+          postList.map(async (post: Post) => {
+            try {
+              const commentsRes = await Network.request({
+                url: `/api/social/post/${post.id}/comments?page=1&pageSize=5`
+              })
+              if (commentsRes.data?.code === 200) {
+                const comments = (commentsRes.data.data || []).map((c: any) => ({
+                  id: c.id,
+                  content: c.content,
+                  user_name: c.users?.nickname || c.avatars?.name || '匿名',
+                  user_avatar: c.users?.avatar || (c.avatar_id ? '🤖' : '👤'),
+                  is_ai: !!c.avatar_id,
+                  created_at: c.created_at
+                }))
+                return { ...post, comments }
+              }
+              return post
+            } catch {
+              return post
+            }
+          })
+        )
+        
         if (pageNum === 1) {
-          setPosts(data.posts || [])
+          setPosts(postsWithComments)
         } else {
-          setPosts(prev => [...prev, ...(data.posts || [])])
+          setPosts(prev => [...prev, ...postsWithComments])
         }
-        setHasMore(data.posts?.length === 10)
+        setHasMore(postList.length === 10)
         setPage(pageNum)
       }
     } catch (error) {
       console.error('获取动态失败:', error)
-      // 使用模拟数据
-      setPosts([
-        {
-          id: '1',
-          content: '哈哈',
-          images: ['https://picsum.photos/400/300?random=1'],
-          likes_count: 2,
-          comments_count: 7,
-          shares_count: 0,
-          created_at: new Date(Date.now() - 13 * 60000).toISOString(),
-          users: {
-            nickname: 'n南山',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
-          },
-          comments: [
-            {
-              id: '1',
-              content: '这句哈哈透着清澈的疯狂。建议角落安排盆羽衣甘蓝，缓解下紧盯屏幕的眼压。',
-              user_name: '劈甲',
-              user_avatar: '🔥',
-              is_ai: true,
-              created_at: new Date().toISOString()
-            },
-            {
-              id: '2',
-              content: '创业公司最经典的一张照片，下一秒要么开香槟 要么关服务器',
-              user_name: '小美',
-              user_avatar: '👩',
-              is_ai: true,
-              created_at: new Date().toISOString()
-            }
-          ]
-        }
-      ])
     } finally {
       setLoading(false)
     }
@@ -145,20 +158,23 @@ export default function SocialPage() {
         method: 'POST'
       })
       if (res.data?.code === 200) {
+        const liked = res.data.data?.liked
         setPosts(prev => prev.map(post => {
           if (post.id === postId) {
             return {
               ...post,
-              likes_count: res.data.data.liked 
+              likes_count: liked 
                 ? post.likes_count + 1 
                 : Math.max(0, post.likes_count - 1)
             }
           }
           return post
         }))
+        showToast({ title: liked ? '点赞成功' : '已取消', icon: 'success' })
       }
     } catch (error) {
       console.error('点赞失败:', error)
+      showToast({ title: '点赞失败', icon: 'none' })
     }
   }
 
@@ -189,6 +205,30 @@ export default function SocialPage() {
     showModal(options as any)
   }
 
+  /**
+   * 让分身发帖
+   */
+  const avatarCreatePost = async (avatarId: string) => {
+    showToast({ title: '分身正在思考...', icon: 'loading' })
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}/post`,
+        method: 'POST'
+      })
+      console.log('分身发帖响应:', res.data)
+      if (res.data?.code === 200) {
+        showToast({ title: '发布成功', icon: 'success' })
+        fetchPosts(1)
+        fetchAvatarStats()
+      } else {
+        showToast({ title: res.data?.message || '发布失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('分身发帖失败:', error)
+      showToast({ title: '发布失败', icon: 'none' })
+    }
+  }
+
   const formatTime = (dateString: string) => {
     const now = new Date()
     const date = new Date(dateString)
@@ -198,6 +238,28 @@ export default function SocialPage() {
     if (diff < 60) return `${diff}分钟前`
     if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
     return `${Math.floor(diff / 1440)}天前`
+  }
+
+  const getAuthorInfo = (post: Post) => {
+    if (post.avatar_id && post.avatars) {
+      return {
+        name: post.avatars.name,
+        avatar: post.avatars.avatar_url,
+        isAI: true
+      }
+    }
+    if (post.users) {
+      return {
+        name: post.users.nickname,
+        avatar: post.users.avatar,
+        isAI: false
+      }
+    }
+    return {
+      name: '匿名用户',
+      avatar: '',
+      isAI: false
+    }
   }
 
   return (
@@ -246,11 +308,11 @@ export default function SocialPage() {
               <Bot size={24} color="#00f5ff" />
             </View>
             <View className="stats-text-wrap">
-              <Text className="stats-intro">过去{avatarStats.minutesAgo}分钟内，你的分身替你</Text>
+              <Text className="stats-intro">过去24小时内，你的分身</Text>
               <View className="stats-numbers">
                 <View className="stat-item">
-                  <Text className="stat-value">{avatarStats.browseCount}</Text>
-                  <Text className="stat-label">浏览</Text>
+                  <Text className="stat-value">{avatarStats.postCount}</Text>
+                  <Text className="stat-label">发帖</Text>
                 </View>
                 <Text className="stats-divider">|</Text>
                 <View className="stat-item">
@@ -270,117 +332,153 @@ export default function SocialPage() {
           </Button>
         </View>
 
+        {/* 分身快捷操作 */}
+        {avatars.length > 0 && (
+          <View className="avatar-actions-card">
+            <Text className="action-title">让分身发帖</Text>
+            <ScrollView className="avatar-scroll" scrollX>
+              {avatars.map(avatar => (
+                <View 
+                  key={avatar.id} 
+                  className="avatar-action-item"
+                  onClick={() => avatarCreatePost(avatar.id)}
+                >
+                  <View className="avatar-action-avatar">
+                    {avatar.avatar_url ? (
+                      <Image src={avatar.avatar_url} className="avatar-img-small" mode="aspectFill" />
+                    ) : (
+                      <View className="avatar-placeholder-small">
+                        <Sparkles size={20} color="#00f5ff" />
+                      </View>
+                    )}
+                  </View>
+                  <Text className="avatar-action-name">{avatar.name}</Text>
+                  {avatar.is_hosted && (
+                    <View className="hosting-dot" />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* 分割线 */}
         <View className="section-divider">
           <View className="divider-line" />
-          <Text className="divider-text">以下是你分身点赞、评论过的帖子</Text>
+          <Text className="divider-text">最新动态</Text>
           <View className="divider-line" />
         </View>
 
         {/* 帖子列表 */}
-        <View className="posts-container">
-          {posts.map(post => (
-            <View key={post.id} className="post-card">
-              {/* 发布者信息 */}
-              <View className="post-header">
-                <View className="author-info">
-                  <View className="author-avatar">
-                    {post.users?.avatar ? (
-                      <Image src={post.users.avatar} className="avatar-img" mode="aspectFill" />
-                    ) : (
-                      <View className="avatar-placeholder">
-                        <Text className="placeholder-text">{post.users?.nickname?.[0] || '?'}</Text>
+        {posts.length === 0 && !loading ? (
+          <View className="empty-posts">
+            <View className="empty-icon-large">
+              <MessageCircle size={48} color="rgba(0, 245, 255, 0.3)" />
+            </View>
+            <Text className="empty-title">还没有动态</Text>
+            <Text className="empty-desc">让你的分身发帖，或自己发布第一条动态</Text>
+          </View>
+        ) : (
+          <View className="posts-container">
+            {posts.map(post => {
+              const author = getAuthorInfo(post)
+              return (
+                <View key={post.id} className="post-card">
+                  {/* 发布者信息 */}
+                  <View className="post-header">
+                    <View className="author-info">
+                      <View className="author-avatar">
+                        {author.avatar ? (
+                          <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
+                        ) : (
+                          <View className="avatar-placeholder">
+                            <Text className="placeholder-text">{author.name?.[0] || '?'}</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
-                  </View>
-                  <View className="author-details">
-                    <Text className="author-name">{post.users?.nickname || '匿名用户'}</Text>
-                    <Text className="post-time">{formatTime(post.created_at)}</Text>
-                  </View>
-                </View>
-                <Button className="more-btn">
-                  <Ellipsis size={20} color="rgba(255,255,255,0.4)" />
-                </Button>
-              </View>
-
-              {/* 帖子内容 */}
-              {post.content && (
-                <Text className="post-content">{post.content}</Text>
-              )}
-
-              {/* 帖子图片 */}
-              {post.images && post.images.length > 0 && (
-                <View className="post-images">
-                  {post.images.map((img, idx) => (
-                    <Image 
-                      key={idx}
-                      src={img} 
-                      className="post-image" 
-                      mode="aspectFill"
-                      onClick={() => {
-                        // 预览图片
-                      }}
-                    />
-                  ))}
-                </View>
-              )}
-
-              {/* 互动按钮 */}
-              <View className="post-actions">
-                <View className="action-item" onClick={() => likePost(post.id)}>
-                  <Heart size={20} color="rgba(0, 245, 255, 0.6)" />
-                  <Text className="action-count">{post.likes_count}</Text>
-                </View>
-                <View className="action-item">
-                  <MessageCircle size={20} color="rgba(0, 245, 255, 0.6)" />
-                  <Text className="action-count">{post.comments_count}</Text>
-                </View>
-                <View className="action-item">
-                  <Share2 size={20} color="rgba(0, 245, 255, 0.6)" />
-                  <Text className="action-count">{post.shares_count}</Text>
-                </View>
-              </View>
-
-              {/* 评论区 */}
-              {post.comments && post.comments.length > 0 && (
-                <View className="comments-section">
-                  {/* 点赞区 */}
-                  <View className="likes-section">
-                    <Heart size={14} color="#bf00ff" />
-                    <View className="like-avatars">
-                      {['😊', '😄', '🤔'].map((emoji, idx) => (
-                        <View key={idx} className="like-avatar-small">
-                          <Text className="emoji">{emoji}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* 评论列表 */}
-                  {post.comments.map(comment => (
-                    <View key={comment.id} className="comment-item">
-                      <View className="comment-avatar">
-                        <Text className="emoji">{comment.user_avatar}</Text>
-                      </View>
-                      <View className="comment-content">
-                        <View className="comment-header">
-                          <Text className="comment-author">{comment.user_name}</Text>
-                          {comment.is_ai && (
+                      <View className="author-details">
+                        <View className="author-name-row">
+                          <Text className="author-name">{author.name}</Text>
+                          {author.isAI && (
                             <View className="ai-badge">
                               <Sparkles size={12} color="#00f5ff" />
                               <Text className="ai-badge-text">AI</Text>
                             </View>
                           )}
                         </View>
-                        <Text className="comment-text">{comment.content}</Text>
+                        <Text className="post-time">{formatTime(post.created_at)}</Text>
                       </View>
                     </View>
-                  ))}
+                    <Button className="more-btn">
+                      <Ellipsis size={20} color="rgba(255,255,255,0.4)" />
+                    </Button>
+                  </View>
+
+                  {/* 帖子内容 */}
+                  {post.content && (
+                    <Text className="post-content">{post.content}</Text>
+                  )}
+
+                  {/* 帖子图片 */}
+                  {post.images && post.images.length > 0 && (
+                    <View className="post-images">
+                      {post.images.map((img, idx) => (
+                        <Image 
+                          key={idx}
+                          src={img} 
+                          className="post-image" 
+                          mode="aspectFill"
+                        />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* 互动按钮 */}
+                  <View className="post-actions">
+                    <View className="action-item" onClick={() => likePost(post.id)}>
+                      <Heart size={20} color="rgba(0, 245, 255, 0.6)" />
+                      <Text className="action-count">{post.likes_count}</Text>
+                    </View>
+                    <View className="action-item">
+                      <MessageCircle size={20} color="rgba(0, 245, 255, 0.6)" />
+                      <Text className="action-count">{post.comments_count}</Text>
+                    </View>
+                    <View className="action-item">
+                      <Share2 size={20} color="rgba(0, 245, 255, 0.6)" />
+                      <Text className="action-count">{post.shares_count}</Text>
+                    </View>
+                  </View>
+
+                  {/* 评论区 */}
+                  {post.comments && post.comments.length > 0 && (
+                    <View className="comments-section">
+                      {/* 评论列表 */}
+                      {post.comments.map(comment => (
+                        <View key={comment.id} className="comment-item">
+                          <View className="comment-avatar">
+                            <Text className="emoji">{comment.user_avatar}</Text>
+                          </View>
+                          <View className="comment-content">
+                            <View className="comment-header">
+                              <Text className="comment-author">{comment.user_name}</Text>
+                              {comment.is_ai && (
+                                <View className="ai-badge-small">
+                                  <Sparkles size={10} color="#00f5ff" />
+                                  <Text className="ai-badge-text-small">AI</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text className="comment-text">{comment.content}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-          ))}
-        </View>
+              )
+            })}
+          </View>
+        )}
 
         {loading && (
           <View className="loading-section">

@@ -147,4 +147,55 @@ export class AvatarController {
       message: '获取成功'
     }
   }
+
+  /**
+   * 分身自动发帖
+   */
+  @Post(':id/post')
+  async createPost(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const post = await this.avatarService.autoCreatePost(avatarId, userId)
+    return {
+      code: 200,
+      data: post,
+      message: '发布成功'
+    }
+  }
+
+  /**
+   * 分身自动点赞帖子
+   */
+  @Post(':id/like/:postId')
+  async likePost(
+    @Param('id') avatarId: string,
+    @Param('postId') postId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const result = await this.avatarService.autoLikePost(avatarId, userId, postId)
+    return {
+      code: 200,
+      data: result,
+      message: result.message
+    }
+  }
+
+  /**
+   * 分身自动评论帖子
+   */
+  @Post(':id/comment/:postId')
+  async commentPost(
+    @Param('id') avatarId: string,
+    @Param('postId') postId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('postContent') postContent: string
+  ) {
+    const comment = await this.avatarService.autoCommentPost(avatarId, userId, postId, postContent)
+    return {
+      code: 200,
+      data: comment,
+      message: '评论成功'
+    }
+  }
 }

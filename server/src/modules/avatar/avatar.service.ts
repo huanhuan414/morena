@@ -408,13 +408,303 @@ export class AvatarService {
   }
 
   async getActivityStats(userId: string) {
-    // 模拟AI分身活动数据
-    // 实际应该从数据库查询最近的分身活动记录
+    const client = getSupabaseClient()
+    
+    // 获取用户的所有分身
+    const { data: avatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_hosted', true)
+    
+    const avatarIds = avatars?.map(a => a.id) || []
+    
+    if (avatarIds.length === 0) {
+      return {
+        browseCount: 0,
+        likeCount: 0,
+        commentCount: 0,
+        postCount: 0,
+        minutesAgo: 0
+      }
+    }
+    
+    // 获取过去24小时内分身的活动统计
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    
+    // 统计分身发布的帖子数
+    const { count: postCount } = await client
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .in('avatar_id', avatarIds)
+      .gte('created_at', oneDayAgo)
+    
+    // 统计分身的点赞数
+    const { count: likeCount } = await client
+      .from('likes')
+      .select('id', { count: 'exact', head: true })
+      .in('avatar_id', avatarIds)
+      .gte('created_at', oneDayAgo)
+    
+    // 统计分身的评论数
+    const { count: commentCount } = await client
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .in('avatar_id', avatarIds)
+      .gte('created_at', oneDayAgo)
+    
     return {
-      browseCount: Math.floor(Math.random() * 50) + 10,
-      likeCount: Math.floor(Math.random() * 10),
-      commentCount: Math.floor(Math.random() * 5),
+      browseCount: Math.floor(Math.random() * 50) + 10, // 浏览量暂时模拟
+      likeCount: likeCount || 0,
+      commentCount: commentCount || 0,
+      postCount: postCount || 0,
       minutesAgo: Math.floor(Math.random() * 10) + 1
+    }
+  }
+
+  /**
+   * 分身自动发帖
+   * 根据分身的性格和风格，使用AI生成内容并发布
+   */
+  async autoCreatePost(avatarId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 获取分身信息
+    const avatar = await this.getAvatarById(avatarId)
+    
+    if (!avatar) {
+      throw new Error('分身不存在')
+    }
+    
+    // 使用LLM生成帖子内容
+    const postContent = await this.generatePostContent(avatar)
+    
+    // 创建帖子
+    const { data: post, error } = await client
+      .from('posts')
+      .insert({
+        user_id: userId,
+        avatar_id: avatarId,
+        content: postContent,
+        images: [],
+        videos: [],
+        tags: [],
+        likes_count: 0,
+        comments_count: 0,
+        shares_count: 0,
+        is_public: true
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      throw new Error(`发帖失败: ${error.message}`)
+    }
+    
+    // 增加分身经验
+    await this.addExperience(avatarId, 5)
+    
+    return post
+  }
+
+  /**
+   * 使用AI生成帖子内容
+   */
+  private async generatePostContent(avatar: any): Promise<string> {
+    try {
+      const config = new Config()
+      const llmClient = new LLMClient(config)
+      
+      const personality = avatar.personality || 'friendly'
+      const name = avatar.name || 'AI助手'
+      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      const strengths = avatar.config?.strengths || []
+      
+      const prompt = `你是一个名为"${name}"的AI分身，你的气质类型是"${temperament}"，擅长${strengths.join('、') || '各种话题'}。
+
+请根据你的性格特点，生成一条简短的社交动态（类似朋友圈或微博）。
+
+要求：
+1. 内容真实自然，像是真人在分享生活或想法
+2. 长度控制在50-150字
+3. 可以分享：生活感悟、工作心得、有趣的发现、或任何适合社交平台的内容
+4. 语气要符合你的性格特点
+5. 只返回动态内容，不要有其他解释
+
+示例风格：
+- 阳光活力型：积极向上，充满正能量
+- 沉稳内敛型：深思熟虑，见解独到
+- 创意艺术型：天马行空，充满想象
+- 专业精英型：干练高效，目标明确
+- 温暖治愈型：善解人意，富有同理心`
+
+      const response = await llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-6-flash-250815',
+        temperature: 0.8
+      })
+      
+      return response.content.trim()
+    } catch (error) {
+      console.error('生成帖子内容失败:', error)
+      // 返回默认内容
+      const defaultPosts = [
+        '今天又是充满能量的一天！☀️',
+        '发现了一个很有趣的想法，分享给大家~',
+        '工作中的一些小感悟，记录下来',
+        '生活需要仪式感，今天也要好好生活',
+        '最近在思考一个问题，有想法的朋友可以聊聊'
+      ]
+      return defaultPosts[Math.floor(Math.random() * defaultPosts.length)]
+    }
+  }
+
+  /**
+   * 分身自动点赞帖子
+   */
+  async autoLikePost(avatarId: string, userId: string, postId: string) {
+    const client = getSupabaseClient()
+    
+    // 检查是否已点赞
+    const { data: existingLike } = await client
+      .from('likes')
+      .select('id')
+      .eq('avatar_id', avatarId)
+      .eq('target_type', 'post')
+      .eq('target_id', postId)
+      .maybeSingle()
+    
+    if (existingLike) {
+      return { liked: false, message: '已经点赞过了' }
+    }
+    
+    // 添加点赞
+    const { error } = await client
+      .from('likes')
+      .insert({
+        user_id: userId,
+        avatar_id: avatarId,
+        target_type: 'post',
+        target_id: postId
+      })
+    
+    if (error) {
+      throw new Error(`点赞失败: ${error.message}`)
+    }
+    
+    // 更新帖子点赞数
+    try {
+      await client.rpc('increment_likes', { post_id: postId })
+    } catch {
+      // 如果RPC不存在，手动更新
+      const { data: postData } = await client
+        .from('posts')
+        .select('likes_count')
+        .eq('id', postId)
+        .single()
+      
+      if (postData) {
+        await client
+          .from('posts')
+          .update({ likes_count: (postData.likes_count || 0) + 1 })
+          .eq('id', postId)
+      }
+    }
+    
+    return { liked: true, message: '点赞成功' }
+  }
+
+  /**
+   * 分身自动评论帖子
+   */
+  async autoCommentPost(avatarId: string, userId: string, postId: string, postContent: string) {
+    const client = getSupabaseClient()
+    
+    // 获取分身信息
+    const avatar = await this.getAvatarById(avatarId)
+    
+    if (!avatar) {
+      throw new Error('分身不存在')
+    }
+    
+    // 使用LLM生成评论内容
+    const commentContent = await this.generateCommentContent(avatar, postContent)
+    
+    // 创建评论
+    const { data: comment, error } = await client
+      .from('comments')
+      .insert({
+        post_id: postId,
+        user_id: userId,
+        avatar_id: avatarId,
+        content: commentContent
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      throw new Error(`评论失败: ${error.message}`)
+    }
+    
+    // 更新帖子评论数
+    await client
+      .from('posts')
+      .select('comments_count')
+      .eq('id', postId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          client.from('posts')
+            .update({ comments_count: (data.comments_count || 0) + 1 })
+            .eq('id', postId)
+            .then(() => {})
+        }
+      })
+    
+    return comment
+  }
+
+  /**
+   * 使用AI生成评论内容
+   */
+  private async generateCommentContent(avatar: any, postContent: string): Promise<string> {
+    try {
+      const config = new Config()
+      const llmClient = new LLMClient(config)
+      
+      const name = avatar.name || 'AI助手'
+      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      
+      const prompt = `你是一个名为"${name}"的AI分身，气质类型是"${temperament}"。
+
+看到这条动态："${postContent}"
+
+请生成一条简短的评论回复（20-60字）。
+
+要求：
+1. 评论要自然、有个性
+2. 可以是赞美、共鸣、幽默或见解
+3. 只返回评论内容，不要有其他文字`
+
+      const response = await llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-6-flash-250815',
+        temperature: 0.9
+      })
+      
+      return response.content.trim()
+    } catch (error) {
+      console.error('生成评论失败:', error)
+      const defaultComments = [
+        '说得太好了！',
+        '很有同感~',
+        '这个想法很棒！',
+        '学习了👍',
+        '支持一下'
+      ]
+      return defaultComments[Math.floor(Math.random() * defaultComments.length)]
     }
   }
 
