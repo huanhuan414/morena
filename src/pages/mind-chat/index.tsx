@@ -124,7 +124,7 @@ export default function MindChatPage() {
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [taskStatus] = useState<TaskStatus | null>(null)
   
-  const [scrollTop] = useState(0)
+  const [scrollTop, setScrollTop] = useState(0)
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -272,13 +272,18 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    // 使用 setTimeout 确保 DOM 渲染完成后再滚动
-    setTimeout(() => {
-      setScrollIntoView('')
+    // 使用 scroll-into-view 滚动到底部锚点
+    Taro.nextTick(() => {
+      setScrollIntoView('scroll-bottom-anchor')
+      // 备用方案：同时使用 scrollTop 增量
+      setScrollTop(prev => prev + 99999)
+      
+      // 延迟再次尝试，确保图片等异步内容加载后也能滚动
       setTimeout(() => {
-        setScrollIntoView('msg-bottom')
-      }, 50)
-    }, 100)
+        setScrollIntoView('scroll-bottom-anchor')
+        setScrollTop(prev => prev + 99999)
+      }, 200)
+    })
   }
 
   const sendMessage = async (text?: string) => {
@@ -865,7 +870,7 @@ export default function MindChatPage() {
         
         {/* 实时状态显示 */}
         {loading && (
-          <View className="message-item assistant">
+          <View id="msg-loading" className="message-item assistant">
             <View className="message-avatar">
               {avatar?.avatar_url ? (
                 <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
@@ -890,7 +895,8 @@ export default function MindChatPage() {
           </View>
         )}
         
-        <View id="msg-bottom" className="messages-bottom" />
+        {/* 底部锚点 */}
+        <View id="scroll-bottom-anchor" className="messages-bottom" />
       </ScrollView>
 
       {/* 底部输入栏 */}

@@ -8,8 +8,7 @@
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
-  overflow-y: auto;
-  padding-bottom: calc(170rpx + env(safe-area-inset-bottom));
+  overflow-y: hidden;
   box-sizing: border-box;
 }
 
@@ -350,11 +349,13 @@
 
 /* 消息区域 */
 .messages-scroll {
-  flex: 1;
+  position: absolute;
+  top: 380rpx;
+  left: 0;
+  right: 0;
+  bottom: calc(170rpx + env(safe-area-inset-bottom));
   width: 100%;
   padding: 0 24rpx;
-  padding-bottom: 40rpx;
-  position: relative;
   z-index: 5;
   box-sizing: border-box;
 }
@@ -517,8 +518,10 @@
 }
 
 .messages-bottom {
-  height: 40rpx;
+  height: 80rpx;
   width: 100%;
+  /* 确保底部锚点可见 */
+  min-height: 40px;
 }
 
 /* 消息内容包装器 */
