@@ -19,8 +19,10 @@ export namespace Network {
     const getUserId = (): string => {
         try {
             const userInfo = getStorageSync('userInfo')
+            console.log('[Network] 获取用户ID:', userInfo?.id || '无用户ID', '用户信息:', userInfo)
             return userInfo?.id || ''
         } catch {
+            console.log('[Network] 获取用户ID失败')
             return ''
         }
     }

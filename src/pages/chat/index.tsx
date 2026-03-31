@@ -101,6 +101,7 @@ export default function ChatPage() {
   const taskPollingRef = useRef<NodeJS.Timeout | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const recorderManagerRef = useRef<Taro.RecorderManager | null>(null)
+  const isFirstLoadRef = useRef<boolean>(true)
 
   const isWeapp = getEnv() === ENV_TYPE.WEAPP
 
@@ -126,25 +127,30 @@ export default function ChatPage() {
 
   useDidShow(() => {
     if (isLoggedIn) {
-      const avatarId = router.params.avatarId
-      const command = router.params.command
-      
-      if (avatarId) {
-        fetchAvatar(avatarId)
-        fetchOrCreateConversation(avatarId)
-      } else {
-        fetchDefaultAvatar()
-      }
-      
-      // 如果有快速指令，自动发送
-      if (command) {
-        setTimeout(() => {
-          setInputText(decodeURIComponent(command))
-        }, 500)
-      }
-      
       // 获取历史对话列表
       fetchConversations()
+      
+      // 只在第一次加载时创建对话
+      if (isFirstLoadRef.current) {
+        isFirstLoadRef.current = false
+        
+        const avatarId = router.params.avatarId
+        const command = router.params.command
+        
+        if (avatarId) {
+          fetchAvatar(avatarId)
+          fetchOrCreateConversation(avatarId)
+        } else {
+          fetchDefaultAvatar()
+        }
+        
+        // 如果有快速指令，自动发送
+        if (command) {
+          setTimeout(() => {
+            setInputText(decodeURIComponent(command))
+          }, 500)
+        }
+      }
     }
   })
 
@@ -164,12 +170,15 @@ export default function ChatPage() {
 
   const fetchConversations = async () => {
     try {
+      console.log('[Chat] 获取历史对话列表, 用户信息:', userInfo)
       const res = await Network.request({ url: '/api/chat/conversations' })
+      console.log('[Chat] 历史对话响应:', res.data)
       if (res.data?.code === 200) {
         setConversations(res.data.data || [])
+        console.log('[Chat] 设置对话列表:', res.data.data?.length || 0, '个对话')
       }
     } catch (error) {
-      console.error('获取对话列表失败:', error)
+      console.error('[Chat] 获取对话列表失败:', error)
     }
   }
 
@@ -217,21 +226,25 @@ export default function ChatPage() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      console.log('[Chat] 获取消息, 对话ID:', conversationId)
       const res = await Network.request({
         url: `/api/chat/conversation/${conversationId}/messages`
       })
+      console.log('[Chat] 消息响应:', res.data)
       if (res.data?.code === 200) {
         setMessages(res.data.data || [])
         scrollToBottom()
+        console.log('[Chat] 设置消息:', res.data.data?.length || 0, '条消息')
       }
     } catch (error) {
-      console.error('获取消息失败:', error)
+      console.error('[Chat] 获取消息失败:', error)
     }
   }
 
   // 切换对话
   const switchConversation = async (conv: Conversation) => {
     console.log('[Chat] 切换对话:', conv.id, conv.title)
+    console.log('[Chat] 当前对话ID:', conversation?.id, '-> 新对话ID:', conv.id)
     
     // 设置当前对话
     setConversation(conv)
@@ -248,6 +261,7 @@ export default function ChatPage() {
     // 关闭历史记录面板
     setShowHistory(false)
     
+    console.log('[Chat] 对话切换完成, 当前对话:', conv.id)
     showToast({ title: '已切换对话', icon: 'success', duration: 1000 })
   }
 
