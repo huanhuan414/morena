@@ -45,6 +45,13 @@ import {
   PublishWechatVideoTool
 } from './tools/platform-publish.tools'
 
+// 对话消息类型
+interface ConversationMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  created_at?: string
+}
+
 @Injectable()
 export class AgentService {
   private tools: Map<string, ITool> = new Map()
@@ -105,13 +112,75 @@ export class AgentService {
       conversationId?: string
       taskId?: string
       headers?: Record<string, string>
+      conversationHistory?: ConversationMessage[] // 新增：对话历史
     }
   ): Promise<AgentExecutionResult> {
     // 初始化上下文
     const context = await this.initContext(userId, avatarId, taskDescription, options)
     
     // 执行 ReAct 循环
-    return await this.runReActLoop(context)
+    const result = await this.runReActLoop(context)
+    
+    // 保存对话记录
+    if (options?.conversationId) {
+      await this.saveConversationHistory(
+        options.conversationId,
+        taskDescription,
+        result.finalAnswer,
+        result
+      )
+    }
+    
+    return result
+  }
+
+  /**
+   * 保存对话历史
+   */
+  private async saveConversationHistory(
+    conversationId: string,
+    userMessage: string,
+    aiMessage: string,
+    agentResult: AgentExecutionResult
+  ): Promise<void> {
+    const client = getSupabaseClient()
+    
+    // 保存用户消息
+    await client.from('messages').insert({
+      conversation_id: conversationId,
+      role: 'user',
+      content: userMessage
+    })
+    
+    // 保存 AI 回复
+    await client.from('messages').insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: aiMessage,
+      metadata: { agent_result: agentResult }
+    })
+    
+    // 更新对话上下文
+    const { data: conversation } = await client
+      .from('conversations')
+      .select('context')
+      .eq('id', conversationId)
+      .single()
+    
+    const currentContext = (conversation?.context || []) as ConversationMessage[]
+    const newContext = [
+      ...currentContext.slice(-18), // 保留最近 10 轮对话
+      { role: 'user', content: userMessage },
+      { role: 'assistant', content: aiMessage }
+    ]
+    
+    await client
+      .from('conversations')
+      .update({
+        context: newContext,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', conversationId)
   }
 
   /**
@@ -125,6 +194,7 @@ export class AgentService {
       conversationId?: string
       taskId?: string
       headers?: Record<string, string>
+      conversationHistory?: ConversationMessage[]
     }
   ): Promise<AgentContext> {
     const client = getSupabaseClient()
@@ -146,6 +216,22 @@ export class AgentService {
       .select('*')
       .eq('avatar_id', avatarId)
 
+    // 获取对话历史
+    let conversationHistory: ConversationMessage[] = options?.conversationHistory || []
+    
+    // 如果有 conversationId 但没有传入历史，从数据库获取
+    if (options?.conversationId && conversationHistory.length === 0) {
+      const { data: conversation } = await client
+        .from('conversations')
+        .select('context')
+        .eq('id', options.conversationId)
+        .single()
+      
+      if (conversation?.context) {
+        conversationHistory = conversation.context as ConversationMessage[]
+      }
+    }
+
     return {
       userId,
       avatarId,
@@ -156,6 +242,7 @@ export class AgentService {
       platformConfigs: platformMap,
       avatarSkills: (avatarSkills || []) as AvatarSkill[],
       executionHistory: [],
+      conversationHistory,
       maxSteps: 10,
       currentStep: 0
     }
@@ -257,13 +344,16 @@ export class AgentService {
   private async think(context: AgentContext, history: ReActStep[]): Promise<string> {
     const toolsDescription = this.formatToolsForPrompt(context.availableTools)
     const historyText = this.formatHistory(history)
+    const conversationHistoryText = this.formatConversationHistory(context.conversationHistory)
 
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
 
 可用工具：
 ${toolsDescription}
 
-任务：${context.taskDescription}
+${conversationHistoryText ? `对话历史：\n${conversationHistoryText}\n` : ''}
+
+当前任务：${context.taskDescription}
 
 ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
@@ -287,6 +377,18 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
     })
 
     return response.content.trim()
+  }
+
+  /**
+   * 格式化对话历史
+   */
+  private formatConversationHistory(history: ConversationMessage[]): string {
+    if (!history || history.length === 0) return ''
+    
+    return history
+      .slice(-10) // 最近 5 轮对话
+      .map(msg => `${msg.role === 'user' ? '用户' : 'AI'}: ${msg.content}`)
+      .join('\n')
   }
 
   /**

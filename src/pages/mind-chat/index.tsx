@@ -315,13 +315,20 @@ export default function MindChatPage() {
         try {
           setCurrentStatus('Agent 思考中...')
           
+          // 构建对话历史
+          const conversationHistory = messages.slice(-10).map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+          
           const res = await Network.request({
             url: '/api/agent/execute',
             method: 'POST',
             data: {
               avatar_id: avatar?.id,
               task_description: content,
-              conversation_id: conversation?.id
+              conversation_id: conversation?.id,
+              conversation_history: conversationHistory
             }
           })
           

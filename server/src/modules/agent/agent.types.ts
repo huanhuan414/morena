@@ -125,8 +125,16 @@ export interface AgentContext {
   platformConfigs: Map<PlatformType, PlatformConfig>
   avatarSkills: AvatarSkill[]
   executionHistory: ReActStep[]
+  conversationHistory: ConversationMessage[] // 新增：对话历史
   maxSteps: number
   currentStep: number
+}
+
+// 对话消息类型
+export interface ConversationMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  created_at?: string
 }
 
 // Agent执行结果

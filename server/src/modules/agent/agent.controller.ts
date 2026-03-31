@@ -35,6 +35,7 @@ export class AgentController {
       task_description: string
       conversation_id?: string
       task_id?: string
+      conversation_history?: Array<{ role: string; content: string }> // 新增：对话历史
     }
   ) {
     const result = await this.agentService.executeTask(
@@ -43,7 +44,8 @@ export class AgentController {
       body.task_description,
       {
         conversationId: body.conversation_id,
-        taskId: body.task_id
+        taskId: body.task_id,
+        conversationHistory: body.conversation_history as any
       }
     )
 
