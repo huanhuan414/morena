@@ -6,8 +6,7 @@ export class SmsService {
   private accessKeyId = 'REMOVED_KEY'
   private accessKeySecret = 'REMOVED_SECRET'
   private signName = '贵州一枝梅信息科技'
-  private templateCode = 'SMS_000000001' // 用户需要在阿里云申请模板后替换实际code
-  // 模板内容：您的验证码为：${code}，请勿泄露于他人！
+  private templateCode = 'SMS_262600614' // 阿里云短信模板编码
 
   /**
    * 发送短信验证码

@@ -1,77 +1,125 @@
-/* 登录页面 - 霓虹赛博朋克风格 */
+/* ========================================
+   登录页面 - 霓虹赛博朋克风格
+   ======================================== */
+
 .login-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: #050508;
   position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0 48px;
-  padding-top: 160px;
+  overflow: hidden;
 }
 
-/* 背景网格 */
-.bg-grid {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+/* 背景效果 */
+.login-bg {
+  position: fixed;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
 }
 
-/* 背景光晕 */
-.bg-glow {
+.bg-gradient {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 245, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(191, 0, 255, 0.06) 0%, transparent 50%);
+}
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+}
+
+.bg-glow-1 {
   position: absolute;
   top: -200px;
   left: 50%;
   transform: translateX(-50%);
-  width: 800px;
-  height: 800px;
-  background: radial-gradient(ellipse at center, rgba(0, 245, 255, 0.15) 0%, rgba(191, 0, 255, 0.08) 40%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.12) 0%, transparent 60%);
+  animation: floatGlow 15s ease-in-out infinite;
 }
 
-/* Logo区域 */
-.logo-section {
+.bg-glow-2 {
+  position: absolute;
+  bottom: -150px;
+  right: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(191, 0, 255, 0.08) 0%, transparent 60%);
+  animation: floatGlow 20s ease-in-out infinite reverse;
+}
+
+/* 品牌区域 */
+.brand-section {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 80px;
-  position: relative;
-  z-index: 1;
+  padding-top: 140px;
+  margin-bottom: 48px;
 }
 
-.logo-icon {
-  width: 160px;
-  height: 160px;
-  border-radius: 48px;
-  background: rgba(0, 245, 255, 0.08);
-  border: 2px solid rgba(0, 245, 255, 0.2);
+.brand-logo {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin-bottom: 32px;
+}
+
+.logo-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(191, 0, 255, 0.1) 100%);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  border-radius: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 32px;
-  box-shadow: 0 0 60px rgba(0, 245, 255, 0.15);
+  box-shadow: 
+    0 0 40px rgba(0, 245, 255, 0.15),
+    inset 0 0 30px rgba(0, 245, 255, 0.05);
 }
 
-.logo-title {
-  font-size: 64px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 12px;
-  margin-bottom: 16px;
-  text-shadow: 0 0 30px rgba(0, 245, 255, 0.4);
+.logo-ring {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  border-radius: 48px;
+  animation: pulse-ring 3s ease-in-out infinite;
 }
 
-.logo-subtitle {
+.logo-pulse {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.brand-name {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: 8px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #00f5ff 50%, #bf00ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 40px rgba(0, 245, 255, 0.3);
+}
+
+.brand-slogan {
   font-size: 24px;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 2px;
@@ -79,15 +127,26 @@
 
 /* 登录卡片 */
 .login-card {
-  width: 100%;
-  max-width: 600px;
-  background: rgba(20, 20, 30, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 245, 255, 0.1);
-  border-radius: 32px;
-  padding: 40px 32px;
   position: relative;
   z-index: 1;
+  margin: 0 32px;
+  padding: 40px 32px;
+  background: rgba(15, 15, 25, 0.7);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  border-radius: 32px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.02) 0%, transparent 50%);
+  border-radius: 32px;
+  pointer-events: none;
 }
 
 .card-header {
@@ -98,67 +157,97 @@
 .card-title {
   display: block;
   font-size: 36px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fff;
   margin-bottom: 12px;
 }
 
-.card-desc {
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.4);
+.card-subtitle {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.5;
 }
 
 /* 表单区域 */
-.form-section {
+.form-area {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
-.input-wrapper {
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-label {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.label-text {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.input-box {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
+  border-radius: 20px;
   padding: 0 24px;
   height: 100px;
+  display: flex;
+  align-items: center;
   transition: all 0.3s ease;
 }
 
-.input-wrapper:focus-within {
+.input-box:focus-within {
   border-color: rgba(0, 245, 255, 0.3);
   background: rgba(0, 245, 255, 0.03);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.08);
 }
 
-.input-icon {
-  width: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.input-field {
+.flex-1 {
   flex: 1;
+}
+
+.input-row {
+  display: flex;
+  gap: 16px;
+}
+
+.input-control {
+  width: 100%;
   height: 100%;
   background: transparent;
   color: #fff;
-  font-size: 28px;
+  font-size: 30px;
 }
 
-.code-wrapper {
-  padding-right: 0;
+.input-placeholder {
+  color: rgba(255, 255, 255, 0.25);
 }
 
-.code-input {
-  flex: 1;
-}
-
+/* 验证码按钮 */
 .code-btn {
-  padding: 16px 24px;
+  padding: 0 28px;
+  height: 100px;
   background: rgba(0, 245, 255, 0.1);
-  border-radius: 16px;
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.code-btn:active {
+  background: rgba(0, 245, 255, 0.2);
+  transform: scale(0.98);
 }
 
 .code-btn.disabled {
@@ -167,30 +256,45 @@
 }
 
 .code-btn-text {
-  font-size: 24px;
+  font-size: 26px;
   color: #00f5ff;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-/* 登录按钮 */
-.login-btn {
+/* 提交按钮 */
+.submit-btn {
+  position: relative;
   width: 100%;
   height: 100px;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   border-radius: 24px;
   border: none;
-  margin-top: 16px;
-  box-shadow: 0 8px 32px rgba(0, 245, 255, 0.25);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  margin-top: 12px;
 }
 
-.login-btn[disabled] {
+.btn-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #00f5ff 0%, #00d4ff 50%, #bf00ff 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+.submit-btn[disabled] {
   opacity: 0.6;
 }
 
-.login-btn-text {
-  color: #0a0a0f;
+.btn-text {
+  position: relative;
   font-size: 32px;
   font-weight: 700;
+  color: #0a0a0f;
 }
 
 /* 卡片底部 */
@@ -201,44 +305,81 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.footer-text {
+.skip-text {
   font-size: 26px;
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* 底部协议 */
-.agreement-section {
-  text-align: center;
+/* 底部装饰 */
+.footer-decoration {
   position: relative;
   z-index: 1;
-  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: auto;
+  padding: 40px 0;
 }
 
-.agreement-text {
-  font-size: 22px;
-  color: rgba(255, 255, 255, 0.25);
+.decoration-line {
+  width: 40px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.3), transparent);
 }
 
-/* 小程序端适配 */
+.decoration-text {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 2px;
+}
+
+/* ========================================
+   动画
+   ======================================== */
+@keyframes floatGlow {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.05); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.02); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ========================================
+   小程序适配
+   ======================================== */
 /* #ifdef WEAPP */
-.login-page {
-  padding-top: 200px;
+.brand-section {
+  padding-top: 160px;
 }
 
-.logo-icon {
-  width: 140px;
-  height: 140px;
+.brand-name {
+  font-size: 48px;
 }
 
-.logo-title {
-  font-size: 56px;
-}
-
-.input-wrapper {
+.input-box {
   height: 96px;
 }
 
-.login-btn {
+.code-btn {
   height: 96px;
 }
+
+.submit-btn {
+  height: 96px;
+}
+
 /* #endif */

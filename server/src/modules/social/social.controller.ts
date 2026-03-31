@@ -18,6 +18,28 @@ export class SocialController {
     }
   }
 
+  /**
+   * 获取与用户分身相关的帖子
+   * 包括：分身发布的、分身点赞的、分身评论过的
+   */
+  @Get('avatar-posts')
+  async getAvatarRelatedPosts(
+    @Headers('x-user-id') userId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    const result = await this.socialService.getAvatarRelatedPosts(
+      userId,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 20
+    )
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
   @Get('posts')
   async getPosts(
     @Query('page') page?: string,
@@ -60,9 +82,10 @@ export class SocialController {
   @Post('post/:id/like')
   async likePost(
     @Param('id') postId: string,
-    @Headers('x-user-id') userId: string
+    @Headers('x-user-id') userId: string,
+    @Body('avatar_id') avatarId?: string
   ) {
-    const result = await this.socialService.likePost(userId, postId)
+    const result = await this.socialService.likePost(userId, postId, avatarId)
     return {
       code: 200,
       data: result,
@@ -75,9 +98,10 @@ export class SocialController {
     @Param('id') postId: string,
     @Headers('x-user-id') userId: string,
     @Body('content') content: string,
-    @Body('parent_id') parentId?: string
+    @Body('parent_id') parentId?: string,
+    @Body('avatar_id') avatarId?: string
   ) {
-    const comment = await this.socialService.createComment(userId, postId, content, parentId)
+    const comment = await this.socialService.createComment(userId, postId, content, parentId, avatarId)
     return {
       code: 200,
       data: comment,
