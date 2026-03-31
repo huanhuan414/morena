@@ -8,7 +8,8 @@ import { useUserStore } from '@/stores/user'
 import { 
   Camera, Sparkles, Brain, Palette, Zap, Heart, Target, 
   Lightbulb, Shield, Star, ArrowRight, Check, Loader, User,
-  Eye, MessageCircle, TrendingUp
+  Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
+  Moon, Sun, Smile, Bot
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -51,9 +52,25 @@ interface AbilityOption {
   icon: any
 }
 
+interface AppearanceStyle {
+  id: string
+  name: string
+  desc: string
+  color: string
+  icon: any
+}
+
+interface SpeakingStyle {
+  id: string
+  name: string
+  desc: string
+  example: string
+  icon: any
+}
+
 export default function AvatarCreatePage() {
   const { isLoggedIn } = useUserStore()
-  const [step, setStep] = useState(0) // 0: 上传照片, 1: 分析结果, 2: 选择性格, 3: 选择能力, 4: 设置风格, 5: 命名
+  const [step, setStep] = useState(0) // 0: 上传照片, 1: 分析结果, 2: 选择性格, 3: 选择能力, 4: 形象风格, 5: 说话方式, 6: 命名
   const [photoPath, setPhotoPath] = useState<string>('')
   const [photoUrl, setPhotoUrl] = useState<string>('')
   const [analyzing, setAnalyzing] = useState(false)
@@ -61,7 +78,8 @@ export default function AvatarCreatePage() {
   const [selectedPersonality, setSelectedPersonality] = useState<string | null>(null)
   const [selectedAbilities, setSelectedAbilities] = useState<string[]>([])
   const [avatarName, setAvatarName] = useState('')
-  const [avatarStyle, setAvatarStyle] = useState<'tech' | 'warm' | 'mysterious'>('tech')
+  const [appearanceStyle, setAppearanceStyle] = useState<string>('tech')
+  const [speakingStyle, setSpeakingStyle] = useState<string>('friendly')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -112,10 +130,58 @@ export default function AvatarCreatePage() {
     { id: 'protection', name: '安全守护', desc: '隐私保护、风险评估', icon: Shield }
   ]
 
-  const styles = [
-    { id: 'tech', name: '科技风', color: '#00f5ff', desc: '未来感·理性' },
-    { id: 'warm', name: '温暖风', color: '#ff6b6b', desc: '亲和·温暖' },
-    { id: 'mysterious', name: '神秘风', color: '#bf00ff', desc: '深邃·神秘' }
+  const appearanceStyles: AppearanceStyle[] = [
+    { id: 'tech', name: '科技感', desc: '未来·理性', color: '#00f5ff', icon: Bot },
+    { id: 'warm', name: '温暖风', desc: '亲和·阳光', color: '#ff6b6b', icon: Sun },
+    { id: 'mysterious', name: '神秘风', desc: '深邃·优雅', color: '#bf00ff', icon: Moon },
+    { id: 'energetic', name: '活力风', desc: '热情·开朗', color: '#ffaa00', icon: Flame },
+    { id: 'elegant', name: '优雅风', desc: '高贵·精致', color: '#c0c0c0', icon: Crown },
+    { id: 'cute', name: '可爱风', desc: '萌趣·活泼', color: '#ff69b4', icon: Smile }
+  ]
+
+  const speakingStyles: SpeakingStyle[] = [
+    { 
+      id: 'friendly', 
+      name: '亲切友好', 
+      desc: '像老朋友一样自然聊天', 
+      example: '"嘿，今天感觉怎么样？有什么想聊聊的吗？"',
+      icon: Smile 
+    },
+    { 
+      id: 'professional', 
+      name: '专业严谨', 
+      desc: '像专业顾问一样分析问题', 
+      example: '"根据分析，建议您从以下几个方面入手..."',
+      icon: Brain 
+    },
+    { 
+      id: 'creative', 
+      name: '创意风趣', 
+      desc: '富有创意，幽默风趣', 
+      example: '"哇，这个想法太棒了！让我给你加点创意料～"',
+      icon: Sparkles 
+    },
+    { 
+      id: 'gentle', 
+      name: '温柔治愈', 
+      desc: '温柔细腻，善解人意', 
+      example: '"我能理解你的感受，让我们一起慢慢来..."',
+      icon: Heart 
+    },
+    { 
+      id: 'witty', 
+      name: '机智幽默', 
+      desc: '反应敏捷，妙语连珠', 
+      example: '"哈哈，这个问题问得好！让我用最机智的方式回答你～"',
+      icon: Wand 
+    },
+    { 
+      id: 'concise', 
+      name: '简洁高效', 
+      desc: '言简意赅，直击要点', 
+      example: '"核心观点：第一...第二...第三...完毕。"',
+      icon: Zap 
+    }
   ]
 
   // 选择照片
@@ -239,7 +305,8 @@ export default function AvatarCreatePage() {
           name: avatarName,
           personality: selectedPersonality,
           abilities: selectedAbilities,
-          style: avatarStyle,
+          appearance_style: appearanceStyle,
+          speaking_style: speakingStyle,
           photo_url: photoUrl,
           photo_analysis: photoAnalysis
         }
@@ -527,42 +594,38 @@ export default function AvatarCreatePage() {
     </View>
   )
 
+  // 步骤4: 形象风格
   const renderStep4 = () => (
     <View className="step-content">
       <View className="step-header">
-        <Text className="step-title">设置外观风格</Text>
-        <Text className="step-desc">为你的AI分身选择独特的外观</Text>
+        <Text className="step-title">选择形象风格</Text>
+        <Text className="step-desc">为你的AI分身选择独特的外观形象</Text>
       </View>
 
-      <View className="style-grid">
-        {styles.map(s => {
-          const isSelected = avatarStyle === s.id
+      <View className="appearance-grid">
+        {appearanceStyles.map(s => {
+          const Icon = s.icon
+          const isSelected = appearanceStyle === s.id
           return (
             <View 
               key={s.id}
-              className={`style-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => setAvatarStyle(s.id as any)}
+              className={`appearance-card ${isSelected ? 'selected' : ''}`}
+              onClick={() => setAppearanceStyle(s.id)}
             >
               <View 
-                className="style-preview"
+                className="appearance-preview"
                 style={{ 
-                  background: `linear-gradient(135deg, ${s.color}40 0%, ${s.color}10 100%)`,
+                  background: `linear-gradient(135deg, ${s.color}30 0%, ${s.color}10 100%)`,
                   borderColor: isSelected ? s.color : 'rgba(255,255,255,0.1)'
                 }}
               >
-                <View 
-                  className="style-orb"
-                  style={{ 
-                    background: `radial-gradient(circle, ${s.color} 0%, transparent 70%)`,
-                    boxShadow: `0 0 40px ${s.color}60`
-                  }}
-                />
+                <Icon size={40} color={s.color} />
               </View>
-              <Text className="style-name">{s.name}</Text>
-              <Text className="style-desc">{s.desc}</Text>
+              <Text className="appearance-name">{s.name}</Text>
+              <Text className="appearance-desc">{s.desc}</Text>
               {isSelected && (
-                <View className="style-check">
-                  <Check size={14} color="#fff" />
+                <View className="appearance-check" style={{ backgroundColor: s.color }}>
+                  <Check size={14} color="#0a0a0f" />
                 </View>
               )}
             </View>
@@ -572,7 +635,49 @@ export default function AvatarCreatePage() {
     </View>
   )
 
+  // 步骤5: 说话方式
   const renderStep5 = () => (
+    <View className="step-content">
+      <View className="step-header">
+        <Text className="step-title">选择说话方式</Text>
+        <Text className="step-desc">决定你的AI分身如何与你沟通</Text>
+      </View>
+
+      <View className="speaking-grid">
+        {speakingStyles.map(s => {
+          const Icon = s.icon
+          const isSelected = speakingStyle === s.id
+          return (
+            <View 
+              key={s.id}
+              className={`speaking-card ${isSelected ? 'selected' : ''}`}
+              onClick={() => setSpeakingStyle(s.id)}
+            >
+              <View className="speaking-header">
+                <View className="speaking-icon-wrap">
+                  <Icon size={24} color={isSelected ? '#00f5ff' : 'rgba(255,255,255,0.5)'} />
+                </View>
+                <View className="speaking-info">
+                  <Text className="speaking-name">{s.name}</Text>
+                  <Text className="speaking-desc">{s.desc}</Text>
+                </View>
+                {isSelected && (
+                  <View className="speaking-check">
+                    <Check size={16} color="#00f5ff" />
+                  </View>
+                )}
+              </View>
+              <View className="speaking-example">
+                <Text className="example-text">{s.example}</Text>
+              </View>
+            </View>
+          )
+        })}
+      </View>
+    </View>
+  )
+
+  const renderStep6 = () => (
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">为分身命名</Text>
@@ -600,7 +705,7 @@ export default function AvatarCreatePage() {
         </View>
 
         {photoAnalysis?.nameSuggestions && (
-          <View className="name-suggestions">
+          <View className="name-suggestions-box">
             <Text className="suggestions-title">AI推荐名字</Text>
             <View className="suggestions-list">
               {photoAnalysis.nameSuggestions.slice(0, 4).map((s, idx) => (
@@ -633,8 +738,12 @@ export default function AvatarCreatePage() {
             </Text>
           </View>
           <View className="summary-item">
-            <Text className="summary-label">风格：</Text>
-            <Text className="summary-value">{styles.find(s => s.id === avatarStyle)?.name || '未选择'}</Text>
+            <Text className="summary-label">形象：</Text>
+            <Text className="summary-value">{appearanceStyles.find(s => s.id === appearanceStyle)?.name || '未选择'}</Text>
+          </View>
+          <View className="summary-item">
+            <Text className="summary-label">语风：</Text>
+            <Text className="summary-value">{speakingStyles.find(s => s.id === speakingStyle)?.name || '未选择'}</Text>
           </View>
         </View>
       </View>
@@ -647,8 +756,9 @@ export default function AvatarCreatePage() {
       case 1: return true // 分析结果页可以直接下一步
       case 2: return !!selectedPersonality
       case 3: return selectedAbilities.length > 0
-      case 4: return !!avatarStyle
-      case 5: return !!avatarName.trim()
+      case 4: return !!appearanceStyle
+      case 5: return !!speakingStyle
+      case 6: return !!avatarName.trim()
       default: return false
     }
   }
@@ -662,11 +772,11 @@ export default function AvatarCreatePage() {
         <View className="progress-track">
           <View 
             className="progress-fill" 
-            style={{ width: `${(step / 5) * 100}%` }}
+            style={{ width: `${(step / 6) * 100}%` }}
           />
         </View>
         <View className="progress-dots">
-          {[0, 1, 2, 3, 4, 5].map(s => (
+          {[0, 1, 2, 3, 4, 5, 6].map(s => (
             <View key={s} className={`progress-dot ${step >= s ? 'active' : ''}`}>
               {step > s ? <Check size={10} color="#0a0a0f" /> : <Text className="dot-number">{s + 1}</Text>}
             </View>
@@ -682,6 +792,7 @@ export default function AvatarCreatePage() {
         {step === 3 && renderStep3()}
         {step === 4 && renderStep4()}
         {step === 5 && renderStep5()}
+        {step === 6 && renderStep6()}
       </ScrollView>
 
       {/* 底部按钮 */}
@@ -691,7 +802,7 @@ export default function AvatarCreatePage() {
             <Text className="back-btn-text">上一步</Text>
           </Button>
         )}
-        {step < 5 ? (
+        {step < 6 ? (
           <Button 
             className={`next-btn ${!canNext() ? 'disabled' : ''}`}
             onClick={() => canNext() && setStep(step + 1)}

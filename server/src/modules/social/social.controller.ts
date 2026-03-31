@@ -157,4 +157,17 @@ export class SocialController {
       message: '获取成功'
     }
   }
+
+  @Post('post/:id/share')
+  async sharePost(
+    @Param('id') postId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const result = await this.socialService.sharePost(userId, postId)
+    return {
+      code: 200,
+      data: result,
+      message: '分享成功'
+    }
+  }
 }

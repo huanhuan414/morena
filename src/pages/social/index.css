@@ -1,22 +1,52 @@
 /* ========================================
-   广场页面 - 简约清新风格
+   广场页面 - 霓虹赛博朋克风格
    ======================================== */
 
 .social-page {
   min-height: 100vh;
-  background: #f5f5f7;
+  background: #0a0a0f;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景层 */
+.social-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 400px;
+  background: radial-gradient(ellipse at top, rgba(0, 245, 255, 0.15) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 10%, rgba(191, 0, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* 网格背景 */
+.social-page::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 245, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
 }
 
 /* 顶部导航 */
 .social-header {
-  background: #fff;
-  padding: 88px 24px 16px;
+  position: relative;
+  z-index: 10;
+  padding: 88px 24px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .header-left {
@@ -27,19 +57,24 @@
 .header-title {
   font-size: 36px;
   font-weight: 700;
-  color: #1a1a1a;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
 }
 
 .header-subtitle {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
   margin-top: 4px;
 }
 
 .refresh-btn {
   width: 48px;
   height: 48px;
-  background: #f5f5f7;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -49,17 +84,22 @@
 
 /* 滚动区域 */
 .social-scroll {
+  position: relative;
+  z-index: 5;
   flex: 1;
   padding: 16px;
 }
 
 /* 统计卡片 */
 .stats-card {
-  background: #fff;
-  border-radius: 20px;
+  background: rgba(20, 20, 30, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 24px;
   padding: 24px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 30px rgba(0, 245, 255, 0.1),
+              inset 0 0 30px rgba(0, 245, 255, 0.03);
 }
 
 .stats-row {
@@ -76,34 +116,38 @@
   display: block;
   font-size: 40px;
   font-weight: 800;
-  color: #1a1a1a;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .stat-divider {
   width: 1px;
   height: 48px;
-  background: #eee;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 245, 255, 0.3) 50%, transparent 100%);
 }
 
 /* 分身区域 */
 .avatar-section {
-  background: #fff;
-  border-radius: 20px;
+  background: rgba(20, 20, 30, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(191, 0, 255, 0.2);
+  border-radius: 24px;
   padding: 20px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .section-title {
   font-size: 28px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.9);
   margin-bottom: 16px;
 }
 
@@ -128,33 +172,27 @@
   width: 72px;
   height: 72px;
   margin-bottom: 8px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
 }
 
 .avatar-img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: #f0f0f0;
+  background: #1a1a2e;
 }
 
 .avatar-placeholder {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(191, 0, 255, 0.2) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.avatar-placeholder.small {
-  background: #e0e0e0;
-}
-
-.avatar-letter {
-  font-size: 28px;
-  font-weight: 600;
-  color: #666;
 }
 
 .hosting-dot {
@@ -163,14 +201,15 @@
   right: 0;
   width: 16px;
   height: 16px;
-  background: #00c853;
+  background: #00ff88;
   border-radius: 50%;
-  border: 3px solid #fff;
+  border: 3px solid #0a0a0f;
+  box-shadow: 0 0 10px #00ff88;
 }
 
 .avatar-name {
   font-size: 24px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -181,18 +220,18 @@
 .divider {
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  margin: 24px 0;
 }
 
 .divider-line {
   flex: 1;
   height: 1px;
-  background: #e0e0e0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.3) 50%, transparent 100%);
 }
 
 .divider-text {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.4);
   padding: 0 16px;
 }
 
@@ -204,10 +243,18 @@
 }
 
 .post-card {
-  background: #fff;
-  border-radius: 20px;
+  background: rgba(20, 20, 30, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.post-card:active {
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: 0 4px 30px rgba(0, 245, 255, 0.15);
 }
 
 /* 帖子头部 */
@@ -226,7 +273,8 @@
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  background: #f0f0f0;
+  background: rgba(0, 245, 255, 0.1);
+  border: 2px solid rgba(0, 245, 255, 0.3);
 }
 
 .author-avatar .avatar-img {
@@ -248,7 +296,7 @@
 .author-name {
   font-size: 28px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .ai-tag {
@@ -256,26 +304,27 @@
   align-items: center;
   gap: 4px;
   padding: 2px 10px;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(191, 0, 255, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(191, 0, 255, 0.2) 100%);
+  border: 1px solid rgba(0, 245, 255, 0.3);
   border-radius: 12px;
 }
 
 .ai-tag-text {
   font-size: 20px;
   font-weight: 500;
-  color: #00c2ff;
+  color: #00f5ff;
 }
 
 .post-time {
   font-size: 22px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.4);
   margin-top: 2px;
 }
 
 /* 帖子内容 */
 .post-content {
   font-size: 30px;
-  color: #333;
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.6;
   margin-bottom: 16px;
 }
@@ -304,7 +353,7 @@
 .post-image {
   width: 100%;
   height: 200px;
-  background: #f5f5f5;
+  background: rgba(30, 30, 50, 0.5);
   border-radius: 12px;
 }
 
@@ -329,7 +378,7 @@
 .post-actions {
   display: flex;
   padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .action-btn {
@@ -339,11 +388,17 @@
   justify-content: center;
   gap: 8px;
   padding: 12px 0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.action-btn:active {
+  background: rgba(0, 245, 255, 0.1);
 }
 
 .action-count {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .action-count.liked {
@@ -354,8 +409,9 @@
 .comments-section {
   margin-top: 16px;
   padding: 16px;
-  background: #f9f9f9;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .comment-item {
@@ -372,7 +428,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #e0e0e0;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -397,7 +454,7 @@
 .comment-author {
   font-size: 24px;
   font-weight: 500;
-  color: #333;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .ai-tag-small {
@@ -406,17 +463,18 @@
   gap: 2px;
   padding: 1px 6px;
   background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
   border-radius: 8px;
 }
 
 .ai-tag-text-small {
   font-size: 18px;
-  color: #00c2ff;
+  color: #00f5ff;
 }
 
 .comment-text {
   font-size: 24px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.6);
   line-height: 1.4;
 }
 
@@ -426,28 +484,30 @@
   gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .comment-input {
   flex: 1;
   height: 44px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 245, 255, 0.2);
   border-radius: 22px;
   padding: 0 16px;
   font-size: 26px;
+  color: #fff;
 }
 
 .send-btn {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, #00c2ff 0%, #bf00ff 100%);
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
 }
 
 /* 空状态 */
@@ -460,17 +520,89 @@
 
 .empty-icon {
   margin-bottom: 16px;
+  width: 100px;
+  height: 100px;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-title {
   font-size: 32px;
-  color: #333;
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 8px;
 }
 
 .empty-desc {
   font-size: 26px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 无分身引导 */
+.no-avatar-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.no-avatar-icon {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(191, 0, 255, 0.2) 100%);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 245, 255, 0.5),
+                0 0 60px rgba(191, 0, 255, 0.3);
+  }
+}
+
+.no-avatar-title {
+  font-size: 36px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}
+
+.no-avatar-desc {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.create-avatar-btn {
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  border-radius: 30px;
+  padding: 16px 48px;
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-avatar-btn-text {
+  font-size: 30px;
+  font-weight: 600;
+  color: #0a0a0f;
 }
 
 /* 加载状态 */
@@ -481,7 +613,7 @@
 
 .loading-text {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* 底部状态 */
@@ -492,7 +624,7 @@
 
 .end-text {
   font-size: 24px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* 底部安全区 */
@@ -505,14 +637,93 @@
   position: fixed;
   bottom: 120px;
   right: 24px;
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.5),
+              0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+/* 分享弹窗 */
+.share-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.share-content {
+  width: 100%;
+  background: rgba(20, 20, 30, 0.95);
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-bottom: none;
+}
+
+.share-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.share-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.share-options {
+  display: flex;
+  justify-content: space-around;
+  padding: 20px 0;
+}
+
+.share-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.share-icon-wrap {
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-option-text {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.share-cancel {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+}
+
+.share-cancel-text {
+  font-size: 30px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ========================================

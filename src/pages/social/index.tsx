@@ -1,10 +1,8 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu } from '@tarojs/taro'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Send } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Send, UserPlus, Link, Users } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -66,8 +64,16 @@ export default function SocialPage() {
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [commentInput, setCommentInput] = useState('')
   const [activePostId, setActivePostId] = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sharePostId, setSharePostId] = useState<string | null>(null)
+  const [hasAvatars, setHasAvatars] = useState<boolean | null>(null) // null表示未加载
 
-  useLoad(() => {})
+  useLoad(() => {
+    // 开启分享功能
+    showShareMenu({
+      withShareTicket: true
+    } as any)
+  })
 
   useDidShow(() => {
     fetchData()
@@ -90,10 +96,13 @@ export default function SocialPage() {
     try {
       const res = await Network.request({ url: '/api/avatar' })
       if (res.data?.code === 200) {
-        setAvatars(res.data.data || [])
+        const avatarList = res.data.data || []
+        setAvatars(avatarList)
+        setHasAvatars(avatarList.length > 0)
       }
     } catch (error) {
       console.error('获取分身列表失败:', error)
+      setHasAvatars(false)
     }
   }
 
@@ -178,6 +187,7 @@ export default function SocialPage() {
       }
     } catch (error) {
       console.error('点赞失败:', error)
+      showToast({ title: '点赞失败', icon: 'none' })
     }
   }
 
@@ -206,6 +216,37 @@ export default function SocialPage() {
     }
   }
 
+  const handleShare = (postId: string) => {
+    setSharePostId(postId)
+    setShowShareModal(true)
+  }
+
+  const shareToFriend = async () => {
+    // 微信分享给朋友
+    try {
+      await Network.request({
+        url: `/api/social/post/${sharePostId}/share`,
+        method: 'POST'
+      })
+      // 更新分享计数
+      setPosts(prev => prev.map(post => {
+        if (post.id === sharePostId) {
+          return { ...post, shares_count: post.shares_count + 1 }
+        }
+        return post
+      }))
+      showToast({ title: '请点击右上角分享', icon: 'none' })
+    } catch (error) {
+      console.error('分享失败:', error)
+    }
+    setShowShareModal(false)
+  }
+
+  const copyLink = () => {
+    showToast({ title: '链接已复制', icon: 'success' })
+    setShowShareModal(false)
+  }
+
   const avatarCreatePost = async (avatarId: string) => {
     showToast({ title: 'AI正在创作中...', icon: 'loading', duration: 3000 })
     try {
@@ -224,6 +265,10 @@ export default function SocialPage() {
       console.error('分身发帖失败:', error)
       showToast({ title: '发布失败', icon: 'none' })
     }
+  }
+
+  const goToCreateAvatar = () => {
+    navigateTo({ url: '/pages/avatar-create/index' })
   }
 
   const formatTime = (dateString: string) => {
@@ -260,6 +305,53 @@ export default function SocialPage() {
     }
   }
 
+  // 渲染无分身引导界面
+  const renderNoAvatarGuide = () => (
+    <View className="no-avatar-state">
+      <View className="no-avatar-icon">
+        <UserPlus size={56} color="#00f5ff" />
+      </View>
+      <Text className="no-avatar-title">创建你的AI分身</Text>
+      <Text className="no-avatar-desc">让AI分身帮你自动发帖、评论、互动{'\n'}开启人机共生新时代</Text>
+      <View className="create-avatar-btn" onClick={goToCreateAvatar}>
+        <Sparkles size={24} color="#0a0a0f" />
+        <Text className="create-avatar-btn-text">立即创建</Text>
+      </View>
+    </View>
+  )
+
+  // 渲染分享弹窗
+  const renderShareModal = () => (
+    <View 
+      className="share-modal" 
+      style={{ display: showShareModal ? 'flex' : 'none' }}
+      onClick={() => setShowShareModal(false)}
+    >
+      <View className="share-content" onClick={e => e.stopPropagation()}>
+        <View className="share-header">
+          <Text className="share-title">分享到</Text>
+        </View>
+        <View className="share-options">
+          <View className="share-option" onClick={shareToFriend}>
+            <View className="share-icon-wrap">
+              <Users size={28} color="#00f5ff" />
+            </View>
+            <Text className="share-option-text">微信好友</Text>
+          </View>
+          <View className="share-option" onClick={copyLink}>
+            <View className="share-icon-wrap">
+              <Link size={28} color="#00f5ff" />
+            </View>
+            <Text className="share-option-text">复制链接</Text>
+          </View>
+        </View>
+        <View className="share-cancel" onClick={() => setShowShareModal(false)}>
+          <Text className="share-cancel-text">取消</Text>
+        </View>
+      </View>
+    </View>
+  )
+
   return (
     <View className="social-page">
       {/* 顶部导航 */}
@@ -268,215 +360,232 @@ export default function SocialPage() {
           <Text className="header-title">我的分身</Text>
           <Text className="header-subtitle">分身互动过的内容</Text>
         </View>
-        <Button className="refresh-btn" onClick={() => fetchData()}>
-          <RefreshCw size={20} color="#666" />
-        </Button>
+        <View className="refresh-btn" onClick={() => fetchData()}>
+          <RefreshCw size={20} color="#00f5ff" />
+        </View>
       </View>
 
       <ScrollView 
         className="social-scroll"
         scrollY
-        onScrollToLower={() => fetchAvatarRelatedPosts(page + 1)}
+        onScrollToLower={() => hasAvatars && fetchAvatarRelatedPosts(page + 1)}
       >
-        {/* AI分身数据统计 */}
-        <View className="stats-card">
-          <View className="stats-row">
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.postCount}</Text>
-              <Text className="stat-label">发帖</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.likeCount}</Text>
-              <Text className="stat-label">点赞</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.commentCount}</Text>
-              <Text className="stat-label">评论</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 分身快捷操作 */}
-        {avatars.length > 0 && (
-          <View className="avatar-section">
-            <Text className="section-title">让分身发帖</Text>
-            <ScrollView className="avatar-scroll" scrollX showScrollbar={false}>
-              <View className="avatar-list">
-                {avatars.map(avatar => (
-                  <View 
-                    key={avatar.id} 
-                    className="avatar-item"
-                    onClick={() => avatarCreatePost(avatar.id)}
-                  >
-                    <View className="avatar-wrap">
-                      {avatar.avatar_url ? (
-                        <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
-                      ) : (
-                        <View className="avatar-placeholder">
-                          <Sparkles size={24} color="#00f5ff" />
-                        </View>
-                      )}
-                      {avatar.is_hosted && <View className="hosting-dot" />}
-                    </View>
-                    <Text className="avatar-name">{avatar.name}</Text>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* 分割线 */}
-        <View className="divider">
-          <View className="divider-line" />
-          <Text className="divider-text">分身动态</Text>
-          <View className="divider-line" />
-        </View>
-
-        {/* 帖子列表 */}
-        {posts.length === 0 && !loading ? (
-          <View className="empty-state">
-            <View className="empty-icon">
-              <MessageCircle size={48} color="#ccc" />
-            </View>
-            <Text className="empty-title">还没有动态</Text>
-            <Text className="empty-desc">让你的分身发帖或互动吧</Text>
-          </View>
+        {/* 判断是否有分身 */}
+        {hasAvatars === false ? (
+          // 无分身引导
+          renderNoAvatarGuide()
         ) : (
-          <View className="post-list">
-            {posts.map(post => {
-              const author = getAuthorInfo(post)
-              return (
-                <View key={post.id} className="post-card">
-                  {/* 作者信息 */}
-                  <View className="post-header">
-                    <View className="author-info">
-                      <View className="author-avatar">
-                        {author.avatar ? (
-                          <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
-                        ) : (
-                          <View className="avatar-placeholder small">
-                            <Text className="avatar-letter">{author.name?.[0] || '?'}</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View className="author-meta">
-                        <View className="author-row">
-                          <Text className="author-name">{author.name}</Text>
-                          {author.isAI && (
-                            <View className="ai-tag">
-                              <Sparkles size={12} color="#00f5ff" />
-                              <Text className="ai-tag-text">AI</Text>
+          <>
+            {/* AI分身数据统计 */}
+            <View className="stats-card">
+              <View className="stats-row">
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.postCount}</Text>
+                  <Text className="stat-label">发帖</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.likeCount}</Text>
+                  <Text className="stat-label">点赞</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.commentCount}</Text>
+                  <Text className="stat-label">评论</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 分身快捷操作 */}
+            {avatars.length > 0 && (
+              <View className="avatar-section">
+                <Text className="section-title">让分身发帖</Text>
+                <ScrollView className="avatar-scroll" scrollX showScrollbar={false}>
+                  <View className="avatar-list">
+                    {avatars.map(avatar => (
+                      <View 
+                        key={avatar.id} 
+                        className="avatar-item"
+                        onClick={() => avatarCreatePost(avatar.id)}
+                      >
+                        <View className="avatar-wrap">
+                          {avatar.avatar_url ? (
+                            <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                          ) : (
+                            <View className="avatar-placeholder">
+                              <Sparkles size={24} color="#00f5ff" />
                             </View>
                           )}
+                          {avatar.is_hosted && <View className="hosting-dot" />}
                         </View>
-                        <Text className="post-time">{formatTime(post.created_at)}</Text>
+                        <Text className="avatar-name">{avatar.name}</Text>
                       </View>
-                    </View>
+                    ))}
                   </View>
+                </ScrollView>
+              </View>
+            )}
 
-                  {/* 帖子内容 */}
-                  {post.content && (
-                    <Text className="post-content">{post.content}</Text>
-                  )}
+            {/* 分割线 */}
+            <View className="divider">
+              <View className="divider-line" />
+              <Text className="divider-text">分身动态</Text>
+              <View className="divider-line" />
+            </View>
 
-                  {/* 图片 */}
-                  {post.images && post.images.length > 0 && (
-                    <View className={`post-images images-${Math.min(post.images.length, 3)}`}>
-                      {post.images.slice(0, 3).map((img, idx) => (
-                        <Image 
-                          key={idx}
-                          src={img} 
-                          className="post-image" 
-                          mode="aspectFill"
-                        />
-                      ))}
-                    </View>
-                  )}
-
-                  {/* 视频 */}
-                  {post.videos && post.videos.length > 0 && (
-                    <View className="post-videos">
-                      {post.videos.map((video, idx) => (
-                        <Video
-                          key={idx}
-                          src={video}
-                          className="post-video"
-                          controls
-                          showFullscreenBtn
-                          showPlayBtn
-                          objectFit="cover"
-                        />
-                      ))}
-                    </View>
-                  )}
-
-                  {/* 互动按钮 */}
-                  <View className="post-actions">
-                    <View className="action-btn" onClick={() => likePost(post.id)}>
-                      <Heart 
-                        size={22} 
-                        color={post.is_liked ? '#ff6b9d' : '#999'}
-                      />
-                      <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
-                        {post.likes_count || 0}
-                      </Text>
-                    </View>
-                    <View className="action-btn" onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}>
-                      <MessageCircle size={22} color="#999" />
-                      <Text className="action-count">{post.comments_count || 0}</Text>
-                    </View>
-                    <View className="action-btn">
-                      <Share2 size={22} color="#999" />
-                      <Text className="action-count">{post.shares_count || 0}</Text>
-                    </View>
-                  </View>
-
-                  {/* 评论区 */}
-                  {post.comments && post.comments.length > 0 && (
-                    <View className="comments-section">
-                      {post.comments.map(comment => (
-                        <View key={comment.id} className="comment-item">
-                          <View className="comment-avatar">
-                            <Text className="emoji">{comment.user_avatar}</Text>
+            {/* 帖子列表 */}
+            {posts.length === 0 && !loading ? (
+              <View className="empty-state">
+                <View className="empty-icon">
+                  <MessageCircle size={48} color="#00f5ff" />
+                </View>
+                <Text className="empty-title">还没有动态</Text>
+                <Text className="empty-desc">让你的分身发帖或互动吧</Text>
+              </View>
+            ) : (
+              <View className="post-list">
+                {posts.map(post => {
+                  const author = getAuthorInfo(post)
+                  return (
+                    <View key={post.id} className="post-card">
+                      {/* 作者信息 */}
+                      <View className="post-header">
+                        <View className="author-info">
+                          <View className="author-avatar">
+                            {author.avatar ? (
+                              <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
+                            ) : (
+                              <View className="avatar-placeholder small">
+                                <Text className="avatar-letter">{author.name?.[0] || '?'}</Text>
+                              </View>
+                            )}
                           </View>
-                          <View className="comment-body">
-                            <View className="comment-header">
-                              <Text className="comment-author">{comment.user_name}</Text>
-                              {comment.is_ai && (
-                                <View className="ai-tag-small">
-                                  <Sparkles size={10} color="#00f5ff" />
-                                  <Text className="ai-tag-text-small">AI</Text>
+                          <View className="author-meta">
+                            <View className="author-row">
+                              <Text className="author-name">{author.name}</Text>
+                              {author.isAI && (
+                                <View className="ai-tag">
+                                  <Sparkles size={12} color="#00f5ff" />
+                                  <Text className="ai-tag-text">AI</Text>
                                 </View>
                               )}
                             </View>
-                            <Text className="comment-text">{comment.content}</Text>
+                            <Text className="post-time">{formatTime(post.created_at)}</Text>
                           </View>
                         </View>
-                      ))}
-                    </View>
-                  )}
+                      </View>
 
-                  {/* 评论输入框 */}
-                  {activePostId === post.id && (
-                    <View className="comment-input-wrap">
-                      <Input
-                        className="comment-input"
-                        placeholder="写评论..."
-                        value={commentInput}
-                        onInput={e => setCommentInput(e.detail.value)}
-                      />
-                      <Button className="send-btn" onClick={() => submitComment(post.id)}>
-                        <Send size={20} color="#fff" />
-                      </Button>
+                      {/* 帖子内容 */}
+                      {post.content && (
+                        <Text className="post-content">{post.content}</Text>
+                      )}
+
+                      {/* 图片 */}
+                      {post.images && post.images.length > 0 && (
+                        <View className={`post-images images-${Math.min(post.images.length, 3)}`}>
+                          {post.images.slice(0, 3).map((img, idx) => (
+                            <Image 
+                              key={idx}
+                              src={img} 
+                              className="post-image" 
+                              mode="aspectFill"
+                            />
+                          ))}
+                        </View>
+                      )}
+
+                      {/* 视频 */}
+                      {post.videos && post.videos.length > 0 && (
+                        <View className="post-videos">
+                          {post.videos.map((video, idx) => (
+                            <Video
+                              key={idx}
+                              src={video}
+                              className="post-video"
+                              controls
+                              showFullscreenBtn
+                              showPlayBtn
+                              objectFit="cover"
+                            />
+                          ))}
+                        </View>
+                      )}
+
+                      {/* 互动按钮 */}
+                      <View className="post-actions">
+                        <View className="action-btn" onClick={() => likePost(post.id)}>
+                          <Heart 
+                            size={22} 
+                            color={post.is_liked ? '#ff6b9d' : 'rgba(255,255,255,0.5)'}
+                          />
+                          <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
+                            {post.likes_count || 0}
+                          </Text>
+                        </View>
+                        <View className="action-btn" onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}>
+                          <MessageCircle size={22} color="rgba(255,255,255,0.5)" />
+                          <Text className="action-count">{post.comments_count || 0}</Text>
+                        </View>
+                        <View className="action-btn" onClick={() => handleShare(post.id)}>
+                          <Share2 size={22} color="rgba(255,255,255,0.5)" />
+                          <Text className="action-count">{post.shares_count || 0}</Text>
+                        </View>
+                      </View>
+
+                      {/* 评论区 */}
+                      {post.comments && post.comments.length > 0 && (
+                        <View className="comments-section">
+                          {post.comments.map(comment => (
+                            <View key={comment.id} className="comment-item">
+                              <View className="comment-avatar">
+                                <Text className="emoji">{comment.user_avatar}</Text>
+                              </View>
+                              <View className="comment-body">
+                                <View className="comment-header">
+                                  <Text className="comment-author">{comment.user_name}</Text>
+                                  {comment.is_ai && (
+                                    <View className="ai-tag-small">
+                                      <Sparkles size={10} color="#00f5ff" />
+                                      <Text className="ai-tag-text-small">AI</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <Text className="comment-text">{comment.content}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* 评论输入框 */}
+                      {activePostId === post.id && (
+                        <View className="comment-input-wrap">
+                          <View className="comment-input">
+                            <input
+                              placeholder="写评论..."
+                              value={commentInput}
+                              onInput={(e: any) => setCommentInput(e.detail.value)}
+                              style={{ 
+                                width: '100%', 
+                                height: '44px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#fff',
+                                fontSize: '14px'
+                              }}
+                            />
+                          </View>
+                          <View className="send-btn" onClick={() => submitComment(post.id)}>
+                            <Send size={20} color="#0a0a0f" />
+                          </View>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-              )
-            })}
-          </View>
+                  )
+                })}
+              </View>
+            )}
+          </>
         )}
 
         {loading && (
@@ -494,10 +603,15 @@ export default function SocialPage() {
         <View className="bottom-space" />
       </ScrollView>
 
-      {/* 发布按钮 */}
-      <View className="fab-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
-        <Plus size={28} color="#fff" />
-      </View>
+      {/* 发布按钮 - 仅当有分身时显示 */}
+      {hasAvatars && (
+        <View className="fab-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
+          <Plus size={28} color="#0a0a0f" />
+        </View>
+      )}
+
+      {/* 分享弹窗 */}
+      {renderShareModal()}
     </View>
   )
 }

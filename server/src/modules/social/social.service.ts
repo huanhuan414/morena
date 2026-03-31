@@ -341,4 +341,22 @@ export class SocialService {
     
     return data
   }
+
+  async sharePost(userId: string, postId: string) {
+    const client = getSupabaseClient()
+    
+    // 增加分享计数
+    const { data: post } = await client
+      .from('posts')
+      .select('shares_count')
+      .eq('id', postId)
+      .single()
+    
+    await client
+      .from('posts')
+      .update({ shares_count: (post?.shares_count || 0) + 1 })
+      .eq('id', postId)
+    
+    return { shared: true, shares_count: (post?.shares_count || 0) + 1 }
+  }
 }
