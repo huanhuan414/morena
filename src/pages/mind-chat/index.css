@@ -9,7 +9,7 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 260rpx;
+  padding-bottom: calc(240rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -353,6 +353,7 @@
   flex: 1;
   width: 100%;
   padding: 0 24rpx;
+  padding-bottom: 160rpx;
   position: relative;
   z-index: 5;
   box-sizing: border-box;
@@ -646,7 +647,7 @@
 /* 底部输入栏 - 固定在TabBar之上 */
 .input-bar {
   position: fixed;
-  bottom: 100rpx;
+  bottom: calc(100rpx + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   height: 140rpx;
@@ -655,7 +656,6 @@
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   z-index: 100;
   box-sizing: border-box;
 }
