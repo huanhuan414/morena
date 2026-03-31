@@ -44,13 +44,6 @@ interface AvatarStats {
   commentCount: number
 }
 
-interface Avatar {
-  id: string
-  name: string
-  avatar_url: string
-  is_hosted?: boolean
-}
-
 export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +54,6 @@ export default function SocialPage() {
   })
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [avatars, setAvatars] = useState<Avatar[]>([])
   const [commentInput, setCommentInput] = useState('')
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -85,19 +77,15 @@ export default function SocialPage() {
   })
 
   const fetchData = async () => {
-    await Promise.all([
-      fetchAvatarRelatedPosts(1),
-      fetchAvatars()
-    ])
+    await fetchAvatarRelatedPosts(1)
+    await checkAvatars()
   }
 
-  const fetchAvatars = async () => {
+  const checkAvatars = async () => {
     try {
       const res = await Network.request({ url: '/api/avatar' })
       if (res.data?.code === 200) {
-        const avatarList = res.data.data || []
-        setAvatars(avatarList)
-        setHasAvatars(avatarList.length > 0)
+        setHasAvatars((res.data.data || []).length > 0)
       }
     } catch (error) {
       console.error('获取分身列表失败:', error)
@@ -365,35 +353,6 @@ export default function SocialPage() {
                 </View>
               </View>
             </View>
-
-            {/* 分身列表展示（仅展示，不可点击发帖） */}
-            {avatars.length > 0 && (
-              <View className="avatar-section">
-                <Text className="section-title">我的分身</Text>
-                <ScrollView className="avatar-scroll" scrollX showScrollbar={false}>
-                  <View className="avatar-list">
-                    {avatars.map(avatar => (
-                      <View 
-                        key={avatar.id} 
-                        className="avatar-item"
-                      >
-                        <View className="avatar-wrap">
-                          {avatar.avatar_url ? (
-                            <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
-                          ) : (
-                            <View className="avatar-placeholder">
-                              <Sparkles size={24} color="#00f5ff" />
-                            </View>
-                          )}
-                          {avatar.is_hosted && <View className="hosting-dot" />}
-                        </View>
-                        <Text className="avatar-name">{avatar.name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
 
             {/* 分割线 */}
             <View className="divider">

@@ -147,6 +147,7 @@ export const comments = pgTable(
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     post_id: varchar("post_id", { length: 36 }).notNull().references(() => posts.id, { onDelete: "cascade" }),
     user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    avatar_id: varchar("avatar_id", { length: 36 }).references(() => avatars.id, { onDelete: "set null" }),
     parent_id: varchar("parent_id", { length: 36 }).references((): any => comments.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     likes_count: integer("likes_count").default(0).notNull(),
@@ -155,6 +156,7 @@ export const comments = pgTable(
   (table) => [
     index("comments_post_id_idx").on(table.post_id),
     index("comments_user_id_idx").on(table.user_id),
+    index("comments_avatar_id_idx").on(table.avatar_id),
     index("comments_parent_id_idx").on(table.parent_id),
   ]
 )
@@ -165,12 +167,14 @@ export const likes = pgTable(
   {
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    avatar_id: varchar("avatar_id", { length: 36 }).references(() => avatars.id, { onDelete: "set null" }),
     target_type: varchar("target_type", { length: 20 }).notNull(),
     target_id: varchar("target_id", { length: 36 }).notNull(),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("likes_user_id_idx").on(table.user_id),
+    index("likes_avatar_id_idx").on(table.avatar_id),
     index("likes_target_idx").on(table.target_type, table.target_id),
   ]
 )

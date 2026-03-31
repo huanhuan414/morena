@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Volume2
+  MessageCircle, Mic, Keyboard
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -65,10 +65,9 @@ export default function MindChatPage() {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [isVoiceMode, setIsVoiceMode] = useState(true) // 默认语音模式
+  const [isVoiceMode, setIsVoiceMode] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [showLearnPanel, setShowLearnPanel] = useState(false)
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -269,7 +268,6 @@ export default function MindChatPage() {
   }
 
   const startRecording = () => {
-    // 检测平台
     if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
       showToast({ title: '语音功能仅支持小程序', icon: 'none' })
       return
@@ -278,7 +276,6 @@ export default function MindChatPage() {
     setIsRecording(true)
     setRecordingTime(0)
     
-    // 开始计时
     recordingTimerRef.current = setInterval(() => {
       setRecordingTime(prev => prev + 1)
     }, 1000)
@@ -294,7 +291,6 @@ export default function MindChatPage() {
       recordingTimerRef.current = null
     }
     
-    // 模拟语音识别结果
     if (recordingTime > 0) {
       setInputText('这是一条语音消息的识别结果')
       showToast({ title: '语音识别完成', icon: 'success' })
@@ -360,60 +356,52 @@ export default function MindChatPage() {
           </View>
         </View>
         <View className="header-right">
-          <View className="header-btn" onClick={() => setShowLearnPanel(!showLearnPanel)}>
-            <Brain size={22} color={showLearnPanel ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
-          </View>
           <View className="header-btn">
             <Settings size={22} color="rgba(255,255,255,0.6)" />
           </View>
         </View>
       </View>
 
-      {/* 学习面板 - 下拉展示 */}
-      {showLearnPanel && (
-        <View className="learn-panel">
-          <View className="learn-panel-header">
-            <Brain size={20} color="#00f5ff" />
-            <Text className="learn-panel-title">心智成长</Text>
-            <View className="learn-panel-close" onClick={() => setShowLearnPanel(false)}>
-              <X size={18} color="rgba(255,255,255,0.5)" />
-            </View>
+      {/* 心智成长面板 - 直接显示 */}
+      <View className="learn-panel">
+        <View className="learn-panel-header">
+          <Brain size={20} color="#00f5ff" />
+          <Text className="learn-panel-title">心智成长</Text>
+        </View>
+        
+        <View className="learn-stats-row">
+          <View className="learn-stat-item">
+            <MessageCircle size={16} color="#bf00ff" />
+            <Text className="learn-stat-value">{learningStats.messageCount}</Text>
+            <Text className="learn-stat-label">对话</Text>
           </View>
-          
-          <View className="learn-stats-row">
-            <View className="learn-stat-item">
-              <MessageCircle size={16} color="#bf00ff" />
-              <Text className="learn-stat-value">{learningStats.messageCount}</Text>
-              <Text className="learn-stat-label">对话</Text>
-            </View>
-            <View className="learn-stat-item">
-              <TrendingUp size={16} color="#00ff88" />
-              <Text className="learn-stat-value">{learningStats.learningDays}</Text>
-              <Text className="learn-stat-label">天数</Text>
-            </View>
-            <View className="learn-stat-item">
-              <Target size={16} color="#ff00aa" />
-              <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
-              <Text className="learn-stat-label">掌握</Text>
-            </View>
-            <View className="learn-stat-item">
-              <Award size={16} color="#00f5ff" />
-              <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
-              <Text className="learn-stat-label">等级</Text>
-            </View>
+          <View className="learn-stat-item">
+            <TrendingUp size={16} color="#00ff88" />
+            <Text className="learn-stat-value">{learningStats.learningDays}</Text>
+            <Text className="learn-stat-label">天数</Text>
           </View>
-          
-          <View className="learn-progress-section">
-            <Text className="learn-progress-label">成长进度</Text>
-            <View className="learn-progress-bar">
-              <View 
-                className="learn-progress-fill" 
-                style={{ width: `${learningStats.masteryLevel}%` }}
-              />
-            </View>
+          <View className="learn-stat-item">
+            <Target size={16} color="#ff00aa" />
+            <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
+            <Text className="learn-stat-label">掌握</Text>
+          </View>
+          <View className="learn-stat-item">
+            <Award size={16} color="#00f5ff" />
+            <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
+            <Text className="learn-stat-label">等级</Text>
           </View>
         </View>
-      )}
+        
+        <View className="learn-progress-section">
+          <Text className="learn-progress-label">成长进度</Text>
+          <View className="learn-progress-bar">
+            <View 
+              className="learn-progress-fill" 
+              style={{ width: `${learningStats.masteryLevel}%` }}
+            />
+          </View>
+        </View>
+      </View>
 
       {/* 历史记录抽屉 */}
       {showHistory && (
@@ -540,9 +528,8 @@ export default function MindChatPage() {
         <View className="messages-bottom" />
       </ScrollView>
 
-      {/* 高级底部输入框 - 在TabBar之上 */}
+      {/* 底部输入栏 - 在TabBar之上 */}
       <View className="input-bar">
-        {/* 左侧快捷功能 */}
         <View className="input-left">
           <View className="quick-action" onClick={toggleVoiceMode}>
             {isVoiceMode ? (
@@ -553,10 +540,8 @@ export default function MindChatPage() {
           </View>
         </View>
 
-        {/* 中间输入区域 */}
         <View className="input-center">
           {isVoiceMode ? (
-            // 语音输入模式
             <View 
               className={`voice-input-area ${isRecording ? 'recording' : ''}`}
               onTouchStart={startRecording}
@@ -573,7 +558,7 @@ export default function MindChatPage() {
                     <View className="wave-bar" />
                   </View>
                   <Text className="recording-time">{formatRecordingTime(recordingTime)}</Text>
-                  <Text className="recording-hint">松开发送，上滑取消</Text>
+                  <Text className="recording-hint">松开发送</Text>
                 </View>
               ) : (
                 <View className="voice-prompt">
@@ -583,7 +568,6 @@ export default function MindChatPage() {
               )}
             </View>
           ) : (
-            // 文本输入模式
             <View className="text-input-area">
               <input
                 className="text-input"
@@ -596,7 +580,6 @@ export default function MindChatPage() {
           )}
         </View>
 
-        {/* 右侧发送按钮 */}
         <View className="input-right">
           {!isVoiceMode && (
             <View 
@@ -604,11 +587,6 @@ export default function MindChatPage() {
               onClick={sendMessage}
             >
               <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
-            </View>
-          )}
-          {isVoiceMode && !isRecording && (
-            <View className="voice-hint-icon">
-              <Volume2 size={20} color="rgba(255,255,255,0.4)" />
             </View>
           )}
         </View>
