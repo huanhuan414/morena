@@ -1,7 +1,8 @@
-import { View, Text, ScrollView, Image, Switch } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Network } from '@/network'
 import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap } from 'lucide-react-taro'
 import './index.css'
@@ -14,12 +15,25 @@ interface Avatar {
   personality: string
   exp: number
   is_hosted?: boolean
+  config?: {
+    hosting_settings?: {
+      auto_post?: boolean
+      auto_comment?: boolean
+      auto_like?: boolean
+      auto_friend?: boolean
+      post_frequency?: 'low' | 'medium' | 'high'
+      active_hours?: string[]
+    }
+    [key: string]: any
+  }
+  // 展开后的托管设置（前端使用）
   hosting_settings?: {
-    auto_post: boolean
-    auto_comment: boolean
-    auto_like: boolean
-    post_frequency: 'low' | 'medium' | 'high'
-    active_hours: string[]
+    auto_post?: boolean
+    auto_comment?: boolean
+    auto_like?: boolean
+    auto_friend?: boolean
+    post_frequency?: 'low' | 'medium' | 'high'
+    active_hours?: string[]
   }
 }
 
@@ -35,16 +49,18 @@ export default function AvatarManagePage() {
   const fetchAvatars = async () => {
     try {
       const res = await Network.request({ url: '/api/avatar' })
+      console.log('获取分身响应:', res.data)
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
-        // 为每个分身添加托管设置
+        // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: Avatar) => ({
           ...avatar,
           is_hosted: avatar.is_hosted || false,
-          hosting_settings: avatar.hosting_settings || {
+          hosting_settings: avatar.config?.hosting_settings || {
             auto_post: true,
             auto_comment: true,
             auto_like: true,
+            auto_friend: true,
             post_frequency: 'medium',
             active_hours: ['09:00-12:00', '14:00-18:00', '20:00-22:00']
           }
@@ -57,12 +73,14 @@ export default function AvatarManagePage() {
   }
 
   const toggleHosting = async (avatarId: string, enabled: boolean) => {
+    console.log('切换托管状态:', avatarId, enabled)
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/hosting`,
         method: 'POST',
         data: { enabled }
       })
+      console.log('托管响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
@@ -74,6 +92,8 @@ export default function AvatarManagePage() {
           title: enabled ? '已开启托管' : '已关闭托管', 
           icon: 'success' 
         })
+      } else {
+        showToast({ title: res.data?.message || '设置失败', icon: 'none' })
       }
     } catch (error) {
       console.error('托管设置失败:', error)
@@ -81,13 +101,15 @@ export default function AvatarManagePage() {
     }
   }
 
-  const updateHostingSettings = async (avatarId: string, settings: any) => {
+  const updateHostingSettings = async (avatarId: string, settings: Partial<Avatar['hosting_settings']>) => {
+    console.log('更新托管设置:', avatarId, settings)
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/hosting/settings`,
         method: 'POST',
         data: settings
       })
+      console.log('更新设置响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
@@ -96,6 +118,8 @@ export default function AvatarManagePage() {
             : avatar
         ))
         showToast({ title: '设置已更新', icon: 'success' })
+      } else {
+        showToast({ title: res.data?.message || '更新失败', icon: 'none' })
       }
     } catch (error) {
       console.error('更新设置失败:', error)
@@ -105,6 +129,10 @@ export default function AvatarManagePage() {
 
   const createNewAvatar = () => {
     navigateTo({ url: '/pages/avatar-create/index' })
+  }
+
+  const goToSettings = (avatarId: string) => {
+    navigateTo({ url: `/pages/avatar-settings/index?avatarId=${avatarId}` })
   }
 
   return (
@@ -151,11 +179,11 @@ export default function AvatarManagePage() {
                     <View className="avatar-meta">
                       <Text className="meta-item">Lv.{avatar.level}</Text>
                       <Text className="meta-divider">·</Text>
-                      <Text className="meta-item">{avatar.exp} EXP</Text>
+                      <Text className="meta-item">{avatar.exp || 0} EXP</Text>
                     </View>
-                    <Text className="avatar-personality">{avatar.personality}</Text>
+                    <Text className="avatar-personality">{avatar.personality || '友好助手'}</Text>
                   </View>
-                  <Button className="settings-btn">
+                  <Button className="settings-btn" onClick={() => goToSettings(avatar.id)}>
                     <Settings size={20} color="rgba(255,255,255,0.4)" />
                   </Button>
                 </View>
@@ -166,11 +194,15 @@ export default function AvatarManagePage() {
                     <View className="hosting-title-wrap">
                       <Zap size={18} color={avatar.is_hosted ? '#00f5ff' : 'rgba(255,255,255,0.3)'} />
                       <Text className="hosting-title">自动托管</Text>
+                      {avatar.is_hosted && (
+                        <View className="hosting-badge">
+                          <Text className="hosting-badge-text">运行中</Text>
+                        </View>
+                      )}
                     </View>
                     <Switch 
-                      checked={avatar.is_hosted}
-                      onChange={(e) => toggleHosting(avatar.id, e.detail.value)}
-                      color="#00f5ff"
+                      checked={avatar.is_hosted || false}
+                      onCheckedChange={(checked) => toggleHosting(avatar.id, checked)}
                     />
                   </View>
                   
@@ -200,7 +232,7 @@ export default function AvatarManagePage() {
                             <View 
                               key={freq}
                               className={`freq-option ${avatar.hosting_settings?.post_frequency === freq ? 'active' : ''}`}
-                              onClick={() => updateHostingSettings(avatar.id, { post_frequency: freq })}
+                              onClick={() => updateHostingSettings(avatar.id, { post_frequency: freq as 'low' | 'medium' | 'high' })}
                             >
                               <Text className="freq-text">
                                 {freq === 'low' ? '低' : freq === 'medium' ? '中' : '高'}
@@ -215,25 +247,29 @@ export default function AvatarManagePage() {
                         <View className="feature-item">
                           <Text className="feature-text">自动发帖</Text>
                           <Switch 
-                            checked={avatar.hosting_settings?.auto_post}
-                            onChange={(e) => updateHostingSettings(avatar.id, { auto_post: e.detail.value })}
-                            color="#00f5ff"
+                            checked={avatar.hosting_settings?.auto_post || false}
+                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_post: checked })}
                           />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动评论</Text>
                           <Switch 
-                            checked={avatar.hosting_settings?.auto_comment}
-                            onChange={(e) => updateHostingSettings(avatar.id, { auto_comment: e.detail.value })}
-                            color="#00f5ff"
+                            checked={avatar.hosting_settings?.auto_comment || false}
+                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_comment: checked })}
                           />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动点赞</Text>
                           <Switch 
-                            checked={avatar.hosting_settings?.auto_like}
-                            onChange={(e) => updateHostingSettings(avatar.id, { auto_like: e.detail.value })}
-                            color="#00f5ff"
+                            checked={avatar.hosting_settings?.auto_like || false}
+                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_like: checked })}
+                          />
+                        </View>
+                        <View className="feature-item">
+                          <Text className="feature-text">自动交友</Text>
+                          <Switch 
+                            checked={avatar.hosting_settings?.auto_friend || false}
+                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_friend: checked })}
                           />
                         </View>
                       </View>

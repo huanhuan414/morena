@@ -1,11 +1,9 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useDidShow, showModal, showToast, switchTab } from '@tarojs/taro'
+import { useLoad, useDidShow, showModal, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Network } from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Plus, Users, Sparkles, Ellipsis } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Ellipsis, Bot } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -165,7 +163,8 @@ export default function SocialPage() {
   }
 
   const createPost = () => {
-    showModal({
+    // 微信小程序 showModal 支持 editable 属性
+    const options = {
       title: '发布动态',
       editable: true,
       placeholderText: '分享你的想法...',
@@ -186,7 +185,8 @@ export default function SocialPage() {
           }
         }
       }
-    })
+    }
+    showModal(options as any)
   }
 
   const formatTime = (dateString: string) => {
@@ -202,6 +202,9 @@ export default function SocialPage() {
 
   return (
     <View className="social-page">
+      {/* 背景网格 */}
+      <View className="page-bg-grid" />
+      
       {/* 顶部导航 */}
       <View className="social-header">
         <View className="header-tabs">
@@ -210,12 +213,14 @@ export default function SocialPage() {
             onClick={() => setActiveTab('actions')}
           >
             <Text className="tab-text">Actions</Text>
+            {activeTab === 'actions' && <View className="tab-indicator" />}
           </View>
           <View 
             className={`tab-item ${activeTab === 'space' ? 'active' : ''}`}
             onClick={() => setActiveTab('space')}
           >
             <Text className="tab-text">Space</Text>
+            {activeTab === 'space' && <View className="tab-indicator" />}
           </View>
         </View>
         <View className="header-actions">
@@ -223,7 +228,7 @@ export default function SocialPage() {
             <Text className="invite-text">邀请朋友</Text>
           </Button>
           <Button className="message-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
-            <MessageCircle size={20} color="rgba(0,0,0,0.6)" />
+            <MessageCircle size={20} color="#00f5ff" />
           </Button>
         </View>
       </View>
@@ -235,18 +240,33 @@ export default function SocialPage() {
       >
         {/* AI分身数据卡片 */}
         <View className="avatar-stats-card">
+          <View className="stats-glow" />
           <View className="stats-content">
-            <Text className="stats-intro">过去{avatarStats.minutesAgo}分钟内，你的分身替你</Text>
-            <View className="stats-numbers">
-              <Text className="stats-number">浏览了<Text className="number-highlight">{avatarStats.browseCount}</Text>条帖子</Text>
-              <Text className="stats-divider">|</Text>
-              <Text className="stats-number">点赞<Text className="number-highlight">{avatarStats.likeCount}</Text></Text>
-              <Text className="stats-divider">|</Text>
-              <Text className="stats-number">评论<Text className="number-highlight">{avatarStats.commentCount}</Text></Text>
+            <View className="stats-icon">
+              <Bot size={24} color="#00f5ff" />
+            </View>
+            <View className="stats-text-wrap">
+              <Text className="stats-intro">过去{avatarStats.minutesAgo}分钟内，你的分身替你</Text>
+              <View className="stats-numbers">
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.browseCount}</Text>
+                  <Text className="stat-label">浏览</Text>
+                </View>
+                <Text className="stats-divider">|</Text>
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.likeCount}</Text>
+                  <Text className="stat-label">点赞</Text>
+                </View>
+                <Text className="stats-divider">|</Text>
+                <View className="stat-item">
+                  <Text className="stat-value">{avatarStats.commentCount}</Text>
+                  <Text className="stat-label">评论</Text>
+                </View>
+              </View>
             </View>
           </View>
           <Button className="refresh-btn" onClick={fetchAvatarStats}>
-            <RefreshCw size={18} color="rgba(0,0,0,0.4)" />
+            <RefreshCw size={18} color="#00f5ff" />
           </Button>
         </View>
 
@@ -279,7 +299,7 @@ export default function SocialPage() {
                   </View>
                 </View>
                 <Button className="more-btn">
-                  <Ellipsis size={20} color="rgba(0,0,0,0.4)" />
+                  <Ellipsis size={20} color="rgba(255,255,255,0.4)" />
                 </Button>
               </View>
 
@@ -308,15 +328,15 @@ export default function SocialPage() {
               {/* 互动按钮 */}
               <View className="post-actions">
                 <View className="action-item" onClick={() => likePost(post.id)}>
-                  <Heart size={20} color="rgba(0,0,0,0.4)" />
+                  <Heart size={20} color="rgba(0, 245, 255, 0.6)" />
                   <Text className="action-count">{post.likes_count}</Text>
                 </View>
                 <View className="action-item">
-                  <MessageCircle size={20} color="rgba(0,0,0,0.4)" />
+                  <MessageCircle size={20} color="rgba(0, 245, 255, 0.6)" />
                   <Text className="action-count">{post.comments_count}</Text>
                 </View>
                 <View className="action-item">
-                  <Share2 size={20} color="rgba(0,0,0,0.4)" />
+                  <Share2 size={20} color="rgba(0, 245, 255, 0.6)" />
                   <Text className="action-count">{post.shares_count}</Text>
                 </View>
               </View>
@@ -326,7 +346,7 @@ export default function SocialPage() {
                 <View className="comments-section">
                   {/* 点赞区 */}
                   <View className="likes-section">
-                    <Heart size={14} color="rgba(0,0,0,0.3)" />
+                    <Heart size={14} color="#bf00ff" />
                     <View className="like-avatars">
                       {['😊', '😄', '🤔'].map((emoji, idx) => (
                         <View key={idx} className="like-avatar-small">
@@ -347,6 +367,7 @@ export default function SocialPage() {
                           <Text className="comment-author">{comment.user_name}</Text>
                           {comment.is_ai && (
                             <View className="ai-badge">
+                              <Sparkles size={12} color="#00f5ff" />
                               <Text className="ai-badge-text">AI</Text>
                             </View>
                           )}
