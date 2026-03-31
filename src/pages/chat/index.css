@@ -218,6 +218,12 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 20px;
   transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.history-item:active {
+  transform: scale(0.98);
+  background: rgba(0, 245, 255, 0.12);
 }
 
 .history-item.active {
@@ -957,3 +963,88 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* 结果操作按钮 */
+.result-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+}
+
+.result-action-btn {
+  flex: 1;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15), rgba(191, 0, 255, 0.15));
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.result-action-btn:active {
+  transform: scale(0.95);
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.25), rgba(191, 0, 255, 0.25));
+}
+
+.action-btn-text {
+  font-size: 26px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 搜索结果操作 */
+.search-result-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.search-result-link {
+  font-size: 22px;
+  color: #00f5ff;
+  padding: 8px 16px;
+  background: rgba(0, 245, 255, 0.1);
+  border-radius: 12px;
+}
+
+.search-result-share {
+  font-size: 22px;
+  color: #bf00ff;
+  padding: 8px 16px;
+  background: rgba(191, 0, 255, 0.1);
+  border-radius: 12px;
+}
+
+/* 文档和报告容器 */
+.result-document, .result-report {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.document-content, .report-content {
+  font-size: 26px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 消息结果 */
+.result-message {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.result-message-text {
+  font-size: 26px;
+  color: #10b981;
+}
+

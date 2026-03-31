@@ -231,9 +231,24 @@ export default function ChatPage() {
 
   // 切换对话
   const switchConversation = async (conv: Conversation) => {
+    console.log('[Chat] 切换对话:', conv.id, conv.title)
+    
+    // 设置当前对话
     setConversation(conv)
+    
+    // 清空当前消息
+    setMessages([])
+    
+    // 清空活动任务
+    setActiveTask(null)
+    
+    // 获取新对话的消息
     await fetchMessages(conv.id)
+    
+    // 关闭历史记录面板
     setShowHistory(false)
+    
+    showToast({ title: '已切换对话', icon: 'success', duration: 1000 })
   }
 
   // 获取最新任务状态
@@ -780,6 +795,60 @@ export default function ChatPage() {
                     }}
                   />
                 )}
+                
+                {/* 图片操作按钮 */}
+                <View className="result-actions">
+                  <Button 
+                    className="result-action-btn"
+                    onClick={() => {
+                      // 放大预览
+                      const images = activeTask.result?.images?.filter(Boolean) || [activeTask.result?.url].filter(Boolean) as string[]
+                      Taro.previewImage({
+                        current: activeTask.result?.url || '',
+                        urls: images
+                      })
+                    }}
+                  >
+                    <Text className="action-btn-text">🔍 放大</Text>
+                  </Button>
+                  <Button 
+                    className="result-action-btn"
+                    onClick={async () => {
+                      // 下载图片
+                      try {
+                        showToast({ title: '保存中...', icon: 'loading' })
+                        const res = await Network.downloadFile({
+                          url: activeTask.result?.url || ''
+                        })
+                        if (res.statusCode === 200) {
+                          await Taro.saveImageToPhotosAlbum({
+                            filePath: res.tempFilePath
+                          })
+                          showToast({ title: '已保存到相册', icon: 'success' })
+                        }
+                      } catch (error) {
+                        console.error('保存失败:', error)
+                        showToast({ title: '保存失败', icon: 'none' })
+                      }
+                    }}
+                  >
+                    <Text className="action-btn-text">💾 下载</Text>
+                  </Button>
+                  {isWeapp && (
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        // 小程序分享图片
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 分享</Text>
+                    </Button>
+                  )}
+                </View>
+                
                 <View className="result-meta">
                   <ImageIcon size={14} color="#bf00ff" />
                   <Text className="meta-text">
@@ -801,6 +870,46 @@ export default function ChatPage() {
                   poster=""
                   style={{ width: '100%', borderRadius: '12px' }}
                 />
+                
+                {/* 视频操作按钮 */}
+                <View className="result-actions">
+                  <Button 
+                    className="result-action-btn"
+                    onClick={async () => {
+                      try {
+                        showToast({ title: '保存中...', icon: 'loading' })
+                        const res = await Network.downloadFile({
+                          url: activeTask.result?.url || ''
+                        })
+                        if (res.statusCode === 200) {
+                          await Taro.saveVideoToPhotosAlbum({
+                            filePath: res.tempFilePath
+                          })
+                          showToast({ title: '已保存到相册', icon: 'success' })
+                        }
+                      } catch (error) {
+                        console.error('保存失败:', error)
+                        showToast({ title: '保存失败', icon: 'none' })
+                      }
+                    }}
+                  >
+                    <Text className="action-btn-text">💾 下载视频</Text>
+                  </Button>
+                  {isWeapp && (
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        // 小程序分享视频
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 分享</Text>
+                    </Button>
+                  )}
+                </View>
+                
                 <View className="result-meta">
                   <Video size={14} color="#ff00aa" />
                   <Text className="meta-text">
@@ -822,17 +931,63 @@ export default function ChatPage() {
                       <Text className="search-result-snippet">{item.snippet}</Text>
                     )}
                     {item.url && (
-                      <Text 
-                        className="search-result-link"
-                        onClick={() => {
-                          Taro.setClipboardData({ data: item.url })
-                        }}
-                      >
-                        查看链接
-                      </Text>
+                      <View className="search-result-actions">
+                        <Text 
+                          className="search-result-link"
+                          onClick={() => {
+                            Taro.setClipboardData({ data: item.url })
+                          }}
+                        >
+                          📋 复制链接
+                        </Text>
+                        {isWeapp && (
+                          <Text 
+                            className="search-result-share"
+                            onClick={() => {
+                              // 小程序中打开网页
+                              Taro.navigateTo({
+                                url: `/pages/webview/index?url=${encodeURIComponent(item.url)}`
+                              })
+                            }}
+                          >
+                            🔗 打开
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 ))}
+                
+                {/* 搜索结果转发 */}
+                {isWeapp && (
+                  <View className="result-actions">
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        // 生成搜索结果摘要并分享
+                        const summary = activeTask.result?.items?.slice(0, 3)
+                          .map((item: any) => `• ${item.title}`)
+                          .join('\n')
+                        Taro.setClipboardData({ 
+                          data: `搜索结果：\n${summary}` 
+                        })
+                        showToast({ title: '已复制到剪贴板', icon: 'success' })
+                      }}
+                    >
+                      <Text className="action-btn-text">📋 复制结果</Text>
+                    </Button>
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 转发</Text>
+                    </Button>
+                  </View>
+                )}
               </View>
             )}
             
@@ -844,6 +999,35 @@ export default function ChatPage() {
                   <Text className="document-title">{activeTask.result.title}</Text>
                   {activeTask.result.content && (
                     <Text className="document-content">{activeTask.result.content}</Text>
+                  )}
+                </View>
+                
+                {/* 文档操作按钮 */}
+                <View className="result-actions">
+                  <Button 
+                    className="result-action-btn"
+                    onClick={() => {
+                      // 复制文档内容
+                      Taro.setClipboardData({
+                        data: activeTask.result?.content || ''
+                      })
+                      showToast({ title: '已复制内容', icon: 'success' })
+                    }}
+                  >
+                    <Text className="action-btn-text">📋 复制</Text>
+                  </Button>
+                  {isWeapp && (
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        // 分享文档
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 转发</Text>
+                    </Button>
                   )}
                 </View>
               </View>
@@ -860,6 +1044,35 @@ export default function ChatPage() {
             {activeTask.result?.type === 'report' && activeTask.result?.content && (
               <View className="result-report">
                 <Text className="report-content">{activeTask.result.content}</Text>
+                
+                {/* 报告操作按钮 */}
+                <View className="result-actions">
+                  <Button 
+                    className="result-action-btn"
+                    onClick={() => {
+                      // 复制报告内容
+                      Taro.setClipboardData({
+                        data: activeTask.result?.content || ''
+                      })
+                      showToast({ title: '已复制报告', icon: 'success' })
+                    }}
+                  >
+                    <Text className="action-btn-text">📋 复制</Text>
+                  </Button>
+                  {isWeapp && (
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        // 分享报告
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 转发</Text>
+                    </Button>
+                  )}
+                </View>
               </View>
             )}
             
@@ -867,6 +1080,33 @@ export default function ChatPage() {
             {activeTask.result?.summary && !['image', 'video', 'document', 'search', 'message', 'report'].includes(activeTask.result.type || '') && (
               <View className="result-summary-container">
                 <Text className="task-summary">{activeTask.result.summary}</Text>
+                
+                {/* 默认操作按钮 */}
+                <View className="result-actions">
+                  <Button 
+                    className="result-action-btn"
+                    onClick={() => {
+                      Taro.setClipboardData({
+                        data: activeTask.result?.summary || ''
+                      })
+                      showToast({ title: '已复制', icon: 'success' })
+                    }}
+                  >
+                    <Text className="action-btn-text">📋 复制</Text>
+                  </Button>
+                  {isWeapp && (
+                    <Button 
+                      className="result-action-btn"
+                      onClick={() => {
+                        Taro.showShareMenu({
+                          withShareTicket: true
+                        })
+                      }}
+                    >
+                      <Text className="action-btn-text">📤 转发</Text>
+                    </Button>
+                  )}
+                </View>
               </View>
             )}
           </View>
