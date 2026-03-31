@@ -1,10 +1,10 @@
-import { View, Text, ScrollView, Image, Video, RichText } from '@tarojs/components'
+// eslint-disable-next-line no-restricted-syntax
+import { View, Text, ScrollView, Image, Video, RichText, Input } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
-import { Input } from '@/components/ui/input'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, FileText
@@ -821,14 +821,17 @@ export default function MindChatPage() {
               )}
             </View>
           ) : (
-            <Input
-              className="text-input-area-override"
-              placeholder="输入消息..."
-              value={inputText}
-              onInput={(e: any) => setInputText(e.detail.value)}
-              onConfirm={() => sendMessage()}
-              confirmType="send"
-            />
+            <View className="text-input-area">
+              <Input
+                className="text-input"
+                placeholder="输入消息..."
+                placeholderClass="text-input-placeholder"
+                value={inputText}
+                onInput={(e: any) => setInputText(e.detail.value)}
+                onConfirm={() => sendMessage()}
+                confirmType="send"
+              />
+            </View>
           )}
         </View>
 
