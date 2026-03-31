@@ -3,6 +3,7 @@ export default defineAppConfig({
     'pages/social/index',
     'pages/login/index',
     'pages/avatar-create/index',
+    'pages/avatar-manage/index',
     'pages/mind-chat/index',
     'pages/profile/index',
     'pages/task/index'

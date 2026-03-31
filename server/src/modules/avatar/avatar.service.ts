@@ -359,6 +359,65 @@ export class AvatarService {
     return rewards
   }
 
+  async toggleHosting(avatarId: string, userId: string, enabled: boolean) {
+    const client = getSupabaseClient()
+    
+    const { data, error } = await client
+      .from('avatars')
+      .update({
+        is_hosted: enabled,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new Error(`托管设置失败: ${error.message}`)
+    }
+    
+    return data
+  }
+
+  async updateHostingSettings(avatarId: string, userId: string, settings: Record<string, any>) {
+    const client = getSupabaseClient()
+    
+    const avatar = await this.getAvatarById(avatarId)
+    const currentSettings = avatar.config?.hosting_settings || {}
+    
+    const { data, error } = await client
+      .from('avatars')
+      .update({
+        config: {
+          ...avatar.config,
+          hosting_settings: { ...currentSettings, ...settings }
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new Error(`更新托管设置失败: ${error.message}`)
+    }
+    
+    return data
+  }
+
+  async getActivityStats(userId: string) {
+    // 模拟AI分身活动数据
+    // 实际应该从数据库查询最近的分身活动记录
+    return {
+      browseCount: Math.floor(Math.random() * 50) + 10,
+      likeCount: Math.floor(Math.random() * 10),
+      commentCount: Math.floor(Math.random() * 5),
+      minutesAgo: Math.floor(Math.random() * 10) + 1
+    }
+  }
+
   async deleteAvatar(avatarId: string, userId: string) {
     const client = getSupabaseClient()
     

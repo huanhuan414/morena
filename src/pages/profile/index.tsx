@@ -66,9 +66,9 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
-    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/social/index' },
-    { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/learn/index' },
-    { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/learn/index' },
+    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/avatar-manage/index' },
+    { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/mind-chat/index' },
+    { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/mind-chat/index' },
     { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '' },
     { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '' },
     { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '' },
@@ -110,7 +110,7 @@ export default function ProfilePage() {
 
         {/* 统计数据 */}
         <View className="stats-row">
-          <View className="stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
+          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/avatar-manage/index' })}>
             <Text className="stat-value">{stats.avatarCount}</Text>
             <Text className="stat-label">AI分身</Text>
           </View>

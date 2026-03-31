@@ -1,0 +1,281 @@
+.avatar-manage-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部导航 */
+.manage-header {
+  padding: 100px 32px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-title {
+  font-size: 36px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.create-btn {
+  padding: 12px 24px;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-text {
+  font-size: 26px;
+  color: #00f5ff;
+}
+
+/* 滚动区域 */
+.manage-scroll {
+  flex: 1;
+  padding: 24px 32px;
+}
+
+/* 空状态 */
+.empty-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 0;
+}
+
+.empty-icon {
+  margin-bottom: 32px;
+}
+
+.empty-title {
+  font-size: 36px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.empty-desc {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 32px;
+}
+
+.empty-btn {
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  border-radius: 24px;
+}
+
+.empty-btn-text {
+  font-size: 28px;
+  color: #0a0a0f;
+  font-weight: 600;
+}
+
+/* 分身列表 */
+.avatars-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 分身卡片 */
+.avatar-card {
+  background: rgba(20, 20, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 24px;
+}
+
+/* 分身信息 */
+.avatar-info-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.avatar-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(0, 245, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-details {
+  flex: 1;
+}
+
+.avatar-name {
+  display: block;
+  font-size: 30px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.avatar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.meta-item {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.meta-divider {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.avatar-personality {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.settings-btn {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* 托管区域 */
+.hosting-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 20px;
+}
+
+.hosting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hosting-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hosting-title {
+  font-size: 28px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.hosting-settings {
+  margin-top: 16px;
+}
+
+.settings-desc {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.setting-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setting-text {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.setting-value {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.frequency-options {
+  display: flex;
+  gap: 12px;
+}
+
+.freq-option {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.freq-option.active {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.3);
+}
+
+.freq-text {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.freq-option.active .freq-text {
+  color: #00f5ff;
+}
+
+.auto-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.feature-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+}
+
+.feature-text {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 底部空间 */
+.bottom-space {
+  height: 100px;
+}

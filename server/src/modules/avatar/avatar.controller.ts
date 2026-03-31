@@ -109,4 +109,42 @@ export class AvatarController {
       message: '经验更新成功'
     }
   }
+
+  @Post(':id/hosting')
+  async toggleHosting(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('enabled') enabled: boolean
+  ) {
+    const avatar = await this.avatarService.toggleHosting(avatarId, userId, enabled)
+    return {
+      code: 200,
+      data: avatar,
+      message: enabled ? '托管已开启' : '托管已关闭'
+    }
+  }
+
+  @Post(':id/hosting/settings')
+  async updateHostingSettings(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string,
+    @Body() settings: Record<string, any>
+  ) {
+    const avatar = await this.avatarService.updateHostingSettings(avatarId, userId, settings)
+    return {
+      code: 200,
+      data: avatar,
+      message: '设置已更新'
+    }
+  }
+
+  @Get('stats/activity')
+  async getActivityStats(@Headers('x-user-id') userId: string) {
+    const stats = await this.avatarService.getActivityStats(userId)
+    return {
+      code: 200,
+      data: stats,
+      message: '获取成功'
+    }
+  }
 }
