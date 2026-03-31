@@ -5,13 +5,44 @@ import { AuthService } from './auth.service'
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * 发送验证码
+   */
+  @Post('send-code')
+  async sendCode(@Body('phone') phone: string) {
+    const result = await this.authService.sendVerificationCode(phone)
+    return {
+      code: result.success ? 200 : 400,
+      data: null,
+      message: result.message,
+    }
+  }
+
+  /**
+   * 手机号验证码登录/注册
+   * 未注册用户自动注册
+   */
+  @Post('phone-login')
+  async phoneLogin(
+    @Body('phone') phone: string,
+    @Body('code') code: string,
+    @Body('nickname') nickname?: string,
+  ) {
+    const result = await this.authService.phoneLogin(phone, code, nickname)
+    return {
+      code: 200,
+      data: result,
+      message: result.isNewUser ? '注册成功' : '登录成功',
+    }
+  }
+
   @Post('wechat-login')
   async wechatLogin(@Body('code') code: string) {
     const result = await this.authService.wechatLogin(code)
     return {
       code: 200,
       data: result,
-      message: '登录成功'
+      message: '登录成功',
     }
   }
 
@@ -23,7 +54,7 @@ export class AuthController {
       return {
         code: 401,
         data: null,
-        message: '未登录'
+        message: '未登录',
       }
     }
 
@@ -34,13 +65,13 @@ export class AuthController {
       return {
         code: 200,
         data: user,
-        message: '获取成功'
+        message: '获取成功',
       }
     } catch (error) {
       return {
         code: 401,
         data: null,
-        message: 'token 无效'
+        message: 'token 无效',
       }
     }
   }

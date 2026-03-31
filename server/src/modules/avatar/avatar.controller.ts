@@ -150,13 +150,18 @@ export class AvatarController {
 
   /**
    * 分身自动发帖
+   * 支持生成图片和视频
    */
   @Post(':id/post')
   async createPost(
     @Param('id') avatarId: string,
-    @Headers('x-user-id') userId: string
+    @Headers('x-user-id') userId: string,
+    @Body() body: { withImage?: boolean; withVideo?: boolean }
   ) {
-    const post = await this.avatarService.autoCreatePost(avatarId, userId)
+    const post = await this.avatarService.autoCreatePost(avatarId, userId, {
+      withImage: body?.withImage ?? true,
+      withVideo: body?.withVideo ?? false,
+    })
     return {
       code: 200,
       data: post,

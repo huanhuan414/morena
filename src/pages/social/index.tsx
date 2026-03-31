@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, showModal, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ interface Post {
   id: string
   content: string
   images: string[]
+  videos: string[]
   likes_count: number
   comments_count: number
   shares_count: number
@@ -208,16 +209,22 @@ export default function SocialPage() {
   /**
    * 让分身发帖
    */
-  const avatarCreatePost = async (avatarId: string) => {
-    showToast({ title: '分身正在思考...', icon: 'loading' })
+  const avatarCreatePost = async (avatarId: string, options?: { withImage?: boolean; withVideo?: boolean }) => {
+    showToast({ title: '分身正在创作...', icon: 'loading' })
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/post`,
-        method: 'POST'
+        method: 'POST',
+        data: {
+          withImage: options?.withImage ?? true,
+          withVideo: options?.withVideo ?? false,
+        }
       })
       console.log('分身发帖响应:', res.data)
       if (res.data?.code === 200) {
-        showToast({ title: '发布成功', icon: 'success' })
+        const post = res.data.data
+        const mediaInfo = post.images?.length > 0 ? '（含配图）' : post.videos?.length > 0 ? '（含视频）' : ''
+        showToast({ title: `发布成功${mediaInfo}`, icon: 'success' })
         fetchPosts(1)
         fetchAvatarStats()
       } else {
@@ -335,13 +342,16 @@ export default function SocialPage() {
         {/* 分身快捷操作 */}
         {avatars.length > 0 && (
           <View className="avatar-actions-card">
-            <Text className="action-title">让分身发帖</Text>
+            <View className="action-header">
+              <Text className="action-title">让分身发帖</Text>
+              <Text className="action-hint">点击头像快速发图文</Text>
+            </View>
             <ScrollView className="avatar-scroll" scrollX>
               {avatars.map(avatar => (
                 <View 
                   key={avatar.id} 
                   className="avatar-action-item"
-                  onClick={() => avatarCreatePost(avatar.id)}
+                  onClick={() => avatarCreatePost(avatar.id, { withImage: true, withVideo: false })}
                 >
                   <View className="avatar-action-avatar">
                     {avatar.avatar_url ? (
@@ -429,6 +439,25 @@ export default function SocialPage() {
                           className="post-image" 
                           mode="aspectFill"
                         />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* 帖子视频 */}
+                  {post.videos && post.videos.length > 0 && (
+                    <View className="post-videos">
+                      {post.videos.map((video, idx) => (
+                        <View key={idx} className="video-wrapper">
+                          <Video
+                            src={video}
+                            className="post-video"
+                            controls
+                            showFullscreenBtn
+                            showPlayBtn
+                            showCenterPlayBtn
+                            objectFit="cover"
+                          />
+                        </View>
                       ))}
                     </View>
                   )}

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { LLMClient, Config } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, HeaderUtils } from 'coze-coding-dev-sdk'
 import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 
@@ -465,8 +465,12 @@ export class AvatarService {
   /**
    * 分身自动发帖
    * 根据分身的性格和风格，使用AI生成内容并发布
+   * 支持生成图片和视频
    */
-  async autoCreatePost(avatarId: string, userId: string) {
+  async autoCreatePost(avatarId: string, userId: string, options?: { 
+    withImage?: boolean
+    withVideo?: boolean
+  }) {
     const client = getSupabaseClient()
     
     // 获取分身信息
@@ -477,7 +481,13 @@ export class AvatarService {
     }
     
     // 使用LLM生成帖子内容
-    const postContent = await this.generatePostContent(avatar)
+    const { content, imagePrompt, videoPrompt, shouldGenerateImage, shouldGenerateVideo } = await this.generatePostContentWithMedia(avatar)
+    
+    // 并行生成媒体内容
+    const [images, videos] = await Promise.all([
+      (options?.withImage !== false && shouldGenerateImage) ? this.generateImage(imagePrompt) : Promise.resolve([]),
+      (options?.withVideo && shouldGenerateVideo) ? this.generateVideo(videoPrompt) : Promise.resolve([]),
+    ])
     
     // 创建帖子
     const { data: post, error } = await client
@@ -485,9 +495,9 @@ export class AvatarService {
       .insert({
         user_id: userId,
         avatar_id: avatarId,
-        content: postContent,
-        images: [],
-        videos: [],
+        content,
+        images,
+        videos,
         tags: [],
         likes_count: 0,
         comments_count: 0,
@@ -501,10 +511,168 @@ export class AvatarService {
       throw new Error(`发帖失败: ${error.message}`)
     }
     
-    // 增加分身经验
-    await this.addExperience(avatarId, 5)
+    // 增加分身经验（有媒体内容额外加分）
+    const expGain = images.length > 0 || videos.length > 0 ? 10 : 5
+    await this.addExperience(avatarId, expGain)
     
     return post
+  }
+
+  /**
+   * 生成帖子内容，同时生成图片和视频的提示词
+   */
+  private async generatePostContentWithMedia(avatar: any): Promise<{
+    content: string
+    imagePrompt: string
+    videoPrompt: string
+    shouldGenerateImage: boolean
+    shouldGenerateVideo: boolean
+  }> {
+    try {
+      const config = new Config()
+      const llmClient = new LLMClient(config)
+      
+      const personality = avatar.personality || 'friendly'
+      const name = avatar.name || 'AI助手'
+      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      const strengths = avatar.config?.strengths || []
+      
+      const prompt = `你是一个名为"${name}"的AI分身，你的气质类型是"${temperament}"，擅长${strengths.join('、') || '各种话题'}。
+
+请生成一条社交动态，包含以下内容：
+
+1. 动态文字内容（50-150字）
+2. 是否适合配图（true/false）- 大部分动态都适合配图
+3. 图片生成提示词（如果适合配图）
+4. 是否适合生成视频（true/false）- 约30%概率适合
+5. 视频生成提示词（如果适合生成视频）
+
+要求：
+- 内容真实自然，像是真人在分享
+- 图片提示词要具体，描述一个适合动态主题的画面
+- 视频提示词要简洁，描述一个5秒的动态场景
+- 图片和视频提示词要符合你的性格特点
+
+请以JSON格式返回：
+{
+  "content": "动态文字内容",
+  "shouldGenerateImage": true,
+  "imagePrompt": "一张精美的图片，展示...",
+  "shouldGenerateVideo": false,
+  "videoPrompt": "一段5秒的视频，展示..."
+}
+
+只返回JSON，不要有其他文字。`
+
+      const response = await llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-6-flash-250815',
+        temperature: 0.8
+      })
+      
+      // 解析JSON响应
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const result = JSON.parse(jsonMatch[0])
+        return {
+          content: result.content || '分享一个美好的瞬间~',
+          imagePrompt: result.imagePrompt || '',
+          videoPrompt: result.videoPrompt || '',
+          shouldGenerateImage: result.shouldGenerateImage ?? true,
+          shouldGenerateVideo: result.shouldGenerateVideo ?? false,
+        }
+      }
+    } catch (error) {
+      console.error('生成帖子内容失败:', error)
+    }
+    
+    // 返回默认内容
+    return this.getDefaultPostContent()
+  }
+
+  /**
+   * 获取默认帖子内容
+   */
+  private getDefaultPostContent() {
+    const defaultPosts = [
+      { content: '今天又是充满能量的一天！☀️', imagePrompt: 'A bright sunny day with blue sky and white clouds', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '发现了一个很有趣的想法，分享给大家~', imagePrompt: 'A lightbulb glowing with creative ideas, modern minimalist style', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '工作中的一些小感悟，记录下来', imagePrompt: 'A clean modern workspace with notebook and coffee', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '生活需要仪式感，今天也要好好生活', imagePrompt: 'Beautiful morning scene with flowers and sunshine', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '最近在思考一个问题，有想法的朋友可以聊聊', imagePrompt: 'Abstract thinking concept with geometric shapes', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+    ]
+    return defaultPosts[Math.floor(Math.random() * defaultPosts.length)]
+  }
+
+  /**
+   * 生成图片
+   */
+  private async generateImage(prompt: string): Promise<string[]> {
+    if (!prompt) return []
+    
+    try {
+      const config = new Config()
+      const client = new ImageGenerationClient(config)
+      
+      console.log('开始生成图片，提示词:', prompt)
+      
+      const response = await client.generate({
+        prompt,
+        size: '2K',
+        watermark: false,
+      })
+      
+      const helper = client.getResponseHelper(response)
+      
+      if (helper.success && helper.imageUrls.length > 0) {
+        console.log('图片生成成功:', helper.imageUrls[0])
+        // SDK返回的URL已经是存储在对象存储中的，直接使用
+        return helper.imageUrls
+      } else {
+        console.error('图片生成失败:', helper.errorMessages)
+        return []
+      }
+    } catch (error) {
+      console.error('生成图片异常:', error)
+      return []
+    }
+  }
+
+  /**
+   * 生成视频
+   */
+  private async generateVideo(prompt: string): Promise<string[]> {
+    if (!prompt) return []
+    
+    try {
+      const config = new Config()
+      const client = new VideoGenerationClient(config)
+      
+      console.log('开始生成视频，提示词:', prompt)
+      
+      const content = [{ type: 'text' as const, text: prompt }]
+      
+      const response = await client.videoGeneration(content, {
+        model: 'doubao-seedance-1-5-pro-251215',
+        duration: 5,
+        ratio: '9:16', // 竖屏适合手机
+        resolution: '720p',
+        generateAudio: true,
+      })
+      
+      if (response.videoUrl) {
+        console.log('视频生成成功:', response.videoUrl)
+        // SDK返回的URL已经是存储在对象存储中的，直接使用
+        return [response.videoUrl]
+      } else {
+        console.error('视频生成失败:', response.response?.error_message)
+        return []
+      }
+    } catch (error) {
+      console.error('生成视频异常:', error)
+      return []
+    }
   }
 
   /**
