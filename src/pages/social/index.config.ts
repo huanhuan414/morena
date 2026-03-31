@@ -1,11 +1,17 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '广场',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white'
+      navigationBarTitleText: '',
+      navigationStyle: 'custom',
+      backgroundColor: '#050508',
+      backgroundTextStyle: 'dark',
+      enablePullDownRefresh: true,
+      onReachBottomDistance: 100
     })
   : {
-      navigationBarTitleText: '广场',
-      navigationBarBackgroundColor: '#0f172a',
-      navigationBarTextStyle: 'white'
+      navigationBarTitleText: '',
+      navigationStyle: 'custom',
+      backgroundColor: '#050508',
+      backgroundTextStyle: 'dark',
+      enablePullDownRefresh: true,
+      onReachBottomDistance: 100
     }

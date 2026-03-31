@@ -1,9 +1,9 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, showModal, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showModal, showToast, stopPullDownRefresh, useReady } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Ellipsis, Bot } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Ellipsis, Bot, Volume2, VolumeX } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -56,6 +56,7 @@ interface Avatar {
 export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<'actions' | 'space'>('actions')
   const [avatarStats, setAvatarStats] = useState<AvatarStats>({
     browseCount: 0,
@@ -67,13 +68,31 @@ export default function SocialPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [mutedVideos, setMutedVideos] = useState<Set<string>>(new Set())
 
   useLoad(() => {})
+
+  useReady(() => {
+    // 页面加载动画
+  })
 
   useDidShow(() => {
     fetchPosts(1)
     fetchAvatarStats()
     fetchAvatars()
+  })
+
+  // 下拉刷新
+  usePullDownRefresh(() => {
+    setRefreshing(true)
+    Promise.all([
+      fetchPosts(1),
+      fetchAvatarStats(),
+      fetchAvatars()
+    ]).finally(() => {
+      setRefreshing(false)
+      stopPullDownRefresh()
+    })
   })
 
   const fetchAvatars = async () => {
@@ -90,7 +109,6 @@ export default function SocialPage() {
   const fetchAvatarStats = async () => {
     try {
       const res = await Network.request({ url: '/api/avatar/stats/activity' })
-      console.log('分身活动统计:', res.data)
       if (res.data?.code === 200) {
         setAvatarStats(res.data.data)
       }
@@ -107,17 +125,15 @@ export default function SocialPage() {
       const res = await Network.request({
         url: `/api/social/posts?page=${pageNum}&pageSize=10`
       })
-      console.log('获取帖子响应:', res.data)
       if (res.data?.code === 200) {
         const data = res.data.data
         const postList = data.posts || []
         
-        // 为每个帖子获取评论
         const postsWithComments = await Promise.all(
           postList.map(async (post: Post) => {
             try {
               const commentsRes = await Network.request({
-                url: `/api/social/post/${post.id}/comments?page=1&pageSize=5`
+                url: `/api/social/post/${post.id}/comments?page=1&pageSize=3`
               })
               if (commentsRes.data?.code === 200) {
                 const comments = (commentsRes.data.data || []).map((c: any) => ({
@@ -171,18 +187,16 @@ export default function SocialPage() {
           }
           return post
         }))
-        showToast({ title: liked ? '点赞成功' : '已取消', icon: 'success' })
+        showToast({ title: liked ? '已点赞 ❤️' : '已取消', icon: 'none' })
       }
     } catch (error) {
       console.error('点赞失败:', error)
-      showToast({ title: '点赞失败', icon: 'none' })
     }
   }
 
   const createPost = () => {
-    // 微信小程序 showModal 支持 editable 属性
     const options = {
-      title: '发布动态',
+      title: '✨ 发布动态',
       editable: true,
       placeholderText: '分享你的想法...',
       success: async (res: any) => {
@@ -194,7 +208,7 @@ export default function SocialPage() {
               data: { content: res.content }
             })
             if (result.data?.code === 200) {
-              showToast({ title: '发布成功', icon: 'success' })
+              showToast({ title: '发布成功 🎉', icon: 'success' })
               fetchPosts(1)
             }
           } catch (error) {
@@ -210,7 +224,7 @@ export default function SocialPage() {
    * 让分身发帖
    */
   const avatarCreatePost = async (avatarId: string, options?: { withImage?: boolean; withVideo?: boolean }) => {
-    showToast({ title: '分身正在创作...', icon: 'loading' })
+    showToast({ title: 'AI正在创作中...', icon: 'loading', duration: 3000 })
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/post`,
@@ -220,11 +234,10 @@ export default function SocialPage() {
           withVideo: options?.withVideo ?? false,
         }
       })
-      console.log('分身发帖响应:', res.data)
       if (res.data?.code === 200) {
         const post = res.data.data
-        const mediaInfo = post.images?.length > 0 ? '（含配图）' : post.videos?.length > 0 ? '（含视频）' : ''
-        showToast({ title: `发布成功${mediaInfo}`, icon: 'success' })
+        const mediaInfo = post.images?.length > 0 ? '📸 含AI配图' : post.videos?.length > 0 ? '🎬 含AI视频' : '✨'
+        showToast({ title: `发布成功 ${mediaInfo}`, icon: 'success' })
         fetchPosts(1)
         fetchAvatarStats()
       } else {
@@ -244,7 +257,8 @@ export default function SocialPage() {
     if (diff < 1) return '刚刚'
     if (diff < 60) return `${diff}分钟前`
     if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
-    return `${Math.floor(diff / 1440)}天前`
+    if (diff < 10080) return `${Math.floor(diff / 1440)}天前`
+    return date.toLocaleDateString()
   }
 
   const getAuthorInfo = (post: Post) => {
@@ -269,150 +283,213 @@ export default function SocialPage() {
     }
   }
 
+  const toggleVideoMute = (videoId: string) => {
+    setMutedVideos(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(videoId)) {
+        newSet.delete(videoId)
+      } else {
+        newSet.add(videoId)
+      }
+      return newSet
+    })
+  }
+
   return (
     <View className="social-page">
-      {/* 背景网格 */}
-      <View className="page-bg-grid" />
+      {/* 动态背景 */}
+      <View className="animated-bg">
+        <View className="bg-gradient-1" />
+        <View className="bg-gradient-2" />
+        <View className="bg-particles" />
+      </View>
+      
+      {/* 网格背景 */}
+      <View className="grid-overlay" />
       
       {/* 顶部导航 */}
       <View className="social-header">
+        <View className="header-content">
+          <View className="header-brand">
+            <View className="brand-icon">
+              <Sparkles size={28} color="#00f5ff" />
+            </View>
+            <Text className="brand-text">莫瑞娜广场</Text>
+          </View>
+          <View className="header-actions">
+            <Button className="action-btn message-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
+              <MessageCircle size={22} color="#00f5ff" />
+            </Button>
+          </View>
+        </View>
+        
+        {/* 标签切换 */}
         <View className="header-tabs">
           <View 
             className={`tab-item ${activeTab === 'actions' ? 'active' : ''}`}
             onClick={() => setActiveTab('actions')}
           >
-            <Text className="tab-text">Actions</Text>
-            {activeTab === 'actions' && <View className="tab-indicator" />}
+            <Text className="tab-text">动态</Text>
+            {activeTab === 'actions' && <View className="tab-glow" />}
           </View>
           <View 
             className={`tab-item ${activeTab === 'space' ? 'active' : ''}`}
             onClick={() => setActiveTab('space')}
           >
-            <Text className="tab-text">Space</Text>
-            {activeTab === 'space' && <View className="tab-indicator" />}
+            <Text className="tab-text">空间</Text>
+            {activeTab === 'space' && <View className="tab-glow" />}
           </View>
-        </View>
-        <View className="header-actions">
-          <Button className="invite-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
-            <Text className="invite-text">邀请朋友</Text>
-          </Button>
-          <Button className="message-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
-            <MessageCircle size={20} color="#00f5ff" />
-          </Button>
         </View>
       </View>
 
       <ScrollView 
         className="social-scroll"
         scrollY
+        refresherEnabled
+        refresherTriggered={refreshing}
+        onRefresherRefresh={() => {
+          setRefreshing(true)
+          Promise.all([fetchPosts(1), fetchAvatarStats(), fetchAvatars()]).finally(() => {
+            setRefreshing(false)
+          })
+        }}
         onScrollToLower={() => fetchPosts(page + 1)}
       >
-        {/* AI分身数据卡片 */}
-        <View className="avatar-stats-card">
-          <View className="stats-glow" />
-          <View className="stats-content">
-            <View className="stats-icon">
-              <Bot size={24} color="#00f5ff" />
+        {/* AI分身数据卡片 - 高级版 */}
+        <View className="stats-card">
+          <View className="stats-card-bg" />
+          <View className="stats-card-content">
+            <View className="stats-header">
+              <View className="stats-icon-wrap">
+                <Bot size={28} color="#00f5ff" />
+              </View>
+              <View className="stats-title-wrap">
+                <Text className="stats-title">分身活动</Text>
+                <Text className="stats-subtitle">过去24小时</Text>
+              </View>
+              <Button className="refresh-btn" onClick={fetchAvatarStats}>
+                <RefreshCw size={18} color="#00f5ff" />
+              </Button>
             </View>
-            <View className="stats-text-wrap">
-              <Text className="stats-intro">过去24小时内，你的分身</Text>
-              <View className="stats-numbers">
-                <View className="stat-item">
+            
+            <View className="stats-grid">
+              <View className="stat-card">
+                <View className="stat-value-wrap">
                   <Text className="stat-value">{avatarStats.postCount}</Text>
-                  <Text className="stat-label">发帖</Text>
+                  <View className="stat-pulse" />
                 </View>
-                <Text className="stats-divider">|</Text>
-                <View className="stat-item">
+                <Text className="stat-label">发帖</Text>
+              </View>
+              <View className="stat-card">
+                <View className="stat-value-wrap">
                   <Text className="stat-value">{avatarStats.likeCount}</Text>
-                  <Text className="stat-label">点赞</Text>
                 </View>
-                <Text className="stats-divider">|</Text>
-                <View className="stat-item">
+                <Text className="stat-label">点赞</Text>
+              </View>
+              <View className="stat-card">
+                <View className="stat-value-wrap">
                   <Text className="stat-value">{avatarStats.commentCount}</Text>
-                  <Text className="stat-label">评论</Text>
                 </View>
+                <Text className="stat-label">评论</Text>
               </View>
             </View>
           </View>
-          <Button className="refresh-btn" onClick={fetchAvatarStats}>
-            <RefreshCw size={18} color="#00f5ff" />
-          </Button>
         </View>
 
-        {/* 分身快捷操作 */}
+        {/* 分身快捷操作 - 高级版 */}
         {avatars.length > 0 && (
-          <View className="avatar-actions-card">
-            <View className="action-header">
-              <Text className="action-title">让分身发帖</Text>
-              <Text className="action-hint">点击头像快速发图文</Text>
+          <View className="avatar-section">
+            <View className="section-header">
+              <Text className="section-title">✨ 让分身发帖</Text>
+              <Text className="section-subtitle">点击头像快速生成AI内容</Text>
             </View>
-            <ScrollView className="avatar-scroll" scrollX>
-              {avatars.map(avatar => (
-                <View 
-                  key={avatar.id} 
-                  className="avatar-action-item"
-                  onClick={() => avatarCreatePost(avatar.id, { withImage: true, withVideo: false })}
-                >
-                  <View className="avatar-action-avatar">
-                    {avatar.avatar_url ? (
-                      <Image src={avatar.avatar_url} className="avatar-img-small" mode="aspectFill" />
-                    ) : (
-                      <View className="avatar-placeholder-small">
-                        <Sparkles size={20} color="#00f5ff" />
+            <ScrollView className="avatar-scroll" scrollX showScrollbar={false}>
+              <View className="avatar-list">
+                {avatars.map((avatar, index) => (
+                  <View 
+                    key={avatar.id} 
+                    className="avatar-card"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                    onClick={() => avatarCreatePost(avatar.id, { withImage: true, withVideo: false })}
+                  >
+                    <View className="avatar-glow" />
+                    <View className="avatar-ring">
+                      <View className="avatar-inner">
+                        {avatar.avatar_url ? (
+                          <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                        ) : (
+                          <View className="avatar-placeholder">
+                            <Sparkles size={24} color="#00f5ff" />
+                          </View>
+                        )}
                       </View>
-                    )}
+                      {avatar.is_hosted && (
+                        <View className="hosting-indicator">
+                          <View className="hosting-pulse" />
+                        </View>
+                      )}
+                    </View>
+                    <Text className="avatar-name">{avatar.name}</Text>
+                    <Text className="avatar-action">点击发帖</Text>
                   </View>
-                  <Text className="avatar-action-name">{avatar.name}</Text>
-                  {avatar.is_hosted && (
-                    <View className="hosting-dot" />
-                  )}
-                </View>
-              ))}
+                ))}
+              </View>
             </ScrollView>
           </View>
         )}
 
-        {/* 分割线 */}
+        {/* 分割装饰 */}
         <View className="section-divider">
-          <View className="divider-line" />
+          <View className="divider-line left" />
+          <View className="divider-icon">
+            <Sparkles size={16} color="rgba(0, 245, 255, 0.5)" />
+          </View>
           <Text className="divider-text">最新动态</Text>
-          <View className="divider-line" />
+          <View className="divider-line right" />
         </View>
 
         {/* 帖子列表 */}
         {posts.length === 0 && !loading ? (
-          <View className="empty-posts">
-            <View className="empty-icon-large">
-              <MessageCircle size={48} color="rgba(0, 245, 255, 0.3)" />
+          <View className="empty-state">
+            <View className="empty-icon-wrap">
+              <MessageCircle size={64} color="rgba(0, 245, 255, 0.3)" />
             </View>
             <Text className="empty-title">还没有动态</Text>
-            <Text className="empty-desc">让你的分身发帖，或自己发布第一条动态</Text>
+            <Text className="empty-desc">让你的AI分身发布第一条动态吧</Text>
           </View>
         ) : (
-          <View className="posts-container">
-            {posts.map(post => {
+          <View className="posts-feed">
+            {posts.map((post, index) => {
               const author = getAuthorInfo(post)
               return (
-                <View key={post.id} className="post-card">
+                <View 
+                  key={post.id} 
+                  className="post-card"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  {/* 卡片光效 */}
+                  <View className="card-shine" />
+                  
                   {/* 发布者信息 */}
                   <View className="post-header">
-                    <View className="author-info">
-                      <View className="author-avatar">
+                    <View className="author-row">
+                      <View className="author-avatar-wrap">
+                        <View className="avatar-border" />
                         {author.avatar ? (
-                          <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
+                          <Image src={author.avatar} className="author-avatar" mode="aspectFill" />
                         ) : (
-                          <View className="avatar-placeholder">
-                            <Text className="placeholder-text">{author.name?.[0] || '?'}</Text>
+                          <View className="author-avatar author-placeholder">
+                            <Text className="avatar-letter">{author.name?.[0] || '?'}</Text>
                           </View>
                         )}
                       </View>
-                      <View className="author-details">
+                      <View className="author-info">
                         <View className="author-name-row">
                           <Text className="author-name">{author.name}</Text>
                           {author.isAI && (
-                            <View className="ai-badge">
+                            <View className="ai-tag">
                               <Sparkles size={12} color="#00f5ff" />
-                              <Text className="ai-badge-text">AI</Text>
+                              <Text className="ai-tag-text">AI</Text>
                             </View>
                           )}
                         </View>
@@ -420,7 +497,7 @@ export default function SocialPage() {
                       </View>
                     </View>
                     <Button className="more-btn">
-                      <Ellipsis size={20} color="rgba(255,255,255,0.4)" />
+                      <Ellipsis size={20} color="rgba(255,255,255,0.5)" />
                     </Button>
                   </View>
 
@@ -431,14 +508,20 @@ export default function SocialPage() {
 
                   {/* 帖子图片 */}
                   {post.images && post.images.length > 0 && (
-                    <View className="post-images">
-                      {post.images.map((img, idx) => (
-                        <Image 
-                          key={idx}
-                          src={img} 
-                          className="post-image" 
-                          mode="aspectFill"
-                        />
+                    <View className={`post-images images-${Math.min(post.images.length, 3)}`}>
+                      {post.images.slice(0, 3).map((img, idx) => (
+                        <View key={idx} className="image-wrapper">
+                          <Image 
+                            src={img} 
+                            className="post-image" 
+                            mode="aspectFill"
+                          />
+                          {idx === 2 && post.images.length > 3 && (
+                            <View className="more-images">
+                              <Text className="more-count">+{post.images.length - 3}</Text>
+                            </View>
+                          )}
+                        </View>
                       ))}
                     </View>
                   )}
@@ -456,7 +539,18 @@ export default function SocialPage() {
                             showPlayBtn
                             showCenterPlayBtn
                             objectFit="cover"
+                            muted={mutedVideos.has(`${post.id}-${idx}`)}
                           />
+                          <Button 
+                            className="video-mute-btn"
+                            onClick={() => toggleVideoMute(`${post.id}-${idx}`)}
+                          >
+                            {mutedVideos.has(`${post.id}-${idx}`) ? (
+                              <VolumeX size={20} color="#fff" />
+                            ) : (
+                              <Volume2 size={20} color="#fff" />
+                            )}
+                          </Button>
                         </View>
                       ))}
                     </View>
@@ -464,36 +558,45 @@ export default function SocialPage() {
 
                   {/* 互动按钮 */}
                   <View className="post-actions">
-                    <View className="action-item" onClick={() => likePost(post.id)}>
-                      <Heart size={20} color="rgba(0, 245, 255, 0.6)" />
-                      <Text className="action-count">{post.likes_count}</Text>
+                    <View className="action-btn" onClick={() => likePost(post.id)}>
+                      <View className="action-icon-wrap">
+                        <Heart size={22} color="#ff6b9d" />
+                      </View>
+                      <Text className="action-count">{post.likes_count || 0}</Text>
                     </View>
-                    <View className="action-item">
-                      <MessageCircle size={20} color="rgba(0, 245, 255, 0.6)" />
-                      <Text className="action-count">{post.comments_count}</Text>
+                    <View className="action-btn">
+                      <View className="action-icon-wrap">
+                        <MessageCircle size={22} color="#00f5ff" />
+                      </View>
+                      <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
-                    <View className="action-item">
-                      <Share2 size={20} color="rgba(0, 245, 255, 0.6)" />
-                      <Text className="action-count">{post.shares_count}</Text>
+                    <View className="action-btn">
+                      <View className="action-icon-wrap">
+                        <Share2 size={22} color="#bf00ff" />
+                      </View>
+                      <Text className="action-count">{post.shares_count || 0}</Text>
                     </View>
                   </View>
 
                   {/* 评论区 */}
                   {post.comments && post.comments.length > 0 && (
                     <View className="comments-section">
-                      {/* 评论列表 */}
+                      <View className="comments-header">
+                        <Text className="comments-title">评论</Text>
+                        <Text className="comments-count">{post.comments.length}</Text>
+                      </View>
                       {post.comments.map(comment => (
                         <View key={comment.id} className="comment-item">
                           <View className="comment-avatar">
                             <Text className="emoji">{comment.user_avatar}</Text>
                           </View>
-                          <View className="comment-content">
+                          <View className="comment-body">
                             <View className="comment-header">
                               <Text className="comment-author">{comment.user_name}</Text>
                               {comment.is_ai && (
-                                <View className="ai-badge-small">
+                                <View className="ai-tag-small">
                                   <Sparkles size={10} color="#00f5ff" />
-                                  <Text className="ai-badge-text-small">AI</Text>
+                                  <Text className="ai-tag-text-small">AI</Text>
                                 </View>
                               )}
                             </View>
@@ -509,26 +612,33 @@ export default function SocialPage() {
           </View>
         )}
 
+        {/* 加载状态 */}
         {loading && (
-          <View className="loading-section">
+          <View className="loading-state">
+            <View className="loading-spinner" />
             <Text className="loading-text">加载中...</Text>
           </View>
         )}
 
+        {/* 加载更多 */}
         {!hasMore && posts.length > 0 && (
-          <View className="end-section">
-            <Text className="end-text">没有更多了</Text>
+          <View className="end-state">
+            <View className="end-line" />
+            <Text className="end-text">已经到底啦~</Text>
+            <View className="end-line" />
           </View>
         )}
 
-        <View className="bottom-space" />
+        <View className="bottom-safe" />
       </ScrollView>
 
-      {/* 发布按钮 */}
-      <View className="publish-btn-container">
-        <Button className="publish-btn" onClick={createPost}>
-          <Plus size={28} color="#fff" />
+      {/* 悬浮发布按钮 */}
+      <View className="fab-container">
+        <Button className="fab-btn" onClick={createPost}>
+          <View className="fab-bg" />
+          <Plus size={32} color="#fff" />
         </Button>
+        <View className="fab-pulse" />
       </View>
     </View>
   )
