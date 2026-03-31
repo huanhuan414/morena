@@ -124,7 +124,8 @@ export default function MindChatPage() {
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [taskStatus] = useState<TaskStatus | null>(null)
   
-  const [scrollTop, setScrollTop] = useState(0)
+  const [scrollTop] = useState(0)
+  const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const eventSourceRef = useRef<any>(null)
@@ -271,7 +272,13 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    setScrollTop(prev => prev + 9999)
+    // 使用 setTimeout 确保 DOM 渲染完成后再滚动
+    setTimeout(() => {
+      setScrollIntoView('')
+      setTimeout(() => {
+        setScrollIntoView('msg-bottom')
+      }, 50)
+    }, 100)
   }
 
   const sendMessage = async (text?: string) => {
@@ -794,6 +801,7 @@ export default function MindChatPage() {
         className="messages-scroll"
         scrollY
         scrollTop={scrollTop}
+        scrollIntoView={scrollIntoView}
         scrollWithAnimation
       >
         {messages.length === 0 ? (
@@ -882,7 +890,7 @@ export default function MindChatPage() {
           </View>
         )}
         
-        <View className="messages-bottom" />
+        <View id="msg-bottom" className="messages-bottom" />
       </ScrollView>
 
       {/* 底部输入栏 */}
