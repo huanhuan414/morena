@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Plus, Sparkles, Send, UserPlus, Link, Users } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -66,10 +66,9 @@ export default function SocialPage() {
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePostId, setSharePostId] = useState<string | null>(null)
-  const [hasAvatars, setHasAvatars] = useState<boolean | null>(null) // null表示未加载
+  const [hasAvatars, setHasAvatars] = useState<boolean | null>(null)
 
   useLoad(() => {
-    // 开启分享功能
     showShareMenu({
       withShareTicket: true
     } as any)
@@ -119,12 +118,10 @@ export default function SocialPage() {
         const data = res.data.data
         const postList = data.posts || []
         
-        // 更新统计数据
         if (data.stats) {
           setAvatarStats(data.stats)
         }
         
-        // 为每个帖子获取评论
         const postsWithComments = await Promise.all(
           postList.map(async (post: Post) => {
             try {
@@ -207,7 +204,6 @@ export default function SocialPage() {
         showToast({ title: '评论成功', icon: 'success' })
         setCommentInput('')
         setActivePostId(null)
-        // 重新获取评论
         fetchAvatarRelatedPosts(1)
       }
     } catch (error) {
@@ -222,13 +218,11 @@ export default function SocialPage() {
   }
 
   const shareToFriend = async () => {
-    // 微信分享给朋友
     try {
       await Network.request({
         url: `/api/social/post/${sharePostId}/share`,
         method: 'POST'
       })
-      // 更新分享计数
       setPosts(prev => prev.map(post => {
         if (post.id === sharePostId) {
           return { ...post, shares_count: post.shares_count + 1 }
@@ -245,26 +239,6 @@ export default function SocialPage() {
   const copyLink = () => {
     showToast({ title: '链接已复制', icon: 'success' })
     setShowShareModal(false)
-  }
-
-  const avatarCreatePost = async (avatarId: string) => {
-    showToast({ title: 'AI正在创作中...', icon: 'loading', duration: 3000 })
-    try {
-      const res = await Network.request({
-        url: `/api/avatar/${avatarId}/post`,
-        method: 'POST',
-        data: { withImage: true, withVideo: false }
-      })
-      if (res.data?.code === 200) {
-        showToast({ title: '发布成功', icon: 'success' })
-        fetchAvatarRelatedPosts(1)
-      } else {
-        showToast({ title: res.data?.message || '发布失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('分身发帖失败:', error)
-      showToast({ title: '发布失败', icon: 'none' })
-    }
   }
 
   const goToCreateAvatar = () => {
@@ -305,7 +279,6 @@ export default function SocialPage() {
     }
   }
 
-  // 渲染无分身引导界面
   const renderNoAvatarGuide = () => (
     <View className="no-avatar-state">
       <View className="no-avatar-icon">
@@ -320,7 +293,6 @@ export default function SocialPage() {
     </View>
   )
 
-  // 渲染分享弹窗
   const renderShareModal = () => (
     <View 
       className="share-modal" 
@@ -370,9 +342,7 @@ export default function SocialPage() {
         scrollY
         onScrollToLower={() => hasAvatars && fetchAvatarRelatedPosts(page + 1)}
       >
-        {/* 判断是否有分身 */}
         {hasAvatars === false ? (
-          // 无分身引导
           renderNoAvatarGuide()
         ) : (
           <>
@@ -396,17 +366,16 @@ export default function SocialPage() {
               </View>
             </View>
 
-            {/* 分身快捷操作 */}
+            {/* 分身列表展示（仅展示，不可点击发帖） */}
             {avatars.length > 0 && (
               <View className="avatar-section">
-                <Text className="section-title">让分身发帖</Text>
+                <Text className="section-title">我的分身</Text>
                 <ScrollView className="avatar-scroll" scrollX showScrollbar={false}>
                   <View className="avatar-list">
                     {avatars.map(avatar => (
                       <View 
                         key={avatar.id} 
                         className="avatar-item"
-                        onClick={() => avatarCreatePost(avatar.id)}
                       >
                         <View className="avatar-wrap">
                           {avatar.avatar_url ? (
@@ -440,7 +409,7 @@ export default function SocialPage() {
                   <MessageCircle size={48} color="#00f5ff" />
                 </View>
                 <Text className="empty-title">还没有动态</Text>
-                <Text className="empty-desc">让你的分身发帖或互动吧</Text>
+                <Text className="empty-desc">分身会自动发帖和互动</Text>
               </View>
             ) : (
               <View className="post-list">
@@ -602,13 +571,6 @@ export default function SocialPage() {
 
         <View className="bottom-space" />
       </ScrollView>
-
-      {/* 发布按钮 - 仅当有分身时显示 */}
-      {hasAvatars && (
-        <View className="fab-btn" onClick={() => showToast({ title: '功能开发中', icon: 'none' })}>
-          <Plus size={28} color="#0a0a0f" />
-        </View>
-      )}
 
       {/* 分享弹窗 */}
       {renderShareModal()}

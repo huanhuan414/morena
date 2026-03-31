@@ -1,14 +1,12 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
-  MessageCircle
+  MessageCircle, Mic, Keyboard, Volume2
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -67,7 +65,10 @@ export default function MindChatPage() {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [activeTab, setActiveTab] = useState<'chat' | 'learn'>('chat')
+  const [isVoiceMode, setIsVoiceMode] = useState(true) // 默认语音模式
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [showLearnPanel, setShowLearnPanel] = useState(false)
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -77,6 +78,7 @@ export default function MindChatPage() {
   
   const scrollViewRef = useRef<number>(0)
   const isFirstLoadRef = useRef<boolean>(true)
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -104,7 +106,6 @@ export default function MindChatPage() {
 
   const fetchConversations = async () => {
     try {
-      console.log('[MindChat] 获取历史对话列表')
       const res = await Network.request({ url: '/api/chat/conversations' })
       if (res.data?.code === 200) {
         setConversations(res.data.data || [])
@@ -158,17 +159,13 @@ export default function MindChatPage() {
 
   const fetchOrCreateConversation = async (avatarId: string) => {
     try {
-      console.log('[MindChat] fetchOrCreateConversation - avatarId:', avatarId)
-      
       const conversationsRes = await Network.request({ url: '/api/chat/conversations' })
       
       if (conversationsRes.data?.code === 200 && conversationsRes.data.data?.length > 0) {
         const latestConv = conversationsRes.data.data[0]
-        console.log('[MindChat] 加载最新对话:', latestConv.id)
         setConversation(latestConv)
         await fetchMessages(latestConv.id)
       } else {
-        console.log('[MindChat] 创建新对话')
         const res = await Network.request({
           url: '/api/chat/conversation',
           method: 'POST',
@@ -186,7 +183,6 @@ export default function MindChatPage() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
-      console.log('[MindChat] 获取消息, 对话ID:', conversationId)
       const res = await Network.request({
         url: `/api/chat/conversation/${conversationId}/messages`
       })
@@ -200,7 +196,6 @@ export default function MindChatPage() {
   }
 
   const switchConversation = async (conv: Conversation) => {
-    console.log('[MindChat] 切换对话:', conv.id)
     setConversation(conv)
     setMessages([])
     await fetchMessages(conv.id)
@@ -266,6 +261,48 @@ export default function MindChatPage() {
     }
   }
 
+  const toggleVoiceMode = () => {
+    setIsVoiceMode(!isVoiceMode)
+    if (isRecording) {
+      stopRecording()
+    }
+  }
+
+  const startRecording = () => {
+    // 检测平台
+    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
+      showToast({ title: '语音功能仅支持小程序', icon: 'none' })
+      return
+    }
+    
+    setIsRecording(true)
+    setRecordingTime(0)
+    
+    // 开始计时
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1)
+    }, 1000)
+    
+    showToast({ title: '开始录音...', icon: 'none', duration: 60000 })
+  }
+
+  const stopRecording = () => {
+    setIsRecording(false)
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    
+    // 模拟语音识别结果
+    if (recordingTime > 0) {
+      setInputText('这是一条语音消息的识别结果')
+      showToast({ title: '语音识别完成', icon: 'success' })
+    }
+    
+    setRecordingTime(0)
+  }
+
   const scrollToBottom = () => {
     scrollViewRef.current = 999999
   }
@@ -279,6 +316,12 @@ export default function MindChatPage() {
     })
   }
 
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
   if (!isLoggedIn) return null
 
   return (
@@ -290,9 +333,9 @@ export default function MindChatPage() {
       {/* 顶部导航 */}
       <View className="chat-header">
         <View className="header-left">
-          <Button className="header-btn" onClick={() => setShowHistory(true)}>
+          <View className="history-btn" onClick={() => setShowHistory(true)}>
             <History size={22} color="#00f5ff" />
-          </Button>
+          </View>
           <View className="avatar-info">
             {avatar ? (
               <>
@@ -317,29 +360,60 @@ export default function MindChatPage() {
           </View>
         </View>
         <View className="header-right">
-          <Button className="header-btn">
+          <View className="header-btn" onClick={() => setShowLearnPanel(!showLearnPanel)}>
+            <Brain size={22} color={showLearnPanel ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+          </View>
+          <View className="header-btn">
             <Settings size={22} color="rgba(255,255,255,0.6)" />
-          </Button>
+          </View>
         </View>
       </View>
 
-      {/* Tab切换 */}
-      <View className="tab-switcher">
-        <View 
-          className={`tab-item ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
-        >
-          <MessageCircle size={18} color={activeTab === 'chat' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
-          <Text className="tab-text">对话</Text>
+      {/* 学习面板 - 下拉展示 */}
+      {showLearnPanel && (
+        <View className="learn-panel">
+          <View className="learn-panel-header">
+            <Brain size={20} color="#00f5ff" />
+            <Text className="learn-panel-title">心智成长</Text>
+            <View className="learn-panel-close" onClick={() => setShowLearnPanel(false)}>
+              <X size={18} color="rgba(255,255,255,0.5)" />
+            </View>
+          </View>
+          
+          <View className="learn-stats-row">
+            <View className="learn-stat-item">
+              <MessageCircle size={16} color="#bf00ff" />
+              <Text className="learn-stat-value">{learningStats.messageCount}</Text>
+              <Text className="learn-stat-label">对话</Text>
+            </View>
+            <View className="learn-stat-item">
+              <TrendingUp size={16} color="#00ff88" />
+              <Text className="learn-stat-value">{learningStats.learningDays}</Text>
+              <Text className="learn-stat-label">天数</Text>
+            </View>
+            <View className="learn-stat-item">
+              <Target size={16} color="#ff00aa" />
+              <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
+              <Text className="learn-stat-label">掌握</Text>
+            </View>
+            <View className="learn-stat-item">
+              <Award size={16} color="#00f5ff" />
+              <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
+              <Text className="learn-stat-label">等级</Text>
+            </View>
+          </View>
+          
+          <View className="learn-progress-section">
+            <Text className="learn-progress-label">成长进度</Text>
+            <View className="learn-progress-bar">
+              <View 
+                className="learn-progress-fill" 
+                style={{ width: `${learningStats.masteryLevel}%` }}
+              />
+            </View>
+          </View>
         </View>
-        <View 
-          className={`tab-item ${activeTab === 'learn' ? 'active' : ''}`}
-          onClick={() => setActiveTab('learn')}
-        >
-          <Brain size={18} color={activeTab === 'learn' ? '#00f5ff' : 'rgba(255,255,255,0.4)'} />
-          <Text className="tab-text">学习</Text>
-        </View>
-      </View>
+      )}
 
       {/* 历史记录抽屉 */}
       {showHistory && (
@@ -347,9 +421,9 @@ export default function MindChatPage() {
           <View className="history-drawer" onClick={e => e.stopPropagation()}>
             <View className="drawer-header">
               <Text className="drawer-title">历史对话</Text>
-              <Button className="drawer-close" onClick={() => setShowHistory(false)}>
+              <View className="drawer-close" onClick={() => setShowHistory(false)}>
                 <X size={24} color="rgba(255,255,255,0.6)" />
-              </Button>
+              </View>
             </View>
             <ScrollView className="drawer-content" scrollY>
               {conversations.length === 0 ? (
@@ -379,183 +453,166 @@ export default function MindChatPage() {
         </View>
       )}
 
-      {/* 对话内容区 */}
-      {activeTab === 'chat' && (
-        <ScrollView 
-          className="messages-scroll"
-          scrollY
-          scrollTop={scrollViewRef.current}
-          scrollWithAnimation
-        >
-          {messages.length === 0 ? (
-            <View className="empty-chat">
-              <View className="empty-icon">
-                <View className="empty-avatar-glow">
+      {/* 消息区域 */}
+      <ScrollView 
+        className="messages-scroll"
+        scrollY
+        scrollTop={scrollViewRef.current}
+        scrollWithAnimation
+      >
+        {messages.length === 0 ? (
+          <View className="empty-chat">
+            <View className="empty-icon">
+              <View className="empty-avatar-glow">
+                {avatar?.avatar_url ? (
+                  <Image src={avatar.avatar_url} className="empty-avatar-img" mode="aspectFill" />
+                ) : (
+                  <Sparkles size={64} color="#00f5ff" />
+                )}
+              </View>
+            </View>
+            <Text className="empty-title">开始与{avatar?.name || 'AI'}对话</Text>
+            <Text className="empty-desc">发送消息开始心智交流</Text>
+          </View>
+        ) : (
+          messages.map((msg) => (
+            <View 
+              key={msg.id} 
+              className={`message-item ${msg.role}`}
+            >
+              {msg.role === 'assistant' && (
+                <View className="message-avatar">
                   {avatar?.avatar_url ? (
-                    <Image src={avatar.avatar_url} className="empty-avatar-img" mode="aspectFill" />
+                    <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
                   ) : (
-                    <Sparkles size={64} color="#00f5ff" />
+                    <Sparkles size={24} color="#00f5ff" />
+                  )}
+                </View>
+              )}
+              <View className="message-bubble">
+                <Text className="message-text">{msg.content}</Text>
+                <View className="message-footer">
+                  <Text className="message-time">
+                    {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  {msg.role === 'assistant' && (
+                    <View 
+                      className="message-action"
+                      onClick={() => copyMessage(msg.content)}
+                    >
+                      <Copy size={14} color="rgba(255,255,255,0.4)" />
+                    </View>
                   )}
                 </View>
               </View>
-              <Text className="empty-title">开始与{avatar?.name || 'AI'}对话</Text>
-              <Text className="empty-desc">发送消息开始心智交流</Text>
-            </View>
-          ) : (
-            messages.map((msg) => (
-              <View 
-                key={msg.id} 
-                className={`message-item ${msg.role}`}
-              >
-                {msg.role === 'assistant' && (
-                  <View className="message-avatar">
-                    {avatar?.avatar_url ? (
-                      <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
-                    ) : (
-                      <Sparkles size={24} color="#00f5ff" />
-                    )}
-                  </View>
-                )}
-                <View className="message-bubble">
-                  <Text className="message-text">{msg.content}</Text>
-                  <View className="message-footer">
-                    <Text className="message-time">
-                      {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                    {msg.role === 'assistant' && (
-                      <Button 
-                        className="message-action"
-                        onClick={() => copyMessage(msg.content)}
-                      >
-                        <Copy size={14} color="rgba(255,255,255,0.4)" />
-                      </Button>
-                    )}
-                  </View>
+              {msg.role === 'user' && (
+                <View className="message-user-avatar">
+                  {userInfo?.avatar ? (
+                    <Image src={userInfo.avatar} className="msg-avatar-img" mode="aspectFill" />
+                  ) : (
+                    <Text className="user-avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+                  )}
                 </View>
-                {msg.role === 'user' && (
-                  <View className="message-user-avatar">
-                    {userInfo?.avatar ? (
-                      <Image src={userInfo.avatar} className="msg-avatar-img" mode="aspectFill" />
-                    ) : (
-                      <Text className="user-avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            ))
-          )}
-          
-          {loading && (
-            <View className="message-item assistant">
-              <View className="message-avatar">
-                {avatar?.avatar_url ? (
-                  <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
-                ) : (
-                  <Sparkles size={24} color="#00f5ff" />
-                )}
-              </View>
-              <View className="message-bubble typing">
-                <View className="typing-dots">
-                  <View className="dot" />
-                  <View className="dot" />
-                  <View className="dot" />
-                </View>
-              </View>
+              )}
             </View>
-          )}
-          
-          <View className="messages-bottom" />
-        </ScrollView>
-      )}
-
-      {/* 学习数据区 */}
-      {activeTab === 'learn' && (
-        <ScrollView className="learn-scroll" scrollY>
-          <View className="learn-section">
-            <View className="learn-header">
-              <Brain size={24} color="#00f5ff" />
-              <Text className="learn-title">心智成长</Text>
+          ))
+        )}
+        
+        {loading && (
+          <View className="message-item assistant">
+            <View className="message-avatar">
+              {avatar?.avatar_url ? (
+                <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
+              ) : (
+                <Sparkles size={24} color="#00f5ff" />
+              )}
             </View>
-
-            {/* 统计卡片 */}
-            <View className="stats-grid">
-              <View className="stat-card">
-                <MessageCircle size={20} color="#bf00ff" />
-                <Text className="stat-value">{learningStats.messageCount}</Text>
-                <Text className="stat-label">对话次数</Text>
-              </View>
-              <View className="stat-card">
-                <TrendingUp size={20} color="#00ff88" />
-                <Text className="stat-value">{learningStats.learningDays}</Text>
-                <Text className="stat-label">学习天数</Text>
-              </View>
-              <View className="stat-card">
-                <Target size={20} color="#ff00aa" />
-                <Text className="stat-value">{learningStats.masteryLevel}%</Text>
-                <Text className="stat-label">掌握程度</Text>
-              </View>
-              <View className="stat-card">
-                <Award size={20} color="#00f5ff" />
-                <Text className="stat-value">Lv.{avatar?.level || 1}</Text>
-                <Text className="stat-label">分身等级</Text>
-              </View>
-            </View>
-
-            {/* 进度条 */}
-            <View className="progress-section">
-              <Text className="progress-label">成长进度</Text>
-              <View className="progress-bar">
-                <View 
-                  className="progress-fill" 
-                  style={{ width: `${learningStats.masteryLevel}%` }}
-                />
-              </View>
-              <Text className="progress-text">{learningStats.masteryLevel}%</Text>
-            </View>
-
-            {/* 学习提示 */}
-            <View className="learn-tips">
-              <View className="tip-card">
-                <Sparkles size={18} color="#00f5ff" />
-                <Text className="tip-text">
-                  你的AI分身正在学习中，多与它对话，它会越来越像你！
-                </Text>
-              </View>
-              <View className="tip-card">
-                <Brain size={18} color="#bf00ff" />
-                <Text className="tip-text">
-                  对话次数越多，分身的学习能力越强，模拟越准确。
-                </Text>
+            <View className="message-bubble typing">
+              <View className="typing-dots">
+                <View className="dot" />
+                <View className="dot" />
+                <View className="dot" />
               </View>
             </View>
           </View>
-        </ScrollView>
-      )}
+        )}
+        
+        <View className="messages-bottom" />
+      </ScrollView>
 
-      {/* 输入区域 */}
-      {activeTab === 'chat' && (
-        <View className="input-area">
-          <View className="input-wrap">
-            <View className="input-container">
-              <Input
-                className="chat-input"
-                placeholder="输入消息..."
-                value={inputText}
-                onInput={e => setInputText(e.detail.value)}
-                onConfirm={sendMessage}
-                confirmType="send"
-              />
-            </View>
-            <Button 
-              className={`send-btn ${inputText.trim() ? 'active' : ''}`}
-              onClick={sendMessage}
-              disabled={!inputText.trim() || loading}
-            >
-              <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
-            </Button>
+      {/* 高级底部输入框 - 在TabBar之上 */}
+      <View className="input-bar">
+        {/* 左侧快捷功能 */}
+        <View className="input-left">
+          <View className="quick-action" onClick={toggleVoiceMode}>
+            {isVoiceMode ? (
+              <Keyboard size={24} color="rgba(255,255,255,0.6)" />
+            ) : (
+              <Mic size={24} color="#00f5ff" />
+            )}
           </View>
         </View>
-      )}
+
+        {/* 中间输入区域 */}
+        <View className="input-center">
+          {isVoiceMode ? (
+            // 语音输入模式
+            <View 
+              className={`voice-input-area ${isRecording ? 'recording' : ''}`}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              onTouchCancel={stopRecording}
+            >
+              {isRecording ? (
+                <View className="recording-indicator">
+                  <View className="recording-wave">
+                    <View className="wave-bar" />
+                    <View className="wave-bar" />
+                    <View className="wave-bar" />
+                    <View className="wave-bar" />
+                    <View className="wave-bar" />
+                  </View>
+                  <Text className="recording-time">{formatRecordingTime(recordingTime)}</Text>
+                  <Text className="recording-hint">松开发送，上滑取消</Text>
+                </View>
+              ) : (
+                <View className="voice-prompt">
+                  <Mic size={28} color="rgba(255,255,255,0.8)" />
+                  <Text className="voice-prompt-text">按住说话</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            // 文本输入模式
+            <View className="text-input-area">
+              <input
+                className="text-input"
+                placeholder="输入消息..."
+                value={inputText}
+                onInput={(e: any) => setInputText(e.detail.value)}
+                onKeyDown={(e: any) => e.key === 'Enter' && sendMessage()}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* 右侧发送按钮 */}
+        <View className="input-right">
+          {!isVoiceMode && (
+            <View 
+              className={`send-action ${inputText.trim() ? 'active' : ''}`}
+              onClick={sendMessage}
+            >
+              <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
+            </View>
+          )}
+          {isVoiceMode && !isRecording && (
+            <View className="voice-hint-icon">
+              <Volume2 size={20} color="rgba(255,255,255,0.4)" />
+            </View>
+          )}
+        </View>
+      </View>
     </View>
   )
 }
