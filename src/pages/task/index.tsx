@@ -74,7 +74,7 @@ export default function TaskPage() {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      switchTab({ url: '/pages/home/index' })
+      switchTab({ url: '/pages/social/index' })
       return
     }
     loadData()

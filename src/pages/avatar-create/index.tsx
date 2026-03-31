@@ -66,7 +66,7 @@ export default function AvatarCreatePage() {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      switchTab({ url: '/pages/home/index' })
+      switchTab({ url: '/pages/social/index' })
     }
   }, [isLoggedIn])
 
@@ -248,7 +248,7 @@ export default function AvatarCreatePage() {
       if (res.data?.code === 200) {
         showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
-          switchTab({ url: '/pages/chat/index' })
+          switchTab({ url: '/pages/mind-chat/index' })
         }, 800)
       }
     } catch (error) {

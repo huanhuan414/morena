@@ -31,7 +31,7 @@ export default function LoginPage() {
         setUserInfo(res.data.data.user)
         showToast({ title: '登录成功', icon: 'success' })
         setTimeout(() => {
-          switchTab({ url: '/pages/home/index' })
+          switchTab({ url: '/pages/social/index' })
         }, 500)
       }
     } catch (error) {
@@ -46,7 +46,7 @@ export default function LoginPage() {
       })
       showToast({ title: '登录成功', icon: 'success' })
       setTimeout(() => {
-        switchTab({ url: '/pages/home/index' })
+        switchTab({ url: '/pages/social/index' })
       }, 500)
     } finally {
       setLoading(false)
@@ -172,7 +172,7 @@ export default function LoginPage() {
       exp: 0,
       credits: 0
     })
-    switchTab({ url: '/pages/home/index' })
+    switchTab({ url: '/pages/social/index' })
   }
 
   return (

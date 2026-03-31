@@ -66,7 +66,7 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
-    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/home/index' },
+    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/social/index' },
     { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/learn/index' },
     { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/learn/index' },
     { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '' },
@@ -110,7 +110,7 @@ export default function ProfilePage() {
 
         {/* 统计数据 */}
         <View className="stats-row">
-          <View className="stat-item" onClick={() => switchTab({ url: '/pages/home/index' })}>
+          <View className="stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
             <Text className="stat-value">{stats.avatarCount}</Text>
             <Text className="stat-label">AI分身</Text>
           </View>

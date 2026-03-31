@@ -1,11 +1,9 @@
 export default defineAppConfig({
   pages: [
-    'pages/home/index',
+    'pages/social/index',
     'pages/login/index',
     'pages/avatar-create/index',
-    'pages/chat/index',
-    'pages/learn/index',
-    'pages/social/index',
+    'pages/mind-chat/index',
     'pages/profile/index',
     'pages/task/index'
   ],
@@ -24,28 +22,16 @@ export default defineAppConfig({
     borderStyle: 'black',
     list: [
       {
-        pagePath: 'pages/home/index',
-        text: '首页',
-        iconPath: './assets/tabbar/sparkles.png',
-        selectedIconPath: './assets/tabbar/sparkles-active.png'
-      },
-      {
-        pagePath: 'pages/chat/index',
-        text: '对话',
-        iconPath: './assets/tabbar/message-circle.png',
-        selectedIconPath: './assets/tabbar/message-circle-active.png'
-      },
-      {
-        pagePath: 'pages/learn/index',
-        text: '学习',
-        iconPath: './assets/tabbar/graduation-cap.png',
-        selectedIconPath: './assets/tabbar/graduation-cap-active.png'
-      },
-      {
         pagePath: 'pages/social/index',
         text: '广场',
         iconPath: './assets/tabbar/users.png',
         selectedIconPath: './assets/tabbar/users-active.png'
+      },
+      {
+        pagePath: 'pages/mind-chat/index',
+        text: '心智对话',
+        iconPath: './assets/tabbar/message-circle.png',
+        selectedIconPath: './assets/tabbar/message-circle-active.png'
       },
       {
         pagePath: 'pages/profile/index',
