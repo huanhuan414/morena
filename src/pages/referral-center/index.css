@@ -1,0 +1,301 @@
+.referral-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+}
+
+.referral-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 60rpx 24rpx 24rpx;
+  background: rgba(15, 15, 25, 0.8);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.code-section {
+  padding: 24rpx;
+}
+
+.code-card {
+  background: linear-gradient(135deg, rgba(191, 0, 255, 0.15), rgba(0, 245, 255, 0.1));
+  border: 1rpx solid rgba(191, 0, 255, 0.3);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  text-align: center;
+}
+
+.code-header {
+  margin-bottom: 24rpx;
+}
+
+.code-label {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.code-display {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2rpx dashed rgba(191, 0, 255, 0.5);
+  border-radius: 16rpx;
+  padding: 24rpx 48rpx;
+  margin-bottom: 24rpx;
+}
+
+.code-text {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 8rpx;
+}
+
+.code-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.copy-btn {
+  flex: 1;
+  height: 80rpx;
+  background: rgba(191, 0, 255, 0.15);
+  border: 1rpx solid rgba(191, 0, 255, 0.3);
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.action-text {
+  font-size: 26rpx;
+  color: #bf00ff;
+}
+
+.share-btn {
+  flex: 1;
+  height: 80rpx;
+  background: linear-gradient(135deg, #bf00ff, #00f5ff);
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.share-text {
+  font-size: 26rpx;
+  color: #fff;
+}
+
+.rules-section {
+  padding: 0 24rpx 24rpx;
+}
+
+.rules-card {
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 20rpx;
+  padding: 24rpx;
+}
+
+.rules-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.rule-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.rule-icon {
+  font-size: 24rpx;
+}
+
+.rule-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stats-section {
+  padding: 0 24rpx 24rpx;
+}
+
+.stats-card {
+  display: flex;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 20rpx;
+  padding: 24rpx 0;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stat-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: rgba(255, 255, 255, 0.1);
+  align-self: center;
+}
+
+.records-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24rpx;
+}
+
+.section-header {
+  margin-bottom: 16rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.records-scroll {
+  flex: 1;
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+}
+
+.loading-text,
+.empty-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 24rpx;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 12rpx;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.record-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+}
+
+.record-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.user-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 26rpx;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.invite-time {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.record-right {
+  text-align: right;
+}
+
+.reward-amount {
+  font-size: 30rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.reward-amount.completed {
+  color: #00ff88;
+}
+
+.reward-amount.pending {
+  color: #ffaa00;
+}
+
+.reward-status {
+  font-size: 22rpx;
+}
+
+.reward-status.completed {
+  color: #00ff88;
+}
+
+.reward-status.pending {
+  color: #ffaa00;
+}
+
+.bottom-space {
+  height: 60rpx;
+}

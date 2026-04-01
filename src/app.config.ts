@@ -12,7 +12,11 @@ export default defineAppConfig({
     'pages/profile/security',
     'pages/profile/help',
     'pages/profile/about',
-    'pages/task/index'
+    'pages/task/index',
+    'pages/order-create/index',
+    'pages/order-list/index',
+    'pages/earning-center/index',
+    'pages/referral-center/index'
   ],
   window: {
     backgroundTextStyle: 'dark',

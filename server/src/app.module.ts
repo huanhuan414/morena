@@ -12,6 +12,9 @@ import { AgentModule } from './modules/agent/agent.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { OrderDispatchModule } from './modules/order-dispatch/order-dispatch.module';
+import { EarningModule } from './modules/earning/earning.module';
+import { ReferralModule } from './modules/referral/referral.module';
 
 @Module({
   imports: [
@@ -25,7 +28,10 @@ import { NotificationModule } from './modules/notification/notification.module';
     SocialModule, 
     AgentModule, 
     AudioModule,
-    NotificationModule
+    NotificationModule,
+    OrderDispatchModule,
+    EarningModule,
+    ReferralModule
   ],
   controllers: [AppController],
   providers: [AppService],
