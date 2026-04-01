@@ -18,6 +18,7 @@ interface MessageMedia {
   key?: string
   content?: string
   title?: string
+  coverImage?: string  // 文章封面图
 }
 
 interface Message {
@@ -126,23 +127,31 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 const markdownToNodes = (text: string): string => {
   if (!text) return ''
   
-  return text
+  // 先处理多行块级元素
+  let html = text
     // 标题
     .replace(/^### (.+)$/gm, '<div class="md-h3">$1</div>')
     .replace(/^## (.+)$/gm, '<div class="md-h2">$1</div>')
     .replace(/^# (.+)$/gm, '<div class="md-h1">$1</div>')
-    // 引用块
+    // 引用块（包含emoji的引用）
     .replace(/^> (.+)$/gm, '<div class="md-quote">$1</div>')
+    // 分隔线
+    .replace(/^---$/gm, '<div class="md-hr"></div>')
     // 粗体
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     // 斜体
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // 分隔线
-    .replace(/^---$/gm, '<div class="md-hr"></div>')
-    // 段落
+    // 删除线
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    // 行内代码
+    .replace(/`(.+?)`/g, '<code class="md-code">$1</code>')
+    // 段落（连续两个换行）
     .replace(/\n\n/g, '</div><div class="md-para">')
     // 换行
     .replace(/\n/g, '<br/>')
+  
+  // 包装在容器中
+  return `<div class="md-container">${html}</div>`
 }
 
 export default function MindChatPage() {
@@ -604,27 +613,31 @@ export default function MindChatPage() {
       result.steps.forEach(step => {
         if (step.observation?.data) {
           const data = step.observation.data
-          // 封面图
-          if (data.cover_image_url) {
-            media.push({ type: 'image', url: data.cover_image_url })
-          }
-          // 生成的图片
-          if (data.image_urls?.length) {
-            data.image_urls.forEach((url: string) => {
-              media.push({ type: 'image', url })
-            })
-          }
-          // 生成的视频
-          if (data.video_url) {
-            media.push({ type: 'video', url: data.video_url })
-          }
-          // 文章内容
+          
+          // 文章内容（优先处理，包含封面图）
           if (data.content && data.title) {
             media.push({ 
               type: 'article', 
               title: data.title,
-              content: data.content 
+              content: data.content,
+              coverImage: data.cover_image_url  // 封面图作为文章的一部分
             })
+          } else {
+            // 如果不是文章，单独处理图片/视频
+            // 封面图（非文章场景）
+            if (data.cover_image_url && !data.content) {
+              media.push({ type: 'image', url: data.cover_image_url })
+            }
+            // 生成的图片
+            if (data.image_urls?.length) {
+              data.image_urls.forEach((url: string) => {
+                media.push({ type: 'image', url })
+              })
+            }
+            // 生成的视频
+            if (data.video_url) {
+              media.push({ type: 'video', url: data.video_url })
+            }
           }
         }
       })
@@ -893,6 +906,14 @@ export default function MindChatPage() {
               if (media.type === 'article') {
                 return (
                   <View key={idx} className="media-item article">
+                    {/* 封面图 */}
+                    {media.coverImage && (
+                      <Image 
+                        src={media.coverImage} 
+                        className="article-cover"
+                        mode="widthFix"
+                      />
+                    )}
                     <View className="article-header">
                       <FileText size={20} color="#00f5ff" />
                       <Text className="article-title">{media.title || '文章'}</Text>

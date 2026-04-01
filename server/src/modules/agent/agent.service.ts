@@ -222,12 +222,23 @@ export class AgentService {
         
         steps.push(step)
         
+        // 如果前面的步骤已经生成了内容（如文章、图片），提取出来作为最终答案的一部分
+        const generatedContent = steps.find(s => s.observation?.data?.content || s.observation?.data?.image_urls)
+        let contentMessage = ''
+        if (generatedContent?.observation?.data) {
+          const data = generatedContent.observation.data
+          if (data.title) {
+            contentMessage = `\n\n📝 已生成内容：「${data.title}」${data.word_count ? `，共${data.word_count}字` : ''}${data.cover_image_url ? '，含封面图' : ''}`
+          }
+        }
+        
         yield { 
           type: 'config_required',
           platform: configPlatform,
           platformName: PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name,
           fields: configFields,
-          message: `需要配置 ${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'} 后才能继续`
+          message: `需要配置 ${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'} 后才能发布${contentMessage}`,
+          generatedContent: generatedContent?.observation?.data
         }
         break
       }
@@ -239,7 +250,21 @@ export class AgentService {
     // 生成最终答案
     if (!finalAnswer) {
       if (requiresConfig) {
-        finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+        // 检查是否有已生成的内容
+        const generatedContent = steps.find(s => s.observation?.data?.content || s.observation?.data?.image_urls)
+        if (generatedContent?.observation?.data) {
+          const data = generatedContent.observation.data
+          if (data.title && data.content) {
+            // 有文章内容，返回文章摘要
+            finalAnswer = `✅ 内容已生成完成！\n\n📝 标题：${data.title}\n📊 字数：${data.word_count || data.content.length}字${data.cover_image_url ? '\n🖼️ 封面图：已生成' : ''}\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+          } else if (data.image_urls?.length) {
+            finalAnswer = `✅ 已生成 ${data.image_urls.length} 张图片！\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+          } else {
+            finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+          }
+        } else {
+          finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+        }
       } else {
         finalAnswer = await this.summarizeExecution(context, steps)
       }
@@ -488,7 +513,21 @@ export class AgentService {
     // 如果没有生成最终答案，基于步骤生成
     if (!finalAnswer) {
       if (requiresConfig) {
-        finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+        // 检查是否有已生成的内容
+        const generatedContent = steps.find(s => s.observation?.data?.content || s.observation?.data?.image_urls)
+        if (generatedContent?.observation?.data) {
+          const data = generatedContent.observation.data
+          if (data.title && data.content) {
+            // 有文章内容，返回文章摘要
+            finalAnswer = `✅ 内容已生成完成！\n\n📝 标题：${data.title}\n📊 字数：${data.word_count || data.content.length}字${data.cover_image_url ? '\n🖼️ 封面图：已生成' : ''}\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+          } else if (data.image_urls?.length) {
+            finalAnswer = `✅ 已生成 ${data.image_urls.length} 张图片！\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+          } else {
+            finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+          }
+        } else {
+          finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+        }
       } else {
         finalAnswer = await this.summarizeExecution(context, steps)
       }
