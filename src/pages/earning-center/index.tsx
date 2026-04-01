@@ -7,10 +7,12 @@ import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles } from 'lucide-re
 import './index.css'
 
 interface EarningOverview {
+  balance: number
   totalEarnings: number
-  monthEarnings: number
-  pendingSettlement: number
-  availableBalance: number
+  pendingAmount: number
+  monthlyAmount: number
+  totalOrders: number
+  totalReferrals: number
 }
 
 interface EarningRecord {
@@ -24,10 +26,12 @@ interface EarningRecord {
 
 export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
+    balance: 0,
     totalEarnings: 0,
-    monthEarnings: 0,
-    pendingSettlement: 0,
-    availableBalance: 0
+    pendingAmount: 0,
+    monthlyAmount: 0,
+    totalOrders: 0,
+    totalReferrals: 0
   })
   const [records, setRecords] = useState<EarningRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -39,7 +43,8 @@ export default function EarningCenterPage() {
 
   const fetchOverview = async () => {
     try {
-      const res = await Network.request({ url: '/api/earning/overview' })
+      const res = await Network.request({ url: '/api/earnings/overview' })
+      console.log('收益概览返回:', res.data)
       if (res.data?.code === 200) {
         setOverview(res.data.data)
       }
@@ -51,9 +56,12 @@ export default function EarningCenterPage() {
   const fetchRecords = async () => {
     setLoading(true)
     try {
-      const res = await Network.request({ url: '/api/earning/records' })
+      const res = await Network.request({ url: '/api/earnings' })
+      console.log('收益记录返回:', res.data)
       if (res.data?.code === 200) {
-        setRecords(res.data.data || [])
+        // 后端返回 { list, total, page, pageSize }
+        const data = res.data.data
+        setRecords(data?.list || data || [])
       }
     } catch (error) {
       console.error('获取收益记录失败:', error)
@@ -63,15 +71,19 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdraw = async () => {
-    if (overview.availableBalance < 100) {
+    if (overview.balance < 100) {
       showToast({ title: '余额不足100元，无法提现', icon: 'none' })
       return
     }
     try {
       const res = await Network.request({
-        url: '/api/earning/withdraw',
+        url: '/api/earnings/withdraw',
         method: 'POST',
-        data: { amount: overview.availableBalance }
+        data: { 
+          amount: overview.balance,
+          method: 'wechat',
+          accountInfo: {}
+        }
       })
       if (res.data?.code === 200) {
         showToast({ title: '提现申请已提交', icon: 'success' })
@@ -87,7 +99,7 @@ export default function EarningCenterPage() {
   }
 
   const getTypeInfo = (type: string) => {
-    const typeMap: Record<string, { label: string; icon: any; color: string }> = {
+    const typeMap: Record<string, { label: string; icon: string; color: string }> = {
       order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
       referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#bf00ff' },
       withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
@@ -121,7 +133,7 @@ export default function EarningCenterPage() {
             <Text className="overview-label">可提现余额</Text>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
-              <Text className="balance-amount">{overview.availableBalance.toFixed(2)}</Text>
+              <Text className="balance-amount">{overview.balance.toFixed(2)}</Text>
             </View>
           </View>
           
@@ -132,12 +144,12 @@ export default function EarningCenterPage() {
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{overview.monthEarnings.toFixed(2)}</Text>
+              <Text className="stat-value">¥{overview.monthlyAmount.toFixed(2)}</Text>
               <Text className="stat-label">本月收益</Text>
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{overview.pendingSettlement.toFixed(2)}</Text>
+              <Text className="stat-value">¥{overview.pendingAmount.toFixed(2)}</Text>
               <Text className="stat-label">待结算</Text>
             </View>
           </View>
@@ -193,7 +205,7 @@ export default function EarningCenterPage() {
                         <Text>{typeInfo.icon}</Text>
                       </View>
                       <View className="record-info">
-                        <Text className="record-desc">{record.description}</Text>
+                        <Text className="record-desc">{record.description || typeInfo.label}</Text>
                         <Text className="record-time">{record.created_at}</Text>
                       </View>
                     </View>

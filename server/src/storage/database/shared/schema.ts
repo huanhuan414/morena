@@ -17,12 +17,17 @@ export const users = pgTable(
     exp: integer("exp").default(0).notNull(),
     credits: integer("credits").default(0).notNull(),
     settings: jsonb("settings").default({}),
+    referral_code: varchar("referral_code", { length: 10 }),
+    invited_by: varchar("invited_by", { length: 36 }),
+    available_balance: numeric("available_balance", { precision: 10, scale: 2 }).default("0"),
+    total_earnings: numeric("total_earnings", { precision: 10, scale: 2 }).default("0"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }),
   },
   (table) => [
     index("users_openid_idx").on(table.openid),
     index("users_level_idx").on(table.level),
+    index("users_referral_code_idx").on(table.referral_code),
   ]
 )
 
@@ -41,6 +46,10 @@ export const avatars = pgTable(
     level: integer("level").default(1).notNull(),
     exp: integer("exp").default(0).notNull(),
     status: varchar("status", { length: 20 }).default("active").notNull(),
+    is_hosted: boolean("is_hosted").default(false),
+    completion_rate: numeric("completion_rate", { precision: 5, scale: 2 }).default("0"),
+    total_orders: integer("total_orders").default(0),
+    completed_orders: integer("completed_orders").default(0),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }),
   },
@@ -48,6 +57,7 @@ export const avatars = pgTable(
     index("avatars_user_id_idx").on(table.user_id),
     index("avatars_status_idx").on(table.status),
     index("avatars_level_idx").on(table.level),
+    index("avatars_is_hosted_idx").on(table.is_hosted),
   ]
 )
 
@@ -236,6 +246,90 @@ export const orders = pgTable(
     index("orders_avatar_id_idx").on(table.avatar_id),
     index("orders_status_idx").on(table.status),
     index("orders_created_at_idx").on(table.created_at),
+  ]
+)
+
+// 收益记录表
+export const earnings = pgTable(
+  "earnings",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 30 }).notNull(), // order_income, referral_bonus, withdrawal
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, completed, failed
+    description: text("description"),
+    order_id: varchar("order_id", { length: 36 }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    settled_at: timestamp("settled_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("earnings_user_id_idx").on(table.user_id),
+    index("earnings_type_idx").on(table.type),
+    index("earnings_status_idx").on(table.status),
+    index("earnings_created_at_idx").on(table.created_at),
+  ]
+)
+
+// 提现记录表
+export const withdrawals = pgTable(
+  "withdrawals",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    method: varchar("method", { length: 20 }).notNull(), // wechat, alipay, bank
+    account_info: jsonb("account_info").default({}),
+    status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, processing, completed, failed
+    failure_reason: text("failure_reason"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    processed_at: timestamp("processed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("withdrawals_user_id_idx").on(table.user_id),
+    index("withdrawals_status_idx").on(table.status),
+    index("withdrawals_created_at_idx").on(table.created_at),
+  ]
+)
+
+// 邀请记录表
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    inviter_id: varchar("inviter_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    invitee_id: varchar("invitee_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 20 }).default("registered").notNull(), // registered, active, rewarded
+    reward_amount: numeric("reward_amount", { precision: 10, scale: 2 }).default("0"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    rewarded_at: timestamp("rewarded_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("referrals_inviter_id_idx").on(table.inviter_id),
+    index("referrals_invitee_id_idx").on(table.invitee_id),
+    index("referrals_status_idx").on(table.status),
+    index("referrals_created_at_idx").on(table.created_at),
+  ]
+)
+
+// 订单执行步骤表
+export const orderExecutions = pgTable(
+  "order_executions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    order_id: varchar("order_id", { length: 36 }).notNull().references(() => orders.id, { onDelete: "cascade" }),
+    step_number: integer("step_number").notNull(),
+    step_name: varchar("step_name", { length: 100 }).notNull(),
+    description: text("description"),
+    status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, in_progress, completed, failed
+    result: jsonb("result").default({}),
+    started_at: timestamp("started_at", { withTimezone: true }),
+    completed_at: timestamp("completed_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("order_executions_order_id_idx").on(table.order_id),
+    index("order_executions_status_idx").on(table.status),
   ]
 )
 

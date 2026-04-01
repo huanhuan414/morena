@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useDidShow, showToast } from '@tarojs/taro'
+import { useDidShow, showToast, setClipboardData } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
@@ -8,30 +8,31 @@ import './index.css'
 
 interface ReferralStats {
   referralCode: string
-  totalReferrals: number
-  totalEarnings: number
-  pendingRewards: number
-  completedRewards: number
+  totalInvited: number
+  activeInvited: number
+  rewardedInvited: number
+  totalReward: number
 }
 
 interface ReferralRecord {
   id: string
-  referred_user: {
-    nickname: string
-    avatar_url: string
-  }
-  status: 'pending' | 'completed'
+  invitee_id: string
+  status: string
   reward_amount: number
   created_at: string
+  invitee?: {
+    nickname: string
+    avatar: string
+  }
 }
 
 export default function ReferralCenterPage() {
   const [stats, setStats] = useState<ReferralStats>({
     referralCode: '',
-    totalReferrals: 0,
-    totalEarnings: 0,
-    pendingRewards: 0,
-    completedRewards: 0
+    totalInvited: 0,
+    activeInvited: 0,
+    rewardedInvited: 0,
+    totalReward: 0
   })
   const [records, setRecords] = useState<ReferralRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -44,6 +45,7 @@ export default function ReferralCenterPage() {
   const fetchStats = async () => {
     try {
       const res = await Network.request({ url: '/api/referral/stats' })
+      console.log('邀请统计返回:', res.data)
       if (res.data?.code === 200) {
         setStats(res.data.data)
       }
@@ -56,8 +58,11 @@ export default function ReferralCenterPage() {
     setLoading(true)
     try {
       const res = await Network.request({ url: '/api/referral/list' })
+      console.log('邀请记录返回:', res.data)
       if (res.data?.code === 200) {
-        setRecords(res.data.data || [])
+        // 后端返回的是 { list, total, page, pageSize }
+        const data = res.data.data
+        setRecords(data?.list || [])
       }
     } catch (error) {
       console.error('获取邀请记录失败:', error)
@@ -72,17 +77,28 @@ export default function ReferralCenterPage() {
       return
     }
     // 复制到剪贴板
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(stats.referralCode)
-      showToast({ title: '邀请码已复制', icon: 'success' })
-    } else {
-      showToast({ title: stats.referralCode, icon: 'none' })
-    }
+    setClipboardData({
+      data: stats.referralCode,
+      success: () => {
+        showToast({ title: '邀请码已复制', icon: 'success' })
+      },
+      fail: () => {
+        showToast({ title: '复制失败', icon: 'none' })
+      }
+    })
   }
 
   const handleShare = () => {
-    // 小程序分享功能
-    showToast({ title: '请使用小程序右上角分享功能', icon: 'none' })
+    if (!stats.referralCode) {
+      showToast({ title: '邀请码生成中，请稍后再试', icon: 'none' })
+      return
+    }
+    // 小程序分享功能 - 显示分享内容
+    showToast({ 
+      title: `我的邀请码: ${stats.referralCode}`, 
+      icon: 'none',
+      duration: 3000
+    })
   }
 
   return (
@@ -143,20 +159,20 @@ export default function ReferralCenterPage() {
         <View className="stats-card">
           <View className="stat-item">
             <Users size={22} color="#00f5ff" />
-            <Text className="stat-value">{stats.totalReferrals}</Text>
+            <Text className="stat-value">{stats.totalInvited}</Text>
             <Text className="stat-label">邀请好友</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
             <TrendingUp size={22} color="#00ff88" />
-            <Text className="stat-value">¥{stats.totalEarnings.toFixed(0)}</Text>
+            <Text className="stat-value">¥{stats.totalReward}</Text>
             <Text className="stat-label">累计奖励</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
             <Sparkles size={22} color="#ffaa00" />
-            <Text className="stat-value">¥{stats.pendingRewards.toFixed(0)}</Text>
-            <Text className="stat-label">待发放</Text>
+            <Text className="stat-value">{stats.activeInvited}</Text>
+            <Text className="stat-label">活跃好友</Text>
           </View>
         </View>
       </View>
@@ -184,21 +200,21 @@ export default function ReferralCenterPage() {
                 <View key={record.id} className="record-item">
                   <View className="record-left">
                     <Image 
-                      src={record.referred_user?.avatar_url || 'https://placehold.co/80x80/1a1a2e/ffffff?text=U'}
+                      src={record.invitee?.avatar || 'https://placehold.co/80x80/1a1a2e/ffffff?text=U'}
                       className="user-avatar"
                       mode="aspectFill"
                     />
                     <View className="user-info">
-                      <Text className="user-name">{record.referred_user?.nickname || '新用户'}</Text>
+                      <Text className="user-name">{record.invitee?.nickname || '新用户'}</Text>
                       <Text className="invite-time">{record.created_at}</Text>
                     </View>
                   </View>
                   <View className="record-right">
-                    <Text className={`reward-amount ${record.status === 'completed' ? 'completed' : 'pending'}`}>
-                      +¥{record.reward_amount.toFixed(0)}
+                    <Text className={`reward-amount ${record.status === 'rewarded' ? 'completed' : 'pending'}`}>
+                      +¥{record.reward_amount || 0}
                     </Text>
                     <Text className={`reward-status ${record.status}`}>
-                      {record.status === 'completed' ? '已发放' : '待发放'}
+                      {record.status === 'rewarded' ? '已发放' : record.status === 'active' ? '已活跃' : '待激活'}
                     </Text>
                   </View>
                 </View>

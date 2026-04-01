@@ -106,12 +106,19 @@ export class ReferralService {
   async getReferralStats(userId: string) {
     const client = getSupabaseClient()
     
-    // 获取邀请码
+    // 获取邀请码，如果没有则自动生成
     const { data: user } = await client
       .from('users')
       .select('referral_code')
       .eq('id', userId)
       .single()
+    
+    let referralCode = user?.referral_code
+    
+    // 如果没有邀请码，自动生成一个
+    if (!referralCode) {
+      referralCode = await this.generateReferralCode(userId)
+    }
     
     // 获取邀请人数
     const { count: totalInvited } = await client
@@ -143,7 +150,7 @@ export class ReferralService {
     const totalReward = earnings?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
     
     return {
-      referralCode: user?.referral_code || '',
+      referralCode: referralCode || '',
       totalInvited: totalInvited || 0,
       activeInvited: activeInvited || 0,
       rewardedInvited: rewardedInvited || 0,

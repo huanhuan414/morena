@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 
-interface AvatarScore {
+export interface AvatarScore {
   id: string
   name: string
   score: number
@@ -167,7 +167,7 @@ export class OrderDispatchService {
    * 获取选择原因说明
    */
   private getSelectionReason(avatar: AvatarScore): string {
-    const reasons = []
+    const reasons: string[] = []
     
     if (avatar.completionRate >= 95) {
       reasons.push('完成率优秀')
