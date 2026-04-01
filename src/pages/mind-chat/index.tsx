@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-syntax
-import { View, Text, ScrollView, Image, Video, RichText, Input } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video, Input } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { Network } from '@/network'
@@ -123,53 +123,88 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'app_create_order': '创建订单'
 }
 
-// Markdown 转换为小程序可用的节点（使用内联样式）
-const markdownToNodes = (text: string): string => {
-  if (!text) return ''
+// 解析 Markdown 为段落数组，用于分段渲染
+const parseMarkdownToParagraphs = (text: string): Array<{type: string; content: string; style?: string}> => {
+  if (!text) return []
   
-  // 样式定义
-  const styles = {
-    h1: 'font-size: 20px; font-weight: 700; color: #fff; margin: 16px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0, 245, 255, 0.3);',
-    h2: 'font-size: 18px; font-weight: 600; color: #fff; margin: 14px 0 10px; padding-left: 12px; border-left: 3px solid #00f5ff;',
-    h3: 'font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.95); margin: 12px 0 8px;',
-    quote: 'background: rgba(0, 245, 255, 0.1); border-left: 3px solid #00f5ff; padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; color: rgba(255, 255, 255, 0.9);',
-    para: 'margin-bottom: 12px; line-height: 1.8;',
-    hr: 'height: 1px; background: rgba(0, 245, 255, 0.3); margin: 16px 0;',
-    code: 'background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #00f5ff;',
-    strong: 'font-weight: 600; color: #fff;',
-    em: 'font-style: italic; color: rgba(0, 245, 255, 0.9);',
-    del: 'text-decoration: line-through; opacity: 0.6;',
-    container: 'font-size: 14px; line-height: 1.8; color: rgba(255, 255, 255, 0.85);'
+  const paragraphs: Array<{type: string; content: string; style?: string}> = []
+  const lines = text.split('\n')
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    
+    if (!trimmedLine) {
+      // 空行
+      paragraphs.push({ type: 'empty', content: '' })
+    } else if (trimmedLine.startsWith('### ')) {
+      // H3 标题
+      paragraphs.push({ 
+        type: 'h3', 
+        content: trimmedLine.replace(/^### /, ''),
+        style: 'font-size: 16px; font-weight: 600; color: #fff; margin: 12px 0 8px;'
+      })
+    } else if (trimmedLine.startsWith('## ')) {
+      // H2 标题
+      paragraphs.push({ 
+        type: 'h2', 
+        content: trimmedLine.replace(/^## /, ''),
+        style: 'font-size: 18px; font-weight: 600; color: #fff; margin: 14px 0 10px; padding-left: 12px; border-left: 3px solid #00f5ff;'
+      })
+    } else if (trimmedLine.startsWith('# ')) {
+      // H1 标题
+      paragraphs.push({ 
+        type: 'h1', 
+        content: trimmedLine.replace(/^# /, ''),
+        style: 'font-size: 20px; font-weight: 700; color: #fff; margin: 16px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0, 245, 255, 0.3);'
+      })
+    } else if (trimmedLine.startsWith('> ')) {
+      // 引用块
+      paragraphs.push({ 
+        type: 'quote', 
+        content: trimmedLine.replace(/^> /, ''),
+        style: 'background: rgba(0, 245, 255, 0.1); border-left: 3px solid #00f5ff; padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; color: rgba(255, 255, 255, 0.9);'
+      })
+    } else if (trimmedLine === '---') {
+      // 分隔线
+      paragraphs.push({ type: 'hr', content: '' })
+    } else {
+      // 普通段落
+      paragraphs.push({ type: 'text', content: trimmedLine })
+    }
   }
   
-  // 先处理块级元素
-  let html = text
-    // 标题
-    .replace(/^### (.+)$/gm, `</p><h3 style="${styles.h3}">$1</h3><p style="${styles.para}">`)
-    .replace(/^## (.+)$/gm, `</p><h2 style="${styles.h2}">$1</h2><p style="${styles.para}">`)
-    .replace(/^# (.+)$/gm, `</p><h1 style="${styles.h1}">$1</h1><p style="${styles.para}">`)
-    // 引用块
-    .replace(/^> (.+)$/gm, `</p><blockquote style="${styles.quote}">$1</blockquote><p style="${styles.para}">`)
-    // 分隔线
-    .replace(/^---$/gm, `</p><div style="${styles.hr}"></div><p style="${styles.para}">`)
-    // 粗体（先处理粗体，避免被斜体匹配）
-    .replace(/\*\*(.+?)\*\*/g, `<strong style="${styles.strong}">$1</strong>`)
-    // 斜体（避免匹配已处理的粗体）
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, `<em style="${styles.em}">$1</em>`)
-    // 删除线
-    .replace(/~~(.+?)~~/g, `<del style="${styles.del}">$1</del>`)
-    // 行内代码
-    .replace(/`(.+?)`/g, `<code style="${styles.code}">$1</code>`)
-    // 换行转 <br/>
-    .replace(/\n/g, '<br/>')
-  
-  // 清理多余的空段落
-  html = html
-    .replace(/<p style="[^"]*"><br\/><\/p>/g, '')
-    .replace(/<p style="[^"]*"><\/p>/g, '')
-  
-  // 包装在容器中
-  return `<div style="${styles.container}">${html}</div>`
+  return paragraphs
+}
+
+// 渲染单个段落
+const renderParagraph = (para: {type: string; content: string; style?: string}, idx: number) => {
+  switch (para.type) {
+    case 'empty':
+      return <View key={idx} style="height: 8px;" />
+    case 'h1':
+    case 'h2':
+    case 'h3':
+      return (
+        <View key={idx} style={para.style}>
+          <Text style="font-size: inherit; font-weight: inherit; color: inherit;">{para.content}</Text>
+        </View>
+      )
+    case 'quote':
+      return (
+        <View key={idx} style={para.style}>
+          <Text style="color: rgba(255, 255, 255, 0.9);">{para.content}</Text>
+        </View>
+      )
+    case 'hr':
+      return <View key={idx} style="height: 1px; background: rgba(0, 245, 255, 0.3); margin: 16px 0;" />
+    case 'text':
+    default:
+      return (
+        <View key={idx} style="margin-bottom: 8px; line-height: 1.8;">
+          <Text style="color: rgba(255, 255, 255, 0.85); font-size: 14px;">{para.content}</Text>
+        </View>
+      )
+  }
 }
 
 export default function MindChatPage() {
@@ -379,11 +414,11 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力（SSE 流式）
+  // Agent 执行 - 分身的核心能力
   const executeAsAgent = async (content: string) => {
     try {
-      setCurrentStatus('分析任务...')
-      setAgentSteps([])  // 清空之前的步骤
+      setAgentSteps([])
+      setCurrentStatus('正在思考...')
       
       // 构建对话历史
       const conversationHistory = messages.slice(-10).map(msg => ({
@@ -391,299 +426,127 @@ export default function MindChatPage() {
         content: msg.content
       }))
       
-      // 使用 SSE 流式接口
-      const params = new URLSearchParams({
-        avatar_id: avatar?.id || '',
-        task_description: content,
-        conversation_id: conversation?.id || '',
-        conversation_history: JSON.stringify(conversationHistory)
-      })
+      // 启动状态更新定时器（在等待期间更新状态）
+      const statusMessages = [
+        '正在思考...',
+        '分析任务需求...',
+        '准备执行工具...',
+        '正在生成内容...',
+        '处理中...'
+      ]
+      let statusIndex = 0
+      const statusTimer = setInterval(() => {
+        statusIndex = (statusIndex + 1) % statusMessages.length
+        setCurrentStatus(statusMessages[statusIndex])
+      }, 2000)
       
-      // 检测平台
-      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
-      
-      if (isWeapp) {
-        // 小程序端：使用普通请求，模拟步骤展示
-        await executeWithMockProgress(content, conversationHistory)
-      } else {
-        // H5端：使用 fetch + SSE
-        await executeWithSSE(params, content)
+      try {
+        const res = await Network.request({
+          url: '/api/agent/execute',
+          method: 'POST',
+          data: {
+            avatar_id: avatar?.id,
+            task_description: content,
+            conversation_id: conversation?.id,
+            conversation_history: conversationHistory
+          }
+        })
+        
+        // 清除状态定时器
+        clearInterval(statusTimer)
+        
+        console.log('[MindChat] Agent 执行结果:', res)
+        
+        const result = res.data?.data as AgentResult
+        
+        if (result) {
+          // 快速展示步骤
+          const steps: AgentStepDisplay[] = result.steps
+            .filter(s => s.action)
+            .map(s => ({
+              action: s.action || '',
+              displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+              status: s.observation?.success ? 'success' : 'failed',
+              message: s.observation?.message || s.observation?.error || ''
+            }))
+          
+          // 快速展示每个步骤
+          for (let i = 0; i < steps.length; i++) {
+            setCurrentStatus(`执行: ${steps[i].displayName}`)
+            setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
+            await new Promise(resolve => setTimeout(resolve, 150))
+            setAgentSteps(prev => prev.map((s, idx) => 
+              idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
+            ))
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+          
+          // 构建回复消息
+          let replyContent = result.finalAnswer
+          
+          // 如果有媒体内容，提取出来
+          const media: MessageMedia[] = []
+          result.steps.forEach(step => {
+            if (step.observation?.data) {
+              const data = step.observation.data
+              
+              // 文章内容（包含封面图）
+              if (data.content && data.title) {
+                media.push({ 
+                  type: 'article', 
+                  title: data.title,
+                  content: data.content,
+                  coverImage: data.cover_image_url
+                })
+              } else {
+                // 其他媒体类型
+                if (data.cover_image_url && !data.content) {
+                  media.push({ type: 'image', url: data.cover_image_url })
+                }
+                if (data.image_urls?.length) {
+                  data.image_urls.forEach((url: string) => {
+                    media.push({ type: 'image', url })
+                  })
+                }
+                if (data.video_url) {
+                  media.push({ type: 'video', url: data.video_url })
+                }
+              }
+            }
+          })
+          
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: replyContent,
+            created_at: new Date().toISOString(),
+            metadata: { 
+              agent_result: result,
+              agent_steps: steps,
+              media: media.length > 0 ? media : undefined
+            }
+          }
+          
+          setMessages(prev => [...prev, aiMessage])
+          setLoading(false)
+          setCurrentStatus('')
+          scrollToBottom()
+          fetchLearningStats()
+          
+          // 如果需要配置，保存消息并打开配置弹窗
+          if (result.requiresConfig && result.configPlatform) {
+            setPendingMessage(content)
+            setConfigPlatform(result.configPlatform)
+            setShowConfigDialog(true)
+          }
+        }
+      } catch (requestError) {
+        clearInterval(statusTimer)
+        throw requestError
       }
     } catch (err) {
       console.error('[MindChat] Agent 执行失败:', err)
       throw err
-    }
-  }
-  
-  // SSE 流式执行（H5端）
-  const executeWithSSE = async (params: URLSearchParams, originalContent: string) => {
-    try {
-      const response = await fetch(`/api/agent/execute/stream?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache'
-        }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Agent执行失败')
-      }
-      
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('无法读取响应流')
-      }
-      
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let finalResult: any = null
-      
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        buffer += decoder.decode(value, { stream: true })
-        
-        // 解析 SSE 事件
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''  // 保留未完成的行
-        
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            try {
-              const eventData = JSON.parse(line.slice(5).trim())
-              console.log('[MindChat] SSE 事件:', eventData)
-              
-              // 处理不同类型的事件
-              await handleSSEEvent(eventData)
-              
-              if (eventData.type === 'complete' || eventData.type === 'config_required') {
-                finalResult = eventData
-              }
-            } catch (e) {
-              console.error('[MindChat] 解析SSE事件失败:', e)
-            }
-          }
-        }
-      }
-      
-      // 处理完成
-      if (finalResult) {
-        await handleSSEComplete(finalResult, originalContent)
-      }
-    } catch (err) {
-      console.error('[MindChat] SSE执行失败:', err)
-      // 降级到普通请求
-      await fallbackToNormalChat(originalContent)
-    }
-  }
-  
-  // 处理 SSE 事件
-  const handleSSEEvent = async (event: any) => {
-    switch (event.type) {
-      case 'start':
-        setCurrentStatus('开始分析任务...')
-        break
-        
-      case 'progress':
-        setCurrentStatus(event.message || '处理中...')
-        break
-        
-      case 'thinking':
-        setCurrentStatus(`思考中 (步骤 ${event.step || 1})...`)
-        break
-        
-      case 'action':
-        setCurrentStatus(`执行: ${event.displayName || event.action}`)
-        // 添加正在执行的步骤
-        setAgentSteps(prev => [
-          ...prev,
-          {
-            action: event.action,
-            displayName: event.displayName || TOOL_DISPLAY_NAMES[event.action] || event.action,
-            status: 'running' as const,
-            message: event.message || ''
-          }
-        ])
-        break
-        
-      case 'observation':
-        setCurrentStatus(event.message || '处理结果...')
-        // 更新步骤状态
-        setAgentSteps(prev => prev.map((step, idx) => {
-          if (idx === prev.length - 1 && step.action === event.action) {
-            return {
-              ...step,
-              status: event.success ? 'success' as const : 'failed' as const,
-              message: event.message || ''
-            }
-          }
-          return step
-        }))
-        break
-        
-      case 'complete':
-        setCurrentStatus('任务完成！')
-        break
-        
-      case 'config_required':
-        setCurrentStatus('需要配置平台')
-        break
-        
-      case 'error':
-        setCurrentStatus('执行出错')
-        console.error('[MindChat] Agent错误:', event.error)
-        break
-    }
-  }
-  
-  // SSE 完成处理
-  const handleSSEComplete = async (result: any, originalContent: string) => {
-    // 如果需要配置
-    if (result.type === 'config_required' || result.requires_config) {
-      setPendingMessage(originalContent)
-      setConfigPlatform(result.platform || result.config_platform)
-      setShowConfigDialog(true)
-      setLoading(false)
-      setCurrentStatus('')
-      return
-    }
-    
-    // 构建最终回复
-    const replyContent = result.finalAnswer || result.message || '任务执行完成'
-    
-    const aiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: replyContent,
-      created_at: new Date().toISOString(),
-      metadata: {
-        agent_steps: agentSteps
-      }
-    }
-    
-    setMessages(prev => [...prev, aiMessage])
-    setLoading(false)
-    setCurrentStatus('')
-    scrollToBottom()
-    fetchLearningStats()
-  }
-  
-  // 模拟进度展示（小程序端，使用普通请求+模拟进度）
-  const executeWithMockProgress = async (content: string, conversationHistory: any[]) => {
-    // 显示初始状态
-    setCurrentStatus('正在分析任务...')
-    
-    const res = await Network.request({
-      url: '/api/agent/execute',
-      method: 'POST',
-      data: {
-        avatar_id: avatar?.id,
-        task_description: content,
-        conversation_id: conversation?.id,
-        conversation_history: conversationHistory
-      }
-    })
-    
-    console.log('[MindChat] Agent 执行结果:', res)
-    
-    const result = res.data?.data as AgentResult
-    
-    if (result) {
-      // 构建步骤列表
-      const steps: AgentStepDisplay[] = result.steps
-        .filter(s => s.action)
-        .map(s => ({
-          action: s.action || '',
-          displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-          status: s.observation?.success ? 'success' : 'failed',
-          message: s.observation?.message || s.observation?.error || ''
-        }))
-      
-      // 快速展示步骤（每个步骤200ms）
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i]
-        setCurrentStatus(`执行: ${step.displayName}`)
-        
-        // 添加步骤（先显示为运行中）
-        setAgentSteps(prev => [...prev, { ...step, status: 'running' as const }])
-        
-        // 等待短暂时间
-        await new Promise(resolve => setTimeout(resolve, 200))
-        
-        // 更新为最终状态
-        setAgentSteps(prev => prev.map((s, idx) => {
-          if (idx === prev.length - 1) {
-            return { ...s, status: step.status }
-          }
-          return s
-        }))
-      }
-      
-      // 构建回复消息
-      let replyContent = result.finalAnswer
-      
-      // 如果有媒体内容，提取出来
-      const media: MessageMedia[] = []
-      result.steps.forEach(step => {
-        if (step.observation?.data) {
-          const data = step.observation.data
-          
-          // 文章内容（优先处理，包含封面图）
-          if (data.content && data.title) {
-            media.push({ 
-              type: 'article', 
-              title: data.title,
-              content: data.content,
-              coverImage: data.cover_image_url  // 封面图作为文章的一部分
-            })
-          } else {
-            // 如果不是文章，单独处理图片/视频
-            // 封面图（非文章场景）
-            if (data.cover_image_url && !data.content) {
-              media.push({ type: 'image', url: data.cover_image_url })
-            }
-            // 生成的图片
-            if (data.image_urls?.length) {
-              data.image_urls.forEach((url: string) => {
-                media.push({ type: 'image', url })
-              })
-            }
-            // 生成的视频
-            if (data.video_url) {
-              media.push({ type: 'video', url: data.video_url })
-            }
-          }
-        }
-      })
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: replyContent,
-        created_at: new Date().toISOString(),
-        metadata: { 
-          agent_result: result,
-          agent_steps: steps,
-          media: media.length > 0 ? media : undefined
-        }
-      }
-      
-      setMessages(prev => [...prev, aiMessage])
-      setLoading(false)
-      setCurrentStatus('')
-      scrollToBottom()
-      
-      // 更新学习数据
-      fetchLearningStats()
-      
-      // 如果需要配置，保存消息并打开配置弹窗
-      if (result.requiresConfig && result.configPlatform) {
-        setPendingMessage(content)  // 保存待重试的消息
-        setConfigPlatform(result.configPlatform)
-        setShowConfigDialog(true)
-      }
     }
   }
 
@@ -920,6 +783,7 @@ export default function MindChatPage() {
               }
               
               if (media.type === 'article') {
+                const paragraphs = parseMarkdownToParagraphs(media.content || '')
                 return (
                   <View key={idx} className="media-item article">
                     {/* 封面图 */}
@@ -935,10 +799,7 @@ export default function MindChatPage() {
                       <Text className="article-title">{media.title || '文章'}</Text>
                     </View>
                     <View className="article-body">
-                      <RichText 
-                        nodes={markdownToNodes(media.content || '')}
-                        className="article-content"
-                      />
+                      {paragraphs.map((para, pIdx) => renderParagraph(para, pIdx))}
                     </View>
                   </View>
                 )
