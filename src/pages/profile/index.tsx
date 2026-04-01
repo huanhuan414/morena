@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, Award, TrendingUp, CircleQuestionMark, Briefcase, Wallet, Gift } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, Award, TrendingUp, CircleQuestionMark, Briefcase, Wallet, Gift, Zap } from 'lucide-react-taro'
 import './index.css'
 
 interface UserStats {
@@ -68,6 +68,7 @@ export default function ProfilePage() {
   const menuItems = [
     { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/avatar-manage/index' },
     { title: '订单管理', icon: Briefcase, desc: '查看和管理订单', color: '#00f5ff', path: '/pages/order-list/index' },
+    { title: '任务大厅', icon: Zap, desc: '分身接单赚钱', color: '#bf00ff', path: '/pages/order-list/index?mode=avatar' },
     { title: '收益中心', icon: Wallet, desc: '查看收益和提现', color: '#00ff88', path: '/pages/earning-center/index' },
     { title: '邀请返利', icon: Gift, desc: '邀请好友得奖励', color: '#bf00ff', path: '/pages/referral-center/index' },
     { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/mind-chat/index' },

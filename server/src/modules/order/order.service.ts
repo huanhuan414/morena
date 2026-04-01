@@ -52,12 +52,38 @@ export class OrderService {
     
     const { data, error } = await client
       .from('orders')
-      .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+      .select('*, users(nickname, avatar), avatars(id, name, avatar_url)')
       .eq('id', orderId)
       .single()
     
     if (error) {
       throw new Error(`获取订单详情失败: ${error.message}`)
+    }
+    
+    return data
+  }
+
+  async updateOrder(orderId: string, updateData: Record<string, any>) {
+    const client = getSupabaseClient()
+    
+    const updates: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    }
+    
+    if (updateData.title) updates.title = updateData.title
+    if (updateData.description) updates.description = updateData.description
+    if (updateData.budget) updates.budget = updateData.budget
+    if (updateData.requirements) updates.requirements = updateData.requirements
+    
+    const { data, error } = await client
+      .from('orders')
+      .update(updates)
+      .eq('id', orderId)
+      .select()
+      .single()
+    
+    if (error) {
+      throw new Error(`更新订单失败: ${error.message}`)
     }
     
     return data

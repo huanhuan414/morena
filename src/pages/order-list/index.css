@@ -243,6 +243,41 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* 任务大厅模式 */
+.order-user {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.user-avatar-sm {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+}
+
+.user-name-sm {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.accept-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx;
+  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  border-radius: 32rpx;
+  margin-left: auto;
+}
+
+.accept-text {
+  font-size: 26rpx;
+  color: #fff;
+  font-weight: 500;
+}
+
 .bottom-space {
   height: 60rpx;
 }

@@ -39,7 +39,8 @@ export class OrderDispatchService {
       .eq('is_hosted', true) // 只选择开启托管的分身
     
     if (!avatars || avatars.length === 0) {
-      throw new Error('暂无可用分身')
+      console.log('[分身调度] 暂无开启托管的分身，订单保持待接单状态')
+      return null
     }
     
     // 3. 计算每个分身的综合评分

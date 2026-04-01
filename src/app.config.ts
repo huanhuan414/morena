@@ -15,6 +15,7 @@ export default defineAppConfig({
     'pages/task/index',
     'pages/order-create/index',
     'pages/order-list/index',
+    'pages/order-detail/index',
     'pages/earning-center/index',
     'pages/referral-center/index'
   ],

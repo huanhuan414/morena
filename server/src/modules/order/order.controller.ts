@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Headers, Query } from '@nestjs/common'
 import { OrderService } from './order.service'
+import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 
 @Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly dispatchService: OrderDispatchService
+  ) {}
 
   @Post()
   async create(
@@ -11,10 +15,48 @@ export class OrderController {
     @Body() orderData: Record<string, any>
   ) {
     const order = await this.orderService.createOrder(userId, orderData)
+    
+    // 自动调度分身
+    try {
+      const dispatchResult = await this.dispatchService.dispatchOrder(order.id)
+      
+      if (dispatchResult) {
+        console.log('[订单调度] 自动分配成功:', dispatchResult)
+        // 返回带有分身信息的订单
+        const updatedOrder = await this.orderService.getOrderById(order.id)
+        return {
+          code: 200,
+          data: updatedOrder,
+          message: '创建成功，已自动分配AI分身'
+        }
+      } else {
+        console.log('[订单调度] 暂无可用分身，订单保持待接单状态')
+        return {
+          code: 200,
+          data: order,
+          message: '创建成功，等待分身接单'
+        }
+      }
+    } catch (error) {
+      console.log('[订单调度] 自动分配失败:', error.message)
+      return {
+        code: 200,
+        data: order,
+        message: '创建成功，等待分身接单'
+      }
+    }
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') orderId: string,
+    @Body() updateData: Record<string, any>
+  ) {
+    const order = await this.orderService.updateOrder(orderId, updateData)
     return {
       code: 200,
       data: order,
-      message: '创建成功'
+      message: '更新成功'
     }
   }
 
