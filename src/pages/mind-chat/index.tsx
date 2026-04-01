@@ -122,6 +122,29 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'app_create_order': '创建订单'
 }
 
+// Markdown 转换为小程序可用的节点
+const markdownToNodes = (text: string): string => {
+  if (!text) return ''
+  
+  return text
+    // 标题
+    .replace(/^### (.+)$/gm, '<div class="md-h3">$1</div>')
+    .replace(/^## (.+)$/gm, '<div class="md-h2">$1</div>')
+    .replace(/^# (.+)$/gm, '<div class="md-h1">$1</div>')
+    // 引用块
+    .replace(/^> (.+)$/gm, '<div class="md-quote">$1</div>')
+    // 粗体
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 斜体
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // 分隔线
+    .replace(/^---$/gm, '<div class="md-hr"></div>')
+    // 段落
+    .replace(/\n\n/g, '</div><div class="md-para">')
+    // 换行
+    .replace(/\n/g, '<br/>')
+}
+
 export default function MindChatPage() {
   const router = useRouter()
   const { isLoggedIn, userInfo } = useUserStore()
@@ -154,6 +177,9 @@ export default function MindChatPage() {
   // 平台配置弹窗
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [configPlatform, setConfigPlatform] = useState<PlatformType | null>(null)
+  
+  // 配置成功后待重试的消息
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -420,8 +446,9 @@ export default function MindChatPage() {
         // 更新学习数据
         fetchLearningStats()
         
-        // 如果需要配置，打开配置弹窗
+        // 如果需要配置，保存消息并打开配置弹窗
         if (result.requiresConfig && result.configPlatform) {
+          setPendingMessage(content)  // 保存待重试的消息
           setConfigPlatform(result.configPlatform)
           setShowConfigDialog(true)
         }
@@ -487,14 +514,9 @@ export default function MindChatPage() {
     const env = Taro.getEnv()
     
     if (env !== Taro.ENV_TYPE.WEAPP) {
-      showToast({ title: '请开始说话...', icon: 'none', duration: 60000 })
-      setIsRecording(true)
-      setRecordingTime(0)
-      
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1)
-      }, 1000)
-      
+      // H5 端不支持录音，提示用户使用文字输入
+      showToast({ title: 'H5端暂不支持语音输入，请使用文字输入', icon: 'none', duration: 2000 })
+      setIsVoiceMode(false)  // 自动切换回文字模式
       return
     }
     
@@ -540,6 +562,8 @@ export default function MindChatPage() {
   }
 
   const stopRecording = () => {
+    if (!isRecording) return
+    
     setIsRecording(false)
     
     if (recordingTimerRef.current) {
@@ -552,20 +576,6 @@ export default function MindChatPage() {
     if (env === Taro.ENV_TYPE.WEAPP) {
       const recorderManager = Taro.getRecorderManager()
       recorderManager.stop()
-    } else {
-      if (recordingTime > 0) {
-        showToast({ title: '识别中...', icon: 'loading', duration: 1500 })
-        
-        setTimeout(() => {
-          const recognizedText = '这是语音识别的结果'
-          setInputText(recognizedText)
-          showToast({ title: '识别完成', icon: 'success', duration: 1000 })
-          
-          setTimeout(() => {
-            sendMessage(recognizedText)
-          }, 500)
-        }, 1500)
-      }
     }
     
     setRecordingTime(0)
@@ -688,10 +698,12 @@ export default function MindChatPage() {
                       <FileText size={20} color="#00f5ff" />
                       <Text className="article-title">{media.title || '文章'}</Text>
                     </View>
-                    <RichText 
-                      nodes={media.content || ''} 
-                      className="article-content"
-                    />
+                    <View className="article-body">
+                      <RichText 
+                        nodes={markdownToNodes(media.content || '')}
+                        className="article-content"
+                      />
+                    </View>
                   </View>
                 )
               }
@@ -1013,11 +1025,21 @@ export default function MindChatPage() {
           onClose={() => {
             setShowConfigDialog(false)
             setConfigPlatform(null)
+            setPendingMessage(null)  // 清除待重试消息
           }}
           onSuccess={() => {
             setShowConfigDialog(false)
             setConfigPlatform(null)
-            showToast({ title: '配置成功，请重新执行任务', icon: 'success' })
+            showToast({ title: '配置成功，正在重新执行任务...', icon: 'success' })
+            
+            // 自动重试之前失败的任务
+            if (pendingMessage) {
+              const messageToRetry = pendingMessage
+              setPendingMessage(null)  // 清除待重试消息
+              setTimeout(() => {
+                sendMessage(messageToRetry)
+              }, 500)
+            }
           }}
         />
       )}

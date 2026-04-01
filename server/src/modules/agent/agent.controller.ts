@@ -3,7 +3,10 @@
  * 提供 Agent 相关的 API 接口
  */
 
-import { Controller, Get, Post, Delete, Body, Param, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Headers, Query, Sse, Req } from '@nestjs/common'
+import { Request } from 'express'
+import { Observable, from, of } from 'rxjs'
+import { map, catchError } from 'rxjs/operators'
 import { AgentService } from './agent.service'
 import { PlatformType } from './agent.types'
 
@@ -25,7 +28,41 @@ export class AgentController {
   }
 
   /**
-   * 执行 Agent 任务
+   * 执行 Agent 任务（SSE 流式输出）
+   */
+  @Sse('execute/stream')
+  executeTaskStream(
+    @Req() req: Request,
+    @Headers('x-user-id') userId: string
+  ): Observable<MessageEvent> {
+    // 从 query 参数获取数据
+    const body = req.query as any
+    
+    return from(this.agentService.executeTaskWithProgress(
+      userId,
+      body.avatar_id,
+      body.task_description,
+      {
+        conversationId: body.conversation_id,
+        taskId: body.task_id
+      }
+    )).pipe(
+      map((event) => ({
+        data: JSON.stringify(event)
+      } as MessageEvent)),
+      catchError((err) => {
+        return of({
+          data: JSON.stringify({
+            type: 'error',
+            error: err.message
+          })
+        } as MessageEvent)
+      })
+    )
+  }
+
+  /**
+   * 执行 Agent 任务（普通接口，兼容旧版本）
    */
   @Post('execute')
   async executeTask(
@@ -35,7 +72,7 @@ export class AgentController {
       task_description: string
       conversation_id?: string
       task_id?: string
-      conversation_history?: Array<{ role: string; content: string }> // 新增：对话历史
+      conversation_history?: Array<{ role: string; content: string }>
     }
   ) {
     const result = await this.agentService.executeTask(

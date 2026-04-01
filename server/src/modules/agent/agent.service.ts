@@ -105,6 +105,169 @@ export class AgentService {
   }
 
   /**
+   * 执行 Agent 任务（带进度回调）
+   * 通过 AsyncGenerator 实现流式输出
+   */
+  async *executeTaskWithProgress(
+    userId: string,
+    avatarId: string,
+    taskDescription: string,
+    options?: {
+      conversationId?: string
+      taskId?: string
+      headers?: Record<string, string>
+    }
+  ): AsyncGenerator<any> {
+    // 发送开始事件
+    yield {
+      type: 'start',
+      message: '开始分析任务...',
+      timestamp: Date.now()
+    }
+
+    // 初始化上下文
+    yield { type: 'progress', message: '初始化执行环境...', step: 'init' }
+    const context = await this.initContext(userId, avatarId, taskDescription, options)
+    
+    // 执行 ReAct 循环（带进度）
+    const steps: ReActStep[] = []
+    let finalAnswer = ''
+    let requiresConfig = false
+    let configPlatform: PlatformType | undefined
+    let configFields: any[] = []
+
+    while (context.currentStep < context.maxSteps) {
+      context.currentStep++
+      
+      // Step 1: 思考
+      yield { 
+        type: 'thinking', 
+        message: `正在思考第 ${context.currentStep} 步...`,
+        step: context.currentStep
+      }
+      
+      const thought = await this.think(context, steps)
+      
+      // 检查是否已经有最终答案
+      if (thought.includes('Final Answer:') || thought.includes('最终答案:')) {
+        finalAnswer = this.extractFinalAnswer(thought)
+        yield { 
+          type: 'complete', 
+          message: '任务完成！',
+          thought: thought.substring(0, 200)
+        }
+        break
+      }
+
+      // Step 2: 决定行动
+      const actionInfo = this.parseAction(thought)
+      
+      if (!actionInfo) {
+        finalAnswer = await this.generateDirectAnswer(context)
+        break
+      }
+
+      // 获取工具显示名称
+      const toolDef = this.tools.get(actionInfo.action)?.definition
+      const toolDisplayName = toolDef?.displayName || actionInfo.action
+
+      yield { 
+        type: 'action', 
+        action: actionInfo.action,
+        displayName: toolDisplayName,
+        message: `正在执行: ${toolDisplayName}`,
+        params: actionInfo.action_input,
+        step: context.currentStep
+      }
+
+      const step: ReActStep = {
+        step_index: context.currentStep,
+        thought,
+        action: actionInfo.action,
+        action_input: actionInfo.action_input
+      }
+
+      // Step 3: 执行工具
+      const toolResult = await this.executeTool(
+        actionInfo.action,
+        actionInfo.action_input,
+        context
+      )
+
+      step.observation = toolResult
+
+      // 发送执行结果
+      yield { 
+        type: 'observation', 
+        action: actionInfo.action,
+        displayName: toolDisplayName,
+        success: toolResult.success,
+        message: toolResult.success 
+          ? toolResult.data?.message || '执行成功'
+          : toolResult.error || '执行失败',
+        data: toolResult.data,
+        requires_config: toolResult.requires_config,
+        config_platform: toolResult.config_platform,
+        config_fields: toolResult.config_fields
+      }
+
+      // 检查是否需要配置
+      if (toolResult.requires_config) {
+        requiresConfig = true
+        configPlatform = toolResult.config_platform
+        configFields = toolResult.config_fields || PLATFORM_CONFIG_TEMPLATES[toolResult.config_platform!]?.fields || []
+        step.requires_config = true
+        step.config_platform = configPlatform
+        step.config_fields = configFields
+        
+        steps.push(step)
+        
+        yield { 
+          type: 'config_required',
+          platform: configPlatform,
+          platformName: PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name,
+          fields: configFields,
+          message: `需要配置 ${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'} 后才能继续`
+        }
+        break
+      }
+
+      steps.push(step)
+      context.executionHistory = steps
+    }
+
+    // 生成最终答案
+    if (!finalAnswer) {
+      if (requiresConfig) {
+        finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
+      } else {
+        finalAnswer = await this.summarizeExecution(context, steps)
+      }
+    }
+
+    // 保存对话记录
+    if (options?.conversationId) {
+      await this.saveConversationHistory(
+        options.conversationId,
+        taskDescription,
+        finalAnswer,
+        { success: !requiresConfig, finalAnswer, steps, requiresConfig, configPlatform, configFields }
+      )
+    }
+
+    // 发送最终结果
+    yield { 
+      type: 'result',
+      success: !requiresConfig,
+      finalAnswer,
+      steps,
+      requiresConfig,
+      configPlatform,
+      configFields
+    }
+  }
+
+  /**
    * 执行 Agent 任务
    * 主入口：接收用户指令，自主完成复杂任务
    */
