@@ -194,6 +194,26 @@ export const follows = pgTable(
   ]
 )
 
+// 通知表
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(), // message, like, follow, system
+    title: varchar("title", { length: 200 }).notNull(),
+    content: text("content").notNull(),
+    is_read: boolean("is_read").default(false).notNull(),
+    data: jsonb("data").default({}),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("notifications_user_id_idx").on(table.user_id),
+    index("notifications_is_read_idx").on(table.is_read),
+    index("notifications_created_at_idx").on(table.created_at),
+  ]
+)
+
 // B端订单表
 export const orders = pgTable(
   "orders",

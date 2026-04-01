@@ -11,6 +11,7 @@ import { SocialModule } from './modules/social/social.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { StorageModule } from './modules/storage/storage.module';
     TaskModule, 
     SocialModule, 
     AgentModule, 
-    AudioModule
+    AudioModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,270 @@
+.avatar-settings-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-settings-page.loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 60rpx 24rpx 24rpx;
+  background: rgba(15, 15, 25, 0.8);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.header-back {
+  width: 120rpx;
+}
+
+.back-text {
+  font-size: 28rpx;
+  color: #00f5ff;
+}
+
+.header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.header-action {
+  width: 120rpx;
+  text-align: right;
+}
+
+.action-text {
+  font-size: 28rpx;
+  color: #00f5ff;
+}
+
+.settings-scroll {
+  flex: 1;
+  padding: 24rpx;
+}
+
+.avatar-section {
+  margin-bottom: 32rpx;
+}
+
+.avatar-card {
+  padding: 32rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(191, 0, 255, 0.1));
+  border: 1rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.avatar-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 24rpx;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 24rpx;
+  background: rgba(0, 245, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-info {
+  flex: 1;
+}
+
+.avatar-name {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.avatar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.meta-item {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.meta-divider {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.avatar-personality {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  margin-top: 8rpx;
+}
+
+.edit-form {
+  flex: 1;
+}
+
+.edit-item {
+  margin-bottom: 16rpx;
+}
+
+.edit-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.edit-input-wrap {
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 12rpx;
+  padding: 0 16rpx;
+}
+
+.edit-input {
+  width: 100%;
+  height: 72rpx;
+  font-size: 28rpx;
+  color: #fff;
+}
+
+.edit-textarea-wrap {
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 12rpx;
+  padding: 16rpx;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 28rpx;
+  color: #fff;
+}
+
+.settings-section {
+  margin-bottom: 32rpx;
+}
+
+.section-title {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 16rpx;
+  padding-left: 8rpx;
+  display: block;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.setting-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.setting-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-title {
+  font-size: 28rpx;
+  color: #fff;
+}
+
+.setting-desc {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.menu-text {
+  font-size: 28rpx;
+  color: #fff;
+}
+
+.danger-section {
+  margin-top: 32rpx;
+}
+
+.delete-btn {
+  width: 100%;
+  height: 88rpx;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1rpx solid rgba(255, 107, 107, 0.3);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.delete-text {
+  font-size: 28rpx;
+  color: #ff6b6b;
+}
+
+.bottom-space {
+  height: 60rpx;
+}

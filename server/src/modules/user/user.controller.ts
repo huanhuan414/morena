@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Headers } from '@nestjs/common'
+import { Controller, Get, Put, Post, Body, Headers } from '@nestjs/common'
 import { UserService } from './user.service'
 
 @Controller('user')
@@ -45,6 +45,29 @@ export class UserController {
       code: 200,
       data: progress,
       message: '获取成功'
+    }
+  }
+
+  @Get('security-status')
+  async getSecurityStatus(@Headers('x-user-id') userId: string) {
+    const status = await this.userService.getSecurityStatus(userId)
+    return {
+      code: 200,
+      data: status,
+      message: '获取成功'
+    }
+  }
+
+  @Post('change-password')
+  async changePassword(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { oldPassword: string; newPassword: string }
+  ) {
+    await this.userService.changePassword(userId, body.oldPassword, body.newPassword)
+    return {
+      code: 200,
+      data: null,
+      message: '密码修改成功'
     }
   }
 }

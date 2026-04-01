@@ -69,10 +69,10 @@ export default function ProfilePage() {
     { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/avatar-manage/index' },
     { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/mind-chat/index' },
     { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/mind-chat/index' },
-    { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '' },
-    { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '' },
-    { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '' },
-    { title: '关于我们', icon: Info, desc: '版本 v1.0.0', color: '#64748b', path: '' }
+    { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '/pages/profile/notifications' },
+    { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '/pages/profile/security' },
+    { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '/pages/profile/help' },
+    { title: '关于我们', icon: Info, desc: '版本 v1.0.0', color: '#64748b', path: '/pages/profile/about' }
   ]
 
   if (!isLoggedIn) return null
@@ -154,7 +154,7 @@ export default function ProfilePage() {
                 <View 
                   key={idx}
                   className="menu-item"
-                  onClick={() => item.path && switchTab({ url: item.path })}
+                  onClick={() => item.path && navigateTo({ url: item.path })}
                 >
                   <View className="menu-left">
                     <View className="menu-icon" style={{ background: `${item.color}15` }}>

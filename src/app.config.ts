@@ -4,8 +4,14 @@ export default defineAppConfig({
     'pages/login/index',
     'pages/avatar-create/index',
     'pages/avatar-manage/index',
+    'pages/avatar-settings/index',
     'pages/mind-chat/index',
     'pages/profile/index',
+    'pages/profile/settings',
+    'pages/profile/notifications',
+    'pages/profile/security',
+    'pages/profile/help',
+    'pages/profile/about',
     'pages/task/index'
   ],
   window: {

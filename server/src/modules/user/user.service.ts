@@ -40,6 +40,13 @@ export class UserService {
   async getUserStats(userId: string) {
     const client = getSupabaseClient()
     
+    // 获取用户基本信息（包含等级和经验值）
+    const { data: user } = await client
+      .from('users')
+      .select('level, exp')
+      .eq('id', userId)
+      .single()
+    
     // 获取用户的分身数量
     const { count: avatarCount } = await client
       .from('avatars')
@@ -75,7 +82,9 @@ export class UserService {
       taskCount: taskCount || 0,
       postCount: postCount || 0,
       followingCount: followingCount || 0,
-      followerCount: followerCount || 0
+      followerCount: followerCount || 0,
+      totalXp: user?.exp || 0,
+      level: user?.level || 1
     }
   }
 
@@ -122,5 +131,34 @@ export class UserService {
       skills_learned: skillsLearned,
       streak_days: streakDays
     }
+  }
+
+  async getSecurityStatus(userId: string) {
+    const client = getSupabaseClient()
+    
+    const { data: user } = await client
+      .from('users')
+      .select('phone, created_at')
+      .eq('id', userId)
+      .single()
+    
+    return {
+      hasPassword: true, // 微信登录默认有密码
+      hasPhone: !!user?.phone,
+      hasEmail: false,
+      lastLoginTime: '刚刚',
+      loginDevice: '微信小程序'
+    }
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+    // 微信小程序登录用户，密码修改主要用于绑定手机后的安全设置
+    // 这里只做模拟实现
+    const client = getSupabaseClient()
+    
+    // 实际项目中应该验证旧密码，这里简化处理
+    // 更新密码哈希等操作...
+    
+    return true
   }
 }

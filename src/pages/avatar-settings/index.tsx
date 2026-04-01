@@ -1,0 +1,304 @@
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Network } from '@/network'
+import { 
+  ChevronRight, Sparkles, Settings, Trash2, 
+  Volume2, Bell, Moon, Zap, Shield
+} from 'lucide-react-taro'
+import './index.css'
+
+interface AvatarSettings {
+  id: string
+  name: string
+  avatar_url: string
+  personality: string
+  level: number
+  exp: number
+  is_hosted: boolean
+  config?: {
+    voice_enabled?: boolean
+    notification_enabled?: boolean
+    night_mode?: boolean
+    auto_learning?: boolean
+    privacy_mode?: boolean
+    [key: string]: any
+  }
+}
+
+export default function AvatarSettingsPage() {
+  const router = useRouter()
+  const { avatarId } = router.params
+  
+  const [avatar, setAvatar] = useState<AvatarSettings | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPersonality, setEditPersonality] = useState('')
+
+  useLoad(() => {
+    if (avatarId) {
+      fetchAvatar()
+    }
+  })
+
+  const fetchAvatar = async () => {
+    try {
+      const res = await Network.request({ url: `/api/avatar/${avatarId}` })
+      if (res.data?.code === 200) {
+        setAvatar(res.data.data)
+        setEditName(res.data.data.name)
+        setEditPersonality(res.data.data.personality || '')
+      }
+    } catch (error) {
+      console.error('获取分身失败:', error)
+      showToast({ title: '获取失败', icon: 'none' })
+    }
+  }
+
+  const saveSettings = async (key: string, value: any) => {
+    if (!avatar) return
+    
+    try {
+      const newConfig = {
+        ...avatar.config,
+        [key]: value
+      }
+      
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}`,
+        method: 'PUT',
+        data: { config: newConfig }
+      })
+      
+      if (res.data?.code === 200) {
+        setAvatar({ ...avatar, config: newConfig })
+        showToast({ title: '已保存', icon: 'success', duration: 1000 })
+      }
+    } catch (error) {
+      console.error('保存失败:', error)
+      showToast({ title: '保存失败', icon: 'none' })
+    }
+  }
+
+  const saveProfile = async () => {
+    if (!editName.trim()) {
+      showToast({ title: '请输入名称', icon: 'none' })
+      return
+    }
+    
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}`,
+        method: 'PUT',
+        data: {
+          name: editName,
+          personality: editPersonality
+        }
+      })
+      
+      if (res.data?.code === 200) {
+        setAvatar({ ...avatar!, name: editName, personality: editPersonality })
+        setEditing(false)
+        showToast({ title: '保存成功', icon: 'success' })
+      }
+    } catch (error) {
+      console.error('保存失败:', error)
+      showToast({ title: '保存失败', icon: 'none' })
+    }
+  }
+
+  const deleteAvatar = () => {
+    showModal({
+      title: '确认删除',
+      content: '删除后无法恢复，确定要删除这个分身吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({
+              url: `/api/avatar/${avatarId}`,
+              method: 'DELETE'
+            })
+            showToast({ title: '已删除', icon: 'success' })
+            navigateBack()
+          } catch (error) {
+            console.error('删除失败:', error)
+            showToast({ title: '删除失败', icon: 'none' })
+          }
+        }
+      }
+    })
+  }
+
+  const settingItems = [
+    { 
+      key: 'voice_enabled', 
+      title: '语音回复', 
+      desc: '分身用语音回复你',
+      icon: Volume2, 
+      color: '#00f5ff',
+      enabled: avatar?.config?.voice_enabled ?? false
+    },
+    { 
+      key: 'notification_enabled', 
+      title: '消息通知', 
+      desc: '分身主动提醒你',
+      icon: Bell, 
+      color: '#bf00ff',
+      enabled: avatar?.config?.notification_enabled ?? true
+    },
+    { 
+      key: 'night_mode', 
+      title: '夜间模式', 
+      desc: '夜间自动降低活跃度',
+      icon: Moon, 
+      color: '#6366f1',
+      enabled: avatar?.config?.night_mode ?? true
+    },
+    { 
+      key: 'auto_learning', 
+      title: '自动学习', 
+      desc: '从对话中学习你的习惯',
+      icon: Zap, 
+      color: '#00ff88',
+      enabled: avatar?.config?.auto_learning ?? true
+    },
+    { 
+      key: 'privacy_mode', 
+      title: '隐私模式', 
+      desc: '增强对话隐私保护',
+      icon: Shield, 
+      color: '#ff6b6b',
+      enabled: avatar?.config?.privacy_mode ?? false
+    }
+  ]
+
+  if (!avatar) {
+    return (
+      <View className="avatar-settings-page loading">
+        <Text className="loading-text">加载中...</Text>
+      </View>
+    )
+  }
+
+  return (
+    <View className="avatar-settings-page">
+      {/* 顶部导航 */}
+      <View className="settings-header">
+        <View className="header-back" onClick={() => navigateBack()}>
+          <Text className="back-text">← 返回</Text>
+        </View>
+        <Text className="header-title">分身设置</Text>
+        <View className="header-action" onClick={() => editing ? saveProfile() : setEditing(true)}>
+          <Text className="action-text">{editing ? '保存' : '编辑'}</Text>
+        </View>
+      </View>
+
+      <ScrollView className="settings-scroll" scrollY>
+        {/* 分身信息 */}
+        <View className="avatar-section">
+          <View className="avatar-card">
+            <View className="avatar-avatar">
+              {avatar.avatar_url ? (
+                <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+              ) : (
+                <View className="avatar-placeholder">
+                  <Sparkles size={40} color="#00f5ff" />
+                </View>
+              )}
+            </View>
+            
+            {editing ? (
+              <View className="edit-form">
+                <View className="edit-item">
+                  <Text className="edit-label">名称</Text>
+                  <Input 
+                    className="edit-input"
+                    value={editName}
+                    onInput={e => setEditName(e.detail.value)}
+                    placeholder="输入分身名称"
+                  />
+                </View>
+                <View className="edit-item">
+                  <Text className="edit-label">性格</Text>
+                  <Textarea 
+                    className="edit-textarea"
+                    value={editPersonality}
+                    onInput={e => setEditPersonality(e.detail.value)}
+                    placeholder="描述分身性格特点"
+                    maxlength={200}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View className="avatar-info">
+                <Text className="avatar-name">{avatar.name}</Text>
+                <View className="avatar-meta">
+                  <Text className="meta-item">Lv.{avatar.level}</Text>
+                  <Text className="meta-divider">·</Text>
+                  <Text className="meta-item">{avatar.exp || 0} EXP</Text>
+                </View>
+                <Text className="avatar-personality">{avatar.personality || '友好助手'}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* 功能设置 */}
+        <View className="settings-section">
+          <Text className="section-title">功能设置</Text>
+          
+          {settingItems.map((item, idx) => {
+            const Icon = item.icon
+            return (
+              <View key={idx} className="setting-item">
+                <View className="setting-left">
+                  <View className="setting-icon" style={{ background: `${item.color}20` }}>
+                    <Icon size={20} color={item.color} />
+                  </View>
+                  <View className="setting-info">
+                    <Text className="setting-title">{item.title}</Text>
+                    <Text className="setting-desc">{item.desc}</Text>
+                  </View>
+                </View>
+                <Switch 
+                  checked={item.enabled}
+                  onCheckedChange={(checked) => saveSettings(item.key, checked)}
+                />
+              </View>
+            )
+          })}
+        </View>
+
+        {/* 托管设置 */}
+        <View className="settings-section">
+          <Text className="section-title">托管设置</Text>
+          
+          <View 
+            className="menu-item"
+            onClick={() => navigateBack()}
+          >
+            <View className="menu-left">
+              <Settings size={20} color="#00f5ff" />
+              <Text className="menu-text">托管配置</Text>
+            </View>
+            <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
+          </View>
+        </View>
+
+        {/* 危险操作 */}
+        <View className="danger-section">
+          <Button className="delete-btn" onClick={deleteAvatar}>
+            <Trash2 size={18} color="#ff6b6b" />
+            <Text className="delete-text">删除分身</Text>
+          </Button>
+        </View>
+
+        <View className="bottom-space" />
+      </ScrollView>
+    </View>
+  )
+}
