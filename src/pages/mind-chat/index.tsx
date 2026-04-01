@@ -123,35 +123,53 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'app_create_order': '创建订单'
 }
 
-// Markdown 转换为小程序可用的节点
+// Markdown 转换为小程序可用的节点（使用内联样式）
 const markdownToNodes = (text: string): string => {
   if (!text) return ''
   
-  // 先处理多行块级元素
+  // 样式定义
+  const styles = {
+    h1: 'font-size: 20px; font-weight: 700; color: #fff; margin: 16px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0, 245, 255, 0.3);',
+    h2: 'font-size: 18px; font-weight: 600; color: #fff; margin: 14px 0 10px; padding-left: 12px; border-left: 3px solid #00f5ff;',
+    h3: 'font-size: 16px; font-weight: 600; color: rgba(255, 255, 255, 0.95); margin: 12px 0 8px;',
+    quote: 'background: rgba(0, 245, 255, 0.1); border-left: 3px solid #00f5ff; padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; color: rgba(255, 255, 255, 0.9);',
+    para: 'margin-bottom: 12px; line-height: 1.8;',
+    hr: 'height: 1px; background: rgba(0, 245, 255, 0.3); margin: 16px 0;',
+    code: 'background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #00f5ff;',
+    strong: 'font-weight: 600; color: #fff;',
+    em: 'font-style: italic; color: rgba(0, 245, 255, 0.9);',
+    del: 'text-decoration: line-through; opacity: 0.6;',
+    container: 'font-size: 14px; line-height: 1.8; color: rgba(255, 255, 255, 0.85);'
+  }
+  
+  // 先处理块级元素
   let html = text
     // 标题
-    .replace(/^### (.+)$/gm, '<div class="md-h3">$1</div>')
-    .replace(/^## (.+)$/gm, '<div class="md-h2">$1</div>')
-    .replace(/^# (.+)$/gm, '<div class="md-h1">$1</div>')
-    // 引用块（包含emoji的引用）
-    .replace(/^> (.+)$/gm, '<div class="md-quote">$1</div>')
+    .replace(/^### (.+)$/gm, `</p><h3 style="${styles.h3}">$1</h3><p style="${styles.para}">`)
+    .replace(/^## (.+)$/gm, `</p><h2 style="${styles.h2}">$1</h2><p style="${styles.para}">`)
+    .replace(/^# (.+)$/gm, `</p><h1 style="${styles.h1}">$1</h1><p style="${styles.para}">`)
+    // 引用块
+    .replace(/^> (.+)$/gm, `</p><blockquote style="${styles.quote}">$1</blockquote><p style="${styles.para}">`)
     // 分隔线
-    .replace(/^---$/gm, '<div class="md-hr"></div>')
-    // 粗体
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // 斜体
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---$/gm, `</p><div style="${styles.hr}"></div><p style="${styles.para}">`)
+    // 粗体（先处理粗体，避免被斜体匹配）
+    .replace(/\*\*(.+?)\*\*/g, `<strong style="${styles.strong}">$1</strong>`)
+    // 斜体（避免匹配已处理的粗体）
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, `<em style="${styles.em}">$1</em>`)
     // 删除线
-    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    .replace(/~~(.+?)~~/g, `<del style="${styles.del}">$1</del>`)
     // 行内代码
-    .replace(/`(.+?)`/g, '<code class="md-code">$1</code>')
-    // 段落（连续两个换行）
-    .replace(/\n\n/g, '</div><div class="md-para">')
-    // 换行
+    .replace(/`(.+?)`/g, `<code style="${styles.code}">$1</code>`)
+    // 换行转 <br/>
     .replace(/\n/g, '<br/>')
   
+  // 清理多余的空段落
+  html = html
+    .replace(/<p style="[^"]*"><br\/><\/p>/g, '')
+    .replace(/<p style="[^"]*"><\/p>/g, '')
+  
   // 包装在容器中
-  return `<div class="md-container">${html}</div>`
+  return `<div style="${styles.container}">${html}</div>`
 }
 
 export default function MindChatPage() {
@@ -554,7 +572,8 @@ export default function MindChatPage() {
   
   // 模拟进度展示（小程序端，使用普通请求+模拟进度）
   const executeWithMockProgress = async (content: string, conversationHistory: any[]) => {
-    setCurrentStatus('执行中...')
+    // 显示初始状态
+    setCurrentStatus('正在分析任务...')
     
     const res = await Network.request({
       url: '/api/agent/execute',
@@ -572,7 +591,7 @@ export default function MindChatPage() {
     const result = res.data?.data as AgentResult
     
     if (result) {
-      // 模拟逐步展示步骤
+      // 构建步骤列表
       const steps: AgentStepDisplay[] = result.steps
         .filter(s => s.action)
         .map(s => ({
@@ -582,16 +601,16 @@ export default function MindChatPage() {
           message: s.observation?.message || s.observation?.error || ''
         }))
       
-      // 逐步添加步骤，模拟实时展示
+      // 快速展示步骤（每个步骤200ms）
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i]
         setCurrentStatus(`执行: ${step.displayName}`)
         
-        // 先显示为运行中
+        // 添加步骤（先显示为运行中）
         setAgentSteps(prev => [...prev, { ...step, status: 'running' as const }])
         
-        // 等待一段时间
-        await new Promise(resolve => setTimeout(resolve, 300))
+        // 等待短暂时间
+        await new Promise(resolve => setTimeout(resolve, 200))
         
         // 更新为最终状态
         setAgentSteps(prev => prev.map((s, idx) => {
@@ -600,9 +619,6 @@ export default function MindChatPage() {
           }
           return s
         }))
-        
-        // 等待再进入下一步
-        await new Promise(resolve => setTimeout(resolve, 200))
       }
       
       // 构建回复消息
