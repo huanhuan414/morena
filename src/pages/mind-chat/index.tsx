@@ -7,8 +7,8 @@ import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
 import { 
-  Send, Sparkles, Bot, Copy, History, X, Settings, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, FileText, Cpu
+  Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
+  MessageCircle, Mic, Keyboard, Loader, FileText, Zap, Check
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -30,14 +30,16 @@ interface Message {
     media_urls?: Record<string, string>
     media?: MessageMedia[]
     agent_result?: AgentResult
+    agent_steps?: AgentStepDisplay[]
   }
 }
 
-interface TaskStatus {
-  taskId: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  progress: number
-  message?: string
+// Agent 步骤展示
+interface AgentStepDisplay {
+  action: string
+  displayName: string
+  status: 'success' | 'failed' | 'pending'
+  message: string
 }
 
 interface Conversation {
@@ -90,6 +92,7 @@ interface Avatar {
       topics: string[]
     }
     style?: string
+    skills?: string[]  // 分身技能列表
   }
 }
 
@@ -98,6 +101,25 @@ interface LearningStats {
   learningDays: number
   masteryLevel: number
   avgMessageLength: number
+}
+
+// 工具名称映射（用于友好展示）
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  'write_wechat_mp_article': '撰写公众号图文',
+  'write_xiaohongshu_note': '撰写小红书笔记',
+  'write_article': '撰写文章',
+  'generate_image': '生成图片',
+  'generate_video': '生成视频',
+  'publish_wechat_mp': '发布到公众号',
+  'publish_xiaohongshu': '发布到小红书',
+  'publish_bilibili': '发布到B站',
+  'publish_weibo': '发布到微博',
+  'publish_douyin': '发布到抖音',
+  'publish_wechat_video': '发布到视频号',
+  'check_platform_config': '检查平台配置',
+  'app_create_task': '创建任务',
+  'app_list_tasks': '查看任务列表',
+  'app_create_order': '创建订单'
 }
 
 export default function MindChatPage() {
@@ -120,18 +142,16 @@ export default function MindChatPage() {
     avgMessageLength: 0
   })
   
-  // 实时状态
+  // Agent 实时状态（每个分身都是 Agent）
   const [currentStatus, setCurrentStatus] = useState<string>('')
-  const [taskStatus] = useState<TaskStatus | null>(null)
+  const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
   
   const [scrollTop, setScrollTop] = useState(0)
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const eventSourceRef = useRef<any>(null)
   
-  // Agent 相关状态
-  const [isAgentMode, setIsAgentMode] = useState(false)
+  // 平台配置弹窗
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [configPlatform, setConfigPlatform] = useState<PlatformType | null>(null)
 
@@ -162,15 +182,6 @@ export default function MindChatPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages.length, loading, currentStatus])
-
-  // 清理SSE连接
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
-    }
-  }, [])
 
   const fetchConversations = async () => {
     try {
@@ -272,13 +283,10 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    // 使用 scroll-into-view 滚动到底部锚点
     Taro.nextTick(() => {
       setScrollIntoView('scroll-bottom-anchor')
-      // 备用方案：同时使用 scrollTop 增量
       setScrollTop(prev => prev + 99999)
       
-      // 延迟再次尝试，确保图片等异步内容加载后也能滚动
       setTimeout(() => {
         setScrollIntoView('scroll-bottom-anchor')
         setScrollTop(prev => prev + 99999)
@@ -286,6 +294,7 @@ export default function MindChatPage() {
     })
   }
 
+  // 发送消息 - 每个分身都是 Agent，默认启用 Agent 能力
   const sendMessage = async (text?: string) => {
     const messageText = text || inputText
     if (!messageText.trim() || !conversation || loading) {
@@ -303,131 +312,128 @@ export default function MindChatPage() {
     setMessages(prev => [...prev, userMessage])
     setInputText('')
     setLoading(true)
-    setCurrentStatus('发送中...')
+    setAgentSteps([])  // 清空之前的步骤
+    setCurrentStatus('思考中...')
     scrollToBottom()
 
     try {
-      // 使用SSE流式接口
-      await sendStreamMessage(messageText)
+      // 所有消息都通过 Agent 处理，Agent 会自动判断是简单对话还是需要执行工具
+      await executeAsAgent(messageText)
     } catch (error) {
-      console.error('发送失败:', error)
-      // 降级为普通接口
-      await sendNormalMessage(messageText)
+      console.error('Agent 执行失败:', error)
+      // 降级为普通对话
+      await fallbackToNormalChat(messageText)
     }
   }
 
-  const sendStreamMessage = async (content: string) => {
-    return new Promise<void>(async (resolve, reject) => {
-      // 检测是否是 Agent 任务（包含操作关键词）
-      const agentKeywords = ['帮我', '创建', '删除', '发布', '生成', '写', '画', '更新', '查看', '列表', '任务', '订单', '文章', '视频', '图片', '公众号', '小红书', 'B站', '微博', '抖音', '视频号']
-      const shouldUseAgent = agentKeywords.some(keyword => content.includes(keyword))
+  // Agent 执行 - 分身的核心能力
+  const executeAsAgent = async (content: string) => {
+    try {
+      setCurrentStatus('分析任务...')
       
-      if (shouldUseAgent && isAgentMode) {
-        // 使用 Agent 执行任务
-        try {
-          setCurrentStatus('Agent 思考中...')
-          
-          // 构建对话历史
-          const conversationHistory = messages.slice(-10).map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
-          
-          const res = await Network.request({
-            url: '/api/agent/execute',
-            method: 'POST',
-            data: {
-              avatar_id: avatar?.id,
-              task_description: content,
-              conversation_id: conversation?.id,
-              conversation_history: conversationHistory
-            }
-          })
-          
-          console.log('Agent 执行结果:', res)
-          
-          const result = res.data?.data as AgentResult
-          
-          if (result) {
-            // 构建 Agent 回复消息
-            let replyContent = result.finalAnswer
-            
-            if (result.steps.length > 0) {
-              const stepsSummary = result.steps
-                .filter(s => s.action)
-                .map(s => `• ${s.action}: ${s.observation?.success ? '✓' : '✗'}`)
-                .join('\n')
-              
-              if (stepsSummary) {
-                replyContent = `${result.finalAnswer}\n\n执行步骤：\n${stepsSummary}`
-              }
-            }
-            
-            const aiMessage: Message = {
-              id: (Date.now() + 1).toString(),
-              role: 'assistant',
-              content: replyContent,
-              created_at: new Date().toISOString(),
-              metadata: { agent_result: result }
-            }
-            
-            setMessages(prev => [...prev, aiMessage])
-            setLoading(false)
-            setCurrentStatus('')
-            scrollToBottom()
-            
-            // 如果需要配置，打开配置弹窗
-            if (result.requiresConfig && result.configPlatform) {
-              setConfigPlatform(result.configPlatform)
-              setShowConfigDialog(true)
-            }
-            
-            resolve()
-          } else {
-            reject(new Error('Agent 执行失败'))
-          }
-        } catch (err) {
-          console.error('Agent 执行失败:', err)
-          reject(err)
-        }
-        return
-      }
+      // 构建对话历史
+      const conversationHistory = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
       
-      // 普通对话
-      Network.request({
-        url: '/api/chat/send',
+      setCurrentStatus('执行中...')
+      
+      const res = await Network.request({
+        url: '/api/agent/execute',
         method: 'POST',
         data: {
-          conversation_id: conversation?.id,
           avatar_id: avatar?.id,
-          content
+          task_description: content,
+          conversation_id: conversation?.id,
+          conversation_history: conversationHistory
         }
-      }).then(res => {
-        if (res.data?.code === 200) {
-          const aiMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: res.data.data.content,
-            created_at: new Date().toISOString(),
-            metadata: res.data.data.metadata
-          }
-          setMessages(prev => [...prev, aiMessage])
-          setLoading(false)
-          setCurrentStatus('')
-          scrollToBottom()
-          fetchConversations()
-          fetchLearningStats()
-          resolve()
-        } else {
-          reject(new Error('发送失败'))
-        }
-      }).catch(err => {
-        reject(err)
       })
-    })
+      
+      console.log('[MindChat] Agent 执行结果:', res)
+      
+      const result = res.data?.data as AgentResult
+      
+      if (result) {
+        // 更新执行步骤展示
+        const steps: AgentStepDisplay[] = result.steps
+          .filter(s => s.action)
+          .map(s => ({
+            action: s.action || '',
+            displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+            status: s.observation?.success ? 'success' : 'failed',
+            message: s.observation?.message || s.observation?.error || ''
+          }))
+        
+        setAgentSteps(steps)
+        
+        // 构建回复消息
+        let replyContent = result.finalAnswer
+        
+        // 如果有媒体内容，提取出来
+        const media: MessageMedia[] = []
+        result.steps.forEach(step => {
+          if (step.observation?.data) {
+            const data = step.observation.data
+            // 封面图
+            if (data.cover_image_url) {
+              media.push({ type: 'image', url: data.cover_image_url })
+            }
+            // 生成的图片
+            if (data.image_urls?.length) {
+              data.image_urls.forEach((url: string) => {
+                media.push({ type: 'image', url })
+              })
+            }
+            // 生成的视频
+            if (data.video_url) {
+              media.push({ type: 'video', url: data.video_url })
+            }
+            // 文章内容
+            if (data.content && data.title) {
+              media.push({ 
+                type: 'article', 
+                title: data.title,
+                content: data.content 
+              })
+            }
+          }
+        })
+        
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: replyContent,
+          created_at: new Date().toISOString(),
+          metadata: { 
+            agent_result: result,
+            agent_steps: steps,
+            media: media.length > 0 ? media : undefined
+          }
+        }
+        
+        setMessages(prev => [...prev, aiMessage])
+        setLoading(false)
+        setCurrentStatus('')
+        scrollToBottom()
+        
+        // 更新学习数据
+        fetchLearningStats()
+        
+        // 如果需要配置，打开配置弹窗
+        if (result.requiresConfig && result.configPlatform) {
+          setConfigPlatform(result.configPlatform)
+          setShowConfigDialog(true)
+        }
+      }
+    } catch (err) {
+      console.error('[MindChat] Agent 执行失败:', err)
+      throw err
+    }
   }
 
-  const sendNormalMessage = async (content: string) => {
+  // 降级为普通对话
+  const fallbackToNormalChat = async (content: string) => {
     try {
       const res = await Network.request({
         url: '/api/chat/send',
@@ -453,11 +459,12 @@ export default function MindChatPage() {
         fetchLearningStats()
       }
     } catch (error) {
+      // 最后的降级方案
       setTimeout(() => {
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: `我收到了你的消息："${content}"。作为${avatar?.name || 'AI助手'}，我会尽力帮助你。`,
+          content: `我是${avatar?.name || 'AI分身'}，我已收到你的消息。作为你的智能分身，我可以帮你写文章、生成图片、发布内容到各大平台。你可以直接告诉我要做什么，比如"帮我写一篇公众号文章"。`,
           created_at: new Date().toISOString()
         }
         setMessages(prev => [...prev, aiMessage])
@@ -616,6 +623,24 @@ export default function MindChatPage() {
   const renderMessageContent = (msg: Message) => {
     return (
       <View className="message-content-wrapper">
+        {/* Agent 执行步骤展示 */}
+        {msg.metadata?.agent_steps && msg.metadata.agent_steps.length > 0 && (
+          <View className="agent-steps-display">
+            {msg.metadata.agent_steps.map((step, idx) => (
+              <View key={idx} className={`agent-step-item ${step.status}`}>
+                <View className="step-icon">
+                  {step.status === 'success' ? (
+                    <Check size={14} color="#00ff88" />
+                  ) : (
+                    <X size={14} color="#ff4444" />
+                  )}
+                </View>
+                <Text className="step-name">{step.displayName}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        
         {/* 文本内容 */}
         <Text className="message-text">{msg.content}</Text>
         
@@ -706,7 +731,7 @@ export default function MindChatPage() {
                   <Text className="avatar-name">{avatar.name}</Text>
                   <View className="avatar-status">
                     <View className="status-dot" />
-                    <Text className="status-text">在线</Text>
+                    <Text className="status-text">Agent 就绪</Text>
                   </View>
                 </View>
               </>
@@ -716,8 +741,9 @@ export default function MindChatPage() {
           </View>
         </View>
         <View className="header-right">
-          <View className="header-btn">
-            <Settings size={22} color="rgba(255,255,255,0.6)" />
+          <View className="agent-badge">
+            <Zap size={16} color="#00ff88" />
+            <Text className="agent-badge-text">Agent</Text>
           </View>
         </View>
       </View>
@@ -820,8 +846,13 @@ export default function MindChatPage() {
                 )}
               </View>
             </View>
-            <Text className="empty-title">开始与{avatar?.name || 'AI'}对话</Text>
-            <Text className="empty-desc">发送消息开始心智交流</Text>
+            <Text className="empty-title">我是{avatar?.name || 'AI分身'}</Text>
+            <Text className="empty-desc">我可以帮你写文章、生成图片、发布内容</Text>
+            <View className="empty-hints">
+              <Text className="hint-item">「帮我写一篇公众号文章」</Text>
+              <Text className="hint-item">「生成一张风景图片」</Text>
+              <Text className="hint-item">「发布到小红书」</Text>
+            </View>
           </View>
         ) : (
           messages.map((msg, index) => (
@@ -868,7 +899,7 @@ export default function MindChatPage() {
           ))
         )}
         
-        {/* 实时状态显示 */}
+        {/* Agent 实时状态显示 */}
         {loading && (
           <View id="msg-loading" className="message-item assistant">
             <View className="message-avatar">
@@ -883,12 +914,18 @@ export default function MindChatPage() {
                 <Loader size={18} color="#00f5ff" className="spinning" />
                 <Text className="status-message">{currentStatus || '思考中...'}</Text>
               </View>
-              {taskStatus && (
-                <View className="task-progress">
-                  <View className="progress-bar">
-                    <View className="progress-fill" style={{ width: `${taskStatus.progress}%` }} />
-                  </View>
-                  <Text className="progress-text">{taskStatus.message}</Text>
+              {agentSteps.length > 0 && (
+                <View className="agent-steps-live">
+                  {agentSteps.map((step, idx) => (
+                    <View key={idx} className={`step-live ${step.status}`}>
+                      <Text className="step-live-name">{step.displayName}</Text>
+                      {step.status === 'success' ? (
+                        <Check size={14} color="#00ff88" />
+                      ) : (
+                        <X size={14} color="#ff4444" />
+                      )}
+                    </View>
+                  ))}
                 </View>
               )}
             </View>
@@ -902,12 +939,6 @@ export default function MindChatPage() {
       {/* 底部输入栏 */}
       <View className="input-bar">
         <View className="input-left">
-          <View 
-            className={`quick-action ${isAgentMode ? 'agent-active' : ''}`}
-            onClick={() => setIsAgentMode(!isAgentMode)}
-          >
-            <Cpu size={24} color={isAgentMode ? '#00ff88' : 'rgba(255,255,255,0.6)'} />
-          </View>
           <View className="quick-action" onClick={toggleVoiceMode}>
             {isVoiceMode ? (
               <Keyboard size={24} color="rgba(255,255,255,0.6)" />
@@ -948,18 +979,16 @@ export default function MindChatPage() {
             <View className="text-input-box">
               <Input
                 className="text-input-control"
-                placeholder={isAgentMode ? "告诉AI要做什么..." : "输入消息..."}
+                placeholder="告诉我要做什么..."
                 placeholderClass="text-input-placeholder"
                 value={inputText}
                 onInput={(e: any) => setInputText(e.detail.value)}
                 onConfirm={() => sendMessage()}
                 confirmType="send"
               />
-              {isAgentMode && (
-                <View className="agent-mode-indicator">
-                  <Text className="agent-mode-text">Agent</Text>
-                </View>
-              )}
+              <View className="agent-mode-indicator">
+                <Text className="agent-mode-text">Agent</Text>
+              </View>
             </View>
           )}
         </View>

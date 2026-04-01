@@ -882,3 +882,117 @@
   color: #0a0a0f;
   font-weight: 600;
 }
+
+/* Agent 步骤展示 - 消息内 */
+.agent-steps-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+  padding: 12rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12rpx;
+}
+
+.agent-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.15);
+}
+
+.agent-step-item.success {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.agent-step-item.failed {
+  border-color: rgba(255, 68, 68, 0.3);
+  background: rgba(255, 68, 68, 0.05);
+}
+
+.step-icon {
+  display: flex;
+  align-items: center;
+}
+
+.step-name {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Agent 徽章 */
+.agent-badge {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 20rpx;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 245, 255, 0.15));
+  border: 1rpx solid rgba(0, 255, 136, 0.3);
+  border-radius: 24rpx;
+}
+
+.agent-badge-text {
+  font-size: 24rpx;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+/* Agent 状态显示 */
+.status-text {
+  color: #00ff88;
+}
+
+/* Agent 实时步骤展示 */
+.agent-steps-live {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-top: 16rpx;
+  padding: 12rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12rpx;
+}
+
+.step-live {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 12rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 8rpx;
+}
+
+.step-live.success {
+  background: rgba(0, 255, 136, 0.08);
+}
+
+.step-live.failed {
+  background: rgba(255, 68, 68, 0.08);
+}
+
+.step-live-name {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 空状态提示 */
+.empty-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 32rpx;
+  padding: 24rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.1);
+}
+
+.hint-item {
+  font-size: 26rpx;
+  color: rgba(0, 245, 255, 0.7);
+  text-align: center;
+}
