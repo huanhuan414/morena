@@ -418,27 +418,13 @@ export default function MindChatPage() {
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
-      setCurrentStatus('正在思考...')
+      setCurrentStatus('正在连接 AI 分身...')
       
       // 构建对话历史
       const conversationHistory = messages.slice(-10).map(msg => ({
         role: msg.role,
         content: msg.content
       }))
-      
-      // 启动状态更新定时器（在等待期间更新状态）
-      const statusMessages = [
-        '正在思考...',
-        '分析任务需求...',
-        '准备执行工具...',
-        '正在生成内容...',
-        '处理中...'
-      ]
-      let statusIndex = 0
-      const statusTimer = setInterval(() => {
-        statusIndex = (statusIndex + 1) % statusMessages.length
-        setCurrentStatus(statusMessages[statusIndex])
-      }, 2000)
       
       try {
         const res = await Network.request({
@@ -452,15 +438,12 @@ export default function MindChatPage() {
           }
         })
         
-        // 清除状态定时器
-        clearInterval(statusTimer)
-        
         console.log('[MindChat] Agent 执行结果:', res)
         
         const result = res.data?.data as AgentResult
         
         if (result) {
-          // 快速展示步骤
+          // 展示真实执行步骤
           const steps: AgentStepDisplay[] = result.steps
             .filter(s => s.action)
             .map(s => ({
@@ -470,21 +453,18 @@ export default function MindChatPage() {
               message: s.observation?.message || s.observation?.error || ''
             }))
           
-          // 快速展示每个步骤
+          // 逐个展示每个步骤
           for (let i = 0; i < steps.length; i++) {
             setCurrentStatus(`执行: ${steps[i].displayName}`)
             setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
-            await new Promise(resolve => setTimeout(resolve, 150))
+            await new Promise(resolve => setTimeout(resolve, 300))
             setAgentSteps(prev => prev.map((s, idx) => 
               idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
             ))
-            await new Promise(resolve => setTimeout(resolve, 100))
+            await new Promise(resolve => setTimeout(resolve, 150))
           }
           
-          // 构建回复消息
-          let replyContent = result.finalAnswer
-          
-          // 如果有媒体内容，提取出来
+          // 提取媒体内容
           const media: MessageMedia[] = []
           result.steps.forEach(step => {
             if (step.observation?.data) {
@@ -515,6 +495,37 @@ export default function MindChatPage() {
             }
           })
           
+          // 构建回复消息
+          // 如果有媒体内容，使用简洁的摘要，不包含链接
+          let replyContent = result.finalAnswer
+          
+          // 当有媒体内容时，清理 finalAnswer 中的链接文本
+          if (media.length > 0) {
+            // 先移除 URL
+            replyContent = replyContent.replace(/https?:\/\/[^\s，。！？]+/g, '')
+            
+            // 再移除链接相关的文字
+            replyContent = replyContent
+              .replace(/[，,]?\s*(图片|文章|视频)?链接为[：:]\s*/gi, '')
+              .replace(/[，,]\s*$/g, '') // 移除末尾的逗号
+              .replace(/\s+/g, ' ') // 合并多余空格
+              .trim()
+            
+            // 如果清理后为空或只有部分文字，使用默认文本
+            if (!replyContent || replyContent.length < 5) {
+              const articleCount = media.filter(m => m.type === 'article').length
+              const imageCount = media.filter(m => m.type === 'image').length
+              const videoCount = media.filter(m => m.type === 'video').length
+              
+              const parts: string[] = []
+              if (articleCount > 0) parts.push(`${articleCount}篇文章`)
+              if (imageCount > 0) parts.push(`${imageCount}张图片`)
+              if (videoCount > 0) parts.push(`${videoCount}个视频`)
+              
+              replyContent = `已完成任务，为你生成了${parts.join('、')}`
+            }
+          }
+          
           const aiMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
@@ -541,7 +552,6 @@ export default function MindChatPage() {
           }
         }
       } catch (requestError) {
-        clearInterval(statusTimer)
         throw requestError
       }
     } catch (err) {
