@@ -32,6 +32,8 @@ import {
 } from './tools/app-function.tools'
 import {
   WriteArticleTool,
+  WriteWechatMpArticleTool,
+  WriteXiaohongshuNoteTool,
   GenerateImageTool,
   GenerateVideoTool
 } from './tools/content-creation.tools'
@@ -80,6 +82,8 @@ export class AgentService {
 
     // 内容创作工具
     this.tools.set('write_article', new WriteArticleTool())
+    this.tools.set('write_wechat_mp_article', new WriteWechatMpArticleTool())
+    this.tools.set('write_xiaohongshu_note', new WriteXiaohongshuNoteTool())
     this.tools.set('generate_image', new GenerateImageTool())
     this.tools.set('generate_video', new GenerateVideoTool())
 
@@ -346,6 +350,9 @@ export class AgentService {
     const historyText = this.formatHistory(history)
     const conversationHistoryText = this.formatConversationHistory(context.conversationHistory)
 
+    // 智能任务理解提示
+    const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history)
+
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
 
 可用工具：
@@ -354,6 +361,8 @@ ${toolsDescription}
 ${conversationHistoryText ? `对话历史：\n${conversationHistoryText}\n` : ''}
 
 当前任务：${context.taskDescription}
+
+${taskUnderstandingHint}
 
 ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
@@ -377,6 +386,40 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
     })
 
     return response.content.trim()
+  }
+
+  /**
+   * 获取任务理解提示
+   * 帮助 Agent 正确理解复合任务
+   */
+  private getTaskUnderstandingHint(task: string, history: ReActStep[]): string {
+    const hints: string[] = []
+    
+    // 公众号相关任务
+    if (task.includes('公众号') && (task.includes('图文') || task.includes('文章') || task.includes('爆款'))) {
+      hints.push(`【任务解析】这是一个公众号内容创作任务：
+1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
+2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
+3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
+    }
+    
+    // 小红书相关任务
+    if (task.includes('小红书') && (task.includes('笔记') || task.includes('图文'))) {
+      hints.push(`【任务解析】这是一个小红书内容创作任务：
+1. 首先使用 write_xiaohongshu_note 工具生成小红书笔记内容
+2. 然后使用 publish_xiaohongshu 工具尝试发布
+3. 如果发布工具返回 requires_config=true，说明用户未配置小红书账号`)
+    }
+    
+    // 如果已经有执行历史，提示继续
+    if (history.length > 0) {
+      const lastStep = history[history.length - 1]
+      if (lastStep.observation?.next_action_hint) {
+        hints.push(`【下一步建议】${lastStep.observation.next_action_hint}`)
+      }
+    }
+    
+    return hints.length > 0 ? hints.join('\n\n') : ''
   }
 
   /**

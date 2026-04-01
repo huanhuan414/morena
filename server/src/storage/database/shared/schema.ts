@@ -352,6 +352,68 @@ export const avatarEvolution = pgTable(
   ]
 )
 
+// 平台配置表 - 存储用户的第三方平台授权信息
+export const platformConfigs = pgTable(
+  "platform_configs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    platform_type: varchar("platform_type", { length: 30 }).notNull(), // wechat_mp, xiaohongshu, bilibili, weibo, douyin, wechat_video
+    config_data: jsonb("config_data").default({}), // 存储加密后的配置信息
+    status: varchar("status", { length: 20 }).default("active").notNull(), // active, expired, unconfigured
+    last_used_at: timestamp("last_used_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("platform_configs_user_id_idx").on(table.user_id),
+    index("platform_configs_platform_type_idx").on(table.platform_type),
+  ]
+)
+
+// 分身技能表
+export const avatarSkills = pgTable(
+  "avatar_skills",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    skill_type: varchar("skill_type", { length: 50 }).notNull(), // writing, image_gen, video_gen, publishing, etc.
+    skill_level: integer("skill_level").default(1).notNull(),
+    usage_count: integer("usage_count").default(0).notNull(),
+    last_used_at: timestamp("last_used_at", { withTimezone: true }),
+    metadata: jsonb("metadata").default({}),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("avatar_skills_avatar_id_idx").on(table.avatar_id),
+    index("avatar_skills_skill_type_idx").on(table.skill_type),
+  ]
+)
+
+// Agent任务日志表
+export const agentTaskLogs = pgTable(
+  "agent_task_logs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    task_id: varchar("task_id", { length: 36 }).notNull(),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    step_index: integer("step_index").notNull(),
+    step_type: varchar("step_type", { length: 20 }).notNull(), // think, action, observe, result
+    content: text("content"),
+    tool_name: varchar("tool_name", { length: 100 }),
+    tool_params: jsonb("tool_params").default({}),
+    tool_result: jsonb("tool_result").default({}),
+    requires_config: boolean("requires_config").default(false),
+    config_platform: varchar("config_platform", { length: 30 }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("agent_task_logs_task_id_idx").on(table.task_id),
+    index("agent_task_logs_avatar_id_idx").on(table.avatar_id),
+    index("agent_task_logs_created_at_idx").on(table.created_at),
+  ]
+)
+
 // 系统健康检查表
 export const healthCheck = pgTable("health_check", {
   id: serial().notNull(),
