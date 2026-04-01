@@ -966,6 +966,11 @@
   border-radius: 8rpx;
 }
 
+.step-live.running {
+  background: rgba(0, 245, 255, 0.12);
+  animation: pulse-step 1.5s ease-in-out infinite;
+}
+
 .step-live.success {
   background: rgba(0, 255, 136, 0.08);
 }
@@ -977,6 +982,15 @@
 .step-live-name {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes pulse-step {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* 空状态提示 */

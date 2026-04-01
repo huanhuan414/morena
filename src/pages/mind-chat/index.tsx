@@ -38,7 +38,7 @@ interface Message {
 interface AgentStepDisplay {
   action: string
   displayName: string
-  status: 'success' | 'failed' | 'pending'
+  status: 'success' | 'failed' | 'running'
   message: string
 }
 
@@ -352,10 +352,11 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力
+  // Agent 执行 - 分身的核心能力（SSE 流式）
   const executeAsAgent = async (content: string) => {
     try {
       setCurrentStatus('分析任务...')
+      setAgentSteps([])  // 清空之前的步骤
       
       // 构建对话历史
       const conversationHistory = messages.slice(-10).map(msg => ({
@@ -363,99 +364,297 @@ export default function MindChatPage() {
         content: msg.content
       }))
       
-      setCurrentStatus('执行中...')
-      
-      const res = await Network.request({
-        url: '/api/agent/execute',
-        method: 'POST',
-        data: {
-          avatar_id: avatar?.id,
-          task_description: content,
-          conversation_id: conversation?.id,
-          conversation_history: conversationHistory
-        }
+      // 使用 SSE 流式接口
+      const params = new URLSearchParams({
+        avatar_id: avatar?.id || '',
+        task_description: content,
+        conversation_id: conversation?.id || '',
+        conversation_history: JSON.stringify(conversationHistory)
       })
       
-      console.log('[MindChat] Agent 执行结果:', res)
+      // 检测平台
+      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
       
-      const result = res.data?.data as AgentResult
-      
-      if (result) {
-        // 更新执行步骤展示
-        const steps: AgentStepDisplay[] = result.steps
-          .filter(s => s.action)
-          .map(s => ({
-            action: s.action || '',
-            displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-            status: s.observation?.success ? 'success' : 'failed',
-            message: s.observation?.message || s.observation?.error || ''
-          }))
-        
-        setAgentSteps(steps)
-        
-        // 构建回复消息
-        let replyContent = result.finalAnswer
-        
-        // 如果有媒体内容，提取出来
-        const media: MessageMedia[] = []
-        result.steps.forEach(step => {
-          if (step.observation?.data) {
-            const data = step.observation.data
-            // 封面图
-            if (data.cover_image_url) {
-              media.push({ type: 'image', url: data.cover_image_url })
-            }
-            // 生成的图片
-            if (data.image_urls?.length) {
-              data.image_urls.forEach((url: string) => {
-                media.push({ type: 'image', url })
-              })
-            }
-            // 生成的视频
-            if (data.video_url) {
-              media.push({ type: 'video', url: data.video_url })
-            }
-            // 文章内容
-            if (data.content && data.title) {
-              media.push({ 
-                type: 'article', 
-                title: data.title,
-                content: data.content 
-              })
-            }
-          }
-        })
-        
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: replyContent,
-          created_at: new Date().toISOString(),
-          metadata: { 
-            agent_result: result,
-            agent_steps: steps,
-            media: media.length > 0 ? media : undefined
-          }
-        }
-        
-        setMessages(prev => [...prev, aiMessage])
-        setLoading(false)
-        setCurrentStatus('')
-        scrollToBottom()
-        
-        // 更新学习数据
-        fetchLearningStats()
-        
-        // 如果需要配置，保存消息并打开配置弹窗
-        if (result.requiresConfig && result.configPlatform) {
-          setPendingMessage(content)  // 保存待重试的消息
-          setConfigPlatform(result.configPlatform)
-          setShowConfigDialog(true)
-        }
+      if (isWeapp) {
+        // 小程序端：使用普通请求，模拟步骤展示
+        await executeWithMockProgress(content, conversationHistory)
+      } else {
+        // H5端：使用 fetch + SSE
+        await executeWithSSE(params, content)
       }
     } catch (err) {
       console.error('[MindChat] Agent 执行失败:', err)
       throw err
+    }
+  }
+  
+  // SSE 流式执行（H5端）
+  const executeWithSSE = async (params: URLSearchParams, originalContent: string) => {
+    try {
+      const response = await fetch(`/api/agent/execute/stream?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Agent执行失败')
+      }
+      
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('无法读取响应流')
+      }
+      
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let finalResult: any = null
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        buffer += decoder.decode(value, { stream: true })
+        
+        // 解析 SSE 事件
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''  // 保留未完成的行
+        
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            try {
+              const eventData = JSON.parse(line.slice(5).trim())
+              console.log('[MindChat] SSE 事件:', eventData)
+              
+              // 处理不同类型的事件
+              await handleSSEEvent(eventData)
+              
+              if (eventData.type === 'complete' || eventData.type === 'config_required') {
+                finalResult = eventData
+              }
+            } catch (e) {
+              console.error('[MindChat] 解析SSE事件失败:', e)
+            }
+          }
+        }
+      }
+      
+      // 处理完成
+      if (finalResult) {
+        await handleSSEComplete(finalResult, originalContent)
+      }
+    } catch (err) {
+      console.error('[MindChat] SSE执行失败:', err)
+      // 降级到普通请求
+      await fallbackToNormalChat(originalContent)
+    }
+  }
+  
+  // 处理 SSE 事件
+  const handleSSEEvent = async (event: any) => {
+    switch (event.type) {
+      case 'start':
+        setCurrentStatus('开始分析任务...')
+        break
+        
+      case 'progress':
+        setCurrentStatus(event.message || '处理中...')
+        break
+        
+      case 'thinking':
+        setCurrentStatus(`思考中 (步骤 ${event.step || 1})...`)
+        break
+        
+      case 'action':
+        setCurrentStatus(`执行: ${event.displayName || event.action}`)
+        // 添加正在执行的步骤
+        setAgentSteps(prev => [
+          ...prev,
+          {
+            action: event.action,
+            displayName: event.displayName || TOOL_DISPLAY_NAMES[event.action] || event.action,
+            status: 'running' as const,
+            message: event.message || ''
+          }
+        ])
+        break
+        
+      case 'observation':
+        setCurrentStatus(event.message || '处理结果...')
+        // 更新步骤状态
+        setAgentSteps(prev => prev.map((step, idx) => {
+          if (idx === prev.length - 1 && step.action === event.action) {
+            return {
+              ...step,
+              status: event.success ? 'success' as const : 'failed' as const,
+              message: event.message || ''
+            }
+          }
+          return step
+        }))
+        break
+        
+      case 'complete':
+        setCurrentStatus('任务完成！')
+        break
+        
+      case 'config_required':
+        setCurrentStatus('需要配置平台')
+        break
+        
+      case 'error':
+        setCurrentStatus('执行出错')
+        console.error('[MindChat] Agent错误:', event.error)
+        break
+    }
+  }
+  
+  // SSE 完成处理
+  const handleSSEComplete = async (result: any, originalContent: string) => {
+    // 如果需要配置
+    if (result.type === 'config_required' || result.requires_config) {
+      setPendingMessage(originalContent)
+      setConfigPlatform(result.platform || result.config_platform)
+      setShowConfigDialog(true)
+      setLoading(false)
+      setCurrentStatus('')
+      return
+    }
+    
+    // 构建最终回复
+    const replyContent = result.finalAnswer || result.message || '任务执行完成'
+    
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: replyContent,
+      created_at: new Date().toISOString(),
+      metadata: {
+        agent_steps: agentSteps
+      }
+    }
+    
+    setMessages(prev => [...prev, aiMessage])
+    setLoading(false)
+    setCurrentStatus('')
+    scrollToBottom()
+    fetchLearningStats()
+  }
+  
+  // 模拟进度展示（小程序端，使用普通请求+模拟进度）
+  const executeWithMockProgress = async (content: string, conversationHistory: any[]) => {
+    setCurrentStatus('执行中...')
+    
+    const res = await Network.request({
+      url: '/api/agent/execute',
+      method: 'POST',
+      data: {
+        avatar_id: avatar?.id,
+        task_description: content,
+        conversation_id: conversation?.id,
+        conversation_history: conversationHistory
+      }
+    })
+    
+    console.log('[MindChat] Agent 执行结果:', res)
+    
+    const result = res.data?.data as AgentResult
+    
+    if (result) {
+      // 模拟逐步展示步骤
+      const steps: AgentStepDisplay[] = result.steps
+        .filter(s => s.action)
+        .map(s => ({
+          action: s.action || '',
+          displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+          status: s.observation?.success ? 'success' : 'failed',
+          message: s.observation?.message || s.observation?.error || ''
+        }))
+      
+      // 逐步添加步骤，模拟实时展示
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i]
+        setCurrentStatus(`执行: ${step.displayName}`)
+        
+        // 先显示为运行中
+        setAgentSteps(prev => [...prev, { ...step, status: 'running' as const }])
+        
+        // 等待一段时间
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 更新为最终状态
+        setAgentSteps(prev => prev.map((s, idx) => {
+          if (idx === prev.length - 1) {
+            return { ...s, status: step.status }
+          }
+          return s
+        }))
+        
+        // 等待再进入下一步
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      
+      // 构建回复消息
+      let replyContent = result.finalAnswer
+      
+      // 如果有媒体内容，提取出来
+      const media: MessageMedia[] = []
+      result.steps.forEach(step => {
+        if (step.observation?.data) {
+          const data = step.observation.data
+          // 封面图
+          if (data.cover_image_url) {
+            media.push({ type: 'image', url: data.cover_image_url })
+          }
+          // 生成的图片
+          if (data.image_urls?.length) {
+            data.image_urls.forEach((url: string) => {
+              media.push({ type: 'image', url })
+            })
+          }
+          // 生成的视频
+          if (data.video_url) {
+            media.push({ type: 'video', url: data.video_url })
+          }
+          // 文章内容
+          if (data.content && data.title) {
+            media.push({ 
+              type: 'article', 
+              title: data.title,
+              content: data.content 
+            })
+          }
+        }
+      })
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: replyContent,
+        created_at: new Date().toISOString(),
+        metadata: { 
+          agent_result: result,
+          agent_steps: steps,
+          media: media.length > 0 ? media : undefined
+        }
+      }
+      
+      setMessages(prev => [...prev, aiMessage])
+      setLoading(false)
+      setCurrentStatus('')
+      scrollToBottom()
+      
+      // 更新学习数据
+      fetchLearningStats()
+      
+      // 如果需要配置，保存消息并打开配置弹窗
+      if (result.requiresConfig && result.configPlatform) {
+        setPendingMessage(content)  // 保存待重试的消息
+        setConfigPlatform(result.configPlatform)
+        setShowConfigDialog(true)
+      }
     }
   }
 
@@ -931,7 +1130,9 @@ export default function MindChatPage() {
                   {agentSteps.map((step, idx) => (
                     <View key={idx} className={`step-live ${step.status}`}>
                       <Text className="step-live-name">{step.displayName}</Text>
-                      {step.status === 'success' ? (
+                      {step.status === 'running' ? (
+                        <Loader size={14} color="#00f5ff" className="spinning" />
+                      ) : step.status === 'success' ? (
                         <Check size={14} color="#00ff88" />
                       ) : (
                         <X size={14} color="#ff4444" />
