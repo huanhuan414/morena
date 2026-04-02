@@ -3,7 +3,7 @@
  * 实现 ReAct (Reasoning + Acting) 模式的自主任务执行系统
  */
 
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import {
@@ -19,6 +19,7 @@ import {
   PLATFORM_CONFIG_TEMPLATES
 } from './agent.types'
 import { ITool, ToolContext } from './tools/tool.interface'
+import { AgentGateway } from './agent.gateway'
 
 // 导入所有工具
 import {
@@ -59,12 +60,31 @@ export class AgentService {
   private tools: Map<string, ITool> = new Map()
   private llmClient: LLMClient
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => AgentGateway))
+    private readonly gateway: AgentGateway
+  ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
     
     // 注册所有工具
     this.registerTools()
+  }
+
+  /**
+   * 推送任务进度（通过 WebSocket）
+   */
+  private emitProgress(userId: string, type: string, message: string, data?: any) {
+    if (this.gateway) {
+      this.gateway.emitProgress(userId, {
+        taskId: `task-${Date.now()}`,
+        userId,
+        type,
+        message,
+        data,
+        timestamp: Date.now()
+      })
+    }
   }
 
   /**
@@ -307,11 +327,21 @@ export class AgentService {
       conversationHistory?: ConversationMessage[] // 新增：对话历史
     }
   ): Promise<AgentExecutionResult> {
+    // 推送开始事件
+    this.emitProgress(userId, 'start', '开始分析任务...')
+    
     // 初始化上下文
+    this.emitProgress(userId, 'progress', '初始化执行环境...')
     const context = await this.initContext(userId, avatarId, taskDescription, options)
     
     // 执行 ReAct 循环
-    const result = await this.runReActLoop(context)
+    const result = await this.runReActLoop(context, userId)
+    
+    // 推送完成事件
+    this.emitProgress(userId, 'complete', '任务执行完成', { 
+      success: result.success,
+      requiresConfig: result.requiresConfig 
+    })
     
     // 保存对话记录
     if (options?.conversationId) {
@@ -444,7 +474,7 @@ export class AgentService {
    * 执行 ReAct 循环
    * Reasoning -> Acting -> Observing -> 循环或结束
    */
-  private async runReActLoop(context: AgentContext): Promise<AgentExecutionResult> {
+  private async runReActLoop(context: AgentContext, userId: string): Promise<AgentExecutionResult> {
     const steps: ReActStep[] = []
     let finalAnswer = ''
     let requiresConfig = false
@@ -455,6 +485,7 @@ export class AgentService {
       context.currentStep++
       
       // Step 1: 思考 (Reasoning)
+      this.emitProgress(userId, 'thinking', `正在思考第 ${context.currentStep} 步...`)
       const thought = await this.think(context, steps)
       
       // 检查是否已经有最终答案
@@ -479,6 +510,17 @@ export class AgentService {
         action_input: actionInfo.action_input
       }
 
+      // 获取工具显示名称
+      const toolDef = this.tools.get(actionInfo.action)?.definition
+      const toolDisplayName = toolDef?.displayName || actionInfo.action
+
+      // 推送执行中状态
+      this.emitProgress(userId, 'action', `正在执行: ${toolDisplayName}`, {
+        action: actionInfo.action,
+        displayName: toolDisplayName,
+        params: actionInfo.action_input
+      })
+
       // Step 3: 执行工具 (Acting)
       const toolResult = await this.executeTool(
         actionInfo.action,
@@ -487,6 +529,15 @@ export class AgentService {
       )
 
       step.observation = toolResult
+
+      // 推送执行结果
+      this.emitProgress(userId, 'observation', toolResult.success ? '执行成功' : '执行失败', {
+        action: actionInfo.action,
+        displayName: toolDisplayName,
+        success: toolResult.success,
+        message: toolResult.data?.message || toolResult.error,
+        data: toolResult.data
+      })
 
       // 检查是否需要配置
       if (toolResult.requires_config) {
