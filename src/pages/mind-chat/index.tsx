@@ -1166,15 +1166,28 @@ export default function MindChatPage() {
                 }
                 
                 if (media.type === 'video') {
+                  // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
+                  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                  
                   return (
                     <View key={idx} className="media-item video">
-                      <Video 
-                        src={media.url || ''} 
-                        className="media-video"
-                        controls
-                        showFullscreenBtn
-                        showPlayBtn
-                      />
+                      {isH5 ? (
+                        <video 
+                          src={media.url || ''} 
+                          className="media-video"
+                          controls
+                          playsInline
+                          style={{ width: '100%', height: '200px', borderRadius: '8px' }}
+                        />
+                      ) : (
+                        <Video 
+                          src={media.url || ''} 
+                          className="media-video"
+                          controls
+                          showFullscreenBtn
+                          showPlayBtn
+                        />
+                      )}
                     </View>
                   )
                 }
