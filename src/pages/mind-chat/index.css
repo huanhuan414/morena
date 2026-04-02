@@ -556,6 +556,32 @@
   display: block;
 }
 
+/* 图片操作按钮 */
+.image-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16rpx 0 0;
+}
+
+.image-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.2), rgba(191, 0, 255, 0.2));
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+}
+
+.image-action-btn:active {
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.4), rgba(191, 0, 255, 0.4));
+}
+
+.action-text {
+  font-size: 24rpx;
+  color: #fff;
+}
+
 .media-item.video {
   width: 100%;
 }

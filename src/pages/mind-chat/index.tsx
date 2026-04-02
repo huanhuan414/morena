@@ -9,7 +9,7 @@ import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformC
 import MarkdownRender from '@/components/markdown-render'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, FileText, Zap, Check
+  MessageCircle, Mic, Keyboard, Loader, FileText, Zap, Check, Download
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -336,8 +336,22 @@ export default function MindChatPage() {
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
-      setCurrentStatus('正在执行任务...')
       
+      // 根据用户输入判断要执行的操作，提前显示进度
+      const taskLower = content.toLowerCase()
+      let initialStatus = '正在思考...'
+      
+      if (taskLower.includes('图片') || taskLower.includes('图像') || taskLower.includes('生成图')) {
+        initialStatus = '正在调用图片生成服务...'
+      } else if (taskLower.includes('视频')) {
+        initialStatus = '正在调用视频生成服务...'
+      } else if (taskLower.includes('文章') || taskLower.includes('写') || taskLower.includes('公众号') || taskLower.includes('小红书')) {
+        initialStatus = '正在撰写内容...'
+      } else if (taskLower.includes('任务')) {
+        initialStatus = '正在创建任务...'
+      }
+      
+      setCurrentStatus(initialStatus)
       console.log('[MindChat] 开始执行 Agent 任务:', content)
       
       // 直接发送 HTTP 请求
@@ -358,7 +372,7 @@ export default function MindChatPage() {
         throw new Error('执行结果为空')
       }
       
-      // 提取步骤
+      // 提取步骤并展示
       const steps: AgentStepDisplay[] = result.steps
         .filter(s => s.action)
         .map(s => ({
@@ -368,15 +382,15 @@ export default function MindChatPage() {
           message: s.observation?.message || s.observation?.error || ''
         }))
       
-      // 逐步展示步骤（模拟实时进度）
+      // 快速展示步骤
       for (let i = 0; i < steps.length; i++) {
         setCurrentStatus(`执行: ${steps[i].displayName}`)
         setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
-        await new Promise(resolve => setTimeout(resolve, 300))
+        await new Promise(resolve => setTimeout(resolve, 150))
         setAgentSteps(prev => prev.map((s, idx) => 
           idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
         ))
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise(resolve => setTimeout(resolve, 80))
       }
       
       // 提取媒体内容
@@ -396,10 +410,13 @@ export default function MindChatPage() {
             })
           }
           
-          // 图片
-          if (data.image_urls?.length) {
+          // 图片 - 确保正确提取
+          if (data.image_urls && Array.isArray(data.image_urls) && data.image_urls.length > 0) {
+            console.log('[MindChat] 提取图片:', data.image_urls)
             data.image_urls.forEach((url: string) => {
-              media.push({ type: 'image', url })
+              if (url && typeof url === 'string') {
+                media.push({ type: 'image', url })
+              }
             })
           }
           
@@ -415,7 +432,7 @@ export default function MindChatPage() {
         }
       })
       
-      console.log('[MindChat] 提取的媒体内容:', media)
+      console.log('[MindChat] 最终提取的媒体内容:', media)
       
       processAgentResult(result, media, steps, content)
       
@@ -699,6 +716,42 @@ export default function MindChatPage() {
                         })
                       }}
                     />
+                    {/* 图片操作按钮 */}
+                    <View className="image-actions">
+                      <View 
+                        className="image-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // 下载图片到相册
+                          Taro.showLoading({ title: '保存中...' })
+                          Network.downloadFile({
+                            url: media.url || '',
+                            success: (res) => {
+                              Taro.saveImageToPhotosAlbum({
+                                filePath: res.tempFilePath,
+                                success: () => {
+                                  Taro.hideLoading()
+                                  Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                                },
+                                fail: (err) => {
+                                  Taro.hideLoading()
+                                  console.error('保存失败:', err)
+                                  Taro.showToast({ title: '保存失败', icon: 'none' })
+                                }
+                              })
+                            },
+                            fail: (err) => {
+                              Taro.hideLoading()
+                              console.error('下载失败:', err)
+                              Taro.showToast({ title: '下载失败', icon: 'none' })
+                            }
+                          })
+                        }}
+                      >
+                        <Download size={16} color="#fff" />
+                        <Text className="action-text">保存</Text>
+                      </View>
+                    </View>
                   </View>
                 )
               }
