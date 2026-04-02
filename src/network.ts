@@ -21,7 +21,13 @@ export namespace Network {
         }
         
         // 小程序环境使用完整域名
-        return `${PROJECT_DOMAIN}${url}`
+        const domain = PROJECT_DOMAIN || ''
+        if (!domain) {
+            console.error('[Network] PROJECT_DOMAIN 未定义！')
+        }
+        const fullUrl = `${domain}${url}`
+        console.log('[Network] 小程序请求URL:', fullUrl)
+        return fullUrl
     }
 
     const getUserId = (): string => {
@@ -43,7 +49,8 @@ export namespace Network {
             ...(userId ? { 'x-user-id': userId } : {})
         }
 
-        console.log('[Network.request]', option.method || 'GET', option.url, option.data || '')
+        const fullUrl = createUrl(option.url)
+        console.log('[Network.request]', option.method || 'GET', fullUrl, option.data || '')
 
         // 小程序端设置更长的超时时间（5分钟）
         const timeout = process.env.TARO_ENV === 'h5' 
@@ -52,7 +59,7 @@ export namespace Network {
 
         return Taro.request({
             ...option,
-            url: createUrl(option.url),
+            url: fullUrl,
             header: headers,
             timeout
         })

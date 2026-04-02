@@ -565,8 +565,12 @@ export default function MindChatPage() {
       lastProgressCountRef.current = 0
       
       console.log('[MindChat] 开始执行 Agent 任务:', content)
+      console.log('[MindChat] 当前环境:', Taro.getEnv())
+      console.log('[MindChat] 分身信息:', avatar)
+      console.log('[MindChat] 会话信息:', conversation)
       
       // 发送 HTTP 请求（异步模式，立即返回 taskId）
+      console.log('[MindChat] 准备发送请求...')
       const res = await Network.request({
         url: '/api/agent/execute',
         method: 'POST',
@@ -577,8 +581,15 @@ export default function MindChatPage() {
         }
       })
       
+      console.log('[MindChat] 请求完成，statusCode:', res.statusCode)
       console.log('[MindChat] 任务已提交，完整响应:', JSON.stringify(res))
       console.log('[MindChat] 响应数据:', JSON.stringify(res.data))
+      
+      // 检查 HTTP 状态码
+      if (res.statusCode !== 200) {
+        console.error('[MindChat] HTTP 错误:', res.statusCode)
+        throw new Error(`HTTP 错误: ${res.statusCode}`)
+      }
       
       // 兼容不同的响应结构
       const responseData = res.data?.data || res.data
@@ -602,13 +613,20 @@ export default function MindChatPage() {
       console.error('[MindChat] Agent 执行失败:', err)
       console.error('[MindChat] 错误详情:', {
         message: err.message,
+        errMsg: err.errMsg,
         stack: err.stack,
         name: err.name
       })
       setLoading(false)
       loadingRef.current = false
       setCurrentStatus('')
-      showToast({ title: err.message || '执行失败，请重试', icon: 'none' })
+      
+      // 显示更具体的错误信息
+      const errorMsg = err.errMsg || err.message || '执行失败，请重试'
+      showToast({ title: errorMsg, icon: 'none', duration: 3000 })
+      
+      // 抛出异常，让外层处理
+      throw err
     }
   }
   
