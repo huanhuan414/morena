@@ -336,10 +336,29 @@ export default function MindChatPage() {
         
       case 'complete':
         setCurrentStatus('✅ 任务完成')
+        // 如果 HTTP 请求失败但收到了 complete 事件，关闭 loading
+        // HTTP 请求成功时会调用 processAgentResult 关闭 loading
+        setTimeout(() => {
+          if (loading) {
+            console.log('[MindChat] HTTP 请求未返回，但从轮询收到 complete，关闭 loading')
+            setLoading(false)
+            // 添加一条简单的完成消息
+            const aiMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: '任务已完成，请查看上方步骤详情或刷新页面查看结果。',
+              created_at: new Date().toISOString()
+            }
+            setMessages(prev => [...prev, aiMessage])
+            scrollToBottom()
+          }
+        }, 1000)
         break
         
       case 'error':
         setCurrentStatus(`❌ ${progress.message}`)
+        // 错误时也关闭 loading
+        setLoading(false)
         break
     }
   }
