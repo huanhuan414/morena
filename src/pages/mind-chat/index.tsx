@@ -332,94 +332,189 @@ export default function MindChatPage() {
     }
   }
 
+  // 处理 SSE 事件（小程序端使用）
+  const handleSSEEvent = (
+    data: any,
+    steps: AgentStepDisplay[],
+    media: MessageMedia[],
+    onResult: (result: AgentResult) => void
+  ) => {
+    console.log('[MindChat] SSE event:', data)
+    
+    switch (data.type) {
+      case 'start':
+        setCurrentStatus(data.message)
+        break
+        
+      case 'progress':
+        setCurrentStatus(data.message)
+        break
+        
+      case 'thinking':
+        setCurrentStatus(data.message)
+        break
+        
+      case 'action':
+        setCurrentStatus(data.message)
+        steps.push({
+          action: data.action,
+          displayName: data.displayName || TOOL_DISPLAY_NAMES[data.action] || data.action,
+          status: 'running',
+          message: data.message
+        })
+        setAgentSteps([...steps])
+        break
+        
+      case 'observation':
+        const stepIndex = steps.findIndex(s => s.action === data.action)
+        if (stepIndex >= 0) {
+          steps[stepIndex].status = data.success ? 'success' : 'failed'
+          steps[stepIndex].message = data.message
+          setAgentSteps([...steps])
+        }
+        
+        if (data.data) {
+          const obsData = data.data
+          if (obsData.content && obsData.title) {
+            media.push({
+              type: 'article',
+              title: obsData.title,
+              content: obsData.content,
+              coverImage: obsData.cover_image_url
+            })
+          } else {
+            if (obsData.cover_image_url && !obsData.content) {
+              media.push({ type: 'image', url: obsData.cover_image_url })
+            }
+            if (obsData.image_urls?.length) {
+              obsData.image_urls.forEach((url: string) => {
+                media.push({ type: 'image', url })
+              })
+            }
+            if (obsData.video_url) {
+              media.push({ type: 'video', url: obsData.video_url })
+            }
+          }
+        }
+        break
+        
+      case 'complete':
+        setCurrentStatus('任务完成！')
+        break
+        
+      case 'result':
+        onResult({
+          success: data.success,
+          finalAnswer: data.finalAnswer,
+          steps: data.steps || [],
+          requiresConfig: data.requiresConfig,
+          configPlatform: data.configPlatform,
+          configFields: data.configFields
+        })
+        break
+        
+      case 'config_required':
+        setCurrentStatus(`需要配置 ${data.platformName}`)
+        break
+        
+      case 'error':
+        console.error('[MindChat] SSE error:', data.error)
+        setLoading(false)
+        setCurrentStatus('')
+        showToast({ title: data.error || '执行失败', icon: 'none' })
+        break
+    }
+  }
+
   // Agent 执行 - 分身的核心能力（使用 SSE 流式输出）
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
       setCurrentStatus('正在连接 AI 分身...')
       
-      // 检测运行环境
-      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
-      
-      // 小程序端使用普通接口 + 模拟流式效果
-      if (isWeapp) {
-        const res = await Network.request({
-          url: '/api/agent/execute',
-          method: 'POST',
-          data: {
-            avatar_id: avatar?.id,
-            task_description: content,
-            conversation_id: conversation?.id
-          }
-        })
-        
-        console.log('[MindChat] Agent 执行结果:', res)
-        const result = res.data?.data as AgentResult
-        
-        if (result) {
-          // 模拟流式展示步骤
-          const steps: AgentStepDisplay[] = result.steps
-            .filter(s => s.action)
-            .map(s => ({
-              action: s.action || '',
-              displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-              status: s.observation?.success ? 'success' : 'failed',
-              message: s.observation?.message || s.observation?.error || ''
-            }))
-          
-          // 逐个展示步骤
-          for (let i = 0; i < steps.length; i++) {
-            setCurrentStatus(`执行: ${steps[i].displayName}`)
-            setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
-            await new Promise(resolve => setTimeout(resolve, 300))
-            setAgentSteps(prev => prev.map((s, idx) => 
-              idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
-            ))
-            await new Promise(resolve => setTimeout(resolve, 150))
-          }
-          
-          // 提取媒体内容
-          const media: MessageMedia[] = []
-          result.steps.forEach(step => {
-            if (step.observation?.data) {
-              const data = step.observation.data
-              if (data.content && data.title) {
-                media.push({ 
-                  type: 'article', 
-                  title: data.title,
-                  content: data.content,
-                  coverImage: data.cover_image_url
-                })
-              } else {
-                if (data.cover_image_url && !data.content) {
-                  media.push({ type: 'image', url: data.cover_image_url })
-                }
-                if (data.image_urls?.length) {
-                  data.image_urls.forEach((url: string) => {
-                    media.push({ type: 'image', url })
-                  })
-                }
-                if (data.video_url) {
-                  media.push({ type: 'video', url: data.video_url })
-                }
-              }
-            }
-          })
-          
-          processAgentResult(result, media, steps, content)
-        }
-        return
-      }
-      
-      // H5 端使用 SSE 流式接口
-      const eventSource = new EventSource(
-        `/api/agent/execute/stream?avatar_id=${avatar?.id}&task_description=${encodeURIComponent(content)}&conversation_id=${conversation?.id || ''}`
-      )
-      
       // 用于收集最终结果
       let finalResult: AgentResult | null = null
       const media: MessageMedia[] = []
       const steps: AgentStepDisplay[] = []
+      
+      // 检测运行环境
+      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+      
+      // 小程序端使用 requestTask 实现流式输出
+      if (isWeapp) {
+        // 定义超时和轮询的引用
+        let timeoutId: NodeJS.Timeout
+        let checkIntervalId: NodeJS.Timeout
+        
+        const requestTask = Network.streamRequest({
+          url: '/api/agent/execute/stream',
+          data: {
+            avatar_id: avatar?.id,
+            task_description: content,
+            conversation_id: conversation?.id || ''
+          },
+          onSuccess: (res) => {
+            console.log('[MindChat] SSE 请求完成:', res)
+          },
+          onFail: (err) => {
+            console.error('[MindChat] SSE 请求失败:', err)
+            setLoading(false)
+            setCurrentStatus('')
+            showToast({ title: '连接失败，请重试', icon: 'none' })
+          }
+        })
+        
+        // 监听分块数据（微信小程序特有 API）
+        const task = requestTask as any // eslint-disable-line @typescript-eslint/no-explicit-any
+        task.onChunkedResponse((response: { data: string }) => {
+          try {
+            const text = response.data
+            if (typeof text !== 'string') return
+            
+            // 解析 SSE 格式: "data: {...}\n\n"
+            const lines = text.split('\n')
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6))
+                  handleSSEEvent(data, steps, media, (result) => {
+                    finalResult = result
+                  })
+                } catch (e) {
+                  // 忽略解析错误
+                }
+              }
+            }
+          } catch (e) {
+            console.error('[MindChat] 解析分块数据失败:', e)
+          }
+        })
+        
+        // 超时处理
+        timeoutId = setTimeout(() => {
+          clearInterval(checkIntervalId)
+          requestTask.abort()
+          setLoading(false)
+          setCurrentStatus('')
+          showToast({ title: '执行超时，请重试', icon: 'none' })
+        }, 120000)
+        
+        // 轮询检查结果
+        checkIntervalId = setInterval(() => {
+          if (finalResult) {
+            clearInterval(checkIntervalId)
+            clearTimeout(timeoutId)
+            processAgentResult(finalResult, media, steps, content)
+          }
+        }, 100)
+        
+        return
+      }
+      
+      // H5 端使用 EventSource
+      const eventSource = new EventSource(
+        `/api/agent/execute/stream?avatar_id=${avatar?.id}&task_description=${encodeURIComponent(content)}&conversation_id=${conversation?.id || ''}`
+      )
       
       // 监听消息
       eventSource.onmessage = (event) => {
