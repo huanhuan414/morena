@@ -312,11 +312,13 @@ export class PublishWechatMpTool implements ITool {
           success: true,
           data: {
             media_id: draftMediaId,
-            title: params.title,
-            // 返回带配图的文章内容（使用 TOS URL，前端可显示）
-            content: contentWithImages,
+            // 不要同时返回 title 和 content，避免前端误认为是新的文章
+            published_title: params.title,
+            // 返回带配图的文章内容预览（使用 TOS URL，前端可显示）
+            published_content: contentWithImages,
             // 返回实际使用的封面图 URL
             cover_url: usedCoverUrl,
+            word_count: params.content?.length || 0,
             message: `✅ 文章已成功保存到公众号草稿箱！\n\n请前往微信公众平台 → 素材管理 → 草稿箱 查看《${params.title}》并进行发布。`
           }
         }
