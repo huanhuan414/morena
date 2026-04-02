@@ -96,23 +96,22 @@ export class CheckPlatformConfigTool implements ITool {
 /**
  * 发布微信公众号文章工具
  * 
- * 注意：当前为模拟模式，真实发布需要满足以下条件：
- * 1. 已认证的服务号
- * 2. 服务器IP已加入白名单
- * 3. 开通了素材管理接口权限
- * 
- * TODO: 实现真实API调用
+ * 实现真正的微信公众号发布流程：
+ * 1. 获取 access_token
+ * 2. 上传封面图片（如果有）
+ * 3. 创建草稿
+ * 4. 发布草稿
  */
 @Injectable()
 export class PublishWechatMpTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_wechat_mp',
     displayName: '发布公众号文章',
-    description: '发布文章到微信公众号（当前为模拟模式，需配置真实API后才能正式发布）',
+    description: '发布文章到微信公众号素材库',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '文章标题', required: true },
-      content: { type: 'string', description: '文章内容（Markdown格式）', required: true },
+      content: { type: 'string', description: '文章内容（HTML格式）', required: true },
       cover_url: { type: 'string', description: '封面图片URL' },
       digest: { type: 'string', description: '摘要' }
     },
@@ -151,14 +150,14 @@ export class PublishWechatMpTool implements ITool {
         user_id: context.userId
       })
 
-      // 尝试调用微信API获取 access_token
+      // 1. 获取 access_token
+      let accessToken: string
       try {
         const accessTokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`
         const tokenRes = await fetch(accessTokenUrl)
         const tokenData = await tokenRes.json()
         
         if (tokenData.errcode) {
-          // API调用失败，返回详细错误
           const errorMsg = this.getWechatErrorMessage(tokenData.errcode)
           return {
             success: false,
@@ -167,35 +166,85 @@ export class PublishWechatMpTool implements ITool {
               content: params.content,
               cover_url: params.cover_url
             },
-            error: `微信API错误: ${errorMsg}。请检查AppID和AppSecret是否正确，以及服务器IP是否已加入白名单。`
+            error: `微信API错误: ${errorMsg}`
+          }
+        }
+        accessToken = tokenData.access_token
+        console.log('获取 access_token 成功')
+      } catch (fetchError: any) {
+        console.error('获取 access_token 失败:', fetchError)
+        return {
+          success: false,
+          error: `获取access_token失败: ${fetchError.message}`
+        }
+      }
+
+      // 2. 上传封面图片（如果有）
+      let mediaId: string | undefined
+      if (params.cover_url) {
+        try {
+          console.log('正在上传封面图片:', params.cover_url)
+          mediaId = await this.uploadImage(accessToken, params.cover_url)
+          console.log('封面图片上传成功, media_id:', mediaId)
+        } catch (uploadError: any) {
+          console.error('上传封面图片失败:', uploadError)
+          // 封面上传失败不影响文章创建，可以继续
+        }
+      }
+
+      // 3. 创建草稿
+      try {
+        // 将Markdown内容转换为HTML（简单转换）
+        const htmlContent = this.markdownToHtml(params.content)
+        
+        const draftData = {
+          articles: [{
+            title: params.title,
+            author: '莫瑞娜AI助手',
+            digest: params.digest || params.content.substring(0, 120),
+            content: htmlContent,
+            thumb_media_id: mediaId || '',
+            need_open_comment: 0,
+            only_fans_can_comment: 0
+          }]
+        }
+
+        console.log('正在创建草稿...')
+        const draftUrl = `https://api.weixin.qq.com/cgi-bin/draft/add?access_token=${accessToken}`
+        const draftRes = await fetch(draftUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(draftData)
+        })
+        const draftResult = await draftRes.json()
+        
+        if (draftResult.errcode) {
+          const errorMsg = this.getWechatErrorMessage(draftResult.errcode)
+          console.error('创建草稿失败:', draftResult)
+          return {
+            success: false,
+            error: `创建草稿失败: ${errorMsg}`
           }
         }
 
-        const accessToken = tokenData.access_token
-        
-        // 有 access_token，说明配置正确
-        // 但由于发布接口需要额外权限，暂时只保存内容
+        const draftMediaId = draftResult.media_id
+        console.log('草稿创建成功, media_id:', draftMediaId)
+
+        // 4. 发布草稿（可选，需要用户确认）
+        // 发布接口需要更高的权限，这里先返回草稿链接让用户手动发布
         return {
           success: true,
           data: {
-            article_id: `draft_${Date.now()}`,
+            media_id: draftMediaId,
             title: params.title,
-            content: params.content,
-            cover_url: params.cover_url,
-            message: '✅ 配置验证成功！\n\n由于微信公众平台限制，自动发布需要：\n1. 已认证的服务号\n2. 开通素材管理接口权限\n\n当前内容已准备好，请手动复制到公众号后台发布，或联系开发者配置真实API。'
+            message: `✅ 文章已成功保存到公众号草稿箱！\n\n请前往微信公众平台 → 素材管理 → 草稿箱 查看《${params.title}》并进行发布。\n\n提示：如需自动发布，请在公众号后台开通「发布能力」接口权限。`
           }
         }
-      } catch (fetchError: any) {
-        // 网络错误或其他问题
-        console.error('微信API调用失败:', fetchError)
+      } catch (draftError: any) {
+        console.error('创建草稿失败:', draftError)
         return {
           success: false,
-          data: {
-            title: params.title,
-            content: params.content,
-            cover_url: params.cover_url
-          },
-          error: `API调用失败: ${fetchError.message}。请检查网络连接和服务器配置。`
+          error: `创建草稿失败: ${draftError.message}`
         }
       }
     } catch (err: any) {
@@ -204,26 +253,127 @@ export class PublishWechatMpTool implements ITool {
   }
 
   /**
+   * 上传图片到微信服务器
+   */
+  private async uploadImage(accessToken: string, imageUrl: string): Promise<string> {
+    // 下载图片
+    const imageRes = await fetch(imageUrl)
+    if (!imageRes.ok) {
+      throw new Error('下载图片失败')
+    }
+    const imageBuffer = await imageRes.arrayBuffer()
+    
+    // 上传到微信
+    const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=image`
+    
+    // 构建 multipart/form-data
+    const boundary = `----WebKitFormBoundary${Date.now().toString(16)}`
+    const formData: string[] = []
+    
+    formData.push(`--${boundary}\r\n`)
+    formData.push(`Content-Disposition: form-data; name="media"; filename="cover.jpg"\r\n`)
+    formData.push(`Content-Type: image/jpeg\r\n\r\n`)
+    
+    const formDataBuffer = Buffer.concat([
+      Buffer.from(formData.join(''), 'utf-8'),
+      Buffer.from(imageBuffer),
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+    ])
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+      },
+      body: formDataBuffer
+    })
+
+    const uploadResult = await uploadRes.json()
+    
+    if (uploadResult.errcode) {
+      throw new Error(this.getWechatErrorMessage(uploadResult.errcode))
+    }
+
+    return uploadResult.media_id
+  }
+
+  /**
+   * 简单的 Markdown 转 HTML
+   */
+  private markdownToHtml(markdown: string): string {
+    if (!markdown) return ''
+    
+    let html = markdown
+    
+    // 标题
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    
+    // 粗体
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    
+    // 斜体
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    
+    // 链接
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    
+    // 图片
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;" />')
+    
+    // 代码块
+    html = html.replace(/```(\w+)?\n([\s\S]+?)```/g, '<pre><code>$2</code></pre>')
+    
+    // 行内代码
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+    
+    // 列表
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>')
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    
+    // 引用
+    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    
+    // 段落
+    html = html.replace(/\n\n/g, '</p><p>')
+    html = `<p>${html}</p>`
+    
+    // 清理空段落
+    html = html.replace(/<p>\s*<\/p>/g, '')
+    
+    return html
+  }
+
+  /**
    * 获取微信API错误码对应的中文说明
    */
   private getWechatErrorMessage(errcode: number): string {
     const errorMessages: Record<number, string> = {
-      40001: 'AppSecret错误或不属于该公众号，请检查AppSecret是否正确',
-      40013: '不合法的AppID，请检查AppID是否正确',
-      40164: '服务器IP未加入白名单，请在公众平台后台 → 开发 → 基本配置 → IP白名单中添加服务器IP',
+      40001: 'AppSecret错误或不属于该公众号',
+      40013: '不合法的AppID',
+      40164: '服务器IP未加入白名单',
       41001: '缺少access_token参数',
       41004: '缺少AppSecret参数',
-      42001: 'access_token已过期，请重试',
-      45011: 'API调用太频繁，请稍后再试',
-      48001: 'api功能未授权，请确认公众号已开通该功能权限（需要认证的服务号）',
-      50002: '用户受限，可能是违规后接口被封禁',
-      87009: '账号安全问题，请根据公众号后台指引操作',
+      42001: 'access_token已过期',
+      45009: '接口调用超过限制',
+      45011: 'API调用太频繁',
+      45017: '标题不能为空',
+      45018: '内容不能为空',
+      45024: '素材数量超出限制',
+      46003: '菜单不存在',
+      47001: '解析JSON/XML内容错误',
+      48001: 'api功能未授权（需要认证的服务号）',
+      48004: '接口调用失败，请检查公众号权限',
+      50002: '用户受限',
+      50005: '用户未关注公众号',
+      61004: 'access_token已过期或无效',
+      87009: '账号安全问题',
       87010: '涉嫌违法内容',
       87011: '涉嫌营销内容',
       87012: '内容涉及敏感信息',
-      87013: '内容涉及版权问题',
     }
-    return errorMessages[errcode] || `微信API返回错误码：${errcode}，请查看微信公众平台开发文档`
+    return errorMessages[errcode] || `微信API错误码：${errcode}`
   }
 }
 
@@ -250,7 +400,6 @@ export class PublishXiaohongshuTool implements ITool {
     try {
       const client = getSupabaseClient()
       
-      // 检查配置
       const { data: config, error: configError } = await client
         .from('platform_configs')
         .select('*')
@@ -275,15 +424,14 @@ export class PublishXiaohongshuTool implements ITool {
       })
 
       // TODO: 实现真实的小红书API调用
-      // 需要使用cookie进行模拟登录和发布
+      // 小红书没有官方开放API，需要使用Cookie模拟登录
       
       return {
         success: true,
         data: {
           note_id: `xhs_${Date.now()}`,
           title: params.title,
-          url: `https://www.xiaohongshu.com/explore/${Date.now()}`,
-          message: '笔记发布成功'
+          message: `📝 笔记已准备好！\n\n小红书暂无官方开放API，请手动复制以下内容到小红书发布：\n\n标题：${params.title}\n内容：${params.content?.substring(0, 200)}...`
         }
       }
     } catch (err: any) {
@@ -317,7 +465,6 @@ export class PublishBilibiliTool implements ITool {
     try {
       const client = getSupabaseClient()
       
-      // 检查配置
       const { data: config } = await client
         .from('platform_configs')
         .select('*')
@@ -343,10 +490,8 @@ export class PublishBilibiliTool implements ITool {
       return {
         success: true,
         data: {
-          bvid: `BV${Date.now().toString(36)}`,
           title: params.title,
-          url: `https://www.bilibili.com/video/BV${Date.now().toString(36)}`,
-          message: `${params.type === 'video' ? '视频' : '文章'}发布成功`
+          message: `📺 内容已准备好！\n\nB站暂无官方开放API，请手动复制到B站发布。`
         }
       }
     } catch (err: any) {
@@ -394,16 +539,14 @@ export class PublishWeiboTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布微博:', params.content.substring(0, 50))
+      console.log('Agent工具 - 发布微博:', params.content?.substring(0, 50))
 
       // TODO: 实现真实的微博API调用
       
       return {
         success: true,
         data: {
-          weibo_id: `weibo_${Date.now()}`,
-          url: `https://weibo.com/${context.userId}/${Date.now()}`,
-          message: '微博发布成功'
+          message: `🐦 微博内容已准备好！\n\n微博暂无官方开放API，请手动复制发布。`
         }
       }
     } catch (err: any) {
@@ -460,9 +603,7 @@ export class PublishDouyinTool implements ITool {
       return {
         success: true,
         data: {
-          video_id: `dy_${Date.now()}`,
-          url: `https://www.douyin.com/video/${Date.now()}`,
-          message: '视频已提交到抖音，请打开抖音创作者中心查看'
+          message: `🎵 视频内容已准备好！\n\n请前往抖音创作者中心手动发布。`
         }
       }
     } catch (err: any) {
@@ -519,9 +660,7 @@ export class PublishWechatVideoTool implements ITool {
       return {
         success: true,
         data: {
-          video_id: `wv_${Date.now()}`,
-          url: `https://channels.weixin.qq.com/video/${Date.now()}`,
-          message: '视频已提交到视频号'
+          message: `🎬 视频内容已准备好！\n\n视频号API目前在内测阶段，请前往视频号创作者中心手动发布。`
         }
       }
     } catch (err: any) {
