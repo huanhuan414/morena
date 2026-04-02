@@ -332,251 +332,15 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力（使用 WebSocket 实时推送进度）
+  // Agent 执行 - 分身的核心能力（直接 HTTP 请求，简单可靠）
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
-      setCurrentStatus('正在连接 AI 分身...')
+      setCurrentStatus('正在执行任务...')
       
-      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+      console.log('[MindChat] 开始执行 Agent 任务:', content)
       
-      // 用于收集最终结果
-      let finalResult: AgentResult | null = null
-      const media: MessageMedia[] = []
-      const steps: AgentStepDisplay[] = []
-      
-      // 小程序端使用 Taro.connectSocket
-      if (isWeapp) {
-        const domain = PROJECT_DOMAIN || ''
-        const wsUrl = `${domain.replace('http', 'ws')}/agent/ws?userId=${userInfo?.id}`
-        
-        Taro.connectSocket({
-          url: wsUrl,
-          success: () => {
-            console.log('[MindChat] WebSocket 连接中...')
-          },
-          fail: (err) => {
-            console.error('[MindChat] WebSocket 连接失败:', err)
-            // 降级为普通请求
-            executeWithoutWebSocket(content, media)
-          }
-        }).then(task => {
-          task.onOpen(() => {
-            console.log('[MindChat] WebSocket 已连接')
-            // 发送执行请求
-            Network.request({
-              url: '/api/agent/execute',
-              method: 'POST',
-              data: {
-                avatar_id: avatar?.id,
-                task_description: content,
-                conversation_id: conversation?.id
-              }
-            }).then(res => {
-              console.log('[MindChat] Agent 执行结果:', res)
-              const result = res.data?.data as AgentResult
-              if (result) {
-                finalResult = result
-              }
-            }).catch(err => {
-              console.error('[MindChat] Agent 执行失败:', err)
-              task.close({})
-              setLoading(false)
-              setCurrentStatus('')
-              showToast({ title: '执行失败，请重试', icon: 'none' })
-            })
-          })
-          
-          task.onMessage((res) => {
-            try {
-              const data = JSON.parse(res.data as string)
-              console.log('[MindChat] WebSocket 消息:', data)
-              handleProgressEvent(data, steps, media)
-            } catch (e) {
-              console.error('[MindChat] WebSocket 解析错误:', e)
-            }
-          })
-          
-          task.onError((err) => {
-            console.error('[MindChat] WebSocket 错误:', err)
-            executeWithoutWebSocket(content, media)
-          })
-          
-          task.onClose(() => {
-            console.log('[MindChat] WebSocket 已关闭')
-          })
-          
-          // 轮询检查最终结果
-          const checkInterval = setInterval(() => {
-            if (finalResult) {
-              clearInterval(checkInterval)
-              clearTimeout(timeout)
-              task.close({})
-              processAgentResult(finalResult, media, steps, content)
-            }
-          }, 100)
-          
-          // 超时处理
-          const timeout = setTimeout(() => {
-            clearInterval(checkInterval)
-            task.close({})
-            setLoading(false)
-            setCurrentStatus('')
-            showToast({ title: '执行超时，请重试', icon: 'none' })
-          }, 120000)
-        })
-        
-        return
-      }
-      
-      // H5 端使用原生 WebSocket
-      const domain = PROJECT_DOMAIN || ''
-      const wsUrl = `${domain.replace('http', 'ws')}/agent/ws?userId=${userInfo?.id}`
-      const socket = new WebSocket(wsUrl)
-      
-      socket.onopen = () => {
-        console.log('[MindChat] WebSocket 已连接')
-        Network.request({
-          url: '/api/agent/execute',
-          method: 'POST',
-          data: {
-            avatar_id: avatar?.id,
-            task_description: content,
-            conversation_id: conversation?.id
-          }
-        }).then(res => {
-          console.log('[MindChat] Agent 执行结果:', res)
-          const result = res.data?.data as AgentResult
-          if (result) {
-            finalResult = result
-          }
-        }).catch(err => {
-          console.error('[MindChat] Agent 执行失败:', err)
-          socket.close()
-          setLoading(false)
-          setCurrentStatus('')
-          showToast({ title: '执行失败，请重试', icon: 'none' })
-        })
-      }
-      
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('[MindChat] WebSocket 消息:', data)
-          handleProgressEvent(data, steps, media)
-        } catch (e) {
-          console.error('[MindChat] WebSocket 解析错误:', e)
-        }
-      }
-      
-      socket.onerror = (error) => {
-        console.error('[MindChat] WebSocket 错误:', error)
-        executeWithoutWebSocket(content, media)
-      }
-      
-      socket.onclose = () => {
-        console.log('[MindChat] WebSocket 已关闭')
-      }
-      
-      // 轮询检查最终结果
-      const checkInterval = setInterval(() => {
-        if (finalResult) {
-          clearInterval(checkInterval)
-          clearTimeout(timeout)
-          socket.close()
-          processAgentResult(finalResult, media, steps, content)
-        }
-      }, 100)
-      
-      // 超时处理
-      const timeout = setTimeout(() => {
-        clearInterval(checkInterval)
-        socket.close()
-        setLoading(false)
-        setCurrentStatus('')
-        showToast({ title: '执行超时，请重试', icon: 'none' })
-      }, 120000)
-      
-    } catch (err) {
-      console.error('[MindChat] Agent 执行失败:', err)
-      setLoading(false)
-      setCurrentStatus('')
-      showToast({ title: '执行失败，请重试', icon: 'none' })
-    }
-  }
-  
-  // 处理进度事件
-  const handleProgressEvent = (
-    data: any,
-    steps: AgentStepDisplay[],
-    media: MessageMedia[]
-  ) => {
-    switch (data.type) {
-      case 'start':
-        setCurrentStatus(data.message)
-        break
-        
-      case 'progress':
-        setCurrentStatus(data.message)
-        break
-        
-      case 'thinking':
-        setCurrentStatus(data.message)
-        break
-        
-      case 'action':
-        setCurrentStatus(data.message)
-        steps.push({
-          action: data.data?.action || '',
-          displayName: data.data?.displayName || data.data?.action || '执行操作',
-          status: 'running',
-          message: data.message
-        })
-        setAgentSteps([...steps])
-        break
-        
-      case 'observation':
-        const stepIndex = steps.findIndex(s => s.action === data.data?.action)
-        if (stepIndex >= 0) {
-          steps[stepIndex].status = data.data?.success ? 'success' : 'failed'
-          steps[stepIndex].message = data.data?.message || ''
-          setAgentSteps([...steps])
-        }
-        
-        if (data.data?.data) {
-          const obsData = data.data.data
-          if (obsData.content && obsData.title) {
-            media.push({
-              type: 'article',
-              title: obsData.title,
-              content: obsData.content,
-              coverImage: obsData.cover_image_url
-            })
-          } else {
-            if (obsData.cover_image_url && !obsData.content) {
-              media.push({ type: 'image', url: obsData.cover_image_url })
-            }
-            if (obsData.image_urls?.length) {
-              obsData.image_urls.forEach((url: string) => {
-                media.push({ type: 'image', url })
-              })
-            }
-            if (obsData.video_url) {
-              media.push({ type: 'video', url: obsData.video_url })
-            }
-          }
-        }
-        break
-        
-      case 'complete':
-        setCurrentStatus('任务完成！')
-        break
-    }
-  }
-  
-  // 降级为普通请求（无 WebSocket）
-  const executeWithoutWebSocket = async (content: string, media: MessageMedia[]) => {
-    try {
+      // 直接发送 HTTP 请求
       const res = await Network.request({
         url: '/api/agent/execute',
         method: 'POST',
@@ -587,60 +351,76 @@ export default function MindChatPage() {
         }
       })
       
+      console.log('[MindChat] Agent 执行结果:', res.data)
+      
       const result = res.data?.data as AgentResult
-      if (result) {
-        // 提取步骤
-        const steps: AgentStepDisplay[] = result.steps
-          .filter(s => s.action)
-          .map(s => ({
-            action: s.action || '',
-            displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-            status: s.observation?.success ? 'success' : 'failed',
-            message: s.observation?.message || s.observation?.error || ''
-          }))
-        
-        // 逐步展示
-        for (let i = 0; i < steps.length; i++) {
-          setCurrentStatus(`执行: ${steps[i].displayName}`)
-          setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
-          await new Promise(resolve => setTimeout(resolve, 200))
-          setAgentSteps(prev => prev.map((s, idx) => 
-            idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
-          ))
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
-        
-        // 提取媒体
-        result.steps.forEach(step => {
-          if (step.observation?.data) {
-            const data = step.observation.data
-            if (data.content && data.title) {
-              media.push({
-                type: 'article',
-                title: data.title,
-                content: data.content,
-                coverImage: data.cover_image_url
-              })
-            } else {
-              if (data.cover_image_url && !data.content) {
-                media.push({ type: 'image', url: data.cover_image_url })
-              }
-              if (data.image_urls?.length) {
-                data.image_urls.forEach((url: string) => {
-                  media.push({ type: 'image', url })
-                })
-              }
-              if (data.video_url) {
-                media.push({ type: 'video', url: data.video_url })
-              }
-            }
-          }
-        })
-        
-        processAgentResult(result, media, steps, content)
+      if (!result) {
+        throw new Error('执行结果为空')
       }
+      
+      // 提取步骤
+      const steps: AgentStepDisplay[] = result.steps
+        .filter(s => s.action)
+        .map(s => ({
+          action: s.action || '',
+          displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+          status: s.observation?.success ? 'success' : 'failed',
+          message: s.observation?.message || s.observation?.error || ''
+        }))
+      
+      // 逐步展示步骤（模拟实时进度）
+      for (let i = 0; i < steps.length; i++) {
+        setCurrentStatus(`执行: ${steps[i].displayName}`)
+        setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
+        await new Promise(resolve => setTimeout(resolve, 300))
+        setAgentSteps(prev => prev.map((s, idx) => 
+          idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
+        ))
+        await new Promise(resolve => setTimeout(resolve, 150))
+      }
+      
+      // 提取媒体内容
+      const media: MessageMedia[] = []
+      result.steps.forEach(step => {
+        if (step.observation?.data) {
+          const data = step.observation.data
+          console.log('[MindChat] 步骤数据:', step.action, data)
+          
+          // 文章内容
+          if (data.content && data.title) {
+            media.push({
+              type: 'article',
+              title: data.title,
+              content: data.content,
+              coverImage: data.cover_image_url
+            })
+          }
+          
+          // 图片
+          if (data.image_urls?.length) {
+            data.image_urls.forEach((url: string) => {
+              media.push({ type: 'image', url })
+            })
+          }
+          
+          // 封面图（如果没有文章内容，单独展示）
+          if (data.cover_image_url && !data.content) {
+            media.push({ type: 'image', url: data.cover_image_url })
+          }
+          
+          // 视频
+          if (data.video_url) {
+            media.push({ type: 'video', url: data.video_url })
+          }
+        }
+      })
+      
+      console.log('[MindChat] 提取的媒体内容:', media)
+      
+      processAgentResult(result, media, steps, content)
+      
     } catch (err) {
-      console.error('[MindChat] 降级执行失败:', err)
+      console.error('[MindChat] Agent 执行失败:', err)
       setLoading(false)
       setCurrentStatus('')
       showToast({ title: '执行失败，请重试', icon: 'none' })
