@@ -180,12 +180,14 @@ export class PublishWechatMpTool implements ITool {
       // 2. 处理封面图片
       let mediaId: string | undefined
       try {
-        if (params.cover_url) {
+        if (params.cover_url && this.isValidImageUrl(params.cover_url)) {
           console.log('正在上传封面图片:', params.cover_url)
           mediaId = await this.uploadImage(accessToken, params.cover_url)
           console.log('封面图片上传成功, media_id:', mediaId)
-        } else {
-          // 根据标题自动生成封面图
+        }
+        
+        // 如果没有封面图片或上传失败，根据标题自动生成
+        if (!mediaId) {
           console.log('正在根据标题生成封面图片...')
           const generatedCoverUrl = await this.generateCoverImage(params.title)
           if (generatedCoverUrl) {
@@ -194,14 +196,28 @@ export class PublishWechatMpTool implements ITool {
           }
         }
       } catch (coverError: any) {
-        console.error('处理封面图片失败:', coverError)
-        // 继续尝试创建草稿
+        console.error('处理封面图片失败:', coverError.message || coverError)
+        // 继续尝试生成默认封面
+      }
+
+      // 最终尝试：生成一个简单的默认封面
+      if (!mediaId) {
+        try {
+          console.log('生成默认封面作为最终备选...')
+          const defaultCoverUrl = await this.generateDefaultCover(params.title)
+          if (defaultCoverUrl) {
+            mediaId = await this.uploadImage(accessToken, defaultCoverUrl)
+            console.log('默认封面上传成功, media_id:', mediaId)
+          }
+        } catch (finalError: any) {
+          console.error('生成默认封面也失败:', finalError.message || finalError)
+        }
       }
 
       if (!mediaId) {
         return {
           success: false,
-          error: '封面图片处理失败，请检查图片URL或网络连接'
+          error: '封面图片处理失败，无法创建草稿。请稍后重试或联系技术支持。'
         }
       }
 
@@ -264,6 +280,42 @@ export class PublishWechatMpTool implements ITool {
   }
 
   /**
+   * 检查URL是否是有效的图片URL
+   * 排除假URL和占位符URL
+   */
+  private isValidImageUrl(url: string): boolean {
+    if (!url) return false
+    
+    // 排除常见的占位符和假URL
+    const invalidPatterns = [
+      'example.com',
+      'placeholder.com',
+      'via.placeholder.com',
+      'dummyimage.com',
+      'placehold.it',
+      'lorempixel.com',
+      'fake',
+      'test-url',
+    ]
+    
+    const lowerUrl = url.toLowerCase()
+    for (const pattern of invalidPatterns) {
+      if (lowerUrl.includes(pattern)) {
+        console.log(`检测到无效的封面URL: ${url}`)
+        return false
+      }
+    }
+    
+    // 检查是否是有效的URL格式
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
    * 根据标题生成封面图片
    */
   private async generateCoverImage(title: string): Promise<string | null> {
@@ -287,6 +339,32 @@ export class PublishWechatMpTool implements ITool {
       return null
     } catch (err) {
       console.error('生成封面图失败:', err)
+      return null
+    }
+  }
+
+  /**
+   * 生成默认封面（使用公开图片服务）
+   */
+  private async generateDefaultCover(title: string): Promise<string | null> {
+    try {
+      const config = new Config()
+      const imageClient = new ImageGenerationClient(config)
+      
+      // 使用简单的提示词生成一个通用封面
+      const response = await imageClient.generate({
+        prompt: 'Abstract modern gradient background, blue and white colors, minimalist design, professional business style, no text, clean composition',
+        size: '1K',
+        watermark: false
+      })
+      
+      const helper = imageClient.getResponseHelper(response)
+      if (helper.success && helper.imageUrls.length > 0) {
+        return helper.imageUrls[0]
+      }
+      return null
+    } catch (err) {
+      console.error('生成默认封面失败:', err)
       return null
     }
   }
