@@ -9,10 +9,14 @@ import { Observable, from, of } from 'rxjs'
 import { map, catchError } from 'rxjs/operators'
 import { AgentService } from './agent.service'
 import { PlatformType } from './agent.types'
+import { ProgressCacheService } from './progress-cache.service'
 
 @Controller('agent')
 export class AgentController {
-  constructor(private readonly agentService: AgentService) {}
+  constructor(
+    private readonly agentService: AgentService,
+    private readonly progressCache: ProgressCacheService
+  ) {}
 
   /**
    * 获取所有可用工具
@@ -24,6 +28,44 @@ export class AgentController {
       code: 200,
       data: tools,
       message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取任务进度
+   */
+  @Get('progress')
+  async getProgress(
+    @Headers('x-user-id') userId: string,
+    @Query('taskId') taskId?: string
+  ) {
+    const progress = this.progressCache.getProgress(userId, taskId)
+    const latestProgress = this.progressCache.getLatestProgress(userId, taskId)
+    
+    return {
+      code: 200,
+      data: {
+        progress,
+        latest: latestProgress,
+        count: progress.length
+      },
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 清除任务进度
+   */
+  @Delete('progress')
+  async clearProgress(
+    @Headers('x-user-id') userId: string,
+    @Query('taskId') taskId?: string
+  ) {
+    this.progressCache.clearProgress(userId, taskId)
+    
+    return {
+      code: 200,
+      message: '清除成功'
     }
   }
 

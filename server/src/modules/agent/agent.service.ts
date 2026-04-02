@@ -20,6 +20,7 @@ import {
 } from './agent.types'
 import { ITool, ToolContext } from './tools/tool.interface'
 import { AgentGateway } from './agent.gateway'
+import { ProgressCacheService } from './progress-cache.service'
 
 // 导入所有工具
 import {
@@ -55,14 +56,24 @@ interface ConversationMessage {
   created_at?: string
 }
 
+// 当前任务上下文（用于生成 taskId）
+interface TaskContext {
+  taskId: string
+  startTime: number
+}
+
 @Injectable()
 export class AgentService {
   private tools: Map<string, ITool> = new Map()
   private llmClient: LLMClient
+  
+  // 当前任务上下文
+  private currentTaskMap: Map<string, TaskContext> = new Map()
 
   constructor(
     @Inject(forwardRef(() => AgentGateway))
-    private readonly gateway: AgentGateway
+    private readonly gateway: AgentGateway,
+    private readonly progressCache: ProgressCacheService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -72,19 +83,28 @@ export class AgentService {
   }
 
   /**
-   * 推送任务进度（通过 WebSocket）
+   * 推送任务进度（通过 WebSocket + 缓存）
    */
   private emitProgress(userId: string, type: string, message: string, data?: any) {
-    if (this.gateway) {
-      this.gateway.emitProgress(userId, {
-        taskId: `task-${Date.now()}`,
-        userId,
-        type,
-        message,
-        data,
-        timestamp: Date.now()
-      })
+    const taskContext = this.currentTaskMap.get(userId)
+    const taskId = taskContext?.taskId || `task-${Date.now()}`
+    
+    const progress = {
+      taskId,
+      userId,
+      type,
+      message,
+      data,
+      timestamp: Date.now()
     }
+    
+    // 通过 WebSocket 推送
+    if (this.gateway) {
+      this.gateway.emitProgress(userId, progress)
+    }
+    
+    // 同时保存到缓存（用于轮询）
+    this.progressCache.addProgress(userId, progress)
   }
 
   /**
@@ -327,33 +347,48 @@ export class AgentService {
       conversationHistory?: ConversationMessage[] // 新增：对话历史
     }
   ): Promise<AgentExecutionResult> {
-    // 推送开始事件
-    this.emitProgress(userId, 'start', '开始分析任务...')
-    
-    // 初始化上下文
-    this.emitProgress(userId, 'progress', '初始化执行环境...')
-    const context = await this.initContext(userId, avatarId, taskDescription, options)
-    
-    // 执行 ReAct 循环
-    const result = await this.runReActLoop(context, userId)
-    
-    // 推送完成事件
-    this.emitProgress(userId, 'complete', '任务执行完成', { 
-      success: result.success,
-      requiresConfig: result.requiresConfig 
+    // 设置任务上下文
+    const taskId = options?.taskId || `task-${Date.now()}`
+    this.currentTaskMap.set(userId, {
+      taskId,
+      startTime: Date.now()
     })
     
-    // 保存对话记录
-    if (options?.conversationId) {
-      await this.saveConversationHistory(
-        options.conversationId,
-        taskDescription,
-        result.finalAnswer,
-        result
-      )
-    }
+    // 清除之前的进度缓存
+    this.progressCache.clearProgress(userId)
     
-    return result
+    try {
+      // 推送开始事件
+      this.emitProgress(userId, 'start', '开始分析任务...')
+      
+      // 初始化上下文
+      this.emitProgress(userId, 'progress', '初始化执行环境...')
+      const context = await this.initContext(userId, avatarId, taskDescription, options)
+      
+      // 执行 ReAct 循环
+      const result = await this.runReActLoop(context, userId)
+      
+      // 推送完成事件
+      this.emitProgress(userId, 'complete', '任务执行完成', { 
+        success: result.success,
+        requiresConfig: result.requiresConfig 
+      })
+      
+      // 保存对话记录
+      if (options?.conversationId) {
+        await this.saveConversationHistory(
+          options.conversationId,
+          taskDescription,
+          result.finalAnswer,
+          result
+        )
+      }
+      
+      return result
+    } finally {
+      // 清理任务上下文
+      this.currentTaskMap.delete(userId)
+    }
   }
 
   /**

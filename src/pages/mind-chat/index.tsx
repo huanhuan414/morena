@@ -124,6 +124,23 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'app_create_order': '创建订单'
 }
 
+// 进度事件类型
+interface TaskProgressEvent {
+  taskId: string
+  userId: string
+  type: 'start' | 'progress' | 'thinking' | 'action' | 'observation' | 'complete' | 'error'
+  message: string
+  data?: {
+    action?: string
+    displayName?: string
+    success?: boolean
+    params?: any
+    message?: string
+    data?: any
+  }
+  timestamp: number
+}
+
 // 解析 Markdown 为段落数组，用于分段渲染
 export default function MindChatPage() {
   const router = useRouter()
@@ -148,6 +165,10 @@ export default function MindChatPage() {
   // Agent 实时状态（每个分身都是 Agent）
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
+  
+  // 轮询定时器
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastProgressCountRef = useRef<number>(0)
   
   const [scrollTop, setScrollTop] = useState(0)
   const [scrollIntoView, setScrollIntoView] = useState('')
@@ -184,6 +205,137 @@ export default function MindChatPage() {
       }
     }
   })
+  
+  // 组件卸载时停止轮询
+  useEffect(() => {
+    return () => {
+      stopProgressPolling()
+    }
+  }, [])
+  
+  /**
+   * 开始轮询进度
+   */
+  const startProgressPolling = () => {
+    // 先清除之前的定时器
+    stopProgressPolling()
+    lastProgressCountRef.current = 0
+    
+    // 立即查询一次
+    fetchProgress()
+    
+    // 每 500ms 轮询一次
+    pollingTimerRef.current = setInterval(() => {
+      fetchProgress()
+    }, 500)
+  }
+  
+  /**
+   * 停止轮询进度
+   */
+  const stopProgressPolling = () => {
+    if (pollingTimerRef.current) {
+      clearInterval(pollingTimerRef.current)
+      pollingTimerRef.current = null
+    }
+  }
+  
+  /**
+   * 获取进度
+   */
+  const fetchProgress = async () => {
+    try {
+      const res = await Network.request({ url: '/api/agent/progress' })
+      
+      if (res.data?.code === 200) {
+        const { progress, latest } = res.data.data
+        
+        // 只有进度有更新时才处理
+        if (progress.length > lastProgressCountRef.current) {
+          lastProgressCountRef.current = progress.length
+          
+          // 处理新的进度
+          const newProgress = progress.slice(lastProgressCountRef.current > 0 ? lastProgressCountRef.current - 1 : 0)
+          newProgress.forEach((p: TaskProgressEvent) => handleTaskProgress(p))
+        }
+        
+        // 如果任务完成，停止轮询
+        if (latest?.type === 'complete' || latest?.type === 'error') {
+          stopProgressPolling()
+        }
+      }
+    } catch (err) {
+      console.error('[MindChat] 获取进度失败:', err)
+    }
+  }
+  
+  /**
+   * 处理任务进度
+   */
+  const handleTaskProgress = (progress: TaskProgressEvent) => {
+    console.log('[MindChat] 收到进度:', progress.type, progress.message)
+    
+    switch (progress.type) {
+      case 'start':
+        setCurrentStatus('开始分析任务...')
+        break
+        
+      case 'progress':
+        setCurrentStatus(progress.message)
+        break
+        
+      case 'thinking':
+        setCurrentStatus(`🤔 ${progress.message}`)
+        break
+        
+      case 'action':
+        // 执行工具时，添加新的步骤
+        setCurrentStatus(`⚡ 正在执行: ${progress.data?.displayName || progress.message}`)
+        if (progress.data?.action) {
+          const actionName = progress.data.action
+          const displayName = progress.data.displayName || actionName
+          setAgentSteps(prev => {
+            const newStep: AgentStepDisplay = {
+              action: actionName,
+              displayName: displayName,
+              status: 'running',
+              message: progress.message
+            }
+            // 检查是否已存在相同的 action，避免重复添加
+            const exists = prev.some(s => s.action === newStep.action)
+            if (!exists) {
+              return [...prev, newStep]
+            }
+            return prev
+          })
+        }
+        break
+        
+      case 'observation':
+        // 工具执行完成，更新步骤状态
+        setCurrentStatus(progress.data?.success ? '✅ 执行成功' : '❌ 执行失败')
+        if (progress.data?.action) {
+          setAgentSteps(prev => prev.map(step => 
+            step.action === progress.data!.action 
+              ? { 
+                  ...step, 
+                  status: progress.data!.success ? 'success' : 'failed',
+                  message: progress.data!.message || ''
+                }
+              : step
+          ))
+        }
+        break
+        
+      case 'complete':
+        setCurrentStatus('✅ 任务完成')
+        break
+        
+      case 'error':
+        setCurrentStatus(`❌ ${progress.message}`)
+        break
+    }
+  }
 
   useEffect(() => {
     scrollToBottom()
@@ -332,29 +484,17 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力（直接 HTTP 请求，简单可靠）
+  // Agent 执行 - 分身的核心能力（HTTP 请求 + 轮询进度）
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
       
-      // 根据用户输入判断要执行的操作，提前显示进度
-      const taskLower = content.toLowerCase()
-      let initialStatus = '正在思考...'
+      // 启动进度轮询
+      startProgressPolling()
       
-      if (taskLower.includes('图片') || taskLower.includes('图像') || taskLower.includes('生成图')) {
-        initialStatus = '正在调用图片生成服务...'
-      } else if (taskLower.includes('视频')) {
-        initialStatus = '正在调用视频生成服务...'
-      } else if (taskLower.includes('文章') || taskLower.includes('写') || taskLower.includes('公众号') || taskLower.includes('小红书')) {
-        initialStatus = '正在撰写内容...'
-      } else if (taskLower.includes('任务')) {
-        initialStatus = '正在创建任务...'
-      }
-      
-      setCurrentStatus(initialStatus)
       console.log('[MindChat] 开始执行 Agent 任务:', content)
       
-      // 直接发送 HTTP 请求
+      // 发送 HTTP 请求
       const res = await Network.request({
         url: '/api/agent/execute',
         method: 'POST',
@@ -365,6 +505,9 @@ export default function MindChatPage() {
         }
       })
       
+      // 停止轮询
+      stopProgressPolling()
+      
       console.log('[MindChat] Agent 执行结果:', res.data)
       
       const result = res.data?.data as AgentResult
@@ -372,26 +515,17 @@ export default function MindChatPage() {
         throw new Error('执行结果为空')
       }
       
-      // 提取步骤并展示
-      const steps: AgentStepDisplay[] = result.steps
-        .filter(s => s.action)
-        .map(s => ({
-          action: s.action || '',
-          displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-          status: s.observation?.success ? 'success' : 'failed',
-          message: s.observation?.message || s.observation?.error || ''
-        }))
-      
-      // 快速展示步骤
-      for (let i = 0; i < steps.length; i++) {
-        setCurrentStatus(`执行: ${steps[i].displayName}`)
-        setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
-        await new Promise(resolve => setTimeout(resolve, 150))
-        setAgentSteps(prev => prev.map((s, idx) => 
-          idx === prev.length - 1 ? { ...s, status: steps[i].status } : s
-        ))
-        await new Promise(resolve => setTimeout(resolve, 80))
-      }
+      // 从轮询结果中获取步骤（如果有的话）
+      const steps: AgentStepDisplay[] = agentSteps.length > 0 
+        ? agentSteps 
+        : result.steps
+            .filter(s => s.action)
+            .map(s => ({
+              action: s.action || '',
+              displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+              status: s.observation?.success ? 'success' : 'failed',
+              message: s.observation?.message || s.observation?.error || ''
+            }))
       
       // 提取媒体内容
       const media: MessageMedia[] = []
