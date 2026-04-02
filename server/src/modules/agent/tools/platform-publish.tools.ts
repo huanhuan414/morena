@@ -151,7 +151,9 @@ export class PublishWechatMpTool implements ITool {
         title: params.title,
         cover_url: params.cover_url,
         app_id: appId,
-        user_id: context.userId
+        user_id: context.userId,
+        content_length: params.content?.length || 0,
+        content_preview: params.content?.substring(0, 200)
       })
 
       // 1. 获取 access_token
@@ -230,8 +232,10 @@ export class PublishWechatMpTool implements ITool {
       if (autoImage) {
         try {
           console.log('正在分析文章内容，生成配图...')
+          console.log('原始内容长度:', params.content?.length)
           contentWithImages = await this.addImagesToContent(params.content, params.title)
-          console.log('文章配图完成')
+          console.log('文章配图完成，配图后内容长度:', contentWithImages?.length)
+          console.log('配图后内容预览:', contentWithImages?.substring(0, 500))
         } catch (imgError: any) {
           console.error('文章配图失败，使用原始内容:', imgError.message || imgError)
           // 配图失败不影响发布，使用原始内容
@@ -242,6 +246,8 @@ export class PublishWechatMpTool implements ITool {
       try {
         // 将Markdown内容转换为美化的HTML
         const htmlContent = this.markdownToStyledHtml(contentWithImages, params.title)
+        console.log('HTML内容长度:', htmlContent?.length)
+        console.log('HTML内容预览:', htmlContent?.substring(0, 500))
         
         const draftData = {
           articles: [{
@@ -447,7 +453,10 @@ export class PublishWechatMpTool implements ITool {
       
       // 在开头插入配图
       if (introImageUrl) {
+        console.log('✅ 开头配图生成成功，插入到文章开头')
         result = `![${title}](${introImageUrl})\n\n${result}`
+      } else {
+        console.log('❌ 开头配图生成失败')
       }
       
       // 在章节后插入配图（从后往前插入，避免位置偏移）
@@ -457,15 +466,18 @@ export class PublishWechatMpTool implements ITool {
         if (section) {
           // 在章节内容后插入图片
           const insertPosition = this.findInsertPosition(result, section)
+          console.log(`插入章节配图: 位置=${insertPosition}, 标题=${section.title}`)
           if (insertPosition !== -1) {
             const before = result.substring(0, insertPosition)
             const after = result.substring(insertPosition)
             const imageMarkdown = `\n\n![${section.title}](${url})\n`
             result = before + imageMarkdown + after
+            console.log('✅ 章节配图插入成功')
           }
         }
       }
 
+      console.log('配图完成，最终内容长度:', result.length)
       return result
     } catch (err) {
       console.error('添加配图失败:', err)
