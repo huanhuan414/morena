@@ -770,13 +770,19 @@ ${taskUnderstandingHint}
 
 ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
+【重要规则】
+1. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"等创作类任务时，才调用对应的工具。
+2. 对于普通对话、问候、咨询、关注、点赞等社交互动，直接用Final Answer回复，不要调用任何工具。
+3. 如果用户只是说"关注"、"点赞"、"分享"等，这是普通社交行为，不需要调用工具，直接回复即可。
+4. 不要随意调用generate_image或generate_video工具，除非用户明确要求创作图片或视频。
+
 请思考下一步应该做什么。
 - 如果需要使用工具，按以下格式回复：
   Thought: [你的思考]
   Action: [工具名称]
   Action Input: [JSON格式的参数]
 
-- 如果任务已完成，按以下格式回复：
+- 如果任务已完成或不需要调用工具，按以下格式回复：
   Thought: [你的思考]
   Final Answer: [最终答案]
 
@@ -813,7 +819,18 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 请直接使用 generate_video 工具生成视频，不要使用其他工具。
 参数示例：{ "prompt": "视频内容描述", "duration": 5, "ratio": "9:16" }`)
     }
-    // 3. 微信公众号任务
+    // 3. 社交互动/普通对话（优先检测，避免误判）
+    else if (lowerTask.match(/^关注|点赞|收藏|分享|转发|评论|回复|你好|在吗|嗨|hi|hello|谢谢|感谢|再见|拜拜/) ||
+             lowerTask.match(/帮我关注|帮我点赞|帮我收藏|帮我分享/) ||
+             lowerTask.match(/^.{0,20}$/) && !lowerTask.match(/生成|创作|设计|写|画|发布/)) {
+      hints.push(`【任务解析】这是一个普通对话或社交互动：
+请直接用 Final Answer 回复用户，不要调用任何工具。
+- 如果用户说"关注"，回复"好的，已为你关注该话题/用户"
+- 如果用户说"点赞"，回复"好的，已为你点赞"
+- 如果用户只是问候，友好地回复问候
+- 不要调用 generate_image、generate_video 等工具`)
+    }
+    // 4. 微信公众号任务
     else if (lowerTask.includes('公众号') || lowerTask.includes('微信文章') || lowerTask.includes('微信图文')) {
       hints.push(`【任务解析】这是一个微信公众号内容创作任务：
 1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
