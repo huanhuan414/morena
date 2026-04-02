@@ -44,37 +44,6 @@ export namespace Network {
         })
     }
 
-    /**
-     * 流式请求 - 用于 SSE 场景
-     * 返回 requestTask，支持 onChunkedResponse 监听分块数据
-     */
-    export const streamRequest = (option: {
-        url: string
-        data?: Record<string, any>
-        header?: Record<string, string>
-        onSuccess?: (res: Taro.request.SuccessCallbackResult) => void
-        onFail?: (err: TaroGeneral.CallbackResult) => void
-    }): Taro.RequestTask<any> => {
-        const userId = getUserId()
-        const headers = {
-            'Accept': 'text/event-stream',
-            ...(option.header || {}),
-            ...(userId ? { 'x-user-id': userId } : {})
-        }
-
-        console.log('[Network.streamRequest]', 'GET', option.url, option.data || '')
-
-        return Taro.request({
-            url: createUrl(option.url),
-            method: 'GET',
-            data: option.data,
-            header: headers,
-            enableChunked: true,
-            success: option.onSuccess,
-            fail: option.onFail
-        })
-    }
-
     export const uploadFile: typeof Taro.uploadFile = option => {
         const userId = getUserId()
         const headers = {
