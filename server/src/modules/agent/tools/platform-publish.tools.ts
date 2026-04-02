@@ -95,13 +95,20 @@ export class CheckPlatformConfigTool implements ITool {
 
 /**
  * 发布微信公众号文章工具
+ * 
+ * 注意：当前为模拟模式，真实发布需要满足以下条件：
+ * 1. 已认证的服务号
+ * 2. 服务器IP已加入白名单
+ * 3. 开通了素材管理接口权限
+ * 
+ * TODO: 实现真实API调用
  */
 @Injectable()
 export class PublishWechatMpTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_wechat_mp',
     displayName: '发布公众号文章',
-    description: '发布文章到微信公众号',
+    description: '发布文章到微信公众号（当前为模拟模式，需配置真实API后才能正式发布）',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '文章标题', required: true },
@@ -135,9 +142,8 @@ export class PublishWechatMpTool implements ITool {
         }
       }
 
-      // 实际发布逻辑（这里需要调用微信API）
-      // 由于微信API需要服务器配置，这里返回模拟结果
       const appId = config.config_data?.app_id
+      const appSecret = config.config_data?.app_secret
       
       console.log('Agent工具 - 发布公众号文章:', {
         title: params.title,
@@ -145,22 +151,79 @@ export class PublishWechatMpTool implements ITool {
         user_id: context.userId
       })
 
-      // TODO: 实现真实的微信API调用
-      // 需要获取access_token，然后调用素材管理或发布接口
-      
-      // 模拟成功响应
-      return {
-        success: true,
-        data: {
-          article_id: `mp_${Date.now()}`,
-          title: params.title,
-          url: `https://mp.weixin.qq.com/s/${Date.now()}`,
-          message: '文章已提交到公众号后台，请登录公众平台确认发布'
+      // 尝试调用微信API获取 access_token
+      try {
+        const accessTokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`
+        const tokenRes = await fetch(accessTokenUrl)
+        const tokenData = await tokenRes.json()
+        
+        if (tokenData.errcode) {
+          // API调用失败，返回详细错误
+          const errorMsg = this.getWechatErrorMessage(tokenData.errcode)
+          return {
+            success: false,
+            data: {
+              title: params.title,
+              content: params.content,
+              cover_url: params.cover_url
+            },
+            error: `微信API错误: ${errorMsg}。请检查AppID和AppSecret是否正确，以及服务器IP是否已加入白名单。`
+          }
+        }
+
+        const accessToken = tokenData.access_token
+        
+        // 有 access_token，说明配置正确
+        // 但由于发布接口需要额外权限，暂时只保存内容
+        return {
+          success: true,
+          data: {
+            article_id: `draft_${Date.now()}`,
+            title: params.title,
+            content: params.content,
+            cover_url: params.cover_url,
+            message: '✅ 配置验证成功！\n\n由于微信公众平台限制，自动发布需要：\n1. 已认证的服务号\n2. 开通素材管理接口权限\n\n当前内容已准备好，请手动复制到公众号后台发布，或联系开发者配置真实API。'
+          }
+        }
+      } catch (fetchError: any) {
+        // 网络错误或其他问题
+        console.error('微信API调用失败:', fetchError)
+        return {
+          success: false,
+          data: {
+            title: params.title,
+            content: params.content,
+            cover_url: params.cover_url
+          },
+          error: `API调用失败: ${fetchError.message}。请检查网络连接和服务器配置。`
         }
       }
     } catch (err: any) {
       return { success: false, error: `发布失败: ${err.message}` }
     }
+  }
+
+  /**
+   * 获取微信API错误码对应的中文说明
+   */
+  private getWechatErrorMessage(errcode: number): string {
+    const errorMessages: Record<number, string> = {
+      40001: 'AppSecret错误或不属于该公众号，请检查AppSecret是否正确',
+      40013: '不合法的AppID，请检查AppID是否正确',
+      40164: '服务器IP未加入白名单，请在公众平台后台 → 开发 → 基本配置 → IP白名单中添加服务器IP',
+      41001: '缺少access_token参数',
+      41004: '缺少AppSecret参数',
+      42001: 'access_token已过期，请重试',
+      45011: 'API调用太频繁，请稍后再试',
+      48001: 'api功能未授权，请确认公众号已开通该功能权限（需要认证的服务号）',
+      50002: '用户受限，可能是违规后接口被封禁',
+      87009: '账号安全问题，请根据公众号后台指引操作',
+      87010: '涉嫌违法内容',
+      87011: '涉嫌营销内容',
+      87012: '内容涉及敏感信息',
+      87013: '内容涉及版权问题',
+    }
+    return errorMessages[errcode] || `微信API返回错误码：${errcode}，请查看微信公众平台开发文档`
   }
 }
 
