@@ -474,13 +474,15 @@ export class PublishWechatMpTool implements ITool {
   }
 
   /**
-   * 解析文章章节，提取 h2 标题及其位置
+   * 解析文章章节，提取标题及其位置
+   * 支持 h2、h3、h4 标题，以及按段落分割
    */
   private parseArticleSections(content: string): { title: string; position: number; content: string }[] {
     const sections: { title: string; position: number; content: string }[] = []
     const lines = content.split('\n')
     let currentPosition = 0
     
+    // 1. 先尝试找 h2/h3/h4 标题
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
       const lineLength = line.length + 1 // +1 for newline
@@ -495,7 +497,50 @@ export class PublishWechatMpTool implements ITool {
         })
       }
       
+      // 匹配 h3 标题 (### 标题)
+      const h3Match = line.match(/^###\s+(.+)$/)
+      if (h3Match) {
+        sections.push({
+          title: h3Match[1].trim(),
+          position: currentPosition,
+          content: line
+        })
+      }
+      
+      // 匹配 h4 标题 (#### 标题)
+      const h4Match = line.match(/^####\s+(.+)$/)
+      if (h4Match) {
+        sections.push({
+          title: h4Match[1].trim(),
+          position: currentPosition,
+          content: line
+        })
+      }
+      
       currentPosition += lineLength
+    }
+    
+    // 2. 如果没有找到任何标题，按段落分割
+    if (sections.length === 0) {
+      console.log('未发现标题格式，按段落分割生成配图...')
+      const paragraphs = content.split(/\n\n+/)
+      let pos = 0
+      
+      // 取前3个非空段落
+      const validParagraphs = paragraphs.filter(p => p.trim().length > 20)
+      for (let i = 0; i < Math.min(validParagraphs.length, 3); i++) {
+        const p = validParagraphs[i]
+        // 从段落中提取前30个字符作为"标题"
+        const pseudoTitle = p.replace(/[#*`>\-\n]/g, '').trim().substring(0, 30)
+        
+        sections.push({
+          title: pseudoTitle + (p.length > 30 ? '...' : ''),
+          position: pos,
+          content: p
+        })
+        
+        pos += p.length + 2 // +2 for \n\n
+      }
     }
     
     return sections
@@ -505,30 +550,37 @@ export class PublishWechatMpTool implements ITool {
    * 找到章节内容后的插入位置（章节内容结束后的第一个空行）
    */
   private findInsertPosition(content: string, section: { title: string; position: number; content: string }): number {
-    const lines = content.split('\n')
-    let currentPos = 0
-    let foundSection = false
+    // 找到章节标题所在位置
+    const sectionIndex = content.indexOf(section.content, section.position)
+    if (sectionIndex === -1) {
+      // 如果找不到精确匹配，尝试在内容中找到段落结束位置
+      const paragraphEnd = content.indexOf('\n\n', section.position)
+      return paragraphEnd !== -1 ? paragraphEnd : content.length
+    }
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      
-      if (currentPos === section.position) {
-        foundSection = true
-      }
-      
-      if (foundSection) {
-        // 找到下一个 h2 或连续空行，在此处插入图片
-        const nextLine = lines[i + 1] || ''
-        if (line.trim() === '' && nextLine.trim() !== '' && !nextLine.startsWith('#')) {
-          return currentPos
+    // 从章节标题位置开始，找到段落结束位置
+    let pos = sectionIndex + section.content.length
+    
+    // 跳过当前行剩余内容
+    const nextNewline = content.indexOf('\n', pos)
+    if (nextNewline !== -1) {
+      pos = nextNewline + 1
+    }
+    
+    // 找到下一个空行（段落结束）
+    while (pos < content.length) {
+      if (content[pos] === '\n') {
+        // 找到空行
+        if (pos + 1 < content.length && content[pos + 1] === '\n') {
+          return pos
         }
-        // 如果遇到下一个章节标题，在之前插入
-        if (i > 0 && lines[i].startsWith('##') && currentPos !== section.position) {
-          return currentPos
+        // 或者遇到下一个标题
+        const remaining = content.substring(pos + 1)
+        if (remaining.match(/^(#{1,6}\s)/)) {
+          return pos
         }
       }
-      
-      currentPos += line.length + 1
+      pos++
     }
     
     // 如果没找到合适位置，在文件末尾插入
