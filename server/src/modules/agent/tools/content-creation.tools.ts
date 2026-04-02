@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common'
-import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, S3Storage } from 'coze-coding-dev-sdk'
 import { ITool, ToolContext, ToolDefinition } from './tool.interface'
 import { ToolResult } from '../agent.types'
 
@@ -489,6 +489,19 @@ export class GenerateVideoTool implements ITool {
     }
   }
 
+  private storage: S3Storage
+
+  constructor() {
+    // 初始化火山引擎 TOS 存储
+    this.storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      accessKey: process.env.VOLC_ACCESS_KEY || '',
+      secretKey: process.env.VOLC_SECRET_KEY || '',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
+      region: 'cn-beijing',
+    })
+  }
+
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
       const config = new Config()
@@ -499,7 +512,7 @@ export class GenerateVideoTool implements ITool {
       
       const content = [{ type: 'text' as const, text: params.prompt }]
       
-      // 设置最大等待时间为 300 秒（5分钟）
+      // 调用视频生成 API
       const response = await client.videoGeneration(content, {
         model: 'doubao-seedance-1-5-pro-251215',
         duration: params.duration || 5,
@@ -509,25 +522,53 @@ export class GenerateVideoTool implements ITool {
         watermark: false
       })
       
-      if (response.videoUrl) {
-        console.log('Agent工具 - 视频生成成功:', response.videoUrl)
+      const originalUrl = response.videoUrl
+      
+      if (!originalUrl) {
+        const errorMsg = response.response?.error_message || '视频生成失败'
+        console.error('Agent工具 - 视频生成失败:', errorMsg)
+        return { success: false, error: `视频生成失败: ${errorMsg}` }
+      }
+      
+      console.log('Agent工具 - 视频生成成功，原始URL:', originalUrl)
+      
+      // 上传到火山引擎 TOS CDN，确保 URL 长期有效
+      try {
+        console.log('Agent工具 - 正在上传视频到 CDN...')
+        const videoKey = await this.storage.uploadFromUrl({ url: originalUrl, timeout: 60000 })
+        console.log('Agent工具 - CDN 上传成功, key:', videoKey)
+        
+        // 生成 CDN 访问 URL（30天有效期）
+        const cdnUrl = await this.storage.generatePresignedUrl({
+          key: videoKey,
+          expireTime: 86400 * 30 // 30天有效期
+        })
+        console.log('Agent工具 - CDN URL:', cdnUrl)
+        
         return {
           success: true,
           data: {
-            video_url: response.videoUrl,
+            video_url: cdnUrl,
+            video_key: videoKey,
             prompt: params.prompt,
             duration: params.duration || 5,
             ratio: params.ratio || '9:16',
             message: `视频生成成功！时长: ${params.duration || 5}秒`
           }
         }
-      } else if (response.response?.status === 'failed') {
-        const errorMsg = response.response.error_message || '视频生成失败'
-        console.error('Agent工具 - 视频生成失败:', errorMsg)
-        return { success: false, error: `视频生成失败: ${errorMsg}` }
-      } else {
-        console.error('Agent工具 - 视频生成异常: 未返回视频URL')
-        return { success: false, error: '视频生成失败，未返回视频URL' }
+      } catch (cdnErr: any) {
+        console.error('Agent工具 - CDN 上传失败，使用原始URL:', cdnErr)
+        // CDN 上传失败时，返回原始 URL（可能会有过期问题）
+        return {
+          success: true,
+          data: {
+            video_url: originalUrl,
+            prompt: params.prompt,
+            duration: params.duration || 5,
+            ratio: params.ratio || '9:16',
+            message: `视频生成成功！时长: ${params.duration || 5}秒（注意：视频链接可能在一段时间后过期）`
+          }
+        }
       }
     } catch (err: any) {
       console.error('Agent工具 - 视频生成异常:', err)

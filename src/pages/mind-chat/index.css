@@ -584,12 +584,16 @@
 
 .media-item.video {
   width: 100%;
+  background: #000;
+  border-radius: 16rpx;
+  overflow: hidden;
 }
 
 .media-video {
   width: 100%;
   height: 400rpx;
   display: block;
+  background: #000;
 }
 
 .media-item.article {

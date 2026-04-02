@@ -1168,24 +1168,36 @@ export default function MindChatPage() {
                 if (media.type === 'video') {
                   // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
                   const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
-                  
+                  const videoUrl = media.url || ''
+
                   return (
                     <View key={idx} className="media-item video">
                       {isH5 ? (
-                        <video 
-                          src={media.url || ''} 
+                        <video
+                          src={videoUrl}
                           className="media-video"
                           controls
                           playsInline
-                          style={{ width: '100%', height: '200px', borderRadius: '8px' }}
+                          webkit-playsinline="true"
+                          x5-playsinline="true"
+                          style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
                         />
                       ) : (
-                        <Video 
-                          src={media.url || ''} 
+                        <Video
+                          src={videoUrl}
                           className="media-video"
                           controls
                           showFullscreenBtn
                           showPlayBtn
+                          showCenterPlayBtn
+                          enableProgressGesture
+                          objectFit="contain"
+                          style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
+                          onError={(e) => {
+                            console.error('小程序视频播放错误:', e)
+                            Taro.showToast({ title: '视频加载失败', icon: 'none' })
+                          }}
+                          onPlay={() => console.log('视频开始播放')}
                         />
                       )}
                     </View>
