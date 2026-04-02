@@ -183,25 +183,44 @@ export class PublishWechatMpTool implements ITool {
 
       // 2. 处理封面图片
       let mediaId: string | undefined
+      let usedCoverUrl: string | undefined // 记录实际使用的封面 URL
+      
       try {
         if (params.cover_url && this.isValidImageUrl(params.cover_url)) {
-          console.log('正在上传封面图片:', params.cover_url)
-          mediaId = await this.uploadImage(accessToken, params.cover_url)
-          console.log('封面图片上传成功, media_id:', mediaId)
+          console.log('正在上传封面图片:', params.cover_url.substring(0, 100))
+          
+          // 尝试上传用户指定的封面图（带重试）
+          for (let retry = 0; retry < 3; retry++) {
+            try {
+              mediaId = await this.uploadImage(accessToken, params.cover_url)
+              usedCoverUrl = params.cover_url
+              console.log('封面图片上传成功, media_id:', mediaId)
+              break
+            } catch (uploadErr: any) {
+              console.log(`封面图上传第 ${retry + 1} 次失败:`, uploadErr.message)
+              if (retry < 2) {
+                await new Promise(resolve => setTimeout(resolve, 500))
+              }
+            }
+          }
+          
+          if (!mediaId) {
+            console.error('封面图上传失败，使用用户指定的封面图')
+          }
         }
         
-        // 如果没有封面图片或上传失败，根据标题自动生成
+        // 如果没有传递封面图或上传失败，根据标题自动生成
         if (!mediaId) {
           console.log('正在根据标题生成封面图片...')
           const generatedCoverUrl = await this.generateCoverImage(params.title)
           if (generatedCoverUrl) {
             mediaId = await this.uploadImage(accessToken, generatedCoverUrl)
+            usedCoverUrl = generatedCoverUrl
             console.log('自动生成封面上传成功, media_id:', mediaId)
           }
         }
       } catch (coverError: any) {
         console.error('处理封面图片失败:', coverError.message || coverError)
-        // 继续尝试生成默认封面
       }
 
       // 最终尝试：生成一个简单的默认封面
@@ -211,6 +230,7 @@ export class PublishWechatMpTool implements ITool {
           const defaultCoverUrl = await this.generateDefaultCover(params.title)
           if (defaultCoverUrl) {
             mediaId = await this.uploadImage(accessToken, defaultCoverUrl)
+            usedCoverUrl = defaultCoverUrl
             console.log('默认封面上传成功, media_id:', mediaId)
           }
         } catch (finalError: any) {
@@ -295,6 +315,8 @@ export class PublishWechatMpTool implements ITool {
             title: params.title,
             // 返回带配图的文章内容（使用 TOS URL，前端可显示）
             content: contentWithImages,
+            // 返回实际使用的封面图 URL
+            cover_url: usedCoverUrl,
             message: `✅ 文章已成功保存到公众号草稿箱！\n\n请前往微信公众平台 → 素材管理 → 草稿箱 查看《${params.title}》并进行发布。`
           }
         }
