@@ -779,10 +779,10 @@ export default function MindChatPage() {
     _originalContent: string
   ) => {
     // 构建回复消息
-    let replyContent = result.finalAnswer
+    let replyContent = result.finalAnswer || ''
     
     // 当有媒体内容时，清理 finalAnswer 中的链接文本
-    if (media.length > 0) {
+    if (media.length > 0 && replyContent) {
       replyContent = replyContent.replace(/https?:\/\/[^\s，。！？]+/g, '')
       replyContent = replyContent
         .replace(/[，,]?\s*(图片|文章|视频)?链接为[：:]\s*/gi, '')
