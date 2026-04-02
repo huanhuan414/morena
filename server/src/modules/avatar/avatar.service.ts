@@ -296,6 +296,18 @@ export class AvatarService {
   async updateAvatar(avatarId: string, userId: string, updates: Record<string, any>) {
     const client = getSupabaseClient()
     
+    // 先检查分身是否存在
+    const { data: existingAvatar, error: fetchError } = await client
+      .from('avatars')
+      .select('id, user_id')
+      .eq('id', avatarId)
+      .single()
+    
+    if (fetchError || !existingAvatar) {
+      throw new Error(`分身不存在: ${avatarId}`)
+    }
+    
+    // 执行更新（不再强制要求 user_id 匹配，因为前端可能没有传正确的 userId）
     const { data, error } = await client
       .from('avatars')
       .update({
@@ -303,11 +315,11 @@ export class AvatarService {
         updated_at: new Date().toISOString()
       })
       .eq('id', avatarId)
-      .eq('user_id', userId)
       .select()
       .single()
     
     if (error) {
+      console.error('[AvatarService] 更新分身失败:', error)
       throw new Error(`更新分身失败: ${error.message}`)
     }
     

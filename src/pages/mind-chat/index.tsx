@@ -190,6 +190,14 @@ export default function MindChatPage() {
     styleMatch: 0
   })
   
+  // 学习动画状态
+  const [showLearningEffect, setShowLearningEffect] = useState(false)
+  const [learningProgress, setLearningProgress] = useState<{
+    oldCount: number
+    newCount: number
+    expGained: number
+  } | null>(null)
+  
   // Agent 实时状态（每个分身都是 Agent）
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
@@ -447,52 +455,58 @@ export default function MindChatPage() {
     }
   }
 
-  const fetchLearningStats = async () => {
+  const fetchLearningStats = async (showEffect: boolean = false) => {
     try {
-      // 如果有选中的分身，获取该分身的学习数据
-      if (avatar?.id) {
-        const res = await Network.request({ url: `/api/avatar/${avatar.id}/learning` })
-        if (res.data?.code === 200 && res.data.data) {
-          const { learning, metrics } = res.data.data
-          if (learning && metrics) {
-            setLearningStats({
-              messageCount: learning.messageCount || 0,
-              learningDays: metrics.learningDays || 1,
-              masteryLevel: metrics.masteryLevel || 0,
-              styleMatch: metrics.styleMatch || 0,
-              avgMessageLength: learning.avgMessageLength || 0,
-              toneProfile: learning.toneProfile,
-              personalityTraits: learning.personalityTraits,
-              communicationStyle: learning.communicationStyle,
-              interests: learning.interests,
-              commonPhrases: learning.commonPhrases
-            })
-            return
-          }
+      // 获取当前分身ID（优先使用当前选中的分身）
+      let targetAvatarId = avatar?.id
+      
+      // 如果没有选中的分身，获取用户第一个分身
+      if (!targetAvatarId) {
+        const res = await Network.request({ url: '/api/avatar' })
+        if (res.data?.code === 200 && res.data.data?.length > 0) {
+          targetAvatarId = res.data.data[0].id
+          setAvatar(res.data.data[0])
         }
       }
       
-      // 兜底：获取用户第一个分身的学习数据
-      const res = await Network.request({ url: '/api/avatar' })
-      if (res.data?.code === 200 && res.data.data?.length > 0) {
-        const userAvatar = res.data.data[0]
-        const learningRes = await Network.request({ url: `/api/avatar/${userAvatar.id}/learning` })
-        if (learningRes.data?.code === 200 && learningRes.data.data) {
-          const { learning, metrics } = learningRes.data.data
-          if (learning && metrics) {
-            setLearningStats({
-              messageCount: learning.messageCount || 0,
-              learningDays: metrics.learningDays || 1,
-              masteryLevel: metrics.masteryLevel || 0,
-              styleMatch: metrics.styleMatch || 0,
-              avgMessageLength: learning.avgMessageLength || 0,
-              toneProfile: learning.toneProfile,
-              personalityTraits: learning.personalityTraits,
-              communicationStyle: learning.communicationStyle,
-              interests: learning.interests,
-              commonPhrases: learning.commonPhrases
-            })
+      if (!targetAvatarId) return
+      
+      const oldStats = { ...learningStats }
+      
+      const res = await Network.request({ url: `/api/avatar/${targetAvatarId}/learning` })
+      if (res.data?.code === 200 && res.data.data) {
+        const { learning, metrics } = res.data.data
+        if (learning && metrics) {
+          const newStats = {
+            messageCount: learning.messageCount || 0,
+            learningDays: metrics.learningDays || 1,
+            masteryLevel: metrics.masteryLevel || 0,
+            styleMatch: metrics.styleMatch || 0,
+            avgMessageLength: learning.avgMessageLength || 0,
+            toneProfile: learning.toneProfile,
+            personalityTraits: learning.personalityTraits,
+            communicationStyle: learning.communicationStyle,
+            interests: learning.interests,
+            commonPhrases: learning.commonPhrases
           }
+          
+          // 如果显示学习特效且有消息数量变化
+          if (showEffect && newStats.messageCount > oldStats.messageCount) {
+            setLearningProgress({
+              oldCount: oldStats.messageCount,
+              newCount: newStats.messageCount,
+              expGained: 10 // 每条消息获得10经验
+            })
+            setShowLearningEffect(true)
+            
+            // 3秒后隐藏特效
+            setTimeout(() => {
+              setShowLearningEffect(false)
+              setLearningProgress(null)
+            }, 3000)
+          }
+          
+          setLearningStats(newStats)
         }
       }
     } catch (error) {
@@ -1088,7 +1102,8 @@ export default function MindChatPage() {
         setMessages(prev => [...prev, aiMessage])
         scrollToBottom()
         fetchConversations()
-        fetchLearningStats()
+        // 对话完成后刷新学习数据并显示学习特效
+        fetchLearningStats(true)
       }
     } catch (error) {
       // 最后的降级方案
@@ -1585,6 +1600,30 @@ export default function MindChatPage() {
           </View>
         )}
       </View>
+      
+      {/* 学习特效提示 */}
+      {showLearningEffect && learningProgress && (
+        <View className="learning-effect-overlay">
+          <View className="learning-effect-card">
+            <View className="learning-effect-icon">
+              <Brain size={32} color="#00f5ff" />
+            </View>
+            <Text className="learning-effect-title">正在学习你的风格...</Text>
+            <Text className="learning-effect-desc">
+              对话数：{learningProgress.oldCount} → {learningProgress.newCount}
+            </Text>
+            <View className="learning-effect-exp">
+              <Text className="exp-text">+{learningProgress.expGained} 经验</Text>
+            </View>
+            <View className="learning-effect-progress">
+              <View className="learning-progress-bar">
+                <View className="learning-progress-fill" style={{ width: `${Math.min(100, learningProgress.newCount * 5)}%` }} />
+              </View>
+              <Text className="learning-progress-text">掌握度 {Math.min(100, learningProgress.newCount * 5)}%</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 历史记录抽屉 */}
       {showHistory && (
