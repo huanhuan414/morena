@@ -9,6 +9,82 @@ import { ITool, ToolContext, ToolDefinition } from './tool.interface'
 import { ToolResult } from '../agent.types'
 
 /**
+ * 根据文章内容自动添加配图
+ * 提取为独立函数，供多个工具使用
+ */
+async function addImagesToArticleContent(content: string, title: string): Promise<string> {
+  try {
+    const config = new Config()
+    const imageClient = new ImageGenerationClient(config)
+    
+    // 生成文章开头封面图
+    const coverPrompt = `${title}，文章配图，简约现代风格，专业设计`
+    let contentWithImages = ''
+    
+    // 生成开头配图
+    console.log('正在生成文章开头配图...')
+    const coverResponse = await imageClient.generate({
+      prompt: `${coverPrompt}, social media style, clean layout`,
+      size: '1K',
+      watermark: false
+    })
+    const coverHelper = imageClient.getResponseHelper(coverResponse)
+    
+    if (coverHelper.success && coverHelper.imageUrls.length > 0) {
+      const coverUrl = coverHelper.imageUrls[0]
+      contentWithImages = `![${title}](${coverUrl})\n\n`
+      console.log('开头配图生成成功')
+    }
+    
+    contentWithImages += content
+    
+    // 按段落分割，在关键位置插入配图
+    const paragraphs = content.split('\n\n').filter(p => p.trim())
+    const imagePositions: number[] = []
+    
+    // 每隔3-5个段落插入一张配图
+    let currentPos = 0
+    for (let i = 0; i < paragraphs.length; i++) {
+      currentPos += paragraphs[i].length + 2
+      if ((i + 1) % 4 === 0 && imagePositions.length < 3) {
+        imagePositions.push(currentPos)
+      }
+    }
+    
+    // 为每个位置生成配图
+    for (let i = imagePositions.length - 1; i >= 0; i--) {
+      const pos = imagePositions[i]
+      const nearbyText = content.substring(Math.max(0, pos - 100), pos + 100)
+      
+      try {
+        console.log(`正在生成第 ${i + 1} 张章节配图...`)
+        const imgResponse = await imageClient.generate({
+          prompt: `文章配图，抽象概念图，简约现代风格，${nearbyText.substring(0, 50)}`,
+          size: '1K',
+          watermark: false
+        })
+        const imgHelper = imageClient.getResponseHelper(imgResponse)
+        
+        if (imgHelper.success && imgHelper.imageUrls.length > 0) {
+          const imgUrl = imgHelper.imageUrls[0]
+          const imageMarkdown = `\n\n![文章配图](${imgUrl})\n\n`
+          contentWithImages = contentWithImages.slice(0, pos) + imageMarkdown + contentWithImages.slice(pos)
+          console.log(`第 ${i + 1} 张配图插入成功`)
+        }
+      } catch (err) {
+        console.error(`生成第 ${i + 1} 张配图失败:`, err)
+      }
+    }
+    
+    console.log(`文章配图完成，共生成配图`)
+    return contentWithImages
+  } catch (err) {
+    console.error('文章配图失败:', err)
+    return content // 失败时返回原始内容
+  }
+}
+
+/**
  * 撰写文章工具
  */
 @Injectable()
@@ -199,10 +275,15 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
         }
       }
 
+      // 自动添加文章配图
+      console.log('正在为文章添加配图...')
+      const contentWithImages = await addImagesToArticleContent(mainContent, titles[0] || params.topic)
+      console.log('配图后内容长度:', contentWithImages.length)
+
       // 构建发布参数模板，方便 Agent 直接使用
       const publishParams = {
         title: titles[0] || params.topic,
-        content: mainContent,
+        content: contentWithImages, // 使用带配图的内容
         cover_url: coverImageUrl,
         digest: mainContent.substring(0, 54).replace(/\n/g, ' ') + '...'
       }
@@ -212,7 +293,7 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
         data: {
           title: titles[0] || params.topic,
           title_options: titles,
-          content: mainContent,
+          content: contentWithImages, // 返回带配图的内容
           cover_image_url: coverImageUrl,
           cover_prompt: coverPrompt,
           tags,

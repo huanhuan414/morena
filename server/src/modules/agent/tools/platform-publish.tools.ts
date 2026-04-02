@@ -249,7 +249,12 @@ export class PublishWechatMpTool implements ITool {
       let contentWithImages = params.content
       const autoImage = params.auto_image !== false // 默认开启自动配图
       
-      if (autoImage) {
+      // 检查内容是否已经有配图（避免重复配图）
+      const existingImageCount = (params.content?.match(/!\[.*?\]\(.*?\)/g) || []).length
+      console.log('已有配图数量:', existingImageCount)
+      
+      if (autoImage && existingImageCount < 2) {
+        // 只有当配图少于2张时才添加新配图
         try {
           console.log('正在分析文章内容，生成配图...')
           console.log('原始内容长度:', params.content?.length)
@@ -261,6 +266,8 @@ export class PublishWechatMpTool implements ITool {
           console.error('文章配图失败，使用原始内容:', imgError.message || imgError)
           // 配图失败不影响发布，使用原始内容
         }
+      } else if (existingImageCount >= 2) {
+        console.log('文章已有足够的配图，跳过自动配图')
       }
 
       // 4. 创建草稿
