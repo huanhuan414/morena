@@ -34,6 +34,33 @@ const generateTTProjectConfig = (outputRoot: string) => {
   );
 };
 
+// 生成微信小程序项目配置
+const generateWeappProjectConfig = (outputRoot: string) => {
+  const config = {
+    miniprogramRoot: './',
+    projectname: 'coze-mini-program',
+    description: 'Morina AI Platform',
+    appid: process.env.TARO_APP_WEAPP_APPID || 'touristappid',
+    setting: {
+      urlCheck: false,
+      es6: false,
+      enhance: false,
+      compileHotReLoad: false,
+      postcss: false,
+      minified: false,
+    },
+    compileType: 'miniprogram',
+  };
+  const outputDir = path.resolve(__dirname, '..', outputRoot);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  fs.writeFileSync(
+    path.resolve(outputDir, 'project.config.json'),
+    JSON.stringify(config, null, 2),
+  );
+};
+
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'vite'>(async (merge, _env) => {
   const outputRootMap: Record<string, string> = {
@@ -154,6 +181,16 @@ export default defineConfig<'vite'>(async (merge, _env) => {
                 name: 'generate-tt-project-config',
                 closeBundle() {
                   generateTTProjectConfig(outputRoot);
+                },
+              },
+            ]
+          : []),
+        ...(process.env.TARO_ENV === 'weapp'
+          ? [
+              {
+                name: 'generate-weapp-project-config',
+                closeBundle() {
+                  generateWeappProjectConfig(outputRoot);
                 },
               },
             ]
