@@ -577,22 +577,38 @@ export default function MindChatPage() {
         }
       })
       
-      console.log('[MindChat] 任务已提交:', res.data)
+      console.log('[MindChat] 任务已提交，完整响应:', JSON.stringify(res))
+      console.log('[MindChat] 响应数据:', JSON.stringify(res.data))
       
-      const taskId = res.data?.data?.taskId
+      // 兼容不同的响应结构
+      const responseData = res.data?.data || res.data
+      const taskId = responseData?.taskId || responseData?.task_id
+      
+      console.log('[MindChat] 解析的 taskId:', taskId)
+      
       if (!taskId) {
-        throw new Error('任务提交失败')
+        console.error('[MindChat] taskId 获取失败，响应结构:', {
+          'res.data': res.data,
+          'res.data?.data': res.data?.data,
+          'res.statusCode': res.statusCode
+        })
+        throw new Error('任务提交失败：无法获取 taskId')
       }
       
       // 启动结果轮询
       startResultPolling(taskId, content)
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('[MindChat] Agent 执行失败:', err)
+      console.error('[MindChat] 错误详情:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      })
       setLoading(false)
       loadingRef.current = false
       setCurrentStatus('')
-      showToast({ title: '执行失败，请重试', icon: 'none' })
+      showToast({ title: err.message || '执行失败，请重试', icon: 'none' })
     }
   }
   

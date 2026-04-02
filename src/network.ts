@@ -45,10 +45,16 @@ export namespace Network {
 
         console.log('[Network.request]', option.method || 'GET', option.url, option.data || '')
 
+        // 小程序端设置更长的超时时间（5分钟）
+        const timeout = process.env.TARO_ENV === 'h5' 
+            ? (option.timeout || 60000)  // H5 默认 60 秒
+            : (option.timeout || 300000)  // 小程序默认 5 分钟
+
         return Taro.request({
             ...option,
             url: createUrl(option.url),
             header: headers,
+            timeout
         })
     }
 
@@ -61,10 +67,16 @@ export namespace Network {
 
         console.log('[Network.uploadFile]', option.url, option.filePath)
 
+        // 小程序端设置更长的超时时间（5分钟）
+        const timeout = process.env.TARO_ENV === 'h5' 
+            ? (option.timeout || 60000)
+            : (option.timeout || 300000)
+
         return Taro.uploadFile({
             ...option,
             url: createUrl(option.url),
             header: headers,
+            timeout
         })
     }
 
@@ -75,10 +87,16 @@ export namespace Network {
             ...(userId ? { 'x-user-id': userId } : {})
         }
 
+        // 小程序端设置更长的超时时间（5分钟）
+        const timeout = process.env.TARO_ENV === 'h5' 
+            ? (option.timeout || 60000)
+            : (option.timeout || 300000)
+
         return Taro.downloadFile({
             ...option,
             url: createUrl(option.url),
             header: headers,
+            timeout
         })
     }
 }
