@@ -179,7 +179,7 @@ export class PublishWechatMpTool implements ITool {
         }
       }
 
-      // 2. 上传封面图片（如果有）
+      // 2. 上传封面图片（必须有封面才能创建草稿）
       let mediaId: string | undefined
       if (params.cover_url) {
         try {
@@ -188,7 +188,21 @@ export class PublishWechatMpTool implements ITool {
           console.log('封面图片上传成功, media_id:', mediaId)
         } catch (uploadError: any) {
           console.error('上传封面图片失败:', uploadError)
-          // 封面上传失败不影响文章创建，可以继续
+        }
+      }
+      
+      // 如果没有封面图片，生成一个默认封面
+      if (!mediaId) {
+        try {
+          console.log('正在生成默认封面图片...')
+          mediaId = await this.generateDefaultCover(accessToken, params.title)
+          console.log('默认封面生成成功, media_id:', mediaId)
+        } catch (genError: any) {
+          console.error('生成默认封面失败:', genError)
+          return {
+            success: false,
+            error: '需要封面图片才能发布文章，请先生成封面图片或提供封面URL'
+          }
         }
       }
 
@@ -203,7 +217,7 @@ export class PublishWechatMpTool implements ITool {
             author: '莫瑞娜AI助手',
             digest: params.digest || params.content.substring(0, 120),
             content: htmlContent,
-            thumb_media_id: mediaId || '',
+            thumb_media_id: mediaId,
             need_open_comment: 0,
             only_fans_can_comment: 0
           }]
@@ -295,6 +309,65 @@ export class PublishWechatMpTool implements ITool {
     }
 
     return uploadResult.media_id
+  }
+
+  /**
+   * 生成默认封面图片并上传
+   * 创建一个简单的渐变色封面图片
+   */
+  private async generateDefaultCover(accessToken: string, title: string): Promise<string> {
+    // 创建一个简单的PNG图片 (900x383 是微信公众号推荐封面尺寸)
+    // 使用纯色背景 + 文字的简单图片
+    const width = 900
+    const height = 383
+    
+    // 生成一个简单的PNG文件（最简单的1x1像素PNG，然后微信会处理）
+    // 实际上我们用一个预设的在线封面图片
+    const defaultCoverUrl = 'https://picsum.photos/900/383'
+    
+    try {
+      // 下载默认封面
+      const imageRes = await fetch(defaultCoverUrl)
+      if (!imageRes.ok) {
+        throw new Error('下载默认封面失败')
+      }
+      const imageBuffer = await imageRes.arrayBuffer()
+      
+      // 上传到微信
+      const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=image`
+      
+      const boundary = `----WebKitFormBoundary${Date.now().toString(16)}`
+      const formData: string[] = []
+      
+      formData.push(`--${boundary}\r\n`)
+      formData.push(`Content-Disposition: form-data; name="media"; filename="cover.jpg"\r\n`)
+      formData.push(`Content-Type: image/jpeg\r\n\r\n`)
+      
+      const formDataBuffer = Buffer.concat([
+        Buffer.from(formData.join(''), 'utf-8'),
+        Buffer.from(imageBuffer),
+        Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+      ])
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`
+        },
+        body: formDataBuffer
+      })
+
+      const uploadResult = await uploadRes.json()
+      
+      if (uploadResult.errcode) {
+        throw new Error(this.getWechatErrorMessage(uploadResult.errcode))
+      }
+
+      return uploadResult.media_id
+    } catch (err: any) {
+      console.error('生成默认封面失败:', err)
+      throw err
+    }
   }
 
   /**
