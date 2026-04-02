@@ -100,21 +100,23 @@ export class CheckPlatformConfigTool implements ITool {
  * 实现完整的微信公众号发布流程：
  * 1. 获取 access_token
  * 2. 上传封面图片（支持外部URL和自动生成）
- * 3. 创建草稿
- * 4. 发布草稿
+ * 3. 根据文章内容自动生成配图
+ * 4. 创建草稿
+ * 5. 发布草稿
  */
 @Injectable()
 export class PublishWechatMpTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_wechat_mp',
     displayName: '发布公众号文章',
-    description: '发布文章到微信公众号素材库',
+    description: '发布文章到微信公众号素材库，支持根据内容自动配图',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '文章标题', required: true },
       content: { type: 'string', description: '文章内容（Markdown或HTML格式）', required: true },
       cover_url: { type: 'string', description: '封面图片URL（可选，不传则根据标题自动生成）' },
-      digest: { type: 'string', description: '摘要' }
+      digest: { type: 'string', description: '摘要' },
+      auto_image: { type: 'boolean', description: '是否自动配图（默认true）' }
     },
     requiresPlatform: 'wechat_mp'
   }
@@ -221,10 +223,25 @@ export class PublishWechatMpTool implements ITool {
         }
       }
 
-      // 3. 创建草稿
+      // 3. 根据文章内容生成配图
+      let contentWithImages = params.content
+      const autoImage = params.auto_image !== false // 默认开启自动配图
+      
+      if (autoImage) {
+        try {
+          console.log('正在分析文章内容，生成配图...')
+          contentWithImages = await this.addImagesToContent(params.content, params.title)
+          console.log('文章配图完成')
+        } catch (imgError: any) {
+          console.error('文章配图失败，使用原始内容:', imgError.message || imgError)
+          // 配图失败不影响发布，使用原始内容
+        }
+      }
+
+      // 4. 创建草稿
       try {
         // 将Markdown内容转换为美化的HTML
-        const htmlContent = this.markdownToStyledHtml(params.content, params.title)
+        const htmlContent = this.markdownToStyledHtml(contentWithImages, params.title)
         
         const draftData = {
           articles: [{
@@ -366,6 +383,171 @@ export class PublishWechatMpTool implements ITool {
     } catch (err) {
       console.error('生成默认封面失败:', err)
       return null
+    }
+  }
+
+  /**
+   * 根据文章内容自动添加配图
+   * 在文章开头和每个主要章节后插入配图
+   */
+  private async addImagesToContent(content: string, title: string): Promise<string> {
+    try {
+      const config = new Config()
+      const imageClient = new ImageGenerationClient(config)
+      
+      // 1. 生成文章开头配图
+      console.log('生成文章开头配图...')
+      const introImagePrompt = this.generateImagePrompt(title, 'intro')
+      const introImageResponse = await imageClient.generate({
+        prompt: introImagePrompt,
+        size: '1K',
+        watermark: false
+      })
+      const introHelper = imageClient.getResponseHelper(introImageResponse)
+      const introImageUrl = introHelper.success && introHelper.imageUrls.length > 0 
+        ? introHelper.imageUrls[0] 
+        : null
+
+      // 2. 分析文章结构，找到所有 h2 标题
+      const sections = this.parseArticleSections(content)
+      console.log(`文章共发现 ${sections.length} 个章节`)
+      
+      // 3. 为每个章节生成配图（最多3张）
+      const sectionImages: { position: number; url: string }[] = []
+      const maxImages = Math.min(sections.length, 3)
+      
+      for (let i = 0; i < maxImages; i++) {
+        const section = sections[i]
+        console.log(`生成章节 ${i + 1} 配图: ${section.title}`)
+        
+        try {
+          const sectionPrompt = this.generateImagePrompt(section.title, 'section', title)
+          const sectionResponse = await imageClient.generate({
+            prompt: sectionPrompt,
+            size: '1K',
+            watermark: false
+          })
+          const sectionHelper = imageClient.getResponseHelper(sectionResponse)
+          
+          if (sectionHelper.success && sectionHelper.imageUrls.length > 0) {
+            sectionImages.push({
+              position: section.position,
+              url: sectionHelper.imageUrls[0]
+            })
+            // 每张图生成间隔一下，避免频率限制
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        } catch (sectionErr) {
+          console.error(`章节 ${i + 1} 配图生成失败:`, sectionErr)
+        }
+      }
+
+      // 4. 将图片插入到文章中
+      let result = content
+      
+      // 在开头插入配图
+      if (introImageUrl) {
+        result = `![${title}](${introImageUrl})\n\n${result}`
+      }
+      
+      // 在章节后插入配图（从后往前插入，避免位置偏移）
+      for (let i = sectionImages.length - 1; i >= 0; i--) {
+        const { position, url } = sectionImages[i]
+        const section = sections.find(s => s.position === position)
+        if (section) {
+          // 在章节内容后插入图片
+          const insertPosition = this.findInsertPosition(result, section)
+          if (insertPosition !== -1) {
+            const before = result.substring(0, insertPosition)
+            const after = result.substring(insertPosition)
+            const imageMarkdown = `\n\n![${section.title}](${url})\n`
+            result = before + imageMarkdown + after
+          }
+        }
+      }
+
+      return result
+    } catch (err) {
+      console.error('添加配图失败:', err)
+      return content // 失败时返回原始内容
+    }
+  }
+
+  /**
+   * 解析文章章节，提取 h2 标题及其位置
+   */
+  private parseArticleSections(content: string): { title: string; position: number; content: string }[] {
+    const sections: { title: string; position: number; content: string }[] = []
+    const lines = content.split('\n')
+    let currentPosition = 0
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const lineLength = line.length + 1 // +1 for newline
+      
+      // 匹配 h2 标题 (## 标题)
+      const h2Match = line.match(/^##\s+(.+)$/)
+      if (h2Match) {
+        sections.push({
+          title: h2Match[1].trim(),
+          position: currentPosition,
+          content: line
+        })
+      }
+      
+      currentPosition += lineLength
+    }
+    
+    return sections
+  }
+
+  /**
+   * 找到章节内容后的插入位置（章节内容结束后的第一个空行）
+   */
+  private findInsertPosition(content: string, section: { title: string; position: number; content: string }): number {
+    const lines = content.split('\n')
+    let currentPos = 0
+    let foundSection = false
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      
+      if (currentPos === section.position) {
+        foundSection = true
+      }
+      
+      if (foundSection) {
+        // 找到下一个 h2 或连续空行，在此处插入图片
+        const nextLine = lines[i + 1] || ''
+        if (line.trim() === '' && nextLine.trim() !== '' && !nextLine.startsWith('#')) {
+          return currentPos
+        }
+        // 如果遇到下一个章节标题，在之前插入
+        if (i > 0 && lines[i].startsWith('##') && currentPos !== section.position) {
+          return currentPos
+        }
+      }
+      
+      currentPos += line.length + 1
+    }
+    
+    // 如果没找到合适位置，在文件末尾插入
+    return content.length
+  }
+
+  /**
+   * 根据内容生成图片提示词
+   */
+  private generateImagePrompt(content: string, type: 'intro' | 'section', mainTitle?: string): string {
+    // 清理内容，提取关键词
+    const cleanContent = content
+      .replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '')
+      .substring(0, 100)
+    
+    if (type === 'intro') {
+      return `${cleanContent}，微信公众号文章配图，精美插画风格，现代简约，清新配色，高质量，专业设计，无文字，artistic illustration, clean composition, gradient colors`
+    } else {
+      return `${cleanContent}，文章插图，简约插画风格，与"${mainTitle || ''}"主题相关，清新配色，高质量，无文字，thematic illustration, clean style, professional design`
     }
   }
 
