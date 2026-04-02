@@ -717,19 +717,19 @@ export default function MindChatPage() {
     // 从轮询结果中获取步骤
     const steps: AgentStepDisplay[] = agentSteps.length > 0 
       ? agentSteps 
-      : result.steps
-          ?.filter(s => s.action)
+      : (result.steps || [])
+          .filter(s => s.action)
           .map(s => ({
             action: s.action || '',
             displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
             // success 字段可能在 observation 顶层，也可能在 observation.data 里面
             status: (s.observation?.success ?? s.observation?.data?.success ?? false) ? 'success' : 'failed',
             message: s.observation?.message || s.observation?.data?.message || s.observation?.error || ''
-          })) || []
+          }))
     
     // 提取媒体内容
     const media: MessageMedia[] = []
-    result.steps?.forEach(step => {
+    ;(result.steps || []).forEach(step => {
       if (step.observation?.data) {
         const data = step.observation.data
         console.log('[MindChat] 步骤数据:', step.action, data)
@@ -805,7 +805,7 @@ export default function MindChatPage() {
     }
     
     // 检查是否有小红书笔记内容（提供一键发布功能）
-    const xiaohongshuStep = result.steps.find(s => 
+    const xiaohongshuStep = (result.steps || []).find(s => 
       s.observation?.data?.xiaohongshu_content || 
       (s.action === 'write_xiaohongshu_note' && s.observation?.data?.content)
     )
