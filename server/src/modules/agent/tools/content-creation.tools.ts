@@ -480,12 +480,12 @@ export class GenerateVideoTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'generate_video',
     displayName: '生成视频',
-    description: '使用AI生成视频',
+    description: '使用AI生成视频，支持文字描述生成视频。当用户需要"生成视频"、"做一个视频"、"创作视频"时使用此工具。注意：视频生成需要1-5分钟，请耐心等待。',
     category: 'content_creation',
     paramsSchema: {
-      prompt: { type: 'string', description: '视频描述', required: true },
-      duration: { type: 'number', description: '视频时长（秒）', default: 5 },
-      ratio: { type: 'string', enum: ['16:9', '9:16', '1:1'], default: '9:16' }
+      prompt: { type: 'string', description: '视频内容描述，详细描述想要生成的视频画面、动作、风格等', required: true },
+      duration: { type: 'number', description: '视频时长（秒），支持4-12秒，默认5秒', default: 5 },
+      ratio: { type: 'string', enum: ['16:9', '9:16', '1:1', 'adaptive'], default: '9:16', description: '视频比例，9:16适合手机竖屏，16:9适合横屏，adaptive自动选择' }
     }
   }
 
@@ -494,16 +494,19 @@ export class GenerateVideoTool implements ITool {
       const config = new Config()
       const client = new VideoGenerationClient(config)
       
-      console.log('Agent工具 - 生成视频:', params.prompt)
+      console.log('Agent工具 - 生成视频开始:', params.prompt?.substring(0, 100))
+      console.log('Agent工具 - 视频参数:', { duration: params.duration, ratio: params.ratio })
       
       const content = [{ type: 'text' as const, text: params.prompt }]
       
+      // 设置最大等待时间为 300 秒（5分钟）
       const response = await client.videoGeneration(content, {
         model: 'doubao-seedance-1-5-pro-251215',
         duration: params.duration || 5,
         ratio: params.ratio || '9:16',
         resolution: '720p',
-        generateAudio: true
+        generateAudio: true,
+        watermark: false
       })
       
       if (response.videoUrl) {
@@ -514,15 +517,26 @@ export class GenerateVideoTool implements ITool {
             video_url: response.videoUrl,
             prompt: params.prompt,
             duration: params.duration || 5,
-            message: '视频生成成功'
+            ratio: params.ratio || '9:16',
+            message: `视频生成成功！时长: ${params.duration || 5}秒`
           }
         }
+      } else if (response.response?.status === 'failed') {
+        const errorMsg = response.response.error_message || '视频生成失败'
+        console.error('Agent工具 - 视频生成失败:', errorMsg)
+        return { success: false, error: `视频生成失败: ${errorMsg}` }
       } else {
-        return { success: false, error: '视频生成失败' }
+        console.error('Agent工具 - 视频生成异常: 未返回视频URL')
+        return { success: false, error: '视频生成失败，未返回视频URL' }
       }
     } catch (err: any) {
       console.error('Agent工具 - 视频生成异常:', err)
-      return { success: false, error: `生成视频失败: ${err.message}` }
+      // 提取更友好的错误信息
+      let errorMsg = err.message || '未知错误'
+      if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+        errorMsg = '视频生成超时，请稍后重试。视频生成通常需要1-5分钟。'
+      }
+      return { success: false, error: `生成视频失败: ${errorMsg}` }
     }
   }
 }
