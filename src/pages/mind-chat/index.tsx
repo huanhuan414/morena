@@ -207,27 +207,32 @@ export default function MindChatPage() {
     }
   })
   
+  // 当前任务的 taskId（用于轮询时传递）
+  const currentTaskIdRef = useRef<string | null>(null)
+  
   // 组件卸载时停止轮询
   useEffect(() => {
     return () => {
       stopProgressPolling()
+      stopResultPolling()
     }
   }, [])
   
   /**
    * 开始轮询进度
    */
-  const startProgressPolling = () => {
+  const startProgressPolling = (taskId: string) => {
     // 先清除之前的定时器
     stopProgressPolling()
+    currentTaskIdRef.current = taskId
     lastProgressCountRef.current = 0
     
     // 立即查询一次
-    fetchProgress()
+    fetchProgress(taskId)
     
     // 每 500ms 轮询一次
     pollingTimerRef.current = setInterval(() => {
-      fetchProgress()
+      fetchProgress(taskId)
     }, 500)
   }
   
@@ -239,14 +244,17 @@ export default function MindChatPage() {
       clearInterval(pollingTimerRef.current)
       pollingTimerRef.current = null
     }
+    currentTaskIdRef.current = null
   }
   
   /**
-   * 获取进度
+   * 获取进度（指定 taskId）
    */
-  const fetchProgress = async () => {
+  const fetchProgress = async (taskId: string) => {
     try {
-      const res = await Network.request({ url: '/api/agent/progress' })
+      const res = await Network.request({ 
+        url: `/api/agent/progress?taskId=${taskId}` 
+      })
       
       if (res.data?.code === 200) {
         const { progress, latest } = res.data.data
@@ -517,7 +525,11 @@ export default function MindChatPage() {
   // Agent 执行 - 纯轮询模式（解决 HTTP 超时问题）
   const executeAsAgent = async (content: string) => {
     try {
+      // 先停止之前的轮询，避免旧任务干扰
+      stopProgressPolling()
+      stopResultPolling()
       setAgentSteps([])
+      lastProgressCountRef.current = 0
       
       console.log('[MindChat] 开始执行 Agent 任务:', content)
       
@@ -558,8 +570,8 @@ export default function MindChatPage() {
    * 启动结果轮询
    */
   const startResultPolling = (taskId: string, originalContent: string) => {
-    // 先启动进度轮询
-    startProgressPolling()
+    // 先启动进度轮询（传递 taskId，确保只获取当前任务的进度）
+    startProgressPolling(taskId)
     
     // 结果轮询
     const pollResult = async () => {
