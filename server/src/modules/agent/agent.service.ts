@@ -402,6 +402,50 @@ export class AgentService {
   ): Promise<void> {
     const client = getSupabaseClient()
     
+    // 提取媒体内容
+    const media: Array<{
+      type: 'image' | 'video' | 'article'
+      url?: string
+      title?: string
+      content?: string
+      coverImage?: string
+    }> = []
+    
+    agentResult.steps.forEach(step => {
+      if (step.observation?.data) {
+        const data = step.observation.data
+        
+        // 图片
+        if (data.image_urls && Array.isArray(data.image_urls)) {
+          data.image_urls.forEach((url: string) => {
+            if (url && typeof url === 'string') {
+              media.push({ type: 'image', url })
+            }
+          })
+        }
+        
+        // 文章
+        if (data.content && data.title) {
+          media.push({
+            type: 'article',
+            title: data.title,
+            content: data.content,
+            coverImage: data.cover_image_url
+          })
+        }
+        
+        // 视频
+        if (data.video_url) {
+          media.push({ type: 'video', url: data.video_url })
+        }
+        
+        // 封面图（单独展示）
+        if (data.cover_image_url && !data.content) {
+          media.push({ type: 'image', url: data.cover_image_url })
+        }
+      }
+    })
+    
     // 保存用户消息
     await client.from('messages').insert({
       conversation_id: conversationId,
@@ -409,12 +453,15 @@ export class AgentService {
       content: userMessage
     })
     
-    // 保存 AI 回复
+    // 保存 AI 回复（包含提取后的 media 数组）
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content: aiMessage,
-      metadata: { agent_result: agentResult }
+      metadata: { 
+        agent_result: agentResult,
+        media: media.length > 0 ? media : undefined
+      }
     })
     
     // 更新对话上下文

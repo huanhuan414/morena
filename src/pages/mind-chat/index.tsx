@@ -9,7 +9,7 @@ import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformC
 import MarkdownRender from '@/components/markdown-render'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, FileText, Zap, Check, Download
+  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -250,13 +250,20 @@ export default function MindChatPage() {
       if (res.data?.code === 200) {
         const { progress, latest } = res.data.data
         
-        // 只有进度有更新时才处理
-        if (progress.length > lastProgressCountRef.current) {
+        // 处理所有进度（从上次处理的位置开始）
+        if (progress && progress.length > 0) {
+          // 找到未处理的进度
+          const startIndex = lastProgressCountRef.current
+          const newProgress = progress.slice(startIndex)
+          
+          // 更新已处理的进度数量
           lastProgressCountRef.current = progress.length
           
-          // 处理新的进度
-          const newProgress = progress.slice(lastProgressCountRef.current > 0 ? lastProgressCountRef.current - 1 : 0)
-          newProgress.forEach((p: TaskProgressEvent) => handleTaskProgress(p))
+          // 处理每个新的进度
+          newProgress.forEach((p: TaskProgressEvent) => {
+            console.log('[MindChat] 处理进度:', p.type, p.message)
+            handleTaskProgress(p)
+          })
         }
         
         // 如果任务完成，停止轮询
@@ -833,105 +840,139 @@ export default function MindChatPage() {
         <Text className="message-text">{msg.content}</Text>
         
         {/* 富媒体内容 */}
-        {msg.metadata?.media && msg.metadata.media.length > 0 && (
-          <View className="media-container">
-            {msg.metadata.media.map((media, idx) => {
-              if (media.type === 'image') {
-                return (
-                  <View key={idx} className="media-item image">
-                    <Image 
-                      src={media.url || ''} 
-                      className="media-image" 
-                      mode="widthFix"
-                      onClick={() => {
-                        Taro.previewImage({
-                          current: media.url,
-                          urls: [media.url || '']
-                        })
-                      }}
-                    />
-                    {/* 图片操作按钮 */}
-                    <View className="image-actions">
-                      <View 
-                        className="image-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // 下载图片到相册
-                          Taro.showLoading({ title: '保存中...' })
-                          Network.downloadFile({
-                            url: media.url || '',
-                            success: (res) => {
-                              Taro.saveImageToPhotosAlbum({
-                                filePath: res.tempFilePath,
-                                success: () => {
-                                  Taro.hideLoading()
-                                  Taro.showToast({ title: '已保存到相册', icon: 'success' })
-                                },
-                                fail: (err) => {
-                                  Taro.hideLoading()
-                                  console.error('保存失败:', err)
-                                  Taro.showToast({ title: '保存失败', icon: 'none' })
-                                }
-                              })
-                            },
-                            fail: (err) => {
-                              Taro.hideLoading()
-                              console.error('下载失败:', err)
-                              Taro.showToast({ title: '下载失败', icon: 'none' })
-                            }
+        {(() => {
+          // 优先使用 metadata.media
+          let mediaList = msg.metadata?.media || []
+          
+          // 如果没有 media，尝试从 agent_result 中提取
+          if (mediaList.length === 0 && msg.metadata?.agent_result?.steps) {
+            msg.metadata.agent_result.steps.forEach((step: ReActStep) => {
+              if (step.observation?.data) {
+                const data = step.observation.data
+                
+                // 图片
+                if (data.image_urls && Array.isArray(data.image_urls)) {
+                  data.image_urls.forEach((url: string) => {
+                    if (url && typeof url === 'string') {
+                      mediaList.push({ type: 'image', url })
+                    }
+                  })
+                }
+                
+                // 文章
+                if (data.content && data.title) {
+                  mediaList.push({
+                    type: 'article',
+                    title: data.title,
+                    content: data.content,
+                    coverImage: data.cover_image_url
+                  })
+                }
+                
+                // 视频
+                if (data.video_url) {
+                  mediaList.push({ type: 'video', url: data.video_url })
+                }
+                
+                // 封面图
+                if (data.cover_image_url && !data.content) {
+                  mediaList.push({ type: 'image', url: data.cover_image_url })
+                }
+              }
+            })
+          }
+          
+          if (mediaList.length === 0) return null
+          
+          return (
+            <View className="media-container">
+              {mediaList.map((media, idx) => {
+                if (media.type === 'image') {
+                  return (
+                    <View key={idx} className="media-item image">
+                      <Image 
+                        src={media.url || ''} 
+                        className="media-image" 
+                        mode="widthFix"
+                        onClick={() => {
+                          Taro.previewImage({
+                            current: media.url,
+                            urls: [media.url || '']
                           })
                         }}
-                      >
-                        <Download size={16} color="#fff" />
-                        <Text className="action-text">保存</Text>
+                      />
+                      {/* 图片操作按钮 */}
+                      <View className="image-actions">
+                        <View 
+                          className="image-action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // 下载图片到相册
+                            Taro.showLoading({ title: '保存中...' })
+                            Network.downloadFile({
+                              url: media.url || '',
+                              success: (res) => {
+                                Taro.saveImageToPhotosAlbum({
+                                  filePath: res.tempFilePath,
+                                  success: () => {
+                                    Taro.hideLoading()
+                                    Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                                  },
+                                  fail: (err) => {
+                                    Taro.hideLoading()
+                                    console.error('保存失败:', err)
+                                    Taro.showToast({ title: '保存失败', icon: 'none' })
+                                  }
+                                })
+                              },
+                              fail: (err) => {
+                                Taro.hideLoading()
+                                console.error('下载失败:', err)
+                                Taro.showToast({ title: '下载失败', icon: 'none' })
+                              }
+                            })
+                          }}
+                        >
+                          <Download size={16} color="#fff" />
+                        </View>
                       </View>
                     </View>
-                  </View>
-                )
-              }
-              
-              if (media.type === 'video') {
-                return (
-                  <View key={idx} className="media-item video">
-                    <Video
-                      src={media.url || ''}
-                      className="media-video"
-                      controls
-                      showFullscreenBtn
-                      showPlayBtn
-                      objectFit="cover"
-                    />
-                  </View>
-                )
-              }
-              
-              if (media.type === 'article') {
-                return (
-                  <View key={idx} className="media-item article">
-                    {/* 封面图 */}
-                    {media.coverImage && (
-                      <Image 
-                        src={media.coverImage} 
-                        className="article-cover"
-                        mode="widthFix"
+                  )
+                }
+                
+                if (media.type === 'video') {
+                  return (
+                    <View key={idx} className="media-item video">
+                      <Video 
+                        src={media.url || ''} 
+                        className="media-video"
+                        controls
+                        showFullscreenBtn
+                        showPlayBtn
                       />
-                    )}
-                    <View className="article-header">
-                      <FileText size={20} color="#00f5ff" />
-                      <Text className="article-title">{media.title || '文章'}</Text>
                     </View>
-                    <View className="article-body">
-                      {/* 使用 MarkdownRender 美化渲染 */}
-                      <MarkdownRender content={media.content || ''} />
+                  )
+                }
+                
+                if (media.type === 'article') {
+                  return (
+                    <View key={idx} className="media-item article">
+                      {media.coverImage && (
+                        <Image src={media.coverImage} className="article-cover" mode="widthFix" />
+                      )}
+                      <View className="article-content">
+                        <Text className="article-title">{media.title}</Text>
+                        <MarkdownRender content={media.content || ''} />
+                      </View>
                     </View>
-                  </View>
-                )
-              }
-              
-              return null
-            })}
-          </View>
-        )}
+                  )
+                }
+                
+                return null
+              })}
+            </View>
+          )
+        })()}
       </View>
     )
   }
