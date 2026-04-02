@@ -290,10 +290,11 @@ export default function MindChatPage() {
       })
       
       if (res.data?.code === 200) {
-        const { progress, latest } = res.data.data
+        const progressData = res.data.data || {}
+        const { progress, latest } = progressData
         
         // 处理所有进度（从上次处理的位置开始）
-        if (progress && progress.length > 0) {
+        if (progress && Array.isArray(progress) && progress.length > 0) {
           // 找到未处理的进度
           const startIndex = lastProgressCountRef.current
           const newProgress = progress.slice(startIndex)
@@ -662,7 +663,7 @@ export default function MindChatPage() {
         }
         
         if (code === 200) {
-          const taskResult = res.data.data
+          const taskResult = res.data?.data || {}
           
           // 任务完成
           if (taskResult.status === 'completed') {
@@ -1207,7 +1208,8 @@ export default function MindChatPage() {
           
           // 如果没有 media，尝试从 agent_result 中提取
           if (mediaList.length === 0 && msg.metadata?.agent_result?.steps) {
-            msg.metadata.agent_result.steps.forEach((step: ReActStep) => {
+            const steps = msg.metadata.agent_result.steps || []
+            steps.forEach((step: ReActStep) => {
               if (step.observation?.data) {
                 const data = step.observation.data
                 
@@ -1370,8 +1372,9 @@ export default function MindChatPage() {
               className="publish-btn"
               onClick={() => {
                 // 恢复待发布内容
-                const article = msg.metadata?.media?.find((m: MessageMedia) => m.type === 'article')
-                const images = msg.metadata?.media?.filter((m: MessageMedia) => m.type === 'image').map((m: MessageMedia) => m.url).filter(Boolean) as string[]
+                const mediaList = msg.metadata?.media || []
+                const article = mediaList.find((m: MessageMedia) => m.type === 'article')
+                const images = mediaList.filter((m: MessageMedia) => m.type === 'image').map((m: MessageMedia) => m.url).filter(Boolean) as string[]
                 
                 setPendingPublish({
                   platform: msg.metadata?.agent_result?.configPlatform as PlatformType,
