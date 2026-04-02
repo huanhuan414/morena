@@ -580,7 +580,21 @@ export default function MindChatPage() {
           url: `/api/agent/result/${taskId}`
         })
         
-        if (res.data?.code === 200) {
+        const code = res.data?.code
+        
+        // 任务不存在或已过期
+        if (code === 404) {
+          console.log('[MindChat] 任务不存在或已过期:', taskId)
+          stopResultPolling()
+          stopProgressPolling()
+          setLoading(false)
+          loadingRef.current = false
+          setCurrentStatus('')
+          showToast({ title: '任务已过期，请重新提交', icon: 'none' })
+          return
+        }
+        
+        if (code === 200) {
           const taskResult = res.data.data
           
           // 任务完成
@@ -601,6 +615,7 @@ export default function MindChatPage() {
         }
       } catch (err) {
         console.error('[MindChat] 获取任务结果失败:', err)
+        // 网络错误时继续轮询，不中断
       }
     }
     

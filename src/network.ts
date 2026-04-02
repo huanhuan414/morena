@@ -13,6 +13,14 @@ export namespace Network {
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return url
         }
+        
+        // H5 开发环境使用相对路径，让 Vite proxy 处理
+        // 注意：Taro.getEnv() 在 H5 开发环境返回 'h5'
+        if (process.env.TARO_ENV === 'h5') {
+            return url  // 返回相对路径，Vite proxy 会自动代理
+        }
+        
+        // 小程序环境使用完整域名
         return `${PROJECT_DOMAIN}${url}`
     }
 
