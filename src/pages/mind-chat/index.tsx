@@ -7,6 +7,8 @@ import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
 import MarkdownRender from '@/components/markdown-render'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download
@@ -182,6 +184,18 @@ export default function MindChatPage() {
   
   // 配置成功后待重试的消息
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  
+  // 待发布的内容（用于发布确认）
+  const [pendingPublish, setPendingPublish] = useState<{
+    platform: PlatformType
+    content: {
+      title?: string
+      content?: string
+      coverImage?: string
+      images?: string[]
+    }
+  } | null>(null)
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -708,7 +722,7 @@ export default function MindChatPage() {
     result: AgentResult, 
     media: MessageMedia[], 
     steps: AgentStepDisplay[],
-    originalContent: string
+    _originalContent: string
   ) => {
     // 构建回复消息
     let replyContent = result.finalAnswer
@@ -736,6 +750,25 @@ export default function MindChatPage() {
       }
     }
     
+    // 如果需要配置且有媒体内容，提示用户可以发布
+    if (result.requiresConfig && result.configPlatform && media.length > 0) {
+      const article = media.find(m => m.type === 'article')
+      const images = media.filter(m => m.type === 'image').map(m => m.url).filter(Boolean) as string[]
+      
+      replyContent += `\n\n💡 内容已生成完成！点击下方「发布」按钮即可发布到${getPlatformName(result.configPlatform)}。`
+      
+      // 存储待发布内容
+      setPendingPublish({
+        platform: result.configPlatform,
+        content: {
+          title: article?.title,
+          content: article?.content,
+          coverImage: article?.coverImage,
+          images
+        }
+      })
+    }
+    
     const aiMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
@@ -754,12 +787,84 @@ export default function MindChatPage() {
     setCurrentStatus('')
     scrollToBottom()
     fetchLearningStats()
+  }
+  
+  // 获取平台名称
+  const getPlatformName = (platform: PlatformType): string => {
+    const names: Record<PlatformType, string> = {
+      wechat_mp: '微信公众号',
+      xiaohongshu: '小红书',
+      bilibili: 'B站',
+      weibo: '微博',
+      douyin: '抖音',
+      wechat_video: '微信视频号'
+    }
+    return names[platform] || platform
+  }
+  
+  // 处理发布请求
+  const handlePublish = async () => {
+    if (!pendingPublish) return
     
-    // 如果需要配置，保存消息并打开配置弹窗
-    if (result.requiresConfig && result.configPlatform) {
-      setPendingMessage(originalContent)
-      setConfigPlatform(result.configPlatform)
-      setShowConfigDialog(true)
+    const { platform, content } = pendingPublish
+    
+    try {
+      setLoading(true)
+      setCurrentStatus('正在检查平台配置...')
+      
+      // 先检查平台配置
+      const checkRes = await Network.request({
+        url: `/api/agent/platform-config/${platform}`
+      })
+      
+      const isConfigured = checkRes.data?.data?.configured
+      
+      if (!isConfigured) {
+        // 未配置，打开配置弹窗
+        setShowPublishConfirm(false)
+        setConfigPlatform(platform)
+        setShowConfigDialog(true)
+        setLoading(false)
+        setCurrentStatus('')
+        return
+      }
+      
+      // 已配置，直接发布
+      setCurrentStatus(`正在发布到${getPlatformName(platform)}...`)
+      
+      const publishRes = await Network.request({
+        url: `/api/agent/publish/${platform}`,
+        method: 'POST',
+        data: {
+          title: content.title,
+          content: content.content,
+          cover_url: content.coverImage,
+          images: content.images
+        }
+      })
+      
+      if (publishRes.data?.code === 200) {
+        showToast({ title: '发布成功！', icon: 'success' })
+        setPendingPublish(null)
+        
+        // 添加一条发布成功的消息
+        const successMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `✅ 内容已成功发布到${getPlatformName(platform)}！\n\n${publishRes.data.data?.url ? `查看链接：${publishRes.data.data.url}` : ''}`,
+          created_at: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, successMsg])
+        scrollToBottom()
+      } else {
+        showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.error('发布失败:', err)
+      showToast({ title: '发布失败，请重试', icon: 'none' })
+    } finally {
+      setLoading(false)
+      setCurrentStatus('')
     }
   }
 
@@ -1093,6 +1198,38 @@ export default function MindChatPage() {
             </View>
           )
         })()}
+        
+        {/* 发布按钮 - 当有待发布内容时显示 */}
+        {msg.metadata?.agent_result?.requiresConfig && 
+         msg.metadata?.agent_result?.configPlatform && 
+         msg.metadata?.media && 
+         msg.metadata.media.length > 0 && (
+          <View className="publish-action-bar">
+            <Button
+              className="publish-btn"
+              onClick={() => {
+                // 恢复待发布内容
+                const article = msg.metadata?.media?.find((m: MessageMedia) => m.type === 'article')
+                const images = msg.metadata?.media?.filter((m: MessageMedia) => m.type === 'image').map((m: MessageMedia) => m.url).filter(Boolean) as string[]
+                
+                setPendingPublish({
+                  platform: msg.metadata?.agent_result?.configPlatform as PlatformType,
+                  content: {
+                    title: article?.title,
+                    content: article?.content,
+                    coverImage: article?.coverImage,
+                    images
+                  }
+                })
+                setShowPublishConfirm(true)
+              }}
+            >
+              <Text className="publish-btn-text">
+                🚀 发布到{getPlatformName(msg.metadata?.agent_result?.configPlatform as PlatformType)}
+              </Text>
+            </Button>
+          </View>
+        )}
       </View>
     )
   }
@@ -1426,6 +1563,57 @@ export default function MindChatPage() {
           }}
         />
       )}
+      
+      {/* 发布确认弹窗 */}
+      <Dialog open={showPublishConfirm} onOpenChange={(isOpen) => { if (!isOpen) setShowPublishConfirm(false) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              <Text>确认发布</Text>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <View className="publish-preview">
+            <Text className="publish-platform">
+              将发布到：{pendingPublish ? getPlatformName(pendingPublish.platform) : ''}
+            </Text>
+            
+            {pendingPublish?.content.title && (
+              <View className="publish-title">
+                <Text className="publish-label">标题：</Text>
+                <Text className="publish-value">{pendingPublish.content.title}</Text>
+              </View>
+            )}
+            
+            {pendingPublish?.content.coverImage && (
+              <View className="publish-cover">
+                <Text className="publish-label">封面图：</Text>
+                <Image src={pendingPublish.content.coverImage} className="publish-cover-img" mode="widthFix" />
+              </View>
+            )}
+            
+            {pendingPublish?.content.images && pendingPublish.content.images.length > 0 && (
+              <View className="publish-images">
+                <Text className="publish-label">图片：{pendingPublish.content.images.length}张</Text>
+              </View>
+            )}
+          </View>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowPublishConfirm(false)} className="mr-2">
+              <Text>取消</Text>
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPublishConfirm(false)
+                handlePublish()
+              }}
+            >
+              <Text>确认发布</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }

@@ -234,4 +234,29 @@ export class AgentController {
       message: '技能添加成功'
     }
   }
+
+  /**
+   * 发布内容到平台
+   * 统一的发布接口，支持多平台
+   */
+  @Post('publish/:platform')
+  async publishContent(
+    @Headers('x-user-id') userId: string,
+    @Param('platform') platform: PlatformType,
+    @Body() body: {
+      title?: string
+      content?: string
+      cover_url?: string
+      images?: string[]
+      tags?: string[]
+    }
+  ) {
+    const result = await this.agentService.publishContent(userId, platform, body)
+    
+    return {
+      code: result.success ? 200 : 400,
+      data: result.data,
+      message: result.message || (result.success ? '发布成功' : '发布失败')
+    }
+  }
 }

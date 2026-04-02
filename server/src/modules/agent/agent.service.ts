@@ -1110,4 +1110,132 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
     return (data || []) as AvatarSkill[]
   }
+
+  /**
+   * 发布内容到平台
+   * 统一的发布接口，调用对应的发布工具
+   */
+  async publishContent(
+    userId: string,
+    platform: PlatformType,
+    content: {
+      title?: string
+      content?: string
+      cover_url?: string
+      images?: string[]
+      tags?: string[]
+    }
+  ): Promise<{ success: boolean; data?: any; message?: string }> {
+    const client = getSupabaseClient()
+    
+    // 检查平台配置
+    const { data: config, error: configError } = await client
+      .from('platform_configs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('platform_type', platform)
+      .maybeSingle()
+
+    if (configError || !config || config.status !== 'active') {
+      const template = PLATFORM_CONFIG_TEMPLATES[platform]
+      return {
+        success: false,
+        message: `请先配置${template?.platform_name || platform}`
+      }
+    }
+
+    // 根据平台选择对应的发布工具
+    let toolName: string
+    let params: Record<string, any> = {}
+
+    switch (platform) {
+      case 'wechat_mp':
+        toolName = 'publish_wechat_mp'
+        params = {
+          title: content.title,
+          content: content.content,
+          cover_url: content.cover_url
+        }
+        break
+      
+      case 'xiaohongshu':
+        toolName = 'publish_xiaohongshu'
+        params = {
+          title: content.title,
+          content: content.content,
+          images: content.images,
+          tags: content.tags
+        }
+        break
+      
+      case 'weibo':
+        toolName = 'publish_weibo'
+        params = {
+          content: content.content,
+          images: content.images
+        }
+        break
+      
+      case 'bilibili':
+        toolName = 'publish_bilibili'
+        params = {
+          type: 'article',
+          title: content.title,
+          content: content.content,
+          cover_url: content.cover_url,
+          tags: content.tags
+        }
+        break
+      
+      case 'douyin':
+        toolName = 'publish_douyin'
+        params = {
+          title: content.title,
+          video_url: content.content, // 抖音需要视频URL
+          cover_url: content.cover_url,
+          tags: content.tags
+        }
+        break
+      
+      case 'wechat_video':
+        toolName = 'publish_wechat_video'
+        params = {
+          title: content.title,
+          video_url: content.content, // 视频号需要视频URL
+          cover_url: content.cover_url
+        }
+        break
+      
+      default:
+        return { success: false, message: '不支持的平台' }
+    }
+
+    // 执行发布工具
+    const tool = this.tools.get(toolName)
+    if (!tool) {
+      return { success: false, message: '发布工具不可用' }
+    }
+
+    const toolContext: ToolContext = {
+      userId,
+      avatarId: '',
+      taskId: `publish-${Date.now()}`
+    }
+
+    try {
+      console.log(`[AgentService] 发布到 ${platform}:`, params)
+      const result = await tool.execute(params, toolContext)
+      
+      return {
+        success: result.success,
+        data: result.data,
+        message: result.success 
+          ? result.data?.message || '发布成功'
+          : result.error || '发布失败'
+      }
+    } catch (err: any) {
+      console.error(`[AgentService] 发布失败:`, err)
+      return { success: false, message: err.message || '发布失败' }
+    }
+  }
 }
