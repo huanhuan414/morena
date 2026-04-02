@@ -514,17 +514,14 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力（HTTP 请求 + 轮询进度）
+  // Agent 执行 - 纯轮询模式（解决 HTTP 超时问题）
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
       
-      // 启动进度轮询
-      startProgressPolling()
-      
       console.log('[MindChat] 开始执行 Agent 任务:', content)
       
-      // 发送 HTTP 请求
+      // 发送 HTTP 请求（异步模式，立即返回 taskId）
       const res = await Network.request({
         url: '/api/agent/execute',
         method: 'POST',
@@ -535,70 +532,15 @@ export default function MindChatPage() {
         }
       })
       
-      // 停止轮询
-      stopProgressPolling()
+      console.log('[MindChat] 任务已提交:', res.data)
       
-      console.log('[MindChat] Agent 执行结果:', res.data)
-      
-      const result = res.data?.data as AgentResult
-      if (!result) {
-        throw new Error('执行结果为空')
+      const taskId = res.data?.data?.taskId
+      if (!taskId) {
+        throw new Error('任务提交失败')
       }
       
-      // 从轮询结果中获取步骤（如果有的话）
-      const steps: AgentStepDisplay[] = agentSteps.length > 0 
-        ? agentSteps 
-        : result.steps
-            .filter(s => s.action)
-            .map(s => ({
-              action: s.action || '',
-              displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-              status: s.observation?.success ? 'success' : 'failed',
-              message: s.observation?.message || s.observation?.error || ''
-            }))
-      
-      // 提取媒体内容
-      const media: MessageMedia[] = []
-      result.steps.forEach(step => {
-        if (step.observation?.data) {
-          const data = step.observation.data
-          console.log('[MindChat] 步骤数据:', step.action, data)
-          
-          // 文章内容
-          if (data.content && data.title) {
-            media.push({
-              type: 'article',
-              title: data.title,
-              content: data.content,
-              coverImage: data.cover_image_url
-            })
-          }
-          
-          // 图片 - 确保正确提取
-          if (data.image_urls && Array.isArray(data.image_urls) && data.image_urls.length > 0) {
-            console.log('[MindChat] 提取图片:', data.image_urls)
-            data.image_urls.forEach((url: string) => {
-              if (url && typeof url === 'string') {
-                media.push({ type: 'image', url })
-              }
-            })
-          }
-          
-          // 封面图（如果没有文章内容，单独展示）
-          if (data.cover_image_url && !data.content) {
-            media.push({ type: 'image', url: data.cover_image_url })
-          }
-          
-          // 视频
-          if (data.video_url) {
-            media.push({ type: 'video', url: data.video_url })
-          }
-        }
-      })
-      
-      console.log('[MindChat] 最终提取的媒体内容:', media)
-      
-      processAgentResult(result, media, steps, content)
+      // 启动结果轮询
+      startResultPolling(taskId, content)
       
     } catch (err) {
       console.error('[MindChat] Agent 执行失败:', err)
@@ -607,6 +549,131 @@ export default function MindChatPage() {
       setCurrentStatus('')
       showToast({ title: '执行失败，请重试', icon: 'none' })
     }
+  }
+  
+  // 结果轮询定时器
+  const resultPollingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  /**
+   * 启动结果轮询
+   */
+  const startResultPolling = (taskId: string, originalContent: string) => {
+    // 先启动进度轮询
+    startProgressPolling()
+    
+    // 结果轮询
+    const pollResult = async () => {
+      try {
+        const res = await Network.request({
+          url: `/api/agent/result/${taskId}`
+        })
+        
+        if (res.data?.code === 200) {
+          const taskResult = res.data.data
+          
+          // 任务完成
+          if (taskResult.status === 'completed') {
+            stopResultPolling()
+            stopProgressPolling()
+            handleTaskComplete(taskResult.result, originalContent)
+          }
+          // 任务失败
+          else if (taskResult.status === 'failed') {
+            stopResultPolling()
+            stopProgressPolling()
+            setLoading(false)
+            loadingRef.current = false
+            setCurrentStatus('')
+            showToast({ title: taskResult.error || '执行失败', icon: 'none' })
+          }
+        }
+      } catch (err) {
+        console.error('[MindChat] 获取任务结果失败:', err)
+      }
+    }
+    
+    // 每 1 秒轮询一次结果
+    resultPollingTimerRef.current = setInterval(pollResult, 1000)
+  }
+  
+  /**
+   * 停止结果轮询
+   */
+  const stopResultPolling = () => {
+    if (resultPollingTimerRef.current) {
+      clearInterval(resultPollingTimerRef.current)
+      resultPollingTimerRef.current = null
+    }
+  }
+  
+  /**
+   * 处理任务完成
+   */
+  const handleTaskComplete = (result: AgentResult, originalContent: string) => {
+    console.log('[MindChat] 任务完成:', result)
+    
+    if (!result) {
+      setLoading(false)
+      loadingRef.current = false
+      setCurrentStatus('')
+      showToast({ title: '执行结果为空', icon: 'none' })
+      return
+    }
+    
+    // 从轮询结果中获取步骤
+    const steps: AgentStepDisplay[] = agentSteps.length > 0 
+      ? agentSteps 
+      : result.steps
+          ?.filter(s => s.action)
+          .map(s => ({
+            action: s.action || '',
+            displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
+            status: s.observation?.success ? 'success' : 'failed',
+            message: s.observation?.message || s.observation?.error || ''
+          })) || []
+    
+    // 提取媒体内容
+    const media: MessageMedia[] = []
+    result.steps?.forEach(step => {
+      if (step.observation?.data) {
+        const data = step.observation.data
+        console.log('[MindChat] 步骤数据:', step.action, data)
+        
+        // 文章内容
+        if (data.content && data.title) {
+          media.push({
+            type: 'article',
+            title: data.title,
+            content: data.content,
+            coverImage: data.cover_image_url
+          })
+        }
+        
+        // 图片
+        if (data.image_urls && Array.isArray(data.image_urls) && data.image_urls.length > 0) {
+          console.log('[MindChat] 提取图片:', data.image_urls)
+          data.image_urls.forEach((url: string) => {
+            if (url && typeof url === 'string') {
+              media.push({ type: 'image', url })
+            }
+          })
+        }
+        
+        // 封面图
+        if (data.cover_image_url && !data.content) {
+          media.push({ type: 'image', url: data.cover_image_url })
+        }
+        
+        // 视频
+        if (data.video_url) {
+          media.push({ type: 'video', url: data.video_url })
+        }
+      }
+    })
+    
+    console.log('[MindChat] 最终提取的媒体内容:', media)
+    
+    processAgentResult(result, media, steps, originalContent)
   }
   
   // 处理 Agent 执行结果

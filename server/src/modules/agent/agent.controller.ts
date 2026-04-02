@@ -54,57 +54,33 @@ export class AgentController {
   }
 
   /**
-   * 清除任务进度
+   * 获取任务结果
    */
-  @Delete('progress')
-  async clearProgress(
+  @Get('result/:taskId')
+  async getTaskResult(
     @Headers('x-user-id') userId: string,
-    @Query('taskId') taskId?: string
+    @Param('taskId') taskId: string
   ) {
-    this.progressCache.clearProgress(userId, taskId)
+    const result = this.progressCache.getTaskResult(userId, taskId)
+    
+    if (!result) {
+      return {
+        code: 404,
+        data: null,
+        message: '任务不存在或已过期'
+      }
+    }
     
     return {
       code: 200,
-      message: '清除成功'
+      data: result,
+      message: '获取成功'
     }
   }
 
   /**
-   * 执行 Agent 任务（SSE 流式输出）
-   */
-  @Sse('execute/stream')
-  executeTaskStream(
-    @Req() req: Request,
-    @Headers('x-user-id') userId: string
-  ): Observable<MessageEvent> {
-    // 从 query 参数获取数据
-    const body = req.query as any
-    
-    return from(this.agentService.executeTaskWithProgress(
-      userId,
-      body.avatar_id,
-      body.task_description,
-      {
-        conversationId: body.conversation_id,
-        taskId: body.task_id
-      }
-    )).pipe(
-      map((event) => ({
-        data: JSON.stringify(event)
-      } as MessageEvent)),
-      catchError((err) => {
-        return of({
-          data: JSON.stringify({
-            type: 'error',
-            error: err.message
-          })
-        } as MessageEvent)
-      })
-    )
-  }
-
-  /**
-   * 执行 Agent 任务（普通接口，兼容旧版本）
+   * 执行 Agent 任务（异步模式，立即返回 taskId）
+   * 解决 HTTP 请求超时问题
    */
   @Post('execute')
   async executeTask(
@@ -117,21 +93,35 @@ export class AgentController {
       conversation_history?: Array<{ role: string; content: string }>
     }
   ) {
-    const result = await this.agentService.executeTask(
+    // 生成任务ID
+    const taskId = body.task_id || `task-${Date.now()}`
+    
+    // 创建任务记录
+    this.progressCache.createTask(userId, taskId)
+    
+    // 异步执行任务（不等待结果）
+    this.agentService.executeTaskAsync(
       userId,
       body.avatar_id,
       body.task_description,
       {
         conversationId: body.conversation_id,
-        taskId: body.task_id,
+        taskId,
         conversationHistory: body.conversation_history as any
       }
-    )
-
+    ).catch(err => {
+      console.error(`[AgentController] 任务执行失败: ${taskId}`, err)
+      this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, err.message)
+    })
+    
+    // 立即返回 taskId
     return {
       code: 200,
-      data: result,
-      message: result.requiresConfig ? '需要配置平台' : '执行完成'
+      data: {
+        taskId,
+        status: 'pending'
+      },
+      message: '任务已提交，请通过轮询获取进度和结果'
     }
   }
 

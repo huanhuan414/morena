@@ -1,6 +1,6 @@
 /**
  * 进度缓存服务
- * 用于存储和查询任务执行进度
+ * 用于存储和查询任务执行进度和结果
  */
 
 import { Injectable } from '@nestjs/common'
@@ -15,16 +15,88 @@ export interface TaskProgress {
   timestamp: number
 }
 
+// 导出任务结果接口
+export interface TaskResult {
+  taskId: string
+  userId: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  result?: any
+  error?: string
+  createdAt: number
+  completedAt?: number
+}
+
 @Injectable()
 export class ProgressCacheService {
   // 存储任务进度：key = userId:taskId
   private progressMap: Map<string, TaskProgress[]> = new Map()
   
+  // 存储任务结果：key = userId:taskId
+  private resultMap: Map<string, TaskResult> = new Map()
+  
   // 最大保存的进度条数
   private readonly MAX_PROGRESS_ITEMS = 50
   
   // 进度过期时间（毫秒）
-  private readonly EXPIRE_TIME = 5 * 60 * 1000 // 5分钟
+  private readonly EXPIRE_TIME = 10 * 60 * 1000 // 10分钟
+
+  /**
+   * 创建任务记录
+   */
+  createTask(userId: string, taskId: string): TaskResult {
+    const result: TaskResult = {
+      taskId,
+      userId,
+      status: 'pending',
+      createdAt: Date.now()
+    }
+    const key = `${userId}:${taskId}`
+    this.resultMap.set(key, result)
+    console.log(`[ProgressCache] 创建任务: ${key}`)
+    return result
+  }
+
+  /**
+   * 更新任务状态
+   */
+  updateTaskStatus(userId: string, taskId: string, status: TaskResult['status'], result?: any, error?: string) {
+    const key = `${userId}:${taskId}`
+    const taskResult = this.resultMap.get(key)
+    if (taskResult) {
+      taskResult.status = status
+      if (result !== undefined) {
+        taskResult.result = result
+      }
+      if (error) {
+        taskResult.error = error
+      }
+      if (status === 'completed' || status === 'failed') {
+        taskResult.completedAt = Date.now()
+      }
+      console.log(`[ProgressCache] 更新任务状态: ${key} -> ${status}`)
+    }
+  }
+
+  /**
+   * 获取任务结果
+   */
+  getTaskResult(userId: string, taskId: string): TaskResult | null {
+    const key = `${userId}:${taskId}`
+    return this.resultMap.get(key) || null
+  }
+
+  /**
+   * 获取用户所有任务
+   */
+  getUserTasks(userId: string): TaskResult[] {
+    const tasks: TaskResult[] = []
+    this.resultMap.forEach((result, key) => {
+      if (key.startsWith(`${userId}:`)) {
+        tasks.push(result)
+      }
+    })
+    return tasks.sort((a, b) => b.createdAt - a.createdAt)
+  }
 
   /**
    * 添加进度
@@ -104,6 +176,7 @@ export class ProgressCacheService {
     if (taskId) {
       const key = `${userId}:${taskId}`
       this.progressMap.delete(key)
+      this.resultMap.delete(key)
     } else {
       // 清除该用户所有任务的进度
       const keysToDelete: string[] = []
@@ -112,7 +185,10 @@ export class ProgressCacheService {
           keysToDelete.push(key)
         }
       })
-      keysToDelete.forEach(key => this.progressMap.delete(key))
+      keysToDelete.forEach(key => {
+        this.progressMap.delete(key)
+        this.resultMap.delete(key)
+      })
       console.log(`[ProgressCache] 清除用户 ${userId} 的所有进度，共 ${keysToDelete.length} 个任务`)
     }
   }
@@ -127,6 +203,7 @@ export class ProgressCacheService {
       const latestProgress = progressList[progressList.length - 1]
       if (latestProgress && now - latestProgress.timestamp > this.EXPIRE_TIME) {
         this.progressMap.delete(key)
+        this.resultMap.delete(key)
         console.log(`[ProgressCache] 清理过期进度: ${key}`)
       }
     })

@@ -392,6 +392,75 @@ export class AgentService {
   }
 
   /**
+   * 异步执行 Agent 任务
+   * 用于解决 HTTP 请求超时问题
+   * 任务在后台执行，结果通过缓存获取
+   */
+  async executeTaskAsync(
+    userId: string,
+    avatarId: string,
+    taskDescription: string,
+    options?: {
+      conversationId?: string
+      taskId?: string
+      headers?: Record<string, string>
+      conversationHistory?: ConversationMessage[]
+    }
+  ): Promise<AgentExecutionResult> {
+    const taskId = options?.taskId || `task-${Date.now()}`
+    
+    // 更新任务状态为 running
+    this.progressCache.updateTaskStatus(userId, taskId, 'running')
+    
+    // 设置任务上下文
+    this.currentTaskMap.set(userId, {
+      taskId,
+      startTime: Date.now()
+    })
+    
+    try {
+      // 推送开始事件
+      this.emitProgress(userId, 'start', '开始分析任务...')
+      
+      // 初始化上下文
+      this.emitProgress(userId, 'progress', '初始化执行环境...')
+      const context = await this.initContext(userId, avatarId, taskDescription, options)
+      
+      // 执行 ReAct 循环
+      const result = await this.runReActLoop(context, userId)
+      
+      // 推送完成事件
+      this.emitProgress(userId, 'complete', '任务执行完成', { 
+        success: result.success,
+        requiresConfig: result.requiresConfig 
+      })
+      
+      // 保存任务结果到缓存
+      this.progressCache.updateTaskStatus(userId, taskId, 'completed', result)
+      
+      // 保存对话记录
+      if (options?.conversationId) {
+        await this.saveConversationHistory(
+          options.conversationId,
+          taskDescription,
+          result.finalAnswer,
+          result
+        )
+      }
+      
+      return result
+    } catch (error) {
+      // 保存错误信息
+      this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, error.message)
+      this.emitProgress(userId, 'error', error.message)
+      throw error
+    } finally {
+      // 清理任务上下文
+      this.currentTaskMap.delete(userId)
+    }
+  }
+
+  /**
    * 保存对话历史
    */
   private async saveConversationHistory(
