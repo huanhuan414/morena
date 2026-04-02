@@ -184,6 +184,23 @@ export class AgentController {
   }
 
   /**
+   * 验证平台配置（保存前先验证配置是否正确）
+   */
+  @Post('platform-config/:platform/validate')
+  async validatePlatformConfig(
+    @Param('platform') platform: PlatformType,
+    @Body() configData: Record<string, any>
+  ) {
+    const result = await this.agentService.validatePlatformConfig(platform, configData)
+    
+    return {
+      code: 200,
+      data: result,
+      message: result.valid ? '验证成功' : '验证失败'
+    }
+  }
+
+  /**
    * 删除平台配置
    */
   @Delete('platform-config/:platform')

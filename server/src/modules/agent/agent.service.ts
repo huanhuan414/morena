@@ -1014,6 +1014,180 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
   }
 
   /**
+   * 验证平台配置
+   * 在保存前验证配置是否正确
+   */
+  async validatePlatformConfig(
+    platform: PlatformType,
+    configData: Record<string, any>
+  ): Promise<{ valid: boolean; error?: string; message?: string }> {
+    console.log(`验证平台配置: ${platform}`, Object.keys(configData))
+
+    try {
+      switch (platform) {
+        case 'wechat_mp':
+          return await this.validateWechatMpConfig(configData)
+        case 'xiaohongshu':
+          return await this.validateXiaohongshuConfig(configData)
+        case 'bilibili':
+          return await this.validateBilibiliConfig(configData)
+        case 'weibo':
+          return await this.validateWeiboConfig(configData)
+        case 'douyin':
+          return await this.validateDouyinConfig(configData)
+        case 'wechat_video':
+          return await this.validateWechatVideoConfig(configData)
+        default:
+          return { valid: false, error: '不支持的平台类型' }
+      }
+    } catch (err: any) {
+      console.error('验证配置失败:', err)
+      return { valid: false, error: `验证失败: ${err.message}` }
+    }
+  }
+
+  /**
+   * 验证微信公众号配置
+   */
+  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { app_id, app_secret } = configData
+
+    if (!app_id || !app_secret) {
+      return { valid: false, error: '请填写AppID和AppSecret' }
+    }
+
+    if (!app_id.startsWith('wx')) {
+      return { valid: false, error: 'AppID格式错误，应以wx开头' }
+    }
+
+    if (app_secret.length !== 32) {
+      return { valid: false, error: 'AppSecret格式错误，应为32位字符' }
+    }
+
+    // 调用微信API验证
+    try {
+      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${app_id}&secret=${app_secret}`
+      const res = await fetch(url)
+      const data = await res.json()
+
+      if (data.errcode) {
+        const errorMessages: Record<number, string> = {
+          40001: 'AppSecret错误或不属于该公众号，请检查AppSecret是否正确',
+          40013: 'AppID不合法，请检查AppID是否正确',
+          40164: '服务器IP未加入白名单，请在公众平台后台配置IP白名单',
+          41004: '缺少AppSecret参数',
+          48001: 'api功能未授权，请确认公众号已开通相关权限',
+        }
+        const msg = errorMessages[data.errcode] || `微信API错误: ${data.errmsg} (${data.errcode})`
+        return { valid: false, error: msg }
+      }
+
+      if (data.access_token) {
+        return { valid: true, message: '配置验证成功，AppID和AppSecret正确' }
+      }
+
+      return { valid: false, error: '验证失败，请检查配置' }
+    } catch (err: any) {
+      return { valid: false, error: `API调用失败: ${err.message}` }
+    }
+  }
+
+  /**
+   * 验证小红书配置
+   */
+  private async validateXiaohongshuConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { cookie } = configData
+
+    if (!cookie || cookie.length < 50) {
+      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+    }
+
+    // 小红书没有官方API，只能做基本的格式验证
+    // 检查Cookie中是否包含必要的字段
+    if (!cookie.includes('web_session') && !cookie.includes('webId')) {
+      return { valid: false, error: 'Cookie可能无效，请确保已登录小红书并正确复制Cookie' }
+    }
+
+    return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
+  }
+
+  /**
+   * 验证B站配置
+   */
+  private async validateBilibiliConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { sessdata, bili_jct } = configData
+
+    if (!sessdata) {
+      return { valid: false, error: '请填写SESSDATA' }
+    }
+
+    if (!bili_jct) {
+      return { valid: false, error: '请填写bili_jct' }
+    }
+
+    // B站没有官方API，只能做基本的格式验证
+    if (sessdata.length < 20) {
+      return { valid: false, error: 'SESSDATA格式不正确' }
+    }
+
+    if (bili_jct.length !== 32) {
+      return { valid: false, error: 'bili_jct格式不正确，应为32位' }
+    }
+
+    return { valid: true, message: '配置格式验证通过（实际有效性需发布时验证）' }
+  }
+
+  /**
+   * 验证微博配置
+   */
+  private async validateWeiboConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { cookie } = configData
+
+    if (!cookie || cookie.length < 50) {
+      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+    }
+
+    // 微博没有官方API，只能做基本的格式验证
+    if (!cookie.includes('SUB') && !cookie.includes('ALF')) {
+      return { valid: false, error: 'Cookie可能无效，请确保已登录微博并正确复制Cookie' }
+    }
+
+    return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
+  }
+
+  /**
+   * 验证抖音配置
+   */
+  private async validateDouyinConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { cookie } = configData
+
+    if (!cookie || cookie.length < 50) {
+      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+    }
+
+    // 抖音没有官方API，只能做基本的格式验证
+    if (!cookie.includes('sessionid') && !cookie.includes('passport_csrf_token')) {
+      return { valid: false, error: 'Cookie可能无效，请确保已登录抖音创作者平台并正确复制Cookie' }
+    }
+
+    return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
+  }
+
+  /**
+   * 验证视频号配置
+   */
+  private async validateWechatVideoConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+    const { app_id, app_secret } = configData
+
+    if (!app_id || !app_secret) {
+      return { valid: false, error: '请填写AppID和AppSecret' }
+    }
+
+    // 视频号API目前在内测阶段，暂时只能做格式验证
+    return { valid: true, message: '配置格式验证通过。视频号API目前在内测阶段，需要申请开通后才能使用自动发布功能。' }
+  }
+
+  /**
    * 保存平台配置
    */
   async savePlatformConfig(
