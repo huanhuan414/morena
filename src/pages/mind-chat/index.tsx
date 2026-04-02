@@ -6,6 +6,7 @@ import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
+import { PublishGuideDialog, PLATFORM_CONFIGS } from '@/components/agent/PublishGuideDialog'
 import MarkdownRender from '@/components/markdown-render'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -196,6 +197,19 @@ export default function MindChatPage() {
     }
   } | null>(null)
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
+  
+  // 发布引导弹窗（用于无 API 的平台）
+  const [showPublishGuide, setShowPublishGuide] = useState(false)
+  const [publishGuideData, setPublishGuideData] = useState<{
+    platform: keyof typeof PLATFORM_CONFIGS
+    content: {
+      title?: string
+      content?: string
+      images?: string[]
+      tags?: string[]
+      videoUrl?: string
+    }
+  } | null>(null)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -808,6 +822,24 @@ export default function MindChatPage() {
     
     const { platform, content } = pendingPublish
     
+    // 判断是否是支持 API 发布的平台
+    const apiSupportedPlatforms: PlatformType[] = ['wechat_mp']
+    
+    if (!apiSupportedPlatforms.includes(platform)) {
+      // 不支持 API 发布的平台，显示引导弹窗
+      setShowPublishConfirm(false)
+      setPublishGuideData({
+        platform: platform as keyof typeof PLATFORM_CONFIGS,
+        content: {
+          title: content.title,
+          content: content.content,
+          images: content.images
+        }
+      })
+      setShowPublishGuide(true)
+      return
+    }
+    
     try {
       setLoading(true)
       setCurrentStatus('正在检查平台配置...')
@@ -844,18 +876,37 @@ export default function MindChatPage() {
       })
       
       if (publishRes.data?.code === 200) {
-        showToast({ title: '发布成功！', icon: 'success' })
-        setPendingPublish(null)
+        const publishData = publishRes.data.data
         
-        // 添加一条发布成功的消息
-        const successMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `✅ 内容已成功发布到${getPlatformName(platform)}！\n\n${publishRes.data.data?.url ? `查看链接：${publishRes.data.data.url}` : ''}`,
-          created_at: new Date().toISOString()
+        // 检查是否需要手动发布
+        if (publishData?.manual_publish_required) {
+          // 需要手动发布，显示引导弹窗
+          setShowPublishConfirm(false)
+          setPublishGuideData({
+            platform: platform as keyof typeof PLATFORM_CONFIGS,
+            content: {
+              title: publishData.title || content.title,
+              content: publishData.content || content.content,
+              images: publishData.images || content.images,
+              tags: publishData.tags
+            }
+          })
+          setShowPublishGuide(true)
+        } else {
+          // 发布成功
+          showToast({ title: '发布成功！', icon: 'success' })
+          setPendingPublish(null)
+          
+          // 添加一条发布成功的消息
+          const successMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `✅ 内容已成功发布到${getPlatformName(platform)}！\n\n${publishData?.url ? `查看链接：${publishData.url}` : ''}`,
+            created_at: new Date().toISOString()
+          }
+          setMessages(prev => [...prev, successMsg])
+          scrollToBottom()
         }
-        setMessages(prev => [...prev, successMsg])
-        scrollToBottom()
       } else {
         showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
       }
@@ -1639,6 +1690,21 @@ export default function MindChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* 发布引导弹窗（用于无 API 的平台） */}
+      {publishGuideData && (
+        <PublishGuideDialog
+          open={showPublishGuide}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setShowPublishGuide(false)
+              setPendingPublish(null)
+            }
+          }}
+          platform={publishGuideData.platform}
+          content={publishGuideData.content}
+        />
+      )}
     </View>
   )
 }
