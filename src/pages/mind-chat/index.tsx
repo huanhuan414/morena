@@ -777,6 +777,18 @@ export default function MindChatPage() {
       // 添加发布提示
       replyContent += `\n\n💡 内容已生成完成！点击下方「一键发布」按钮可快速发布到小红书。`
       
+      // 将小红书笔记内容添加到媒体数组
+      media.push({
+        type: 'article',
+        title: xhsContent.title,
+        content: xhsContent.content,
+        coverImage: undefined
+      })
+      
+      // 设置 requiresConfig 和 configPlatform，让发布按钮能够显示
+      result.requiresConfig = true
+      result.configPlatform = 'xiaohongshu'
+      
       // 存储待发布内容
       setPendingPublish({
         platform: 'xiaohongshu',
