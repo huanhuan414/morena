@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react'
 import Taro from '@tarojs/taro'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { PlatformType } from '@/components/agent/PlatformConfigDialog'
 import type { AgentResult, ReActStep } from '@/components/agent/AgentMessageView'
 

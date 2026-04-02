@@ -2,7 +2,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { useDidShow, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Bell, MessageCircle, Heart, UserPlus, Info } from 'lucide-react-taro'
 import './notifications.css'
 

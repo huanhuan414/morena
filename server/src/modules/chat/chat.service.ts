@@ -2,13 +2,15 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import { LLMClient, Config, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { AgentService } from '../agent/agent.service'
+import { LearningService } from '../avatar/learning.service'
 
 @Injectable()
 export class ChatService {
   private storage: S3Storage
 
   constructor(
-    @Inject(forwardRef(() => AgentService)) private readonly agentService: AgentService
+    @Inject(forwardRef(() => AgentService)) private readonly agentService: AgentService,
+    private readonly learningService: LearningService
   ) {
     // 初始化火山引擎CDN存储
     this.storage = new S3Storage({
@@ -152,7 +154,7 @@ export class ChatService {
     const messages = [
       {
         role: 'system' as const,
-        content: this.buildSystemPrompt(avatar)
+        content: await this.buildSystemPrompt(avatar)
       },
       ...((conversation?.context || []) as any[]).slice(-10),
       { role: 'user' as const, content }
@@ -195,7 +197,7 @@ export class ChatService {
       .eq('id', conversationId)
     
     await this.addAvatarExp(avatarId, 1)
-    await this.updateAvatarLearning(avatarId, content, response.content)
+    await this.updateAvatarLearning(avatarId, content, response.content, conversation?.context as string[])
     
     const taskInfo = this.detectTaskIntent(content, response.content)
     if (taskInfo && !response.content.includes('开始执行任务')) {
@@ -274,7 +276,7 @@ export class ChatService {
     const messages = [
       {
         role: 'system' as const,
-        content: this.buildSystemPrompt(avatar)
+        content: await this.buildSystemPrompt(avatar)
       },
       ...((conversation?.context || []) as any[]).slice(-10),
       { role: 'user' as const, content }
@@ -376,7 +378,7 @@ export class ChatService {
       .eq('id', conversationId)
     
     await this.addAvatarExp(avatarId, 1)
-    await this.updateAvatarLearning(avatarId, content, fullResponse)
+    await this.updateAvatarLearning(avatarId, content, fullResponse, conversation?.context as string[])
     
     yield { type: 'done', data: { message: '完成' } }
   }
@@ -539,25 +541,9 @@ export class ChatService {
     }
   }
 
-  private buildSystemPrompt(avatar: any): string {
-    const personality = avatar?.personality || '友好、专业、乐于助人'
-    const level = avatar?.level || 1
-    
-    return `你是${avatar?.name || 'AI助手'}，一个AI分身。
-性格特点：${personality}
-当前等级：Lv.${level}
-
-你的能力：
-1. 智能对话 - 与用户进行自然流畅的交流
-2. 任务执行 - 帮助用户完成各种任务（生成图片、视频、文章等）
-3. 知识问答 - 回答用户的问题
-
-当用户要求你执行任务时（如生成图片、视频、写文章等），你应该：
-1. 确认理解用户需求
-2. 告诉用户你将"开始执行任务"
-3. 执行过程中保持友好和专业
-
-回复时使用自然的语言，避免过于机械。`
+  private async buildSystemPrompt(avatar: any): Promise<string> {
+    // 使用 LearningService 构建个性化提示词
+    return this.learningService.buildPersonalizedPrompt(avatar.id, avatar)
   }
 
   private async addAvatarExp(avatarId: string, exp: number) {
@@ -580,34 +566,19 @@ export class ChatService {
     }
   }
 
-  private async updateAvatarLearning(avatarId: string, userMessage: string, aiMessage: string) {
+  private async updateAvatarLearning(avatarId: string, userMessage: string, aiMessage: string, conversationContext?: string[]) {
+    // 使用 LearningService 进行深度学习分析
     const client = getSupabaseClient()
+    const { data: { user } } = await client.auth.getUser()
+    const userId = user?.id || 'anonymous'
     
-    const { data: avatar } = await client
-      .from('avatars')
-      .select('config')
-      .eq('id', avatarId)
-      .single()
-    
-    if (avatar?.config) {
-      const learning = avatar.config.learning || {
-        messageCount: 0,
-        avgMessageLength: 0,
-        commonPhrases: [],
-        emotions: [],
-        topics: []
-      }
-      
-      learning.messageCount = (learning.messageCount || 0) + 1
-      learning.avgMessageLength = Math.round(
-        ((learning.avgMessageLength || 0) * (learning.messageCount - 1) + userMessage.length) / learning.messageCount
-      )
-      
-      await client
-        .from('avatars')
-        .update({ config: { ...avatar.config, learning } })
-        .eq('id', avatarId)
-    }
+    await this.learningService.analyzeAndUpdate(
+      avatarId,
+      userId,
+      userMessage,
+      aiMessage,
+      conversationContext
+    )
   }
 
   private detectTaskIntent(userMessage: string, aiResponse: string): any {

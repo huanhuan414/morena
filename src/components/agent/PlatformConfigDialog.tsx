@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import Taro from '@tarojs/taro'
-import { Network } from '@/network'
+import * as Network from '@/network'
 
 // 平台类型
 export type PlatformType = 

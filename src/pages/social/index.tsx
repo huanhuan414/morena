@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef } from 'react'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign } from 'lucide-react-taro'
 import './index.css'
 

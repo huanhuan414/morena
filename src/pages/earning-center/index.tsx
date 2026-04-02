@@ -2,7 +2,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { useDidShow, showToast, navigateTo } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles } from 'lucide-react-taro'
 import './index.css'
 

@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useLoad, useDidShow, useRouter, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Briefcase, Clock, DollarSign, ChevronRight, Sparkles, Plus, TrendingUp, Check, BadgeAlert, Zap } from 'lucide-react-taro'
 import './index.css'
 

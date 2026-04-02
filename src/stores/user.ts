@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { setStorageSync, getStorageSync, removeStorageSync } from '@tarojs/taro'
-import { Network } from '@/network'
+import * as Network from '@/network'
 
 interface User {
   id: string

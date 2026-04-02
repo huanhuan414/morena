@@ -2,10 +2,14 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseIntercepto
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
+import { LearningService } from './learning.service'
 
 @Controller('avatar')
 export class AvatarController {
-  constructor(private readonly avatarService: AvatarService) {}
+  constructor(
+    private readonly avatarService: AvatarService,
+    private readonly learningService: LearningService
+  ) {}
 
   @Post()
   async create(
@@ -144,6 +148,20 @@ export class AvatarController {
     return {
       code: 200,
       data: stats,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取分身的学习数据
+   * 包含学习进度、风格分析、性格特征等
+   */
+  @Get(':id/learning')
+  async getLearningData(@Param('id') avatarId: string) {
+    const result = await this.learningService.getUserProfile(avatarId)
+    return {
+      code: 200,
+      data: result,
       message: '获取成功'
     }
   }

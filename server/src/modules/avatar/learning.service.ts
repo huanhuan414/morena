@@ -5,7 +5,7 @@ import { getSupabaseClient } from '../../storage/database/supabase-client'
 /**
  * 用户学习数据接口
  */
-interface UserLearningData {
+export interface UserLearningData {
   // 基础统计
   messageCount: number
   avgMessageLength: number
@@ -73,6 +73,16 @@ interface UserLearningData {
     confidence: number
     timestamp: string
   }>
+  
+  // 风格指纹（新增）
+  styleFingerprint: {
+    sentenceLength: 'short' | 'medium' | 'long'  // 句子长度偏好
+    punctuationStyle: 'minimal' | 'normal' | 'expressive'  // 标点风格
+    emojiFrequency: number  // 表情使用频率 0-1
+    questionFrequency: number  // 提问频率 0-1
+    exclamationFrequency: number  // 感叹号频率 0-1
+    vocabularyLevel: 'simple' | 'moderate' | 'sophisticated'  // 词汇水平
+  }
 }
 
 /**
@@ -107,8 +117,14 @@ export class LearningService {
       // 使用LLM分析用户消息
       const analysis = await this.analyzeMessage(userMessage, conversationContext)
       
+      // 分析风格指纹
+      const styleAnalysis = this.analyzeStyleFingerprint(userMessage, currentLearning.styleFingerprint)
+      
       // 更新学习数据
-      const updatedLearning = this.mergeLearningData(currentLearning, analysis, userMessage)
+      const updatedLearning = this.mergeLearningData(currentLearning, analysis, styleAnalysis, userMessage)
+      
+      // 计算学习进度和等级
+      const progressMetrics = this.calculateProgressMetrics(updatedLearning)
       
       // 保存到数据库
       await client
@@ -117,14 +133,28 @@ export class LearningService {
           learning_data: updatedLearning,
           config: {
             ...avatar?.config,
+            learning: {
+              messageCount: updatedLearning.messageCount,
+              avgMessageLength: updatedLearning.avgMessageLength,
+              masteryLevel: progressMetrics.masteryLevel,
+              learningDays: progressMetrics.learningDays,
+              styleMatch: progressMetrics.styleMatch
+            },
             lastInteraction: new Date().toISOString(),
             learningVersion: 2
           },
+          // 更新等级
+          level: progressMetrics.level,
+          exp: progressMetrics.totalExp,
           updated_at: new Date().toISOString()
         })
         .eq('id', avatarId)
       
-      console.log('[LearningService] 学习数据已更新:', avatarId)
+      console.log('[LearningService] 学习数据已更新:', avatarId, {
+        messageCount: updatedLearning.messageCount,
+        masteryLevel: progressMetrics.masteryLevel,
+        level: progressMetrics.level
+      })
     } catch (error) {
       console.error('[LearningService] 学习分析失败:', error)
     }
@@ -137,10 +167,10 @@ export class LearningService {
     const config = new Config()
     const llmClient = new LLMClient(config)
     
-    const prompt = `你是一个用户行为分析专家。请分析以下用户消息，提取用户特征。
+    const prompt = `你是一个专业的用户行为分析专家。请分析以下用户消息，提取用户的深层特征。
 
 用户消息：${message}
-${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
+${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
 
 请以JSON格式返回分析结果，格式如下：
 {
@@ -179,6 +209,15 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
   "keyPhrases": ["帮我", "分析一下", "好的"]
 }
 
+分析要点：
+1. tone 分析用户说话的语气风格
+2. personality 基于大五人格模型分析
+3. logic 分析用户的思维方式
+4. decision 分析用户的决策风格
+5. communication 分析用户的沟通偏好
+6. interests 提取用户感兴趣的话题
+7. keyPhrases 提取用户常用的表达方式
+
 只返回JSON，不要有其他内容。`
 
     try {
@@ -202,17 +241,73 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
   }
   
   /**
+   * 分析风格指纹（基于统计）
+   */
+  private analyzeStyleFingerprint(
+    message: string,
+    current: UserLearningData['styleFingerprint']
+  ): Partial<UserLearningData['styleFingerprint']> {
+    const sentences = message.split(/[。！？.!?]+/).filter(s => s.trim())
+    const avgSentenceLength = sentences.length > 0 
+      ? sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length 
+      : 0
+    
+    const emojiCount = (message.match(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || []).length
+    const questionCount = (message.match(/[？?]/g) || []).length
+    const exclamationCount = (message.match(/[！!]/g) || []).length
+    const charCount = message.length
+    
+    // 计算标点密度
+    const punctuationCount = (message.match(/[，。！？、；：""''（）【】,.!?;:()\[\]]/g) || []).length
+    const punctuationDensity = charCount > 0 ? punctuationCount / charCount : 0
+    
+    return {
+      sentenceLength: avgSentenceLength < 10 ? 'short' : avgSentenceLength < 25 ? 'medium' : 'long',
+      punctuationStyle: punctuationDensity < 0.05 ? 'minimal' : punctuationDensity < 0.12 ? 'normal' : 'expressive',
+      emojiFrequency: charCount > 0 ? Math.min(1, emojiCount / (charCount / 20)) : 0,
+      questionFrequency: sentences.length > 0 ? Math.min(1, questionCount / sentences.length) : 0,
+      exclamationFrequency: sentences.length > 0 ? Math.min(1, exclamationCount / sentences.length) : 0,
+      vocabularyLevel: this.assessVocabularyLevel(message)
+    }
+  }
+  
+  /**
+   * 评估词汇水平
+   */
+  private assessVocabularyLevel(message: string): 'simple' | 'moderate' | 'sophisticated' {
+    // 简单的词汇评估逻辑
+    const sophisticatedWords = ['因此', '然而', '综上所述', '鉴于', '由此可见', '本质上', '根本上', '从某种意义上']
+    const moderateWords = ['但是', '而且', '因为', '所以', '如果', '虽然', '但是', '可能']
+    
+    let sophisticatedCount = 0
+    let moderateCount = 0
+    
+    sophisticatedWords.forEach(word => {
+      if (message.includes(word)) sophisticatedCount++
+    })
+    moderateWords.forEach(word => {
+      if (message.includes(word)) moderateCount++
+    })
+    
+    if (sophisticatedCount >= 2) return 'sophisticated'
+    if (moderateCount >= 2 || sophisticatedCount >= 1) return 'moderate'
+    return 'simple'
+  }
+  
+  /**
    * 合并学习数据
    */
   private mergeLearningData(
     current: UserLearningData,
     analysis: any,
+    styleAnalysis: Partial<UserLearningData['styleFingerprint']>,
     message: string
   ): UserLearningData {
-    const learningRate = 0.1 // 学习率，控制更新速度
+    const learningRate = 0.15 // 学习率，控制更新速度
+    const newMessageCount = current.messageCount + 1
     
     return {
-      messageCount: current.messageCount + 1,
+      messageCount: newMessageCount,
       avgMessageLength: this.updateAverage(current.avgMessageLength, message.length, current.messageCount),
       totalInteractionTime: current.totalInteractionTime + 1,
       
@@ -266,6 +361,12 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
       // 提取表情符号
       emojiUsage: this.extractEmojis(message, current.emojiUsage),
       
+      // 更新风格指纹
+      styleFingerprint: {
+        ...current.styleFingerprint,
+        ...styleAnalysis
+      },
+      
       // 更新经历
       experiences: this.addExperience(current.experiences, message),
       
@@ -275,30 +376,95 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
   }
   
   /**
+   * 计算学习进度指标
+   */
+  private calculateProgressMetrics(learning: UserLearningData): {
+    masteryLevel: number
+    learningDays: number
+    styleMatch: number
+    level: number
+    totalExp: number
+  } {
+    // 掌握度计算：基于消息数量、特征收敛度和风格一致性
+    const messageScore = Math.min(50, learning.messageCount * 2) // 消息数量贡献最多50分
+    
+    // 特征收敛度：衡量各项特征的确定性（偏离0.5的程度）
+    const convergenceScore = this.calculateConvergenceScore(learning)
+    
+    // 风格一致性：基于风格指纹的稳定性
+    const styleConsistency = this.calculateStyleConsistency(learning)
+    
+    const masteryLevel = Math.min(100, Math.round(messageScore + convergenceScore * 30 + styleConsistency * 20))
+    
+    // 学习天数：基于消息数量估算（假设每天10条消息）
+    const learningDays = Math.max(1, Math.floor(learning.messageCount / 10))
+    
+    // 风格匹配度
+    const styleMatch = Math.round(styleConsistency * 100)
+    
+    // 等级计算
+    const totalExp = learning.messageCount * 10 + masteryLevel * 5
+    const level = Math.min(99, Math.floor(totalExp / 100) + 1)
+    
+    return {
+      masteryLevel,
+      learningDays,
+      styleMatch,
+      level,
+      totalExp
+    }
+  }
+  
+  /**
+   * 计算特征收敛度
+   */
+  private calculateConvergenceScore(learning: UserLearningData): number {
+    // 计算各项特征与中点的偏离程度，偏离越大说明特征越明显
+    const features = [
+      ...Object.values(learning.toneProfile),
+      ...Object.values(learning.personalityTraits),
+      ...Object.values(learning.logicPattern),
+      ...Object.values(learning.decisionStyle),
+      ...Object.values(learning.communicationStyle)
+    ]
+    
+    const avgDeviation = features.reduce((sum, value) => {
+      return sum + Math.abs(value - 0.5) * 2 // 0.5为中点，偏离程度乘以2归一化到0-1
+    }, 0) / features.length
+    
+    return avgDeviation
+  }
+  
+  /**
+   * 计算风格一致性
+   */
+  private calculateStyleConsistency(learning: UserLearningData): number {
+    const fingerprint = learning.styleFingerprint
+    
+    // 基于风格指纹的各项指标计算一致性
+    let consistency = 0.5 // 基础分
+    
+    // 表情使用有规律
+    if (fingerprint.emojiFrequency > 0) consistency += 0.1
+    
+    // 句子长度有偏好
+    if (fingerprint.sentenceLength !== 'medium') consistency += 0.1
+    
+    // 标点风格明显
+    if (fingerprint.punctuationStyle !== 'normal') consistency += 0.1
+    
+    // 词汇水平
+    if (fingerprint.vocabularyLevel !== 'moderate') consistency += 0.1
+    
+    return Math.min(1, consistency)
+  }
+  
+  /**
    * 合并单个值
    */
   private mergeValue(current: number, update: number | undefined, rate: number): number {
     if (update === undefined) return current
     return current * (1 - rate) + update * rate
-  }
-  
-  /**
-   * 合并特征配置
-   */
-  private mergeProfiles(
-    current: Record<string, number>,
-    update: Record<string, number> | undefined,
-    rate: number
-  ): Record<string, number> {
-    if (!update) return current
-    
-    const result = { ...current }
-    for (const [key, value] of Object.entries(update)) {
-      if (typeof value === 'number') {
-        result[key] = current[key] * (1 - rate) + value * rate
-      }
-    }
-    return result
   }
   
   /**
@@ -390,6 +556,15 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
         concise: 0.5
       },
       
+      styleFingerprint: {
+        sentenceLength: 'medium',
+        punctuationStyle: 'normal',
+        emojiFrequency: 0,
+        questionFrequency: 0,
+        exclamationFrequency: 0,
+        vocabularyLevel: 'moderate'
+      },
+      
       experiences: [],
       learningHistory: []
     }
@@ -397,24 +572,217 @@ ${context ? `对话上下文：${context.slice(-3).join('\n')}` : ''}
   
   /**
    * 根据学习数据构建个性化提示词
+   * 这是最关键的方法：让分身真正像用户一样说话
    */
-  buildPersonalizedPrompt(avatarId: string): string {
-    // 这个方法会被ChatService调用，用于构建个性化的系统提示词
-    return ''
+  async buildPersonalizedPrompt(avatarId: string, avatar: any): Promise<string> {
+    const client = getSupabaseClient()
+    
+    try {
+      const { data: avatarData } = await client
+        .from('avatars')
+        .select('learning_data')
+        .eq('id', avatarId)
+        .single()
+      
+      const learning: UserLearningData = avatarData?.learning_data || this.getDefaultLearningData()
+      
+      // 如果消息数量太少，使用基础提示词
+      if (learning.messageCount < 5) {
+        return this.buildBasicPrompt(avatar)
+      }
+      
+      // 构建个性化提示词
+      const personality = avatar?.personality || '友好、专业、乐于助人'
+      const name = avatar?.name || 'AI助手'
+      
+      // 提取主导特征
+      const dominantTraits = this.extractDominantTraits(learning)
+      
+      // 构建风格指南
+      const styleGuide = this.buildStyleGuide(learning)
+      
+      // 构建语言习惯
+      const languageHabits = this.buildLanguageHabits(learning)
+      
+      return `你是${name}，一个正在学习用户风格的AI分身。
+
+【基础设定】
+性格特点：${personality}
+当前等级：Lv.${avatar?.level || 1}
+已学习对话：${learning.messageCount}条
+风格掌握度：${Math.round(this.calculateConvergenceScore(learning) * 100)}%
+
+【你的主导性格特征】
+${dominantTraits}
+
+【说话风格指南】
+${styleGuide}
+
+【语言习惯】
+${languageHabits}
+
+【兴趣话题】
+${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '暂无特定偏好'}
+
+【重要规则】
+1. 你正在学习用户的说话风格，请根据上述特征调整你的表达方式
+2. 保持自然流畅，不要刻意模仿，而是让风格自然融入
+3. 随着对话增多，你会越来越像用户
+4. 使用用户习惯的表达方式和语气
+5. 在回复中体现用户的思维方式和决策风格
+
+记住：你不是在扮演用户，而是在学习用户的风格特点，让对话更加自然和谐。`
+    } catch (error) {
+      console.error('[LearningService] 构建个性化提示词失败:', error)
+      return this.buildBasicPrompt(avatar)
+    }
+  }
+  
+  /**
+   * 构建基础提示词
+   */
+  private buildBasicPrompt(avatar: any): string {
+    const personality = avatar?.personality || '友好、专业、乐于助人'
+    const name = avatar?.name || 'AI助手'
+    
+    return `你是${name}，一个AI分身。
+性格特点：${personality}
+当前等级：Lv.${avatar?.level || 1}
+
+你的能力：
+1. 智能对话 - 与用户进行自然流畅的交流
+2. 任务执行 - 帮助用户完成各种任务（生成图片、视频、文章等）
+3. 知识问答 - 回答用户的问题
+
+回复时使用自然的语言，避免过于机械。`
+  }
+  
+  /**
+   * 提取主导特征
+   */
+  private extractDominantTraits(learning: UserLearningData): string {
+    const traits: string[] = []
+    
+    // 语气特征
+    if (learning.toneProfile.formal > 0.6) traits.push('说话较为正式')
+    if (learning.toneProfile.casual > 0.6) traits.push('说话较为随性')
+    if (learning.toneProfile.humorous > 0.6) traits.push('喜欢幽默表达')
+    if (learning.toneProfile.emotional > 0.6) traits.push('情感表达丰富')
+    
+    // 性格特征
+    if (learning.personalityTraits.openness > 0.6) traits.push('思维开放，乐于接受新事物')
+    if (learning.personalityTraits.conscientiousness > 0.6) traits.push('做事认真负责')
+    if (learning.personalityTraits.extraversion > 0.6) traits.push('性格外向，善于表达')
+    if (learning.personalityTraits.agreeableness > 0.6) traits.push('待人友善')
+    
+    // 思维方式
+    if (learning.logicPattern.analytical > 0.6) traits.push('善于分析问题')
+    if (learning.logicPattern.creative > 0.6) traits.push('思维有创造力')
+    if (learning.logicPattern.structured > 0.6) traits.push('喜欢有条理的表达')
+    
+    // 决策风格
+    if (learning.decisionStyle.decisive > 0.6) traits.push('决策果断')
+    if (learning.decisionStyle.cautious > 0.6) traits.push('做事谨慎')
+    
+    return traits.length > 0 ? traits.join('；') : '风格特征正在形成中...'
+  }
+  
+  /**
+   * 构建风格指南
+   */
+  private buildStyleGuide(learning: UserLearningData): string {
+    const guide: string[] = []
+    const comm = learning.communicationStyle
+    
+    if (comm.direct > 0.6) {
+      guide.push('- 回答要直接了当，不要绕弯子')
+    } else if (comm.polite > 0.6) {
+      guide.push('- 回答要礼貌周到，注意用词')
+    }
+    
+    if (comm.detailed > 0.6) {
+      guide.push('- 回答要详细完整，提供足够信息')
+    } else if (comm.concise > 0.6) {
+      guide.push('- 回答要简洁明了，抓住要点')
+    }
+    
+    // 基于风格指纹
+    const fp = learning.styleFingerprint
+    if (fp.sentenceLength === 'short') {
+      guide.push('- 使用短句表达，简洁有力')
+    } else if (fp.sentenceLength === 'long') {
+      guide.push('- 可以使用较长的句子，表达完整')
+    }
+    
+    if (fp.emojiFrequency > 0.3) {
+      guide.push('- 适当使用表情符号增加亲和力')
+    }
+    
+    if (fp.questionFrequency > 0.3) {
+      guide.push('- 可以适当提问，引导对话')
+    }
+    
+    return guide.length > 0 ? guide.join('\n') : '- 保持自然流畅的对话风格'
+  }
+  
+  /**
+   * 构建语言习惯
+   */
+  private buildLanguageHabits(learning: UserLearningData): string {
+    const habits: string[] = []
+    
+    if (learning.commonPhrases.length > 0) {
+      habits.push(`常用表达：${learning.commonPhrases.slice(0, 5).join('、')}`)
+    }
+    
+    if (learning.emojiUsage.length > 0) {
+      habits.push(`常用表情：${learning.emojiUsage.slice(0, 5).join('')}`)
+    }
+    
+    if (learning.styleFingerprint.vocabularyLevel === 'sophisticated') {
+      habits.push('词汇使用：偏向使用书面语和专业术语')
+    } else if (learning.styleFingerprint.vocabularyLevel === 'simple') {
+      habits.push('词汇使用：偏向使用简单通俗的表达')
+    }
+    
+    return habits.length > 0 ? habits.join('\n') : '暂无明显习惯'
   }
   
   /**
    * 获取用户特征摘要
    */
-  async getUserProfile(avatarId: string): Promise<Partial<UserLearningData> | null> {
+  async getUserProfile(avatarId: string): Promise<{
+    learning: UserLearningData | null
+    metrics: {
+      masteryLevel: number
+      learningDays: number
+      styleMatch: number
+      level: number
+    } | null
+  }> {
     const client = getSupabaseClient()
     
     const { data: avatar } = await client
       .from('avatars')
-      .select('learning_data')
+      .select('learning_data, level')
       .eq('id', avatarId)
       .single()
     
-    return avatar?.learning_data || null
+    if (!avatar?.learning_data) {
+      return { learning: null, metrics: null }
+    }
+    
+    const learning = avatar.learning_data as UserLearningData
+    const metrics = this.calculateProgressMetrics(learning)
+    
+    return {
+      learning,
+      metrics: {
+        masteryLevel: metrics.masteryLevel,
+        learningDays: metrics.learningDays,
+        styleMatch: metrics.styleMatch,
+        level: avatar.level || metrics.level
+      }
+    }
   }
 }

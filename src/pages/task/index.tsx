@@ -4,7 +4,7 @@ import Taro, { switchTab } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
   Plus, Zap, Clock, Check, CircleAlert, 

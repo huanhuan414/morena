@@ -3,7 +3,7 @@ import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap } from 'lucide-react-taro'
 import './index.css'
 

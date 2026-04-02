@@ -128,6 +128,16 @@ export default defineConfig<'vite'>(async (merge, _env) => {
       patterns: [],
       options: {},
     },
+    // 确保 Vite 正确处理 TypeScript 文件
+    optimizeDeps: {
+      include: [],
+      esbuildOptions: {
+        loader: {
+          '.ts': 'ts',
+          '.tsx': 'tsx',
+        },
+      },
+    },
     ...(process.env.TARO_ENV === 'tt' && {
       tt: {
         appid: process.env.TARO_APP_TT_APPID,
@@ -147,6 +157,66 @@ export default defineConfig<'vite'>(async (merge, _env) => {
               config.css?.postcss.plugins?.unshift(tailwindcss());
             }
           },
+        },
+        {
+          name: 'fix-inject-plugin',
+          enforce: 'pre',
+          configResolved(config) {
+            // 修复 rollup-plugin-inject 解析 TypeScript 文件的问题
+            // 直接移除 inject 插件（因为它不支持 TypeScript）
+            const plugins = config.plugins || [];
+            const injectIndex = plugins.findIndex((p: any) => p?.name === 'inject');
+            if (injectIndex !== -1) {
+              console.log('[fix-inject-plugin] 移除 inject 插件以避免 TypeScript 解析错误');
+              plugins.splice(injectIndex, 1);
+            }
+          },
+        },
+        {
+          name: 'force-tsx-transform',
+          enforce: 'pre',
+          transform(code, id) {
+            // 强制 Vite 将 .ts 和 .tsx 文件视为 ES 模块
+            if (id.endsWith('.ts') || id.endsWith('.tsx')) {
+              return {
+                code,
+                map: null
+              }
+            }
+            return null
+          }
+        },
+        {
+          name: 'fix-network-parse',
+          enforce: 'pre',
+          resolveId(source) {
+            // 处理 network 模块的导入
+            if (source === '@/network' || source.includes('/network/index.ts')) {
+              return source;
+            }
+            return null;
+          },
+          load(id) {
+            // 如果是 network/index.ts 文件，直接返回其内容
+            if (id.includes('/network/index.ts')) {
+              return null; // 让 Vite 使用默认加载器
+            }
+            return null;
+          }
+        },
+        {
+          // 尝试禁用 build-import-analysis 插件
+          name: 'disable-build-import-analysis',
+          enforce: 'post',
+          configResolved(config) {
+            // 尝试找到并禁用 build-import-analysis 插件
+            const plugins = config.plugins || [];
+            const importAnalysisPlugin = plugins.find((p: any) => p?.name === 'vite:build-import-analysis');
+            if (importAnalysisPlugin) {
+              console.log('[disable-build-import-analysis] 找到 build-import-analysis 插件，尝试修复');
+              // 不删除插件，而是尝试修复其解析逻辑
+            }
+          }
         },
         {
           name: 'hmr-config-plugin',

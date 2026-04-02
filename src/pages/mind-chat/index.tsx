@@ -2,7 +2,7 @@
 import { View, Text, ScrollView, Image, Video, Input } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
@@ -106,6 +106,29 @@ interface LearningStats {
   learningDays: number
   masteryLevel: number
   avgMessageLength: number
+  styleMatch: number
+  // 学习特征
+  toneProfile?: {
+    formal: number
+    casual: number
+    humorous: number
+    emotional: number
+  }
+  personalityTraits?: {
+    openness: number
+    conscientiousness: number
+    extraversion: number
+    agreeableness: number
+    neuroticism: number
+  }
+  communicationStyle?: {
+    direct: number
+    polite: number
+    detailed: number
+    concise: number
+  }
+  interests?: string[]
+  commonPhrases?: string[]
 }
 
 // 工具名称映射（用于友好展示）
@@ -163,7 +186,8 @@ export default function MindChatPage() {
     messageCount: 0,
     learningDays: 0,
     masteryLevel: 0,
-    avgMessageLength: 0
+    avgMessageLength: 0,
+    styleMatch: 0
   })
   
   // Agent 实时状态（每个分身都是 Agent）
@@ -425,16 +449,51 @@ export default function MindChatPage() {
 
   const fetchLearningStats = async () => {
     try {
+      // 如果有选中的分身，获取该分身的学习数据
+      if (avatar?.id) {
+        const res = await Network.request({ url: `/api/avatar/${avatar.id}/learning` })
+        if (res.data?.code === 200 && res.data.data) {
+          const { learning, metrics } = res.data.data
+          if (learning && metrics) {
+            setLearningStats({
+              messageCount: learning.messageCount || 0,
+              learningDays: metrics.learningDays || 1,
+              masteryLevel: metrics.masteryLevel || 0,
+              styleMatch: metrics.styleMatch || 0,
+              avgMessageLength: learning.avgMessageLength || 0,
+              toneProfile: learning.toneProfile,
+              personalityTraits: learning.personalityTraits,
+              communicationStyle: learning.communicationStyle,
+              interests: learning.interests,
+              commonPhrases: learning.commonPhrases
+            })
+            return
+          }
+        }
+      }
+      
+      // 兜底：获取用户第一个分身的学习数据
       const res = await Network.request({ url: '/api/avatar' })
       if (res.data?.code === 200 && res.data.data?.length > 0) {
         const userAvatar = res.data.data[0]
-        const learning = userAvatar.config?.learning || {}
-        setLearningStats({
-          messageCount: learning.messageCount || 0,
-          learningDays: Math.floor((learning.messageCount || 0) / 10) + 1,
-          masteryLevel: Math.min(100, Math.floor((learning.messageCount || 0) / 5)),
-          avgMessageLength: learning.avgMessageLength || 0
-        })
+        const learningRes = await Network.request({ url: `/api/avatar/${userAvatar.id}/learning` })
+        if (learningRes.data?.code === 200 && learningRes.data.data) {
+          const { learning, metrics } = learningRes.data.data
+          if (learning && metrics) {
+            setLearningStats({
+              messageCount: learning.messageCount || 0,
+              learningDays: metrics.learningDays || 1,
+              masteryLevel: metrics.masteryLevel || 0,
+              styleMatch: metrics.styleMatch || 0,
+              avgMessageLength: learning.avgMessageLength || 0,
+              toneProfile: learning.toneProfile,
+              personalityTraits: learning.personalityTraits,
+              communicationStyle: learning.communicationStyle,
+              interests: learning.interests,
+              commonPhrases: learning.commonPhrases
+            })
+          }
+        }
       }
     } catch (error) {
       console.error('[MindChat] 获取学习数据失败:', error)
@@ -1268,32 +1327,24 @@ export default function MindChatPage() {
                       <View className="image-actions">
                         <View 
                           className="image-action-btn"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation()
                             // 下载图片到相册
                             Taro.showLoading({ title: '保存中...' })
-                            Network.downloadFile({
-                              url: media.url || '',
-                              success: (res) => {
-                                Taro.saveImageToPhotosAlbum({
-                                  filePath: res.tempFilePath,
-                                  success: () => {
-                                    Taro.hideLoading()
-                                    Taro.showToast({ title: '已保存到相册', icon: 'success' })
-                                  },
-                                  fail: (err) => {
-                                    Taro.hideLoading()
-                                    console.error('保存失败:', err)
-                                    Taro.showToast({ title: '保存失败', icon: 'none' })
-                                  }
-                                })
-                              },
-                              fail: (err) => {
-                                Taro.hideLoading()
-                                console.error('下载失败:', err)
-                                Taro.showToast({ title: '下载失败', icon: 'none' })
-                              }
-                            })
+                            try {
+                              const res = await Network.downloadFile({
+                                url: media.url || ''
+                              }) as any
+                              await Taro.saveImageToPhotosAlbum({
+                                filePath: res.tempFilePath
+                              })
+                              Taro.hideLoading()
+                              Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                            } catch (err) {
+                              Taro.hideLoading()
+                              console.error('保存失败:', err)
+                              Taro.showToast({ title: '保存失败', icon: 'none' })
+                            }
                           }}
                         >
                           <Download size={16} color="#fff" />
@@ -1483,7 +1534,56 @@ export default function MindChatPage() {
               style={{ width: `${learningStats.masteryLevel}%` }}
             />
           </View>
+          <Text className="learn-progress-hint">
+            {learningStats.masteryLevel < 20 
+              ? '继续对话，我会更了解你' 
+              : learningStats.masteryLevel < 50 
+                ? '我已经开始学习你的风格了' 
+                : learningStats.masteryLevel < 80 
+                  ? '越来越像你了！' 
+                  : '我们已经心意相通了 🎉'}
+          </Text>
         </View>
+        
+        {/* 风格匹配度 */}
+        {(learningStats.styleMatch || 0) > 0 && (
+          <View className="learn-style-section">
+            <Text className="learn-style-label">风格匹配度</Text>
+            <View className="learn-style-bar">
+              <View 
+                className="learn-style-fill" 
+                style={{ width: `${learningStats.styleMatch}%` }}
+              />
+            </View>
+            <Text className="learn-style-value">{learningStats.styleMatch}%</Text>
+          </View>
+        )}
+        
+        {/* 兴趣话题 */}
+        {learningStats.interests && learningStats.interests.length > 0 && (
+          <View className="learn-interests-section">
+            <Text className="learn-section-title">兴趣话题</Text>
+            <View className="learn-tags">
+              {learningStats.interests.slice(0, 5).map((interest, idx) => (
+                <View key={idx} className="learn-tag">
+                  <Text className="learn-tag-text">{interest}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+        
+        {/* 常用表达 */}
+        {learningStats.commonPhrases && learningStats.commonPhrases.length > 0 && (
+          <View className="learn-phrases-section">
+            <Text className="learn-section-title">你的常用表达</Text>
+            <View className="learn-phrases">
+              {learningStats.commonPhrases.slice(0, 3).map((phrase, idx) => (
+                <Text key={idx} className="learn-phrase">&ldquo;{phrase}&rdquo;</Text>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
 
       {/* 历史记录抽屉 */}

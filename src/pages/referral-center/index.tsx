@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useDidShow, showToast, setClipboardData } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Network } from '@/network'
+import * as Network from '@/network'
 import { Gift, Users, Share2, Copy, Sparkles, TrendingUp } from 'lucide-react-taro'
 import './index.css'
 
