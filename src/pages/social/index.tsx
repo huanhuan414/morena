@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import { Network } from '@/network'
 import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign } from 'lucide-react-taro'
@@ -68,9 +68,12 @@ export default function SocialPage() {
   const statsCardRef = useRef<any>(null)
 
   useLoad(() => {
-    showShareMenu({
-      withShareTicket: true
-    } as any)
+    // showShareMenu 仅在小程序端可用
+    if (getEnv() === ENV_TYPE.WEAPP) {
+      showShareMenu({
+        withShareTicket: true
+      } as any)
+    }
   })
 
   useDidShow(() => {
