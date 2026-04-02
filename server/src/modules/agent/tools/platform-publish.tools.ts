@@ -233,7 +233,7 @@ export class PublishWechatMpTool implements ITool {
         try {
           console.log('正在分析文章内容，生成配图...')
           console.log('原始内容长度:', params.content?.length)
-          contentWithImages = await this.addImagesToContent(params.content, params.title)
+          contentWithImages = await this.addImagesToContent(params.content, params.title, accessToken)
           console.log('文章配图完成，配图后内容长度:', contentWithImages?.length)
           console.log('配图后内容预览:', contentWithImages?.substring(0, 500))
         } catch (imgError: any) {
@@ -395,8 +395,9 @@ export class PublishWechatMpTool implements ITool {
   /**
    * 根据文章内容自动添加配图
    * 在文章开头和每个主要章节后插入配图
+   * 图片会上传到微信服务器，确保在公众号中可显示
    */
-  private async addImagesToContent(content: string, title: string): Promise<string> {
+  private async addImagesToContent(content: string, title: string, accessToken: string): Promise<string> {
     try {
       const config = new Config()
       const imageClient = new ImageGenerationClient(config)
@@ -414,12 +415,24 @@ export class PublishWechatMpTool implements ITool {
         ? introHelper.imageUrls[0] 
         : null
 
+      // 上传开头配图到微信服务器
+      let wechatIntroImageUrl: string | null = null
+      if (introImageUrl) {
+        try {
+          console.log('正在上传开头配图到微信服务器...')
+          wechatIntroImageUrl = await this.uploadArticleImage(accessToken, introImageUrl)
+          console.log('✅ 开头配图上传成功:', wechatIntroImageUrl?.substring(0, 100))
+        } catch (uploadErr) {
+          console.error('上传开头配图失败:', uploadErr)
+        }
+      }
+
       // 2. 分析文章结构，找到所有 h2 标题
       const sections = this.parseArticleSections(content)
       console.log(`文章共发现 ${sections.length} 个章节`)
       
-      // 3. 为每个章节生成配图（最多3张）
-      const sectionImages: { position: number; url: string }[] = []
+      // 3. 为每个章节生成配图（最多3张）并上传到微信
+      const sectionImages: { position: number; wechatUrl: string; title: string }[] = []
       const maxImages = Math.min(sections.length, 3)
       
       for (let i = 0; i < maxImages; i++) {
@@ -436,10 +449,22 @@ export class PublishWechatMpTool implements ITool {
           const sectionHelper = imageClient.getResponseHelper(sectionResponse)
           
           if (sectionHelper.success && sectionHelper.imageUrls.length > 0) {
-            sectionImages.push({
-              position: section.position,
-              url: sectionHelper.imageUrls[0]
-            })
+            const tosUrl = sectionHelper.imageUrls[0]
+            
+            // 上传到微信服务器
+            try {
+              console.log(`上传章节 ${i + 1} 配图到微信服务器...`)
+              const wechatUrl = await this.uploadArticleImage(accessToken, tosUrl)
+              sectionImages.push({
+                position: section.position,
+                wechatUrl: wechatUrl,
+                title: section.title
+              })
+              console.log(`✅ 章节 ${i + 1} 配图上传成功`)
+            } catch (uploadErr) {
+              console.error(`上传章节 ${i + 1} 配图失败:`, uploadErr)
+            }
+            
             // 每张图生成间隔一下，避免频率限制
             await new Promise(resolve => setTimeout(resolve, 500))
           }
@@ -448,29 +473,29 @@ export class PublishWechatMpTool implements ITool {
         }
       }
 
-      // 4. 将图片插入到文章中
+      // 4. 将图片插入到文章中（使用微信图片URL）
       let result = content
       
       // 在开头插入配图
-      if (introImageUrl) {
-        console.log('✅ 开头配图生成成功，插入到文章开头')
-        result = `![${title}](${introImageUrl})\n\n${result}`
+      if (wechatIntroImageUrl) {
+        console.log('✅ 开头配图插入到文章开头')
+        result = `![${title}](${wechatIntroImageUrl})\n\n${result}`
       } else {
-        console.log('❌ 开头配图生成失败')
+        console.log('❌ 开头配图上传失败，跳过')
       }
       
       // 在章节后插入配图（从后往前插入，避免位置偏移）
       for (let i = sectionImages.length - 1; i >= 0; i--) {
-        const { position, url } = sectionImages[i]
+        const { position, wechatUrl, title: sectionTitle } = sectionImages[i]
         const section = sections.find(s => s.position === position)
         if (section) {
           // 在章节内容后插入图片
           const insertPosition = this.findInsertPosition(result, section)
-          console.log(`插入章节配图: 位置=${insertPosition}, 标题=${section.title}`)
+          console.log(`插入章节配图: 位置=${insertPosition}, 标题=${sectionTitle}`)
           if (insertPosition !== -1) {
             const before = result.substring(0, insertPosition)
             const after = result.substring(insertPosition)
-            const imageMarkdown = `\n\n![${section.title}](${url})\n`
+            const imageMarkdown = `\n\n![${sectionTitle}](${wechatUrl})\n`
             result = before + imageMarkdown + after
             console.log('✅ 章节配图插入成功')
           }
@@ -483,6 +508,52 @@ export class PublishWechatMpTool implements ITool {
       console.error('添加配图失败:', err)
       return content // 失败时返回原始内容
     }
+  }
+
+  /**
+   * 上传文章内图片到微信服务器
+   * 使用新增永久素材接口，返回微信图片URL
+   */
+  private async uploadArticleImage(accessToken: string, imageUrl: string): Promise<string> {
+    // 下载图片
+    const imageRes = await fetch(imageUrl)
+    if (!imageRes.ok) {
+      throw new Error('下载图片失败')
+    }
+    const imageBuffer = await imageRes.arrayBuffer()
+    
+    // 上传到微信永久素材
+    const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=image`
+    
+    const boundary = `----WebKitFormBoundary${Date.now().toString(16)}`
+    const formData: string[] = []
+    
+    formData.push(`--${boundary}\r\n`)
+    formData.push(`Content-Disposition: form-data; name="media"; filename="article-image.jpg"\r\n`)
+    formData.push(`Content-Type: image/jpeg\r\n\r\n`)
+    
+    const formDataBuffer = Buffer.concat([
+      Buffer.from(formData.join(''), 'utf-8'),
+      Buffer.from(imageBuffer),
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+    ])
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+      },
+      body: formDataBuffer
+    })
+
+    const uploadResult = await uploadRes.json()
+    
+    if (uploadResult.errcode) {
+      throw new Error(this.getWechatErrorMessage(uploadResult.errcode))
+    }
+
+    // 返回微信图片URL（永久素材会返回 url 字段）
+    return uploadResult.url || uploadResult.media_id
   }
 
   /**
@@ -620,11 +691,31 @@ export class PublishWechatMpTool implements ITool {
    */
   private async uploadImage(accessToken: string, imageUrl: string): Promise<string> {
     // 下载图片
-    const imageRes = await fetch(imageUrl)
-    if (!imageRes.ok) {
-      throw new Error('下载图片失败')
+    console.log('正在下载图片:', imageUrl.substring(0, 100))
+    
+    let imageRes: Response
+    try {
+      imageRes = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      })
+    } catch (fetchErr: any) {
+      console.error('fetch 请求失败:', fetchErr.message)
+      throw new Error(`下载图片失败: ${fetchErr.message}`)
     }
+    
+    if (!imageRes.ok) {
+      console.error('下载图片响应失败:', imageRes.status, imageRes.statusText)
+      throw new Error(`下载图片失败: HTTP ${imageRes.status}`)
+    }
+    
     const imageBuffer = await imageRes.arrayBuffer()
+    console.log('图片下载成功，大小:', imageBuffer.byteLength, 'bytes')
+    
+    if (imageBuffer.byteLength < 100) {
+      throw new Error('下载的图片太小，可能无效')
+    }
     
     // 上传到微信
     const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=image`
@@ -653,9 +744,11 @@ export class PublishWechatMpTool implements ITool {
     const uploadResult = await uploadRes.json()
     
     if (uploadResult.errcode) {
+      console.error('微信上传失败:', uploadResult)
       throw new Error(this.getWechatErrorMessage(uploadResult.errcode))
     }
 
+    console.log('上传成功, media_id:', uploadResult.media_id?.substring(0, 20))
     return uploadResult.media_id
   }
 
