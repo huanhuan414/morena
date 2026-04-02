@@ -1225,3 +1225,69 @@ del {
 .publish-images {
   margin-top: 12rpx;
 }
+
+/* H5链接弹窗 */
+.h5-publish-dialog {
+  background: rgba(20, 20, 30, 0.98) !important;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.h5-publish-content {
+  padding: 24rpx 0;
+}
+
+.h5-publish-tip {
+  display: block;
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 24rpx;
+  line-height: 1.6;
+}
+
+.h5-url-box {
+  background: rgba(0, 245, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+  max-height: 200rpx;
+  overflow-y: auto;
+}
+
+.h5-url-text {
+  font-size: 24rpx;
+  color: #00f5ff;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.copy-url-btn {
+  width: 100%;
+  height: 80rpx;
+  background: linear-gradient(135deg, #bf00ff 0%, #ff00aa 100%);
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: none;
+}
+
+.copy-url-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dialog-cancel-btn {
+  width: 100%;
+  height: 80rpx;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 40rpx;
+}
+
+.dialog-btn-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.7);
+}

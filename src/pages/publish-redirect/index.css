@@ -1,0 +1,188 @@
+.publish-redirect-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 100%);
+  padding: 0 16px 100px;
+}
+
+.redirect-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.header-placeholder {
+  width: 40px;
+}
+
+.platform-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+}
+
+.platform-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.platform-name {
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.content-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.content-label {
+  display: block;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+}
+
+.content-title {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.title-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.content-body {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.content-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.8;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.action-section {
+  margin-top: 32px;
+}
+
+.primary-btn {
+  width: 100%;
+  height: 56px;
+  background: linear-gradient(135deg, #00f5ff 0%, #00ff88 100%);
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.primary-btn .btn-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0a0a1a;
+}
+
+.copy-btn {
+  width: 100%;
+  height: 56px;
+  background: linear-gradient(135deg, #bf00ff 0%, #ff00aa 100%);
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  margin-bottom: 12px;
+}
+
+.copy-btn .btn-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.download-btn {
+  width: 100%;
+  height: 56px;
+  background: transparent;
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.download-btn .btn-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #00f5ff;
+}
+
+.tips-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.tips-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.tips-text {
+  display: block;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+.footer-tips {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 16px;
+  background: linear-gradient(180deg, transparent 0%, #0a0a1a 20%);
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}

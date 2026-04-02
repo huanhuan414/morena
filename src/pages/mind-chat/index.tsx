@@ -211,6 +211,10 @@ export default function MindChatPage() {
       videoUrl?: string
     }
   } | null>(null)
+  
+  // H5链接弹窗（小程序环境）
+  const [showH5PublishDialog, setShowH5PublishDialog] = useState(false)
+  const [h5PublishUrl, setH5PublishUrl] = useState('')
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -862,17 +866,28 @@ export default function MindChatPage() {
     const apiSupportedPlatforms: PlatformType[] = ['wechat_mp']
     
     if (!apiSupportedPlatforms.includes(platform)) {
-      // 不支持 API 发布的平台，显示引导弹窗
+      // 不支持 API 发布的平台，一键发布到对应APP
+      const env = Taro.getEnv()
+      
+      // 构建发布内容
+      const publishContent = content.title 
+        ? `【${content.title}】\n\n${content.content}`
+        : content.content || ''
+      
+      if (env === Taro.ENV_TYPE.WEB) {
+        // H5环境：跳转到中转页面
+        const encodedContent = encodeURIComponent(publishContent)
+        const encodedTitle = content.title ? encodeURIComponent(content.title) : ''
+        const url = `/pages/publish-redirect/index?platform=${platform}&content=${encodedContent}&title=${encodedTitle}`
+        Taro.navigateTo({ url })
+      } else {
+        // 小程序环境：显示H5链接弹窗
+        // 生成H5链接（使用项目域名）
+        const h5Url = `${window.location.origin}/pages/publish-redirect/index?platform=${platform}&content=${encodeURIComponent(publishContent)}&title=${content.title ? encodeURIComponent(content.title) : ''}`
+        setH5PublishUrl(h5Url)
+        setShowH5PublishDialog(true)
+      }
       setShowPublishConfirm(false)
-      setPublishGuideData({
-        platform: platform as keyof typeof PLATFORM_CONFIGS,
-        content: {
-          title: content.title,
-          content: content.content,
-          images: content.images
-        }
-      })
-      setShowPublishGuide(true)
       return
     }
     
@@ -1337,7 +1352,10 @@ export default function MindChatPage() {
               }}
             >
               <Text className="publish-btn-text">
-                🚀 发布到{getPlatformName(msg.metadata?.agent_result?.configPlatform as PlatformType)}
+                {['wechat_mp'].includes(msg.metadata?.agent_result?.configPlatform as PlatformType) 
+                  ? `🚀 发布到${getPlatformName(msg.metadata?.agent_result?.configPlatform as PlatformType)}`
+                  : '⚡ 一键发布'
+                }
               </Text>
             </Button>
           </View>
@@ -1741,6 +1759,42 @@ export default function MindChatPage() {
           content={publishGuideData.content}
         />
       )}
+      
+      {/* H5链接弹窗（小程序环境） */}
+      <Dialog open={showH5PublishDialog} onOpenChange={setShowH5PublishDialog}>
+        <DialogContent className="h5-publish-dialog">
+          <DialogHeader>
+            <DialogTitle>一键发布</DialogTitle>
+          </DialogHeader>
+          <View className="h5-publish-content">
+            <Text className="h5-publish-tip">
+              请复制下方链接，在浏览器中打开即可调起APP发布
+            </Text>
+            <View className="h5-url-box">
+              <Text className="h5-url-text">{h5PublishUrl}</Text>
+            </View>
+            <Button 
+              className="copy-url-btn"
+              onClick={() => {
+                Taro.setClipboardData({
+                  data: h5PublishUrl,
+                  success: () => {
+                    showToast({ title: '链接已复制', icon: 'success' })
+                  }
+                })
+              }}
+            >
+              <Copy size={18} color="#fff" />
+              <Text className="copy-url-btn-text">复制链接</Text>
+            </Button>
+          </View>
+          <DialogFooter>
+            <Button className="dialog-cancel-btn" onClick={() => setShowH5PublishDialog(false)}>
+              <Text className="dialog-btn-text">关闭</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }
