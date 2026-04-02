@@ -688,8 +688,9 @@ export default function MindChatPage() {
           .map(s => ({
             action: s.action || '',
             displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-            status: s.observation?.success ? 'success' : 'failed',
-            message: s.observation?.message || s.observation?.error || ''
+            // success 字段可能在 observation 顶层，也可能在 observation.data 里面
+            status: (s.observation?.success ?? s.observation?.data?.success ?? false) ? 'success' : 'failed',
+            message: s.observation?.message || s.observation?.data?.message || s.observation?.error || ''
           })) || []
     
     // 提取媒体内容
@@ -803,9 +804,8 @@ export default function MindChatPage() {
         }
       })
     }
-    
-    // 如果需要配置且有媒体内容，提示用户可以发布
-    if (result.requiresConfig && result.configPlatform && media.length > 0) {
+    // 如果需要配置且有媒体内容，提示用户可以发布（排除小红书，已在上面处理）
+    else if (result.requiresConfig && result.configPlatform && media.length > 0) {
       const article = media.find(m => m.type === 'article')
       const images = media.filter(m => m.type === 'image').map(m => m.url).filter(Boolean) as string[]
       
