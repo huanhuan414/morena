@@ -859,6 +859,30 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
       headers: undefined
     }
 
+    // 对于发布工具，自动从历史记录中提取内容
+    // 解决 LLM 无法传递完整长内容的问题
+    if (toolName.startsWith('publish_') && context.executionHistory?.length > 0) {
+      // 查找最近的生成内容
+      const lastGeneratedContent = [...context.executionHistory].reverse().find(step => 
+        step.observation?.data?.content && step.observation?.data?.title
+      )
+      
+      if (lastGeneratedContent?.observation?.data) {
+        const generatedData = lastGeneratedContent.observation.data
+        
+        // 如果 params.content 为空或长度太短，使用历史记录中的完整内容
+        if (!params.content || params.content.length < 100) {
+          console.log(`[Agent] 自动填充发布内容，原 content 长度: ${params.content?.length || 0}，新长度: ${generatedData.content?.length || 0}`)
+          params = {
+            ...params,
+            title: params.title || generatedData.title,
+            content: generatedData.content,
+            cover_url: params.cover_url || generatedData.cover_image_url
+          }
+        }
+      }
+    }
+
     try {
       const result = await tool.execute(params || {}, toolContext)
       return result
@@ -952,9 +976,36 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
    * 格式化执行历史
    */
   private formatHistory(history: ReActStep[]): string {
-    return history.map(h => 
-      `步骤${h.step_index}:\n思考: ${h.thought}\n行动: ${h.action}\n结果: ${JSON.stringify(h.observation).substring(0, 300)}`
-    ).join('\n\n')
+    return history.map(h => {
+      // 智能格式化结果，保留重要字段完整
+      let resultStr: string
+      if (h.observation?.data) {
+        const data = h.observation.data
+        // 对于内容创作工具，保留完整内容
+        if (data.title || data.content) {
+          resultStr = JSON.stringify({
+            success: h.observation.success,
+            data: {
+              title: data.title,
+              // 保留完整内容，但标记长度
+              content: data.content,
+              content_length: data.content?.length || 0,
+              cover_image_url: data.cover_image_url,
+              word_count: data.word_count,
+              message: data.message,
+              next_action_hint: data.next_action_hint
+            }
+          })
+        } else {
+          // 其他类型数据，保留完整信息
+          resultStr = JSON.stringify(h.observation)
+        }
+      } else {
+        resultStr = JSON.stringify(h.observation)
+      }
+      
+      return `步骤${h.step_index}:\n思考: ${h.thought}\n行动: ${h.action}\n结果: ${resultStr}`
+    }).join('\n\n')
   }
 
   /**

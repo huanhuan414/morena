@@ -199,6 +199,14 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
         }
       }
 
+      // 构建发布参数模板，方便 Agent 直接使用
+      const publishParams = {
+        title: titles[0] || params.topic,
+        content: mainContent,
+        cover_url: coverImageUrl,
+        digest: mainContent.substring(0, 54).replace(/\n/g, ' ') + '...'
+      }
+
       return {
         success: true,
         data: {
@@ -210,8 +218,15 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
           tags,
           word_count: mainContent.length,
           message: `公众号爆款图文「${titles[0] || params.topic}」创作完成，共${mainContent.length}字${coverImageUrl ? '，已生成封面图' : ''}`,
-          // 提示 Agent 可以继续发布
-          next_action_hint: '内容已生成，如需发布到公众号，请使用 publish_wechat_mp 工具'
+          // 提供完整的发布参数，Agent 可以直接使用
+          next_action_hint: `内容已生成，如需发布到公众号，请使用 publish_wechat_mp 工具，参数如下：
+{
+  "title": "${publishParams.title}",
+  "content": "请使用上方完整的 content 内容",
+  "cover_url": "${publishParams.cover_url || '自动生成'}"
+}
+
+注意：请直接使用上方返回的完整 content 内容，不要截断。`
         }
       }
     } catch (err: any) {
