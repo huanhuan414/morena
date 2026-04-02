@@ -151,6 +151,7 @@ export default function MindChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
   const [showHistory, setShowHistory] = useState(false)
   const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -339,9 +340,10 @@ export default function MindChatPage() {
         // 如果 HTTP 请求失败但收到了 complete 事件，关闭 loading
         // HTTP 请求成功时会调用 processAgentResult 关闭 loading
         setTimeout(() => {
-          if (loading) {
+          if (loadingRef.current) {
             console.log('[MindChat] HTTP 请求未返回，但从轮询收到 complete，关闭 loading')
             setLoading(false)
+            loadingRef.current = false
             // 添加一条简单的完成消息
             const aiMessage: Message = {
               id: (Date.now() + 1).toString(),
@@ -359,6 +361,7 @@ export default function MindChatPage() {
         setCurrentStatus(`❌ ${progress.message}`)
         // 错误时也关闭 loading
         setLoading(false)
+        loadingRef.current = false
         break
     }
   }
@@ -496,6 +499,7 @@ export default function MindChatPage() {
     setMessages(prev => [...prev, userMessage])
     setInputText('')
     setLoading(true)
+    loadingRef.current = true
     setAgentSteps([])  // 清空之前的步骤
     setCurrentStatus('思考中...')
     scrollToBottom()
@@ -599,6 +603,7 @@ export default function MindChatPage() {
     } catch (err) {
       console.error('[MindChat] Agent 执行失败:', err)
       setLoading(false)
+      loadingRef.current = false
       setCurrentStatus('')
       showToast({ title: '执行失败，请重试', icon: 'none' })
     }
@@ -651,6 +656,7 @@ export default function MindChatPage() {
     
     setMessages(prev => [...prev, aiMessage])
     setLoading(false)
+    loadingRef.current = false
     setCurrentStatus('')
     scrollToBottom()
     fetchLearningStats()
@@ -703,6 +709,7 @@ export default function MindChatPage() {
       }, 1000)
     } finally {
       setLoading(false)
+      loadingRef.current = false
       setCurrentStatus('')
     }
   }
