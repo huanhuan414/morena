@@ -416,12 +416,12 @@ export class GenerateImageTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'generate_image',
     displayName: '生成图片',
-    description: '使用AI生成图片',
+    description: '根据文字描述生成高质量图片，适用于Logo设计、海报、插画、产品设计等。当用户需要"生成图片"、"画一张图"、"设计Logo"时使用此工具。',
     category: 'content_creation',
     paramsSchema: {
-      prompt: { type: 'string', description: '图片描述', required: true },
-      style: { type: 'string', enum: ['realistic', 'artistic', 'anime', '3d'], default: 'realistic' },
-      size: { type: 'string', enum: ['1K', '2K', '4K'], default: '2K' }
+      prompt: { type: 'string', description: '图片描述，详细描述想要生成的图片内容、风格、色彩等', required: true },
+      style: { type: 'string', enum: ['realistic', 'artistic', 'anime', '3d', 'logo'], default: 'realistic', description: '图片风格' },
+      size: { type: 'string', enum: ['1K', '2K', '4K'], default: '2K', description: '图片分辨率' }
     }
   }
 
@@ -437,7 +437,8 @@ export class GenerateImageTool implements ITool {
         realistic: 'photorealistic, high quality, detailed',
         artistic: 'artistic, creative, masterpiece',
         anime: 'anime style, vibrant colors, detailed',
-        '3d': '3D render, high quality, detailed'
+        '3d': '3D render, high quality, detailed',
+        logo: 'logo design, minimalist, clean, professional branding, vector style'
       }
       
       const enhancedPrompt = `${params.prompt}, ${stylePrompts[params.style] || stylePrompts.realistic}`

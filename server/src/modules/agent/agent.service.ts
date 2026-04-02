@@ -799,16 +799,27 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
   private getTaskUnderstandingHint(task: string, history: ReActStep[]): string {
     const hints: string[] = []
     
+    // 图片生成任务（优先级最高）
+    if (task.includes('生成图片') || task.includes('画一张') || task.includes('设计Logo') || 
+        task.includes('生成Logo') || task.includes('做一张图') || task.includes('创作图片')) {
+      hints.push(`【任务解析】这是一个图片生成任务：
+请直接使用 generate_image 工具生成图片，不要使用其他工具。
+参数示例：{ "prompt": "图片描述", "style": "realistic" }`)
+    }
+    // 视频生成任务
+    else if (task.includes('生成视频') || task.includes('做一个视频') || task.includes('创作视频')) {
+      hints.push(`【任务解析】这是一个视频生成任务：
+请直接使用 generate_video 工具生成视频，不要使用其他工具。`)
+    }
     // 公众号相关任务
-    if (task.includes('公众号') && (task.includes('图文') || task.includes('文章') || task.includes('爆款'))) {
+    else if (task.includes('公众号') && (task.includes('图文') || task.includes('文章') || task.includes('爆款'))) {
       hints.push(`【任务解析】这是一个公众号内容创作任务：
 1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
 2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
 3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
     }
-    
     // 小红书相关任务
-    if (task.includes('小红书') && (task.includes('笔记') || task.includes('图文'))) {
+    else if (task.includes('小红书') && (task.includes('笔记') || task.includes('图文'))) {
       hints.push(`【任务解析】这是一个小红书内容创作任务：
 1. 首先使用 write_xiaohongshu_note 工具生成小红书笔记内容
 2. 然后使用 publish_xiaohongshu 工具尝试发布
