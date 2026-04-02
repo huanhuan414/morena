@@ -6,6 +6,7 @@ import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { formatTime } from '@/utils/time'
 import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
+import MarkdownRender from '@/components/markdown-render'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, FileText, Zap, Check
@@ -124,89 +125,6 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
 }
 
 // 解析 Markdown 为段落数组，用于分段渲染
-const parseMarkdownToParagraphs = (text: string): Array<{type: string; content: string; style?: string}> => {
-  if (!text) return []
-  
-  const paragraphs: Array<{type: string; content: string; style?: string}> = []
-  const lines = text.split('\n')
-  
-  for (const line of lines) {
-    const trimmedLine = line.trim()
-    
-    if (!trimmedLine) {
-      // 空行
-      paragraphs.push({ type: 'empty', content: '' })
-    } else if (trimmedLine.startsWith('### ')) {
-      // H3 标题
-      paragraphs.push({ 
-        type: 'h3', 
-        content: trimmedLine.replace(/^### /, ''),
-        style: 'font-size: 16px; font-weight: 600; color: #fff; margin: 12px 0 8px;'
-      })
-    } else if (trimmedLine.startsWith('## ')) {
-      // H2 标题
-      paragraphs.push({ 
-        type: 'h2', 
-        content: trimmedLine.replace(/^## /, ''),
-        style: 'font-size: 18px; font-weight: 600; color: #fff; margin: 14px 0 10px; padding-left: 12px; border-left: 3px solid #00f5ff;'
-      })
-    } else if (trimmedLine.startsWith('# ')) {
-      // H1 标题
-      paragraphs.push({ 
-        type: 'h1', 
-        content: trimmedLine.replace(/^# /, ''),
-        style: 'font-size: 20px; font-weight: 700; color: #fff; margin: 16px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0, 245, 255, 0.3);'
-      })
-    } else if (trimmedLine.startsWith('> ')) {
-      // 引用块
-      paragraphs.push({ 
-        type: 'quote', 
-        content: trimmedLine.replace(/^> /, ''),
-        style: 'background: rgba(0, 245, 255, 0.1); border-left: 3px solid #00f5ff; padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; color: rgba(255, 255, 255, 0.9);'
-      })
-    } else if (trimmedLine === '---') {
-      // 分隔线
-      paragraphs.push({ type: 'hr', content: '' })
-    } else {
-      // 普通段落
-      paragraphs.push({ type: 'text', content: trimmedLine })
-    }
-  }
-  
-  return paragraphs
-}
-
-// 渲染单个段落
-const renderParagraph = (para: {type: string; content: string; style?: string}, idx: number) => {
-  switch (para.type) {
-    case 'empty':
-      return <View key={idx} style="height: 8px;" />
-    case 'h1':
-    case 'h2':
-    case 'h3':
-      return (
-        <View key={idx} style={para.style}>
-          <Text style="font-size: inherit; font-weight: inherit; color: inherit;">{para.content}</Text>
-        </View>
-      )
-    case 'quote':
-      return (
-        <View key={idx} style={para.style}>
-          <Text style="color: rgba(255, 255, 255, 0.9);">{para.content}</Text>
-        </View>
-      )
-    case 'hr':
-      return <View key={idx} style="height: 1px; background: rgba(0, 245, 255, 0.3); margin: 16px 0;" />
-    case 'text':
-    default:
-      return (
-        <View key={idx} style="margin-bottom: 8px; line-height: 1.8;">
-          <Text style="color: rgba(255, 255, 255, 0.85); font-size: 14px;">{para.content}</Text>
-        </View>
-      )
-  }
-}
-
 export default function MindChatPage() {
   const router = useRouter()
   const { isLoggedIn, userInfo } = useUserStore()
@@ -414,36 +332,32 @@ export default function MindChatPage() {
     }
   }
 
-  // Agent 执行 - 分身的核心能力
+  // Agent 执行 - 分身的核心能力（使用 SSE 流式输出）
   const executeAsAgent = async (content: string) => {
     try {
       setAgentSteps([])
       setCurrentStatus('正在连接 AI 分身...')
       
-      // 构建对话历史
-      const conversationHistory = messages.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      // 检测运行环境
+      const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
       
-      try {
+      // 小程序端使用普通接口 + 模拟流式效果
+      if (isWeapp) {
         const res = await Network.request({
           url: '/api/agent/execute',
           method: 'POST',
           data: {
             avatar_id: avatar?.id,
             task_description: content,
-            conversation_id: conversation?.id,
-            conversation_history: conversationHistory
+            conversation_id: conversation?.id
           }
         })
         
         console.log('[MindChat] Agent 执行结果:', res)
-        
         const result = res.data?.data as AgentResult
         
         if (result) {
-          // 展示真实执行步骤
+          // 模拟流式展示步骤
           const steps: AgentStepDisplay[] = result.steps
             .filter(s => s.action)
             .map(s => ({
@@ -453,7 +367,7 @@ export default function MindChatPage() {
               message: s.observation?.message || s.observation?.error || ''
             }))
           
-          // 逐个展示每个步骤
+          // 逐个展示步骤
           for (let i = 0; i < steps.length; i++) {
             setCurrentStatus(`执行: ${steps[i].displayName}`)
             setAgentSteps(prev => [...prev, { ...steps[i], status: 'running' as const }])
@@ -469,8 +383,6 @@ export default function MindChatPage() {
           result.steps.forEach(step => {
             if (step.observation?.data) {
               const data = step.observation.data
-              
-              // 文章内容（包含封面图）
               if (data.content && data.title) {
                 media.push({ 
                   type: 'article', 
@@ -479,7 +391,6 @@ export default function MindChatPage() {
                   coverImage: data.cover_image_url
                 })
               } else {
-                // 其他媒体类型
                 if (data.cover_image_url && !data.content) {
                   media.push({ type: 'image', url: data.cover_image_url })
                 }
@@ -495,68 +406,214 @@ export default function MindChatPage() {
             }
           })
           
-          // 构建回复消息
-          // 如果有媒体内容，使用简洁的摘要，不包含链接
-          let replyContent = result.finalAnswer
-          
-          // 当有媒体内容时，清理 finalAnswer 中的链接文本
-          if (media.length > 0) {
-            // 先移除 URL
-            replyContent = replyContent.replace(/https?:\/\/[^\s，。！？]+/g, '')
-            
-            // 再移除链接相关的文字
-            replyContent = replyContent
-              .replace(/[，,]?\s*(图片|文章|视频)?链接为[：:]\s*/gi, '')
-              .replace(/[，,]\s*$/g, '') // 移除末尾的逗号
-              .replace(/\s+/g, ' ') // 合并多余空格
-              .trim()
-            
-            // 如果清理后为空或只有部分文字，使用默认文本
-            if (!replyContent || replyContent.length < 5) {
-              const articleCount = media.filter(m => m.type === 'article').length
-              const imageCount = media.filter(m => m.type === 'image').length
-              const videoCount = media.filter(m => m.type === 'video').length
-              
-              const parts: string[] = []
-              if (articleCount > 0) parts.push(`${articleCount}篇文章`)
-              if (imageCount > 0) parts.push(`${imageCount}张图片`)
-              if (videoCount > 0) parts.push(`${videoCount}个视频`)
-              
-              replyContent = `已完成任务，为你生成了${parts.join('、')}`
-            }
-          }
-          
-          const aiMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: replyContent,
-            created_at: new Date().toISOString(),
-            metadata: { 
-              agent_result: result,
-              agent_steps: steps,
-              media: media.length > 0 ? media : undefined
-            }
-          }
-          
-          setMessages(prev => [...prev, aiMessage])
-          setLoading(false)
-          setCurrentStatus('')
-          scrollToBottom()
-          fetchLearningStats()
-          
-          // 如果需要配置，保存消息并打开配置弹窗
-          if (result.requiresConfig && result.configPlatform) {
-            setPendingMessage(content)
-            setConfigPlatform(result.configPlatform)
-            setShowConfigDialog(true)
-          }
+          processAgentResult(result, media, steps, content)
         }
-      } catch (requestError) {
-        throw requestError
+        return
       }
+      
+      // H5 端使用 SSE 流式接口
+      const eventSource = new EventSource(
+        `/api/agent/execute/stream?avatar_id=${avatar?.id}&task_description=${encodeURIComponent(content)}&conversation_id=${conversation?.id || ''}`
+      )
+      
+      // 用于收集最终结果
+      let finalResult: AgentResult | null = null
+      const media: MessageMedia[] = []
+      const steps: AgentStepDisplay[] = []
+      
+      // 监听消息
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('[MindChat] SSE event:', data)
+          
+          switch (data.type) {
+            case 'start':
+              setCurrentStatus(data.message)
+              break
+              
+            case 'progress':
+              setCurrentStatus(data.message)
+              break
+              
+            case 'thinking':
+              setCurrentStatus(data.message)
+              break
+              
+            case 'action':
+              // 添加执行步骤
+              setCurrentStatus(data.message)
+              steps.push({
+                action: data.action,
+                displayName: data.displayName || TOOL_DISPLAY_NAMES[data.action] || data.action,
+                status: 'running',
+                message: data.message
+              })
+              setAgentSteps([...steps])
+              break
+              
+            case 'observation':
+              // 更新步骤状态
+              const stepIndex = steps.findIndex(s => s.action === data.action)
+              if (stepIndex >= 0) {
+                steps[stepIndex].status = data.success ? 'success' : 'failed'
+                steps[stepIndex].message = data.message
+                setAgentSteps([...steps])
+              }
+              
+              // 提取媒体内容
+              if (data.data) {
+                const obsData = data.data
+                // 文章内容
+                if (obsData.content && obsData.title) {
+                  media.push({
+                    type: 'article',
+                    title: obsData.title,
+                    content: obsData.content,
+                    coverImage: obsData.cover_image_url
+                  })
+                } else {
+                  // 其他媒体类型
+                  if (obsData.cover_image_url && !obsData.content) {
+                    media.push({ type: 'image', url: obsData.cover_image_url })
+                  }
+                  if (obsData.image_urls?.length) {
+                    obsData.image_urls.forEach((url: string) => {
+                      media.push({ type: 'image', url })
+                    })
+                  }
+                  if (obsData.video_url) {
+                    media.push({ type: 'video', url: obsData.video_url })
+                  }
+                }
+              }
+              break
+              
+            case 'complete':
+              setCurrentStatus('任务完成！')
+              break
+              
+            case 'result':
+              // 最终结果
+              finalResult = {
+                success: data.success,
+                finalAnswer: data.finalAnswer,
+                steps: data.steps || [],
+                requiresConfig: data.requiresConfig,
+                configPlatform: data.configPlatform,
+                configFields: data.configFields
+              }
+              break
+              
+            case 'config_required':
+              // 需要配置平台
+              setCurrentStatus(`需要配置 ${data.platformName}`)
+              break
+              
+            case 'error':
+              console.error('[MindChat] SSE error:', data.error)
+              eventSource.close()
+              setLoading(false)
+              setCurrentStatus('')
+              showToast({ title: data.error || '执行失败', icon: 'none' })
+              break
+          }
+        } catch (e) {
+          console.error('[MindChat] SSE parse error:', e)
+        }
+      }
+      
+      // 监听错误
+      eventSource.onerror = (error) => {
+        console.error('[MindChat] SSE connection error:', error)
+        eventSource.close()
+        setLoading(false)
+        setCurrentStatus('')
+        showToast({ title: '连接失败，请重试', icon: 'none' })
+      }
+      
+      // 等待结果（设置超时）
+      const timeout = setTimeout(() => {
+        eventSource.close()
+        setLoading(false)
+        setCurrentStatus('')
+        showToast({ title: '执行超时，请重试', icon: 'none' })
+      }, 120000) // 2分钟超时
+      
+      // 轮询检查结果
+      const checkResult = setInterval(() => {
+        if (finalResult) {
+          clearTimeout(timeout)
+          clearInterval(checkResult)
+          eventSource.close()
+          
+          // 处理最终结果
+          processAgentResult(finalResult, media, steps, content)
+        }
+      }, 100)
+      
     } catch (err) {
       console.error('[MindChat] Agent 执行失败:', err)
       throw err
+    }
+  }
+  
+  // 处理 Agent 执行结果
+  const processAgentResult = (
+    result: AgentResult, 
+    media: MessageMedia[], 
+    steps: AgentStepDisplay[],
+    originalContent: string
+  ) => {
+    // 构建回复消息
+    let replyContent = result.finalAnswer
+    
+    // 当有媒体内容时，清理 finalAnswer 中的链接文本
+    if (media.length > 0) {
+      replyContent = replyContent.replace(/https?:\/\/[^\s，。！？]+/g, '')
+      replyContent = replyContent
+        .replace(/[，,]?\s*(图片|文章|视频)?链接为[：:]\s*/gi, '')
+        .replace(/[，,]\s*$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      
+      if (!replyContent || replyContent.length < 5) {
+        const articleCount = media.filter(m => m.type === 'article').length
+        const imageCount = media.filter(m => m.type === 'image').length
+        const videoCount = media.filter(m => m.type === 'video').length
+        
+        const parts: string[] = []
+        if (articleCount > 0) parts.push(`${articleCount}篇文章`)
+        if (imageCount > 0) parts.push(`${imageCount}张图片`)
+        if (videoCount > 0) parts.push(`${videoCount}个视频`)
+        
+        replyContent = `已完成任务，为你生成了${parts.join('、')}`
+      }
+    }
+    
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: replyContent,
+      created_at: new Date().toISOString(),
+      metadata: { 
+        agent_result: result,
+        agent_steps: steps,
+        media: media.length > 0 ? media : undefined
+      }
+    }
+    
+    setMessages(prev => [...prev, aiMessage])
+    setLoading(false)
+    setCurrentStatus('')
+    scrollToBottom()
+    fetchLearningStats()
+    
+    // 如果需要配置，保存消息并打开配置弹窗
+    if (result.requiresConfig && result.configPlatform) {
+      setPendingMessage(originalContent)
+      setConfigPlatform(result.configPlatform)
+      setShowConfigDialog(true)
     }
   }
 
@@ -793,7 +850,6 @@ export default function MindChatPage() {
               }
               
               if (media.type === 'article') {
-                const paragraphs = parseMarkdownToParagraphs(media.content || '')
                 return (
                   <View key={idx} className="media-item article">
                     {/* 封面图 */}
@@ -809,7 +865,8 @@ export default function MindChatPage() {
                       <Text className="article-title">{media.title || '文章'}</Text>
                     </View>
                     <View className="article-body">
-                      {paragraphs.map((para, pIdx) => renderParagraph(para, pIdx))}
+                      {/* 使用 MarkdownRender 美化渲染 */}
+                      <MarkdownRender content={media.content || ''} />
                     </View>
                   </View>
                 )

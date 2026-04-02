@@ -600,6 +600,44 @@
   margin-bottom: 16rpx;
 }
 
+/* 文章内容容器 */
+.article-body {
+  width: 100%;
+}
+
+/* Markdown 渲染组件样式覆盖 - 适配深色主题 */
+.article-body .markdown-render {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.article-body .markdown-render .text-gray-700,
+.article-body .markdown-render .text-gray-800,
+.article-body .markdown-render .text-gray-900 {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.article-body .markdown-render .bg-gray-100,
+.article-body .markdown-render .bg-blue-50 {
+  background: rgba(0, 245, 255, 0.1) !important;
+}
+
+.article-body .markdown-render .bg-gray-900 {
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.article-body .markdown-render .text-blue-500 {
+  color: #00f5ff !important;
+}
+
+.article-body .markdown-render .border-gray-200,
+.article-body .markdown-render .border-gray-700 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.article-body .markdown-render .border-l-4 {
+  border-left-color: #00f5ff !important;
+}
+
 /* Markdown 样式 */
 .md-container {
   font-size: 26rpx;
