@@ -398,8 +398,14 @@ export class WriteXiaohongshuNoteTool implements ITool {
           title_options: titles,
           content: mainContent,
           tags,
-          message: `小红书笔记「${titles[0] || params.topic}」创作完成`,
-          next_action_hint: '内容已生成，如需发布到小红书，请使用 publish_xiaohongshu 工具'
+          message: `小红书笔记「${titles[0] || params.topic}」创作完成，已复制到下方`,
+          // 不再提示 Agent 自动发布，让用户自己决定
+          // 用户可以点击"一键发布"按钮来发布
+          xiaohongshu_content: {
+            title: titles[0] || params.topic,
+            content: mainContent,
+            tags
+          }
         }
       }
     } catch (err: any) {

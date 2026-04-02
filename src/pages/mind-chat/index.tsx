@@ -194,6 +194,7 @@ export default function MindChatPage() {
       content?: string
       coverImage?: string
       images?: string[]
+      tags?: string[]
     }
   } | null>(null)
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
@@ -762,6 +763,29 @@ export default function MindChatPage() {
         
         replyContent = `已完成任务，为你生成了${parts.join('、')}`
       }
+    }
+    
+    // 检查是否有小红书笔记内容（提供一键发布功能）
+    const xiaohongshuStep = result.steps.find(s => 
+      s.observation?.data?.xiaohongshu_content || 
+      (s.action === 'write_xiaohongshu_note' && s.observation?.data?.content)
+    )
+    if (xiaohongshuStep?.observation?.data) {
+      const data = xiaohongshuStep.observation.data
+      const xhsContent = data.xiaohongshu_content || data
+      
+      // 添加发布提示
+      replyContent += `\n\n💡 内容已生成完成！点击下方「一键发布」按钮可快速发布到小红书。`
+      
+      // 存储待发布内容
+      setPendingPublish({
+        platform: 'xiaohongshu',
+        content: {
+          title: xhsContent.title,
+          content: xhsContent.content,
+          images: []
+        }
+      })
     }
     
     // 如果需要配置且有媒体内容，提示用户可以发布
