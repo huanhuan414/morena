@@ -794,36 +794,77 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
   /**
    * 获取任务理解提示
-   * 帮助 Agent 正确理解复合任务
+   * 帮助 Agent 正确理解各种任务类型
    */
   private getTaskUnderstandingHint(task: string, history: ReActStep[]): string {
     const hints: string[] = []
+    const lowerTask = task.toLowerCase()
     
-    // 图片生成任务（优先级最高）
-    if (task.includes('生成图片') || task.includes('画一张') || task.includes('设计Logo') || 
-        task.includes('生成Logo') || task.includes('做一张图') || task.includes('创作图片')) {
+    // 1. 图片生成任务（最高优先级）
+    if (lowerTask.match(/生成.*图|画.*图|设计.*图|做.*图|创作.*图|生成图片|画张图|做个图/)) {
       hints.push(`【任务解析】这是一个图片生成任务：
 请直接使用 generate_image 工具生成图片，不要使用其他工具。
-参数示例：{ "prompt": "图片描述", "style": "realistic" }`)
+参数示例：{ "prompt": "图片详细描述", "style": "realistic" }
+style 可选值：realistic（写实）、artistic（艺术）、anime（动漫）、3d（3D效果）、logo（Logo设计）`)
     }
-    // 视频生成任务
-    else if (task.includes('生成视频') || task.includes('做一个视频') || task.includes('创作视频')) {
+    // 2. 视频生成任务
+    else if (lowerTask.match(/生成.*视频|做.*视频|创作.*视频|生成视频|做个视频/)) {
       hints.push(`【任务解析】这是一个视频生成任务：
-请直接使用 generate_video 工具生成视频，不要使用其他工具。`)
+请直接使用 generate_video 工具生成视频，不要使用其他工具。
+参数示例：{ "prompt": "视频内容描述", "duration": 5, "ratio": "9:16" }`)
     }
-    // 公众号相关任务
-    else if (task.includes('公众号') && (task.includes('图文') || task.includes('文章') || task.includes('爆款'))) {
-      hints.push(`【任务解析】这是一个公众号内容创作任务：
+    // 3. 微信公众号任务
+    else if (lowerTask.includes('公众号') || lowerTask.includes('微信文章') || lowerTask.includes('微信图文')) {
+      hints.push(`【任务解析】这是一个微信公众号内容创作任务：
 1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
 2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
 3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
     }
-    // 小红书相关任务
-    else if (task.includes('小红书') && (task.includes('笔记') || task.includes('图文'))) {
+    // 4. 小红书任务
+    else if (lowerTask.includes('小红书') || lowerTask.includes('红书笔记')) {
       hints.push(`【任务解析】这是一个小红书内容创作任务：
 1. 首先使用 write_xiaohongshu_note 工具生成小红书笔记内容
 2. 然后使用 publish_xiaohongshu 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置小红书账号`)
+    }
+    // 5. 微博任务
+    else if (lowerTask.includes('微博') && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
+      hints.push(`【任务解析】这是一个微博内容创作任务：
+1. 首先使用 write_article 工具生成微博内容（简短、话题性强）
+2. 然后使用 publish_weibo 工具尝试发布
+3. 如果发布工具返回 requires_config=true，说明用户未配置微博账号`)
+    }
+    // 6. 抖音任务
+    else if ((lowerTask.includes('抖音') || lowerTask.includes('tiktok')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
+      hints.push(`【任务解析】这是一个抖音内容创作任务：
+1. 首先生成视频内容（使用 generate_video 或提供视频脚本）
+2. 然后使用 publish_douyin 工具尝试发布
+3. 如果发布工具返回 requires_config=true，说明用户未配置抖音账号`)
+    }
+    // 7. B站任务
+    else if ((lowerTask.includes('b站') || lowerTask.includes('哔哩') || lowerTask.includes('bilibili')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
+      hints.push(`【任务解析】这是一个B站内容创作任务：
+1. 首先生成视频或文章内容
+2. 然后使用 publish_bilibili 工具尝试发布
+3. 如果发布工具返回 requires_config=true，说明用户未配置B站账号`)
+    }
+    // 8. 微信视频号任务
+    else if (lowerTask.includes('视频号') && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
+      hints.push(`【任务解析】这是一个微信视频号内容创作任务：
+1. 首先生成视频内容
+2. 然后使用 publish_wechat_video 工具尝试发布
+3. 如果发布工具返回 requires_config=true，说明用户未配置视频号`)
+    }
+    // 9. 今日头条任务
+    else if ((lowerTask.includes('头条') || lowerTask.includes('今日头条')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
+      hints.push(`【任务解析】这是一个今日头条内容创作任务：
+1. 首先使用 write_article 工具生成头条文章内容
+2. 注意：今日头条暂未集成，请告知用户当前支持的平台：微信公众号、小红书、微博、抖音、B站、微信视频号`)
+    }
+    // 10. 通用文章写作
+    else if (lowerTask.match(/写.*文章|撰写.*文|生成.*文|创作.*文/) && !lowerTask.includes('公众号') && !lowerTask.includes('小红书')) {
+      hints.push(`【任务解析】这是一个通用文章写作任务：
+请使用 write_article 工具生成文章内容。`)
     }
     
     // 如果已经有执行历史，提示继续
