@@ -979,7 +979,7 @@ export class PublishXiaohongshuTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_xiaohongshu',
     displayName: '发布小红书笔记',
-    description: '发布笔记到小红书',
+    description: '准备发布笔记到小红书。注意：小红书暂无官方开放API，此工具仅用于生成内容，需要用户手动复制发布。',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '笔记标题', required: true },
@@ -1012,14 +1012,20 @@ export class PublishXiaohongshuTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布小红书笔记:', params.title)
+      console.log('Agent工具 - 准备小红书笔记内容:', params.title)
 
+      // 小红书没有官方开放 API，无法自动发布
+      // 返回准备好的内容，让用户手动复制发布
       return {
         success: true,
         data: {
-          note_id: `xhs_${Date.now()}`,
           title: params.title,
-          message: `📝 笔记已准备好！\n\n小红书暂无官方开放API，请手动复制到小红书发布。`
+          content: params.content,
+          images: params.images,
+          tags: params.tags,
+          // 明确告知用户需要手动发布
+          manual_publish_required: true,
+          message: `⚠️ 重要提示：小红书暂无官方开放API，无法自动发布。\n\n请按以下步骤手动发布：\n1. 打开小红书APP\n2. 点击底部的"+"号\n3. 选择"图文"\n4. 复制下方内容发布\n\n📋 标题：\n${params.title}\n\n📝 内容：\n${params.content}\n\n${params.tags?.length ? `🏷️ 标签：${params.tags.join(' ')}` : ''}`
         }
       }
     } catch (err: any) {
@@ -1036,7 +1042,7 @@ export class PublishBilibiliTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_bilibili',
     displayName: '发布B站内容',
-    description: '发布视频或文章到B站',
+    description: '准备发布视频或文章到B站。注意：B站暂无官方开放API，此工具仅用于生成内容，需要用户手动发布。',
     category: 'platform_publish',
     paramsSchema: {
       type: { type: 'string', enum: ['video', 'article'], default: 'article' },
@@ -1071,13 +1077,19 @@ export class PublishBilibiliTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布B站内容:', params.title)
+      console.log('Agent工具 - 准备B站内容:', params.title)
 
+      // B站没有官方开放 API，无法自动发布
       return {
         success: true,
         data: {
           title: params.title,
-          message: `📺 内容已准备好！\n\nB站暂无官方开放API，请手动复制到B站发布。`
+          content: params.content,
+          video_url: params.video_url,
+          cover_url: params.cover_url,
+          tags: params.tags,
+          manual_publish_required: true,
+          message: `⚠️ 重要提示：B站暂无官方开放API，无法自动发布。\n\n请按以下步骤手动发布：\n1. 打开B站创作中心 (member.bilibili.com)\n2. 选择"${params.type === 'video' ? '视频投稿' : '专栏投稿'}"\n3. 上传内容并填写信息\n\n📋 标题：${params.title}\n${params.content ? `\n📝 内容：\n${params.content.substring(0, 500)}${params.content.length > 500 ? '...' : ''}` : ''}${params.video_url ? `\n\n🎥 视频URL：${params.video_url}` : ''}`
         }
       }
     } catch (err: any) {
@@ -1094,7 +1106,7 @@ export class PublishWeiboTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_weibo',
     displayName: '发布微博',
-    description: '发布微博内容',
+    description: '准备发布微博内容。注意：微博暂无官方开放API，此工具仅用于生成内容，需要用户手动发布。',
     category: 'platform_publish',
     paramsSchema: {
       content: { type: 'string', description: '微博内容', required: true },
@@ -1125,12 +1137,16 @@ export class PublishWeiboTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布微博')
+      console.log('Agent工具 - 准备微博内容')
 
+      // 微博没有官方开放 API，无法自动发布
       return {
         success: true,
         data: {
-          message: `🐦 微博内容已准备好！\n\n微博暂无官方开放API，请手动复制发布。`
+          content: params.content,
+          images: params.images,
+          manual_publish_required: true,
+          message: `⚠️ 重要提示：微博暂无官方开放API，无法自动发布。\n\n请复制以下内容手动发布到微博：\n\n📝 内容：\n${params.content}${params.images?.length ? `\n\n🖼️ 图片：${params.images.length}张` : ''}`
         }
       }
     } catch (err: any) {
@@ -1147,7 +1163,7 @@ export class PublishDouyinTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_douyin',
     displayName: '发布抖音视频',
-    description: '发布视频到抖音',
+    description: '准备发布视频到抖音。注意：抖音暂无官方开放API，此工具仅用于生成内容，需要用户手动发布。',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '视频标题', required: true },
@@ -1180,12 +1196,18 @@ export class PublishDouyinTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布抖音视频:', params.title)
+      console.log('Agent工具 - 准备抖音视频:', params.title)
 
+      // 抖音没有官方开放 API，无法自动发布
       return {
         success: true,
         data: {
-          message: `🎵 视频内容已准备好！\n\n请前往抖音创作者中心手动发布。`
+          title: params.title,
+          video_url: params.video_url,
+          cover_url: params.cover_url,
+          tags: params.tags,
+          manual_publish_required: true,
+          message: `⚠️ 重要提示：抖音暂无官方开放API，无法自动发布。\n\n请按以下步骤手动发布：\n1. 打开抖音APP或创作者中心 (creator.douyin.com)\n2. 点击上传视频\n3. 填写以下信息：\n\n📋 标题：${params.title}\n🎥 视频URL：${params.video_url}${params.tags?.length ? `\n🏷️ 标签：${params.tags.join(' ')}` : ''}`
         }
       }
     } catch (err: any) {
@@ -1202,7 +1224,7 @@ export class PublishWechatVideoTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'publish_wechat_video',
     displayName: '发布视频号',
-    description: '发布视频到微信视频号',
+    description: '准备发布视频到微信视频号。注意：视频号暂无官方开放API，此工具仅用于生成内容，需要用户手动发布。',
     category: 'platform_publish',
     paramsSchema: {
       title: { type: 'string', description: '视频标题', required: true },
@@ -1235,12 +1257,18 @@ export class PublishWechatVideoTool implements ITool {
         }
       }
 
-      console.log('Agent工具 - 发布视频号:', params.title)
+      console.log('Agent工具 - 准备视频号内容:', params.title)
 
+      // 视频号没有官方开放 API，无法自动发布
       return {
         success: true,
         data: {
-          message: `🎬 视频内容已准备好！\n\n视频号API目前在内测阶段，请前往视频号创作者中心手动发布。`
+          title: params.title,
+          video_url: params.video_url,
+          cover_url: params.cover_url,
+          description: params.description,
+          manual_publish_required: true,
+          message: `⚠️ 重要提示：微信视频号暂无官方开放API，无法自动发布。\n\n请按以下步骤手动发布：\n1. 打开微信 → 发现 → 视频号\n2. 点击右上角"相机"图标\n3. 选择"发表视频"\n4. 上传视频并填写信息\n\n📋 标题：${params.title}\n🎥 视频URL：${params.video_url}${params.description ? `\n📝 描述：${params.description}` : ''}`
         }
       }
     } catch (err: any) {
