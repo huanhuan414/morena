@@ -21,6 +21,7 @@ import {
 import { ITool, ToolContext } from './tools/tool.interface'
 import { AgentGateway } from './agent.gateway'
 import { ProgressCacheService } from './progress-cache.service'
+import { LearningService } from '../avatar/learning.service'
 
 // 导入所有工具
 import {
@@ -73,7 +74,8 @@ export class AgentService {
   constructor(
     @Inject(forwardRef(() => AgentGateway))
     private readonly gateway: AgentGateway,
-    private readonly progressCache: ProgressCacheService
+    private readonly progressCache: ProgressCacheService,
+    private readonly learningService: LearningService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -314,6 +316,8 @@ export class AgentService {
     if (options?.conversationId) {
       await this.saveConversationHistory(
         options.conversationId,
+        userId,
+        avatarId,
         taskDescription,
         finalAnswer,
         { success: !requiresConfig, finalAnswer, steps, requiresConfig, configPlatform, configFields }
@@ -378,6 +382,8 @@ export class AgentService {
       if (options?.conversationId) {
         await this.saveConversationHistory(
           options.conversationId,
+          userId,
+          avatarId,
           taskDescription,
           result.finalAnswer,
           result
@@ -442,6 +448,8 @@ export class AgentService {
       if (options?.conversationId) {
         await this.saveConversationHistory(
           options.conversationId,
+          userId,
+          avatarId,
           taskDescription,
           result.finalAnswer,
           result
@@ -465,6 +473,8 @@ export class AgentService {
    */
   private async saveConversationHistory(
     conversationId: string,
+    userId: string,
+    avatarId: string,
     userMessage: string,
     aiMessage: string,
     agentResult: AgentExecutionResult
@@ -554,6 +564,22 @@ export class AgentService {
         updated_at: new Date().toISOString()
       })
       .eq('id', conversationId)
+    
+    // 调用学习系统，分析用户消息并更新分身的学习数据
+    try {
+      console.log('[AgentService] 开始学习分析:', { avatarId, userId, userMessage: userMessage.substring(0, 50) })
+      await this.learningService.analyzeAndUpdate(
+        avatarId,
+        userId,
+        userMessage,
+        aiMessage,
+        newContext.slice(-10).map(msg => msg.content)
+      )
+      console.log('[AgentService] 学习分析完成')
+    } catch (error) {
+      console.error('[AgentService] 学习分析失败:', error)
+      // 学习失败不影响主流程
+    }
   }
 
   /**
