@@ -278,6 +278,45 @@
   text-align: right;
 }
 
+/* 用户画像 */
+.learn-identity-section {
+  margin-top: 24rpx;
+  width: 100%;
+}
+
+.learn-identity-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.learn-identity-card {
+  flex: 1;
+  min-width: 45%;
+  padding: 16rpx 20rpx;
+  background: linear-gradient(135deg, rgba(191, 0, 255, 0.15), rgba(0, 245, 255, 0.15));
+  border: 1rpx solid rgba(191, 0, 255, 0.3);
+  border-radius: 16rpx;
+}
+
+.learn-identity-card.full-width {
+  min-width: 100%;
+}
+
+.learn-identity-label {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.learn-identity-value {
+  font-size: 26rpx;
+  color: #fff;
+  font-weight: 500;
+  display: block;
+}
+
 /* 兴趣话题 */
 .learn-interests-section {
   margin-top: 24rpx;

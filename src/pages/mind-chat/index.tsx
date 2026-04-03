@@ -129,6 +129,11 @@ interface LearningStats {
   }
   interests?: string[]
   commonPhrases?: string[]
+  userIdentity?: {
+    occupation?: string
+    personalityType?: string
+    lifeEvents?: string[]
+  }
 }
 
 // 工具名称映射（用于友好展示）
@@ -487,7 +492,8 @@ export default function MindChatPage() {
             personalityTraits: learning.personalityTraits,
             communicationStyle: learning.communicationStyle,
             interests: learning.interests,
-            commonPhrases: learning.commonPhrases
+            commonPhrases: learning.commonPhrases,
+            userIdentity: learning.userIdentity
           }
           
           // 如果显示学习特效且有消息数量变化
@@ -1559,6 +1565,33 @@ export default function MindChatPage() {
                   : '我们已经心意相通了 🎉'}
           </Text>
         </View>
+        
+        {/* 用户画像 */}
+        {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
+          <View className="learn-identity-section">
+            <Text className="learn-section-title">我的画像</Text>
+            <View className="learn-identity-cards">
+              {learningStats.userIdentity?.occupation && (
+                <View className="learn-identity-card">
+                  <Text className="learn-identity-label">职业</Text>
+                  <Text className="learn-identity-value">{learningStats.userIdentity.occupation}</Text>
+                </View>
+              )}
+              {learningStats.userIdentity?.personalityType && (
+                <View className="learn-identity-card">
+                  <Text className="learn-identity-label">性格</Text>
+                  <Text className="learn-identity-value">{learningStats.userIdentity.personalityType}</Text>
+                </View>
+              )}
+              {learningStats.userIdentity?.lifeEvents && learningStats.userIdentity.lifeEvents.length > 0 && (
+                <View className="learn-identity-card full-width">
+                  <Text className="learn-identity-label">生活大事</Text>
+                  <Text className="learn-identity-value">{learningStats.userIdentity.lifeEvents.join('、')}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
         
         {/* 风格匹配度 */}
         {(learningStats.styleMatch || 0) > 0 && (

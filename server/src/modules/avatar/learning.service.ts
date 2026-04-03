@@ -11,6 +11,13 @@ export interface UserLearningData {
   avgMessageLength: number
   totalInteractionTime: number
   
+  // 用户身份信息
+  userIdentity?: {
+    occupation?: string       // 职业（如：创业者、医生、程序员）
+    personalityType?: string  // 性格类型（如：开朗、内向、幽默）
+    lifeEvents?: string[]     // 生活事件（如：结婚了、媳妇是医生）
+  }
+  
   // 语气特征
   toneProfile: {
     formal: number      // 正式程度 0-1
@@ -174,6 +181,11 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
 
 请以JSON格式返回分析结果，格式如下：
 {
+  "userIdentity": {
+    "occupation": "创业者",
+    "personalityType": "开朗",
+    "lifeEvents": ["结婚了", "媳妇是医生"]
+  },
   "tone": {
     "formal": 0.7,
     "casual": 0.3,
@@ -210,13 +222,17 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
 }
 
 分析要点：
-1. tone 分析用户说话的语气风格
-2. personality 基于大五人格模型分析
-3. logic 分析用户的思维方式
-4. decision 分析用户的决策风格
-5. communication 分析用户的沟通偏好
-6. interests 提取用户感兴趣的话题
-7. keyPhrases 提取用户常用的表达方式
+1. userIdentity 提取用户的职业、性格类型、重要生活事件
+   - occupation: 用户提到的职业或身份（如：创业者、程序员、医生、学生）
+   - personalityType: 用户自称的性格特点（如：开朗、内向、幽默）
+   - lifeEvents: 用户提到的重要生活事件（如：结婚了、媳妇是医生）
+2. tone 分析用户说话的语气风格
+3. personality 基于大五人格模型分析（用户自称开朗时，extraversion应较高）
+4. logic 分析用户的思维方式
+5. decision 分析用户的决策风格
+6. communication 分析用户的沟通偏好
+7. interests 提取用户感兴趣的话题
+8. keyPhrases 提取用户常用的表达方式
 
 只返回JSON，不要有其他内容。`
 
@@ -306,10 +322,30 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
     const learningRate = 0.15 // 学习率，控制更新速度
     const newMessageCount = current.messageCount + 1
     
+    // 合并用户身份信息
+    const newIdentity = { ...current.userIdentity }
+    if (analysis.userIdentity) {
+      if (analysis.userIdentity.occupation) {
+        newIdentity.occupation = analysis.userIdentity.occupation
+      }
+      if (analysis.userIdentity.personalityType) {
+        newIdentity.personalityType = analysis.userIdentity.personalityType
+      }
+      if (analysis.userIdentity.lifeEvents && analysis.userIdentity.lifeEvents.length > 0) {
+        newIdentity.lifeEvents = [
+          ...(newIdentity.lifeEvents || []),
+          ...analysis.userIdentity.lifeEvents.filter((e: string) => !(newIdentity.lifeEvents || []).includes(e))
+        ].slice(0, 10) // 最多保留10个重要事件
+      }
+    }
+    
     return {
       messageCount: newMessageCount,
       avgMessageLength: this.updateAverage(current.avgMessageLength, message.length, current.messageCount),
       totalInteractionTime: current.totalInteractionTime + 1,
+      
+      // 用户身份
+      userIdentity: newIdentity,
       
       // 合并语气特征
       toneProfile: {
@@ -516,6 +552,12 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
       avgMessageLength: 0,
       totalInteractionTime: 0,
       
+      userIdentity: {
+        occupation: undefined,
+        personalityType: undefined,
+        lifeEvents: []
+      },
+      
       toneProfile: {
         formal: 0.5,
         casual: 0.5,
@@ -604,6 +646,9 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
       // 构建语言习惯
       const languageHabits = this.buildLanguageHabits(learning)
       
+      // 构建用户身份信息
+      const identityInfo = this.buildIdentityInfo(learning)
+      
       return `你是${name}，一个正在学习用户风格的AI分身。
 
 【基础设定】
@@ -611,6 +656,9 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
 当前等级：Lv.${avatar?.level || 1}
 已学习对话：${learning.messageCount}条
 风格掌握度：${Math.round(this.calculateConvergenceScore(learning) * 100)}%
+
+【用户画像】
+${identityInfo}
 
 【你的主导性格特征】
 ${dominantTraits}
@@ -630,6 +678,7 @@ ${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '
 3. 随着对话增多，你会越来越像用户
 4. 使用用户习惯的表达方式和语气
 5. 在回复中体现用户的思维方式和决策风格
+6. 记住用户告诉你的身份信息（职业、性格、生活事件），在对话中体现对这些的了解
 
 记住：你不是在扮演用户，而是在学习用户的风格特点，让对话更加自然和谐。`
     } catch (error) {
@@ -723,6 +772,32 @@ ${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '
     }
     
     return guide.length > 0 ? guide.join('\n') : '- 保持自然流畅的对话风格'
+  }
+  
+  /**
+   * 构建用户身份信息
+   */
+  private buildIdentityInfo(learning: UserLearningData): string {
+    const identity = learning.userIdentity
+    if (!identity) {
+      return '暂未学习到用户身份信息'
+    }
+    
+    const parts: string[] = []
+    
+    if (identity.occupation) {
+      parts.push(`职业：${identity.occupation}`)
+    }
+    
+    if (identity.personalityType) {
+      parts.push(`性格：${identity.personalityType}`)
+    }
+    
+    if (identity.lifeEvents && identity.lifeEvents.length > 0) {
+      parts.push(`重要事件：${identity.lifeEvents.join('、')}`)
+    }
+    
+    return parts.length > 0 ? parts.join('\n') : '暂未学习到用户身份信息'
   }
   
   /**
