@@ -131,6 +131,7 @@ interface LearningStats {
   commonPhrases?: string[]
   userIdentity?: {
     occupation?: string
+    education?: string
     personalityType?: string
     lifeEvents?: string[]
   }

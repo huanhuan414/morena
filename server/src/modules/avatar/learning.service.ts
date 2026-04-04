@@ -14,6 +14,7 @@ export interface UserLearningData {
   // 用户身份信息
   userIdentity?: {
     occupation?: string       // 职业（如：创业者、医生、程序员）
+    education?: string        // 学历（如：硕士、本科、博士）
     personalityType?: string  // 性格类型（如：开朗、内向、幽默）
     lifeEvents?: string[]     // 生活事件（如：结婚了、媳妇是医生）
   }
@@ -119,7 +120,11 @@ export class LearningService {
         .eq('id', avatarId)
         .single()
       
-      const currentLearning: UserLearningData = avatar?.learning_data || this.getDefaultLearningData()
+      // 获取当前学习数据，如果为空或无效则使用默认值
+      const rawLearningData = avatar?.learning_data
+      const currentLearning: UserLearningData = (rawLearningData && typeof rawLearningData === 'object' && 'messageCount' in rawLearningData)
+        ? rawLearningData as UserLearningData
+        : this.getDefaultLearningData()
       
       // 使用LLM分析用户消息
       const analysis = await this.analyzeMessage(userMessage, conversationContext)
@@ -183,6 +188,7 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
 {
   "userIdentity": {
     "occupation": "创业者",
+    "education": "硕士",
     "personalityType": "开朗",
     "lifeEvents": ["结婚了", "媳妇是医生"]
   },
@@ -327,6 +333,9 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
     if (analysis.userIdentity) {
       if (analysis.userIdentity.occupation) {
         newIdentity.occupation = analysis.userIdentity.occupation
+      }
+      if (analysis.userIdentity.education) {
+        newIdentity.education = analysis.userIdentity.education
       }
       if (analysis.userIdentity.personalityType) {
         newIdentity.personalityType = analysis.userIdentity.personalityType
