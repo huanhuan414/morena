@@ -1558,26 +1558,7 @@ export default function MindChatPage() {
           </View>
         </View>
         
-        <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
-          <Text className="learn-progress-label">成长进度</Text>
-          <View className="learn-progress-bar">
-            <View 
-              className="learn-progress-fill" 
-              style={{ width: `${learningStats.masteryLevel}%` }}
-            />
-          </View>
-          <Text className="learn-progress-hint">
-            {learningStats.masteryLevel < 20 
-              ? '继续对话，我会更了解你' 
-              : learningStats.masteryLevel < 50 
-                ? '我已经开始学习你的风格了' 
-                : learningStats.masteryLevel < 80 
-                  ? '越来越像你了！' 
-                  : '我们已经心意相通了 🎉'}
-          </Text>
-        </View>
-        
-        {/* 用户画像 */}
+        {/* 用户画像 - 放在前面，更容易看到 */}
         {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.education || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
           <View className="learn-identity-section clickable" onClick={() => setShowLearningDetail('identity')}>
             <Text className="learn-section-title">我的画像</Text>
@@ -1609,6 +1590,25 @@ export default function MindChatPage() {
             </View>
           </View>
         )}
+        
+        <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
+          <Text className="learn-progress-label">成长进度</Text>
+          <View className="learn-progress-bar">
+            <View 
+              className="learn-progress-fill" 
+              style={{ width: `${learningStats.masteryLevel}%` }}
+            />
+          </View>
+          <Text className="learn-progress-hint">
+            {learningStats.masteryLevel < 20 
+              ? '继续对话，我会更了解你' 
+              : learningStats.masteryLevel < 50 
+                ? '我已经开始学习你的风格了' 
+                : learningStats.masteryLevel < 80 
+                  ? '越来越像你了！' 
+                  : '我们已经心意相通了 🎉'}
+          </Text>
+        </View>
         
         {/* 风格匹配度 */}
         {(learningStats.styleMatch || 0) > 0 && (

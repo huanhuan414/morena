@@ -146,7 +146,7 @@
   left: 24rpx;
   right: 24rpx;
   width: calc(100% - 48rpx);
-  max-height: 400rpx;
+  max-height: 600rpx;
   padding: 24rpx;
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.12), rgba(191, 0, 255, 0.12));
   border: 2rpx solid rgba(0, 245, 255, 0.3);
@@ -161,6 +161,7 @@
 .learn-panel.collapsed {
   max-height: 80rpx;
   padding: 16rpx 24rpx;
+  overflow: hidden;
 }
 
 .learn-panel-toggle {
@@ -640,7 +641,7 @@
 /* 消息区域 */
 .messages-scroll {
   position: absolute;
-  top: 520rpx;
+  top: 540rpx;
   left: 0;
   right: 0;
   bottom: calc(170rpx + env(safe-area-inset-bottom));
