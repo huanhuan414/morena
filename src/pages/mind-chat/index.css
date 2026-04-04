@@ -8,7 +8,7 @@
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
@@ -141,21 +141,17 @@
 
 /* 心智成长面板 - 悬浮显示 */
 .learn-panel {
-  position: fixed;
-  top: 200rpx;
-  left: 24rpx;
-  right: 24rpx;
+  position: relative;
   width: calc(100% - 48rpx);
-  max-height: 600rpx;
+  margin: 0 24rpx;
   padding: 24rpx;
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.12), rgba(191, 0, 255, 0.12));
   border: 2rpx solid rgba(0, 245, 255, 0.3);
   border-radius: 24rpx;
   backdrop-filter: blur(40rpx);
-  z-index: 20;
+  z-index: 10;
   box-sizing: border-box;
-  overflow-y: auto;
-  transition: max-height 0.3s ease, padding 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .learn-panel.collapsed {
@@ -640,15 +636,13 @@
 
 /* 消息区域 */
 .messages-scroll {
-  position: absolute;
-  top: 540rpx;
-  left: 0;
-  right: 0;
-  bottom: calc(170rpx + env(safe-area-inset-bottom));
+  flex: 1;
   width: 100%;
-  padding: 0 24rpx;
+  padding: 24rpx 24rpx;
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
   z-index: 5;
   box-sizing: border-box;
+  min-height: 400rpx;
 }
 
 .empty-chat {
