@@ -660,6 +660,17 @@
   min-height: 400rpx;
 }
 
+.loading-more-tip, .no-more-tip {
+  display: flex;
+  justify-content: center;
+  padding: 20rpx 0;
+}
+
+.loading-more-text, .no-more-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
 .empty-chat {
   display: flex;
   flex-direction: column;

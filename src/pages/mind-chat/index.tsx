@@ -222,6 +222,11 @@ export default function MindChatPage() {
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   
+  // 消息加载状态
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  
   // 平台配置弹窗
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [configPlatform, setConfigPlatform] = useState<PlatformType | null>(null)
@@ -574,17 +579,47 @@ export default function MindChatPage() {
     }
   }
 
+  // 获取最新消息（初始加载）
   const fetchMessages = async (conversationId: string) => {
     try {
       const res = await Network.request({
-        url: `/api/chat/conversation/${conversationId}/messages`
+        url: `/api/chat/conversation/${conversationId}/messages?limit=20`
       })
       if (res.data?.code === 200) {
-        setMessages(res.data.data || [])
+        const data = res.data.data || []
+        setMessages(data)
+        setHasMoreMessages(data.length >= 20)
         scrollToBottom()
       }
     } catch (error) {
       console.error('[MindChat] 获取消息失败:', error)
+    }
+  }
+
+  // 加载更多历史消息（下拉刷新）
+  const loadMoreMessages = async () => {
+    if (!conversation || !hasMoreMessages || isLoadingMore) return
+    
+    setIsLoadingMore(true)
+    try {
+      const oldestMessage = messages[0]
+      const res = await Network.request({
+        url: `/api/chat/conversation/${conversation.id}/messages?limit=20&before=${oldestMessage?.id}`
+      })
+      if (res.data?.code === 200) {
+        const newMessages = res.data.data || []
+        if (newMessages.length > 0) {
+          setMessages(prev => [...newMessages, ...prev])
+          setHasMoreMessages(newMessages.length >= 20)
+        } else {
+          setHasMoreMessages(false)
+        }
+      }
+    } catch (error) {
+      console.error('[MindChat] 加载更多消息失败:', error)
+    } finally {
+      setIsLoadingMore(false)
+      setRefreshing(false)
     }
   }
 
@@ -2018,7 +2053,24 @@ export default function MindChatPage() {
         scrollTop={scrollTop}
         scrollIntoView={scrollIntoView}
         scrollWithAnimation
+        refresherEnabled
+        refresherTriggered={refreshing}
+        onRefresherRefresh={() => {
+          setRefreshing(true)
+          loadMoreMessages()
+        }}
       >
+        {/* 加载更多提示 */}
+        {isLoadingMore && (
+          <View className="loading-more-tip">
+            <Text className="loading-more-text">加载中...</Text>
+          </View>
+        )}
+        {!hasMoreMessages && messages.length > 0 && (
+          <View className="no-more-tip">
+            <Text className="no-more-text">没有更多消息了</Text>
+          </View>
+        )}
         {messages.length === 0 ? (
           <View className="empty-chat">
             <View className="empty-icon">

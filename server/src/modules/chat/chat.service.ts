@@ -80,22 +80,41 @@ export class ChatService {
     return data
   }
 
-  async getConversationMessages(conversationId: string) {
+  async getConversationMessages(conversationId: string, limit: number = 20, before?: string) {
     const client = getSupabaseClient()
     
-    const { data, error } = await client
+    let query = client
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    
+    // 如果有 before 参数，获取该消息之前的消息
+    if (before) {
+      const { data: beforeMsg } = await client
+        .from('messages')
+        .select('created_at')
+        .eq('id', before)
+        .single()
+      
+      if (beforeMsg) {
+        query = query.lt('created_at', beforeMsg.created_at)
+      }
+    }
+    
+    const { data, error } = await query
     
     if (error) {
       throw new Error(`获取消息失败: ${error.message}`)
     }
     
+    // 反转顺序，使其按时间正序排列
+    const messages = (data || []).reverse()
+    
     // 处理消息中的媒体URL，生成签名链接
     const processedMessages = await Promise.all(
-      (data || []).map(async (msg) => {
+      messages.map(async (msg) => {
         if (msg.metadata?.media_keys) {
           const mediaUrls = await Promise.all(
             msg.metadata.media_keys.map(async (key: string) => {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers, Req, Sse, MessageEvent } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Headers, Req, Sse, MessageEvent, Query } from '@nestjs/common'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { ChatService } from './chat.service'
@@ -32,8 +32,13 @@ export class ChatController {
   }
 
   @Get('conversation/:id/messages')
-  async getMessages(@Param('id') conversationId: string) {
-    const messages = await this.chatService.getConversationMessages(conversationId)
+  async getMessages(
+    @Param('id') conversationId: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 20
+    const messages = await this.chatService.getConversationMessages(conversationId, limitNum, before)
     return {
       code: 200,
       data: messages,
