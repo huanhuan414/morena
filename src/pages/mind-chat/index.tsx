@@ -1628,7 +1628,7 @@ export default function MindChatPage() {
       </View>
 
       {/* 心智成长面板 */}
-      <View className={`learn-panel ${learnPanelCollapsed ? 'collapsed' : ''}`}>
+      <View className={`learn-panel ${learnPanelCollapsed ? 'collapsed' : ''} ${learnPanelExpanded ? 'expanded' : ''}`}>
         <View className="learn-panel-header" onClick={() => setLearnPanelCollapsed(!learnPanelCollapsed)}>
           <Brain size={20} color="#00f5ff" />
           <Text className="learn-panel-title">心智成长</Text>
@@ -1701,9 +1701,9 @@ export default function MindChatPage() {
           {learnPanelExpanded ? <ChevronUp size={16} color="#00f5ff" /> : <ChevronDown size={16} color="#00f5ff" />}
         </View>
         
-        {/* 详细内容 - 默认折叠 */}
+        {/* 详细内容 - 默认折叠，可滚动 */}
         {learnPanelExpanded && (
-        <>
+        <ScrollView className="learn-panel-content" scrollY>
         <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
           <Text className="learn-progress-label">成长进度</Text>
           <View className="learn-progress-bar">
@@ -1762,7 +1762,7 @@ export default function MindChatPage() {
             </View>
           </View>
         )}
-        </>
+        </ScrollView>
         )}
         </>
         )}

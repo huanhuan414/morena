@@ -151,12 +151,41 @@
   z-index: 10;
   box-sizing: border-box;
   transition: all 0.3s ease;
+  max-height: 400rpx;
+  overflow: hidden;
+}
+
+.learn-panel.expanded {
+  max-height: 600rpx;
 }
 
 .learn-panel.collapsed {
   max-height: 80rpx;
   padding: 16rpx 24rpx;
   overflow: hidden;
+}
+
+/* 展开内容的滚动容器 */
+.learn-panel-content {
+  max-height: 450rpx;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8rpx;
+}
+
+/* 自定义滚动条 */
+.learn-panel-content::-webkit-scrollbar {
+  width: 4rpx;
+}
+
+.learn-panel-content::-webkit-scrollbar-track {
+  background: rgba(0, 245, 255, 0.1);
+  border-radius: 2rpx;
+}
+
+.learn-panel-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 245, 255, 0.3);
+  border-radius: 2rpx;
 }
 
 .learn-panel-toggle {
