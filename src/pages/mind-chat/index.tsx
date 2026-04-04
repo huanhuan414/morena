@@ -203,6 +203,9 @@ export default function MindChatPage() {
     expGained: number
   } | null>(null)
   
+  // 学习详情弹窗
+  const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
+  
   // Agent 实时状态（每个分身都是 Agent）
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
@@ -954,7 +957,8 @@ export default function MindChatPage() {
     loadingRef.current = false
     setCurrentStatus('')
     scrollToBottom()
-    fetchLearningStats()
+    // 对话完成后刷新学习数据并显示学习特效
+    fetchLearningStats(true)
   }
   
   // 获取平台名称
@@ -1525,29 +1529,29 @@ export default function MindChatPage() {
         </View>
         
         <View className="learn-stats-row">
-          <View className="learn-stat-item">
+          <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('dialog')}>
             <MessageCircle size={16} color="#bf00ff" />
             <Text className="learn-stat-value">{learningStats.messageCount}</Text>
             <Text className="learn-stat-label">对话</Text>
           </View>
-          <View className="learn-stat-item">
+          <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('days')}>
             <TrendingUp size={16} color="#00ff88" />
             <Text className="learn-stat-value">{learningStats.learningDays}</Text>
             <Text className="learn-stat-label">天数</Text>
           </View>
-          <View className="learn-stat-item">
+          <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('mastery')}>
             <Target size={16} color="#ff00aa" />
             <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
             <Text className="learn-stat-label">掌握</Text>
           </View>
-          <View className="learn-stat-item">
+          <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('level')}>
             <Award size={16} color="#00f5ff" />
             <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
             <Text className="learn-stat-label">等级</Text>
           </View>
         </View>
         
-        <View className="learn-progress-section">
+        <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
           <Text className="learn-progress-label">成长进度</Text>
           <View className="learn-progress-bar">
             <View 
@@ -1568,7 +1572,7 @@ export default function MindChatPage() {
         
         {/* 用户画像 */}
         {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
-          <View className="learn-identity-section">
+          <View className="learn-identity-section clickable" onClick={() => setShowLearningDetail('identity')}>
             <Text className="learn-section-title">我的画像</Text>
             <View className="learn-identity-cards">
               {learningStats.userIdentity?.occupation && (
@@ -1595,7 +1599,7 @@ export default function MindChatPage() {
         
         {/* 风格匹配度 */}
         {(learningStats.styleMatch || 0) > 0 && (
-          <View className="learn-style-section">
+          <View className="learn-style-section clickable" onClick={() => setShowLearningDetail('style')}>
             <Text className="learn-style-label">风格匹配度</Text>
             <View className="learn-style-bar">
               <View 
@@ -1609,7 +1613,7 @@ export default function MindChatPage() {
         
         {/* 兴趣话题 */}
         {learningStats.interests && learningStats.interests.length > 0 && (
-          <View className="learn-interests-section">
+          <View className="learn-interests-section clickable" onClick={() => setShowLearningDetail('interests')}>
             <Text className="learn-section-title">兴趣话题</Text>
             <View className="learn-tags">
               {learningStats.interests.slice(0, 5).map((interest, idx) => (
@@ -1623,7 +1627,7 @@ export default function MindChatPage() {
         
         {/* 常用表达 */}
         {learningStats.commonPhrases && learningStats.commonPhrases.length > 0 && (
-          <View className="learn-phrases-section">
+          <View className="learn-phrases-section clickable" onClick={() => setShowLearningDetail('phrases')}>
             <Text className="learn-section-title">你的常用表达</Text>
             <View className="learn-phrases">
               {learningStats.commonPhrases.slice(0, 3).map((phrase, idx) => (
@@ -1633,6 +1637,284 @@ export default function MindChatPage() {
           </View>
         )}
       </View>
+      
+      {/* 学习详情弹窗 */}
+      {showLearningDetail && (
+        <View className="learning-detail-overlay" onClick={() => setShowLearningDetail(null)}>
+          <View className="learning-detail-modal" onClick={e => e.stopPropagation()}>
+            <View className="learning-detail-header">
+              <Text className="learning-detail-title">
+                {showLearningDetail === 'dialog' && '对话统计'}
+                {showLearningDetail === 'days' && '学习天数'}
+                {showLearningDetail === 'mastery' && '掌握度分析'}
+                {showLearningDetail === 'level' && '等级成长'}
+                {showLearningDetail === 'identity' && '我的画像'}
+                {showLearningDetail === 'style' && '风格分析'}
+                {showLearningDetail === 'interests' && '兴趣话题'}
+                {showLearningDetail === 'phrases' && '常用表达'}
+              </Text>
+              <View className="learning-detail-close" onClick={() => setShowLearningDetail(null)}>
+                <X size={24} color="rgba(255,255,255,0.6)" />
+              </View>
+            </View>
+            <ScrollView className="learning-detail-content" scrollY>
+              {/* 对话统计详情 */}
+              {showLearningDetail === 'dialog' && (
+                <View className="detail-section">
+                  <View className="detail-stat-card">
+                    <Text className="detail-stat-value">{learningStats.messageCount}</Text>
+                    <Text className="detail-stat-label">累计对话数</Text>
+                  </View>
+                  <View className="detail-stat-card">
+                    <Text className="detail-stat-value">{learningStats.avgMessageLength.toFixed(0)}</Text>
+                    <Text className="detail-stat-label">平均消息长度</Text>
+                  </View>
+                  <Text className="detail-hint">
+                    每一次对话都是我学习你的机会。对话越多，我越了解你的说话风格、思维方式和个性特点。
+                  </Text>
+                  <Text className="detail-tip">
+                    💡 提示：多分享你的想法、观点和经历，可以帮助我更快地学习你的风格。
+                  </Text>
+                </View>
+              )}
+              
+              {/* 学习天数详情 */}
+              {showLearningDetail === 'days' && (
+                <View className="detail-section">
+                  <View className="detail-stat-card large">
+                    <Text className="detail-stat-value">{learningStats.learningDays}</Text>
+                    <Text className="detail-stat-label">学习天数</Text>
+                  </View>
+                  <Text className="detail-hint">
+                    我已经连续学习你 {learningStats.learningDays} 天了！每天的学习都让我更了解你。
+                  </Text>
+                  <View className="detail-milestones">
+                    <View className="milestone-item">
+                      <View className="milestone-dot completed" />
+                      <Text className="milestone-text">第1天：初次相识</Text>
+                    </View>
+                    <View className="milestone-item">
+                      <View className={`milestone-dot ${learningStats.learningDays >= 7 ? 'completed' : ''}`} />
+                      <Text className="milestone-text">第7天：渐入佳境</Text>
+                    </View>
+                    <View className="milestone-item">
+                      <View className={`milestone-dot ${learningStats.learningDays >= 30 ? 'completed' : ''}`} />
+                      <Text className="milestone-text">第30天：心有灵犀</Text>
+                    </View>
+                    <View className="milestone-item">
+                      <View className={`milestone-dot ${learningStats.learningDays >= 100 ? 'completed' : ''}`} />
+                      <Text className="milestone-text">第100天：心意相通</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* 掌握度详情 */}
+              {showLearningDetail === 'mastery' && (
+                <View className="detail-section">
+                  <View className="detail-stat-card large">
+                    <Text className="detail-stat-value">{learningStats.masteryLevel}%</Text>
+                    <Text className="detail-stat-label">风格掌握度</Text>
+                  </View>
+                  <View className="detail-progress-section">
+                    <View className="detail-progress-bar">
+                      <View className="detail-progress-fill" style={{ width: `${learningStats.masteryLevel}%` }} />
+                    </View>
+                  </View>
+                  <Text className="detail-hint">
+                    掌握度反映了我在学习你的说话风格、思维方式和个性特点方面的进度。
+                  </Text>
+                  <View className="detail-breakdown">
+                    <Text className="detail-breakdown-title">学习维度</Text>
+                    <View className="breakdown-item">
+                      <Text className="breakdown-label">语气风格</Text>
+                      <View className="breakdown-bar">
+                        <View className="breakdown-fill" style={{ width: `${Math.min(100, (learningStats.toneProfile?.formal || 0.5) * 100)}%` }} />
+                      </View>
+                    </View>
+                    <View className="breakdown-item">
+                      <Text className="breakdown-label">性格特征</Text>
+                      <View className="breakdown-bar">
+                        <View className="breakdown-fill" style={{ width: `${Math.min(100, (learningStats.personalityTraits?.extraversion || 0.5) * 100)}%` }} />
+                      </View>
+                    </View>
+                    <View className="breakdown-item">
+                      <Text className="breakdown-label">沟通风格</Text>
+                      <View className="breakdown-bar">
+                        <View className="breakdown-fill" style={{ width: `${Math.min(100, (learningStats.communicationStyle?.direct || 0.5) * 100)}%` }} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* 等级详情 */}
+              {showLearningDetail === 'level' && (
+                <View className="detail-section">
+                  <View className="detail-stat-card large">
+                    <Text className="detail-stat-value">Lv.{avatar?.level || 1}</Text>
+                    <Text className="detail-stat-label">当前等级</Text>
+                  </View>
+                  <View className="detail-level-info">
+                    <Text className="detail-level-exp">经验值：{avatar?.exp || 0} / {(avatar?.level || 1) * 100}</Text>
+                    <View className="detail-level-bar">
+                      <View className="detail-level-fill" style={{ width: `${((avatar?.exp || 0) % 100)}%` }} />
+                    </View>
+                  </View>
+                  <Text className="detail-hint">
+                    通过对话积累经验值，提升等级。等级越高，我的能力越强，对你的理解也越深。
+                  </Text>
+                  <View className="detail-level-benefits">
+                    <Text className="detail-benefits-title">等级特权</Text>
+                    <View className="benefit-item">
+                      <Text className="benefit-level">Lv.1-5</Text>
+                      <Text className="benefit-desc">基础对话能力</Text>
+                    </View>
+                    <View className="benefit-item">
+                      <Text className="benefit-level">Lv.6-10</Text>
+                      <Text className="benefit-desc">风格学习 + 个性化回复</Text>
+                    </View>
+                    <View className="benefit-item">
+                      <Text className="benefit-level">Lv.11-20</Text>
+                      <Text className="benefit-desc">深度理解 + 情感共鸣</Text>
+                    </View>
+                    <View className="benefit-item">
+                      <Text className="benefit-level">Lv.21+</Text>
+                      <Text className="benefit-desc">心意相通 + 完美契合</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* 用户画像详情 */}
+              {showLearningDetail === 'identity' && (
+                <View className="detail-section">
+                  <Text className="detail-section-title">我认识的你</Text>
+                  {learningStats.userIdentity?.occupation && (
+                    <View className="identity-detail-card">
+                      <Text className="identity-detail-label">职业身份</Text>
+                      <Text className="identity-detail-value">{learningStats.userIdentity.occupation}</Text>
+                    </View>
+                  )}
+                  {learningStats.userIdentity?.personalityType && (
+                    <View className="identity-detail-card">
+                      <Text className="identity-detail-label">性格特点</Text>
+                      <Text className="identity-detail-value">{learningStats.userIdentity.personalityType}</Text>
+                    </View>
+                  )}
+                  {learningStats.userIdentity?.lifeEvents && learningStats.userIdentity.lifeEvents.length > 0 && (
+                    <View className="identity-detail-card">
+                      <Text className="identity-detail-label">生活大事</Text>
+                      <View className="life-events-list">
+                        {learningStats.userIdentity.lifeEvents.map((event, idx) => (
+                          <Text key={idx} className="life-event-item">• {event}</Text>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  <Text className="detail-hint">
+                    我会记住你告诉我的重要信息，在对话中自然地体现对你的了解。
+                  </Text>
+                </View>
+              )}
+              
+              {/* 风格分析详情 */}
+              {showLearningDetail === 'style' && (
+                <View className="detail-section">
+                  <Text className="detail-section-title">你的风格画像</Text>
+                  {learningStats.toneProfile && (
+                    <View className="style-analysis-card">
+                      <Text className="style-analysis-label">语气风格</Text>
+                      <View className="style-bars">
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">正式</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.toneProfile?.formal || 0) * 100}%` }} />
+                          </View>
+                          <Text className="style-bar-value">{Math.round((learningStats.toneProfile?.formal || 0) * 100)}%</Text>
+                        </View>
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">随性</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.toneProfile?.casual || 0) * 100}%` }} />
+                          </View>
+                          <Text className="style-bar-value">{Math.round((learningStats.toneProfile?.casual || 0) * 100)}%</Text>
+                        </View>
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">幽默</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.toneProfile?.humorous || 0) * 100}%` }} />
+                          </View>
+                          <Text className="style-bar-value">{Math.round((learningStats.toneProfile?.humorous || 0) * 100)}%</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  {learningStats.personalityTraits && (
+                    <View className="style-analysis-card">
+                      <Text className="style-analysis-label">性格特质（大五人格）</Text>
+                      <View className="style-bars">
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">开放性</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.personalityTraits?.openness || 0) * 100}%` }} />
+                          </View>
+                        </View>
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">外向性</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.personalityTraits?.extraversion || 0) * 100}%` }} />
+                          </View>
+                        </View>
+                        <View className="style-bar-item">
+                          <Text className="style-bar-label">尽责性</Text>
+                          <View className="style-bar">
+                            <View className="style-bar-fill" style={{ width: `${(learningStats.personalityTraits?.conscientiousness || 0) * 100}%` }} />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+              
+              {/* 兴趣话题详情 */}
+              {showLearningDetail === 'interests' && (
+                <View className="detail-section">
+                  <Text className="detail-section-title">你感兴趣的话题</Text>
+                  <View className="interests-cloud">
+                    {learningStats.interests?.map((interest, idx) => (
+                      <View key={idx} className="interest-tag-large">
+                        <Text className="interest-tag-text">{interest}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text className="detail-hint">
+                    我会关注你感兴趣的话题，在对话中主动提及相关内容。
+                  </Text>
+                </View>
+              )}
+              
+              {/* 常用表达详情 */}
+              {showLearningDetail === 'phrases' && (
+                <View className="detail-section">
+                  <Text className="detail-section-title">你的常用表达</Text>
+                  <View className="phrases-list">
+                    {learningStats.commonPhrases?.map((phrase, idx) => (
+                      <View key={idx} className="phrase-item">
+                        <Text className="phrase-text">&ldquo;{phrase}&rdquo;</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text className="detail-hint">
+                    我会学习你的口头禅和常用表达，让对话更自然。
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
       
       {/* 学习特效提示 */}
       {showLearningEffect && learningProgress && (
