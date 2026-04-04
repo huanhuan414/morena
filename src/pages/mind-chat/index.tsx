@@ -217,7 +217,6 @@ export default function MindChatPage() {
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProgressCountRef = useRef<number>(0)
   
-  const [scrollTop, setScrollTop] = useState(0)
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -456,8 +455,16 @@ export default function MindChatPage() {
     }
   }
 
+  // 新消息时滚动到底部（排除加载历史消息的情况）
+  const shouldScrollToBottomRef = useRef(true)
+  
   useEffect(() => {
-    scrollToBottom()
+    // 只有在需要滚动到底部时才滚动（新消息、发送消息时）
+    if (shouldScrollToBottomRef.current) {
+      setTimeout(() => {
+        scrollToBottom()
+      }, 50)
+    }
   }, [messages.length, loading, currentStatus])
 
   const fetchConversations = async () => {
@@ -562,6 +569,8 @@ export default function MindChatPage() {
       if (conversationsRes.data?.code === 200 && conversationsRes.data.data?.length > 0) {
         const latestConv = conversationsRes.data.data[0]
         setConversation(latestConv)
+        // 启用滚动到底部
+        shouldScrollToBottomRef.current = true
         await fetchMessages(latestConv.id)
       } else {
         const res = await Network.request({
@@ -589,7 +598,10 @@ export default function MindChatPage() {
         const data = res.data.data || []
         setMessages(data)
         setHasMoreMessages(data.length >= 20)
-        scrollToBottom()
+        // 延迟滚动，确保消息渲染完成
+        setTimeout(() => {
+          scrollToBottom()
+        }, 150)
       }
     } catch (error) {
       console.error('[MindChat] 获取消息失败:', error)
@@ -601,6 +613,8 @@ export default function MindChatPage() {
     if (!conversation || !hasMoreMessages || isLoadingMore) return
     
     setIsLoadingMore(true)
+    // 加载历史消息时，禁止滚动到底部
+    shouldScrollToBottomRef.current = false
     try {
       const oldestMessage = messages[0]
       const res = await Network.request({
@@ -620,27 +634,34 @@ export default function MindChatPage() {
     } finally {
       setIsLoadingMore(false)
       setRefreshing(false)
+      // 恢复滚动到底部的行为
+      setTimeout(() => {
+        shouldScrollToBottomRef.current = true
+      }, 500)
     }
   }
 
   const switchConversation = async (conv: Conversation) => {
     setConversation(conv)
     setMessages([])
+    // 切换对话时，启用滚动到底部
+    shouldScrollToBottomRef.current = true
     await fetchMessages(conv.id)
     setShowHistory(false)
     showToast({ title: '已切换对话', icon: 'success', duration: 1000 })
   }
 
   const scrollToBottom = () => {
-    Taro.nextTick(() => {
+    // 使用 setTimeout 确保 DOM 完全渲染后再滚动
+    setTimeout(() => {
+      // 只使用 scrollIntoView，避免与 scrollTop 冲突
       setScrollIntoView('scroll-bottom-anchor')
-      setScrollTop(prev => prev + 99999)
-      
-      setTimeout(() => {
-        setScrollIntoView('scroll-bottom-anchor')
-        setScrollTop(prev => prev + 99999)
-      }, 200)
-    })
+    }, 100)
+    
+    // 再次尝试滚动，确保在慢速设备上也能生效
+    setTimeout(() => {
+      setScrollIntoView('scroll-bottom-anchor')
+    }, 300)
   }
 
   // 发送消息 - 每个分身都是 Agent，默认启用 Agent 能力
@@ -650,6 +671,9 @@ export default function MindChatPage() {
       showToast({ title: '请输入消息', icon: 'none' })
       return
     }
+
+    // 发送消息时，确保滚动到底部
+    shouldScrollToBottomRef.current = true
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -664,7 +688,11 @@ export default function MindChatPage() {
     loadingRef.current = true
     setAgentSteps([])  // 清空之前的步骤
     setCurrentStatus('思考中...')
-    scrollToBottom()
+    
+    // 立即滚动到底部，显示新消息
+    setTimeout(() => {
+      scrollToBottom()
+    }, 50)
 
     try {
       // 所有消息都通过 Agent 处理，Agent 会自动判断是简单对话还是需要执行工具
@@ -2050,7 +2078,6 @@ export default function MindChatPage() {
       <ScrollView 
         className="messages-scroll"
         scrollY
-        scrollTop={scrollTop}
         scrollIntoView={scrollIntoView}
         scrollWithAnimation
         refresherEnabled
