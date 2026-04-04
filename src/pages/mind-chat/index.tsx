@@ -206,6 +206,9 @@ export default function MindChatPage() {
   const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(false)
   const [learnPanelExpanded, setLearnPanelExpanded] = useState(false) // 控制详细内容的展开/折叠
   
+  // 记录发送消息前的 messageCount，用于检测学习进度
+  const messageCountBeforeSendRef = useRef<number>(0)
+  
   // 学习详情弹窗
   const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
   
@@ -505,8 +508,6 @@ export default function MindChatPage() {
       
       if (!targetAvatarId) return
       
-      const oldStats = { ...learningStats }
-      
       const res = await Network.request({ url: `/api/avatar/${targetAvatarId}/learning` })
       if (res.data?.code === 200 && res.data.data) {
         const { learning, metrics } = res.data.data
@@ -526,9 +527,12 @@ export default function MindChatPage() {
           }
           
           // 如果显示学习特效且有消息数量变化
-          if (showEffect && newStats.messageCount > oldStats.messageCount) {
+          // 使用 messageCountBeforeSendRef 来检测变化（发送消息前记录的值）
+          const oldMessageCount = messageCountBeforeSendRef.current
+          if (showEffect && newStats.messageCount > oldMessageCount) {
+            console.log('[MindChat] 检测到消息数量变化:', { oldMessageCount, newMessageCount: newStats.messageCount })
             setLearningProgress({
-              oldCount: oldStats.messageCount,
+              oldCount: oldMessageCount,
               newCount: newStats.messageCount,
               expGained: 10 // 每条消息获得10经验
             })
@@ -689,6 +693,9 @@ export default function MindChatPage() {
       showToast({ title: '请输入消息', icon: 'none' })
       return
     }
+
+    // 发送消息前，记录当前的 messageCount
+    messageCountBeforeSendRef.current = learningStats.messageCount
 
     // 发送消息时，确保滚动到底部
     shouldScrollToBottomRef.current = true
