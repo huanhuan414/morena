@@ -493,6 +493,7 @@ export default function MindChatPage() {
   }
 
   const fetchLearningStats = async (showEffect: boolean = false) => {
+    console.log('[MindChat] fetchLearningStats 被调用, showEffect:', showEffect)
     try {
       // 获取当前分身ID（优先使用当前选中的分身）
       let targetAvatarId = avatar?.id
@@ -529,8 +530,15 @@ export default function MindChatPage() {
           // 如果显示学习特效且有消息数量变化
           // 使用 messageCountBeforeSendRef 来检测变化（发送消息前记录的值）
           const oldMessageCount = messageCountBeforeSendRef.current
+          console.log('[MindChat] 学习数据:', { 
+            oldMessageCount, 
+            newMessageCount: newStats.messageCount,
+            showEffect,
+            willShowEffect: showEffect && newStats.messageCount > oldMessageCount
+          })
+          
           if (showEffect && newStats.messageCount > oldMessageCount) {
-            console.log('[MindChat] 检测到消息数量变化:', { oldMessageCount, newMessageCount: newStats.messageCount })
+            console.log('[MindChat] 🎉 触发学习特效!')
             setLearningProgress({
               oldCount: oldMessageCount,
               newCount: newStats.messageCount,
@@ -696,6 +704,7 @@ export default function MindChatPage() {
 
     // 发送消息前，记录当前的 messageCount
     messageCountBeforeSendRef.current = learningStats.messageCount
+    console.log('[MindChat] 发送消息前记录 messageCount:', learningStats.messageCount)
 
     // 发送消息时，确保滚动到底部
     shouldScrollToBottomRef.current = true
