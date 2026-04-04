@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download
+  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -203,6 +203,7 @@ export default function MindChatPage() {
     newCount: number
     expGained: number
   } | null>(null)
+  const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(false)
   
   // 学习详情弹窗
   const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
@@ -1523,12 +1524,17 @@ export default function MindChatPage() {
       </View>
 
       {/* 心智成长面板 */}
-      <View className="learn-panel">
-        <View className="learn-panel-header">
+      <View className={`learn-panel ${learnPanelCollapsed ? 'collapsed' : ''}`}>
+        <View className="learn-panel-header" onClick={() => setLearnPanelCollapsed(!learnPanelCollapsed)}>
           <Brain size={20} color="#00f5ff" />
           <Text className="learn-panel-title">心智成长</Text>
+          <View className="learn-panel-toggle">
+            {learnPanelCollapsed ? <ChevronDown size={18} color="#00f5ff" /> : <ChevronUp size={18} color="#00f5ff" />}
+          </View>
         </View>
         
+        {!learnPanelCollapsed && (
+        <>
         <View className="learn-stats-row">
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('dialog')}>
             <MessageCircle size={16} color="#bf00ff" />
@@ -1636,6 +1642,8 @@ export default function MindChatPage() {
               ))}
             </View>
           </View>
+        )}
+        </>
         )}
       </View>
       

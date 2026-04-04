@@ -139,18 +139,39 @@
   flex-shrink: 0;
 }
 
-/* 心智成长面板 - 直接显示 */
+/* 心智成长面板 - 悬浮显示 */
 .learn-panel {
+  position: fixed;
+  top: 200rpx;
+  left: 24rpx;
+  right: 24rpx;
   width: calc(100% - 48rpx);
-  margin: 0 24rpx 24rpx;
-  padding: 32rpx 24rpx;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.08), rgba(191, 0, 255, 0.08));
-  border: 2rpx solid rgba(0, 245, 255, 0.2);
-  border-radius: 32rpx;
+  max-height: 400rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.12), rgba(191, 0, 255, 0.12));
+  border: 2rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: 24rpx;
   backdrop-filter: blur(40rpx);
-  position: relative;
-  z-index: 10;
+  z-index: 20;
   box-sizing: border-box;
+  overflow-y: auto;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.learn-panel.collapsed {
+  max-height: 80rpx;
+  padding: 16rpx 24rpx;
+}
+
+.learn-panel-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0, 245, 255, 0.1);
 }
 
 .learn-panel::before {
@@ -166,20 +187,20 @@
 .learn-panel-header {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
 }
 
 .learn-panel-title {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: #fff;
 }
 
 .learn-stats-row {
   display: flex;
-  gap: 16rpx;
-  margin-bottom: 24rpx;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
   width: 100%;
 }
 
@@ -619,7 +640,7 @@
 /* 消息区域 */
 .messages-scroll {
   position: absolute;
-  top: 380rpx;
+  top: 520rpx;
   left: 0;
   right: 0;
   bottom: calc(170rpx + env(safe-area-inset-bottom));
