@@ -1,14 +1,13 @@
 /* 全局修复 - 防止组件超出屏幕 */
 .mind-chat-page {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   max-width: 100vw;
   background: #0a0a0f;
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -652,12 +651,12 @@
 /* 消息区域 */
 .messages-scroll {
   flex: 1;
+  height: 0; /* 关键：flex: 1 需要配合 height: 0 才能正确计算高度 */
   width: 100%;
   padding: 24rpx 24rpx;
   padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
   z-index: 5;
   box-sizing: border-box;
-  min-height: 400rpx;
 }
 
 .loading-more-tip, .no-more-tip {

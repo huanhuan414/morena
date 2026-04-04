@@ -217,11 +217,14 @@ export default function MindChatPage() {
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProgressCountRef = useRef<number>(0)
   
+  const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   
-  // 使用一个非常大的 scrollTop 值来滚动到底部
+  // 使用 scrollTop 滚动到底部
   const [scrollTop, setScrollTop] = useState(0)
+  // 滚动计数器，确保每次 scrollTop 值都不同
+  const scrollCounterRef = useRef(0)
   
   // 消息加载状态
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
@@ -463,10 +466,11 @@ export default function MindChatPage() {
   useEffect(() => {
     // 只有在需要滚动到底部时才滚动（新消息、发送消息时）
     if (shouldScrollToBottomRef.current && messages.length > 0) {
-      // 使用较长的延迟确保消息完全渲染
-      setTimeout(() => {
+      // 延迟确保消息完全渲染
+      const timer = setTimeout(() => {
         scrollToBottom()
-      }, 100)
+      }, 150)
+      return () => clearTimeout(timer)
     }
   }, [messages.length, loading, currentStatus])
 
@@ -603,10 +607,14 @@ export default function MindChatPage() {
         setHasMoreMessages(data.length >= 20)
         // 确保启用滚动到底部
         shouldScrollToBottomRef.current = true
-        // useEffect 会在 messages 变化时自动滚动，这里额外调用确保成功
+        // useEffect 会在 messages 变化时自动滚动
+        // 这里额外延迟滚动确保成功（双重保障）
         setTimeout(() => {
           scrollToBottom()
-        }, 300)
+        }, 200)
+        setTimeout(() => {
+          scrollToBottom()
+        }, 500)
       }
     } catch (error) {
       console.error('[MindChat] 获取消息失败:', error)
@@ -657,10 +665,17 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    // 使用 Taro.nextTick 确保 DOM 更新后再滚动
-    Taro.nextTick(() => {
-      setScrollTop(prev => prev + 99999)
-    })
+    // 方法1：使用 scrollTop 滚动到底部
+    scrollCounterRef.current += 1
+    const newScrollTop = 999999 + scrollCounterRef.current
+    setScrollTop(newScrollTop)
+    
+    // 方法2：使用 scrollIntoView 滚动到最后一条消息
+    // 计算最后一条消息的 id
+    if (messages.length > 0) {
+      const lastMsgId = `msg-${messages.length - 1}`
+      setScrollIntoView(lastMsgId)
+    }
   }
 
   // 发送消息 - 每个分身都是 Agent，默认启用 Agent 能力
@@ -2078,6 +2093,7 @@ export default function MindChatPage() {
         className="messages-scroll"
         scrollY
         scrollTop={scrollTop}
+        scrollIntoView={scrollIntoView}
         scrollWithAnimation
         refresherEnabled
         refresherTriggered={refreshing}
