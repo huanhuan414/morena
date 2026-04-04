@@ -217,9 +217,11 @@ export default function MindChatPage() {
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProgressCountRef = useRef<number>(0)
   
-  const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // 使用一个非常大的 scrollTop 值来滚动到底部
+  const [scrollTop, setScrollTop] = useState(0)
   
   // 消息加载状态
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
@@ -460,10 +462,11 @@ export default function MindChatPage() {
   
   useEffect(() => {
     // 只有在需要滚动到底部时才滚动（新消息、发送消息时）
-    if (shouldScrollToBottomRef.current) {
+    if (shouldScrollToBottomRef.current && messages.length > 0) {
+      // 使用较长的延迟确保消息完全渲染
       setTimeout(() => {
         scrollToBottom()
-      }, 50)
+      }, 100)
     }
   }, [messages.length, loading, currentStatus])
 
@@ -598,10 +601,12 @@ export default function MindChatPage() {
         const data = res.data.data || []
         setMessages(data)
         setHasMoreMessages(data.length >= 20)
-        // 延迟滚动，确保消息渲染完成
+        // 确保启用滚动到底部
+        shouldScrollToBottomRef.current = true
+        // useEffect 会在 messages 变化时自动滚动，这里额外调用确保成功
         setTimeout(() => {
           scrollToBottom()
-        }, 150)
+        }, 300)
       }
     } catch (error) {
       console.error('[MindChat] 获取消息失败:', error)
@@ -652,16 +657,10 @@ export default function MindChatPage() {
   }
 
   const scrollToBottom = () => {
-    // 使用 setTimeout 确保 DOM 完全渲染后再滚动
-    setTimeout(() => {
-      // 只使用 scrollIntoView，避免与 scrollTop 冲突
-      setScrollIntoView('scroll-bottom-anchor')
-    }, 100)
-    
-    // 再次尝试滚动，确保在慢速设备上也能生效
-    setTimeout(() => {
-      setScrollIntoView('scroll-bottom-anchor')
-    }, 300)
+    // 使用 Taro.nextTick 确保 DOM 更新后再滚动
+    Taro.nextTick(() => {
+      setScrollTop(prev => prev + 99999)
+    })
   }
 
   // 发送消息 - 每个分身都是 Agent，默认启用 Agent 能力
@@ -2078,7 +2077,7 @@ export default function MindChatPage() {
       <ScrollView 
         className="messages-scroll"
         scrollY
-        scrollIntoView={scrollIntoView}
+        scrollTop={scrollTop}
         scrollWithAnimation
         refresherEnabled
         refresherTriggered={refreshing}
