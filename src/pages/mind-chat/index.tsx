@@ -1578,7 +1578,7 @@ export default function MindChatPage() {
         </View>
         
         {/* 用户画像 */}
-        {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
+        {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.education || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
           <View className="learn-identity-section clickable" onClick={() => setShowLearningDetail('identity')}>
             <Text className="learn-section-title">我的画像</Text>
             <View className="learn-identity-cards">
@@ -1586,6 +1586,12 @@ export default function MindChatPage() {
                 <View className="learn-identity-card">
                   <Text className="learn-identity-label">职业</Text>
                   <Text className="learn-identity-value">{learningStats.userIdentity.occupation}</Text>
+                </View>
+              )}
+              {learningStats.userIdentity?.education && (
+                <View className="learn-identity-card">
+                  <Text className="learn-identity-label">学历</Text>
+                  <Text className="learn-identity-value">{learningStats.userIdentity.education}</Text>
                 </View>
               )}
               {learningStats.userIdentity?.personalityType && (
@@ -1803,6 +1809,12 @@ export default function MindChatPage() {
                     <View className="identity-detail-card">
                       <Text className="identity-detail-label">职业身份</Text>
                       <Text className="identity-detail-value">{learningStats.userIdentity.occupation}</Text>
+                    </View>
+                  )}
+                  {learningStats.userIdentity?.education && (
+                    <View className="identity-detail-card">
+                      <Text className="identity-detail-label">学历背景</Text>
+                      <Text className="identity-detail-value">{learningStats.userIdentity.education}</Text>
                     </View>
                   )}
                   {learningStats.userIdentity?.personalityType && (
