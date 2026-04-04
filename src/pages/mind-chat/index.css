@@ -151,12 +151,7 @@
   z-index: 10;
   box-sizing: border-box;
   transition: all 0.3s ease;
-  max-height: 400rpx;
-  overflow: hidden;
-}
-
-.learn-panel.expanded {
-  max-height: 600rpx;
+  overflow: visible;
 }
 
 .learn-panel.collapsed {
@@ -167,10 +162,8 @@
 
 /* 展开内容的滚动容器 */
 .learn-panel-content {
-  max-height: 450rpx;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8rpx;
+  max-height: 300rpx;
+  margin-top: 8rpx;
 }
 
 /* 自定义滚动条 */
