@@ -204,6 +204,7 @@ export default function MindChatPage() {
     expGained: number
   } | null>(null)
   const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(false)
+  const [learnPanelExpanded, setLearnPanelExpanded] = useState(false) // 控制详细内容的展开/折叠
   
   // 学习详情弹窗
   const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
@@ -1558,7 +1559,7 @@ export default function MindChatPage() {
           </View>
         </View>
         
-        {/* 用户画像 - 放在前面，更容易看到 */}
+        {/* 用户画像 - 始终显示 */}
         {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.education || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
           <View className="learn-identity-section clickable" onClick={() => setShowLearningDetail('identity')}>
             <Text className="learn-section-title">我的画像</Text>
@@ -1591,6 +1592,15 @@ export default function MindChatPage() {
           </View>
         )}
         
+        {/* 展开/折叠更多按钮 */}
+        <View className="learn-expand-btn" onClick={() => setLearnPanelExpanded(!learnPanelExpanded)}>
+          <Text className="learn-expand-text">{learnPanelExpanded ? '收起详情' : '展开更多'}</Text>
+          {learnPanelExpanded ? <ChevronUp size={16} color="#00f5ff" /> : <ChevronDown size={16} color="#00f5ff" />}
+        </View>
+        
+        {/* 详细内容 - 默认折叠 */}
+        {learnPanelExpanded && (
+        <>
         <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
           <Text className="learn-progress-label">成长进度</Text>
           <View className="learn-progress-bar">
@@ -1648,6 +1658,8 @@ export default function MindChatPage() {
               ))}
             </View>
           </View>
+        )}
+        </>
         )}
         </>
         )}

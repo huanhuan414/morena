@@ -171,6 +171,21 @@
   background: rgba(0, 245, 255, 0.1);
 }
 
+.learn-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 16rpx 0;
+  margin-top: 8rpx;
+  border-top: 1rpx solid rgba(0, 245, 255, 0.1);
+}
+
+.learn-expand-text {
+  font-size: 24rpx;
+  color: rgba(0, 245, 255, 0.8);
+}
+
 .learn-panel::before {
   content: '';
   position: absolute;
