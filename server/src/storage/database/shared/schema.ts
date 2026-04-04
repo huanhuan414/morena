@@ -50,6 +50,7 @@ export const avatars = pgTable(
     completion_rate: numeric("completion_rate", { precision: 5, scale: 2 }).default("0"),
     total_orders: integer("total_orders").default(0),
     completed_orders: integer("completed_orders").default(0),
+    learning_data: jsonb("learning_data").default({}),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }),
   },

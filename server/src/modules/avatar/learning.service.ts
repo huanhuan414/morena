@@ -843,11 +843,13 @@ ${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '
       .eq('id', avatarId)
       .single()
     
-    if (!avatar?.learning_data) {
+    // 检查是否有有效的学习数据（messageCount > 0 表示有实际数据）
+    const rawLearning = avatar?.learning_data as UserLearningData | null
+    if (!rawLearning || !rawLearning.messageCount || rawLearning.messageCount === 0) {
       return { learning: null, metrics: null }
     }
     
-    const learning = avatar.learning_data as UserLearningData
+    const learning = rawLearning
     const metrics = this.calculateProgressMetrics(learning)
     
     return {
@@ -856,7 +858,7 @@ ${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '
         masteryLevel: metrics.masteryLevel,
         learningDays: metrics.learningDays,
         styleMatch: metrics.styleMatch,
-        level: avatar.level || metrics.level
+        level: avatar?.level || metrics.level
       }
     }
   }
