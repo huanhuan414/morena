@@ -277,7 +277,6 @@ export default function MindChatPage() {
   useDidShow(() => {
     if (isLoggedIn) {
       fetchConversations()
-      fetchLearningStats()
       
       if (isFirstLoadRef.current) {
         isFirstLoadRef.current = false
@@ -289,6 +288,11 @@ export default function MindChatPage() {
           fetchDefaultAvatar()
         }
       }
+      
+      // 延迟获取学习数据，确保 avatar 已加载
+      setTimeout(() => {
+        fetchLearningStats()
+      }, 500)
     }
   })
   
@@ -1038,7 +1042,10 @@ export default function MindChatPage() {
     setCurrentStatus('')
     scrollToBottom()
     // 对话完成后刷新学习数据并显示学习特效
-    fetchLearningStats(true)
+    // 延迟 1.5 秒确保后端学习分析完成
+    setTimeout(() => {
+      fetchLearningStats(true)
+    }, 1500)
   }
   
   // 获取平台名称
@@ -1193,7 +1200,10 @@ export default function MindChatPage() {
         scrollToBottom()
         fetchConversations()
         // 对话完成后刷新学习数据并显示学习特效
-        fetchLearningStats(true)
+        // 延迟 1.5 秒确保后端学习分析完成
+        setTimeout(() => {
+          fetchLearningStats(true)
+        }, 1500)
       }
     } catch (error) {
       // 最后的降级方案
