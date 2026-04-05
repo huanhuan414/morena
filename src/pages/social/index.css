@@ -632,6 +632,18 @@
   line-height: 1.5;
 }
 
+/* 查看更多评论 */
+.more-comments {
+  padding: 10px 0 0;
+  margin-top: 8px;
+}
+
+.more-comments-text {
+  font-size: 14px;
+  color: rgba(0, 245, 255, 0.8);
+  font-weight: 500;
+}
+
 /* 评论输入框 */
 .comment-input-wrap {
   display: flex;

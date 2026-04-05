@@ -155,11 +155,11 @@ export default function SocialPage() {
     
     setLoading(true)
     try {
-      // 获取所有公开帖子（广场）
+      // 获取与分身相关的帖子（分身点赞、评论过的）
       const res = await Network.request({
-        url: `/api/social/posts?page=${pageNum}&pageSize=10`
+        url: `/api/social/avatar-posts?page=${pageNum}&pageSize=10`
       })
-      console.log('获取广场帖子:', res.data)
+      console.log('获取分身相关帖子:', res.data)
       if (res.data?.code === 200) {
         const data = res.data.data
         const postList = data.posts || []
@@ -674,6 +674,14 @@ export default function SocialPage() {
                               </View>
                             </View>
                           ))}
+                          {/* 查看更多评论提示 */}
+                          {post.comments_count > post.comments.length && (
+                            <View className="more-comments">
+                              <Text className="more-comments-text">
+                                查看全部 {post.comments_count} 条评论
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       )}
 

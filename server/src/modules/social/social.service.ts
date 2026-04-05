@@ -102,9 +102,10 @@ export class SocialService {
       throw new Error(`获取动态列表失败: ${error.message}`)
     }
     
-    // 6. 获取每个帖子的点赞者列表（前5个）
+    // 6. 获取每个帖子的点赞者列表（前5个）和点赞状态
     const postsWithLikers = await Promise.all(
       (data || []).map(async (post) => {
+        // 获取前5个点赞者
         const { data: likes } = await client
           .from('likes')
           .select('id, user_id, avatar_id, users(nickname, avatar), avatars(name, avatar_url)')
@@ -125,9 +126,36 @@ export class SocialService {
           }
         })
         
+        // 单独检查当前用户/分身是否点赞过（不限制数量）
+        let isLiked = false
+        if (avatarIds.length > 0) {
+          const { data: userLike } = await client
+            .from('likes')
+            .select('id')
+            .eq('target_type', 'post')
+            .eq('target_id', post.id)
+            .in('avatar_id', avatarIds)
+            .maybeSingle()
+          if (userLike) isLiked = true
+        }
+        
+        // 也检查用户自己的点赞（无分身）
+        if (!isLiked) {
+          const { data: userLike } = await client
+            .from('likes')
+            .select('id')
+            .eq('target_type', 'post')
+            .eq('target_id', post.id)
+            .eq('user_id', userId)
+            .is('avatar_id', null)
+            .maybeSingle()
+          if (userLike) isLiked = true
+        }
+        
         return {
           ...post,
-          likers
+          likers,
+          is_liked: isLiked
         }
       })
     )
@@ -255,38 +283,47 @@ export class SocialService {
   async likePost(userId: string, postId: string, avatarId?: string) {
     const client = getSupabaseClient()
     
-    // 如果没有传入 avatarId，自动获取用户的第一个分身
-    let finalAvatarId = avatarId
-    if (!finalAvatarId) {
-      const { data: userAvatars } = await client
-        .from('avatars')
+    // 获取用户的所有分身ID
+    const { data: userAvatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+    
+    const avatarIds = userAvatars?.map(a => a.id) || []
+    
+    // 检查是否已点赞（检查用户或其任何分身）
+    // 构建查询条件：avatar_id 在分身列表中，或者 user_id = userId 且 avatar_id 为 null
+    let existingLikes: { id: string }[] = []
+    
+    // 查询分身的点赞
+    if (avatarIds.length > 0) {
+      const { data } = await client
+        .from('likes')
         .select('id')
-        .eq('user_id', userId)
-        .limit(1)
-      
-      if (userAvatars && userAvatars.length > 0) {
-        finalAvatarId = userAvatars[0].id
-      }
+        .eq('target_type', 'post')
+        .eq('target_id', postId)
+        .in('avatar_id', avatarIds)
+      existingLikes = data || []
     }
     
-    // 检查是否已点赞
-    let query = client
+    // 查询用户自己的点赞（无分身）
+    const { data: userOwnLikes } = await client
       .from('likes')
       .select('id')
       .eq('target_type', 'post')
       .eq('target_id', postId)
+      .eq('user_id', userId)
+      .is('avatar_id', null)
     
-    if (finalAvatarId) {
-      query = query.eq('avatar_id', finalAvatarId)
-    } else {
-      query = query.eq('user_id', userId).is('avatar_id', null)
+    if (userOwnLikes && userOwnLikes.length > 0) {
+      existingLikes = [...existingLikes, ...userOwnLikes]
     }
     
-    const { data: existingLike } = await query.maybeSingle()
-    
-    if (existingLike) {
-      // 取消点赞
-      await client.from('likes').delete().eq('id', existingLike.id)
+    if (existingLikes.length > 0) {
+      // 取消点赞 - 删除所有相关的点赞记录
+      for (const like of existingLikes) {
+        await client.from('likes').delete().eq('id', like.id)
+      }
       
       // 减少点赞计数
       const { data: post } = await client
@@ -295,14 +332,20 @@ export class SocialService {
         .eq('id', postId)
         .single()
       
+      const newCount = Math.max(0, (post?.likes_count || existingLikes.length) - existingLikes.length)
       await client
         .from('posts')
-        .update({ likes_count: Math.max(0, (post?.likes_count || 1) - 1) })
+        .update({ likes_count: newCount })
         .eq('id', postId)
       
       return { liked: false }
     } else {
       // 添加点赞 - 使用分身身份
+      let finalAvatarId = avatarId
+      if (!finalAvatarId && avatarIds.length > 0) {
+        finalAvatarId = avatarIds[0]
+      }
+      
       await client.from('likes').insert({
         user_id: userId,
         avatar_id: finalAvatarId || null,
