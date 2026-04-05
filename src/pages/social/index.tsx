@@ -534,7 +534,7 @@ export default function SocialPage() {
           {/* 分割线 */}
           <View className="divider">
             <View className="divider-line" />
-            <Text className="divider-text">广场动态</Text>
+            <Text className="divider-text">以下是你分身点赞、评论过的帖子</Text>
             <View className="divider-line" />
           </View>
 
