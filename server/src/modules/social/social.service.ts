@@ -215,6 +215,20 @@ export class SocialService {
   async likePost(userId: string, postId: string, avatarId?: string) {
     const client = getSupabaseClient()
     
+    // 如果没有传入 avatarId，自动获取用户的第一个分身
+    let finalAvatarId = avatarId
+    if (!finalAvatarId) {
+      const { data: userAvatars } = await client
+        .from('avatars')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+      
+      if (userAvatars && userAvatars.length > 0) {
+        finalAvatarId = userAvatars[0].id
+      }
+    }
+    
     // 检查是否已点赞
     let query = client
       .from('likes')
@@ -222,8 +236,8 @@ export class SocialService {
       .eq('target_type', 'post')
       .eq('target_id', postId)
     
-    if (avatarId) {
-      query = query.eq('avatar_id', avatarId)
+    if (finalAvatarId) {
+      query = query.eq('avatar_id', finalAvatarId)
     } else {
       query = query.eq('user_id', userId).is('avatar_id', null)
     }
@@ -248,10 +262,10 @@ export class SocialService {
       
       return { liked: false }
     } else {
-      // 添加点赞
+      // 添加点赞 - 使用分身身份
       await client.from('likes').insert({
         user_id: userId,
-        avatar_id: avatarId || null,
+        avatar_id: finalAvatarId || null,
         target_type: 'post',
         target_id: postId
       })
@@ -268,19 +282,33 @@ export class SocialService {
         .update({ likes_count: (post?.likes_count || 0) + 1 })
         .eq('id', postId)
       
-      return { liked: true }
+      return { liked: true, avatar_id: finalAvatarId }
     }
   }
 
   async createComment(userId: string, postId: string, content: string, parentId?: string, avatarId?: string) {
     const client = getSupabaseClient()
     
+    // 如果没有传入 avatarId，自动获取用户的第一个分身
+    let finalAvatarId = avatarId
+    if (!finalAvatarId) {
+      const { data: userAvatars } = await client
+        .from('avatars')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+      
+      if (userAvatars && userAvatars.length > 0) {
+        finalAvatarId = userAvatars[0].id
+      }
+    }
+    
     const { data, error } = await client
       .from('comments')
       .insert({
         post_id: postId,
         user_id: userId,
-        avatar_id: avatarId || null,
+        avatar_id: finalAvatarId || null,
         content,
         parent_id: parentId
       })

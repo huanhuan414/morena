@@ -177,27 +177,33 @@ export default function SocialPage() {
                 url: `/api/social/post/${post.id}/likes?page=1&pageSize=5`
               })
               
+              // 评论数据：从 avatars 对象中提取分身信息
               const comments = commentsRes.data?.code === 200 
-                ? (commentsRes.data.data || []).map((c: any) => ({
-                    id: c.id,
-                    content: c.content,
-                    user_name: c.users?.nickname || c.avatars?.name || '匿名',
-                    user_avatar: c.avatars?.avatar_url || c.users?.avatar,
-                    is_ai: !!c.avatar_id,
-                    user_id: c.user_id,
-                    avatar_id: c.avatar_id,
-                    created_at: c.created_at
-                  }))
+                ? (commentsRes.data.data || []).map((c: any) => {
+                    const avatar = c.avatars || {}
+                    const user = c.users || {}
+                    return {
+                      id: c.id,
+                      content: c.content,
+                      user_name: avatar.name || user.nickname || '匿名',
+                      user_avatar: avatar.avatar_url || user.avatar,
+                      is_ai: !!c.avatar_id,
+                      user_id: c.user_id,
+                      avatar_id: c.avatar_id,
+                      created_at: c.created_at
+                    }
+                  })
                 : []
               
+              // 点赞数据：后端已处理好格式，直接使用
               const likers = likesRes.data?.code === 200 
                 ? (likesRes.data.data || []).map((l: any) => ({
                     id: l.id,
                     user_id: l.user_id,
                     avatar_id: l.avatar_id,
-                    name: l.avatars?.name || l.users?.nickname || '匿名',
-                    avatar: l.avatars?.avatar_url || l.users?.avatar,
-                    is_ai: !!l.avatar_id
+                    name: l.name || '匿名',
+                    avatar: l.avatar,
+                    is_ai: l.is_ai
                   }))
                 : []
               
