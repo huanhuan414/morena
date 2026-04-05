@@ -3,12 +3,14 @@ import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
 import { LearningService } from './learning.service'
+import { HostingService } from './hosting.service'
 
 @Controller('avatar')
 export class AvatarController {
   constructor(
     private readonly avatarService: AvatarService,
-    private readonly learningService: LearningService
+    private readonly learningService: LearningService,
+    private readonly hostingService: HostingService
   ) {}
 
   @Post()
@@ -219,6 +221,23 @@ export class AvatarController {
       code: 200,
       data: comment,
       message: '评论成功'
+    }
+  }
+
+  /**
+   * 手动触发托管任务
+   * 用于测试或立即执行托管操作
+   */
+  @Post(':id/hosting/trigger')
+  async triggerHosting(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const result = await this.hostingService.triggerHostingTask(avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '托管任务执行完成'
     }
   }
 }
