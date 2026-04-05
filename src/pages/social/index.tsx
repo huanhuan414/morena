@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -65,6 +65,7 @@ export default function SocialPage() {
   const [sharePostId, setSharePostId] = useState<string | null>(null)
   const [hasAvatars, setHasAvatars] = useState<boolean | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [refreshSuccess, setRefreshSuccess] = useState(false)
   const statsCardRef = useRef<any>(null)
 
   useLoad(() => {
@@ -95,6 +96,28 @@ export default function SocialPage() {
     try {
       await fetchAvatarRelatedPosts(1, isRefresh)
       await checkAvatars()
+      
+      if (isRefresh) {
+        // 刷新成功特效
+        setRefreshSuccess(true)
+        setTimeout(() => {
+          setRefreshSuccess(false)
+          showToast({
+            title: '刷新成功',
+            icon: 'success',
+            duration: 1500
+          })
+        }, 800)
+      }
+    } catch (error) {
+      console.error('刷新数据失败:', error)
+      if (isRefresh) {
+        showToast({
+          title: '刷新失败，请重试',
+          icon: 'none',
+          duration: 2000
+        })
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -347,13 +370,19 @@ export default function SocialPage() {
           <Text className="header-title">我的分身</Text>
           <Text className="header-subtitle">分身互动过的内容</Text>
         </View>
-        <View 
-          className={`refresh-btn ${refreshing ? 'rotating' : ''}`} 
-          onClick={() => fetchData(true)}
-        >
-          <RefreshCw size={20} color="#00f5ff" />
-        </View>
       </View>
+
+      {/* 刷新成功动画遮罩 */}
+      {refreshSuccess && (
+        <View className="refresh-success-overlay">
+          <View className="refresh-success-content">
+            <View className="refresh-success-icon">
+              <Text className="refresh-success-check">✓</Text>
+            </View>
+            <Text className="refresh-success-text">数据已更新</Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView 
         className="social-scroll"
