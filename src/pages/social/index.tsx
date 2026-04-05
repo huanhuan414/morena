@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
@@ -167,6 +167,50 @@ export default function SocialPage() {
         const postsWithComments = await Promise.all(
           postList.map(async (post: Post) => {
             try {
+              // 解析 images 和 videos 字段
+              let images: string[] = []
+              let videos: string[] = []
+              
+              // 处理 images - 支持多种格式：字符串数组、对象数组、JSON字符串
+              if (post.images) {
+                if (typeof post.images === 'string') {
+                  try {
+                    const parsed = JSON.parse(post.images)
+                    if (Array.isArray(parsed)) {
+                      images = parsed.map((item: any) => 
+                        typeof item === 'string' ? item : (item?.url || item?.src || '')
+                      ).filter(Boolean)
+                    }
+                  } catch {
+                    images = []
+                  }
+                } else if (Array.isArray(post.images)) {
+                  images = post.images.map((item: any) => 
+                    typeof item === 'string' ? item : (item?.url || item?.src || '')
+                  ).filter(Boolean)
+                }
+              }
+              
+              // 处理 videos - 支持多种格式：字符串数组、对象数组、JSON字符串
+              if (post.videos) {
+                if (typeof post.videos === 'string') {
+                  try {
+                    const parsed = JSON.parse(post.videos)
+                    if (Array.isArray(parsed)) {
+                      videos = parsed.map((item: any) => 
+                        typeof item === 'string' ? item : (item?.url || item?.src || '')
+                      ).filter(Boolean)
+                    }
+                  } catch {
+                    videos = []
+                  }
+                } else if (Array.isArray(post.videos)) {
+                  videos = post.videos.map((item: any) => 
+                    typeof item === 'string' ? item : (item?.url || item?.src || '')
+                  ).filter(Boolean)
+                }
+              }
+              
               // 获取评论
               const commentsRes = await Network.request({
                 url: `/api/social/post/${post.id}/comments?page=1&pageSize=3`
@@ -207,7 +251,7 @@ export default function SocialPage() {
                   }))
                 : []
               
-              return { ...post, comments, likers }
+              return { ...post, images, videos, comments, likers }
             } catch {
               return post
             }
@@ -514,6 +558,13 @@ export default function SocialPage() {
                               src={img} 
                               className="post-image" 
                               mode="aspectFill"
+                              onClick={() => {
+                                // 预览图片
+                                previewImage({
+                                  current: img,
+                                  urls: post.images
+                                })
+                              }}
                             />
                           ))}
                         </View>
@@ -530,7 +581,9 @@ export default function SocialPage() {
                               controls
                               showFullscreenBtn
                               showPlayBtn
-                              objectFit="cover"
+                              showCenterPlayBtn
+                              enableProgressGesture
+                              objectFit="contain"
                             />
                           ))}
                         </View>
