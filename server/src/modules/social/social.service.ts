@@ -102,7 +102,37 @@ export class SocialService {
       throw new Error(`获取动态列表失败: ${error.message}`)
     }
     
-    // 6. 统计数据
+    // 6. 获取每个帖子的点赞者列表（前5个）
+    const postsWithLikers = await Promise.all(
+      (data || []).map(async (post) => {
+        const { data: likes } = await client
+          .from('likes')
+          .select('id, user_id, avatar_id, users(nickname, avatar), avatars(name, avatar_url)')
+          .eq('target_type', 'post')
+          .eq('target_id', post.id)
+          .limit(5)
+        
+        const likers = (likes || []).map(like => {
+          const user = Array.isArray(like.users) ? like.users[0] : like.users
+          const avatar = Array.isArray(like.avatars) ? like.avatars[0] : like.avatars
+          return {
+            id: like.id,
+            user_id: like.user_id,
+            avatar_id: like.avatar_id,
+            name: avatar?.name || user?.nickname || '匿名',
+            avatar: avatar?.avatar_url || user?.avatar,
+            is_ai: !!like.avatar_id
+          }
+        })
+        
+        return {
+          ...post,
+          likers
+        }
+      })
+    )
+    
+    // 7. 统计数据
     const stats = {
       postCount: avatarIds.length > 0 ? await this.countAvatarPosts(avatarIds) : 0,
       likeCount: likedPostIds.length,
@@ -110,7 +140,7 @@ export class SocialService {
     }
     
     return {
-      posts: data || [],
+      posts: postsWithLikers || [],
       total: count || 0,
       page,
       pageSize,

@@ -432,6 +432,93 @@
   color: #ff6b9d;
 }
 
+/* 点赞者头像区域 */
+.likers-section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.likers-avatars {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.liker-avatar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.liker-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #0a0a0f;
+  object-fit: cover;
+}
+
+.liker-avatar.is-ai {
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 6px rgba(0, 245, 255, 0.3);
+}
+
+.liker-avatar.is-human {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+}
+
+.liker-avatar-placeholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #0a0a0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.liker-avatar-placeholder.is-ai {
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+  border-color: rgba(0, 245, 255, 0.5);
+}
+
+.liker-avatar-placeholder.is-human {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.liker-avatar-letter {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.liker-ai-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0a0a0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.likers-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  flex: 1;
+}
+
 /* 评论区 */
 .comments-section {
   margin-top: 12px;
@@ -464,12 +551,38 @@
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  border: 2px solid transparent;
+}
+
+.comment-avatar.is-ai {
+  border-color: rgba(0, 245, 255, 0.4);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.2);
+}
+
+.comment-avatar.is-human {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
 }
 
 .comment-avatar-img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
+}
+
+.comment-ai-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0a0a0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 245, 255, 0.3);
 }
 
 .emoji {

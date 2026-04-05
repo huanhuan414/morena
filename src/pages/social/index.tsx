@@ -27,6 +27,16 @@ interface Post {
   }
   comments?: Comment[]
   is_liked?: boolean
+  likers?: Liker[]
+}
+
+interface Liker {
+  id: string
+  user_id?: string
+  avatar_id?: string
+  name: string
+  avatar?: string
+  is_ai: boolean
 }
 
 interface Comment {
@@ -36,6 +46,8 @@ interface Comment {
   user_avatar: string
   is_ai: boolean
   created_at: string
+  user_id?: string
+  avatar_id?: string
 }
 
 interface AvatarStats {
@@ -171,8 +183,10 @@ export default function SocialPage() {
                   id: c.id,
                   content: c.content,
                   user_name: c.users?.nickname || c.avatars?.name || '匿名',
-                  user_avatar: c.users?.avatar || (c.avatar_id ? '🤖' : '👤'),
+                  user_avatar: c.avatars?.avatar_url || c.users?.avatar,
                   is_ai: !!c.avatar_id,
+                  user_id: c.user_id,
+                  avatar_id: c.avatar_id,
                   created_at: c.created_at
                 }))
                 return { ...post, comments }
@@ -546,16 +560,54 @@ export default function SocialPage() {
                         </View>
                       </View>
 
+                      {/* 点赞者头像列表 */}
+                      {post.likers && post.likers.length > 0 && (
+                        <View className="likers-section">
+                          <View className="likers-avatars">
+                            {post.likers.slice(0, 5).map((liker, idx) => (
+                              <View key={liker.id} className="liker-avatar-wrap" style={{ marginLeft: idx > 0 ? '-8px' : '0' }}>
+                                {liker.avatar ? (
+                                  <Image 
+                                    src={liker.avatar} 
+                                    className={`liker-avatar ${liker.is_ai ? 'is-ai' : 'is-human'}`} 
+                                    mode="aspectFill" 
+                                  />
+                                ) : (
+                                  <View className={`liker-avatar-placeholder ${liker.is_ai ? 'is-ai' : 'is-human'}`}>
+                                    <Text className="liker-avatar-letter">{liker.name?.[0] || '?'}</Text>
+                                  </View>
+                                )}
+                                {liker.is_ai && (
+                                  <View className="liker-ai-badge">
+                                    <Sparkles size={8} color="#00f5ff" />
+                                  </View>
+                                )}
+                              </View>
+                            ))}
+                          </View>
+                          <Text className="likers-text">
+                            {post.likers.length === 1 
+                              ? `${post.likers[0].name} 觉得很赞`
+                              : `${post.likers[0].name} 等${post.likes_count}人觉得很赞`}
+                          </Text>
+                        </View>
+                      )}
+
                       {/* 评论区 */}
                       {post.comments && post.comments.length > 0 && (
                         <View className="comments-section">
                           {post.comments.map(comment => (
                             <View key={comment.id} className="comment-item">
-                              <View className="comment-avatar">
+                              <View className={`comment-avatar ${comment.is_ai ? 'is-ai' : 'is-human'}`}>
                                 {comment.user_avatar && comment.user_avatar.startsWith('http') ? (
                                   <Image src={comment.user_avatar} className="comment-avatar-img" mode="aspectFill" />
                                 ) : (
                                   <Text className="emoji">{comment.user_avatar || '👤'}</Text>
+                                )}
+                                {comment.is_ai && (
+                                  <View className="comment-ai-badge">
+                                    <Sparkles size={8} color="#00f5ff" />
+                                  </View>
                                 )}
                               </View>
                               <View className="comment-body">
