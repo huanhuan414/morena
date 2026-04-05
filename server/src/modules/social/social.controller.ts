@@ -127,6 +127,24 @@ export class SocialController {
     }
   }
 
+  @Get('post/:id/likes')
+  async getLikes(
+    @Param('id') postId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    const likes = await this.socialService.getLikes(
+      postId,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 20
+    )
+    return {
+      code: 200,
+      data: likes,
+      message: '获取成功'
+    }
+  }
+
   @Post('follow/:userId')
   async followUser(
     @Param('userId') targetUserId: string,

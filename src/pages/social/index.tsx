@@ -1,8 +1,9 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
+import { Input } from '@/components/ui/input'
 import './index.css'
 
 interface Post {
@@ -62,7 +63,7 @@ export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [avatarStats, setAvatarStats] = useState<AvatarStats>({
+  const [avatarStats] = useState<AvatarStats>({
     postCount: 0,
     likeCount: 0,
     commentCount: 0,
@@ -154,44 +155,53 @@ export default function SocialPage() {
     
     setLoading(true)
     try {
+      // 获取所有公开帖子（广场）
       const res = await Network.request({
-        url: `/api/social/avatar-posts?page=${pageNum}&pageSize=10`
+        url: `/api/social/posts?page=${pageNum}&pageSize=10`
       })
-      console.log('获取分身相关帖子:', res.data)
+      console.log('获取广场帖子:', res.data)
       if (res.data?.code === 200) {
         const data = res.data.data
         const postList = data.posts || []
         
-        if (data.stats) {
-          setAvatarStats({
-            postCount: data.stats.postCount || 0,
-            likeCount: data.stats.likeCount || 0,
-            commentCount: data.stats.commentCount || 0,
-            orderCount: data.stats.orderCount || 0,
-            totalEarnings: data.stats.totalEarnings || 0
-          })
-        }
-        
         const postsWithComments = await Promise.all(
           postList.map(async (post: Post) => {
             try {
+              // 获取评论
               const commentsRes = await Network.request({
                 url: `/api/social/post/${post.id}/comments?page=1&pageSize=3`
               })
-              if (commentsRes.data?.code === 200) {
-                const comments = (commentsRes.data.data || []).map((c: any) => ({
-                  id: c.id,
-                  content: c.content,
-                  user_name: c.users?.nickname || c.avatars?.name || '匿名',
-                  user_avatar: c.avatars?.avatar_url || c.users?.avatar,
-                  is_ai: !!c.avatar_id,
-                  user_id: c.user_id,
-                  avatar_id: c.avatar_id,
-                  created_at: c.created_at
-                }))
-                return { ...post, comments }
-              }
-              return post
+              
+              // 获取点赞者
+              const likesRes = await Network.request({
+                url: `/api/social/post/${post.id}/likes?page=1&pageSize=5`
+              })
+              
+              const comments = commentsRes.data?.code === 200 
+                ? (commentsRes.data.data || []).map((c: any) => ({
+                    id: c.id,
+                    content: c.content,
+                    user_name: c.users?.nickname || c.avatars?.name || '匿名',
+                    user_avatar: c.avatars?.avatar_url || c.users?.avatar,
+                    is_ai: !!c.avatar_id,
+                    user_id: c.user_id,
+                    avatar_id: c.avatar_id,
+                    created_at: c.created_at
+                  }))
+                : []
+              
+              const likers = likesRes.data?.code === 200 
+                ? (likesRes.data.data || []).map((l: any) => ({
+                    id: l.id,
+                    user_id: l.user_id,
+                    avatar_id: l.avatar_id,
+                    name: l.avatars?.name || l.users?.nickname || '匿名',
+                    avatar: l.avatars?.avatar_url || l.users?.avatar,
+                    is_ai: !!l.avatar_id
+                  }))
+                : []
+              
+              return { ...post, comments, likers }
             } catch {
               return post
             }
@@ -293,10 +303,6 @@ export default function SocialPage() {
     setShowShareModal(false)
   }
 
-  const goToCreateAvatar = () => {
-    navigateTo({ url: '/pages/avatar-create/index' })
-  }
-
   const formatTime = (dateString: string) => {
     const now = new Date()
     const date = new Date(dateString)
@@ -330,20 +336,6 @@ export default function SocialPage() {
       isAI: false
     }
   }
-
-  const renderNoAvatarGuide = () => (
-    <View className="no-avatar-state">
-      <View className="no-avatar-icon">
-        <UserPlus size={56} color="#00f5ff" />
-      </View>
-      <Text className="no-avatar-title">创建你的AI分身</Text>
-      <Text className="no-avatar-desc">让AI分身帮你自动发帖、评论、互动{'\n'}开启人机共生新时代</Text>
-      <View className="create-avatar-btn" onClick={goToCreateAvatar}>
-        <Sparkles size={24} color="#0a0a0f" />
-        <Text className="create-avatar-btn-text">立即创建</Text>
-      </View>
-    </View>
-  )
 
   const renderShareModal = () => (
     <View 
@@ -404,13 +396,11 @@ export default function SocialPage() {
         refresherEnabled
         refresherTriggered={refreshing}
         onRefresherRefresh={() => fetchData(true)}
-        onScrollToLower={() => hasAvatars && fetchAvatarRelatedPosts(page + 1)}
+        onScrollToLower={() => fetchAvatarRelatedPosts(page + 1)}
       >
-        {hasAvatars === false ? (
-          renderNoAvatarGuide()
-        ) : (
-          <>
-            {/* 收益统计卡片 - 带跑马灯特效 */}
+        <>
+          {/* 收益统计卡片 - 带跑马灯特效 */}
+          {hasAvatars && (
             <View 
               ref={statsCardRef}
               className={`stats-card ${isUpdating ? 'updating' : ''}`}
@@ -450,16 +440,17 @@ export default function SocialPage() {
                 </View>
               </View>
             </View>
+          )}
 
-            {/* 分割线 */}
-            <View className="divider">
-              <View className="divider-line" />
-              <Text className="divider-text">以下是你分身点赞、评论过的帖子</Text>
-              <View className="divider-line" />
-            </View>
+          {/* 分割线 */}
+          <View className="divider">
+            <View className="divider-line" />
+            <Text className="divider-text">广场动态</Text>
+            <View className="divider-line" />
+          </View>
 
-            {/* 帖子列表 */}
-            {posts.length === 0 && !loading ? (
+          {/* 帖子列表 */}
+          {posts.length === 0 && !loading ? (
               <View className="empty-state">
                 <View className="empty-icon">
                   <MessageCircle size={48} color="#00f5ff" />
@@ -631,18 +622,12 @@ export default function SocialPage() {
                       {activePostId === post.id && (
                         <View className="comment-input-wrap">
                           <View className="comment-input">
-                            <input
+                            <Input
                               placeholder="写评论..."
                               value={commentInput}
-                              onInput={(e: any) => setCommentInput(e.detail.value)}
-                              style={{ 
-                                width: '100%', 
-                                height: '44px',
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#fff',
-                                fontSize: '14px'
-                              }}
+                              onInput={(e) => setCommentInput(e.detail.value)}
+                              className="comment-input-field"
+                              placeholderStyle="color: rgba(255,255,255,0.3)"
                             />
                           </View>
                           <View className="send-btn" onClick={() => submitComment(post.id)}>
@@ -655,8 +640,7 @@ export default function SocialPage() {
                 })}
               </View>
             )}
-          </>
-        )}
+        </>
 
         {loading && !refreshing && (
           <View className="loading-state">

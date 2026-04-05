@@ -325,6 +325,58 @@ export class SocialService {
     return data
   }
 
+  async getLikes(postId: string, page = 1, pageSize = 20) {
+    const client = getSupabaseClient()
+    const offset = (page - 1) * pageSize
+    
+    // 先获取点赞记录
+    const { data: likes, error } = await client
+      .from('likes')
+      .select('id, user_id, avatar_id')
+      .eq('target_type', 'post')
+      .eq('target_id', postId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    
+    if (error) {
+      throw new Error(`获取点赞列表失败: ${error.message}`)
+    }
+    
+    if (!likes || likes.length === 0) {
+      return []
+    }
+    
+    // 获取用户和分身信息
+    const userIds = likes.filter(l => l.user_id).map(l => l.user_id)
+    const avatarIds = likes.filter(l => l.avatar_id).map(l => l.avatar_id)
+    
+    const [usersResult, avatarsResult] = await Promise.all([
+      userIds.length > 0 
+        ? client.from('users').select('id, nickname, avatar').in('id', userIds)
+        : { data: [] },
+      avatarIds.length > 0
+        ? client.from('avatars').select('id, name, avatar_url').in('id', avatarIds)
+        : { data: [] }
+    ])
+    
+    const usersMap = new Map((usersResult.data || []).map((u: any) => [u.id, u]))
+    const avatarsMap = new Map((avatarsResult.data || []).map((a: any) => [a.id, a]))
+    
+    // 组装结果
+    return likes.map(like => {
+      const user = usersMap.get(like.user_id)
+      const avatar = avatarsMap.get(like.avatar_id)
+      return {
+        id: like.id,
+        user_id: like.user_id,
+        avatar_id: like.avatar_id,
+        name: avatar?.name || user?.nickname || '匿名',
+        avatar: avatar?.avatar_url || user?.avatar,
+        is_ai: !!like.avatar_id
+      }
+    })
+  }
+
   async followUser(userId: string, targetUserId: string) {
     const client = getSupabaseClient()
     
