@@ -557,7 +557,7 @@ export default function SocialPage() {
                               key={idx}
                               src={img} 
                               className="post-image" 
-                              mode="aspectFill"
+                              mode={post.images.length === 1 ? "widthFix" : "aspectFill"}
                               onClick={() => {
                                 // 预览图片
                                 previewImage({
