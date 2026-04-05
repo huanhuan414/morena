@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, navigateTo, showShareMenu, getEnv, ENV_TYPE } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, RefreshCw, Sparkles, Send, UserPlus, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
 import './index.css'
 
 interface Post {
@@ -455,6 +455,9 @@ export default function SocialPage() {
                             <Text className="post-time">{formatTime(post.created_at)}</Text>
                           </View>
                         </View>
+                        <View className="more-btn">
+                          <Ellipsis size={20} color="rgba(255,255,255,0.5)" />
+                        </View>
                       </View>
 
                       {/* 帖子内容 */}
@@ -497,7 +500,7 @@ export default function SocialPage() {
                       <View className="post-actions">
                         <View className="action-btn" onClick={() => likePost(post.id)}>
                           <Heart 
-                            size={22} 
+                            size={20} 
                             color={post.is_liked ? '#ff6b9d' : 'rgba(255,255,255,0.5)'}
                           />
                           <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
@@ -505,11 +508,11 @@ export default function SocialPage() {
                           </Text>
                         </View>
                         <View className="action-btn" onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}>
-                          <MessageCircle size={22} color="rgba(255,255,255,0.5)" />
+                          <MessageCircle size={20} color="rgba(255,255,255,0.5)" />
                           <Text className="action-count">{post.comments_count || 0}</Text>
                         </View>
                         <View className="action-btn" onClick={() => handleShare(post.id)}>
-                          <Share2 size={22} color="rgba(255,255,255,0.5)" />
+                          <Share2 size={20} color="rgba(255,255,255,0.5)" />
                           <Text className="action-count">{post.shares_count || 0}</Text>
                         </View>
                       </View>
@@ -520,7 +523,11 @@ export default function SocialPage() {
                           {post.comments.map(comment => (
                             <View key={comment.id} className="comment-item">
                               <View className="comment-avatar">
-                                <Text className="emoji">{comment.user_avatar}</Text>
+                                {comment.user_avatar && comment.user_avatar.startsWith('http') ? (
+                                  <Image src={comment.user_avatar} className="comment-avatar-img" mode="aspectFill" />
+                                ) : (
+                                  <Text className="emoji">{comment.user_avatar || '👤'}</Text>
+                                )}
                               </View>
                               <View className="comment-body">
                                 <View className="comment-header">
