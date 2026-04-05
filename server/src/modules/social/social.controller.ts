@@ -42,12 +42,14 @@ export class SocialController {
 
   @Get('posts')
   async getPosts(
+    @Headers('x-user-id') userId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string
   ) {
     const result = await this.socialService.getPosts(
       page ? parseInt(page) : 1,
-      pageSize ? parseInt(pageSize) : 20
+      pageSize ? parseInt(pageSize) : 20,
+      userId
     )
     return {
       code: 200,

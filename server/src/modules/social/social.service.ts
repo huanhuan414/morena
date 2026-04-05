@@ -157,7 +157,7 @@ export class SocialService {
     return count || 0
   }
 
-  async getPosts(page = 1, pageSize = 20) {
+  async getPosts(page = 1, pageSize = 20, userId?: string) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
     
@@ -172,8 +172,48 @@ export class SocialService {
       throw new Error(`获取动态列表失败: ${error.message}`)
     }
     
+    // 如果有用户ID，获取用户的点赞状态
+    let postsWithLikeStatus = data || []
+    if (userId) {
+      // 获取用户的所有分身ID
+      const { data: userAvatars } = await client
+        .from('avatars')
+        .select('id')
+        .eq('user_id', userId)
+      
+      const avatarIds = userAvatars?.map(a => a.id) || []
+      
+      // 获取所有帖子ID
+      const postIds = (data || []).map(p => p.id)
+      
+      if (postIds.length > 0) {
+        // 查询用户/分身点赞过的帖子
+        let likesQuery = client
+          .from('likes')
+          .select('target_id')
+          .eq('target_type', 'post')
+          .in('target_id', postIds)
+        
+        // 检查用户或其分身的点赞
+        if (avatarIds.length > 0) {
+          likesQuery = likesQuery.or(`user_id.eq.${userId},avatar_id.in.(${avatarIds.join(',')})`)
+        } else {
+          likesQuery = likesQuery.eq('user_id', userId)
+        }
+        
+        const { data: likes } = await likesQuery
+        
+        const likedPostIds = new Set(likes?.map(l => l.target_id) || [])
+        
+        postsWithLikeStatus = (data || []).map(post => ({
+          ...post,
+          is_liked: likedPostIds.has(post.id)
+        }))
+      }
+    }
+    
     return {
-      posts: data,
+      posts: postsWithLikeStatus,
       total: count || 0,
       page,
       pageSize
