@@ -433,7 +433,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 使用AI生成帖子内容
+   * 使用AI生成帖子内容（必须包含图片或视频）
    */
   private async generatePostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
     const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}。
@@ -443,6 +443,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 2. 符合你的性格特点
 3. 字数在50-200字之间
 4. 可以分享生活感悟、工作心得、有趣发现等
+5. 内容要与配图相关，因为会自动生成配图
 
 只需要输出帖子内容，不需要其他解释。`
 
@@ -456,29 +457,41 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
       const content = response.content || ''
       
-      // 随机决定是否生成图片
+      if (!content.trim()) {
+        console.log('[托管服务] 生成内容为空，跳过发帖')
+        return null
+      }
+
+      // 必须生成图片配图
       let images: string[] = []
-      if (Math.random() < 0.3) { // 30%概率生成图片
-        try {
-          const imageConfig = new Config()
-          const imageClient = new ImageGenerationClient(imageConfig)
-          
-          const imageResponse = await imageClient.generate({
-            prompt: `${avatar.name}的日常分享，温馨美好的场景`,
-            size: '2K',
-            watermark: false
-          })
-          
-          const helper = imageClient.getResponseHelper(imageResponse)
-          if (helper.success && helper.imageUrls.length > 0) {
-            // 上传到 CDN
-            const imageKey = await this.storage.uploadFromUrl({ url: helper.imageUrls[0], timeout: 30000 })
-            const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })
-            images = [cdnUrl]
-          }
-        } catch (imgError) {
-          console.log('[托管服务] 生成图片失败，使用纯文本帖子:', imgError.message)
+      try {
+        console.log('[托管服务] 正在为帖子生成配图...')
+        const imageConfig = new Config()
+        const imageClient = new ImageGenerationClient(imageConfig)
+        
+        // 根据帖子内容生成相关配图
+        const imagePrompt = `${avatar.name}分享的内容：${content.substring(0, 50)}，温馨美好的场景，适合社交媒体分享`
+        
+        const imageResponse = await imageClient.generate({
+          prompt: imagePrompt,
+          size: '2K',
+          watermark: false
+        })
+        
+        const helper = imageClient.getResponseHelper(imageResponse)
+        if (helper.success && helper.imageUrls.length > 0) {
+          // 上传到 CDN
+          const imageKey = await this.storage.uploadFromUrl({ url: helper.imageUrls[0], timeout: 30000 })
+          const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })
+          images = [cdnUrl]
+          console.log('[托管服务] 配图生成成功')
+        } else {
+          console.log('[托管服务] 配图生成失败，跳过发帖')
+          return null
         }
+      } catch (imgError: any) {
+        console.log('[托管服务] 生成配图失败，跳过发帖:', imgError?.message || imgError)
+        return null
       }
 
       return {
