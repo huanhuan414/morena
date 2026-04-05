@@ -79,6 +79,7 @@ export default function SocialPage() {
   const [hasAvatars, setHasAvatars] = useState<boolean | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [refreshSuccess, setRefreshSuccess] = useState(false)
+  const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const statsCardRef = useRef<any>(null)
 
   useLoad(() => {
@@ -321,6 +322,44 @@ export default function SocialPage() {
     } catch (error) {
       console.error('评论失败:', error)
       showToast({ title: '评论失败', icon: 'none' })
+    }
+  }
+
+  // 加载帖子的全部评论
+  const loadMoreComments = async (postId: string) => {
+    try {
+      const res = await Network.request({
+        url: `/api/social/post/${postId}/comments`,
+        method: 'GET'
+      })
+      console.log('加载评论响应:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const comments = res.data.data.map((c: any) => ({
+          id: c.id,
+          content: c.content,
+          user_name: c.avatars?.name || c.users?.nickname || '匿名用户',
+          user_avatar: c.avatars?.avatar_url || c.users?.avatar || '👤',
+          is_ai: !!c.avatar_id,
+          created_at: c.created_at,
+          user_id: c.user_id,
+          avatar_id: c.avatar_id
+        }))
+        
+        // 更新帖子数据，添加全部评论
+        setPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+            return { ...post, comments }
+          }
+          return post
+        }))
+        
+        // 标记该帖子已展开评论
+        setExpandedCommentsPosts(prev => new Set(prev).add(postId))
+      }
+    } catch (error) {
+      console.error('加载评论失败:', error)
+      showToast({ title: '加载评论失败', icon: 'none' })
     }
   }
 
@@ -675,8 +714,8 @@ export default function SocialPage() {
                             </View>
                           ))}
                           {/* 查看更多评论提示 */}
-                          {post.comments_count > post.comments.length && (
-                            <View className="more-comments">
+                          {post.comments_count > post.comments.length && !expandedCommentsPosts.has(post.id) && (
+                            <View className="more-comments" onClick={() => loadMoreComments(post.id)}>
                               <Text className="more-comments-text">
                                 查看全部 {post.comments_count} 条评论
                               </Text>
