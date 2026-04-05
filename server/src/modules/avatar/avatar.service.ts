@@ -889,6 +889,58 @@ export class AvatarService {
     }
   }
 
+  /**
+   * 获取分身的好友列表
+   */
+  async getAvatarFriends(avatarId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 验证分身属于该用户
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .single()
+    
+    if (!avatar) {
+      throw new Error('分身不存在或无权访问')
+    }
+    
+    // 获取好友关系
+    const { data: friendships, error } = await client
+      .from('avatar_friends')
+      .select(`
+        id,
+        match_reason,
+        compatibility_score,
+        status,
+        created_at,
+        friend_avatar:avatars!avatar_friends_friend_avatar_id_fkey (
+          id,
+          name,
+          avatar_url,
+          level,
+          personality
+        )
+      `)
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      throw new Error(`获取好友列表失败: ${error.message}`)
+    }
+    
+    return (friendships || []).map(f => ({
+      id: f.id,
+      friend: f.friend_avatar,
+      match_reason: f.match_reason,
+      compatibility_score: f.compatibility_score,
+      status: f.status,
+      created_at: f.created_at
+    }))
+  }
+
   async deleteAvatar(avatarId: string, userId: string) {
     const client = getSupabaseClient()
     

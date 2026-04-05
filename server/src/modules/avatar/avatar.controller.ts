@@ -240,4 +240,20 @@ export class AvatarController {
       message: '托管任务执行完成'
     }
   }
+
+  /**
+   * 获取分身的好友列表
+   */
+  @Get(':id/friends')
+  async getAvatarFriends(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const friends = await this.avatarService.getAvatarFriends(avatarId, userId)
+    return {
+      code: 200,
+      data: friends,
+      message: '获取成功'
+    }
+  }
 }
