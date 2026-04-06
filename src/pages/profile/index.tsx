@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, Award, TrendingUp, CircleQuestionMark, Briefcase, Wallet, Gift, Zap } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap } from 'lucide-react-taro'
 import './index.css'
 
 interface UserStats {
@@ -69,8 +69,6 @@ export default function ProfilePage() {
     { title: '任务大厅', icon: Zap, desc: '分身接单赚钱', color: '#bf00ff', path: '/pages/order-list/index?mode=avatar' },
     { title: '收益中心', icon: Wallet, desc: '查看收益和提现', color: '#00ff88', path: '/pages/earning-center/index' },
     { title: '邀请返利', icon: Gift, desc: '邀请好友得奖励', color: '#bf00ff', path: '/pages/referral-center/index' },
-    { title: '学习记录', icon: TrendingUp, desc: '查看学习进度', color: '#bf00ff', path: '/pages/mind-chat/index' },
-    { title: '成就徽章', icon: Award, desc: `${stats.level}级 · ${stats.totalXp}经验`, color: '#ffaa00', path: '/pages/mind-chat/index' },
     { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '/pages/profile/notifications' },
     { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '/pages/profile/security' },
     { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '/pages/profile/help' },
