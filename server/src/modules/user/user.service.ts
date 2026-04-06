@@ -53,13 +53,17 @@ export class UserService {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
     
-    // 获取用户分身的ID列表
+    // 获取用户分身的ID列表及经验值
     const { data: userAvatars } = await client
       .from('avatars')
-      .select('id')
+      .select('id, exp, level')
       .eq('user_id', userId)
     
     const avatarIds = (userAvatars || []).map(a => a.id)
+    
+    // 计算分身总经验值和平均等级
+    const totalAvatarExp = (userAvatars || []).reduce((sum, a) => sum + (a.exp || 0), 0)
+    const maxAvatarLevel = userAvatars?.length ? Math.max(...userAvatars.map(a => a.level || 1)) : 1
     
     // 获取分身接单的订单数量（任务）
     let orderCount = 0
@@ -93,8 +97,8 @@ export class UserService {
       taskCount: orderCount,        // B端订单数量
       postCount: postCount || 0,    // 帖子数量
       friendCount: friendCount,     // 好友数量
-      totalXp: user?.exp || 0,
-      level: user?.level || 1
+      totalXp: totalAvatarExp,      // 分身总经验值（与心智成长挂钩）
+      level: maxAvatarLevel          // 最高分身等级
     }
   }
 
