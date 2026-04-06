@@ -119,7 +119,7 @@ export default function ProfilePage() {
             <Text className="stat-label">AI分身</Text>
           </View>
           <View className="stat-divider" />
-          <View className="stat-item" onClick={() => switchTab({ url: '/pages/learn/index' })}>
+          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/task/index' })}>
             <Text className="stat-value">{stats.taskCount}</Text>
             <Text className="stat-label">任务</Text>
           </View>
@@ -129,7 +129,7 @@ export default function ProfilePage() {
             <Text className="stat-label">动态</Text>
           </View>
           <View className="stat-divider" />
-          <View className="stat-item">
+          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/profile/followers' })}>
             <Text className="stat-value">{stats.followerCount}</Text>
             <Text className="stat-label">粉丝</Text>
           </View>

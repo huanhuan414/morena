@@ -5,6 +5,16 @@ import { SocialService } from './social.service'
 export class SocialController {
   constructor(private readonly socialService: SocialService) {}
 
+  @Get('followers')
+  async getFollowersAndFollowing(@Headers('x-user-id') userId: string) {
+    const result = await this.socialService.getFollowersAndFollowing(userId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
   @Post('post')
   async createPost(
     @Headers('x-user-id') userId: string,

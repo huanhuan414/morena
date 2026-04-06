@@ -488,6 +488,75 @@ export class SocialService {
     })
   }
 
+  async getFollowersAndFollowing(userId: string) {
+    const client = getSupabaseClient()
+    
+    // 获取粉丝列表（关注了我的人）
+    const { data: followersData, error: followersError } = await client
+      .from('follows')
+      .select('follower_id, created_at')
+      .eq('following_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (followersError) {
+      throw new Error(`获取粉丝列表失败: ${followersError.message}`)
+    }
+    
+    // 获取关注列表（我关注的人）
+    const { data: followingData, error: followingError } = await client
+      .from('follows')
+      .select('following_id, created_at')
+      .eq('follower_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (followingError) {
+      throw new Error(`获取关注列表失败: ${followingError.message}`)
+    }
+    
+    // 获取粉丝用户信息
+    const followerIds = (followersData || []).map((item: any) => item.follower_id)
+    const { data: followerUsers } = followerIds.length > 0 
+      ? await client.from('users').select('id, nickname, avatar_url').in('id', followerIds)
+      : { data: [] }
+    
+    // 获取关注用户信息
+    const followingIds = (followingData || []).map((item: any) => item.following_id)
+    const { data: followingUsers } = followingIds.length > 0
+      ? await client.from('users').select('id, nickname, avatar_url').in('id', followingIds)
+      : { data: [] }
+    
+    // 创建用户映射
+    const userMap = new Map<string, any>()
+    ;(followerUsers || []).forEach((u: any) => userMap.set(u.id, u))
+    ;(followingUsers || []).forEach((u: any) => userMap.set(u.id, u))
+    
+    // 格式化粉丝列表
+    const followers = (followersData || []).map((item: any) => {
+      const user = userMap.get(item.follower_id) || {}
+      return {
+        id: item.follower_id,
+        nickname: user.nickname || '未知用户',
+        avatar: user.avatar_url,
+        isAi: false,
+        followedAt: item.created_at
+      }
+    })
+    
+    // 格式化关注列表
+    const following = (followingData || []).map((item: any) => {
+      const user = userMap.get(item.following_id) || {}
+      return {
+        id: item.following_id,
+        nickname: user.nickname || '未知用户',
+        avatar: user.avatar_url,
+        isAi: false,
+        followedAt: item.created_at
+      }
+    })
+    
+    return { followers, following }
+  }
+
   async followUser(userId: string, targetUserId: string) {
     const client = getSupabaseClient()
     

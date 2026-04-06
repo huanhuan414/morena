@@ -15,6 +15,7 @@ export default defineAppConfig({
     'pages/profile/security',
     'pages/profile/help',
     'pages/profile/about',
+    'pages/profile/followers',
     'pages/task/index',
     'pages/order-create/index',
     'pages/order-list/index',
