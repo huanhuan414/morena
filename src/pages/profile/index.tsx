@@ -134,13 +134,13 @@ export default function ProfilePage() {
         {/* 经验进度 */}
         <View className="xp-section">
           <View className="xp-header">
-            <Text className="xp-title">经验值</Text>
-            <Text className="xp-value">{stats.totalXp} XP</Text>
+            <Text className="xp-level">Lv.{stats.level}</Text>
+            <Text className="xp-value">{stats.totalXp} / {(stats.level + 1) * 100} XP</Text>
           </View>
           <View className="xp-bar">
-            <View className="xp-fill" style={{ width: `${Math.min(100, stats.totalXp % 100)}%` }} />
+            <View className="xp-fill" style={{ width: `${Math.min(100, (stats.totalXp % 100))}%` }} />
           </View>
-          <Text className="xp-hint">再获得 {(stats.level + 1) * 100 - stats.totalXp} XP 升级</Text>
+          <Text className="xp-hint">距离 Lv.{stats.level + 1} 还需 {((stats.level + 1) * 100) - stats.totalXp} XP</Text>
         </View>
       </View>
 
