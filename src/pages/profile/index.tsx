@@ -9,10 +9,9 @@ import './index.css'
 
 interface UserStats {
   avatarCount: number
-  taskCount: number
-  postCount: number
-  followingCount: number
-  followerCount: number
+  taskCount: number      // B端订单数量
+  postCount: number      // 帖子数量
+  friendCount: number    // 好友数量
   totalXp: number
   level: number
 }
@@ -23,8 +22,7 @@ export default function ProfilePage() {
     avatarCount: 0,
     taskCount: 0,
     postCount: 0,
-    followingCount: 0,
-    followerCount: 0,
+    friendCount: 0,
     totalXp: 0,
     level: 1
   })
@@ -119,7 +117,7 @@ export default function ProfilePage() {
             <Text className="stat-label">AI分身</Text>
           </View>
           <View className="stat-divider" />
-          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/task/index' })}>
+          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/order-list/index?mode=avatar' })}>
             <Text className="stat-value">{stats.taskCount}</Text>
             <Text className="stat-label">任务</Text>
           </View>
@@ -129,9 +127,9 @@ export default function ProfilePage() {
             <Text className="stat-label">动态</Text>
           </View>
           <View className="stat-divider" />
-          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/profile/followers' })}>
-            <Text className="stat-value">{stats.followerCount}</Text>
-            <Text className="stat-label">粉丝</Text>
+          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/avatar-friends/index' })}>
+            <Text className="stat-value">{stats.friendCount}</Text>
+            <Text className="stat-label">好友</Text>
           </View>
         </View>
 

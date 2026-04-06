@@ -53,36 +53,46 @@ export class UserService {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
     
-    // 获取用户的任务数量
-    const { count: taskCount } = await client
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
+    // 获取用户分身的ID列表
+    const { data: userAvatars } = await client
+      .from('avatars')
+      .select('id')
       .eq('user_id', userId)
     
-    // 获取用户的帖子数量
+    const avatarIds = (userAvatars || []).map(a => a.id)
+    
+    // 获取分身接单的订单数量（任务）
+    let orderCount = 0
+    if (avatarIds.length > 0) {
+      const { count } = await client
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+        .eq('status', 'completed')
+      orderCount = count || 0
+    }
+    
+    // 获取用户的帖子数量（动态）
     const { count: postCount } = await client
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
     
-    // 获取用户的关注数
-    const { count: followingCount } = await client
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('follower_id', userId)
-    
-    // 获取用户的粉丝数
-    const { count: followerCount } = await client
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('following_id', userId)
+    // 获取分身的好友数量
+    let friendCount = 0
+    if (avatarIds.length > 0) {
+      const { count } = await client
+        .from('avatar_friends')
+        .select('*', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+      friendCount = count || 0
+    }
     
     return {
       avatarCount: avatarCount || 0,
-      taskCount: taskCount || 0,
-      postCount: postCount || 0,
-      followingCount: followingCount || 0,
-      followerCount: followerCount || 0,
+      taskCount: orderCount,        // B端订单数量
+      postCount: postCount || 0,    // 帖子数量
+      friendCount: friendCount,     // 好友数量
       totalXp: user?.exp || 0,
       level: user?.level || 1
     }
