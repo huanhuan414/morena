@@ -492,8 +492,10 @@ export class OrderDispatchService {
 
   /**
    * 获取推荐分身列表
+   * @param orderId 订单ID
+   * @param limit 返回数量限制，0或负数表示返回全部
    */
-  async getRecommendedAvatars(orderId: string, limit: number = 5) {
+  async getRecommendedAvatars(orderId: string, limit: number = 0) {
     const client = getSupabaseClient()
     
     // 获取订单信息
@@ -525,10 +527,13 @@ export class OrderDispatchService {
     // 计算每个分身的推荐评分
     const scoredAvatars = avatars.map(avatar => this.calculateAvatarScore(avatar, order, null))
     
-    // 按评分排序并返回前N个
+    // 按评分排序并返回
     scoredAvatars.sort((a, b) => b.score - a.score)
     
-    return scoredAvatars.slice(0, limit).map(avatar => ({
+    // 当 limit <= 0 时返回全部，否则返回前N个
+    const result = limit <= 0 ? scoredAvatars : scoredAvatars.slice(0, limit)
+    
+    return result.map(avatar => ({
       id: avatar.id,
       name: avatar.name,
       avatar_url: (avatar as any).avatar_url || '',

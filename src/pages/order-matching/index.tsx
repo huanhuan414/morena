@@ -141,7 +141,7 @@ export default function OrderMatchingPage() {
 
   const fetchMatchingResults = async () => {
     try {
-      // 先获取推荐分身列表
+      // 获取所有推荐分身（不传limit，返回全部）
       const res = await Network.request({
         url: `/api/order-dispatch/recommend/${orderId}`
       })
@@ -149,86 +149,19 @@ export default function OrderMatchingPage() {
       if (res.data?.code === 200) {
         const avatars = res.data.data || []
         
-        // 逐步显示分身卡片
-        for (let i = 0; i < avatars.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 400))
-          setMatchedAvatars(prev => [...prev, avatars[i]])
-        }
-        
-        // 如果没有推荐，模拟一些示例数据
-        if (avatars.length === 0) {
-          const mockAvatars: MatchedAvatar[] = [
-            {
-              id: '1',
-              name: '小雅',
-              avatar_url: '',
-              level: 8,
-              score: 95,
-              matchReasons: ['技能匹配度 98%', '平台配置完整', '完成率 96%', '响应速度快'],
-              isHosted: true,
-              completionRate: 96,
-              completedOrders: 128,
-              skills: ['文案创作', '小红书运营', '图片设计'],
-              platforms: ['小红书', '微博'],
-              totalEarnings: 15800,
-              avgRating: 4.8,
-              estimatedEffect: {
-                reach: '5,000-10,000',
-                engagement: '8.5%',
-                quality: '优秀',
-                time: '2-3天'
-              }
-            },
-            {
-              id: '2',
-              name: '墨渊',
-              avatar_url: '',
-              level: 12,
-              score: 88,
-              matchReasons: ['高级分身', '经验丰富', '擅长内容策划'],
-              isHosted: true,
-              completionRate: 92,
-              completedOrders: 256,
-              skills: ['内容策划', '视频创作', '社群运营'],
-              platforms: ['B站', '抖音'],
-              totalEarnings: 32600,
-              avgRating: 4.9,
-              estimatedEffect: {
-                reach: '10,000-50,000',
-                engagement: '12%',
-                quality: '卓越',
-                time: '3-5天'
-              }
-            },
-            {
-              id: '3',
-              name: '星尘',
-              avatar_url: '',
-              level: 5,
-              score: 82,
-              matchReasons: ['性价比高', '学习能力强', '创意丰富'],
-              isHosted: false,
-              completionRate: 88,
-              completedOrders: 45,
-              skills: ['文案创作', '图文设计'],
-              platforms: ['小红书'],
-              totalEarnings: 5600,
-              avgRating: 4.6,
-              estimatedEffect: {
-                reach: '2,000-5,000',
-                engagement: '6%',
-                quality: '良好',
-                time: '1-2天'
-              }
-            }
-          ]
-          
-          for (let i = 0; i < mockAvatars.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 500))
-            setMatchedAvatars(prev => [...prev, mockAvatars[i]])
+        if (avatars.length > 0) {
+          // 逐步显示分身卡片
+          for (let i = 0; i < avatars.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 300))
+            setMatchedAvatars(prev => [...prev, avatars[i]])
           }
+        } else {
+          // 如果没有推荐，显示空状态
+          setMatchedAvatars([])
         }
-        
+        setLoading(false)
+      } else {
+        setMatchedAvatars([])
         setLoading(false)
       }
     } catch (error) {
@@ -311,6 +244,46 @@ export default function OrderMatchingPage() {
     } catch (error) {
       console.error('分配失败:', error)
       showToast({ title: '分配失败', icon: 'none' })
+    }
+  }
+
+  // 统一匹配给所有推荐分身
+  const handleBatchDispatch = async () => {
+    if (matchedAvatars.length === 0) return
+    
+    setDispatching(true)
+    let successCount = 0
+    
+    try {
+      for (const avatar of matchedAvatars) {
+        try {
+          const res = await Network.request({
+            url: `/api/order-dispatch/${orderId}/dispatch`,
+            method: 'POST',
+            data: { avatarId: avatar.id }
+          })
+          
+          if (res.data?.code === 200) {
+            successCount++
+          }
+        } catch {
+          // 忽略单个失败，继续分配其他分身
+        }
+      }
+      
+      if (successCount > 0) {
+        showToast({ title: `成功分配给 ${successCount} 个分身`, icon: 'success' })
+        setTimeout(() => {
+          navigateBack()
+        }, 1500)
+      } else {
+        showToast({ title: '分配失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('批量分配失败:', error)
+      showToast({ title: '分配失败', icon: 'none' })
+    } finally {
+      setDispatching(false)
     }
   }
 
@@ -629,23 +602,26 @@ export default function OrderMatchingPage() {
               </View>
             ))}
             
-            {/* 一键确认分配推荐 */}
+            {/* 统一匹配给所有分身 */}
             {matchedAvatars.length > 0 && !loading && (
-              <View className="auto-dispatch-section">
-                <View className="auto-dispatch-divider">
-                  <View className="divider-line" />
-                  <Text className="divider-text">或</Text>
-                  <View className="divider-line" />
-                </View>
+              <View className="batch-dispatch-section">
                 <Button 
-                  className="auto-dispatch-btn"
-                  onClick={() => handleQuickDispatch(matchedAvatars[0])}
+                  className="batch-dispatch-btn"
+                  onClick={handleBatchDispatch}
+                  disabled={dispatching}
                 >
-                  <Crown size={18} color="#fff" />
-                  <Text className="auto-dispatch-text">
-                    一键分配给 {matchedAvatars[0]?.name}（最高匹配度）
+                  {dispatching ? (
+                    <Loader size={20} color="#fff" className="spin" />
+                  ) : (
+                    <Users size={20} color="#fff" />
+                  )}
+                  <Text className="batch-dispatch-text">
+                    {dispatching ? '分配中...' : `统一匹配给所有分身（{matchedAvatars.length}个）`}
                   </Text>
                 </Button>
+                <Text className="batch-dispatch-tip">
+                  系统将按匹配度自动分配给所有推荐分身
+                </Text>
               </View>
             )}
           </ScrollView>
