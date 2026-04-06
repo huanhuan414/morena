@@ -98,13 +98,18 @@
 }
 
 .af-friend-card {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  padding: 24rpx;
   background: rgba(20, 20, 30, 0.6);
   border: 1rpx solid rgba(255, 255, 255, 0.05);
   border-radius: 24rpx;
+  padding: 24rpx;
+}
+
+/* 好友头部 */
+.af-friend-header {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
 }
 
 .af-friend-avatar {
@@ -134,19 +139,37 @@
   flex: 1;
 }
 
+.af-friend-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .af-friend-name {
-  display: block;
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #fff;
-  margin-bottom: 8rpx;
+}
+
+.af-compatibility-badge {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid;
+}
+
+.af-compatibility-text {
+  font-size: 20rpx;
+  font-weight: 500;
 }
 
 .af-friend-meta {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  margin-bottom: 12rpx;
 }
 
 .af-friend-level {
@@ -164,18 +187,225 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-.af-reason-tag {
-  display: inline-block;
-  padding: 8rpx 16rpx;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(191, 0, 255, 0.1));
-  border: 1rpx solid rgba(0, 245, 255, 0.2);
-  border-radius: 12rpx;
+/* 交友原因 */
+.af-reason-section {
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.af-reason-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 8rpx;
+}
+
+.af-reason-title {
+  font-size: 24rpx;
+  color: #00f5ff;
+  font-weight: 500;
 }
 
 .af-reason-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+/* 好友收益 */
+.af-benefits-section {
+  background: rgba(255, 215, 0, 0.05);
+  border: 1rpx solid rgba(255, 215, 0, 0.2);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.af-benefits-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.af-benefits-title {
+  font-size: 24rpx;
+  color: #ffd700;
+  font-weight: 500;
+}
+
+.af-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.af-benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.af-benefit-icon {
+  font-size: 24rpx;
+}
+
+.af-benefit-text {
   font-size: 22rpx;
   color: rgba(255, 255, 255, 0.7);
-  line-height: 1.4;
+}
+
+/* 操作按钮 */
+.af-action-buttons {
+  display: flex;
+  gap: 16rpx;
+}
+
+.af-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 16rpx;
+  border-radius: 16rpx;
+}
+
+.af-chat-btn {
+  background: rgba(0, 245, 255, 0.1);
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+}
+
+.af-call-btn {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1rpx solid rgba(0, 255, 136, 0.3);
+}
+
+.af-call-btn.disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.af-action-btn-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 聊天记录弹窗 */
+.af-chat-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40rpx;
+}
+
+.af-chat-content {
+  width: 100%;
+  max-height: 80vh;
+  background: rgba(20, 20, 30, 0.95);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.af-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.af-chat-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.af-chat-close {
+  font-size: 26rpx;
+  color: #00f5ff;
+}
+
+.af-chat-messages {
+  flex: 1;
+  padding: 24rpx;
+  max-height: 60vh;
+}
+
+.af-chat-msg {
+  margin-bottom: 20rpx;
+  max-width: 80%;
+}
+
+.af-chat-msg.user {
+  margin-left: auto;
+}
+
+.af-chat-msg.user .af-chat-msg-content {
+  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  color: #0a0a0f;
+}
+
+.af-chat-msg.assistant .af-chat-msg-content {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.af-chat-msg-content {
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  color: #fff;
+  line-height: 1.5;
+}
+
+.af-chat-msg-time {
+  display: block;
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 4rpx;
+  text-align: right;
+}
+
+.af-chat-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx;
+}
+
+.af-chat-loading-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.af-chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx;
+}
+
+.af-chat-empty-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12rpx;
+}
+
+.af-chat-empty-hint {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .af-bottom-space {

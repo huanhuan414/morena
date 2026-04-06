@@ -275,4 +275,39 @@ export class AvatarController {
       message: '转换成功'
     }
   }
+
+  /**
+   * 获取与好友的聊天记录
+   */
+  @Get(':id/chat/:friendId')
+  async getChatWithFriend(
+    @Param('id') avatarId: string,
+    @Param('friendId') friendId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const messages = await this.avatarService.getChatWithFriend(avatarId, friendId, userId)
+    return {
+      code: 200,
+      data: messages,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 发起与好友分身的语音通话
+   */
+  @Post(':id/call/:friendId')
+  async startVoiceCall(
+    @Param('id') avatarId: string,
+    @Param('friendId') friendId: string,
+    @Headers('x-user-id') userId: string,
+    @Req() req: any
+  ) {
+    const result = await this.avatarService.startVoiceCall(avatarId, friendId, userId, req.headers)
+    return {
+      code: 200,
+      data: result,
+      message: '通话发起成功'
+    }
+  }
 }

@@ -1040,4 +1040,125 @@ export class AvatarService {
     // 默认使用通用女声
     return 'zh_female_xiaohe_uranus_bigtts'
   }
+
+  /**
+   * 获取与好友的聊天记录
+   * 通过 avatar_friends 表中存储的 conversation_id 获取
+   */
+  async getChatWithFriend(avatarId: string, friendId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 验证分身属于该用户
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .single()
+    
+    if (!avatar) {
+      throw new Error('分身不存在或无权访问')
+    }
+    
+    // 获取好友关系，查找是否有对话ID
+    const { data: friendship } = await client
+      .from('avatar_friends')
+      .select('conversation_id, match_reason, benefits')
+      .eq('avatar_id', avatarId)
+      .eq('friend_avatar_id', friendId)
+      .single()
+    
+    if (!friendship?.conversation_id) {
+      // 如果没有对话记录，返回空数组
+      return {
+        messages: [],
+        match_reason: friendship?.match_reason,
+        benefits: friendship?.benefits
+      }
+    }
+    
+    // 获取对话消息
+    const { data: messages } = await client
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', friendship.conversation_id)
+      .order('created_at', { ascending: true })
+      .limit(50)
+    
+    return {
+      messages: messages || [],
+      match_reason: friendship.match_reason,
+      benefits: friendship.benefits
+    }
+  }
+
+  /**
+   * 发起与好友分身的语音通话
+   * 生成好友分身的语音问候并返回音频URL
+   */
+  async startVoiceCall(avatarId: string, friendId: string, userId: string, headers?: any) {
+    const client = getSupabaseClient()
+    
+    // 获取好友分身信息
+    const { data: friendAvatar, error } = await client
+      .from('avatars')
+      .select('id, name, personality, config')
+      .eq('id', friendId)
+      .single()
+    
+    if (error || !friendAvatar) {
+      throw new Error('好友分身不存在')
+    }
+    
+    // 获取好友关系信息
+    const { data: friendship } = await client
+      .from('avatar_friends')
+      .select('match_reason, compatibility_score')
+      .eq('avatar_id', avatarId)
+      .eq('friend_avatar_id', friendId)
+      .single()
+    
+    // 使用 LLM 生成问候语
+    const config = new Config()
+    const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers) : undefined
+    const llmClient = new LLMClient(config, customHeaders)
+    
+    const greetingPrompt = `你是${friendAvatar.name}，一个AI分身。你的朋友（另一个AI分身）正在和你进行语音通话。
+请用简短、友好的方式打招呼，并表达你们成为朋友后的感受。
+
+你的性格：${friendAvatar.personality || '友好'}
+交友原因：${friendship?.match_reason || '性格互补'}
+
+请直接输出打招呼的内容（不超过30字）：`
+
+    const response = await llmClient.invoke([
+      { role: 'system', content: '你是一个友好的AI分身，正在和朋友进行语音通话。请用简短、亲切的方式打招呼。' },
+      { role: 'user', content: greetingPrompt }
+    ], {
+      model: 'doubao-seed-1-8-251228',
+      temperature: 0.9
+    })
+    
+    // 生成语音
+    const ttsClient = new TTSClient(config, customHeaders)
+    const speaker = this.selectVoiceByPersonality(friendAvatar.personality)
+    
+    const ttsResponse = await ttsClient.synthesize({
+      uid: userId,
+      text: response.content,
+      speaker,
+      audioFormat: 'mp3',
+      sampleRate: 24000,
+    })
+    
+    console.log(`[AvatarService] 语音通话问候生成成功: ${ttsResponse.audioUri}`)
+    
+    return {
+      greeting: response.content,
+      audioUrl: ttsResponse.audioUri,
+      friendName: friendAvatar.name,
+      matchReason: friendship?.match_reason,
+      compatibilityScore: friendship?.compatibility_score
+    }
+  }
 }
