@@ -1931,9 +1931,9 @@ export default function MindChatPage() {
                     <Text className="detail-stat-label">当前等级</Text>
                   </View>
                   <View className="detail-level-info">
-                    <Text className="detail-level-exp">经验值：{avatar?.exp || 0} / {(avatar?.level || 1) * 100}</Text>
+                    <Text className="detail-level-exp">经验值：{avatar?.exp || 0} / {(avatar?.level || 1) * 100} XP</Text>
                     <View className="detail-level-bar">
-                      <View className="detail-level-fill" style={{ width: `${((avatar?.exp || 0) % 100)}%` }} />
+                      <View className="detail-level-fill" style={{ width: `${Math.min(100, ((avatar?.exp || 0) - ((avatar?.level || 1) - 1) * 100))}%` }} />
                     </View>
                   </View>
                   <Text className="detail-hint">
