@@ -286,7 +286,7 @@ export function LevelDetailDialog({ open, onClose, currentLevel, currentExp }: L
 
               <View className="guide-section">
                 <Text className="guide-title">各等级升级攻略</Text>
-                {ALL_LEVELS.slice(currentLevel - 1, Math.min(currentLevel + 2, 10)).map((level) => (
+                {ALL_LEVELS.map((level) => (
                   <View 
                     key={level.level}
                     className={cn('guide-level-item', level.level === currentLevel && 'guide-level-current')}
