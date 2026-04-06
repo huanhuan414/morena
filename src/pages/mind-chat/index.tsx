@@ -98,6 +98,11 @@ interface Avatar {
     }
     style?: string
     skills?: string[]  // 分身技能列表
+    voice_enabled?: boolean  // 语音回复
+    notification_enabled?: boolean  // 消息通知
+    night_mode?: boolean  // 夜间模式
+    auto_learning?: boolean  // 自动学习
+    privacy_mode?: boolean  // 隐私模式
   }
 }
 
@@ -1057,6 +1062,8 @@ export default function MindChatPage() {
     loadingRef.current = false
     setCurrentStatus('')
     scrollToBottom()
+    // 播放语音回复
+    playVoiceReply(replyContent)
     // 对话完成后刷新学习数据并显示学习特效
     // 延迟 1.5 秒确保后端学习分析完成
     setTimeout(() => {
@@ -1214,6 +1221,8 @@ export default function MindChatPage() {
         }
         setMessages(prev => [...prev, aiMessage])
         scrollToBottom()
+        // 播放语音回复
+        playVoiceReply(res.data.data.content)
         fetchConversations()
         // 对话完成后刷新学习数据并显示学习特效
         // 延迟 1.5 秒确保后端学习分析完成
@@ -1358,6 +1367,42 @@ export default function MindChatPage() {
         showToast({ title: '已复制', icon: 'success' })
       }
     })
+  }
+
+  // 播放语音回复
+  const playVoiceReply = async (content: string) => {
+    // 检查是否开启语音回复
+    if (!avatar?.config?.voice_enabled) {
+      return
+    }
+
+    try {
+      console.log('[MindChat] 正在获取语音回复...')
+      const res = await Network.request({
+        url: `/api/avatar/${avatar.id}/tts`,
+        method: 'POST',
+        data: { text: content }
+      })
+
+      if (res.data?.code === 200 && res.data?.data?.audioUrl) {
+        const audioUrl = res.data.data.audioUrl
+        console.log('[MindChat] 语音URL:', audioUrl)
+        
+        // 创建音频上下文并播放
+        const innerAudioContext = Taro.createInnerAudioContext()
+        innerAudioContext.src = audioUrl
+        innerAudioContext.onPlay(() => {
+          console.log('[MindChat] 开始播放语音')
+        })
+        innerAudioContext.onError((err) => {
+          console.error('[MindChat] 语音播放失败:', err)
+        })
+        innerAudioContext.play()
+      }
+    } catch (error) {
+      console.error('[MindChat] 获取语音失败:', error)
+      // 静默失败，不影响用户体验
+    }
   }
 
   const formatRecordingTime = (seconds: number) => {

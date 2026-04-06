@@ -164,10 +164,14 @@ export class ChatService {
       .eq('id', avatarId)
       .single()
     
+    // 检查隐私模式
+    const privacyMode = avatar?.config?.privacy_mode ?? false
+    const userContent = privacyMode ? this.sanitizeMessage(content) : content
+    
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
-      content
+      content: userContent
     })
     
     const messages = [
@@ -188,10 +192,13 @@ export class ChatService {
       temperature: 0.8
     })
     
+    // AI 回复也应用隐私脱敏
+    const aiContent = privacyMode ? this.sanitizeMessage(response.content) : response.content
+    
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
-      content: response.content
+      content: aiContent
     })
     
     const newContext = [
@@ -612,6 +619,45 @@ export class ChatService {
     }
     
     return null
+  }
+
+  /**
+   * 隐私脱敏处理
+   * 对敏感信息进行脱敏，如手机号、身份证号、银行卡号等
+   */
+  private sanitizeMessage(content: string): string {
+    if (!content) return content
+    
+    let sanitized = content
+    
+    // 手机号脱敏：保留前3位和后4位
+    sanitized = sanitized.replace(/1[3-9]\d{9}/g, (match) => {
+      return match.slice(0, 3) + '****' + match.slice(-4)
+    })
+    
+    // 身份证号脱敏：保留前6位和后4位
+    sanitized = sanitized.replace(/\d{17}[\dXx]/g, (match) => {
+      return match.slice(0, 6) + '********' + match.slice(-4)
+    })
+    
+    // 银行卡号脱敏：保留前4位和后4位
+    sanitized = sanitized.replace(/\d{16,19}/g, (match) => {
+      if (match.length >= 16) {
+        return match.slice(0, 4) + '****' + match.slice(-4)
+      }
+      return match
+    })
+    
+    // 邮箱脱敏：保留前2位和@后的域名
+    sanitized = sanitized.replace(/[\w.-]+@[\w.-]+\.\w+/g, (match) => {
+      const [localPart, domain] = match.split('@')
+      if (localPart.length > 2) {
+        return localPart.slice(0, 2) + '***@' + domain
+      }
+      return match
+    })
+    
+    return sanitized
   }
 
   private async createTaskFromChat(userId: string, avatarId: string, taskInfo: any) {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode, Req } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
@@ -254,6 +254,25 @@ export class AvatarController {
       code: 200,
       data: friends,
       message: '获取成功'
+    }
+  }
+
+  /**
+   * 文本转语音接口
+   * 将分身回复转换为语音
+   */
+  @Post(':id/tts')
+  async textToSpeech(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('text') text: string,
+    @Req() req: any
+  ) {
+    const audioUrl = await this.avatarService.textToSpeech(avatarId, userId, text, req.headers)
+    return {
+      code: 200,
+      data: { audioUrl },
+      message: '转换成功'
     }
   }
 }

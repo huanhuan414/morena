@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, HeaderUtils } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSClient, HeaderUtils } from 'coze-coding-dev-sdk'
 import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 
@@ -955,5 +955,89 @@ export class AvatarService {
     }
     
     return { success: true }
+  }
+
+  /**
+   * 文本转语音
+   * 根据分身配置决定是否使用语音回复
+   */
+  async textToSpeech(avatarId: string, userId: string, text: string, headers?: any) {
+    const client = getSupabaseClient()
+    
+    // 获取分身配置
+    const { data: avatar, error } = await client
+      .from('avatars')
+      .select('config, personality')
+      .eq('id', avatarId)
+      .single()
+    
+    if (error || !avatar) {
+      throw new Error(`获取分身配置失败`)
+    }
+    
+    // 检查是否开启语音回复
+    const voiceEnabled = avatar.config?.voice_enabled ?? false
+    if (!voiceEnabled) {
+      throw new Error('语音回复未开启')
+    }
+    
+    // 根据分身性格选择声音
+    const speaker = this.selectVoiceByPersonality(avatar.personality)
+    
+    // 初始化 TTS 客户端
+    const config = new Config()
+    const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers) : undefined
+    const ttsClient = new TTSClient(config, customHeaders)
+    
+    // 合成语音
+    const response = await ttsClient.synthesize({
+      uid: userId,
+      text: text.substring(0, 500), // 限制长度
+      speaker,
+      audioFormat: 'mp3',
+      sampleRate: 24000,
+    })
+    
+    console.log(`[AvatarService] TTS 合成成功: ${response.audioUri}`)
+    
+    return response.audioUri
+  }
+
+  /**
+   * 根据分身性格选择合适的声音
+   */
+  private selectVoiceByPersonality(personality: string): string {
+    // 根据性格类型选择不同的声音
+    const voiceMap: Record<string, string> = {
+      // 女性声音
+      'friendly': 'zh_female_xiaohe_uranus_bigtts',
+      'warm': 'zh_female_vv_uranus_bigtts',
+      'gentle': 'zh_female_mizai_saturn_bigtts',
+      'cute': 'saturn_zh_female_keainvsheng_tob',
+      'playful': 'saturn_zh_female_tiaopigongzhu_tob',
+      'motivational': 'zh_female_jitangnv_saturn_bigtts',
+      'charming': 'zh_female_meilinvyou_saturn_bigtts',
+      
+      // 男性声音
+      'professional': 'zh_male_m191_uranus_bigtts',
+      'calm': 'zh_male_taocheng_uranus_bigtts',
+      'elegant': 'zh_male_ruyayichen_saturn_bigtts',
+      'cheerful': 'saturn_zh_male_shuanglangshaonian_tob',
+      'genius': 'saturn_zh_male_tiancaitongzhuo_tob',
+      
+      // 儿童声音
+      'child': 'zh_female_xueayi_saturn_bigtts',
+    }
+    
+    // 尝试匹配性格
+    const lowerPersonality = (personality || '').toLowerCase()
+    for (const [key, voice] of Object.entries(voiceMap)) {
+      if (lowerPersonality.includes(key)) {
+        return voice
+      }
+    }
+    
+    // 默认使用通用女声
+    return 'zh_female_xiaohe_uranus_bigtts'
   }
 }

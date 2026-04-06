@@ -142,6 +142,20 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     
     console.log(`[托管服务] 执行分身 ${avatar.name}(${avatarId}) 的托管任务`)
 
+    // 检查夜间模式
+    const nightMode = avatar.config?.night_mode ?? true
+    if (nightMode && this.isNightTime()) {
+      console.log(`[托管服务] 分身 ${avatar.name} 处于夜间模式，降低活跃度`)
+      // 夜间模式：只执行必要的任务，降低频率
+      try {
+        // 夜间只接单（不主动发帖、交友等）
+        await this.autoAcceptOrders(avatar)
+      } catch (error) {
+        console.error(`[托管服务] 分身 ${avatar.name} 夜间任务执行失败:`, error)
+      }
+      return
+    }
+
     try {
       // 1. 自动接单（始终执行，不受设置控制）
       await this.autoAcceptOrders(avatar)
@@ -168,6 +182,14 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       console.error(`[托管服务] 分身 ${avatar.name} 执行任务失败:`, error)
     }
+  }
+
+  /**
+   * 检查是否是夜间时间（22:00 - 06:00）
+   */
+  private isNightTime(): boolean {
+    const hour = new Date().getHours()
+    return hour >= 22 || hour < 6
   }
 
   /**
