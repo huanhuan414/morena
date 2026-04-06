@@ -2,6 +2,7 @@ import * as React from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { X, Star, MessageCircle, TrendingUp, ShoppingCart } from 'lucide-react-taro'
 import { cn } from '@/lib/utils'
+import './index.css'
 
 interface LevelInfo {
   level: number

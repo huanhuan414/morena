@@ -11,6 +11,7 @@ import MarkdownRender from '@/components/markdown-render'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
+import '@/components/level-detail-dialog/index.css'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
