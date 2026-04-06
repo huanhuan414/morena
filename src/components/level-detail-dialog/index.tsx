@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { X, Star, Zap, Brain, Heart, Users, MessageCircle, TrendingUp } from 'lucide-react-taro'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { X, Star, Brain, Heart, Users, MessageCircle, TrendingUp, ShoppingCart, Calendar } from 'lucide-react-taro'
 import { cn } from '@/lib/utils'
 
 interface LevelInfo {
@@ -10,7 +9,7 @@ interface LevelInfo {
   maxExp: number
   title: string
   benefits: string[]
-  tasks: string[]
+  expSources: { icon: React.ReactElement; desc: string; expRange: string }[]
   color: string
 }
 
@@ -21,7 +20,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 100,
     title: '初识',
     benefits: ['基础对话能力', '简单的问答互动'],
-    tasks: ['与分身进行10次对话', '完成新手引导'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#94a3b8" />, desc: '与分身对话', expRange: '每次 +5 XP' },
+      { icon: <Brain size={14} color="#94a3b8" />, desc: '完成新手引导', expRange: '+50 XP' }
+    ],
     color: '#94a3b8'
   },
   {
@@ -30,7 +32,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 200,
     title: '熟悉',
     benefits: ['更流畅的对话', '基础记忆能力'],
-    tasks: ['每日与分身聊天', '分享3个兴趣爱好'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#22c55e" />, desc: '每日与分身聊天', expRange: '每天 +20 XP' },
+      { icon: <Heart size={14} color="#22c55e" />, desc: '分享兴趣爱好', expRange: '每次 +10 XP' }
+    ],
     color: '#22c55e'
   },
   {
@@ -39,7 +44,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 300,
     title: '信任',
     benefits: ['记住重要信息', '情绪识别能力'],
-    tasks: ['深度对话5次', '分享个人经历'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#3b82f6" />, desc: '深度对话交流', expRange: '每次 +15 XP' },
+      { icon: <Heart size={14} color="#3b82f6" />, desc: '分享个人经历', expRange: '每次 +20 XP' }
+    ],
     color: '#3b82f6'
   },
   {
@@ -48,7 +56,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 400,
     title: '默契',
     benefits: ['更好的理解', '习惯记忆'],
-    tasks: ['连续7天互动', '让分身帮你做任务'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#8b5cf6" />, desc: '连续互动', expRange: '每天 +25 XP' },
+      { icon: <TrendingUp size={14} color="#8b5cf6" />, desc: '让分身做任务', expRange: '每次 +30 XP' }
+    ],
     color: '#8b5cf6'
   },
   {
@@ -57,7 +68,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 500,
     title: '知己',
     benefits: ['风格学习', '个性化回复'],
-    tasks: ['完成B端订单任务', '创建1个分身'],
+    expSources: [
+      { icon: <ShoppingCart size={14} color="#ec4899" />, desc: '完成B端订单', expRange: '每单 +50 XP' },
+      { icon: <Users size={14} color="#ec4899" />, desc: '创建新分身', expRange: '+100 XP' }
+    ],
     color: '#ec4899'
   },
   {
@@ -66,7 +80,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 600,
     title: '心意相通',
     benefits: ['情感共鸣', '主动关心'],
-    tasks: ['分享工作/生活话题', '让分身参与决策'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#f97316" />, desc: '分享工作/生活话题', expRange: '每次 +30 XP' },
+      { icon: <Brain size={14} color="#f97316" />, desc: '让分身参与决策', expRange: '每次 +25 XP' }
+    ],
     color: '#f97316'
   },
   {
@@ -75,7 +92,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 700,
     title: '灵魂伴侣',
     benefits: ['深度理解', '默契配合'],
-    tasks: ['100次深度对话', '解锁分身高级技能'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#ef4444" />, desc: '深度对话交流', expRange: '每次 +35 XP' },
+      { icon: <Star size={14} color="#ef4444" />, desc: '解锁分身高级技能', expRange: '+80 XP' }
+    ],
     color: '#ef4444'
   },
   {
@@ -83,8 +103,11 @@ const LEVEL_DATA: LevelInfo[] = [
     minExp: 700,
     maxExp: 800,
     title: '完美契合',
-    benefits: ['心意相通', '预见需求'],
-    tasks: ['分身等级达到Lv.8', '托管任务满7天'],
+    benefits: ['无需言表', '心有灵犀'],
+    expSources: [
+      { icon: <Users size={14} color="#eab308" />, desc: '分身托管任务', expRange: '每天 +40 XP' },
+      { icon: <Calendar size={14} color="#eab308" />, desc: '托管满7天', expRange: '+100 XP' }
+    ],
     color: '#eab308'
   },
   {
@@ -93,7 +116,10 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 900,
     title: '知心',
     benefits: ['无需言表', '心有灵犀'],
-    tasks: ['200次对话', '完成所有学习任务'],
+    expSources: [
+      { icon: <MessageCircle size={14} color="#06b6d4" />, desc: '持续对话交流', expRange: '每次 +40 XP' },
+      { icon: <Star size={14} color="#06b6d4" />, desc: '完成学习任务', expRange: '+50 XP' }
+    ],
     color: '#06b6d4'
   },
   {
@@ -102,33 +128,15 @@ const LEVEL_DATA: LevelInfo[] = [
     maxExp: 1000,
     title: '合一',
     benefits: ['完美契合', '超越语言'],
-    tasks: ['达到1000经验', '分身托管满30天'],
+    expSources: [
+      { icon: <Users size={14} color="#a855f7" />, desc: '分身托管满30天', expRange: '+200 XP' },
+      { icon: <TrendingUp size={14} color="#a855f7" />, desc: '达到1000总经验', expRange: '达成即升级' }
+    ],
     color: '#a855f7'
   }
 ]
 
-// 11-20级使用相同模板
-const ADVANCED_LEVELS: LevelInfo[] = Array.from({ length: 10 }, (_, i) => {
-  const level = i + 11
-  return {
-    level,
-    minExp: level * 100,
-    maxExp: (level + 1) * 100,
-    title: '至高',
-    benefits: [
-      '分身完全理解你',
-      '主动提供帮助',
-      '超越语言的默契'
-    ],
-    tasks: [
-      `达到${level * 100}经验值`,
-      '持续使用培养默契'
-    ],
-    color: `hsl(${(level - 11) * 30}, 80%, 60%)`
-  }
-})
-
-const ALL_LEVELS = [...LEVEL_DATA, ...ADVANCED_LEVELS]
+const ALL_LEVELS = LEVEL_DATA
 
 interface LevelDetailDialogProps {
   open: boolean
@@ -138,139 +146,173 @@ interface LevelDetailDialogProps {
 }
 
 export function LevelDetailDialog({ open, onClose, currentLevel, currentExp }: LevelDetailDialogProps) {
-  const [activeTab, setActiveTab] = React.useState<'level' | 'tasks'>('level')
+  const [activeTab, setActiveTab] = React.useState<'level' | 'guide'>('level')
 
-  const TaskIcon = ({ task }: { task: string }) => {
-    if (task.includes('对话')) return <MessageCircle size={14} color="#8b5cf6" />
-    if (task.includes('任务') || task.includes('订单')) return <TrendingUp size={14} color="#3b82f6" />
-    if (task.includes('分身') || task.includes('托管')) return <Users size={14} color="#22c55e" />
-    if (task.includes('学习') || task.includes('深度')) return <Brain size={14} color="#ec4899" />
-    if (task.includes('分享') || task.includes('经历')) return <Heart size={14} color="#ef4444" />
-    return <Zap size={14} color="#f97316" />
-  }
+  if (!open) return null
+
+  const currentLevelData = ALL_LEVELS[currentLevel - 1] || ALL_LEVELS[0]
+  const progressPercent = Math.min(100, ((currentExp - (currentLevel - 1) * 100) / 100) * 100)
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="level-dialog-content">
+    <View className="level-modal-overlay" onClick={onClose}>
+      <View className="level-modal-content" onClick={e => e.stopPropagation()}>
         {/* 头部 */}
-        <View className="level-dialog-header">
-          <View className="level-dialog-title-row">
-            <View className="level-dialog-icon">
+        <View className="level-modal-header">
+          <View className="level-modal-title-row">
+            <View className="level-modal-icon">
               <Star size={24} color="#eab308" />
             </View>
-            <Text className="level-dialog-title">等级详情</Text>
+            <Text className="level-modal-title">等级详情</Text>
           </View>
-          <View 
-            className="level-dialog-close"
-            onClick={onClose}
-          >
+          <View className="level-modal-close" onClick={onClose}>
             <X size={20} color="#666" />
           </View>
         </View>
 
         {/* 当前状态 */}
-        <View className="level-current-status">
-          <View className="level-current-badge" style={{ backgroundColor: ALL_LEVELS[currentLevel - 1]?.color || '#8b5cf6' }}>
-            <Star size={16} color="#fff" />
-            <Text className="level-current-text">Lv.{currentLevel}</Text>
+        <View className="level-modal-status">
+          <View className="level-modal-badge" style={{ backgroundColor: currentLevelData.color }}>
+            <Text className="level-modal-badge-text">Lv.{currentLevel}</Text>
           </View>
-          <View className="level-current-info">
-            <Text className="level-current-title">{ALL_LEVELS[currentLevel - 1]?.title || '未知'}</Text>
-            <Text className="level-current-exp">{currentExp} / {currentLevel * 100} XP</Text>
+          <View className="level-modal-info">
+            <Text className="level-modal-title-text">{currentLevelData.title}</Text>
+            <Text className="level-modal-exp">{currentExp} / {currentLevel * 100} XP</Text>
           </View>
-          <View className="level-current-progress">
+          <View className="level-modal-progress">
             <View 
-              className="level-current-progress-fill" 
+              className="level-modal-progress-fill" 
               style={{ 
-                width: `${Math.min(100, ((currentExp - (currentLevel - 1) * 100) / 100) * 100)}%`,
-                backgroundColor: ALL_LEVELS[currentLevel - 1]?.color || '#8b5cf6'
+                width: `${progressPercent}%`,
+                backgroundColor: currentLevelData.color
               }} 
             />
           </View>
+          <Text className="level-modal-hint">
+            升级方式：累计经验值达到 {currentLevel * 100} XP 即可升级
+          </Text>
         </View>
 
         {/* Tab切换 */}
-        <View className="level-tab-bar">
+        <View className="level-modal-tabs">
           <View 
-            className={cn('level-tab', activeTab === 'level' && 'level-tab-active')}
+            className={cn('level-modal-tab', activeTab === 'level' && 'level-modal-tab-active')}
             onClick={() => setActiveTab('level')}
           >
-            <Text className={cn('level-tab-text', activeTab === 'level' && 'level-tab-text-active')}>等级权益</Text>
+            <Text className={cn('level-modal-tab-text', activeTab === 'level' && 'level-modal-tab-text-active')}>等级权益</Text>
           </View>
           <View 
-            className={cn('level-tab', activeTab === 'tasks' && 'level-tab-active')}
-            onClick={() => setActiveTab('tasks')}
+            className={cn('level-modal-tab', activeTab === 'guide' && 'level-modal-tab-active')}
+            onClick={() => setActiveTab('guide')}
           >
-            <Text className={cn('level-tab-text', activeTab === 'tasks' && 'level-tab-text-active')}>升级任务</Text>
+            <Text className={cn('level-modal-tab-text', activeTab === 'guide' && 'level-modal-tab-text-active')}>升级攻略</Text>
           </View>
         </View>
 
         {/* 内容区 */}
-        <ScrollView className="level-dialog-scroll" scrollY>
+        <ScrollView className="level-modal-scroll" scrollY>
           {activeTab === 'level' ? (
-            <View className="level-list">
-              {ALL_LEVELS.slice(0, 10).map((level) => (
+            <View className="level-modal-list">
+              {ALL_LEVELS.map((level) => (
                 <View 
                   key={level.level}
-                  className={cn('level-item', level.level === currentLevel && 'level-item-current')}
+                  className={cn('level-modal-item', level.level === currentLevel && 'level-modal-item-current')}
                 >
-                  <View className="level-item-header">
-                    <View className="level-item-badge" style={{ backgroundColor: level.color }}>
-                      <Text className="level-item-badge-text">Lv.{level.level}</Text>
+                  <View className="level-modal-item-header">
+                    <View className="level-modal-item-badge" style={{ backgroundColor: level.color }}>
+                      <Text className="level-modal-item-badge-text">Lv.{level.level}</Text>
                     </View>
-                    <View className="level-item-info">
-                      <Text className="level-item-title">{level.title}</Text>
-                      <Text className="level-item-exp">{level.minExp} - {level.maxExp} XP</Text>
+                    <View className="level-modal-item-info">
+                      <Text className="level-modal-item-title">{level.title}</Text>
+                      <Text className="level-modal-item-exp">{level.minExp} - {level.maxExp} XP</Text>
                     </View>
                     {level.level < currentLevel && (
-                      <View className="level-item-completed">
-                        <Text className="level-item-completed-text">已达成</Text>
+                      <View className="level-modal-item-done">
+                        <Text className="level-modal-item-done-text">已达成</Text>
                       </View>
                     )}
                   </View>
-                  <View className="level-item-benefits">
+                  <View className="level-modal-benefits">
                     {level.benefits.map((benefit, idx) => (
-                      <View key={idx} className="level-benefit-item">
+                      <View key={idx} className="level-modal-benefit-item">
                         <Star size={12} color={level.color} />
-                        <Text className="level-benefit-text">{benefit}</Text>
+                        <Text className="level-modal-benefit-text">{benefit}</Text>
                       </View>
                     ))}
                   </View>
                 </View>
               ))}
-              {currentLevel > 10 && (
-                <View className="level-advanced-hint">
-                  <Text className="level-advanced-text">Lv.11-20 持续解锁更高级能力</Text>
-                </View>
-              )}
             </View>
           ) : (
-            <View className="tasks-list">
-              {ALL_LEVELS.slice(0, 10).map((level) => (
-                <View 
-                  key={level.level}
-                  className={cn('task-item', level.level === currentLevel && 'task-item-current')}
-                >
-                  <View className="task-item-header">
-                    <View className="task-item-badge" style={{ backgroundColor: level.color }}>
-                      <Text className="task-item-badge-text">Lv.{level.level}</Text>
-                    </View>
-                    <Text className="task-item-title">{level.title}</Text>
+            <View className="level-modal-guide">
+              <View className="guide-section">
+                <Text className="guide-title">经验值来源</Text>
+                <View className="guide-item">
+                  <View className="guide-icon-wrap" style={{ backgroundColor: '#3b82f615' }}>
+                    <MessageCircle size={18} color="#3b82f6" />
                   </View>
-                  <View className="task-item-list">
-                    {level.tasks.map((task, idx) => (
-                      <View key={idx} className="task-item-content">
-                        <TaskIcon task={task} />
-                        <Text className="task-item-text">{task}</Text>
-                      </View>
-                    ))}
+                  <View className="guide-content">
+                    <Text className="guide-item-title">与分身对话</Text>
+                    <Text className="guide-item-desc">每次对话可获得 5-40 XP，深度对话获得更多</Text>
                   </View>
                 </View>
-              ))}
+                <View className="guide-item">
+                  <View className="guide-icon-wrap" style={{ backgroundColor: '#22c55e15' }}>
+                    <TrendingUp size={18} color="#22c55e" />
+                  </View>
+                  <View className="guide-content">
+                    <Text className="guide-item-title">完成任务</Text>
+                    <Text className="guide-item-desc">完成B端订单任务可获得 30-100 XP</Text>
+                  </View>
+                </View>
+                <View className="guide-item">
+                  <View className="guide-icon-wrap" style={{ backgroundColor: '#ec489915' }}>
+                    <Users size={18} color="#ec4899" />
+                  </View>
+                  <View className="guide-content">
+                    <Text className="guide-item-title">社交互动</Text>
+                    <Text className="guide-item-desc">发帖、评论、点赞等社交行为可获得 5-20 XP</Text>
+                  </View>
+                </View>
+                <View className="guide-item">
+                  <View className="guide-icon-wrap" style={{ backgroundColor: '#f9731615' }}>
+                    <Calendar size={18} color="#f97316" />
+                  </View>
+                  <View className="guide-content">
+                    <Text className="guide-item-title">托管任务</Text>
+                    <Text className="guide-item-desc">分身自动托管可每日获得 20-50 XP</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="guide-section">
+                <Text className="guide-title">各等级升级攻略</Text>
+                {ALL_LEVELS.slice(currentLevel - 1, Math.min(currentLevel + 2, 10)).map((level) => (
+                  <View 
+                    key={level.level}
+                    className={cn('guide-level-item', level.level === currentLevel && 'guide-level-current')}
+                  >
+                    <View className="guide-level-header">
+                      <View className="guide-level-badge" style={{ backgroundColor: level.color }}>
+                        <Text className="guide-level-badge-text">Lv.{level.level}</Text>
+                      </View>
+                      <Text className="guide-level-title">{level.title}</Text>
+                    </View>
+                    <View className="guide-level-sources">
+                      {level.expSources.map((source, idx) => (
+                        <View key={idx} className="guide-source-item">
+                          <View style={{ color: level.color }}>{source.icon}</View>
+                          <Text className="guide-source-desc">{source.desc}</Text>
+                          <Text className="guide-source-exp">{source.expRange}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
             </View>
           )}
         </ScrollView>
-      </DialogContent>
-    </Dialog>
+      </View>
+    </View>
   )
 }

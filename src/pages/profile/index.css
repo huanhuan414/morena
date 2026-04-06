@@ -222,19 +222,30 @@
   text-align: center;
 }
 
-/* 等级详情弹窗 */
-.level-dialog-content {
-  background: #0a0a0f !important;
-  border: 4rpx solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 48rpx !important;
-  max-height: 80vh !important;
-  width: 650rpx !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
+/* 等级详情弹窗 - 独立实现，不依赖 Dialog Portal */
+.level-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.level-dialog-header {
+.level-modal-content {
+  background: #0a0a0f;
+  border: 4rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 48rpx;
+  max-height: 80vh;
+  width: 650rpx;
+  overflow: hidden;
+}
+
+.level-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -242,12 +253,12 @@
   border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
 }
 
-.level-dialog-title-row {
+.level-modal-title-row {
   display: flex;
   align-items: center;
 }
 
-.level-dialog-icon {
+.level-modal-icon {
   width: 56rpx;
   height: 56rpx;
   background: rgba(234, 179, 8, 0.15);
@@ -258,13 +269,13 @@
   margin-right: 16rpx;
 }
 
-.level-dialog-title {
+.level-modal-title {
   font-size: 32rpx;
   font-weight: 700;
   color: #fff;
 }
 
-.level-dialog-close {
+.level-modal-close {
   width: 56rpx;
   height: 56rpx;
   display: flex;
@@ -274,13 +285,13 @@
   border-radius: 28rpx;
 }
 
-.level-current-status {
+.level-modal-status {
   padding: 24rpx 32rpx;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
 }
 
-.level-current-badge {
+.level-modal-badge {
   display: inline-flex;
   align-items: center;
   padding: 8rpx 20rpx;
@@ -288,58 +299,64 @@
   margin-bottom: 16rpx;
 }
 
-.level-current-text {
+.level-modal-badge-text {
   font-size: 24rpx;
   font-weight: 700;
   color: #fff;
-  margin-left: 8rpx;
 }
 
-.level-current-info {
+.level-modal-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16rpx;
 }
 
-.level-current-title {
+.level-modal-title-text {
   font-size: 28rpx;
   font-weight: 600;
   color: #fff;
 }
 
-.level-current-exp {
+.level-modal-exp {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
-.level-current-progress {
+.level-modal-progress {
   height: 12rpx;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 6rpx;
   overflow: hidden;
+  margin-bottom: 16rpx;
 }
 
-.level-current-progress-fill {
+.level-modal-progress-fill {
   height: 100%;
   border-radius: 6rpx;
   transition: width 0.3s;
 }
 
-.level-tab-bar {
+.level-modal-hint {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.level-modal-tabs {
   display: flex;
   padding: 0 32rpx;
   border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
 }
 
-.level-tab {
+.level-modal-tab {
   flex: 1;
   padding: 24rpx 0;
   text-align: center;
   position: relative;
 }
 
-.level-tab-active::after {
+.level-modal-tab-active::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -351,26 +368,26 @@
   border-radius: 3rpx;
 }
 
-.level-tab-text {
+.level-modal-tab-text {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
-.level-tab-text-active {
+.level-modal-tab-text-active {
   color: #fff;
   font-weight: 600;
 }
 
-.level-dialog-scroll {
+.level-modal-scroll {
   max-height: 500rpx;
   padding: 24rpx 32rpx;
 }
 
-.level-list, .tasks-list {
+.level-modal-list {
   padding-bottom: 24rpx;
 }
 
-.level-item, .task-item {
+.level-modal-item {
   background: rgba(255, 255, 255, 0.02);
   border: 2rpx solid rgba(255, 255, 255, 0.05);
   border-radius: 32rpx;
@@ -378,18 +395,18 @@
   margin-bottom: 16rpx;
 }
 
-.level-item-current, .task-item-current {
+.level-modal-item-current {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(139, 92, 246, 0.3);
 }
 
-.level-item-header, .task-item-header {
+.level-modal-item-header {
   display: flex;
   align-items: center;
   margin-bottom: 16rpx;
 }
 
-.level-item-badge {
+.level-modal-item-badge {
   width: 80rpx;
   height: 48rpx;
   border-radius: 24rpx;
@@ -400,46 +417,46 @@
   flex-shrink: 0;
 }
 
-.level-item-badge-text, .task-item-badge-text {
+.level-modal-item-badge-text {
   font-size: 22rpx;
   font-weight: 700;
   color: #fff;
 }
 
-.level-item-info {
+.level-modal-item-info {
   flex: 1;
 }
 
-.level-item-title {
+.level-modal-item-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #fff;
   display: block;
 }
 
-.level-item-exp {
+.level-modal-item-exp {
   font-size: 22rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
-.level-item-completed {
+.level-modal-item-done {
   background: rgba(34, 197, 94, 0.2);
   padding: 6rpx 16rpx;
   border-radius: 16rpx;
 }
 
-.level-item-completed-text {
+.level-modal-item-done-text {
   font-size: 20rpx;
   color: #22c55e;
 }
 
-.level-item-benefits {
+.level-modal-benefits {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
 }
 
-.level-benefit-item {
+.level-modal-benefit-item {
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.05);
@@ -447,16 +464,50 @@
   border-radius: 16rpx;
 }
 
-.level-benefit-text {
+.level-modal-benefit-text {
   font-size: 22rpx;
   color: rgba(255, 255, 255, 0.8);
   margin-left: 8rpx;
 }
 
-.task-item-badge {
-  width: 80rpx;
-  height: 48rpx;
+/* 升级攻略 */
+.level-modal-guide {
+  padding-bottom: 24rpx;
+}
+
+.guide-section {
+  margin-bottom: 32rpx;
+}
+
+.guide-section:last-child {
+  margin-bottom: 0;
+}
+
+.guide-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 24rpx;
+}
+
+.guide-item:last-child {
+  margin-bottom: 0;
+}
+
+.guide-icon-wrap {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -464,38 +515,89 @@
   flex-shrink: 0;
 }
 
-.task-item-title {
+.guide-content {
+  flex: 1;
+}
+
+.guide-item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.guide-item-desc {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.guide-level-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 2rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 24rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.guide-level-current {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.guide-level-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.guide-level-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+  margin-right: 12rpx;
+}
+
+.guide-level-badge-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.guide-level-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #fff;
 }
 
-.task-item-list {
-  padding-left: 96rpx;
+.guide-level-sources {
+  padding-left: 0;
 }
 
-.task-item-content {
+.guide-source-item {
   display: flex;
   align-items: center;
   margin-bottom: 12rpx;
+  padding: 12rpx 16rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16rpx;
 }
 
-.task-item-content:last-child {
+.guide-source-item:last-child {
   margin-bottom: 0;
 }
 
-.task-item-text {
+.guide-source-desc {
+  flex: 1;
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.7);
   margin-left: 12rpx;
 }
 
-.level-advanced-hint {
-  text-align: center;
-  padding: 24rpx;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 24rpx;
-  margin-top: 16rpx;
+.guide-source-exp {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #22c55e;
 }
 
 .level-advanced-text {
