@@ -107,8 +107,7 @@ export class OrderDispatchService {
       await this.assignOrderToAvatar(orderId, selectedAvatar.id)
       
       // 发送应用内通知
-      await this.notificationService.createNotification({
-        userId: selectedAvatar.user_id,
+      await this.notificationService.createNotification(selectedAvatar.user_id, {
         type: 'system',
         title: '订单自动分配',
         content: `您的分身"${selectedAvatar.name}"已自动接取订单：${order.title}`,
@@ -241,10 +240,16 @@ export class OrderDispatchService {
       .eq('id', orderId)
     
     // 更新分身订单计数
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('total_orders')
+      .eq('id', avatarId)
+      .single()
+    
     await client
       .from('avatars')
       .update({
-        total_orders: client.sql`total_orders + 1`,
+        total_orders: (avatar?.total_orders || 0) + 1,
         updated_at: new Date().toISOString()
       })
       .eq('id', avatarId)
@@ -278,8 +283,7 @@ export class OrderDispatchService {
       })
     
     // 发送通知
-    await this.notificationService.createNotification({
-      userId: avatar.user_id,
+    await this.notificationService.createNotification(avatar.user_id, {
       type: 'system',
       title: '订单分配请求',
       content: `有新的订单等待您确认：${order.title}`,
@@ -527,7 +531,7 @@ export class OrderDispatchService {
     return scoredAvatars.slice(0, limit).map(avatar => ({
       id: avatar.id,
       name: avatar.name,
-      avatar_url: avatar.avatar_url,
+      avatar_url: (avatar as any).avatar_url || '',
       level: avatar.level,
       score: avatar.score,
       matchReasons: avatar.reason,
@@ -546,7 +550,7 @@ export class OrderDispatchService {
     // 验证订单所有权
     const { data: order } = await client
       .from('orders')
-      .select('user_id, avatar_id')
+      .select('user_id, avatar_id, status')
       .eq('id', orderId)
       .single()
     
@@ -577,10 +581,16 @@ export class OrderDispatchService {
     
     // 如果有已分配的分身，减少其订单计数
     if (order.avatar_id) {
+      const { data: avatar } = await client
+        .from('avatars')
+        .select('total_orders')
+        .eq('id', order.avatar_id)
+        .single()
+      
       await client
         .from('avatars')
         .update({
-          total_orders: client.sql`GREATEST(total_orders - 1, 0)`,
+          total_orders: Math.max((avatar?.total_orders || 1) - 1, 0),
           updated_at: new Date().toISOString()
         })
         .eq('id', order.avatar_id)

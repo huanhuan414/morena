@@ -496,11 +496,17 @@ export class OrderService {
         })
       
       // 更新用户余额
+      const { data: user } = await client
+        .from('users')
+        .select('available_balance, total_earnings')
+        .eq('id', avatar.user_id)
+        .single()
+      
       await client
         .from('users')
         .update({
-          available_balance: client.sql`available_balance + ${earningsAmount}`,
-          total_earnings: client.sql`total_earnings + ${earningsAmount}`,
+          available_balance: (user?.available_balance || 0) + earningsAmount,
+          total_earnings: (user?.total_earnings || 0) + earningsAmount,
           updated_at: new Date().toISOString()
         })
         .eq('id', avatar.user_id)
@@ -616,7 +622,7 @@ export class OrderService {
       .eq('order_id', orderId)
     
     // 统计各平台数据
-    const platformStats = this.calculatePlatformStats(order.result, posts)
+    const platformStats = this.calculatePlatformStats(order.result, posts || [])
     
     return {
       order,
