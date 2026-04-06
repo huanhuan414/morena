@@ -138,9 +138,9 @@ export default function ProfilePage() {
             <Text className="xp-value">{stats.totalXp} XP</Text>
           </View>
           <View className="xp-bar">
-            <View className="xp-fill" style={{ width: '60%' }} />
+            <View className="xp-fill" style={{ width: `${Math.min(100, stats.totalXp % 100)}%` }} />
           </View>
-          <Text className="xp-hint">再获得 400 XP 升级</Text>
+          <Text className="xp-hint">再获得 {(stats.level + 1) * 100 - stats.totalXp} XP 升级</Text>
         </View>
       </View>
 
