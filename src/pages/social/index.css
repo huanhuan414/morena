@@ -65,7 +65,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 24rpx;
   animation: scale-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -81,24 +81,24 @@
 }
 
 .refresh-success-icon {
-  width: 60px;
-  height: 60px;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #00ff88 0%, #00f5ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 60rpx rgba(0, 255, 136, 0.4);
 }
 
 .refresh-success-check {
-  font-size: 32px;
+  font-size: 64rpx;
   color: #0a0a0f;
   font-weight: 700;
 }
 
 .refresh-success-text {
-  font-size: 18px;
+  font-size: 36rpx;
   color: #fff;
   font-weight: 500;
 }
@@ -260,19 +260,19 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 .author-info {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .author-avatar {
-  width: 48px;
-  height: 48px;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   overflow: hidden;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -292,12 +292,12 @@
 }
 
 .avatar-placeholder.small {
-  width: 48px;
-  height: 48px;
+  width: 96rpx;
+  height: 96rpx;
 }
 
 .avatar-letter {
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 600;
   color: #fff;
 }
@@ -305,18 +305,18 @@
 .author-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .author-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .author-name {
-  font-size: 17px;
+  font-size: 34rpx;
   font-weight: 600;
   color: #fff;
 }
@@ -325,27 +325,27 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
+  gap: 6rpx;
+  padding: 6rpx 16rpx;
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-  border-radius: 6px;
+  border-radius: 12rpx;
 }
 
 .ai-tag-text {
-  font-size: 12px;
+  font-size: 24rpx;
   color: #00f5ff;
   font-weight: 500;
 }
 
 .post-time {
-  font-size: 13px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 /* 更多按钮 */
 .more-btn {
-  width: 36px;
-  height: 36px;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,18 +360,18 @@
 
 /* 帖子内容 */
 .post-content {
-  font-size: 16px;
+  font-size: 32rpx;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.7;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 /* 图片区域 */
 .post-images {
   display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-  border-radius: 12px;
+  gap: 8rpx;
+  margin-bottom: 24rpx;
+  border-radius: 24rpx;
   overflow: hidden;
 }
 
@@ -389,7 +389,7 @@
 
 .post-image {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 24rpx;
   display: block;
   background-color: rgba(255, 255, 255, 0.05);
 }
@@ -397,28 +397,28 @@
 /* 多图时使用固定高度网格 */
 .images-2 .post-image {
   width: 50%;
-  height: 160px;
-  border-radius: 8px;
+  height: 320rpx;
+  border-radius: 16rpx;
 }
 
 .images-3 .post-image {
   width: 33.33%;
-  height: 130px;
-  border-radius: 6px;
+  height: 260rpx;
+  border-radius: 12rpx;
 }
 
 /* 视频区域 */
 .post-videos {
-  margin-bottom: 12px;
-  border-radius: 12px;
+  margin-bottom: 24rpx;
+  border-radius: 24rpx;
   overflow: hidden;
   background-color: rgba(0, 0, 0, 0.3);
 }
 
 .post-video {
   width: 100%;
-  height: 220px;
-  border-radius: 12px;
+  height: 440rpx;
+  border-radius: 24rpx;
   background-color: #000;
 }
 
@@ -428,17 +428,17 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 28px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 56rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .action-btn {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
-  padding: 6px 0;
+  gap: 12rpx;
+  padding: 12rpx 0;
   transition: opacity 0.2s ease;
 }
 
@@ -447,7 +447,7 @@
 }
 
 .action-count {
-  font-size: 15px;
+  font-size: 30rpx;
   color: rgba(255, 255, 255, 0.5);
   font-weight: 500;
 }
@@ -461,10 +461,10 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 24rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .likers-avatars {
@@ -481,28 +481,28 @@
 }
 
 .liker-avatar {
-  width: 28px;
-  height: 28px;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
-  border: 2px solid #0a0a0f;
+  border: 4rpx solid #0a0a0f;
   object-fit: cover;
 }
 
 .liker-avatar.is-ai {
   border-color: rgba(0, 245, 255, 0.5);
-  box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
+  box-shadow: 0 0 16rpx rgba(0, 245, 255, 0.3);
 }
 
 .liker-avatar.is-human {
   border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 16rpx rgba(99, 102, 241, 0.3);
 }
 
 .liker-avatar-placeholder {
-  width: 28px;
-  height: 28px;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
-  border: 2px solid #0a0a0f;
+  border: 4rpx solid #0a0a0f;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -519,17 +519,17 @@
 }
 
 .liker-avatar-letter {
-  font-size: 12px;
+  font-size: 24rpx;
   font-weight: 600;
   color: #fff;
 }
 
 .liker-ai-badge {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 12px;
-  height: 12px;
+  bottom: -4rpx;
+  right: -4rpx;
+  width: 24rpx;
+  height: 24rpx;
   border-radius: 50%;
   background: #0a0a0f;
   display: flex;
@@ -538,23 +538,23 @@
 }
 
 .likers-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
   flex: 1;
 }
 
 /* 评论区 */
 .comments-section {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .comment-item {
   display: flex;
   flex-direction: row;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 24rpx;
+  margin-bottom: 28rpx;
 }
 
 .comment-item:last-child {
@@ -562,8 +562,8 @@
 }
 
 .comment-avatar {
-  width: 32px;
-  height: 32px;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
   display: flex;
@@ -572,17 +572,17 @@
   flex-shrink: 0;
   overflow: hidden;
   position: relative;
-  border: 2px solid transparent;
+  border: 4rpx solid transparent;
 }
 
 .comment-avatar.is-ai {
   border-color: rgba(0, 245, 255, 0.4);
-  box-shadow: 0 0 10px rgba(0, 245, 255, 0.2);
+  box-shadow: 0 0 20rpx rgba(0, 245, 255, 0.2);
 }
 
 .comment-avatar.is-human {
   border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 20rpx rgba(99, 102, 241, 0.2);
 }
 
 .comment-avatar-img {
@@ -592,21 +592,21 @@
 }
 
 .emoji {
-  font-size: 16px;
+  font-size: 32rpx;
 }
 
 .comment-ai-badge {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
+  bottom: -8rpx;
+  right: -8rpx;
+  width: 28rpx;
+  height: 28rpx;
   border-radius: 50%;
   background: #0a0a0f;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 245, 255, 0.3);
+  border: 2rpx solid rgba(0, 245, 255, 0.3);
 }
 
 .comment-body {
@@ -618,12 +618,12 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
 }
 
 .comment-author {
-  font-size: 15px;
+  font-size: 30rpx;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -632,32 +632,32 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
+  gap: 4rpx;
+  padding: 4rpx 12rpx;
   background: rgba(0, 245, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 8rpx;
 }
 
 .ai-tag-text-small {
-  font-size: 11px;
+  font-size: 22rpx;
   color: #00f5ff;
   font-weight: 500;
 }
 
 .comment-text {
-  font-size: 15px;
+  font-size: 30rpx;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.5;
 }
 
 /* 查看更多评论 */
 .more-comments {
-  padding: 10px 0 0;
-  margin-top: 8px;
+  padding: 20rpx 0 0;
+  margin-top: 16rpx;
 }
 
 .more-comments-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(0, 245, 255, 0.8);
   font-weight: 500;
 }
@@ -667,43 +667,43 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 20rpx;
+  margin-top: 28rpx;
+  padding-top: 28rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .comment-input {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  height: 44px;
+  border-radius: 48rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  height: 88rpx;
   overflow: hidden;
 }
 
 /* 覆盖 ui/Input 组件的默认样式 */
 .comment-input-field {
-  height: 44px !important;
-  min-height: 44px !important;
+  height: 88rpx !important;
+  min-height: 88rpx !important;
   border: none !important;
   background: transparent !important;
-  padding: 0 16px !important;
-  border-radius: 24px !important;
+  padding: 0 32rpx !important;
+  border-radius: 48rpx !important;
   box-shadow: none !important;
   ring: none !important;
 }
 
 .comment-input-field input {
-  height: 44px !important;
-  line-height: 44px !important;
+  height: 88rpx !important;
+  line-height: 88rpx !important;
   color: #fff !important;
-  font-size: 15px !important;
+  font-size: 30rpx !important;
 }
 
 .send-btn {
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   display: flex;
@@ -718,40 +718,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 120rpx 40rpx;
 }
 
 .empty-icon {
-  width: 80px;
-  height: 80px;
+  width: 160rpx;
+  height: 160rpx;
   border-radius: 50%;
   background: rgba(99, 102, 241, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 32rpx;
 }
 
 .empty-title {
-  font-size: 17px;
+  font-size: 34rpx;
   color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 }
 
 .empty-desc {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .empty-text {
-  font-size: 17px;
+  font-size: 34rpx;
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 }
 
 .empty-hint {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.3);
   text-align: center;
 }
@@ -761,11 +761,11 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px 20px;
+  padding: 80rpx 40rpx;
 }
 
 .loading-text {
-  font-size: 15px;
+  font-size: 30rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -774,17 +774,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  padding: 40rpx;
 }
 
 .end-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.3);
 }
 
 /* 底部空间 */
 .bottom-space {
-  height: 80px;
+  height: 160rpx;
 }
 
 /* 分享弹窗 */
@@ -794,9 +794,12 @@
   right: 0;
   bottom: 0;
   background: rgba(10, 10, 15, 0.98);
-  border-radius: 24px 24px 0 0;
-  padding: 24px 16px 40px;
+  border-radius: 48rpx 48rpx 0 0;
+  padding: 48rpx 32rpx 80rpx;
   z-index: 1000;
+  box-sizing: border-box;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .share-modal-mask {
@@ -813,17 +816,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 48rpx;
 }
 
 .share-modal-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #fff;
 }
 
 .share-modal-close {
-  font-size: 15px;
+  font-size: 30rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -832,11 +835,11 @@
 }
 
 .share-header {
-  margin-bottom: 20px;
+  margin-bottom: 40rpx;
 }
 
 .share-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #fff;
 }
@@ -844,19 +847,19 @@
 .share-options {
   display: flex;
   justify-content: space-around;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .share-option {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 20rpx;
 }
 
 .share-icon-wrap {
-  width: 60px;
-  height: 60px;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   display: flex;
@@ -865,19 +868,19 @@
 }
 
 .share-option-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .share-cancel {
-  margin-top: 24px;
-  padding: 16px;
+  margin-top: 48rpx;
+  padding: 32rpx;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: 24rpx;
   text-align: center;
 }
 
 .share-cancel-text {
-  font-size: 16px;
+  font-size: 32rpx;
   color: rgba(255, 255, 255, 0.6);
 }
