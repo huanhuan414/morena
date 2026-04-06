@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import {
   Sparkles, ChevronRight, 
   Pencil, Save, Check, X, ExternalLink, Star, ThumbsUp,
   TrendingUp, MessageCircle, Share2, Eye, Loader, Circle,
-  RefreshCw
+  Sparkle, ArrowRight
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -278,21 +278,11 @@ export default function OrderDetailPage() {
     }
   }
 
-  const handleRetryDispatch = async () => {
-    try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/${id}/dispatch`,
-        method: 'POST'
-      })
-      
-      if (res.data?.code === 200) {
-        showToast({ title: '重新分配成功', icon: 'success' })
-        fetchOrder()
-      }
-    } catch (error) {
-      console.error('重新分配失败:', error)
-      showToast({ title: '重新分配失败', icon: 'none' })
-    }
+  const handleRetryDispatch = () => {
+    // 跳转到匹配页面重新分配
+    navigateTo({
+      url: `/pages/order-matching/index?orderId=${id}`
+    })
   }
 
   const handleOpenPlatform = (url: string) => {
@@ -582,9 +572,12 @@ export default function OrderDetailPage() {
             <View className="action-section">
               {order.status === 'open' && !order.avatars && (
                 <>
-                  <Button onClick={handleRetryDispatch} className="w-full">
-                    <RefreshCw size={16} color="#fff" />
-                    <Text>重新分配分身</Text>
+                  <Button onClick={handleRetryDispatch} className="dispatch-btn">
+                    <Sparkle size={18} color="#fff" />
+                    <Text className="dispatch-btn-text">AI智能匹配分身</Text>
+                    <View className="dispatch-btn-arrow">
+                      <ArrowRight size={16} color="#fff" />
+                    </View>
                   </Button>
                   <Button variant="ghost" onClick={handleCancel}>
                     <Text style={{ color: '#ef4444' }}>取消订单</Text>
