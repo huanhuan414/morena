@@ -17,12 +17,13 @@ interface FriendInfo {
 }
 
 interface AvatarFriend {
-  id: string
+  id: number
   avatar_id: string
-  friend_id: string
+  friend_id: string  // 后端返回的好友分身ID字段
   match_reason: string
   compatibility_score: number
   benefits?: string
+  status?: string
   created_at: string
   friend?: FriendInfo
 }
@@ -74,12 +75,19 @@ export default function AvatarFriendsPage() {
   }
 
   const viewChatHistory = async (friend: AvatarFriend) => {
+    // 使用 friend.friend?.id 获取好友分身ID
+    const friendAvatarId = friend.friend?.id
+    if (!friendAvatarId) {
+      showToast({ title: '好友信息不完整', icon: 'none' })
+      return
+    }
+    
     try {
       setChatLoading(true)
       setSelectedFriend(friend)
       
       const res = await Network.request({ 
-        url: `/api/avatar/${avatarId}/chat/${friend.friend_id}` 
+        url: `/api/avatar/${avatarId}/chat/${friendAvatarId}` 
       })
       
       if (res.data?.code === 200) {
@@ -94,14 +102,25 @@ export default function AvatarFriendsPage() {
   }
 
   const startVoiceCall = async (friend: AvatarFriend) => {
+    // 使用 friend.friend?.id 获取好友分身ID
+    const friendAvatarId = friend.friend?.id
+    if (!friendAvatarId) {
+      showToast({ title: '好友信息不完整', icon: 'none' })
+      return
+    }
+    
     try {
-      setCallingFriend(friend.friend_id)
+      setCallingFriend(friendAvatarId)
       showToast({ title: '正在呼叫...', icon: 'loading', duration: 3000 })
       
+      console.log('发起语音通话:', { avatarId, friendAvatarId })
+      
       const res = await Network.request({
-        url: `/api/avatar/${avatarId}/call/${friend.friend_id}`,
+        url: `/api/avatar/${avatarId}/call/${friendAvatarId}`,
         method: 'POST'
       })
+      
+      console.log('语音通话完整响应:', res)
       
       if (res.data?.code === 200) {
         const { audioUrl, friendName } = res.data.data
@@ -117,8 +136,12 @@ export default function AvatarFriendsPage() {
         })
         innerAudioContext.onError((err) => {
           console.error('语音播放失败:', err)
+          showToast({ title: '语音播放失败', icon: 'none' })
         })
         innerAudioContext.play()
+      } else {
+        console.error('语音通话响应异常:', res.data)
+        showToast({ title: res.data?.message || '通话失败', icon: 'none' })
       }
     } catch (error) {
       console.error('发起语音通话失败:', error)
@@ -275,11 +298,11 @@ export default function AvatarFriendsPage() {
                     <Text className="af-action-btn-text">查看聊天</Text>
                   </View>
                   <View 
-                    className={`af-action-btn af-call-btn ${callingFriend === friend.friend_id ? 'disabled' : ''}`}
-                    onClick={() => callingFriend !== friend.friend_id && startVoiceCall(friend)}
+                    className={`af-action-btn af-call-btn ${callingFriend === friend.friend?.id ? 'disabled' : ''}`}
+                    onClick={() => callingFriend !== friend.friend?.id && startVoiceCall(friend)}
                   >
-                    <Phone size={18} color={callingFriend === friend.friend_id ? 'rgba(255,255,255,0.3)' : '#00ff88'} />
-                    <Text className="af-action-btn-text">{callingFriend === friend.friend_id ? '呼叫中...' : '语音通话'}</Text>
+                    <Phone size={18} color={callingFriend === friend.friend?.id ? 'rgba(255,255,255,0.3)' : '#00ff88'} />
+                    <Text className="af-action-btn-text">{callingFriend === friend.friend?.id ? '呼叫中...' : '语音通话'}</Text>
                   </View>
                 </View>
               </View>
