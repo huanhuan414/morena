@@ -4,7 +4,7 @@
  */
 
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
-import { LLMClient, Config, ImageGenerationClient, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, ImageGenerationClient, SearchClient, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 
 interface HostingSettings {
@@ -34,6 +34,7 @@ interface AvatarMatch {
 @Injectable()
 export class HostingService implements OnModuleInit, OnModuleDestroy {
   private llmClient: LLMClient
+  private searchClient: SearchClient
   private storage: S3Storage
   private intervals: Map<string, NodeJS.Timeout> = new Map()
   private isRunning = false
@@ -41,6 +42,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   constructor() {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+    this.searchClient = new SearchClient(config)
     this.storage = new S3Storage({
       endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
       accessKey: process.env.VOLC_ACCESS_KEY || '',
@@ -376,13 +378,14 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     
     // 根据频率决定是否发帖
     const postProbability = {
-      low: 0.1,    // 10%概率发帖
-      medium: 0.3, // 30%概率发帖
-      high: 0.5    // 50%概率发帖
+      low: 0.2,    // 20%概率发帖
+      medium: 0.5, // 50%概率发帖
+      high: 0.8    // 80%概率发帖
     }
 
     const probability = postProbability[settings.post_frequency || 'medium']
     if (Math.random() > probability) {
+      console.log(`[托管服务] 分身 ${avatar.name} 本次未命中发帖概率，跳过`)
       return
     }
 
@@ -399,6 +402,8 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       return
     }
 
+    console.log(`[托管服务] 分身 ${avatar.name} 准备发帖...`)
+    
     // 使用AI生成帖子内容
     const postContent = await this.generatePostContent(avatar)
     
@@ -433,26 +438,48 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 使用AI生成帖子内容（必须包含图片或视频）
+   * 使用AI生成爆款帖子内容（结合热点、必须包含配图）
    */
   private async generatePostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
-    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}。
-
-请生成一条适合社交平台发布的帖子内容。要求：
-1. 内容积极向上，有趣或有价值
-2. 符合你的性格特点
-3. 字数在50-200字之间
-4. 可以分享生活感悟、工作心得、有趣发现等
-5. 内容要与配图相关，因为会自动生成配图
-
-只需要输出帖子内容，不需要其他解释。`
-
     try {
+      // 1. 搜索当前热点话题
+      console.log('[托管服务] 正在搜索热点话题...')
+      const hotTopics = await this.searchHotTopics()
+      
+      if (!hotTopics || hotTopics.length === 0) {
+        console.log('[托管服务] 未获取到热点话题，使用默认话题')
+      }
+
+      // 2. 选择一个热点话题
+      const selectedTopic = hotTopics && hotTopics.length > 0 
+        ? hotTopics[Math.floor(Math.random() * hotTopics.length)]
+        : '生活感悟'
+
+      console.log(`[托管服务] 选择热点话题: ${selectedTopic.title || selectedTopic}`)
+
+      // 3. 结合热点和分身性格生成爆款内容
+      const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}，技能：${JSON.stringify(avatar.skills || ['通用'])}。
+
+当前热点话题：${typeof selectedTopic === 'string' ? selectedTopic : selectedTopic.title}
+热点摘要：${typeof selectedTopic === 'string' ? '' : (selectedTopic.snippet || '')}
+
+请结合以上热点话题，生成一条爆款社交媒体帖子。要求：
+1. **必须结合热点**：从热点话题切入，发表你的独特观点或感受
+2. **展现个性**：符合你的性格特点和技能背景
+3. **引发共鸣**：让读者感同身受，愿意点赞评论转发
+4. **标题吸睛**：开头一句话要能抓住眼球
+5. **内容有料**：提供有价值的见解、建议或情感共鸣
+6. **互动引导**：结尾可以适当引导互动
+7. **字数要求**：100-300字之间
+8. **避免争议**：不发表极端观点，保持积极正面
+
+只输出帖子正文内容，不要包含标题、标签等其他内容。`
+
       const response = await this.llmClient.invoke([
         { role: 'user', content: prompt }
       ], {
         model: 'doubao-seed-1-8-251228',
-        temperature: 0.8
+        temperature: 0.9
       })
 
       const content = response.content || ''
@@ -462,7 +489,9 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
         return null
       }
 
-      // 必须生成图片配图
+      console.log(`[托管服务] 生成帖子内容: ${content.substring(0, 50)}...`)
+
+      // 4. 必须生成图片配图
       let images: string[] = []
       try {
         console.log('[托管服务] 正在为帖子生成配图...')
@@ -470,7 +499,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
         const imageClient = new ImageGenerationClient(imageConfig)
         
         // 根据帖子内容生成相关配图
-        const imagePrompt = `${avatar.name}分享的内容：${content.substring(0, 50)}，温馨美好的场景，适合社交媒体分享`
+        const imagePrompt = `社交媒体配图，主题：${typeof selectedTopic === 'string' ? selectedTopic : selectedTopic.title}，风格：现代简约，高质量，适合分享，温馨美好，${avatar.name}的分享`
         
         const imageResponse = await imageClient.generate({
           prompt: imagePrompt,
@@ -501,6 +530,34 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       console.error('[托管服务] 生成帖子内容失败:', error)
       return null
+    }
+  }
+
+  /**
+   * 搜索当前热点话题
+   */
+  private async searchHotTopics(): Promise<any[]> {
+    try {
+      // 搜索今日热点
+      const response = await this.searchClient.advancedSearch('今日热点 新闻 热门话题', {
+        searchType: 'web',
+        count: 10,
+        timeRange: '1d',
+        needSummary: false
+      })
+
+      if (response.web_items && response.web_items.length > 0) {
+        return response.web_items.map(item => ({
+          title: item.title,
+          snippet: item.snippet,
+          url: item.url
+        }))
+      }
+
+      return []
+    } catch (error) {
+      console.error('[托管服务] 搜索热点失败:', error)
+      return []
     }
   }
 
