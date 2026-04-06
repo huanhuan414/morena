@@ -50,7 +50,6 @@ export default function AvatarFriendsPage() {
   const [selectedFriend, setSelectedFriend] = useState<AvatarFriend | null>(null)
   const [chatData, setChatData] = useState<FriendChat | null>(null)
   const [chatLoading, setChatLoading] = useState(false)
-  const [callingFriend, setCallingFriend] = useState<string | null>(null)
 
   useLoad(() => {
     if (avatarId) {
@@ -104,51 +103,17 @@ export default function AvatarFriendsPage() {
   const startVoiceCall = async (friend: AvatarFriend) => {
     // 使用 friend.friend?.id 获取好友分身ID
     const friendAvatarId = friend.friend?.id
+    const friendAvatarName = friend.friend?.name
+    
     if (!friendAvatarId) {
       showToast({ title: '好友信息不完整', icon: 'none' })
       return
     }
     
-    try {
-      setCallingFriend(friendAvatarId)
-      showToast({ title: '正在呼叫...', icon: 'loading', duration: 3000 })
-      
-      console.log('发起语音通话:', { avatarId, friendAvatarId })
-      
-      const res = await Network.request({
-        url: `/api/avatar/${avatarId}/call/${friendAvatarId}`,
-        method: 'POST'
-      })
-      
-      console.log('语音通话完整响应:', res)
-      
-      if (res.data?.code === 200) {
-        const { audioUrl, friendName } = res.data.data
-        console.log('语音通话响应:', res.data.data)
-        
-        showToast({ title: `${friendName}接通了！`, icon: 'success' })
-        
-        // 播放问候语音
-        const innerAudioContext = Taro.createInnerAudioContext()
-        innerAudioContext.src = audioUrl
-        innerAudioContext.onPlay(() => {
-          console.log('开始播放问候语音')
-        })
-        innerAudioContext.onError((err) => {
-          console.error('语音播放失败:', err)
-          showToast({ title: '语音播放失败', icon: 'none' })
-        })
-        innerAudioContext.play()
-      } else {
-        console.error('语音通话响应异常:', res.data)
-        showToast({ title: res.data?.message || '通话失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('发起语音通话失败:', error)
-      showToast({ title: '通话失败', icon: 'none' })
-    } finally {
-      setCallingFriend(null)
-    }
+    // 跳转到语音通话页面
+    Taro.navigateTo({
+      url: `/pages/voice-call/index?avatarId=${avatarId}&friendId=${friendAvatarId}&friendName=${encodeURIComponent(friendAvatarName || '好友')}`
+    })
   }
 
   const formatDate = (dateStr: string) => {
@@ -298,11 +263,11 @@ export default function AvatarFriendsPage() {
                     <Text className="af-action-btn-text">查看聊天</Text>
                   </View>
                   <View 
-                    className={`af-action-btn af-call-btn ${callingFriend === friend.friend?.id ? 'disabled' : ''}`}
-                    onClick={() => callingFriend !== friend.friend?.id && startVoiceCall(friend)}
+                    className="af-action-btn af-call-btn"
+                    onClick={() => startVoiceCall(friend)}
                   >
-                    <Phone size={18} color={callingFriend === friend.friend?.id ? 'rgba(255,255,255,0.3)' : '#00ff88'} />
-                    <Text className="af-action-btn-text">{callingFriend === friend.friend?.id ? '呼叫中...' : '语音通话'}</Text>
+                    <Phone size={18} color="#00ff88" />
+                    <Text className="af-action-btn-text">语音通话</Text>
                   </View>
                 </View>
               </View>
