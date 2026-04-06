@@ -10,57 +10,57 @@
 
 .profile-bg {
   position: relative;
-  height: 560px;
+  height: 1120rpx;
   overflow: hidden;
 }
 
 .bg-glow {
   position: absolute;
-  top: -200px;
-  left: -200px;
-  right: -200px;
-  height: 800px;
+  top: -400rpx;
+  left: -400rpx;
+  right: -400rpx;
+  height: 1600rpx;
   background: radial-gradient(ellipse at center top, rgba(0, 245, 255, 0.15) 0%, transparent 60%),
               radial-gradient(ellipse at 30% 0%, rgba(191, 0, 255, 0.1) 0%, transparent 50%);
 }
 
 .user-card {
-  margin: -240px 16px 0;
+  margin: -480rpx 32rpx 0;
   background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  border-radius: 32px;
-  padding: 24px;
+  border: 4rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 64rpx;
+  padding: 48rpx;
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  width: calc(100% - 32px);
+  width: calc(100% - 64rpx);
 }
 
 .user-header {
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 48rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .user-avatar-wrap {
   position: relative;
-  margin-right: 16px;
+  margin-right: 32rpx;
   flex-shrink: 0;
 }
 
 .user-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 24px;
-  border: 2px solid rgba(0, 245, 255, 0.3);
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 48rpx;
+  border: 4rpx solid rgba(0, 245, 255, 0.3);
 }
 
 .avatar-placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 24px;
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 48rpx;
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   display: flex;
   align-items: center;
@@ -68,24 +68,24 @@
 }
 
 .avatar-text {
-  font-size: 28px;
+  font-size: 56rpx;
   font-weight: 700;
   color: #0a0a0f;
 }
 
 .level-badge {
   position: absolute;
-  bottom: -6px;
+  bottom: -12rpx;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  padding: 2px 12px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 245, 255, 0.3);
+  padding: 4rpx 24rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 245, 255, 0.3);
 }
 
 .level-text {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #0a0a0f;
 }
@@ -98,17 +98,17 @@
 
 .user-name {
   display: block;
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .user-id {
-  font-size: 12px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -116,11 +116,11 @@
 }
 
 .settings-btn {
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border: 2rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,9 +132,9 @@
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
-  padding: 16px;
-  margin-bottom: 20px;
+  border-radius: 40rpx;
+  padding: 32rpx;
+  margin-bottom: 40rpx;
   width: 100%;
   box-sizing: border-box;
 }
@@ -147,28 +147,28 @@
 
 .stat-value {
   display: block;
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 700;
   color: #00f5ff;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .stat-divider {
-  width: 1px;
-  height: 32px;
+  width: 2rpx;
+  height: 64rpx;
   background: rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
 .xp-section {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 32rpx;
+  padding: 32rpx;
   width: 100%;
   box-sizing: border-box;
 }
@@ -177,67 +177,67 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 .xp-title {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .xp-value {
-  font-size: 14px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #00f5ff;
 }
 
 .xp-bar {
-  height: 8px;
+  height: 16rpx;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  border-radius: 8rpx;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 }
 
 .xp-fill {
   height: 100%;
   background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 4px;
+  border-radius: 8rpx;
 }
 
 .xp-hint {
-  font-size: 12px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.3);
 }
 
 .menu-scroll {
   flex: 1;
-  padding: 48px 20px;
-  padding-bottom: 200px;
+  padding: 96rpx 40rpx;
+  padding-bottom: 400rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .menu-section {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
+  border: 2rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 48rpx;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 48rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .menu-grid {
-  padding: 8px 0;
+  padding: 16rpx 0;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 36px 24px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.04);
+  padding: 72rpx 48rpx;
+  border-bottom: 4rpx solid rgba(255, 255, 255, 0.04);
   width: 100%;
   box-sizing: border-box;
 }
@@ -255,13 +255,13 @@
 }
 
 .menu-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 24px;
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 20px;
+  margin-right: 40rpx;
   flex-shrink: 0;
 }
 
@@ -273,17 +273,17 @@
 
 .menu-title {
   display: block;
-  font-size: 30px;
+  font-size: 30rpx;
   font-weight: 500;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .menu-desc {
-  font-size: 24px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -291,46 +291,46 @@
 }
 
 .logout-section {
-  padding: 0 16px;
-  margin-bottom: 24px;
+  padding: 0 32rpx;
+  margin-bottom: 48rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .logout-btn {
   width: 100%;
-  height: 48px;
+  height: 96rpx;
   background: rgba(255, 100, 100, 0.1);
-  border: 1px solid rgba(255, 100, 100, 0.2);
-  border-radius: 16px;
+  border: 2rpx solid rgba(255, 100, 100, 0.2);
+  border-radius: 32rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .logout-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
 .version-section {
   text-align: center;
-  padding: 20px 0;
+  padding: 40rpx 0;
 }
 
 .version-text {
   display: block;
-  font-size: 12px;
+  font-size: 24rpx;
   color: rgba(255, 255, 255, 0.25);
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
 }
 
 .version-copyright {
-  font-size: 11px;
+  font-size: 22rpx;
   color: rgba(255, 255, 255, 0.2);
 }
 
 .bottom-space {
-  height: 40px;
+  height: 80rpx;
 }
