@@ -50,6 +50,11 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       minified: false,
     },
     compileType: 'miniprogram',
+    packOptions: {
+      ignore: [
+        { type: 'folder', value: './assets' }
+      ]
+    }
   };
   const outputDir = path.resolve(__dirname, '..', outputRoot);
   if (!fs.existsSync(outputDir)) {

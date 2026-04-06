@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./dist-weapp",
   "projectname": "coze-mini-program",
-  "description": "test",
+  "description": "Morina AI Platform - AI Native Human-Machine Symbiosis Ecosystem",
   "appid": "touristappid",
   "setting": {
     "urlCheck": false,
@@ -11,5 +11,10 @@
     "postcss": false,
     "minified": false
   },
-  "compileType": "miniprogram"
+  "compileType": "miniprogram",
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "./assets" }
+    ]
+  }
 }
