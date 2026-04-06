@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap } from 'lucide-react-taro'
+import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import './index.css'
 
 interface UserStats {
@@ -26,6 +27,7 @@ export default function ProfilePage() {
     totalXp: 0,
     level: 1
   })
+  const [showLevelDialog, setShowLevelDialog] = useState(false)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -132,7 +134,7 @@ export default function ProfilePage() {
         </View>
 
         {/* 经验进度 */}
-        <View className="xp-section">
+        <View className="xp-section" onClick={() => setShowLevelDialog(true)}>
           <View className="xp-header">
             <Text className="xp-level">Lv.{stats.level}</Text>
             <Text className="xp-value">{stats.totalXp} / {stats.level * 100} XP</Text>
@@ -143,6 +145,14 @@ export default function ProfilePage() {
           <Text className="xp-hint">距离 Lv.{stats.level + 1} 还需 {stats.level * 100 - stats.totalXp} XP</Text>
         </View>
       </View>
+
+      {/* 等级详情弹窗 */}
+      <LevelDetailDialog 
+        open={showLevelDialog}
+        onClose={() => setShowLevelDialog(false)}
+        currentLevel={stats.level}
+        currentExp={stats.totalXp}
+      />
 
       <ScrollView className="menu-scroll" scrollY>
         {/* 功能菜单 */}

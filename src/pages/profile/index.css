@@ -171,6 +171,11 @@
   padding: 32rpx;
   width: 100%;
   box-sizing: border-box;
+  cursor: pointer;
+}
+
+.xp-section:active {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .xp-header {
@@ -215,6 +220,287 @@
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
+}
+
+/* 等级详情弹窗 */
+.level-dialog-content {
+  background: #0a0a0f !important;
+  border: 4rpx solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 48rpx !important;
+  max-height: 80vh !important;
+  width: 650rpx !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.level-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.level-dialog-title-row {
+  display: flex;
+  align-items: center;
+}
+
+.level-dialog-icon {
+  width: 56rpx;
+  height: 56rpx;
+  background: rgba(234, 179, 8, 0.15);
+  border-radius: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.level-dialog-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.level-dialog-close {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28rpx;
+}
+
+.level-current-status {
+  padding: 24rpx 32rpx;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.level-current-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.level-current-text {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-left: 8rpx;
+}
+
+.level-current-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.level-current-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.level-current-exp {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.level-current-progress {
+  height: 12rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.level-current-progress-fill {
+  height: 100%;
+  border-radius: 6rpx;
+  transition: width 0.3s;
+}
+
+.level-tab-bar {
+  display: flex;
+  padding: 0 32rpx;
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.level-tab {
+  flex: 1;
+  padding: 24rpx 0;
+  text-align: center;
+  position: relative;
+}
+
+.level-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60rpx;
+  height: 6rpx;
+  background: linear-gradient(90deg, #00f5ff, #bf00ff);
+  border-radius: 3rpx;
+}
+
+.level-tab-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.level-tab-text-active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.level-dialog-scroll {
+  max-height: 500rpx;
+  padding: 24rpx 32rpx;
+}
+
+.level-list, .tasks-list {
+  padding-bottom: 24rpx;
+}
+
+.level-item, .task-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 2rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 32rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.level-item-current, .task-item-current {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.level-item-header, .task-item-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.level-item-badge {
+  width: 80rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.level-item-badge-text, .task-item-badge-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.level-item-info {
+  flex: 1;
+}
+
+.level-item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.level-item-exp {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.level-item-completed {
+  background: rgba(34, 197, 94, 0.2);
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+}
+
+.level-item-completed-text {
+  font-size: 20rpx;
+  color: #22c55e;
+}
+
+.level-item-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.level-benefit-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8rpx 16rpx;
+  border-radius: 16rpx;
+}
+
+.level-benefit-text {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-left: 8rpx;
+}
+
+.task-item-badge {
+  width: 80rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.task-item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.task-item-list {
+  padding-left: 96rpx;
+}
+
+.task-item-content {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.task-item-content:last-child {
+  margin-bottom: 0;
+}
+
+.task-item-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 12rpx;
+}
+
+.level-advanced-hint {
+  text-align: center;
+  padding: 24rpx;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 24rpx;
+  margin-top: 16rpx;
+}
+
+.level-advanced-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .menu-scroll {
