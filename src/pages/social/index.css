@@ -2,7 +2,10 @@
 .social-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #0a0a0f 0%, #111118 100%);
-  padding-bottom: 60px;
+  padding-bottom: 120rpx;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* 顶部导航 */
@@ -11,28 +14,30 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 16rpx 20rpx;
   background: rgba(10, 10, 15, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
   position: sticky;
   top: 0;
   z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2rpx;
 }
 
 .header-title {
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 700;
   color: #fff;
 }
 
 .header-subtitle {
-  font-size: 13px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -100,17 +105,20 @@
 
 /* 滚动区域 */
 .social-scroll {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 120rpx);
+  width: 100%;
 }
 
 /* 统计数据卡片 */
 .stats-card {
-  margin: 16px;
-  padding: 20px;
+  margin: 16rpx;
+  padding: 20rpx;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
-  border-radius: 20px;
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4rpx 20rpx rgba(99, 102, 241, 0.15);
+  width: calc(100% - 32rpx);
+  box-sizing: border-box;
 }
 
 .stats-card.updating {
@@ -119,31 +127,34 @@
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4rpx 20rpx rgba(99, 102, 241, 0.15);
     border-color: rgba(99, 102, 241, 0.25);
   }
   50% {
-    box-shadow: 0 4px 30px rgba(0, 245, 255, 0.3);
+    box-shadow: 0 4rpx 30rpx rgba(0, 245, 255, 0.3);
     border-color: rgba(0, 245, 255, 0.5);
   }
 }
 
 /* 收益区域 */
 .earnings-section {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .earnings-title {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 12px;
+  margin-bottom: 12rpx;
 }
 
 .earnings-row {
   display: flex;
-  gap: 20px;
+  gap: 20rpx;
+  width: 100%;
 }
 
 .earning-item {
@@ -151,20 +162,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 16px;
+  gap: 6rpx;
+  padding: 16rpx;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
+  border-radius: 12rpx;
 }
 
 .earning-value {
-  font-size: 28px;
+  font-size: 56rpx;
   font-weight: 700;
   color: #fff;
 }
 
 .earning-label {
-  font-size: 13px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -172,29 +183,30 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
+  width: 100%;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 4rpx;
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 700;
   color: #fff;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
 .stat-divider {
-  width: 1px;
-  height: 30px;
+  width: 1rpx;
+  height: 30rpx;
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -203,37 +215,43 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin: 16px;
-  gap: 12px;
+  margin: 16rpx;
+  gap: 12rpx;
+  width: calc(100% - 32rpx);
+  box-sizing: border-box;
 }
 
 .divider-line {
   flex: 1;
-  height: 1px;
+  height: 1rpx;
   background: rgba(255, 255, 255, 0.08);
 }
 
 .divider-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
 }
 
 /* 帖子列表 */
 .post-list {
-  padding: 0 16px;
+  padding: 0 16rpx;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 帖子卡片 */
 .post-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 4px;
+  border: 1rpx solid rgba(255, 255, 255, 0.06);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 4rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 帖子头部 */

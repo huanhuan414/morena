@@ -146,3 +146,65 @@ image {
   background-color: var(--selection);
   color: var(--selection-foreground);
 }
+
+/* ========== 全局布局修复 - 防止小程序端溢出 ========== */
+
+/* 全局盒子模型 */
+page, view, text, scroll-view {
+  box-sizing: border-box;
+}
+
+/* 防止内容溢出屏幕 */
+view, scroll-view {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* 弹窗内容防止溢出 */
+[role="dialog"] view,
+[data-state] view {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 卡片内容防止溢出 */
+.post-card, .avatar-card, .stats-card, .user-card,
+.af-friend-card, .menu-item {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 弹窗内卡片修复 */
+[role="dialog"] .post-card,
+[role="dialog"] .avatar-card,
+[role="dialog"] .stats-card,
+[data-state] .post-card,
+[data-state] .avatar-card,
+[data-state] .stats-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 16rpx !important;
+  padding-right: 16rpx !important;
+  box-sizing: border-box !important;
+}
+
+/* 图片和视频防止溢出 */
+image, video, img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 横向滚动容器 */
+scroll-view[scroll-x] {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 输入框防止溢出 */
+input, textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
