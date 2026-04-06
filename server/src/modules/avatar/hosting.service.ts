@@ -398,19 +398,6 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private async autoCreatePost(avatar: any, settings: HostingSettings) {
     const client = getSupabaseClient()
     
-    // 根据频率决定是否发帖
-    const postProbability = {
-      low: 0.2,    // 20%概率发帖
-      medium: 0.5, // 50%概率发帖
-      high: 0.8    // 80%概率发帖
-    }
-
-    const probability = postProbability[settings.post_frequency || 'medium']
-    if (Math.random() > probability) {
-      console.log(`[托管服务] 分身 ${avatar.name} 本次未命中发帖概率，跳过`)
-      return
-    }
-
     // 检查今天是否已经发帖
     const today = new Date().toISOString().split('T')[0]
     const { data: todayPosts } = await client
@@ -424,7 +411,24 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       return
     }
 
-    console.log(`[托管服务] 分身 ${avatar.name} 准备发帖...`)
+    // 根据频率决定是否发帖（如果今天还没发过，则100%发帖）
+    const postProbability = {
+      low: 0.3,    // 30%概率发帖
+      medium: 0.6, // 60%概率发帖
+      high: 0.9    // 90%概率发帖
+    }
+
+    // 如果今天还没发帖，则大幅提高发帖概率
+    const todayPostCount = todayPosts?.length || 0
+    const baseProbability = postProbability[settings.post_frequency || 'medium']
+    const adjustedProbability = todayPostCount === 0 ? Math.min(baseProbability + 0.3, 1.0) : baseProbability
+
+    if (Math.random() > adjustedProbability) {
+      console.log(`[托管服务] 分身 ${avatar.name} 本次未命中发帖概率(${Math.round(adjustedProbability * 100)}%)，跳过`)
+      return
+    }
+
+    console.log(`[托管服务] 分身 ${avatar.name} 准备发帖(命中概率${Math.round(adjustedProbability * 100)}%)...`)
     
     // 使用AI生成帖子内容
     const postContent = await this.generatePostContent(avatar)
