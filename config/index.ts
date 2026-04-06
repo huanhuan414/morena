@@ -175,47 +175,37 @@ export default defineConfig<'vite'>(async (merge, _env) => {
         {
           name: 'force-tsx-transform',
           enforce: 'pre',
-          transform(code, id) {
-            // 强制 Vite 将 .ts 和 .tsx 文件视为 ES 模块
-            if (id.endsWith('.ts') || id.endsWith('.tsx')) {
-              return {
-                code,
-                map: null
-              }
-            }
-            return null
-          }
-        },
-        {
-          name: 'fix-network-parse',
-          enforce: 'pre',
-          resolveId(source) {
-            // 处理 network 模块的导入
-            if (source === '@/network' || source.includes('/network/index.ts')) {
-              return source;
-            }
-            return null;
-          },
-          load(id) {
-            // 如果是 network/index.ts 文件，直接返回其内容
-            if (id.includes('/network/index.ts')) {
-              return null; // 让 Vite 使用默认加载器
-            }
+          transform(_code, _id) {
+            // 不再阻止 Vite 的 esbuild 转换
+            // 只确保 .ts 和 .tsx 文件被正确处理
             return null;
           }
         },
         {
-          // 尝试禁用 build-import-analysis 插件
-          name: 'disable-build-import-analysis',
+          // 移除 build-import-analysis 插件以避免解析问题
+          name: 'remove-build-import-analysis',
           enforce: 'post',
           configResolved(config) {
-            // 尝试找到并禁用 build-import-analysis 插件
             const plugins = config.plugins || [];
-            const importAnalysisPlugin = plugins.find((p: any) => p?.name === 'vite:build-import-analysis');
-            if (importAnalysisPlugin) {
-              console.log('[disable-build-import-analysis] 找到 build-import-analysis 插件，尝试修复');
-              // 不删除插件，而是尝试修复其解析逻辑
+            const importAnalysisIndex = plugins.findIndex((p: any) => p?.name === 'vite:build-import-analysis');
+            if (importAnalysisIndex !== -1) {
+              console.log('[remove-build-import-analysis] 移除 build-import-analysis 插件');
+              plugins.splice(importAnalysisIndex, 1);
             }
+          }
+        },
+        {
+          // 修复 network/index.ts 的解析问题 - 在 Vite 的 define 中注入变量
+          name: 'fix-network-define',
+          enforce: 'pre',
+          config(config) {
+            // 确保 Vite 的 define 配置包含 PROJECT_DOMAIN
+            config.define = config.define || {};
+            (config.define as Record<string, string>).PROJECT_DOMAIN = JSON.stringify(
+              process.env.PROJECT_DOMAIN ||
+              process.env.COZE_PROJECT_DOMAIN_DEFAULT ||
+              ''
+            );
           }
         },
         {

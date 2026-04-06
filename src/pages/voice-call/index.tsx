@@ -259,8 +259,9 @@ export default function VoiceCallPage() {
 
       console.log('[语音通话] 上传结果:', uploadRes)
 
-      if (uploadRes.data?.code === 200) {
-        const audioUrl = uploadRes.data.data.url
+      const uploadData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
+      if (uploadData?.code === 200) {
+        const audioUrl = uploadData.data.url
         
         // 发送语音消息
         emit('send-audio', {
