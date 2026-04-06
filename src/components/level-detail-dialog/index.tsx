@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { X, Star, Brain, Heart, Users, MessageCircle, TrendingUp, ShoppingCart, Calendar } from 'lucide-react-taro'
+import { X, Star, MessageCircle, TrendingUp, ShoppingCart } from 'lucide-react-taro'
 import { cn } from '@/lib/utils'
 
 interface LevelInfo {
@@ -21,8 +21,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '初识',
     benefits: ['基础对话能力', '简单的问答互动'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#94a3b8" />, desc: '与分身对话', expRange: '每次 +5 XP' },
-      { icon: <Brain size={14} color="#94a3b8" />, desc: '完成新手引导', expRange: '+50 XP' }
+      { icon: <MessageCircle size={14} color="#94a3b8" />, desc: '与分身对话', expRange: '+5~6 XP/次' },
+      { icon: <TrendingUp size={14} color="#94a3b8" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#94a3b8'
   },
@@ -33,8 +33,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '熟悉',
     benefits: ['更流畅的对话', '基础记忆能力'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#22c55e" />, desc: '每日与分身聊天', expRange: '每天 +20 XP' },
-      { icon: <Heart size={14} color="#22c55e" />, desc: '分享兴趣爱好', expRange: '每次 +10 XP' }
+      { icon: <MessageCircle size={14} color="#22c55e" />, desc: '与分身对话', expRange: '+7~8 XP/次' },
+      { icon: <TrendingUp size={14} color="#22c55e" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#22c55e'
   },
@@ -45,8 +45,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '信任',
     benefits: ['记住重要信息', '情绪识别能力'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#3b82f6" />, desc: '深度对话交流', expRange: '每次 +15 XP' },
-      { icon: <Heart size={14} color="#3b82f6" />, desc: '分享个人经历', expRange: '每次 +20 XP' }
+      { icon: <MessageCircle size={14} color="#3b82f6" />, desc: '与分身对话', expRange: '+9~10 XP/次' },
+      { icon: <TrendingUp size={14} color="#3b82f6" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#3b82f6'
   },
@@ -57,8 +57,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '默契',
     benefits: ['更好的理解', '习惯记忆'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#8b5cf6" />, desc: '连续互动', expRange: '每天 +25 XP' },
-      { icon: <TrendingUp size={14} color="#8b5cf6" />, desc: '让分身做任务', expRange: '每次 +30 XP' }
+      { icon: <MessageCircle size={14} color="#8b5cf6" />, desc: '与分身对话', expRange: '+11~12 XP/次' },
+      { icon: <TrendingUp size={14} color="#8b5cf6" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#8b5cf6'
   },
@@ -69,8 +69,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '知己',
     benefits: ['风格学习', '个性化回复'],
     expSources: [
-      { icon: <ShoppingCart size={14} color="#ec4899" />, desc: '完成B端订单', expRange: '每单 +50 XP' },
-      { icon: <Users size={14} color="#ec4899" />, desc: '创建新分身', expRange: '+100 XP' }
+      { icon: <MessageCircle size={14} color="#ec4899" />, desc: '与分身对话', expRange: '+13~14 XP/次' },
+      { icon: <TrendingUp size={14} color="#ec4899" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#ec4899'
   },
@@ -81,8 +81,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '心意相通',
     benefits: ['情感共鸣', '主动关心'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#f97316" />, desc: '分享工作/生活话题', expRange: '每次 +30 XP' },
-      { icon: <Brain size={14} color="#f97316" />, desc: '让分身参与决策', expRange: '每次 +25 XP' }
+      { icon: <MessageCircle size={14} color="#f97316" />, desc: '与分身对话', expRange: '+20~21 XP/次' },
+      { icon: <TrendingUp size={14} color="#f97316" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#f97316'
   },
@@ -93,8 +93,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '灵魂伴侣',
     benefits: ['深度理解', '默契配合'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#ef4444" />, desc: '深度对话交流', expRange: '每次 +35 XP' },
-      { icon: <Star size={14} color="#ef4444" />, desc: '解锁分身高级技能', expRange: '+80 XP' }
+      { icon: <MessageCircle size={14} color="#ef4444" />, desc: '与分身对话', expRange: '+25~26 XP/次' },
+      { icon: <TrendingUp size={14} color="#ef4444" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#ef4444'
   },
@@ -105,8 +105,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '完美契合',
     benefits: ['无需言表', '心有灵犀'],
     expSources: [
-      { icon: <Users size={14} color="#eab308" />, desc: '分身托管任务', expRange: '每天 +40 XP' },
-      { icon: <Calendar size={14} color="#eab308" />, desc: '托管满7天', expRange: '+100 XP' }
+      { icon: <MessageCircle size={14} color="#eab308" />, desc: '与分身对话', expRange: '+30~31 XP/次' },
+      { icon: <TrendingUp size={14} color="#eab308" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#eab308'
   },
@@ -117,8 +117,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '知心',
     benefits: ['无需言表', '心有灵犀'],
     expSources: [
-      { icon: <MessageCircle size={14} color="#06b6d4" />, desc: '持续对话交流', expRange: '每次 +40 XP' },
-      { icon: <Star size={14} color="#06b6d4" />, desc: '完成学习任务', expRange: '+50 XP' }
+      { icon: <MessageCircle size={14} color="#06b6d4" />, desc: '与分身对话', expRange: '+35~36 XP/次' },
+      { icon: <TrendingUp size={14} color="#06b6d4" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#06b6d4'
   },
@@ -129,8 +129,8 @@ const LEVEL_DATA: LevelInfo[] = [
     title: '合一',
     benefits: ['完美契合', '超越语言'],
     expSources: [
-      { icon: <Users size={14} color="#a855f7" />, desc: '分身托管满30天', expRange: '+200 XP' },
-      { icon: <TrendingUp size={14} color="#a855f7" />, desc: '达到1000总经验', expRange: '达成即升级' }
+      { icon: <MessageCircle size={14} color="#a855f7" />, desc: '与分身对话', expRange: '+40~41 XP/次' },
+      { icon: <TrendingUp size={14} color="#a855f7" />, desc: '完成任务/订单', expRange: '+30~65 XP/次' }
     ],
     color: '#a855f7'
   }
@@ -252,7 +252,10 @@ export function LevelDetailDialog({ open, onClose, currentLevel, currentExp }: L
                   </View>
                   <View className="guide-content">
                     <Text className="guide-item-title">与分身对话</Text>
-                    <Text className="guide-item-desc">每次对话可获得 5-40 XP，深度对话获得更多</Text>
+                    <Text className="guide-item-desc">
+                      Lv.1-5: 5-13 XP/次 | Lv.6-10: 20-40 XP/次{'\n'}
+                      消息超过50字额外+1 XP，超过200字每100字再+1
+                    </Text>
                   </View>
                 </View>
                 <View className="guide-item">
@@ -261,25 +264,22 @@ export function LevelDetailDialog({ open, onClose, currentLevel, currentExp }: L
                   </View>
                   <View className="guide-content">
                     <Text className="guide-item-title">完成任务</Text>
-                    <Text className="guide-item-desc">完成B端订单任务可获得 30-100 XP</Text>
+                    <Text className="guide-item-desc">
+                      基础 30 XP{'\n'}
+                      高优先级+15 | Agent任务+20 | 复杂任务+15
+                    </Text>
                   </View>
                 </View>
                 <View className="guide-item">
                   <View className="guide-icon-wrap" style={{ backgroundColor: '#ec489915' }}>
-                    <Users size={18} color="#ec4899" />
+                    <ShoppingCart size={18} color="#ec4899" />
                   </View>
                   <View className="guide-content">
-                    <Text className="guide-item-title">社交互动</Text>
-                    <Text className="guide-item-desc">发帖、评论、点赞等社交行为可获得 5-20 XP</Text>
-                  </View>
-                </View>
-                <View className="guide-item">
-                  <View className="guide-icon-wrap" style={{ backgroundColor: '#f9731615' }}>
-                    <Calendar size={18} color="#f97316" />
-                  </View>
-                  <View className="guide-content">
-                    <Text className="guide-item-title">托管任务</Text>
-                    <Text className="guide-item-desc">分身自动托管可每日获得 20-50 XP</Text>
+                    <Text className="guide-item-title">完成订单</Text>
+                    <Text className="guide-item-desc">
+                      基础 30 XP{'\n'}
+                      预算每100元额外+5 XP，上限+50
+                    </Text>
                   </View>
                 </View>
               </View>

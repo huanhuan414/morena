@@ -222,7 +222,15 @@ export class ChatService {
       .update(updateData)
       .eq('id', conversationId)
     
-    await this.addAvatarExp(avatarId, 1)
+    // 获取分身等级计算经验值
+    const { data: avatarData } = await client
+      .from('avatars')
+      .select('exp, level')
+      .eq('id', avatarId)
+      .single()
+    
+    const chatExp = this.calculateChatExp(avatarData?.level || 1, content.length)
+    await this.addAvatarExp(avatarId, chatExp)
     await this.updateAvatarLearning(avatarId, content, response.content, conversation?.context as string[])
     
     const taskInfo = this.detectTaskIntent(content, response.content)
@@ -403,7 +411,15 @@ export class ChatService {
       .update(updateData)
       .eq('id', conversationId)
     
-    await this.addAvatarExp(avatarId, 1)
+    // 获取分身等级计算经验值
+    const { data: avatarData } = await client
+      .from('avatars')
+      .select('exp, level')
+      .eq('id', avatarId)
+      .single()
+    
+    const chatExp = this.calculateChatExp(avatarData?.level || 1, content.length)
+    await this.addAvatarExp(avatarId, chatExp)
     await this.updateAvatarLearning(avatarId, content, fullResponse, conversation?.context as string[])
     
     yield { type: 'done', data: { message: '完成' } }
@@ -570,6 +586,33 @@ export class ChatService {
   private async buildSystemPrompt(avatar: any): Promise<string> {
     // 使用 LearningService 构建个性化提示词
     return this.learningService.buildPersonalizedPrompt(avatar.id, avatar)
+  }
+
+  /**
+   * 计算对话获得的经验值
+   * 规则：
+   * - 基础经验：根据等级递增
+   * - 消息长度加成：超过50字获得额外经验
+   * - 深度对话加成：超过200字获得更多经验
+   */
+  private calculateChatExp(level: number, messageLength: number): number {
+    // 基础经验：Lv.1-5 每次 5-15 XP，Lv.6-10 每次 20-40 XP
+    let baseExp: number
+    if (level <= 5) {
+      baseExp = 5 + (level - 1) * 2  // Lv.1:5, Lv.2:7, Lv.3:9, Lv.4:11, Lv.5:13
+    } else {
+      baseExp = 15 + (level - 5) * 5  // Lv.6:20, Lv.7:25, Lv.8:30, Lv.9:35, Lv.10:40
+    }
+    
+    // 消息长度加成
+    let lengthBonus = 0
+    if (messageLength >= 200) {
+      lengthBonus = Math.floor(messageLength / 100)  // 超过200字，每100字 +1
+    } else if (messageLength >= 50) {
+      lengthBonus = 1  // 超过50字 +1
+    }
+    
+    return baseExp + lengthBonus
   }
 
   private async addAvatarExp(avatarId: string, exp: number) {

@@ -150,8 +150,9 @@ export class TaskService {
         })
         .eq('id', taskId)
       
-      // 给分身增加经验
-      await this.addAvatarExperience(task.avatar_id, 10)
+      // 给分身增加经验：根据任务类型和优先级计算
+      const exp = this.calculateTaskExp(task)
+      await this.addAvatarExperience(task.avatar_id, exp)
       
       await this.addTaskLog(taskId, 'completed', '任务执行完成', result)
       
@@ -341,6 +342,43 @@ export class TaskService {
       .from('tasks')
       .update({ logs })
       .eq('id', taskId)
+  }
+
+  /**
+   * 计算任务完成获得的经验值
+   * 规则：根据任务类型和优先级计算
+   */
+  private calculateTaskExp(task: any): number {
+    // 基础经验 30 XP
+    let exp = 30
+    
+    // 优先级加成
+    switch (task.priority) {
+      case 'high':
+        exp += 15  // 高优先级 +15
+        break
+      case 'medium':
+        exp += 8   // 中优先级 +8
+        break
+      case 'low':
+        exp += 3   // 低优先级 +3
+        break
+    }
+    
+    // 任务类型加成
+    switch (task.task_type) {
+      case 'agent':
+        exp += 20  // Agent任务更复杂 +20
+        break
+      case 'complex':
+        exp += 15  // 复杂任务 +15
+        break
+      case 'research':
+        exp += 10  // 研究任务 +10
+        break
+    }
+    
+    return exp
   }
 
   /**

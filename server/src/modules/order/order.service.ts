@@ -137,12 +137,32 @@ export class OrderService {
       throw new Error(`提交订单结果失败: ${error.message}`)
     }
     
-    // 增加分身经验
+    // 增加分身经验：根据订单预算计算
     if (data.avatar_id) {
-      await this.addAvatarExp(data.avatar_id, 10)
+      const exp = this.calculateOrderExp(data)
+      await this.addAvatarExp(data.avatar_id, exp)
     }
     
     return data
+  }
+
+  /**
+   * 计算订单完成获得的经验值
+   * 规则：根据订单预算计算，预算越高经验值越多
+   */
+  private calculateOrderExp(order: any): number {
+    const budget = order.budget || 0
+    
+    // 基础经验 30 XP
+    let exp = 30
+    
+    // 预算加成：每增加100元 +5 XP，上限 +50
+    if (budget > 0) {
+      const budgetBonus = Math.min(50, Math.floor(budget / 100) * 5)
+      exp += budgetBonus
+    }
+    
+    return exp
   }
 
   async acceptOrder(orderId: string, avatarId: string) {
