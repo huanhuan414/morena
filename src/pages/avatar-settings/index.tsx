@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { 
   ChevronRight, Sparkles, Settings, Trash2, 
-  Volume2, Bell, Moon, Zap, Shield
+  Volume2, Bell, Moon, Zap, Shield, Users
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -133,6 +133,10 @@ export default function AvatarSettingsPage() {
     })
   }
 
+  const goToFriends = () => {
+    navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatarId}` })
+  }
+
   const settingItems = [
     { 
       key: 'voice_enabled', 
@@ -179,7 +183,7 @@ export default function AvatarSettingsPage() {
   if (!avatar) {
     return (
       <View className="avatar-settings-page loading">
-        <Text className="loading-text">加载中...</Text>
+        <Text className="as-loading-text">加载中...</Text>
       </View>
     )
   }
@@ -187,45 +191,45 @@ export default function AvatarSettingsPage() {
   return (
     <View className="avatar-settings-page">
       {/* 顶部导航 */}
-      <View className="settings-header">
-        <View className="header-back" onClick={() => navigateBack()}>
-          <Text className="back-text">← 返回</Text>
+      <View className="as-header">
+        <View className="as-header-back" onClick={() => navigateBack()}>
+          <Text className="as-back-text">← 返回</Text>
         </View>
-        <Text className="header-title">分身设置</Text>
-        <View className="header-action" onClick={() => editing ? saveProfile() : setEditing(true)}>
-          <Text className="action-text">{editing ? '保存' : '编辑'}</Text>
+        <Text className="as-header-title">分身设置</Text>
+        <View className="as-header-action" onClick={() => editing ? saveProfile() : setEditing(true)}>
+          <Text className="as-action-text">{editing ? '保存' : '编辑'}</Text>
         </View>
       </View>
 
-      <ScrollView className="settings-scroll" scrollY>
+      <ScrollView className="as-scroll" scrollY>
         {/* 分身信息 */}
-        <View className="avatar-section">
-          <View className="avatar-card">
-            <View className="avatar-avatar">
+        <View className="as-avatar-section">
+          <View className="as-avatar-card">
+            <View className="as-avatar-avatar">
               {avatar.avatar_url ? (
-                <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                <Image src={avatar.avatar_url} className="as-avatar-img" mode="aspectFill" />
               ) : (
-                <View className="avatar-placeholder">
+                <View className="as-avatar-placeholder">
                   <Sparkles size={40} color="#00f5ff" />
                 </View>
               )}
             </View>
             
             {editing ? (
-              <View className="edit-form">
-                <View className="edit-item">
-                  <Text className="edit-label">名称</Text>
+              <View className="as-edit-form">
+                <View className="as-edit-item">
+                  <Text className="as-edit-label">名称</Text>
                   <Input 
-                    className="edit-input"
+                    className="as-edit-input"
                     value={editName}
                     onInput={e => setEditName(e.detail.value)}
                     placeholder="输入分身名称"
                   />
                 </View>
-                <View className="edit-item">
-                  <Text className="edit-label">性格</Text>
+                <View className="as-edit-item">
+                  <Text className="as-edit-label">性格</Text>
                   <Textarea 
-                    className="edit-textarea"
+                    className="as-edit-textarea"
                     value={editPersonality}
                     onInput={e => setEditPersonality(e.detail.value)}
                     placeholder="描述分身性格特点"
@@ -234,34 +238,50 @@ export default function AvatarSettingsPage() {
                 </View>
               </View>
             ) : (
-              <View className="avatar-info">
-                <Text className="avatar-name">{avatar.name}</Text>
-                <View className="avatar-meta">
-                  <Text className="meta-item">Lv.{avatar.level}</Text>
-                  <Text className="meta-divider">·</Text>
-                  <Text className="meta-item">{avatar.exp || 0} EXP</Text>
+              <View className="as-avatar-info">
+                <Text className="as-avatar-name">{avatar.name}</Text>
+                <View className="as-avatar-meta">
+                  <Text className="as-meta-item">Lv.{avatar.level}</Text>
+                  <Text className="as-meta-divider">·</Text>
+                  <Text className="as-meta-item">{avatar.exp || 0} EXP</Text>
                 </View>
-                <Text className="avatar-personality">{avatar.personality || '友好助手'}</Text>
+                <Text className="as-avatar-personality">{avatar.personality || '友好助手'}</Text>
               </View>
             )}
           </View>
         </View>
 
+        {/* 好友入口 */}
+        <View className="as-section">
+          <Text className="as-section-title">社交关系</Text>
+          
+          <View 
+            className="as-menu-item"
+            onClick={goToFriends}
+          >
+            <View className="as-menu-left">
+              <Users size={20} color="#00f5ff" />
+              <Text className="as-menu-text">好友列表</Text>
+            </View>
+            <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
+          </View>
+        </View>
+
         {/* 功能设置 */}
-        <View className="settings-section">
-          <Text className="section-title">功能设置</Text>
+        <View className="as-section">
+          <Text className="as-section-title">功能设置</Text>
           
           {settingItems.map((item, idx) => {
             const Icon = item.icon
             return (
-              <View key={idx} className="setting-item">
-                <View className="setting-left">
-                  <View className="setting-icon" style={{ background: `${item.color}20` }}>
+              <View key={idx} className="as-setting-item">
+                <View className="as-setting-left">
+                  <View className="as-setting-icon" style={{ background: `${item.color}20` }}>
                     <Icon size={20} color={item.color} />
                   </View>
-                  <View className="setting-info">
-                    <Text className="setting-title">{item.title}</Text>
-                    <Text className="setting-desc">{item.desc}</Text>
+                  <View className="as-setting-info">
+                    <Text className="as-setting-title">{item.title}</Text>
+                    <Text className="as-setting-desc">{item.desc}</Text>
                   </View>
                 </View>
                 <Switch 
@@ -274,30 +294,30 @@ export default function AvatarSettingsPage() {
         </View>
 
         {/* 托管设置 */}
-        <View className="settings-section">
-          <Text className="section-title">托管设置</Text>
+        <View className="as-section">
+          <Text className="as-section-title">托管设置</Text>
           
           <View 
-            className="menu-item"
+            className="as-menu-item"
             onClick={() => navigateBack()}
           >
-            <View className="menu-left">
+            <View className="as-menu-left">
               <Settings size={20} color="#00f5ff" />
-              <Text className="menu-text">托管配置</Text>
+              <Text className="as-menu-text">托管配置</Text>
             </View>
             <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
           </View>
         </View>
 
         {/* 危险操作 */}
-        <View className="danger-section">
-          <Button className="delete-btn" onClick={deleteAvatar}>
+        <View className="as-danger-section">
+          <Button className="as-delete-btn" onClick={deleteAvatar}>
             <Trash2 size={18} color="#ff6b6b" />
-            <Text className="delete-text">删除分身</Text>
+            <Text className="as-delete-text">删除分身</Text>
           </Button>
         </View>
 
-        <View className="bottom-space" />
+        <View className="as-bottom-space" />
       </ScrollView>
     </View>
   )

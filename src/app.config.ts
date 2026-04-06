@@ -5,6 +5,7 @@ export default defineAppConfig({
     'pages/avatar-create/index',
     'pages/avatar-manage/index',
     'pages/avatar-settings/index',
+    'pages/avatar-friends/index',
     'pages/mind-chat/index',
     'pages/publish-redirect/index',
     'pages/profile/index',

@@ -1,0 +1,183 @@
+.af-page {
+  min-height: 100vh;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+}
+
+.af-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 60rpx 24rpx 24rpx;
+  background: rgba(15, 15, 25, 0.8);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.af-header-back {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  width: 120rpx;
+}
+
+.af-back-text {
+  font-size: 28rpx;
+  color: #00f5ff;
+}
+
+.af-header-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.af-header-right {
+  width: 120rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.af-scroll {
+  flex: 1;
+  padding: 24rpx;
+}
+
+.af-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.af-loading-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.af-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.af-empty-icon {
+  margin-bottom: 32rpx;
+}
+
+.af-empty-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 16rpx;
+}
+
+.af-empty-desc {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  padding: 0 48rpx;
+  line-height: 1.6;
+}
+
+.af-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.af-count-section {
+  padding: 8rpx 0;
+}
+
+.af-count-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.af-friend-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 24rpx;
+  background: rgba(20, 20, 30, 0.6);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 24rpx;
+}
+
+.af-friend-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: rgba(0, 245, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.af-friend-img {
+  width: 100%;
+  height: 100%;
+}
+
+.af-friend-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.af-friend-info {
+  flex: 1;
+}
+
+.af-friend-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.af-friend-meta {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.af-friend-level {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.af-friend-divider {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.af-friend-date {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.af-reason-tag {
+  display: inline-block;
+  padding: 8rpx 16rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(191, 0, 255, 0.1));
+  border: 1rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 12rpx;
+}
+
+.af-reason-text {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+.af-bottom-space {
+  height: 60rpx;
+}

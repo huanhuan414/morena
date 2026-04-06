@@ -10,12 +10,12 @@
   justify-content: center;
 }
 
-.loading-text {
+.as-loading-text {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
-.settings-header {
+.as-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -24,41 +24,41 @@
   border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
-.header-back {
+.as-header-back {
   width: 120rpx;
 }
 
-.back-text {
+.as-back-text {
   font-size: 28rpx;
   color: #00f5ff;
 }
 
-.header-title {
+.as-header-title {
   font-size: 34rpx;
   font-weight: 600;
   color: #fff;
 }
 
-.header-action {
+.as-header-action {
   width: 120rpx;
   text-align: right;
 }
 
-.action-text {
+.as-action-text {
   font-size: 28rpx;
   color: #00f5ff;
 }
 
-.settings-scroll {
+.as-scroll {
   flex: 1;
   padding: 24rpx;
 }
 
-.avatar-section {
+.as-avatar-section {
   margin-bottom: 32rpx;
 }
 
-.avatar-card {
+.as-avatar-card {
   padding: 32rpx;
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(191, 0, 255, 0.1));
   border: 1rpx solid rgba(0, 245, 255, 0.2);
@@ -68,19 +68,19 @@
   gap: 24rpx;
 }
 
-.avatar-avatar {
+.as-avatar-avatar {
   width: 120rpx;
   height: 120rpx;
   flex-shrink: 0;
 }
 
-.avatar-img {
+.as-avatar-img {
   width: 100%;
   height: 100%;
   border-radius: 24rpx;
 }
 
-.avatar-placeholder {
+.as-avatar-placeholder {
   width: 100%;
   height: 100%;
   border-radius: 24rpx;
@@ -90,89 +90,83 @@
   justify-content: center;
 }
 
-.avatar-info {
+.as-avatar-info {
   flex: 1;
 }
 
-.avatar-name {
+.as-avatar-name {
   font-size: 36rpx;
   font-weight: 600;
   color: #fff;
   display: block;
 }
 
-.avatar-meta {
+.as-avatar-meta {
   display: flex;
   align-items: center;
   gap: 8rpx;
   margin-top: 8rpx;
 }
 
-.meta-item {
+.as-meta-item {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
-.meta-divider {
+.as-meta-divider {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.3);
 }
 
-.avatar-personality {
+.as-avatar-personality {
   font-size: 26rpx;
   color: rgba(255, 255, 255, 0.5);
   display: block;
   margin-top: 8rpx;
 }
 
-.edit-form {
+.as-edit-form {
   flex: 1;
 }
 
-.edit-item {
+.as-edit-item {
   margin-bottom: 16rpx;
 }
 
-.edit-label {
+.as-edit-label {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.5);
   display: block;
   margin-bottom: 8rpx;
 }
 
-.edit-input-wrap {
+.as-edit-input {
+  width: 100%;
+  height: 72rpx;
+  font-size: 28rpx;
+  color: #fff;
   background: rgba(30, 30, 45, 0.8);
   border: 1rpx solid rgba(255, 255, 255, 0.1);
   border-radius: 12rpx;
   padding: 0 16rpx;
 }
 
-.edit-input {
+.as-edit-textarea {
   width: 100%;
-  height: 72rpx;
+  min-height: 120rpx;
   font-size: 28rpx;
   color: #fff;
-}
-
-.edit-textarea-wrap {
   background: rgba(30, 30, 45, 0.8);
   border: 1rpx solid rgba(255, 255, 255, 0.1);
   border-radius: 12rpx;
   padding: 16rpx;
 }
 
-.edit-textarea {
-  width: 100%;
-  min-height: 120rpx;
-  font-size: 28rpx;
-  color: #fff;
-}
-
-.settings-section {
+.as-section {
   margin-bottom: 32rpx;
 }
 
-.section-title {
+.as-section-title {
   font-size: 26rpx;
   color: rgba(255, 255, 255, 0.4);
   margin-bottom: 16rpx;
@@ -180,7 +174,7 @@
   display: block;
 }
 
-.setting-item {
+.as-setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -191,13 +185,13 @@
   margin-bottom: 12rpx;
 }
 
-.setting-left {
+.as-setting-left {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
 
-.setting-icon {
+.as-setting-icon {
   width: 64rpx;
   height: 64rpx;
   border-radius: 16rpx;
@@ -206,23 +200,23 @@
   justify-content: center;
 }
 
-.setting-info {
+.as-setting-info {
   display: flex;
   flex-direction: column;
 }
 
-.setting-title {
+.as-setting-title {
   font-size: 28rpx;
   color: #fff;
 }
 
-.setting-desc {
+.as-setting-desc {
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.4);
   margin-top: 4rpx;
 }
 
-.menu-item {
+.as-menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -233,22 +227,22 @@
   margin-bottom: 12rpx;
 }
 
-.menu-left {
+.as-menu-left {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
 
-.menu-text {
+.as-menu-text {
   font-size: 28rpx;
   color: #fff;
 }
 
-.danger-section {
+.as-danger-section {
   margin-top: 32rpx;
 }
 
-.delete-btn {
+.as-delete-btn {
   width: 100%;
   height: 88rpx;
   background: rgba(255, 107, 107, 0.1);
@@ -260,11 +254,11 @@
   gap: 12rpx;
 }
 
-.delete-text {
+.as-delete-text {
   font-size: 28rpx;
   color: #ff6b6b;
 }
 
-.bottom-space {
+.as-bottom-space {
   height: 60rpx;
 }
