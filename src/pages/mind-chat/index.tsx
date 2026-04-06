@@ -1937,6 +1937,9 @@ export default function MindChatPage() {
                     </View>
                   </View>
                   <Text className="detail-hint">
+                    距离 Lv.{(avatar?.level || 1) + 1} 还需 {((avatar?.level || 1) * 100) - (avatar?.exp || 0)} XP
+                  </Text>
+                  <Text className="detail-hint">
                     通过对话积累经验值，提升等级。等级越高，我的能力越强，对你的理解也越深。
                   </Text>
                   <View className="detail-level-benefits">
