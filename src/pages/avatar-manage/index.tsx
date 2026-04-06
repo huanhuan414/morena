@@ -1,10 +1,10 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check } from 'lucide-react-taro'
 import './index.css'
 
 interface Avatar {
@@ -37,8 +37,22 @@ interface Avatar {
   }
 }
 
+// 预设时段选项
+const TIME_SLOT_PRESETS = [
+  { id: 'all', label: '全天', slots: ['00:00-24:00'] },
+  { id: 'daytime', label: '白天', slots: ['08:00-18:00'] },
+  { id: 'work', label: '工作时间', slots: ['09:00-12:00', '14:00-18:00'] },
+  { id: 'evening', label: '晚间', slots: ['18:00-22:00'] },
+  { id: 'night', label: '夜间', slots: ['20:00-24:00'] },
+  { id: 'custom', label: '自定义', slots: [] },
+]
+
 export default function AvatarManagePage() {
   const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [showTimeModal, setShowTimeModal] = useState(false)
+  const [editingAvatarId, setEditingAvatarId] = useState<string | null>(null)
+  const [selectedPreset, setSelectedPreset] = useState<string>('all')
+  const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
 
   useLoad(() => {})
 
@@ -135,6 +149,60 @@ export default function AvatarManagePage() {
     navigateTo({ url: `/pages/avatar-settings/index?avatarId=${avatarId}` })
   }
 
+  // 打开时间选择弹窗
+  const openTimeModal = (avatarId: string) => {
+    setEditingAvatarId(avatarId)
+    const avatar = avatars.find(a => a.id === avatarId)
+    const currentSlots = avatar?.hosting_settings?.active_hours || ['00:00-24:00']
+    
+    // 检查是否匹配预设
+    const matchedPreset = TIME_SLOT_PRESETS.find(p => 
+      JSON.stringify(p.slots) === JSON.stringify(currentSlots)
+    )
+    
+    if (matchedPreset) {
+      setSelectedPreset(matchedPreset.id)
+      setCustomSlots(['09:00', '18:00'])
+    } else {
+      setSelectedPreset('custom')
+      // 解析自定义时段
+      if (currentSlots.length > 0 && currentSlots[0].includes('-')) {
+        const [start, end] = currentSlots[0].split('-')
+        setCustomSlots([start, end])
+      }
+    }
+    
+    setShowTimeModal(true)
+  }
+
+  // 选择预设时段
+  const selectPreset = (presetId: string) => {
+    setSelectedPreset(presetId)
+  }
+
+  // 保存时段设置
+  const saveTimeSlots = async () => {
+    if (!editingAvatarId) return
+    
+    let activeHours: string[]
+    
+    if (selectedPreset === 'custom') {
+      activeHours = [`${customSlots[0]}-${customSlots[1]}`]
+    } else {
+      const preset = TIME_SLOT_PRESETS.find(p => p.id === selectedPreset)
+      activeHours = preset?.slots || ['00:00-24:00']
+    }
+    
+    await updateHostingSettings(editingAvatarId, { active_hours: activeHours })
+    setShowTimeModal(false)
+  }
+
+  // 格式化时段显示
+  const formatActiveHours = (slots?: string[]) => {
+    if (!slots || slots.length === 0) return '全天'
+    return slots.join(', ').replace(/-/g, ' ~ ')
+  }
+
   return (
     <View className="avatar-manage-page">
       {/* 顶部导航 */}
@@ -213,12 +281,15 @@ export default function AvatarManagePage() {
                       </Text>
                       
                       {/* 活跃时段 */}
-                      <View className="setting-item">
+                      <View className="setting-item" onClick={() => openTimeModal(avatar.id)}>
                         <View className="setting-label">
                           <Clock size={16} color="rgba(255,255,255,0.6)" />
                           <Text className="setting-text">活跃时段</Text>
                         </View>
-                        <Text className="setting-value">9:00-22:00</Text>
+                        <View className="setting-value-wrap">
+                          <Text className="setting-value">{formatActiveHours(avatar.hosting_settings?.active_hours)}</Text>
+                          <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                        </View>
                       </View>
 
                       {/* 互动频率 */}
@@ -297,6 +368,101 @@ export default function AvatarManagePage() {
 
         <View className="bottom-space" />
       </ScrollView>
+
+      {/* 时间选择弹窗 */}
+      {showTimeModal && (
+        <View className="time-modal-overlay" onClick={() => setShowTimeModal(false)}>
+          <View className="time-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="time-modal-header">
+              <Text className="time-modal-title">选择活跃时段</Text>
+              <View className="time-modal-close" onClick={() => setShowTimeModal(false)}>
+                <X size={24} color="rgba(255,255,255,0.6)" />
+              </View>
+            </View>
+
+            <View className="time-modal-content">
+              {/* 预设选项 */}
+              <View className="preset-section">
+                <Text className="section-title">快速选择</Text>
+                <View className="preset-grid">
+                  {TIME_SLOT_PRESETS.filter(p => p.id !== 'custom').map(preset => (
+                    <View 
+                      key={preset.id}
+                      className={`preset-item ${selectedPreset === preset.id ? 'active' : ''}`}
+                      onClick={() => selectPreset(preset.id)}
+                    >
+                      {selectedPreset === preset.id && (
+                        <View className="preset-check">
+                          <Check size={14} color="#00f5ff" />
+                        </View>
+                      )}
+                      <Text className="preset-label">{preset.label}</Text>
+                      <Text className="preset-time">{preset.slots.join(', ')}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* 自定义时段 */}
+              <View className="custom-section">
+                <View 
+                  className={`custom-header ${selectedPreset === 'custom' ? 'active' : ''}`}
+                  onClick={() => selectPreset('custom')}
+                >
+                  <Text className="custom-title">自定义时段</Text>
+                  {selectedPreset === 'custom' && (
+                    <Check size={18} color="#00f5ff" />
+                  )}
+                </View>
+
+                {selectedPreset === 'custom' && (
+                  <View className="custom-time-picker">
+                    <View className="time-picker-row">
+                      <Text className="time-label">开始时间</Text>
+                      <View className="time-select-wrap">
+                        <Picker 
+                          mode="time" 
+                          value={customSlots[0]}
+                          onChange={(e) => setCustomSlots([e.detail.value, customSlots[1]])}
+                        >
+                          <View className="time-select">
+                            <Text className="time-value">{customSlots[0]}</Text>
+                            <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
+                          </View>
+                        </Picker>
+                      </View>
+                    </View>
+                    <View className="time-picker-row">
+                      <Text className="time-label">结束时间</Text>
+                      <View className="time-select-wrap">
+                        <Picker 
+                          mode="time" 
+                          value={customSlots[1]}
+                          onChange={(e) => setCustomSlots([customSlots[0], e.detail.value])}
+                        >
+                          <View className="time-select">
+                            <Text className="time-value">{customSlots[1]}</Text>
+                            <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
+                          </View>
+                        </Picker>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View className="time-modal-footer">
+              <Button className="time-cancel-btn" onClick={() => setShowTimeModal(false)}>
+                <Text className="time-cancel-text">取消</Text>
+              </Button>
+              <Button className="time-confirm-btn" onClick={saveTimeSlots}>
+                <Text className="time-confirm-text">确认</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
