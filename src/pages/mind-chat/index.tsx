@@ -10,6 +10,7 @@ import { PublishGuideDialog, PLATFORM_CONFIGS } from '@/components/agent/Publish
 import MarkdownRender from '@/components/markdown-render'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
@@ -1813,8 +1814,8 @@ export default function MindChatPage() {
         )}
       </View>
       
-      {/* 学习详情弹窗 */}
-      {showLearningDetail && (
+      {/* 学习详情弹窗 - 等级详情使用独立组件 */}
+      {showLearningDetail && showLearningDetail !== 'level' && (
         <View className="learning-detail-overlay" onClick={() => setShowLearningDetail(null)}>
           <View className="learning-detail-modal" onClick={e => e.stopPropagation()}>
             <View className="learning-detail-header">
@@ -1822,7 +1823,6 @@ export default function MindChatPage() {
                 {showLearningDetail === 'dialog' && '对话统计'}
                 {showLearningDetail === 'days' && '学习天数'}
                 {showLearningDetail === 'mastery' && '掌握度分析'}
-                {showLearningDetail === 'level' && '等级成长'}
                 {showLearningDetail === 'identity' && '我的画像'}
                 {showLearningDetail === 'style' && '风格分析'}
                 {showLearningDetail === 'interests' && '兴趣话题'}
@@ -1918,47 +1918,6 @@ export default function MindChatPage() {
                       <View className="breakdown-bar">
                         <View className="breakdown-fill" style={{ width: `${Math.min(100, (learningStats.communicationStyle?.direct || 0.5) * 100)}%` }} />
                       </View>
-                    </View>
-                  </View>
-                </View>
-              )}
-              
-              {/* 等级详情 */}
-              {showLearningDetail === 'level' && (
-                <View className="detail-section">
-                  <View className="detail-stat-card large">
-                    <Text className="detail-stat-value">Lv.{avatar?.level || 1}</Text>
-                    <Text className="detail-stat-label">当前等级</Text>
-                  </View>
-                  <View className="detail-level-info">
-                    <Text className="detail-level-exp">经验值：{avatar?.exp || 0} / {(avatar?.level || 1) * 100} XP</Text>
-                    <View className="detail-level-bar">
-                      <View className="detail-level-fill" style={{ width: `${Math.min(100, ((avatar?.exp || 0) - ((avatar?.level || 1) - 1) * 100))}%` }} />
-                    </View>
-                  </View>
-                  <Text className="detail-hint">
-                    距离 Lv.{(avatar?.level || 1) + 1} 还需 {((avatar?.level || 1) * 100) - (avatar?.exp || 0)} XP
-                  </Text>
-                  <Text className="detail-hint">
-                    通过对话积累经验值，提升等级。等级越高，我的能力越强，对你的理解也越深。
-                  </Text>
-                  <View className="detail-level-benefits">
-                    <Text className="detail-benefits-title">等级特权</Text>
-                    <View className="benefit-item">
-                      <Text className="benefit-level">Lv.1-5</Text>
-                      <Text className="benefit-desc">基础对话能力</Text>
-                    </View>
-                    <View className="benefit-item">
-                      <Text className="benefit-level">Lv.6-10</Text>
-                      <Text className="benefit-desc">风格学习 + 个性化回复</Text>
-                    </View>
-                    <View className="benefit-item">
-                      <Text className="benefit-level">Lv.11-20</Text>
-                      <Text className="benefit-desc">深度理解 + 情感共鸣</Text>
-                    </View>
-                    <View className="benefit-item">
-                      <Text className="benefit-level">Lv.21+</Text>
-                      <Text className="benefit-desc">心意相通 + 完美契合</Text>
                     </View>
                   </View>
                 </View>
@@ -2098,6 +2057,16 @@ export default function MindChatPage() {
             </ScrollView>
           </View>
         </View>
+      )}
+
+      {/* 等级详情弹窗 - 使用统一样式 */}
+      {showLearningDetail === 'level' && (
+        <LevelDetailDialog 
+          open
+          onClose={() => setShowLearningDetail(null)}
+          currentLevel={avatar?.level || 1}
+          currentExp={avatar?.exp || 0}
+        />
       )}
       
       {/* 学习特效提示 */}
