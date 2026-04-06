@@ -10,22 +10,22 @@
 
 .profile-bg {
   position: relative;
-  height: 1120rpx;
+  height: 400rpx;
   overflow: hidden;
 }
 
 .bg-glow {
   position: absolute;
-  top: -400rpx;
-  left: -400rpx;
-  right: -400rpx;
-  height: 1600rpx;
+  top: -200rpx;
+  left: -200rpx;
+  right: -200rpx;
+  height: 600rpx;
   background: radial-gradient(ellipse at center top, rgba(0, 245, 255, 0.15) 0%, transparent 60%),
               radial-gradient(ellipse at 30% 0%, rgba(191, 0, 255, 0.1) 0%, transparent 50%);
 }
 
 .user-card {
-  margin: -480rpx 32rpx 0;
+  margin: -200rpx 32rpx 0;
   background: rgba(255, 255, 255, 0.03);
   border: 4rpx solid rgba(255, 255, 255, 0.08);
   border-radius: 64rpx;
