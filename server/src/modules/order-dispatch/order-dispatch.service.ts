@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { NotificationService } from '../notification/notification.service'
 
 export interface AvatarScore {
   id: string
@@ -9,15 +10,28 @@ export interface AvatarScore {
   level: number
   totalOrders: number
   completedOrders: number
+  skillMatchScore: number
+  platformMatchScore: number
+  reason: string[]
+}
+
+export interface DispatchResult {
+  orderId: string
+  avatarId: string
+  avatarName: string
+  score: number
+  reason: string[]
 }
 
 @Injectable()
 export class OrderDispatchService {
+  constructor(private readonly notificationService: NotificationService) {}
+
   /**
-   * 分身调度算法
-   * 根据完成率、活跃度、等级综合评分匹配最合适的分身
+   * 智能订单分配算法
+   * 根据订单需求和分身能力进行多维度匹配
    */
-  async dispatchOrder(orderId: string): Promise<any> {
+  async dispatchOrder(orderId: string): Promise<DispatchResult | null> {
     const client = getSupabaseClient()
     
     // 1. 获取订单信息
@@ -30,157 +44,329 @@ export class OrderDispatchService {
     if (!order) {
       throw new Error('订单不存在')
     }
-    
-    // 2. 获取所有活跃分身并计算评分
-    const { data: avatars } = await client
-      .from('avatars')
-      .select('id, name, level, exp, completion_rate, total_orders, completed_orders, config, is_hosted')
-      .eq('status', 'active')
-      .eq('is_hosted', true) // 只选择开启托管的分身
-    
-    if (!avatars || avatars.length === 0) {
-      console.log('[分身调度] 暂无开启托管的分身，订单保持待接单状态')
+
+    // 如果订单已有分配，不重复分配
+    if (order.avatar_id) {
+      console.log('[分身调度] 订单已分配，跳过')
       return null
     }
     
-    // 3. 计算每个分身的综合评分
-    const scoredAvatars = avatars.map(avatar => this.calculateAvatarScore(avatar))
+    // 2. 获取所有活跃分身及其平台配置
+    const { data: avatars } = await client
+      .from('avatars')
+      .select(`
+        *,
+        platform_configs(*)
+      `)
+      .eq('status', 'active')
     
-    // 4. 按评分排序
-    scoredAvatars.sort((a, b) => b.score - a.score)
+    if (!avatars || avatars.length === 0) {
+      console.log('[分身调度] 暂无活跃分身，订单保持待接单状态')
+      return null
+    }
     
-    // 5. 选择评分最高的分身
-    const selectedAvatar = scoredAvatars[0]
+    // 3. 获取用户信息和通知偏好
+    const userIds = [...new Set(avatars.map(a => a.user_id))]
+    const { data: users } = await client
+      .from('users')
+      .select('id, phone, notification_settings')
+      .in('id', userIds)
     
-    // 6. 分配订单
-    await client
-      .from('orders')
-      .update({
-        avatar_id: selectedAvatar.id,
-        status: 'in_progress',
-        updated_at: new Date().toISOString()
+    const userMap = new Map(users?.map(u => [u.id, u]) || [])
+    
+    // 4. 计算每个分身的综合评分
+    const scoredAvatars = avatars.map(avatar => {
+      const user = userMap.get(avatar.user_id)
+      return this.calculateAvatarScore(avatar, order, user)
+    })
+    
+    // 5. 过滤出开启托管或有可用通知的分身
+    const eligibleAvatars = scoredAvatars.filter(avatar => {
+      // 如果开启托管，直接可用
+      if (avatar.is_hosted) return true
+      // 如果用户有手机号且允许通知，也可用（需要人工确认）
+      const user = userMap.get(avatar.id)
+      return user?.phone && user?.notification_settings?.order_dispatch !== false
+    })
+    
+    if (eligibleAvatars.length === 0) {
+      console.log('[分身调度] 没有符合条件的分身，订单保持待接单状态')
+      return null
+    }
+    
+    // 6. 按评分排序
+    eligibleAvatars.sort((a, b) => b.score - a.score)
+    
+    // 7. 选择评分最高的分身
+    const selectedAvatar = eligibleAvatars[0]
+    const avatarUser = userMap.get(selectedAvatar.user_id)
+    
+    // 8. 根据托管状态决定是否自动分配
+    if (selectedAvatar.is_hosted) {
+      // 自动分配
+      await this.assignOrderToAvatar(orderId, selectedAvatar.id)
+      
+      // 发送应用内通知
+      await this.notificationService.createNotification({
+        userId: selectedAvatar.user_id,
+        type: 'system',
+        title: '订单自动分配',
+        content: `您的分身"${selectedAvatar.name}"已自动接取订单：${order.title}`,
+        data: { orderId, avatarId: selectedAvatar.id }
       })
-      .eq('id', orderId)
+      
+    } else {
+      // 发送确认请求
+      await this.sendDispatchRequest(orderId, selectedAvatar, avatarUser, order)
+    }
     
-    // 7. 创建执行步骤
-    await this.createExecutionSteps(orderId, selectedAvatar.id, order)
-    
-    // 8. 返回分配结果
+    // 9. 返回分配结果
     return {
       orderId,
       avatarId: selectedAvatar.id,
       avatarName: selectedAvatar.name,
       score: selectedAvatar.score,
-      reason: this.getSelectionReason(selectedAvatar)
+      reason: selectedAvatar.reason
     }
   }
 
   /**
    * 计算分身综合评分
+   * 包含：订单匹配度、技能匹配、平台匹配、基础能力
    */
-  private calculateAvatarScore(avatar: any): AvatarScore {
+  private calculateAvatarScore(avatar: any, order: any, user: any): AvatarScore & { user_id: string; is_hosted: boolean } {
+    const requirements = order.requirements || {}
+    const reasons: string[] = []
+    
+    // ========== 基础能力评分 (40%) ==========
     const completionRate = avatar.completion_rate || 100
     const level = avatar.level || 1
-    const totalOrders = avatar.total_orders || 0
     const completedOrders = avatar.completed_orders || 0
-    
-    // 评分权重
-    const weights = {
-      completionRate: 0.4,  // 完成率权重 40%
-      level: 0.3,           // 等级权重 30%
-      activity: 0.2,        // 活跃度权重 20%
-      experience: 0.1       // 经验权重 10%
-    }
+    const totalOrders = avatar.total_orders || 0
     
     // 完成率评分 (0-100)
-    const completionScore = completionRate
+    const baseScore = completionRate * 0.4
     
-    // 等级评分 (1-100 级映射到 0-100 分)
-    const levelScore = Math.min(level * 5, 100)
-    
-    // 活跃度评分 (基于托管状态和最近活动)
-    const activityScore = avatar.is_hosted ? 80 : 50
+    // 等级评分 (1-100映射)
+    const levelScore = Math.min(level * 5, 100) * 0.3
     
     // 经验评分 (基于完成订单数)
-    const experienceScore = Math.min(completedOrders * 2, 100)
+    const expScore = Math.min(completedOrders * 3, 100) * 0.2
     
-    // 综合评分
+    // 活跃度评分 (托管状态)
+    const activityScore = avatar.is_hosted ? 100 : 50
+    
+    // ========== 技能匹配评分 (30%) ==========
+    const skills = avatar.skills || []
+    const requiredSkills = requirements.required_skills || []
+    let skillMatchScore = 50 // 默认匹配度
+    
+    if (requiredSkills.length > 0) {
+      const matchedSkills = skills.filter(s => requiredSkills.includes(s))
+      skillMatchScore = (matchedSkills.length / requiredSkills.length) * 100
+      if (matchedSkills.length > 0) {
+        reasons.push(`技能匹配: ${matchedSkills.join(', ')}`)
+      }
+    }
+    
+    // ========== 平台匹配评分 (30%) ==========
+    const platforms = requirements.platforms || []
+    const avatarPlatforms = avatar.platform_configs?.map(c => c.platform_type) || []
+    let platformMatchScore = 50 // 默认匹配度
+    
+    if (platforms.length > 0) {
+      const matchedPlatforms = platforms.filter(p => avatarPlatforms.includes(p))
+      platformMatchScore = (matchedPlatforms.length / platforms.length) * 100
+      if (matchedPlatforms.length > 0) {
+        reasons.push(`平台匹配: ${matchedPlatforms.join(', ')}`)
+      }
+    }
+    
+    // ========== 预算匹配评分 (额外加分) ==========
+    const budget = order.budget || 0
+    let budgetBonus = 0
+    if (budget >= 1000 && level >= 5) {
+      budgetBonus = 10
+      reasons.push('高预算订单匹配')
+    }
+    
+    // ========== 综合评分 ==========
+    const skillWeight = 0.3
+    const platformWeight = 0.3
     const totalScore = 
-      completionScore * weights.completionRate +
-      levelScore * weights.level +
-      activityScore * weights.activity +
-      experienceScore * weights.experience
+      baseScore * 0.4 +
+      levelScore +
+      expScore +
+      activityScore * 0.1 +
+      skillMatchScore * skillWeight +
+      platformMatchScore * platformWeight +
+      budgetBonus
+    
+    // 基础能力说明
+    if (completionRate >= 95) reasons.push('完成率优秀')
+    if (level >= 5) reasons.push('等级较高')
+    if (completedOrders >= 10) reasons.push('经验丰富')
     
     return {
+      user_id: avatar.user_id,
       id: avatar.id,
       name: avatar.name,
       score: Math.round(totalScore * 100) / 100,
       completionRate,
       level,
       totalOrders,
-      completedOrders
+      completedOrders,
+      skillMatchScore,
+      platformMatchScore,
+      reason: reasons,
+      is_hosted: avatar.is_hosted || false
     }
+  }
+
+  /**
+   * 自动分配订单给分身
+   */
+  private async assignOrderToAvatar(orderId: string, avatarId: string) {
+    const client = getSupabaseClient()
+    
+    // 更新订单状态
+    await client
+      .from('orders')
+      .update({
+        avatar_id: avatarId,
+        status: 'in_progress',
+        assigned_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+    
+    // 更新分身订单计数
+    await client
+      .from('avatars')
+      .update({
+        total_orders: client.sql`total_orders + 1`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', avatarId)
+    
+    // 创建执行步骤
+    await this.createExecutionSteps(orderId, avatarId)
+  }
+
+  /**
+   * 发送分配确认请求
+   */
+  private async sendDispatchRequest(
+    orderId: string, 
+    avatar: AvatarScore & { user_id: string }, 
+    user: any,
+    order: any
+  ) {
+    const client = getSupabaseClient()
+    
+    // 创建待确认的分配记录
+    await client
+      .from('order_dispatch_requests')
+      .insert({
+        order_id: orderId,
+        avatar_id: avatar.id,
+        user_id: avatar.user_id,
+        status: 'pending',
+        score: avatar.score,
+        match_reasons: avatar.reason,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24小时过期
+      })
+    
+    // 发送通知
+    await this.notificationService.createNotification({
+      userId: avatar.user_id,
+      type: 'system',
+      title: '订单分配请求',
+      content: `有新的订单等待您确认：${order.title}`,
+      data: { orderId, avatarId: avatar.id, type: 'dispatch_request' }
+    })
+    
+    // 如果有手机号，发送短信
+    if (user?.phone) {
+      // TODO: 集成短信服务
+      console.log(`[分身调度] 发送短信通知到 ${user.phone}`)
+    }
+  }
+
+  /**
+   * 确认订单分配
+   */
+  async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {
+    const client = getSupabaseClient()
+    
+    // 验证请求
+    const { data: request } = await client
+      .from('order_dispatch_requests')
+      .select('*')
+      .eq('id', requestId)
+      .eq('avatar_id', avatarId)
+      .eq('status', 'pending')
+      .single()
+    
+    if (!request) {
+      throw new Error('分配请求不存在或已过期')
+    }
+    
+    if (new Date(request.expires_at) < new Date()) {
+      throw new Error('分配请求已过期')
+    }
+    
+    // 更新请求状态
+    await client
+      .from('order_dispatch_requests')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+    
+    // 分配订单
+    await this.assignOrderToAvatar(request.order_id, avatarId)
+    
+    return true
+  }
+
+  /**
+   * 拒绝订单分配
+   */
+  async rejectDispatch(requestId: string, avatarId: string): Promise<boolean> {
+    const client = getSupabaseClient()
+    
+    await client
+      .from('order_dispatch_requests')
+      .update({ status: 'rejected' })
+      .eq('id', requestId)
+      .eq('avatar_id', avatarId)
+    
+    return true
   }
 
   /**
    * 创建订单执行步骤
    */
-  private async createExecutionSteps(orderId: string, avatarId: string, order: any) {
+  private async createExecutionSteps(orderId: string, avatarId: string) {
     const client = getSupabaseClient()
     
     const steps = [
-      {
-        order_id: orderId,
-        avatar_id: avatarId,
-        step_type: 'planning',
-        step_name: '策划方案制定',
-        status: 'pending'
-      },
-      {
-        order_id: orderId,
-        avatar_id: avatarId,
-        step_type: 'content_creation',
-        step_name: '内容创作',
-        status: 'pending'
-      },
-      {
-        order_id: orderId,
-        avatar_id: avatarId,
-        step_type: 'distribution',
-        step_name: '内容分发',
-        status: 'pending'
-      },
-      {
-        order_id: orderId,
-        avatar_id: avatarId,
-        step_type: 'feedback',
-        step_name: '数据反馈',
-        status: 'pending'
-      }
+      { step_number: 1, step_name: '需求分析', description: '分析订单需求，制定执行方案' },
+      { step_number: 2, step_name: '内容创作', description: '根据要求生成内容' },
+      { step_number: 3, step_name: '内容审核', description: '审核生成的内容' },
+      { step_number: 4, step_name: '平台发布', description: '将内容发布到目标平台' },
+      { step_number: 5, step_name: '数据追踪', description: '追踪发布后的数据反馈' }
     ]
+    
+    const stepRecords = steps.map(step => ({
+      order_id: orderId,
+      avatar_id: avatarId,
+      ...step,
+      status: 'pending'
+    }))
     
     await client
       .from('order_executions')
-      .insert(steps)
-  }
-
-  /**
-   * 获取选择原因说明
-   */
-  private getSelectionReason(avatar: AvatarScore): string {
-    const reasons: string[] = []
-    
-    if (avatar.completionRate >= 95) {
-      reasons.push('完成率优秀')
-    }
-    if (avatar.level >= 5) {
-      reasons.push('等级较高')
-    }
-    if (avatar.completedOrders >= 10) {
-      reasons.push('经验丰富')
-    }
-    
-    return reasons.length > 0 ? reasons.join('、') : '综合评分最高'
+      .insert(stepRecords)
   }
 
   /**
@@ -193,7 +379,7 @@ export class OrderDispatchService {
       .from('order_executions')
       .select('*')
       .eq('order_id', orderId)
-      .order('created_at', { ascending: true })
+      .order('step_number', { ascending: true })
     
     return executions || []
   }
@@ -211,7 +397,7 @@ export class OrderDispatchService {
     
     if (status === 'in_progress') {
       updates.started_at = new Date().toISOString()
-    } else if (status === 'completed' || status === 'failed') {
+    } else if (status === 'completed') {
       updates.completed_at = new Date().toISOString()
     }
     
@@ -230,95 +416,176 @@ export class OrderDispatchService {
       throw new Error(`更新执行步骤失败: ${error.message}`)
     }
     
-    // 如果所有步骤都完成，更新订单状态
+    // 如果步骤完成，检查是否需要进入下一步
     if (status === 'completed') {
-      await this.checkOrderCompletion(data.order_id)
+      await this.moveToNextStep(data.order_id, data.step_number)
     }
     
     return data
   }
 
   /**
-   * 检查订单是否全部完成
+   * 进入下一步骤
    */
-  private async checkOrderCompletion(orderId: string) {
+  private async moveToNextStep(orderId: string, currentStep: number) {
     const client = getSupabaseClient()
     
-    const { data: executions } = await client
+    const { data: nextStep } = await client
       .from('order_executions')
-      .select('status')
+      .select('id')
       .eq('order_id', orderId)
+      .eq('step_number', currentStep + 1)
+      .single()
     
-    const allCompleted = executions?.every(e => e.status === 'completed')
-    
-    if (allCompleted) {
-      // 更新订单状态为待审核
+    if (nextStep) {
+      await client
+        .from('order_executions')
+        .update({ status: 'in_progress', started_at: new Date().toISOString() })
+        .eq('id', nextStep.id)
+    } else {
+      // 所有步骤完成，更新订单状态
       await client
         .from('orders')
-        .update({
-          status: 'reviewing',
-          completed_at: new Date().toISOString()
-        })
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', orderId)
-      
-      // 更新分身统计数据
-      const order = await client
-        .from('orders')
-        .select('avatar_id')
-        .eq('id', orderId)
-        .single()
-      
-      if (order.data?.avatar_id) {
-        await this.updateAvatarStats(order.data.avatar_id)
-      }
     }
   }
 
   /**
-   * 更新分身统计数据
+   * 获取订单分配状态
    */
-  private async updateAvatarStats(avatarId: string) {
+  async getDispatchStatus(orderId: string) {
     const client = getSupabaseClient()
     
-    // 获取分身当前统计
-    const { data: avatar } = await client
-      .from('avatars')
-      .select('total_orders, completed_orders')
-      .eq('id', avatarId)
+    const { data: order } = await client
+      .from('orders')
+      .select('*, avatars(name, avatar_url, level)')
+      .eq('id', orderId)
       .single()
     
-    if (avatar) {
-      const newCompleted = (avatar.completed_orders || 0) + 1
-      const newTotal = (avatar.total_orders || 0) + 1
-      const newRate = (newCompleted / newTotal) * 100
-      
-      await client
-        .from('avatars')
-        .update({
-          total_orders: newTotal,
-          completed_orders: newCompleted,
-          completion_rate: Math.round(newRate * 100) / 100
-        })
-        .eq('id', avatarId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+    
+    // 获取待确认的分配请求
+    const { data: pendingRequest } = await client
+      .from('order_dispatch_requests')
+      .select('*, avatars(name)')
+      .eq('order_id', orderId)
+      .eq('status', 'pending')
+      .single()
+    
+    // 获取执行进度
+    const executions = await this.getExecutionProgress(orderId)
+    
+    return {
+      order,
+      pendingRequest,
+      executions,
+      currentStep: executions.find(e => e.status === 'in_progress') || null
     }
   }
 
   /**
    * 获取推荐分身列表
    */
-  async getRecommendedAvatars(orderId: string, limit = 5) {
+  async getRecommendedAvatars(orderId: string, limit: number = 5) {
     const client = getSupabaseClient()
     
+    // 获取订单信息
+    const { data: order } = await client
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single()
+    
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+    
+    const requirements = order.requirements || {}
+    
+    // 获取所有活跃分身
     const { data: avatars } = await client
       .from('avatars')
-      .select('id, name, level, completion_rate, total_orders, completed_orders, is_hosted')
+      .select(`
+        *,
+        platform_configs(*)
+      `)
       .eq('status', 'active')
     
-    if (!avatars) return []
+    if (!avatars || avatars.length === 0) {
+      return []
+    }
     
-    const scoredAvatars = avatars.map(avatar => this.calculateAvatarScore(avatar))
+    // 计算每个分身的推荐评分
+    const scoredAvatars = avatars.map(avatar => this.calculateAvatarScore(avatar, order, null))
+    
+    // 按评分排序并返回前N个
     scoredAvatars.sort((a, b) => b.score - a.score)
     
-    return scoredAvatars.slice(0, limit)
+    return scoredAvatars.slice(0, limit).map(avatar => ({
+      id: avatar.id,
+      name: avatar.name,
+      avatar_url: avatar.avatar_url,
+      level: avatar.level,
+      score: avatar.score,
+      matchReasons: avatar.reason,
+      isHosted: avatar.is_hosted,
+      completionRate: avatar.completionRate,
+      completedOrders: avatar.completedOrders
+    }))
+  }
+
+  /**
+   * 取消订单分配
+   */
+  async cancelDispatch(orderId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 验证订单所有权
+    const { data: order } = await client
+      .from('orders')
+      .select('user_id, avatar_id')
+      .eq('id', orderId)
+      .single()
+    
+    if (!order || order.user_id !== userId) {
+      throw new Error('无权操作此订单')
+    }
+    
+    if (order.status === 'completed') {
+      throw new Error('已完成的订单无法取消')
+    }
+    
+    // 重置订单状态
+    await client
+      .from('orders')
+      .update({
+        avatar_id: null,
+        status: 'open',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+    
+    // 如果有待确认请求，标记为已取消
+    await client
+      .from('order_dispatch_requests')
+      .update({ status: 'cancelled' })
+      .eq('order_id', orderId)
+      .eq('status', 'pending')
+    
+    // 如果有已分配的分身，减少其订单计数
+    if (order.avatar_id) {
+      await client
+        .from('avatars')
+        .update({
+          total_orders: client.sql`GREATEST(total_orders - 1, 0)`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.avatar_id)
+    }
+    
+    return true
   }
 }

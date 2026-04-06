@@ -5,16 +5,22 @@ import { OrderDispatchService } from './order-dispatch.service'
 export class OrderDispatchController {
   constructor(private readonly dispatchService: OrderDispatchService) {}
 
+  /**
+   * 触发订单分配
+   */
   @Post(':id/dispatch')
   async dispatchOrder(@Param('id') orderId: string) {
     const result = await this.dispatchService.dispatchOrder(orderId)
     return {
       code: 200,
       data: result,
-      message: '订单分配成功'
+      message: result ? '订单分配成功' : '暂无符合条件的分身'
     }
   }
 
+  /**
+   * 获取订单执行进度
+   */
   @Get(':id/progress')
   async getProgress(@Param('id') orderId: string) {
     const progress = await this.dispatchService.getExecutionProgress(orderId)
@@ -25,22 +31,72 @@ export class OrderDispatchController {
     }
   }
 
-  @Get(':id/recommended-avatars')
-  async getRecommendedAvatars(
-    @Param('id') orderId: string,
-    @Query('limit') limit?: string
-  ) {
-    const avatars = await this.dispatchService.getRecommendedAvatars(
-      orderId,
-      limit ? parseInt(limit) : 5
-    )
+  /**
+   * 获取订单分配状态
+   */
+  @Get(':id/status')
+  async getDispatchStatus(@Param('id') orderId: string) {
+    const status = await this.dispatchService.getDispatchStatus(orderId)
     return {
       code: 200,
-      data: avatars,
+      data: status,
       message: '获取成功'
     }
   }
 
+  /**
+   * 确认订单分配
+   */
+  @Put('request/:requestId/confirm')
+  async confirmDispatch(
+    @Param('requestId') requestId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('avatarId') avatarId: string
+  ) {
+    const result = await this.dispatchService.confirmDispatch(requestId, avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '确认成功'
+    }
+  }
+
+  /**
+   * 拒绝订单分配
+   */
+  @Put('request/:requestId/reject')
+  async rejectDispatch(
+    @Param('requestId') requestId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('avatarId') avatarId: string
+  ) {
+    const result = await this.dispatchService.rejectDispatch(requestId, avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '已拒绝'
+    }
+  }
+
+  /**
+   * 取消订单分配
+   */
+  @Put(':id/cancel')
+  async cancelDispatch(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const result = await this.dispatchService.cancelDispatch(orderId, userId)
+    return {
+      code: 200,
+      data: result,
+      message: '已取消分配'
+    }
+  }
+
+  /**
+   * 更新执行步骤状态
+   */
   @Put('execution/:executionId/status')
   async updateExecutionStep(
     @Param('executionId') executionId: string,

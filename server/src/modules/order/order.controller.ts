@@ -109,6 +109,36 @@ export class OrderController {
     }
   }
 
+  @Get(':id/feedback')
+  async getFeedback(@Param('id') orderId: string) {
+    const feedback = await this.orderService.getOrderFeedback(orderId)
+    return {
+      code: 200,
+      data: feedback,
+      message: '获取成功'
+    }
+  }
+
+  @Get(':id/rating')
+  async getRating(@Param('id') orderId: string) {
+    const rating = await this.orderService.getOrderRating(orderId)
+    return {
+      code: 200,
+      data: rating,
+      message: '获取成功'
+    }
+  }
+
+  @Get(':id/dispatch-status')
+  async getDispatchStatus(@Param('id') orderId: string) {
+    const status = await this.dispatchService.getDispatchStatus(orderId)
+    return {
+      code: 200,
+      data: status,
+      message: '获取成功'
+    }
+  }
+
   @Put(':id/status')
   async updateStatus(
     @Param('id') orderId: string,
@@ -149,6 +179,59 @@ export class OrderController {
     }
   }
 
+  @Put(':id/content')
+  async submitContent(
+    @Param('id') orderId: string,
+    @Body('avatar_id') avatarId: string,
+    @Body('content') content: {
+      title?: string
+      content: string
+      images?: string[]
+      videos?: string[]
+      platform_results?: Array<{
+        platform: string
+        post_id?: string
+        post_url?: string
+        status: string
+      }>
+    }
+  ) {
+    const order = await this.orderService.submitContent(orderId, avatarId, content)
+    return {
+      code: 200,
+      data: order,
+      message: '内容提交成功'
+    }
+  }
+
+  @Put(':id/approve')
+  async approveOrder(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('rating') rating?: { score: number; comment?: string }
+  ) {
+    const order = await this.orderService.approveOrder(orderId, userId, rating)
+    return {
+      code: 200,
+      data: order,
+      message: '验收通过'
+    }
+  }
+
+  @Put(':id/reject')
+  async rejectOrder(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string,
+    @Body('reason') reason: string
+  ) {
+    const order = await this.orderService.rejectOrder(orderId, userId, reason)
+    return {
+      code: 200,
+      data: order,
+      message: '订单已驳回'
+    }
+  }
+
   @Put(':id/cancel')
   async cancel(
     @Param('id') orderId: string,
@@ -159,6 +242,44 @@ export class OrderController {
       code: 200,
       data: order,
       message: '取消成功'
+    }
+  }
+
+  @Put(':id/cancel-dispatch')
+  async cancelDispatch(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const result = await this.dispatchService.cancelDispatch(orderId, userId)
+    return {
+      code: 200,
+      data: result,
+      message: '分配已取消'
+    }
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const client = (await import('../../storage/database/supabase-client')).getSupabaseClient()
+    
+    const { error } = await client
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .eq('status', 'open') // 只允许删除未开始的订单
+    
+    if (error) {
+      throw new Error(`删除订单失败: ${error.message}`)
+    }
+    
+    return {
+      code: 200,
+      data: null,
+      message: '删除成功'
     }
   }
 }
