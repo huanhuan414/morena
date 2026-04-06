@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import '@/components/level-detail-dialog/index.css'
+import { ExpPopup, LevelUpEffect } from '@/components/exp-popup'
+import '@/components/exp-popup/index.css'
 import { 
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
@@ -212,6 +214,14 @@ export default function MindChatPage() {
   } | null>(null)
   const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(false)
   const [learnPanelExpanded, setLearnPanelExpanded] = useState(false) // 控制详细内容的展开/折叠
+  
+  // 经验值飘字特效状态
+  const [showExpPopup, setShowExpPopup] = useState(false)
+  const [expPopupValue, setExpPopupValue] = useState(0)
+  
+  // 升级特效状态
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
   
   // 记录发送消息前的 messageCount，用于检测学习进度
   const messageCountBeforeSendRef = useRef<number>(0)
@@ -546,14 +556,58 @@ export default function MindChatPage() {
           
           if (showEffect && newStats.messageCount > oldMessageCount) {
             console.log('[MindChat] 🎉 触发学习特效!')
+            
+            // 计算这次对话获得的经验值（根据等级和消息长度）
+            const currentLevel = avatar?.level || 1
+            const expGained = calculateChatExp(currentLevel, newStats.avgMessageLength || 50)
+            
+            // 调用后端 API 更新经验值，并获取是否升级的信息
+            try {
+              const expRes = await Network.request({
+                url: `/api/avatar/${targetAvatarId}/exp`,
+                method: 'POST',
+                data: { exp: expGained }
+              })
+              
+              if (expRes.data?.code === 200) {
+                const newAvatarData = expRes.data.data
+                const oldLevel = avatar?.level || 1
+                const newLevel = newAvatarData?.level || oldLevel
+                
+                // 更新本地分身数据
+                if (newAvatarData) {
+                  setAvatar(prev => prev ? { ...prev, level: newLevel, exp: newAvatarData.exp } : null)
+                }
+                
+                // 检测是否升级
+                if (newLevel > oldLevel) {
+                  console.log('[MindChat] ⬆️ 分身升级了!', { oldLevel, newLevel })
+                  // 延迟显示升级特效，等待经验值飘字
+                  setTimeout(() => {
+                    setLevelUpData({ oldLevel, newLevel })
+                    setShowLevelUp(true)
+                  }, 500)
+                }
+                
+                // 触发经验值飘字特效
+                setExpPopupValue(expGained)
+                setShowExpPopup(true)
+              }
+            } catch (expError) {
+              console.error('[MindChat] 更新经验值失败:', expError)
+              // 即使更新失败，也显示经验值特效（前端模拟）
+              setExpPopupValue(expGained)
+              setShowExpPopup(true)
+            }
+            
             setLearningProgress({
               oldCount: oldMessageCount,
               newCount: newStats.messageCount,
-              expGained: 10 // 每条消息获得10经验
+              expGained: expGained
             })
             setShowLearningEffect(true)
             
-            // 3秒后隐藏特效
+            // 3秒后隐藏学习特效
             setTimeout(() => {
               setShowLearningEffect(false)
               setLearningProgress(null)
@@ -566,6 +620,25 @@ export default function MindChatPage() {
     } catch (error) {
       console.error('[MindChat] 获取学习数据失败:', error)
     }
+  }
+  
+  // 根据等级和消息长度计算经验值
+  const calculateChatExp = (level: number, messageLength: number): number => {
+    let baseExp: number
+    if (level <= 5) {
+      baseExp = 5 + Math.floor((level - 1) * 2)
+    } else {
+      baseExp = 13 + Math.floor((level - 5) * 5)
+    }
+    // 消息长度加成：超过50字额外+1，超过200字每100字再+1
+    let lengthBonus = 0
+    if (messageLength > 50) {
+      lengthBonus += 1
+    }
+    if (messageLength > 200) {
+      lengthBonus += Math.floor((messageLength - 200) / 100)
+    }
+    return baseExp + lengthBonus
   }
 
   const fetchDefaultAvatar = async () => {
@@ -2457,6 +2530,23 @@ export default function MindChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* 经验值飘字特效 */}
+      {showExpPopup && (
+        <ExpPopup
+          exp={expPopupValue}
+          onComplete={() => setShowExpPopup(false)}
+        />
+      )}
+      
+      {/* 升级特效 */}
+      {showLevelUp && levelUpData && (
+        <LevelUpEffect
+          oldLevel={levelUpData.oldLevel}
+          newLevel={levelUpData.newLevel}
+          onComplete={() => setShowLevelUp(false)}
+        />
+      )}
     </View>
   )
 }
