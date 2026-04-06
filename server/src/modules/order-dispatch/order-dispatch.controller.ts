@@ -45,6 +45,25 @@ export class OrderDispatchController {
   }
 
   /**
+   * 获取推荐分身列表
+   */
+  @Get('recommend/:orderId')
+  async getRecommendedAvatars(
+    @Param('orderId') orderId: string,
+    @Query('limit') limit?: string
+  ) {
+    const avatars = await this.dispatchService.getRecommendedAvatars(
+      orderId, 
+      limit ? parseInt(limit) : 5
+    )
+    return {
+      code: 200,
+      data: avatars,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 确认订单分配
    */
   @Put('request/:requestId/confirm')

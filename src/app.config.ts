@@ -20,6 +20,7 @@ export default defineAppConfig({
     'pages/order-create/index',
     'pages/order-list/index',
     'pages/order-detail/index',
+    'pages/order-matching/index',
     'pages/earning-center/index',
     'pages/referral-center/index'
   ],

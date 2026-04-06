@@ -1,5 +1,5 @@
 import { View, Text, ScrollView } from '@tarojs/components'
-import { navigateBack, showToast } from '@tarojs/taro'
+import { navigateBack, showToast, navigateTo } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -97,8 +97,12 @@ export default function OrderCreatePage() {
 
       if (res.data?.code === 200) {
         showToast({ title: '发布成功', icon: 'success' })
+        const orderId = res.data.data?.id
         setTimeout(() => {
-          navigateBack()
+          // 跳转到匹配页面
+          navigateTo({
+            url: `/pages/order-matching/index?orderId=${orderId}`
+          })
         }, 1500)
       } else {
         showToast({ title: res.data?.message || '发布失败', icon: 'none' })
