@@ -288,6 +288,29 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* 好友列表入口 */
+.friend-list-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(0, 245, 255, 0.08);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 16px;
+  margin-top: 12px;
+}
+
+.friend-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.friend-entry-text {
+  font-size: 26px;
+  color: #00f5ff;
+}
+
 /* 底部空间 */
 .bottom-space {
   height: 100px;

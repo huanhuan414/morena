@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight } from 'lucide-react-taro'
 import './index.css'
 
 interface Avatar {
@@ -272,6 +272,20 @@ export default function AvatarManagePage() {
                             onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_friend: checked })}
                           />
                         </View>
+                        
+                        {/* 自动交友开启后显示好友列表入口 */}
+                        {avatar.hosting_settings?.auto_friend && (
+                          <View 
+                            className="friend-list-entry"
+                            onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
+                          >
+                            <View className="friend-entry-left">
+                              <Users size={18} color="#00f5ff" />
+                              <Text className="friend-entry-text">查看好友列表</Text>
+                            </View>
+                            <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                          </View>
+                        )}
                       </View>
                     </View>
                   )}

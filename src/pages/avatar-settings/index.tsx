@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { 
   ChevronRight, Sparkles, Settings, Trash2, 
-  Volume2, Bell, Moon, Zap, Shield, Users
+  Volume2, Bell, Moon, Zap, Shield
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -133,10 +133,6 @@ export default function AvatarSettingsPage() {
     })
   }
 
-  const goToFriends = () => {
-    navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatarId}` })
-  }
-
   const settingItems = [
     { 
       key: 'voice_enabled', 
@@ -248,22 +244,6 @@ export default function AvatarSettingsPage() {
                 <Text className="as-avatar-personality">{avatar.personality || '友好助手'}</Text>
               </View>
             )}
-          </View>
-        </View>
-
-        {/* 好友入口 */}
-        <View className="as-section">
-          <Text className="as-section-title">社交关系</Text>
-          
-          <View 
-            className="as-menu-item"
-            onClick={goToFriends}
-          >
-            <View className="as-menu-left">
-              <Users size={20} color="#00f5ff" />
-              <Text className="as-menu-text">好友列表</Text>
-            </View>
-            <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
           </View>
         </View>
 
