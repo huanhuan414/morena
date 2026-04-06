@@ -39,8 +39,8 @@ const generateWeappProjectConfig = (outputRoot: string) => {
   const config = {
     miniprogramRoot: './',
     projectname: 'coze-mini-program',
-    description: 'Morina AI Platform',
-    appid: process.env.TARO_APP_WEAPP_APPID || 'touristappid',
+    description: 'Morina AI Platform - AI Native Human-Machine Symbiosis Ecosystem',
+    appid: process.env.TARO_APP_WEAPP_APPID || 'wxa300e3c1f0adc655',
     setting: {
       urlCheck: false,
       es6: false,
@@ -48,13 +48,39 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       compileHotReLoad: false,
       postcss: false,
       minified: false,
+      newFeature: true,
+      coverView: true,
+      nodeModules: false,
+      autoAudits: false,
+      showShadowRootInWxmlPanel: true,
+      scopeDataCheck: false,
+      uglifyFileName: false,
+      checkInvalidKey: true,
+      checkSiteMap: true,
+      uploadWithSourceMap: true,
+      lazyloadPlaceholderEnable: false,
+      useMultiFrameRuntime: true,
+      useApiHook: true,
+      useApiHostProcess: true,
+      enableEngineNative: false,
+      useIsolateContext: true,
+      userConfirmedBundleSwitch: false,
+      packNpmManually: false,
+      packNpmRelationList: [],
+      minifyWXSS: true,
+      disableUseStrict: false,
+      minifyWXML: true,
+      showES6CompileOption: false,
+      useCompilerPlugins: false
     },
     compileType: 'miniprogram',
+    libVersion: '3.3.4',
     packOptions: {
       ignore: [
         { type: 'folder', value: './assets' }
       ]
-    }
+    },
+    condition: {}
   };
   const outputDir = path.resolve(__dirname, '..', outputRoot);
   if (!fs.existsSync(outputDir)) {
@@ -63,6 +89,18 @@ const generateWeappProjectConfig = (outputRoot: string) => {
   fs.writeFileSync(
     path.resolve(outputDir, 'project.config.json'),
     JSON.stringify(config, null, 2),
+  );
+  
+  // 生成 sitemap.json
+  const sitemapConfig = {
+    desc: '关于本文件的更多信息，请参考文档 https://developers.weixin.qq.com/miniprogram/dev/framework/sitemap.html',
+    rules: [
+      { action: 'allow', page: '*' }
+    ]
+  };
+  fs.writeFileSync(
+    path.resolve(outputDir, 'sitemap.json'),
+    JSON.stringify(sitemapConfig, null, 2),
   );
 };
 
