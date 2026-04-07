@@ -8,6 +8,12 @@
   overflow-x: hidden;
 }
 
+/* 状态栏占位 */
+.status-bar-placeholder {
+  width: 100%;
+  background: #0a0a0f;
+}
+
 /* 顶部导航 */
 .social-header {
   display: flex;
@@ -15,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 20rpx;
-  background: rgba(10, 10, 15, 0.95);
+  background: #0a0a0f;
   border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
   position: sticky;
   top: 0;
@@ -31,14 +37,20 @@
 }
 
 .header-title {
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 700;
   color: #fff;
 }
 
 .header-subtitle {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 右侧占位 - 与小程序胶囊按钮对齐 */
+.header-right-placeholder {
+  width: 120rpx;
+  flex-shrink: 0;
 }
 
 /* 刷新成功动画遮罩 */

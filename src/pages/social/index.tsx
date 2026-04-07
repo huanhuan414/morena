@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage } from '@tarojs/taro'
+import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, getSystemInfoSync } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
@@ -81,6 +81,7 @@ export default function SocialPage() {
   const [refreshSuccess, setRefreshSuccess] = useState(false)
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const statsCardRef = useRef<any>(null)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
     // showShareMenu 仅在小程序端可用
@@ -88,6 +89,13 @@ export default function SocialPage() {
       showShareMenu({
         withShareTicket: true
       } as any)
+    }
+    // 获取状态栏高度用于适配安全区域
+    try {
+      const systemInfo = getSystemInfoSync()
+      setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    } catch (e) {
+      console.log('获取状态栏高度失败', e)
     }
   })
 
@@ -454,12 +462,16 @@ export default function SocialPage() {
 
   return (
     <View className="social-page">
+      {/* 状态栏占位 */}
+      <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
+      
       {/* 顶部导航 */}
       <View className="social-header">
         <View className="header-left">
-          <Text className="header-title">我的分身</Text>
-          <Text className="header-subtitle">分身互动过的内容</Text>
+          <Text className="header-title">莫瑞娜</Text>
+          <Text className="header-subtitle">人机共生协同矩阵平台</Text>
         </View>
+        <View className="header-right-placeholder" />
       </View>
 
       {/* 刷新成功动画遮罩 */}
