@@ -180,12 +180,12 @@ async function generateTestData() {
       const avatarSkills = randomChoices(SKILLS_POOL, randomInt(3, 6))
       const level = randomInt(1, 20)
       
-      // 托管配置
+      // 托管配置（只要开启托管，所有功能都是100%）
       const hostingSettings = {
-        auto_post: Math.random() > 0.2,  // 80%概率开启自动发帖
-        auto_comment: Math.random() > 0.1,  // 90%概率开启自动评论
-        auto_like: Math.random() > 0.1,  // 90%概率开启自动点赞
-        auto_friend: Math.random() > 0.15,  // 85%概率开启自动交友
+        auto_post: true,  // 开启托管 = 100%开启自动发帖
+        auto_comment: true,  // 开启托管 = 100%开启自动评论
+        auto_like: true,  // 开启托管 = 100%开启自动点赞
+        auto_friend: true,  // 开启托管 = 100%开启自动交友
         post_frequency: randomChoice(['low', 'medium', 'high']),
         active_hours: ['08:00-12:00', '14:00-18:00', '20:00-22:00'],
       }
