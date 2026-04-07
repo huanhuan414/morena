@@ -48,11 +48,13 @@ export class AuthService {
   /**
    * 手机号验证码登录/注册
    * 如果用户不存在则自动注册
+   * 支持邀请码参数，注册成功后自动发放邀请奖励
    */
-  async phoneLogin(phone: string, code: string, nickname?: string): Promise<{
+  async phoneLogin(phone: string, code: string, nickname?: string, referralCode?: string): Promise<{
     user: any
     isNewUser: boolean
     token: string
+    referralReward?: number
   }> {
     // 验证手机号格式
     if (!/^1[3-9]\d{9}$/.test(phone)) {
@@ -117,11 +119,114 @@ export class AuthService {
     if (createError) {
       throw new Error(`创建用户失败: ${createError.message}`)
     }
+
+    // 如果提供了邀请码，处理邀请关系并发放奖励
+    let referralReward = 0
+    if (referralCode && newUser) {
+      try {
+        const referralResult = await this.processReferral(newUser.id, referralCode)
+        referralReward = referralResult.reward
+      } catch (error) {
+        // 邀请码处理失败不影响注册，但记录日志
+        console.error('[AuthService] 处理邀请码失败:', error.message)
+      }
+    }
     
     return {
       user: newUser,
       isNewUser: true,
       token: this.generateToken(newUser.id),
+      referralReward
+    }
+  }
+
+  /**
+   * 处理邀请关系并发放奖励
+   */
+  private async processReferral(inviteeId: string, referralCode: string): Promise<{ inviterId: string; reward: number }> {
+    const client = getSupabaseClient()
+    
+    // 查找邀请人
+    const { data: inviter } = await client
+      .from('users')
+      .select('id')
+      .eq('referral_code', referralCode)
+      .single()
+    
+    if (!inviter) {
+      throw new Error('邀请码无效')
+    }
+    
+    if (inviter.id === inviteeId) {
+      throw new Error('不能使用自己的邀请码')
+    }
+    
+    // 检查是否已被邀请
+    const { data: existingReferral } = await client
+      .from('referrals')
+      .select('id')
+      .eq('invitee_id', inviteeId)
+      .single()
+    
+    if (existingReferral) {
+      throw new Error('您已被邀请过')
+    }
+    
+    // 创建邀请记录
+    const { error: referralError } = await client
+      .from('referrals')
+      .insert({
+        inviter_id: inviter.id,
+        invitee_id: inviteeId,
+        status: 'registered'
+      })
+    
+    if (referralError) {
+      throw new Error(`创建邀请记录失败: ${referralError.message}`)
+    }
+    
+    // 更新被邀请人的邀请人字段
+    await client
+      .from('users')
+      .update({ invited_by: inviter.id })
+      .eq('id', inviteeId)
+    
+    // 发放邀请奖励（给邀请人）
+    const REWARD_AMOUNT = 10 // 邀请奖励金额
+    const REWARD_CREDITS = 50 // 邀请奖励积分
+    
+    // 添加收益记录
+    await client
+      .from('earnings')
+      .insert({
+        user_id: inviter.id,
+        type: 'referral_bonus',
+        amount: REWARD_AMOUNT,
+        description: `邀请新用户奖励`,
+        status: 'settled'
+      })
+    
+    // 更新邀请人余额和总收益
+    const { data: inviterData } = await client
+      .from('users')
+      .select('balance, total_earnings, credits')
+      .eq('id', inviter.id)
+      .single()
+    
+    await client
+      .from('users')
+      .update({
+        balance: (inviterData?.balance || 0) + REWARD_AMOUNT,
+        total_earnings: (inviterData?.total_earnings || 0) + REWARD_AMOUNT,
+        credits: (inviterData?.credits || 0) + REWARD_CREDITS
+      })
+      .eq('id', inviter.id)
+    
+    console.log(`[AuthService] 邀请奖励发放成功: 邀请人=${inviter.id}, 被邀请人=${inviteeId}, 奖励金额=${REWARD_AMOUNT}, 积分=${REWARD_CREDITS}`)
+    
+    return {
+      inviterId: inviter.id,
+      reward: REWARD_AMOUNT
     }
   }
 

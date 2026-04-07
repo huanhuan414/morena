@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab, getSystemInfoSync } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
@@ -28,10 +28,18 @@ export default function ProfilePage() {
     level: 1
   })
   const [showLevelDialog, setShowLevelDialog] = useState(false)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
     if (!isLoggedIn) {
       navigateTo({ url: '/pages/login/index' })
+    }
+    // 获取状态栏高度用于适配安全区域
+    try {
+      const systemInfo = getSystemInfoSync()
+      setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    } catch (e) {
+      console.log('获取状态栏高度失败', e)
     }
   })
 
@@ -81,6 +89,9 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
+      {/* 状态栏占位 */}
+      <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
+      
       {/* 顶部背景 */}
       <View className="profile-bg">
         <View className="bg-glow" />

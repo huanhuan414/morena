@@ -21,14 +21,16 @@ export class AuthController {
   /**
    * 手机号验证码登录/注册
    * 未注册用户自动注册
+   * 支持邀请码参数，注册成功后自动发放邀请奖励
    */
   @Post('phone-login')
   async phoneLogin(
     @Body('phone') phone: string,
     @Body('code') code: string,
     @Body('nickname') nickname?: string,
+    @Body('referral_code') referralCode?: string,
   ) {
-    const result = await this.authService.phoneLogin(phone, code, nickname)
+    const result = await this.authService.phoneLogin(phone, code, nickname, referralCode)
     return {
       code: 200,
       data: result,

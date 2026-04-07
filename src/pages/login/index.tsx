@@ -1,20 +1,32 @@
 import { View, Text } from '@tarojs/components'
-import { useState } from 'react'
-import { switchTab, showToast } from '@tarojs/taro'
+import { useState, useEffect } from 'react'
+import { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Sparkles, Phone, Shield, ChevronRight } from 'lucide-react-taro'
+import { Sparkles, Phone, Shield, ChevronRight, Gift } from 'lucide-react-taro'
 import './index.css'
 
 export default function LoginPage() {
   const { setUserInfo, setToken } = useUserStore()
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [showReferralReward, setShowReferralReward] = useState(false)
+
+  // 从页面参数中获取邀请码
+  useEffect(() => {
+    const instance = getCurrentInstance()
+    const params = (instance as any)?.router?.params
+    if (params?.referral_code) {
+      setReferralCode(params.referral_code)
+      setShowReferralReward(true)
+    }
+  }, [])
 
   const sendCode = async () => {
     if (!phone || phone.length !== 11) {
@@ -80,11 +92,11 @@ export default function LoginPage() {
       const res = await Network.request({
         url: '/api/auth/phone-login',
         method: 'POST',
-        data: { phone, code }
+        data: { phone, code, referral_code: referralCode || undefined }
       })
       
       if (res.data?.code === 200) {
-        const { user, token, isNewUser } = res.data.data
+        const { user, token, isNewUser, referralReward } = res.data.data
         
         // 保存token和用户信息到本地存储
         if (token) {
@@ -92,13 +104,22 @@ export default function LoginPage() {
         }
         setUserInfo(user)
         
-        showToast({ 
-          title: isNewUser ? '注册成功' : '登录成功', 
-          icon: 'success' 
-        })
+        // 显示邀请奖励提示
+        if (isNewUser && referralReward) {
+          showToast({ 
+            title: `注册成功，邀请奖励+${referralReward}元`, 
+            icon: 'success',
+            duration: 2000
+          })
+        } else {
+          showToast({ 
+            title: isNewUser ? '注册成功' : '登录成功', 
+            icon: 'success' 
+          })
+        }
         setTimeout(() => {
           switchTab({ url: '/pages/social/index' })
-        }, 500)
+        }, referralReward ? 1500 : 500)
       } else {
         showToast({ title: res.data?.message || '登录失败', icon: 'none' })
       }
@@ -199,6 +220,36 @@ export default function LoginPage() {
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* 邀请码输入 */}
+          <View className="input-group">
+            <View className="input-label">
+              <Gift size={20} color="rgba(0, 245, 255, 0.8)" />
+              <Text className="label-text">邀请码（选填）</Text>
+              {showReferralReward && referralCode && (
+                <View className="referral-badge">
+                  <Text className="referral-badge-text">使用中</Text>
+                </View>
+              )}
+            </View>
+            <View className="input-box">
+              <Input
+                className="input-control"
+                type="text"
+                maxlength={6}
+                placeholder="请输入邀请码"
+                placeholderClass="input-placeholder"
+                value={referralCode}
+                onInput={e => {
+                  setReferralCode(e.detail.value.toUpperCase())
+                  setShowReferralReward(!!e.detail.value)
+                }}
+              />
+            </View>
+            {referralCode && (
+              <Text className="referral-hint">注册成功后将获得邀请奖励</Text>
+            )}
           </View>
 
           {/* 登录按钮 */}

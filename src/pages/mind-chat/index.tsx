@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-syntax
-import { View, Text, ScrollView, Image, Video, Input } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video, Textarea } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
@@ -191,6 +191,7 @@ export default function MindChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
+  const [inputHeight, setInputHeight] = useState(88) // 输入框高度，rpx
   const [loading, setLoading] = useState(false)
   const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
   const [showHistory, setShowHistory] = useState(false)
@@ -1407,7 +1408,7 @@ export default function MindChatPage() {
       showToast({ title: '识别中...', icon: 'loading', duration: 10000 })
       
       const res = await Network.uploadFile({
-        url: '/api/chat/speech-to-text',
+        url: '/api/audio/asr',
         filePath: filePath,
         name: 'audio'
       })
@@ -2373,15 +2374,28 @@ export default function MindChatPage() {
               )}
             </View>
           ) : (
-            <View className="text-input-box">
-              <Input
+            <View className="text-input-box" style={{ minHeight: `${inputHeight}rpx`, height: 'auto' }}>
+              <Textarea
                 className="text-input-control"
                 placeholder="告诉我要做什么..."
                 placeholderClass="text-input-placeholder"
                 value={inputText}
-                onInput={(e: any) => setInputText(e.detail.value)}
+                onInput={(e: any) => {
+                  setInputText(e.detail.value)
+                  // 自动调整高度
+                  const lineHeight = 40 // 每行高度，rpx
+                  const lines = Math.ceil(e.detail.value.length / 20) // 估算行数
+                  const minLines = 1
+                  const maxLines = 6
+                  const newLines = Math.max(minLines, Math.min(lines, maxLines))
+                  setInputHeight(88 + (newLines - 1) * lineHeight)
+                }}
                 onConfirm={() => sendMessage()}
                 confirmType="send"
+                adjustPosition={false}
+                autoHeight
+                cursorSpacing={20}
+                style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
               />
               <View className="agent-mode-indicator">
                 <Text className="agent-mode-text">Agent</Text>

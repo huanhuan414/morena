@@ -8,6 +8,19 @@ page {
   height: 100%;
 }
 
+/* 全局状态栏占位，用于自定义导航栏适配 */
+.status-bar-placeholder {
+  width: 100%;
+  background: transparent;
+}
+
+/* 全局防溢出规则 */
+.safe-content {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 :root,
 page,
 root-portal {

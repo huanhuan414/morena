@@ -297,6 +297,26 @@
   color: #0a0a0f;
 }
 
+/* 邀请码样式 */
+.referral-badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(0, 245, 255, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+}
+
+.referral-badge-text {
+  font-size: 18px;
+  color: #00f5ff;
+}
+
+.referral-hint {
+  font-size: 22px;
+  color: rgba(0, 245, 255, 0.6);
+  margin-top: 8px;
+}
+
 /* 卡片底部 */
 .card-footer {
   text-align: center;

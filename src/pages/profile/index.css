@@ -10,7 +10,7 @@
 
 .profile-bg {
   position: relative;
-  height: 400rpx;
+  height: 160rpx;
   overflow: hidden;
 }
 
@@ -25,42 +25,42 @@
 }
 
 .user-card {
-  margin: -200rpx 32rpx 0;
+  margin: -100rpx 24rpx 0;
   background: rgba(255, 255, 255, 0.03);
-  border: 4rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 64rpx;
-  padding: 48rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 24rpx;
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  width: calc(100% - 64rpx);
+  width: calc(100% - 48rpx);
 }
 
 .user-header {
   display: flex;
   align-items: center;
-  margin-bottom: 48rpx;
+  margin-bottom: 20rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .user-avatar-wrap {
   position: relative;
-  margin-right: 32rpx;
+  margin-right: 16rpx;
   flex-shrink: 0;
 }
 
 .user-avatar {
-  width: 128rpx;
-  height: 128rpx;
-  border-radius: 48rpx;
-  border: 4rpx solid rgba(0, 245, 255, 0.3);
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(0, 245, 255, 0.3);
 }
 
 .avatar-placeholder {
-  width: 128rpx;
-  height: 128rpx;
-  border-radius: 48rpx;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
   display: flex;
   align-items: center;
@@ -68,24 +68,24 @@
 }
 
 .avatar-text {
-  font-size: 56rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #0a0a0f;
 }
 
 .level-badge {
   position: absolute;
-  bottom: -12rpx;
+  bottom: -8rpx;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  padding: 4rpx 24rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 245, 255, 0.3);
+  padding: 2rpx 12rpx;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 245, 255, 0.3);
 }
 
 .level-text {
-  font-size: 36rpx;
+  font-size: 18rpx;
   font-weight: 600;
   color: #0a0a0f;
 }
@@ -98,17 +98,17 @@
 
 .user-name {
   display: block;
-  font-size: 40rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 8rpx;
+  margin-bottom: 4rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .user-id {
-  font-size: 24rpx;
+  font-size: 20rpx;
   color: rgba(255, 255, 255, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -116,11 +116,11 @@
 }
 
 .settings-btn {
-  width: 80rpx;
-  height: 80rpx;
+  width: 64rpx;
+  height: 64rpx;
   background: rgba(255, 255, 255, 0.05);
   border: 2rpx solid rgba(255, 255, 255, 0.1);
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,9 +132,9 @@
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 40rpx;
-  padding: 32rpx;
-  margin-bottom: 40rpx;
+  border-radius: 16rpx;
+  padding: 16rpx 12rpx;
+  margin-bottom: 16rpx;
   width: 100%;
   box-sizing: border-box;
 }
@@ -147,28 +147,28 @@
 
 .stat-value {
   display: block;
-  font-size: 40rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: #00f5ff;
-  margin-bottom: 8rpx;
+  margin-bottom: 2rpx;
 }
 
 .stat-label {
-  font-size: 24rpx;
+  font-size: 18rpx;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .stat-divider {
-  width: 2rpx;
-  height: 64rpx;
+  width: 1rpx;
+  height: 36rpx;
   background: rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
 
 .xp-section {
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 32rpx;
-  padding: 32rpx;
+  border-radius: 16rpx;
+  padding: 12rpx 16rpx;
   width: 100%;
   box-sizing: border-box;
   cursor: pointer;
@@ -182,42 +182,42 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24rpx;
+  margin-bottom: 8rpx;
 }
 
 .xp-level {
-  font-size: 32rpx;
+  font-size: 22rpx;
   font-weight: 700;
   color: #00f5ff;
 }
 
 .xp-title {
-  font-size: 28rpx;
+  font-size: 20rpx;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .xp-value {
-  font-size: 26rpx;
+  font-size: 18rpx;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
 }
 
 .xp-bar {
-  height: 16rpx;
+  height: 6rpx;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 8rpx;
+  border-radius: 3rpx;
   overflow: hidden;
-  margin-bottom: 16rpx;
+  margin-bottom: 6rpx;
 }
 
 .xp-fill {
   height: 100%;
   background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
-  border-radius: 8rpx;
+  border-radius: 3rpx;
 }
 
 .xp-hint {
-  font-size: 24rpx;
+  font-size: 16rpx;
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
 }
@@ -607,32 +607,32 @@
 
 .menu-scroll {
   flex: 1;
-  padding: 96rpx 40rpx;
-  padding-bottom: 400rpx;
+  padding: 32rpx 24rpx;
+  padding-bottom: env(safe-area-inset-bottom, 120rpx);
   width: 100%;
   box-sizing: border-box;
 }
 
 .menu-section {
   background: rgba(255, 255, 255, 0.02);
-  border: 2rpx solid rgba(255, 255, 255, 0.05);
-  border-radius: 48rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 20rpx;
   overflow: hidden;
-  margin-bottom: 48rpx;
+  margin-bottom: 16rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .menu-grid {
-  padding: 16rpx 0;
+  padding: 4rpx 0;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 72rpx 48rpx;
-  border-bottom: 4rpx solid rgba(255, 255, 255, 0.04);
+  padding: 20rpx 20rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.04);
   width: 100%;
   box-sizing: border-box;
 }
@@ -650,13 +650,13 @@
 }
 
 .menu-icon {
-  width: 144rpx;
-  height: 144rpx;
-  border-radius: 48rpx;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 40rpx;
+  margin-right: 16rpx;
   flex-shrink: 0;
 }
 
@@ -668,17 +668,17 @@
 
 .menu-title {
   display: block;
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 500;
   color: #fff;
-  margin-bottom: 8rpx;
+  margin-bottom: 2rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .menu-desc {
-  font-size: 24rpx;
+  font-size: 20rpx;
   color: rgba(255, 255, 255, 0.4);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -686,26 +686,26 @@
 }
 
 .logout-section {
-  padding: 0 32rpx;
-  margin-bottom: 48rpx;
+  padding: 0 24rpx;
+  margin-bottom: 16rpx;
   width: 100%;
   box-sizing: border-box;
 }
 
 .logout-btn {
   width: 100%;
-  height: 96rpx;
+  height: 80rpx;
   background: rgba(255, 100, 100, 0.1);
-  border: 2rpx solid rgba(255, 100, 100, 0.2);
-  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 100, 100, 0.2);
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .logout-text {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.5);
 }
 
