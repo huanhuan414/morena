@@ -5,6 +5,7 @@ import { NotificationService } from '../notification/notification.service'
 export interface AvatarScore {
   id: string
   name: string
+  avatar_url: string
   score: number
   completionRate: number
   level: number
@@ -13,6 +14,7 @@ export interface AvatarScore {
   skillMatchScore: number
   platformMatchScore: number
   reason: string[]
+  is_hosted: boolean
 }
 
 export interface DispatchResult {
@@ -138,7 +140,7 @@ export class OrderDispatchService {
     order: any, 
     user: any,
     platformConfigMap?: Map<string, any[]>
-  ): AvatarScore & { user_id: string; is_hosted: boolean } {
+  ): AvatarScore & { user_id: string } {
     const requirements = order.requirements || {}
     const reasons: string[] = []
     
@@ -194,7 +196,6 @@ export class OrderDispatchService {
       // 如果没有明确平台要求，所有分身都获得较高基础分
       platformMatchScore = 70
     }
-    }
     
     // ========== 预算匹配评分 (额外加分) ==========
     const budget = order.budget || 0
@@ -225,6 +226,7 @@ export class OrderDispatchService {
       user_id: avatar.user_id,
       id: avatar.id,
       name: avatar.name,
+      avatar_url: avatar.avatar_url || '',
       score: Math.round(totalScore * 100) / 100,
       completionRate,
       level,
