@@ -116,11 +116,6 @@ export default function SocialPage() {
         setRefreshSuccess(true)
         setTimeout(() => {
           setRefreshSuccess(false)
-          showToast({
-            title: '刷新成功',
-            icon: 'success',
-            duration: 1500
-          })
         }, 800)
       }
     } catch (error) {
