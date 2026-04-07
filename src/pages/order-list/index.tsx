@@ -60,6 +60,24 @@ const STATUS_CONFIG = {
   cancelled: { label: '已取消', color: '#6b7280', icon: Circle }
 }
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  'wechat_mp': '微信公众号',
+  'xiaohongshu': '小红书',
+  'bilibili': 'B站',
+  'weibo': '微博',
+  'douyin': '抖音',
+  'wechat_video': '视频号',
+  'zhihu': '知乎',
+  'toutiao': '今日头条',
+  'baidu': '百度',
+  'kuaishou': '快手'
+}
+
+const getPlatformName = (platform: string): string => {
+  return PLATFORM_NAMES[platform] || platform
+}
+
 const TABS = [
   { key: 'all', label: '全部' },
   { key: 'open', label: '待接单' },
@@ -376,7 +394,7 @@ export default function OrderListPage() {
                     <View className="platform-tags">
                       {order.requirements.platforms.map((platform, idx) => (
                         <View key={idx} className="platform-tag">
-                          <Text className="platform-tag-text">{platform}</Text>
+                          <Text className="platform-tag-text">{getPlatformName(platform)}</Text>
                         </View>
                       ))}
                     </View>

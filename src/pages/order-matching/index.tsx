@@ -91,6 +91,24 @@ const ALGORITHM_STEPS = [
   }
 ]
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  'wechat_mp': '微信公众号',
+  'xiaohongshu': '小红书',
+  'bilibili': 'B站',
+  'weibo': '微博',
+  'douyin': '抖音',
+  'wechat_video': '视频号',
+  'zhihu': '知乎',
+  'toutiao': '今日头条',
+  'baidu': '百度',
+  'kuaishou': '快手'
+}
+
+const getPlatformName = (platform: string): string => {
+  return PLATFORM_NAMES[platform] || platform
+}
+
 export default function OrderMatchingPage() {
   const router = useRouter()
   const { orderId } = router.params
@@ -189,7 +207,7 @@ export default function OrderMatchingPage() {
           title: o.title,
           rating: o.rating?.score || 0,
           completed_at: o.completed_at,
-          platform: o.requirements?.platforms?.[0] || '未知'
+          platform: getPlatformName(o.requirements?.platforms?.[0] || '未知')
         }))
         setAvatarHistory(history)
       }

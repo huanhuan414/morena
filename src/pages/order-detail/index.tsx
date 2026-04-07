@@ -90,6 +90,24 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
   { platform: 'wechat_video', hasApi: false, color: '#1aad19', name: '视频号' }
 ]
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  'wechat_mp': '微信公众号',
+  'xiaohongshu': '小红书',
+  'bilibili': 'B站',
+  'weibo': '微博',
+  'douyin': '抖音',
+  'wechat_video': '视频号',
+  'zhihu': '知乎',
+  'toutiao': '今日头条',
+  'baidu': '百度',
+  'kuaishou': '快手'
+}
+
+const getPlatformName = (platform: string): string => {
+  return PLATFORM_NAMES[platform] || platform
+}
+
 const STATUS_CONFIG = {
   open: { label: '待接单', color: '#f59e0b' },
   in_progress: { label: '进行中', color: '#3b82f6' },
@@ -450,7 +468,7 @@ export default function OrderDetailPage() {
                     <View className="platform-tags">
                       {order.requirements.platforms.map((p, idx) => (
                         <View key={idx} className="platform-tag">
-                          <Text className="tag-text">{p}</Text>
+                          <Text className="tag-text">{getPlatformName(p)}</Text>
                         </View>
                       ))}
                     </View>
@@ -694,7 +712,7 @@ export default function OrderDetailPage() {
                     {feedback.platformStats.map((stat: any, idx: number) => (
                       <View key={idx} className="platform-stat-item">
                         <View className="platform-stat-header">
-                          <Text className="stat-platform">{stat.platform}</Text>
+                          <Text className="stat-platform">{getPlatformName(stat.platform)}</Text>
                         </View>
                         <View className="stat-details">
                           <View className="stat-item">
