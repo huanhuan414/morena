@@ -36,7 +36,7 @@
 /* 顶部导航 */
 .chat-header {
   width: 100%;
-  padding: 100rpx 24rpx 24rpx;
+  padding: 0 24rpx 24rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;

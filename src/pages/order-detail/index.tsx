@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -145,8 +145,23 @@ export default function OrderDetailPage() {
   
   // 数据反馈
   const [feedback, setFeedback] = useState<any>(null)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     if (id) {
       fetchOrder()
     }
@@ -350,7 +365,7 @@ export default function OrderDetailPage() {
   return (
     <View className="order-detail-page">
       {/* 头部 */}
-      <View className="detail-header">
+      <View className="detail-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
           <View 
             className="back-btn"
@@ -359,8 +374,8 @@ export default function OrderDetailPage() {
             <ChevronRight size={24} color="#fff" style={{ transform: 'rotate(180deg)' }} />
           </View>
           <Text className="page-title">订单详情</Text>
-          <View className="header-right">
-            {!editing && order.status === 'open' && (
+          <View className="header-right" style={{ width: `${capsuleWidth}rpx` }}>
+            {!editing && order?.status === 'open' && (
               <View className="edit-btn" onClick={() => setEditing(true)}>
                 <Pencil size={18} color="#00f5ff" />
               </View>

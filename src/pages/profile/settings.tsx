@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useDidShow, navigateBack, showToast, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
@@ -21,6 +21,23 @@ export default function SettingsPage() {
     dark_mode: true,
     auto_backup: true,
     language: 'zh-CN'
+  })
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
   })
 
   useDidShow(() => {
@@ -77,12 +94,12 @@ export default function SettingsPage() {
   return (
     <View className="settings-page">
       {/* 顶部导航 */}
-      <View className="settings-header">
+      <View className="settings-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">设置</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       <ScrollView className="settings-scroll" scrollY>

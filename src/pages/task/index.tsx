@@ -61,6 +61,9 @@ export default function TaskPage() {
   const [showDetail, setShowDetail] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   
+  // 状态栏适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  
   // 创建任务表单
   const [newTask, setNewTask] = useState({
     title: '',
@@ -73,6 +76,10 @@ export default function TaskPage() {
   const [executing, setExecuting] = useState(false)
 
   useEffect(() => {
+    // 初始化状态栏信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
     if (!isLoggedIn) {
       switchTab({ url: '/pages/social/index' })
       return
@@ -280,7 +287,7 @@ export default function TaskPage() {
   return (
     <View className="task-page">
       {/* 头部统计 */}
-      <View className="stats-header">
+      <View className="stats-header" style={{ paddingTop: `${statusBarHeight + 24}px` }}>
         <View className="stats-card">
           <Text className="stats-number">{stats?.total || 0}</Text>
           <Text className="stats-label">全部任务</Text>

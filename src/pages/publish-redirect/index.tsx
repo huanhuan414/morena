@@ -58,8 +58,23 @@ export default function PublishRedirectPage() {
   const [title, setTitle] = useState('')
   const [copied, setCopied] = useState(false)
   const [openFailed, setOpenFailed] = useState(false)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useEffect(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     // 从URL参数获取数据
     const params = router.params
     if (params.platform) {
@@ -163,12 +178,12 @@ export default function PublishRedirectPage() {
   return (
     <View className="publish-redirect-page">
       {/* 顶部导航 */}
-      <View className="redirect-header">
+      <View className="redirect-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="back-btn" onClick={() => Taro.navigateBack()}>
           <ArrowLeft size={24} color="#fff" />
         </View>
         <Text className="header-title">一键发布</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       {/* 平台信息 */}

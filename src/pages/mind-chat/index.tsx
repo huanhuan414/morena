@@ -206,6 +206,10 @@ export default function MindChatPage() {
     styleMatch: 0
   })
   
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+  
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
   const [learningProgress, setLearningProgress] = useState<{
@@ -292,6 +296,17 @@ export default function MindChatPage() {
   useLoad(() => {
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
+    }
+    
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
     }
   })
 
@@ -1712,7 +1727,10 @@ export default function MindChatPage() {
       <View className="grid-overlay" />
 
       {/* 顶部导航 */}
-      <View className="chat-header">
+      <View 
+        className="chat-header" 
+        style={{ paddingTop: `${statusBarHeight}px` }}
+      >
         <View className="header-left">
           <View className="history-btn" onClick={() => setShowHistory(true)}>
             <History size={22} color="#00f5ff" />
@@ -1740,7 +1758,7 @@ export default function MindChatPage() {
             )}
           </View>
         </View>
-        <View className="header-right">
+        <View className="header-right" style={{ width: `${capsuleWidth}rpx` }}>
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>

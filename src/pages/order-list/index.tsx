@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useDidShow, useRouter, navigateTo, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, useRouter, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { 
@@ -98,8 +98,23 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [orderProgress, setOrderProgress] = useState<Record<string, ExecutionStep[]>>({})
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
-  useLoad(() => {})
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
 
   useDidShow(() => {
     fetchOrders()
@@ -252,13 +267,13 @@ export default function OrderListPage() {
   return (
     <View className="order-list-page">
       {/* 头部 */}
-      <View className="page-header">
+      <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
           <Text className="page-title">
             {mode === 'avatar' ? '任务大厅' : '我的订单'}
           </Text>
           {mode !== 'avatar' && (
-            <View className="header-actions">
+            <View className="header-actions" style={{ width: `${capsuleWidth}rpx` }}>
               <View 
                 className={`filter-btn ${showFilter ? 'active' : ''}`}
                 onClick={() => setShowFilter(!showFilter)}

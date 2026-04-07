@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { navigateBack, showToast, navigateTo } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -33,6 +33,23 @@ export default function OrderCreatePage() {
       targetAudience: '',
       expectedResults: '',
       deadline: ''
+    }
+  })
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+  
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
     }
   })
 
@@ -118,12 +135,12 @@ export default function OrderCreatePage() {
   return (
     <View className="order-create-page">
       {/* 顶部导航 */}
-      <View className="create-header">
+      <View className="create-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">发布订单</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       <ScrollView className="create-scroll" scrollY>

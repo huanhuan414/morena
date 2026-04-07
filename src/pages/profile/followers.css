@@ -13,7 +13,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx;
+  padding: 0 32rpx;
   background: rgba(10, 10, 15, 0.95);
   border-bottom: 2rpx solid rgba(255, 255, 255, 0.05);
   position: sticky;

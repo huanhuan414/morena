@@ -1,11 +1,28 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { navigateBack } from '@tarojs/taro'
+import Taro, { navigateBack, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { ChevronDown, ChevronUp, CircleQuestionMark, MessageCircle, Zap, Shield, Gift } from 'lucide-react-taro'
 import './help.css'
 
 export default function HelpPage() {
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
 
   const faqCategories = [
     {
@@ -67,12 +84,12 @@ export default function HelpPage() {
   return (
     <View className="help-page">
       {/* 顶部导航 */}
-      <View className="help-header">
+      <View className="help-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">帮助中心</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       <ScrollView className="help-scroll" scrollY>

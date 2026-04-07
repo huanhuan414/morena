@@ -24,6 +24,10 @@ export default function VoiceCallPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [inputText, setInputText] = useState('')
   const [duration, setDuration] = useState(0)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   const socketRef = useRef<Taro.SocketTask | null>(null)
   const recorderManager = useRef<Taro.RecorderManager | null>(null)
@@ -128,6 +132,17 @@ export default function VoiceCallPage() {
 
   // 初始化录音管理器
   useEffect(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
       recorderManager.current = Taro.getRecorderManager()
       
@@ -301,12 +316,14 @@ export default function VoiceCallPage() {
   return (
     <View className="vc-page">
       {/* 顶部状态栏 */}
-      <View className="vc-header">
+      <View className="vc-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="vc-header-back" onClick={() => navigateBack()}>
           <Text className="vc-back-text">返回</Text>
         </View>
         <Text className="vc-header-title">{decodeURIComponent(friendName || '语音通话')}</Text>
-        <Text className="vc-duration">{formatDuration(duration)}</Text>
+        <View style={{ width: `${capsuleWidth}rpx` }}>
+          <Text className="vc-duration">{formatDuration(duration)}</Text>
+        </View>
       </View>
 
       {/* 通话状态显示 */}

@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useDidShow, showToast, setClipboardData } from '@tarojs/taro'
+import Taro, { useDidShow, showToast, setClipboardData, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Gift, Users, Share2, Copy, Sparkles, TrendingUp } from 'lucide-react-taro'
@@ -36,7 +36,24 @@ export default function ReferralCenterPage() {
   })
   const [records, setRecords] = useState<ReferralRecord[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
+  
   useDidShow(() => {
     fetchStats()
     fetchRecords()
@@ -104,11 +121,12 @@ export default function ReferralCenterPage() {
   return (
     <View className="referral-page">
       {/* 顶部导航 */}
-      <View className="referral-header">
+      <View className="referral-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-title-wrap">
           <Gift size={24} color="#bf00ff" />
           <Text className="header-title">邀请返利</Text>
         </View>
+        <View style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       {/* 邀请码卡片 */}

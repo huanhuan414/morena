@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,8 +38,23 @@ export default function AvatarSettingsPage() {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPersonality, setEditPersonality] = useState('')
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     if (avatarId) {
       fetchAvatar()
     }
@@ -187,12 +202,12 @@ export default function AvatarSettingsPage() {
   return (
     <View className="avatar-settings-page">
       {/* 顶部导航 */}
-      <View className="as-header">
+      <View className="as-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="as-header-back" onClick={() => navigateBack()}>
           <Text className="as-back-text">← 返回</Text>
         </View>
         <Text className="as-header-title">分身设置</Text>
-        <View className="as-header-action" onClick={() => editing ? saveProfile() : setEditing(true)}>
+        <View className="as-header-action" style={{ width: `${capsuleWidth}rpx` }} onClick={() => editing ? saveProfile() : setEditing(true)}>
           <Text className="as-action-text">{editing ? '保存' : '编辑'}</Text>
         </View>
       </View>

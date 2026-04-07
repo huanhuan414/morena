@@ -78,7 +78,7 @@
 .matching-header {
   position: relative;
   z-index: 10;
-  padding: 100rpx 24rpx 32rpx;
+  padding: 0 24rpx 32rpx;
 }
 
 .header-top {

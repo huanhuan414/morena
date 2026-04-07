@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useDidShow, navigateBack, showToast, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { Bell, MessageCircle, Heart, UserPlus, Info } from 'lucide-react-taro'
@@ -33,6 +33,23 @@ export default function NotificationsPage() {
   ])
   
   const [notifications, setNotifications] = useState<Notification[]>([])
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
 
   useDidShow(() => {
     fetchNotifications()
@@ -114,12 +131,12 @@ export default function NotificationsPage() {
   return (
     <View className="notifications-page">
       {/* 顶部导航 */}
-      <View className="notifications-header">
+      <View className="notifications-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">消息通知</Text>
-        <View className="header-action" onClick={markAllAsRead}>
+        <View className="header-action" style={{ width: `${capsuleWidth}rpx` }} onClick={markAllAsRead}>
           <Text className="action-text">全部已读</Text>
         </View>
       </View>

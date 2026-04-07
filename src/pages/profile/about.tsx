@@ -1,9 +1,26 @@
+import Taro, { navigateBack, useLoad } from '@tarojs/taro'
+import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { navigateBack } from '@tarojs/taro'
 import { Sparkles, Heart, Users, Zap, Shield, Star } from 'lucide-react-taro'
 import './about.css'
 
 export default function AboutPage() {
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
+
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
   const features = [
     { icon: Sparkles, title: 'AI分身', desc: '创建你的数字孪生', color: '#00f5ff' },
     { icon: Zap, title: '自动托管', desc: '让AI帮你处理日常', color: '#bf00ff' },
@@ -20,12 +37,12 @@ export default function AboutPage() {
   return (
     <View className="about-page">
       {/* 顶部导航 */}
-      <View className="about-header">
+      <View className="about-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">关于我们</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       <ScrollView className="about-scroll" scrollY>

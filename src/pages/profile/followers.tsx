@@ -1,6 +1,6 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { useLoad, useDidShow, navigateBack } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
@@ -21,8 +21,23 @@ export default function FollowersPage() {
   const [followers, setFollowers] = useState<Follower[]>([])
   const [following, setFollowing] = useState<Follower[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     if (!isLoggedIn) {
       navigateBack()
     }
@@ -68,12 +83,12 @@ export default function FollowersPage() {
   return (
     <View className="followers-page">
       {/* 顶部导航 */}
-      <View className="followers-header">
+      <View className="followers-header" style={{ paddingTop: `${statusBarHeight + 32}rpx` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#fff" />
         </View>
         <Text className="header-title">关注与粉丝</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       {/* 切换标签 */}

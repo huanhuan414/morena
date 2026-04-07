@@ -31,7 +31,7 @@
 
 /* 头部 */
 .detail-header {
-  padding: 100rpx 24rpx 24rpx;
+  padding: 0 24rpx 24rpx;
   background: rgba(15, 15, 25, 0.95);
 }
 

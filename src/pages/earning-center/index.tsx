@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { useDidShow, showToast, navigateTo } from '@tarojs/taro'
+import Taro, { useDidShow, showToast, navigateTo, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles } from 'lucide-react-taro'
@@ -35,7 +35,24 @@ export default function EarningCenterPage() {
   })
   const [records, setRecords] = useState<EarningRecord[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
+  
   useDidShow(() => {
     fetchOverview()
     fetchRecords()
@@ -119,11 +136,12 @@ export default function EarningCenterPage() {
   return (
     <View className="earning-page">
       {/* 顶部导航 */}
-      <View className="earning-header">
+      <View className="earning-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-title-wrap">
           <Wallet size={24} color="#00ff88" />
           <Text className="header-title">收益中心</Text>
         </View>
+        <View style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       {/* 收益概览卡片 */}

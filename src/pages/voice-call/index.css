@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60rpx 32rpx 32rpx;
+  padding: 0 32rpx 32rpx;
   background: rgba(15, 15, 25, 0.8);
 }
 

@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
-import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
@@ -53,8 +53,23 @@ export default function AvatarManagePage() {
   const [editingAvatarId, setEditingAvatarId] = useState<string | null>(null)
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
   const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
-  useLoad(() => {})
+  useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+  })
 
   useDidShow(() => {
     fetchAvatars()
@@ -206,12 +221,16 @@ export default function AvatarManagePage() {
   return (
     <View className="avatar-manage-page">
       {/* 顶部导航 */}
-      <View className="manage-header">
-        <Text className="header-title">我的分身</Text>
-        <Button className="create-btn" onClick={createNewAvatar}>
-          <Plus size={20} color="#00f5ff" />
-          <Text className="create-text">创建分身</Text>
-        </Button>
+      <View className="manage-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="header-left-wrap">
+          <Text className="header-title">我的分身</Text>
+        </View>
+        <View className="header-right-wrap" style={{ width: `${capsuleWidth}rpx` }}>
+          <Button className="create-btn" onClick={createNewAvatar}>
+            <Plus size={20} color="#00f5ff" />
+            <Text className="create-text">创建分身</Text>
+          </Button>
+        </View>
       </View>
 
       <ScrollView className="manage-scroll" scrollY>

@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from '@tarojs/components'
-import { useLoad, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useLoad, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -29,8 +29,23 @@ export default function SecurityPage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     fetchSecurityStatus()
   })
 
@@ -112,12 +127,12 @@ export default function SecurityPage() {
   return (
     <View className="security-page">
       {/* 顶部导航 */}
-      <View className="security-header">
+      <View className="security-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <Text className="back-text">← 返回</Text>
         </View>
         <Text className="header-title">账户安全</Text>
-        <View className="header-placeholder" />
+        <View className="header-placeholder" style={{ width: `${capsuleWidth}rpx` }} />
       </View>
 
       <ScrollView className="security-scroll" scrollY>

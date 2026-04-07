@@ -50,8 +50,23 @@ export default function AvatarFriendsPage() {
   const [selectedFriend, setSelectedFriend] = useState<AvatarFriend | null>(null)
   const [chatData, setChatData] = useState<FriendChat | null>(null)
   const [chatLoading, setChatLoading] = useState(false)
+  
+  // 状态栏和胶囊按钮适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    // 初始化状态栏和胶囊按钮信息
+    const systemInfo = Taro.getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+    if (menuButtonBoundingClientRect) {
+      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+      setCapsuleWidth(capsuleWidthWithMargins)
+    }
+    
     if (avatarId) {
       fetchFriends()
     }
@@ -143,13 +158,13 @@ export default function AvatarFriendsPage() {
   return (
     <View className="af-page">
       {/* 顶部导航 */}
-      <View className="af-header">
+      <View className="af-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="af-header-back" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#00f5ff" />
           <Text className="af-back-text">返回</Text>
         </View>
         <Text className="af-header-title">好友列表</Text>
-        <View className="af-header-right">
+        <View className="af-header-right" style={{ width: `${capsuleWidth}rpx` }}>
           <Heart size={20} color="#ff6b9d" />
         </View>
       </View>
