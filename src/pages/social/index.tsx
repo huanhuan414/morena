@@ -63,7 +63,7 @@ export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [avatarStats] = useState<AvatarStats>({
+  const [avatarStats, setAvatarStats] = useState<AvatarStats>({
     postCount: 0,
     likeCount: 0,
     commentCount: 0,
@@ -118,6 +118,7 @@ export default function SocialPage() {
     try {
       await fetchAvatarRelatedPosts(1, isRefresh)
       await checkAvatars()
+      await fetchTodayStats()
       
       if (isRefresh) {
         // 刷新成功特效
@@ -139,6 +140,18 @@ export default function SocialPage() {
       setLoading(false)
       setRefreshing(false)
       setTimeout(() => setIsUpdating(false), 1500)
+    }
+  }
+
+  // 获取今日统计
+  const fetchTodayStats = async () => {
+    try {
+      const res = await Network.request({ url: '/api/social/today-stats' })
+      if (res.data?.code === 200) {
+        setAvatarStats(res.data.data)
+      }
+    } catch (error) {
+      console.error('获取今日统计失败:', error)
     }
   }
 
