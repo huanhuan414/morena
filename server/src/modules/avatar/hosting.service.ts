@@ -510,7 +510,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
       console.log(`[托管服务] 生成帖子内容: ${content.substring(0, 50)}...`)
 
-      // 4. 必须生成图片配图
+      // 4. 尝试生成图片配图（失败时允许发布纯文字帖子）
       let images: string[] = []
       try {
         console.log('[托管服务] 正在为帖子生成配图...')
@@ -534,14 +534,13 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
           images = [cdnUrl]
           console.log('[托管服务] 配图生成成功')
         } else {
-          console.log('[托管服务] 配图生成失败，跳过发帖')
-          return null
+          console.log('[托管服务] 配图生成失败，将发布纯文字帖子')
         }
       } catch (imgError: any) {
-        console.log('[托管服务] 生成配图失败，跳过发帖:', imgError?.message || imgError)
-        return null
+        console.log('[托管服务] 生成配图失败，将发布纯文字帖子:', imgError?.message || imgError)
       }
 
+      // 即使没有图片也返回内容，让帖子能够发布
       return {
         content: content.trim(),
         images
