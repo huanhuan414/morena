@@ -3,6 +3,46 @@ import { getSupabaseClient } from '../../storage/database/supabase-client'
 
 @Injectable()
 export class SocialService {
+
+  /**
+   * 同步所有帖子的点赞数和评论数（确保数据一致性）
+   * 可以定时调用或在数据不一致时调用
+   */
+  async syncPostCounts() {
+    const client = getSupabaseClient()
+    
+    // 同步点赞数
+    const { data: posts } = await client.from('posts').select('id')
+    if (posts && posts.length > 0) {
+      for (const post of posts) {
+        // 统计实际点赞数
+        const { count: likeCount } = await client
+          .from('likes')
+          .select('id', { count: 'exact', head: true })
+          .eq('target_type', 'post')
+          .eq('target_id', post.id)
+        
+        // 统计实际评论数
+        const { count: commentCount } = await client
+          .from('comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('post_id', post.id)
+        
+        // 更新帖子计数
+        await client
+          .from('posts')
+          .update({ 
+            likes_count: likeCount || 0,
+            comments_count: commentCount || 0
+          })
+          .eq('id', post.id)
+      }
+    }
+    
+    console.log('[社交服务] 帖子计数同步完成')
+    return { synced: posts?.length || 0 }
+  }
+
   async createPost(userId: string, postData: Record<string, any>) {
     const client = getSupabaseClient()
     
