@@ -160,25 +160,17 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       // 1. 自动接单（始终执行，不受设置控制）
       await this.autoAcceptOrders(avatar)
 
-      // 2. 自动交友
-      if (settings.auto_friend !== false) {
-        await this.autoMakeFriends(avatar)
-      }
+      // 2. 自动交友（只要开启托管就100%执行）
+      await this.autoMakeFriends(avatar)
 
-      // 3. 自动发帖
-      if (settings.auto_post) {
-        await this.autoCreatePost(avatar, settings)
-      }
+      // 3. 自动发帖（只要开启托管就100%执行）
+      await this.autoCreatePost(avatar, settings)
 
-      // 4. 自动评论
-      if (settings.auto_comment) {
-        await this.autoComment(avatar)
-      }
+      // 4. 自动评论（只要开启托管就100%执行）
+      await this.autoComment(avatar)
 
-      // 5. 自动点赞
-      if (settings.auto_like) {
-        await this.autoLike(avatar)
-      }
+      // 5. 自动点赞（只要开启托管就100%执行）
+      await this.autoLike(avatar)
     } catch (error) {
       console.error(`[托管服务] 分身 ${avatar.name} 执行任务失败:`, error)
     }
@@ -247,7 +239,8 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
    */
   private calculateOrderMatch(avatar: any, order: any): number {
     const avatarSkills = avatar.skills || []
-    const orderRequirements = order.requirements || []
+    // requirements 是 JSON 对象，技能在 requirements.skills 数组中
+    const orderRequirements = order.requirements?.skills || []
     
     if (orderRequirements.length === 0) return 0.7 // 无特殊要求，默认匹配
     

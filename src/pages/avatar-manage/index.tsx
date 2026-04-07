@@ -332,50 +332,44 @@ export default function AvatarManagePage() {
                         </View>
                       </View>
 
-                      {/* 自动功能 */}
+                      {/* 自动功能 - 托管开启时全部100%启用 */}
                       <View className="auto-features">
                         <View className="feature-item">
                           <Text className="feature-text">自动发帖</Text>
-                          <Switch 
-                            checked={avatar.hosting_settings?.auto_post || false}
-                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_post: checked })}
-                          />
+                          <View className="feature-status enabled">
+                            <Text className="feature-status-text">100%</Text>
+                          </View>
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动评论</Text>
-                          <Switch 
-                            checked={avatar.hosting_settings?.auto_comment || false}
-                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_comment: checked })}
-                          />
+                          <View className="feature-status enabled">
+                            <Text className="feature-status-text">100%</Text>
+                          </View>
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动点赞</Text>
-                          <Switch 
-                            checked={avatar.hosting_settings?.auto_like || false}
-                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_like: checked })}
-                          />
+                          <View className="feature-status enabled">
+                            <Text className="feature-status-text">100%</Text>
+                          </View>
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动交友</Text>
-                          <Switch 
-                            checked={avatar.hosting_settings?.auto_friend || false}
-                            onCheckedChange={(checked) => updateHostingSettings(avatar.id, { auto_friend: checked })}
-                          />
+                          <View className="feature-status enabled">
+                            <Text className="feature-status-text">100%</Text>
+                          </View>
                         </View>
                         
-                        {/* 自动交友开启后显示好友列表入口 */}
-                        {avatar.hosting_settings?.auto_friend && (
-                          <View 
-                            className="friend-list-entry"
-                            onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
-                          >
-                            <View className="friend-entry-left">
-                              <Users size={18} color="#00f5ff" />
-                              <Text className="friend-entry-text">查看好友列表</Text>
-                            </View>
-                            <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                        {/* 好友列表入口 */}
+                        <View 
+                          className="friend-list-entry"
+                          onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
+                        >
+                          <View className="friend-entry-left">
+                            <Users size={18} color="#00f5ff" />
+                            <Text className="friend-entry-text">查看好友列表</Text>
                           </View>
-                        )}
+                          <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                        </View>
                       </View>
                     </View>
                   )}
