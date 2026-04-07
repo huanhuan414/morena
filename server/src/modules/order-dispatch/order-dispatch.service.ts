@@ -133,7 +133,12 @@ export class OrderDispatchService {
    * 计算分身综合评分
    * 包含：订单匹配度、技能匹配、平台匹配、基础能力
    */
-  private calculateAvatarScore(avatar: any, order: any, user: any): AvatarScore & { user_id: string; is_hosted: boolean } {
+  private calculateAvatarScore(
+    avatar: any, 
+    order: any, 
+    user: any,
+    platformConfigMap?: Map<string, any[]>
+  ): AvatarScore & { user_id: string; is_hosted: boolean } {
     const requirements = order.requirements || {}
     const reasons: string[] = []
     
@@ -156,6 +161,7 @@ export class OrderDispatchService {
     const activityScore = avatar.is_hosted ? 100 : 50
     
     // ========== 技能匹配评分 (30%) ==========
+    // 技能要求可以从 requirements.required_skills 或从 targetAudience 推断
     const skills = avatar.skills || []
     const requiredSkills = requirements.required_skills || []
     let skillMatchScore = 50 // 默认匹配度
@@ -166,11 +172,16 @@ export class OrderDispatchService {
       if (matchedSkills.length > 0) {
         reasons.push(`技能匹配: ${matchedSkills.join(', ')}`)
       }
+    } else {
+      // 如果没有明确技能要求，所有分身都获得基础分
+      skillMatchScore = 80
     }
     
     // ========== 平台匹配评分 (30%) ==========
     const platforms = requirements.platforms || []
-    const avatarPlatforms = avatar.platform_configs?.map(c => c.platform_type) || []
+    // 从 platformConfigMap 获取用户的平台配置，而不是不存在的 avatar.platform_configs
+    const userPlatformConfigs = platformConfigMap?.get(avatar.user_id) || []
+    const avatarPlatforms = userPlatformConfigs.map(c => c.platform_type) || []
     let platformMatchScore = 50 // 默认匹配度
     
     if (platforms.length > 0) {
@@ -179,6 +190,10 @@ export class OrderDispatchService {
       if (matchedPlatforms.length > 0) {
         reasons.push(`平台匹配: ${matchedPlatforms.join(', ')}`)
       }
+    } else {
+      // 如果没有明确平台要求，所有分身都获得较高基础分
+      platformMatchScore = 70
+    }
     }
     
     // ========== 预算匹配评分 (额外加分) ==========
@@ -514,18 +529,32 @@ export class OrderDispatchService {
     // 获取所有活跃分身
     const { data: avatars } = await client
       .from('avatars')
-      .select(`
-        *,
-        platform_configs(*)
-      `)
+      .select('*')
       .eq('status', 'active')
     
     if (!avatars || avatars.length === 0) {
       return []
     }
     
+    // 获取所有用户的平台配置
+    const userIds = [...new Set(avatars.map(a => a.user_id))]
+    const { data: platformConfigs } = await client
+      .from('platform_configs')
+      .select('*')
+      .in('user_id', userIds)
+    
+    // 按 user_id 构建平台配置映射
+    const platformConfigMap = new Map<string, any[]>()
+    platformConfigs?.forEach(config => {
+      const existing = platformConfigMap.get(config.user_id) || []
+      existing.push(config)
+      platformConfigMap.set(config.user_id, existing)
+    })
+    
     // 计算每个分身的推荐评分
-    const scoredAvatars = avatars.map(avatar => this.calculateAvatarScore(avatar, order, null))
+    const scoredAvatars = avatars.map(avatar => 
+      this.calculateAvatarScore(avatar, order, null, platformConfigMap)
+    )
     
     // 按评分排序并返回
     scoredAvatars.sort((a, b) => b.score - a.score)
