@@ -750,93 +750,135 @@ export class OrderDispatchService {
   }
 
   /**
-   * 根据订单预估效果目标计算所需推荐分身数量
-   * 核心逻辑：达到订单要求的预估效果组合需要多少分身的协同
+   * 根据订单金额和预估效果目标计算所需推荐分身数量
    * 
-   * 效果组合分析：
-   * - 曝光(Reach): 单分身效果有限，多分身可扩大覆盖
-   * - 互动(Engagement): 依赖内容质量和专业度
-   * - 质量(Quality): 依赖分身的完成率和评分
-   * - 时间(Time): 紧急订单需要并行处理
+   * 核心逻辑：
+   * 1. 订单金额 - 平台20%抽成 = 可分配给分身的金额
+   * 2. 根据每个分身的成本收益和订单效果要求，安排分身数量
+   * 3. 确保分身能赚到钱，同时完成订单效果
+   * 
+   * 分身收益参考：
+   * - 基础订单：每个分身500-800元
+   * - 中等订单：每个分身800-1500元
+   * - 高端订单：每个分身1500-3000元
+   * - 等级加成：每级 +5% 收益
    */
-  private calculateRecommendedAvatarCount(orderAnalysis: OrderAnalysis, totalAvailableAvatars: number): number {
-    // 基础需求：1个最匹配的分身
-    let neededCount = 1
+  private calculateRecommendedAvatarCount(
+    orderAnalysis: OrderAnalysis, 
+    totalAvailableAvatars: number,
+    orderAmount: number
+  ): number {
+    // 平台抽成20%，剩余可分配金额
+    const distributableAmount = orderAmount * 0.8
     
-    const complexity = orderAnalysis.complexityLevel || 5
+    // 订单指标分析
+    const complexity = orderAnalysis.complexityLevel || 5  // 1-10
     const urgency = orderAnalysis.urgencyLevel || 'medium'
-    const platforms = orderAnalysis.preferredPlatforms?.length || 0
+    const platforms = orderAnalysis.preferredPlatforms?.length || 1
     const skills = orderAnalysis.requiredSkills?.length || 0
     const budget = orderAnalysis.estimatedBudget || '中'
     
-    // ========== 效果目标分析 ==========
+    console.log(`[推荐数量] 订单金额=${orderAmount}元，可分配=${distributableAmount.toFixed(0)}元`)
     
-    // 1. 曝光效果目标分析
-    // 高曝光需要多平台覆盖，每个平台需要专业分身
-    // 曝光优秀 = 多平台 × 高等级分身
-    if (platforms >= 4) {
-      // 4+个平台：每个平台至少1个，建议2-3个协同
-      // 计算：Math.ceil(platforms / 2) 确保每个平台有覆盖
-      neededCount = Math.max(neededCount, Math.min(3, Math.ceil(platforms / 2)))
-    } else if (platforms >= 2) {
-      // 2-3个平台：至少2个分身覆盖
-      neededCount = Math.max(neededCount, 2)
-    }
+    // ========== 第一步：计算每个分身的预期收益 ==========
+    // 基础收益（根据订单金额和复杂度）
+    let baseIncomePerAvatar = distributableAmount * 0.3  // 基础30%用于分身收益
     
-    // 2. 质量效果目标分析
-    // 高复杂度需要高质量分身
-    // 质量卓越/优秀 = 高等级 + 高完成率 + 高评分
-    // 复杂度越高，对分身质量要求越高，可能需要多个高质量候选
+    // 复杂度影响收益
     if (complexity >= 8) {
-      // 顶级复杂度：需要1个最顶级的，或者2个高质量协同
-      // 实际推荐2个顶级候选，确保有选择余地
-      neededCount = Math.max(neededCount, 2)
+      baseIncomePerAvatar = distributableAmount * 0.4  // 高复杂度给分身更多
     } else if (complexity >= 6) {
-      // 高复杂度：需要高质量分身，推荐2个候选
-      neededCount = Math.max(neededCount, 2)
+      baseIncomePerAvatar = distributableAmount * 0.35
+    } else if (complexity <= 3) {
+      baseIncomePerAvatar = distributableAmount * 0.25  // 简单订单给少点
     }
     
-    // 3. 互动效果目标分析
-    // 高互动需要专业内容和风格匹配
-    // 技能要求越多，越难找到完美匹配，建议更多候选
+    // 每个分身应得的最低收益（确保分身能赚钱）
+    const minIncomePerAvatar = Math.max(200, baseIncomePerAvatar)  // 最低200元
+    const maxIncomePerAvatar = distributableAmount * 0.6  // 单个分身最高60%
+    
+    // ========== 第二步：根据效果目标计算需要多少分身 ==========
+    
+    // 1. 曝光效果：多平台需要多分身覆盖
+    let avatarsForExposure = 1
+    if (platforms >= 4) {
+      avatarsForExposure = Math.min(3, platforms)  // 最多3个覆盖4+平台
+    } else if (platforms >= 2) {
+      avatarsForExposure = 2
+    }
+    
+    // 2. 质量效果：高复杂度需要高质量分身
+    let avatarsForQuality = 1
+    if (complexity >= 8) {
+      avatarsForQuality = 2  // 顶级复杂度需要2个高质量候选
+    } else if (complexity >= 6) {
+      avatarsForQuality = 2
+    }
+    
+    // 3. 互动效果：技能要求多需要更多候选
+    let avatarsForEngagement = 1
     if (skills >= 4) {
-      // 4+项技能：很难找到完美匹配全部技能的分身
-      // 推荐3个候选，优先匹配核心技能
-      neededCount = Math.max(neededCount, 3)
+      avatarsForEngagement = 3  // 4+技能很难完美匹配
     } else if (skills >= 2) {
-      // 2-3项技能：推荐2个候选
-      neededCount = Math.max(neededCount, 2)
+      avatarsForEngagement = 2
     }
     
-    // 4. 时间效果目标分析
-    // 高紧急需要并行处理，必须有足够的分身
+    // 4. 时间效果：高紧急需要并行处理
+    let avatarsForSpeed = 1
     if (urgency === 'high') {
-      // 高紧急：必须能快速响应，推荐3个候选
-      neededCount = Math.max(neededCount, 3)
+      avatarsForSpeed = 3  // 高紧急需要3个并行
     } else if (urgency === 'medium') {
-      // 中等紧急：推荐2个候选
-      neededCount = Math.max(neededCount, 2)
+      avatarsForSpeed = 2
     }
     
-    // 5. 预算与效果关系
-    // 高预算 = 高期待 = 需要更精准的匹配
-    if (budget === '高') {
-      neededCount = Math.max(neededCount, 2)
-    }
-    
-    // ========== 最终计算 ==========
-    // 效果叠加原则：不是越多分身越好
-    // 2个优秀分身 ≈ 1.5~1.8倍单分身效果（有边际效应）
-    // 3个优秀分身 ≈ 2~2.4倍单分身效果
-    // 所以我们返回的是"最佳候选数量"，不是"实际需要的数量"
-    
-    // 最终返回数量限制
-    const finalCount = Math.min(
-      Math.max(neededCount, 1),  // 至少1个
-      Math.min(totalAvailableAvatars, 5)  // 最多5个，且不超过可用分身数
+    // 取最大值（确保所有效果目标都能满足）
+    let neededByEffect = Math.max(
+      avatarsForExposure,
+      avatarsForQuality,
+      avatarsForEngagement,
+      avatarsForSpeed
     )
     
-    console.log(`[推荐数量] 复杂度${complexity}/紧急${urgency}/平台${platforms}/技能${skills}/预算${budget} → 推荐${finalCount}个分身`)
+    // ========== 第三步：根据预算验证和调整 ==========
+    
+    // 计算按效果需要的分身数量所需的成本
+    const estimatedCostByEffect = neededByEffect * minIncomePerAvatar
+    
+    // 如果按效果计算的成本超过可分配金额，需要调整
+    if (estimatedCostByEffect > distributableAmount * 0.9) {
+      // 超出预算，尝试减少分身数量
+      const maxAffordable = Math.floor(distributableAmount * 0.9 / minIncomePerAvatar)
+      neededByEffect = Math.min(neededByEffect, maxAffordable)
+      console.log(`[推荐数量] 超出预算，调整为${neededByEffect}个`)
+    }
+    
+    // ========== 第四步：确保分身能赚到钱 ==========
+    
+    // 计算每个分身的实际收益
+    const actualIncomePerAvatar = distributableAmount * 0.6 / neededByEffect
+    
+    // 如果单个分身收益太低，减少分身数量
+    if (actualIncomePerAvatar < 150) {
+      // 收益太低，减少分身让每个赚更多
+      const optimalCount = Math.max(1, Math.floor(distributableAmount * 0.6 / 150))
+      neededByEffect = Math.min(optimalCount, neededByEffect)
+      console.log(`[推荐数量] 单分身收益过低(${actualIncomePerAvatar.toFixed(0)}元)，调整为${neededByEffect}个`)
+    }
+    
+    // ========== 最终结果 ==========
+    const finalCount = Math.min(
+      Math.max(neededByEffect, 1),  // 至少1个
+      Math.min(totalAvailableAvatars, 8)  // 最多8个，不超过可用分身
+    )
+    
+    // 计算预估收益
+    const finalIncomePerAvatar = distributableAmount / finalCount
+    
+    console.log(`[推荐数量] 最终推荐: ${finalCount}个分身，每个约${finalIncomePerAvatar.toFixed(0)}元`)
+    console.log(`  - 曝光需求: ${avatarsForExposure}个`)
+    console.log(`  - 质量需求: ${avatarsForQuality}个`)
+    console.log(`  - 互动需求: ${avatarsForEngagement}个`)
+    console.log(`  - 时间需求: ${avatarsForSpeed}个`)
     
     return finalCount
   }
@@ -1277,12 +1319,14 @@ export class OrderDispatchService {
     console.log(`[智能匹配] 找到 ${avatars.length} 个活跃分身`)
     
     // ========== 第二步半：根据订单分析计算推荐分身数量 ==========
-    // 动态计算需要多少推荐分身，而不是固定返回5个
+    // 动态计算需要多少推荐分身，根据订单金额和效果目标
+    const orderAmount = order.budget || 0
     const recommendedCount = limit > 0 
       ? limit  // 如果前端指定了limit，使用指定的limit
-      : this.calculateRecommendedAvatarCount(orderAnalysis, avatars.length)
+      : this.calculateRecommendedAvatarCount(orderAnalysis, avatars.length, orderAmount)
     
     console.log(`[智能匹配] 根据订单分析计算推荐分身数量: ${recommendedCount}`)
+    console.log(`  - 订单金额: ${orderAmount}元，可分配: ${(orderAmount * 0.8).toFixed(0)}元`)
     console.log(`  - 紧急程度: ${orderAnalysis.urgencyLevel || 'medium'}`)
     console.log(`  - 复杂度: ${orderAnalysis.complexityLevel || 5}`)
     console.log(`  - 技能要求: ${orderAnalysis.requiredSkills?.length || 0}项`)
