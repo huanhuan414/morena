@@ -750,6 +750,57 @@ export class OrderDispatchService {
   }
 
   /**
+   * 根据订单分析结果计算所需推荐分身数量
+   * 根据预估效果决定需要多少分身来完成任务
+   */
+  private calculateRecommendedAvatarCount(orderAnalysis: OrderAnalysis, totalAvailableAvatars: number): number {
+    // 基础数量
+    let baseCount = 1
+    
+    // 根据紧急程度调整
+    // 高紧急订单需要多个分身并行处理
+    if (orderAnalysis.urgencyLevel === 'high') {
+      baseCount = Math.max(baseCount, 3)
+    } else if (orderAnalysis.urgencyLevel === 'medium') {
+      baseCount = Math.max(baseCount, 2)
+    }
+    
+    // 根据复杂度调整
+    // 高复杂度订单需要更专业的分身，可能需要更多候选
+    if (orderAnalysis.complexityLevel >= 8) {
+      baseCount = Math.max(baseCount, 4) // 需要顶级专业分身
+    } else if (orderAnalysis.complexityLevel >= 6) {
+      baseCount = Math.max(baseCount, 3)
+    } else if (orderAnalysis.complexityLevel <= 2) {
+      baseCount = Math.min(baseCount, 2)
+    }
+    
+    // 根据技能要求数量调整
+    // 技能要求越多，需要更多匹配选项
+    const skillCount = orderAnalysis.requiredSkills?.length || 0
+    if (skillCount >= 4) {
+      baseCount = Math.max(baseCount, 4)
+    } else if (skillCount >= 2) {
+      baseCount = Math.max(baseCount, 3)
+    }
+    
+    // 根据平台数量调整
+    // 需要多平台发布的订单需要更多分身
+    const platformCount = orderAnalysis.preferredPlatforms?.length || 0
+    if (platformCount >= 3) {
+      baseCount = Math.max(baseCount, 3)
+    }
+    
+    // 考虑预算因素（高预算订单需要更优质的匹配）
+    if (orderAnalysis.estimatedBudget === '高') {
+      baseCount = Math.max(baseCount, 2)
+    }
+    
+    // 最终数量不能超过可用分身数，且最多不超过10个
+    return Math.min(Math.max(baseCount, 1), Math.min(totalAvailableAvatars, 10))
+  }
+
+  /**
    * 智能订单分配算法
    * 根据订单需求和分身能力进行多维度匹配
    */
@@ -1166,6 +1217,7 @@ export class OrderDispatchService {
       requiredSkills: orderAnalysis.requiredSkills,
       preferredPlatforms: orderAnalysis.preferredPlatforms,
       complexityLevel: orderAnalysis.complexityLevel,
+      urgencyLevel: orderAnalysis.urgencyLevel,
       semanticTags: orderAnalysis.semanticTags
     })
     
@@ -1182,6 +1234,18 @@ export class OrderDispatchService {
       return []
     }
     console.log(`[智能匹配] 找到 ${avatars.length} 个活跃分身`)
+    
+    // ========== 第二步半：根据订单分析计算推荐分身数量 ==========
+    // 动态计算需要多少推荐分身，而不是固定返回5个
+    const recommendedCount = limit > 0 
+      ? limit  // 如果前端指定了limit，使用指定的limit
+      : this.calculateRecommendedAvatarCount(orderAnalysis, avatars.length)
+    
+    console.log(`[智能匹配] 根据订单分析计算推荐分身数量: ${recommendedCount}`)
+    console.log(`  - 紧急程度: ${orderAnalysis.urgencyLevel || 'medium'}`)
+    console.log(`  - 复杂度: ${orderAnalysis.complexityLevel || 5}`)
+    console.log(`  - 技能要求: ${orderAnalysis.requiredSkills?.length || 0}项`)
+    console.log(`  - 平台要求: ${orderAnalysis.preferredPlatforms?.length || 0}个`)
     
     // ========== 第三步：获取平台配置 ==========
     const userIds = [...new Set(avatars.map(a => a.user_id))]
@@ -1252,7 +1316,7 @@ export class OrderDispatchService {
     })
     
     // ========== 第六步：格式化返回结果 ==========
-    const result = scoredAvatars.slice(0, limit <= 0 ? undefined : limit).map(avatar => {
+    const result = scoredAvatars.slice(0, recommendedCount).map(avatar => {
       const stats = avatarStatsMap.get(avatar.id) || { totalRating: 0, ratingCount: 0, totalEarnings: 0 }
       const avgRating = stats.ratingCount > 0 ? stats.totalRating / stats.ratingCount : 4.5
       

@@ -657,14 +657,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8rpx;
+  gap: 6rpx;
+  min-width: 96rpx;
 }
 
 .match-score-ring {
-  width: 80rpx;
-  height: 80rpx;
-  border: 4rpx solid;
-  border-radius: 24rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border: 3rpx solid;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,21 +676,22 @@
 .match-score-ring::before {
   content: '';
   position: absolute;
-  inset: -8rpx;
-  border-radius: 32rpx;
+  inset: -6rpx;
+  border-radius: 50%;
   background: inherit;
-  opacity: 0.2;
-  filter: blur(10rpx);
+  opacity: 0.15;
+  filter: blur(8rpx);
 }
 
 .score-num {
-  font-size: 32rpx;
+  font-size: 26rpx;
   font-weight: 900;
+  line-height: 1;
 }
 
 .score-label {
-  font-size: 20rpx;
-  font-weight: 700;
+  font-size: 18rpx;
+  font-weight: 600;
 }
 
 /* 预估效果 */
