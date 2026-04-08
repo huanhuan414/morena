@@ -1412,14 +1412,83 @@ export class AvatarService {
 
     console.log('提取的有效链接:', validUrl)
 
-    // 1. 判断是否为社交媒体短链接
-    const isSocialMediaLink = /v\.douyin\.com|xhslink\.com|b23\.tv|weibo\.cn|kuaishou\.com|zhihu\.com/i.test(validUrl)
+    // 1. 判断是否为抖音短链接
+    const isDouyinLink = /v\.douyin\.com/i.test(validUrl)
 
-    if (isSocialMediaLink) {
-      throw new Error('该链接需要登录或动态加载，无法直接抓取。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+    if (isDouyinLink) {
+      // 尝试使用fetch获取抖音页面内容
+      try {
+        const htmlContent = await this.fetchUrlContent(validUrl)
+
+        if (htmlContent && htmlContent.length > 100) {
+          console.log('成功获取抖音页面内容，长度:', htmlContent.length)
+
+          // 使用LLM从HTML中提取用户信息
+          const config = new Config()
+          const llmClient = new LLMClient(config)
+
+          const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
+            {
+              role: 'system',
+              content: '你是一个HTML解析专家，擅长从网页HTML中提取社交媒体账号信息。请从HTML中提取账号信息，以JSON格式返回。'
+            },
+            {
+              role: 'user',
+              content: `请从以下抖音页面HTML内容中提取账号信息，返回JSON格式：
+${htmlContent.substring(0, 15000)}
+
+请提取以下信息并返回JSON格式：
+{
+  "platform": "平台名称",
+  "accountName": "账号名称",
+  "followers": 粉丝数（数字），
+  "totalExposure": 总曝光量（数字，如果没有则为0），
+  "totalWorks": 作品总数（数字），
+  "avgLikes": 平均点赞数（数字），
+  "avgComments": 平均评论数（数字），
+  "avgShares": 平均转发数（数字）
+}
+
+注意事项：
+- 粉丝数、作品数等必须提取为纯数字
+- 如果某个信息无法识别，设置为0
+- platform 设置为"抖音"
+- 从HTML中查找粉丝数、作品数等数据（通常在data属性或JavaScript变量中）
+- 只返回JSON，不要其他文字说明`
+            }
+          ]
+
+          const response = await llmClient.invoke(messages, {
+            model: 'doubao-pro-32k-250421',
+            temperature: 0.2
+          })
+
+          console.log('LLM响应:', response.content.substring(0, 500))
+
+          // 解析返回结果
+          const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const result = JSON.parse(jsonMatch[0])
+            return {
+              platform: result.platform || '抖音',
+              accountName: result.accountName || '',
+              followers: parseInt(result.followers) || 0,
+              totalExposure: parseInt(result.totalExposure) || 0,
+              totalWorks: parseInt(result.totalWorks) || 0,
+              avgLikes: parseInt(result.avgLikes) || 0,
+              avgComments: parseInt(result.avgComments) || 0,
+              avgShares: parseInt(result.avgShares) || 0
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('获取抖音页面内容失败:', error.message)
+      }
+
+      throw new Error('无法从该抖音链接获取用户信息。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
     }
 
-    // 2. 尝试用 S3Storage 下载并上传
+    // 2. 非社交媒体链接，尝试用 S3Storage 下载并上传
     const storage = new S3Storage({
       bucketName: process.env.COZE_BUCKET_NAME,
       region: 'cn-beijing'
@@ -1517,5 +1586,29 @@ export class AvatarService {
     }
 
     return result
+  }
+
+  /**
+   * 获取URL内容
+   */
+  private async fetchUrlContent(url: string): Promise<string> {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('请求失败')
+      }
+
+      return await response.text()
+    } catch (error) {
+      console.error('获取URL内容失败:', error)
+      throw error
+    }
   }
 }
