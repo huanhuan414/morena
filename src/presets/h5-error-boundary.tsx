@@ -167,7 +167,20 @@ const handleWindowError = (event: ErrorEvent) => {
 };
 
 const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-  showH5ErrorOverlay(event.reason, { source: 'window.unhandledrejection' });
+  const error = event.reason;
+
+  // 忽略已知的微信小程序 API 不支持的错误
+  const isKnownWxapiError = error?.message?.includes('暂时不支持 API') ||
+                            error?.message?.includes('getMenuButtonBoundingClientRect') ||
+                            error?.errMsg?.includes('暂时不支持 API') ||
+                            error?.errMsg?.includes('getMenuButtonBoundingClientRect');
+
+  if (isKnownWxapiError) {
+    console.warn('[H5 Error Handling] Ignoring known WeChat API error:', error);
+    return;
+  }
+
+  showH5ErrorOverlay(error, { source: 'window.unhandledrejection' });
 };
 
 export const initializeH5ErrorHandling = () => {

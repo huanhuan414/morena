@@ -62,12 +62,15 @@ export default function AvatarManagePage() {
     // 初始化状态栏和胶囊按钮信息
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
+
+    // 仅在微信小程序中获取胶囊按钮信息
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+      const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+      if (menuButtonBoundingClientRect) {
+        const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+        const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+        setCapsuleWidth(capsuleWidthWithMargins)
+      }
     }
   })
 
