@@ -750,54 +750,95 @@ export class OrderDispatchService {
   }
 
   /**
-   * 根据订单分析结果计算所需推荐分身数量
-   * 根据预估效果决定需要多少分身来完成任务
+   * 根据订单预估效果目标计算所需推荐分身数量
+   * 核心逻辑：达到订单要求的预估效果组合需要多少分身的协同
+   * 
+   * 效果组合分析：
+   * - 曝光(Reach): 单分身效果有限，多分身可扩大覆盖
+   * - 互动(Engagement): 依赖内容质量和专业度
+   * - 质量(Quality): 依赖分身的完成率和评分
+   * - 时间(Time): 紧急订单需要并行处理
    */
   private calculateRecommendedAvatarCount(orderAnalysis: OrderAnalysis, totalAvailableAvatars: number): number {
-    // 基础数量
-    let baseCount = 1
+    // 基础需求：1个最匹配的分身
+    let neededCount = 1
     
-    // 根据紧急程度调整
-    // 高紧急订单需要多个分身并行处理
-    if (orderAnalysis.urgencyLevel === 'high') {
-      baseCount = Math.max(baseCount, 3)
-    } else if (orderAnalysis.urgencyLevel === 'medium') {
-      baseCount = Math.max(baseCount, 2)
+    const complexity = orderAnalysis.complexityLevel || 5
+    const urgency = orderAnalysis.urgencyLevel || 'medium'
+    const platforms = orderAnalysis.preferredPlatforms?.length || 0
+    const skills = orderAnalysis.requiredSkills?.length || 0
+    const budget = orderAnalysis.estimatedBudget || '中'
+    
+    // ========== 效果目标分析 ==========
+    
+    // 1. 曝光效果目标分析
+    // 高曝光需要多平台覆盖，每个平台需要专业分身
+    // 曝光优秀 = 多平台 × 高等级分身
+    if (platforms >= 4) {
+      // 4+个平台：每个平台至少1个，建议2-3个协同
+      // 计算：Math.ceil(platforms / 2) 确保每个平台有覆盖
+      neededCount = Math.max(neededCount, Math.min(3, Math.ceil(platforms / 2)))
+    } else if (platforms >= 2) {
+      // 2-3个平台：至少2个分身覆盖
+      neededCount = Math.max(neededCount, 2)
     }
     
-    // 根据复杂度调整
-    // 高复杂度订单需要更专业的分身，可能需要更多候选
-    if (orderAnalysis.complexityLevel >= 8) {
-      baseCount = Math.max(baseCount, 4) // 需要顶级专业分身
-    } else if (orderAnalysis.complexityLevel >= 6) {
-      baseCount = Math.max(baseCount, 3)
-    } else if (orderAnalysis.complexityLevel <= 2) {
-      baseCount = Math.min(baseCount, 2)
+    // 2. 质量效果目标分析
+    // 高复杂度需要高质量分身
+    // 质量卓越/优秀 = 高等级 + 高完成率 + 高评分
+    // 复杂度越高，对分身质量要求越高，可能需要多个高质量候选
+    if (complexity >= 8) {
+      // 顶级复杂度：需要1个最顶级的，或者2个高质量协同
+      // 实际推荐2个顶级候选，确保有选择余地
+      neededCount = Math.max(neededCount, 2)
+    } else if (complexity >= 6) {
+      // 高复杂度：需要高质量分身，推荐2个候选
+      neededCount = Math.max(neededCount, 2)
     }
     
-    // 根据技能要求数量调整
-    // 技能要求越多，需要更多匹配选项
-    const skillCount = orderAnalysis.requiredSkills?.length || 0
-    if (skillCount >= 4) {
-      baseCount = Math.max(baseCount, 4)
-    } else if (skillCount >= 2) {
-      baseCount = Math.max(baseCount, 3)
+    // 3. 互动效果目标分析
+    // 高互动需要专业内容和风格匹配
+    // 技能要求越多，越难找到完美匹配，建议更多候选
+    if (skills >= 4) {
+      // 4+项技能：很难找到完美匹配全部技能的分身
+      // 推荐3个候选，优先匹配核心技能
+      neededCount = Math.max(neededCount, 3)
+    } else if (skills >= 2) {
+      // 2-3项技能：推荐2个候选
+      neededCount = Math.max(neededCount, 2)
     }
     
-    // 根据平台数量调整
-    // 需要多平台发布的订单需要更多分身
-    const platformCount = orderAnalysis.preferredPlatforms?.length || 0
-    if (platformCount >= 3) {
-      baseCount = Math.max(baseCount, 3)
+    // 4. 时间效果目标分析
+    // 高紧急需要并行处理，必须有足够的分身
+    if (urgency === 'high') {
+      // 高紧急：必须能快速响应，推荐3个候选
+      neededCount = Math.max(neededCount, 3)
+    } else if (urgency === 'medium') {
+      // 中等紧急：推荐2个候选
+      neededCount = Math.max(neededCount, 2)
     }
     
-    // 考虑预算因素（高预算订单需要更优质的匹配）
-    if (orderAnalysis.estimatedBudget === '高') {
-      baseCount = Math.max(baseCount, 2)
+    // 5. 预算与效果关系
+    // 高预算 = 高期待 = 需要更精准的匹配
+    if (budget === '高') {
+      neededCount = Math.max(neededCount, 2)
     }
     
-    // 最终数量不能超过可用分身数，且最多不超过10个
-    return Math.min(Math.max(baseCount, 1), Math.min(totalAvailableAvatars, 10))
+    // ========== 最终计算 ==========
+    // 效果叠加原则：不是越多分身越好
+    // 2个优秀分身 ≈ 1.5~1.8倍单分身效果（有边际效应）
+    // 3个优秀分身 ≈ 2~2.4倍单分身效果
+    // 所以我们返回的是"最佳候选数量"，不是"实际需要的数量"
+    
+    // 最终返回数量限制
+    const finalCount = Math.min(
+      Math.max(neededCount, 1),  // 至少1个
+      Math.min(totalAvailableAvatars, 5)  // 最多5个，且不超过可用分身数
+    )
+    
+    console.log(`[推荐数量] 复杂度${complexity}/紧急${urgency}/平台${platforms}/技能${skills}/预算${budget} → 推荐${finalCount}个分身`)
+    
+    return finalCount
   }
 
   /**
