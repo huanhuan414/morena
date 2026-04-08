@@ -206,31 +206,57 @@ export class SocialService {
       ...commentedPostIds
     ])]
     
+    // 限制ID数量，避免URI过长（最多500个）
+    const limitedPostIds = allRelatedPostIds.slice(0, 500)
+    const limitedAvatarIds = avatarIds.slice(0, 50)
+    
     // 5. 查询帖子（分身发布的 OR 相关的帖子）
-    let query = client
-      .from('posts')
-      .select('*, users(nickname, avatar), avatars(name, avatar_url)', { count: 'exact' })
-      .eq('is_public', true)
+    let ownedPosts: any[] = []
+    let relatedPosts: any[] = []
     
-    if (allRelatedPostIds.length > 0) {
-      // 使用 OR 条件：分身发布的 OR 相关帖子
-      query = query.or(`avatar_id.in.(${avatarIds.join(',')}),id.in.(${allRelatedPostIds.join(',')})`)
-    } else {
-      // 只有分身发布的帖子
-      query = query.in('avatar_id', avatarIds)
+    // 获取分身发布的帖子
+    if (limitedAvatarIds.length > 0) {
+      const { data, error } = await client
+        .from('posts')
+        .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+        .eq('is_public', true)
+        .in('avatar_id', limitedAvatarIds)
+        .order('created_at', { ascending: false })
+        .limit(200)
+      
+      if (error) {
+        throw new Error(`获取分身发布帖子失败: ${error.message}`)
+      }
+      ownedPosts = data || []
     }
     
-    const { data, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1)
-    
-    if (error) {
-      throw new Error(`获取动态列表失败: ${error.message}`)
+    // 获取相关帖子（点赞、评论过的）
+    if (limitedPostIds.length > 0) {
+      const { data, error } = await client
+        .from('posts')
+        .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+        .eq('is_public', true)
+        .in('id', limitedPostIds)
+        .order('created_at', { ascending: false })
+        .limit(500)
+      
+      if (error) {
+        throw new Error(`获取相关帖子失败: ${error.message}`)
+      }
+      relatedPosts = data || []
     }
+    
+    // 合并并去重，按时间排序
+    const allPosts = [...ownedPosts, ...relatedPosts]
+    const uniquePosts = Array.from(new Map(allPosts.map(p => [p.id, p])).values())
+    uniquePosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    
+    const total = uniquePosts.length
+    const paginatedPosts = uniquePosts.slice(offset, offset + pageSize)
     
     // 6. 获取每个帖子的点赞者列表（前5个）和点赞状态
     const postsWithLikers = await Promise.all(
-      (data || []).map(async (post) => {
+      (paginatedPosts || []).map(async (post) => {
         // 获取前5个点赞者
         const { data: likes } = await client
           .from('likes')
@@ -295,7 +321,7 @@ export class SocialService {
     
     return {
       posts: postsWithLikers || [],
-      total: count || 0,
+      total: total || 0,
       page,
       pageSize,
       stats
