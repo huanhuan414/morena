@@ -18,7 +18,7 @@ const Switch = React.forwardRef<
   return (
     <View
       className={cn(
-        "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background [-webkit-tap-highlight-color:transparent]",
+        "inline-flex h-8 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background [-webkit-tap-highlight-color:transparent]",
         disabled && "cursor-not-allowed opacity-50",
         currentChecked ? "bg-primary" : "bg-input",
         className
@@ -32,9 +32,11 @@ const Switch = React.forwardRef<
       {...props}
       ref={ref}
       onClick={(e) => {
+        console.log('Switch onClick triggered, disabled:', disabled, 'currentChecked:', currentChecked)
         if (disabled) return
         e.stopPropagation()
         const newChecked = !currentChecked
+        console.log('Switch newChecked:', newChecked)
         if (!isControlled) {
             setLocalChecked(newChecked)
         }
@@ -43,8 +45,8 @@ const Switch = React.forwardRef<
     >
       <View
         className={cn(
-          "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
-          currentChecked ? "translate-x-5" : "translate-x-0"
+          "pointer-events-none block h-7 w-7 rounded-full bg-background shadow-lg ring-0 transition-transform",
+          currentChecked ? "translate-x-7" : "translate-x-0"
         )}
       />
     </View>

@@ -165,7 +165,19 @@ export default function AvatarManagePage() {
   }
 
   const goToAccountConfig = (avatarId: string, avatarName: string) => {
-    navigateTo({ url: `/pages/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}` })
+    console.log('goToAccountConfig called, avatarId:', avatarId, 'avatarName:', avatarName)
+    const url = `/pages/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
+    console.log('navigateTo url:', url)
+    navigateTo({
+      url,
+      success: () => {
+        console.log('navigateTo success')
+      },
+      fail: (err) => {
+        console.error('navigateTo fail:', err)
+        showToast({ title: '跳转失败', icon: 'none' })
+      }
+    })
   }
 
   // 打开时间选择弹窗
@@ -342,9 +354,13 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动发帖</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            onCheckedChange={(_checked) => {
-                              if (!avatar.is_hosted) {
-                                showToast({ title: '请先开启托管', icon: 'none' })
+                            onCheckedChange={async (checked) => {
+                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
+                              try {
+                                await toggleHosting(avatar.id, checked)
+                              } catch (error) {
+                                console.error('切换托管失败:', error)
+                                showToast({ title: '操作失败', icon: 'none' })
                               }
                             }}
                           />
@@ -353,9 +369,13 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动评论</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            onCheckedChange={(_checked) => {
-                              if (!avatar.is_hosted) {
-                                showToast({ title: '请先开启托管', icon: 'none' })
+                            onCheckedChange={async (checked) => {
+                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
+                              try {
+                                await toggleHosting(avatar.id, checked)
+                              } catch (error) {
+                                console.error('切换托管失败:', error)
+                                showToast({ title: '操作失败', icon: 'none' })
                               }
                             }}
                           />
@@ -364,9 +384,13 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动点赞</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            onCheckedChange={(_checked) => {
-                              if (!avatar.is_hosted) {
-                                showToast({ title: '请先开启托管', icon: 'none' })
+                            onCheckedChange={async (checked) => {
+                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
+                              try {
+                                await toggleHosting(avatar.id, checked)
+                              } catch (error) {
+                                console.error('切换托管失败:', error)
+                                showToast({ title: '操作失败', icon: 'none' })
                               }
                             }}
                           />
@@ -375,9 +399,13 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动交友</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            onCheckedChange={(_checked) => {
-                              if (!avatar.is_hosted) {
-                                showToast({ title: '请先开启托管', icon: 'none' })
+                            onCheckedChange={async (checked) => {
+                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
+                              try {
+                                await toggleHosting(avatar.id, checked)
+                              } catch (error) {
+                                console.error('切换托管失败:', error)
+                                showToast({ title: '操作失败', icon: 'none' })
                               }
                             }}
                           />
@@ -398,7 +426,10 @@ export default function AvatarManagePage() {
                         {/* 账号配置入口 */}
                         <View
                           className="friend-list-entry"
-                          onClick={() => goToAccountConfig(avatar.id, avatar.name)}
+                          onClick={() => {
+                            console.log('配置账号数据被点击, avatarId:', avatar.id, 'avatarName:', avatar.name)
+                            goToAccountConfig(avatar.id, avatar.name)
+                          }}
                         >
                           <View className="friend-entry-left">
                             <Database size={18} color="#fbbf24" />
