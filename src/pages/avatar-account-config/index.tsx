@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Edit, Save, Trash2, ArrowLeft } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -236,7 +236,7 @@ export default function AvatarAccountConfigPage() {
                   </View>
                   <View className="account-actions">
                     <View className="action-btn" onClick={() => openModal(account)}>
-                      <Edit size={16} color="#1890ff" />
+                      <Pencil size={16} color="#1890ff" />
                       <Text className="action-text">编辑</Text>
                     </View>
                     <View className="action-btn" onClick={() => deleteAccount(account.id!)}>
