@@ -177,10 +177,24 @@ export default function AvatarAccountConfigPage() {
     }
   }
 
+  // 提取URL的正则表达式
+  const extractUrl = (text: string): string | null => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const matches = text.match(urlRegex)
+    return matches && matches.length > 0 ? matches[0] : null
+  }
+
   // 从链接抓取信息
   const fetchFromUrl = async () => {
     if (!accountUrl) {
       showToast({ title: '请输入链接', icon: 'none' })
+      return
+    }
+
+    // 从输入文本中提取纯URL
+    const extractedUrl = extractUrl(accountUrl)
+    if (!extractedUrl) {
+      showToast({ title: '未找到有效链接', icon: 'none' })
       return
     }
 
@@ -191,7 +205,7 @@ export default function AvatarAccountConfigPage() {
       const res = await Network.request({
         url: '/api/avatar/accounts/fetch-from-url',
         method: 'POST',
-        data: { url: accountUrl }
+        data: { url: extractedUrl }
       })
 
       console.log('链接抓取响应:', res.data)

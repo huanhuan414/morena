@@ -413,12 +413,21 @@ export class AvatarController {
       }
     }
 
-    const result = await this.avatarService.fetchAccountFromUrl(url)
+    try {
+      const result = await this.avatarService.fetchAccountFromUrl(url)
 
-    return {
-      code: 200,
-      data: result,
-      message: '抓取成功'
+      return {
+        code: 200,
+        data: result,
+        message: '抓取成功'
+      }
+    } catch (error: any) {
+      console.error('链接抓取失败:', error)
+      return {
+        code: 400,
+        message: error.message || '抓取失败，请重试',
+        data: null
+      }
     }
   }
 }

@@ -1401,42 +1401,62 @@ export class AvatarService {
   async fetchAccountFromUrl(url: string) {
     const { LLMClient, Config, S3Storage } = await import('coze-coding-dev-sdk')
 
-    // 1. 使用 S3Storage 从 URL 下载并上传
+    // 从文本中提取有效的 URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const matches = url.match(urlRegex)
+    const validUrl = matches && matches.length > 0 ? matches[0] : url
+
+    if (!validUrl || !validUrl.startsWith('http')) {
+      throw new Error('无效的链接格式')
+    }
+
+    console.log('提取的有效链接:', validUrl)
+
+    // 1. 判断是否为社交媒体短链接
+    const isSocialMediaLink = /v\.douyin\.com|xhslink\.com|b23\.tv|weibo\.cn|kuaishou\.com|zhihu\.com/i.test(validUrl)
+
+    if (isSocialMediaLink) {
+      throw new Error('该链接需要登录或动态加载，无法直接抓取。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+    }
+
+    // 2. 尝试用 S3Storage 下载并上传
     const storage = new S3Storage({
       bucketName: process.env.COZE_BUCKET_NAME,
       region: 'cn-beijing'
     })
 
-    const fileKey = await storage.uploadFromUrl({
-      url: url,
-      timeout: 30000
-    })
+    let fileKey: string
+    try {
+      fileKey = await storage.uploadFromUrl({
+        url: validUrl,
+        timeout: 30000
+      })
+    } catch (error: any) {
+      console.error('上传失败:', error)
+      throw new Error('无法从该链接获取内容。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+    }
 
-    // 2. 生成访问 URL
+    // 3. 生成访问 URL
     const imageUrl = await storage.generatePresignedUrl({
       key: fileKey,
       expireTime: 86400
     })
 
-    // 3. 判断是图片链接还是页面链接
-    const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url)
+    // 4. 使用视觉模型识别
+    const config = new Config()
+    const llmClient = new LLMClient(config)
 
-    if (isImage) {
-      // 3a. 如果是图片链接，使用视觉模型识别
-      const config = new Config()
-      const llmClient = new LLMClient(config)
-
-      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
-        {
-          role: 'system',
-          content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `请分析这张社交媒体账号主页图片，提取以下信息并返回JSON格式：
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
+      {
+        role: 'system',
+        content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请分析这张社交媒体账号主页图片，提取以下信息并返回JSON格式：
 {
   "platform": "平台名称（如抖音、小红书、B站等）",
   "accountName": "账号名称",
@@ -1453,54 +1473,49 @@ export class AvatarService {
 - 如果某个信息无法识别，设置为0
 - platform 必须是：抖音、微信公众号、小红书、B站、微博、快手、知乎 中的一个
 - 只返回JSON，不要其他文字说明`
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageUrl,
-                detail: 'high'
-              }
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageUrl,
+              detail: 'high'
             }
-          ]
-        }
-      ]
+          }
+        ]
+      }
+    ]
 
-      const response = await llmClient.invoke(messages, {
-        model: 'doubao-seed-1-6-vision-250815',
-        temperature: 0.2
-      })
+    const response = await llmClient.invoke(messages, {
+      model: 'doubao-seed-1-6-vision-250815',
+      temperature: 0.2
+    })
 
-      // 解析返回结果
-      let result
-      try {
-        const jsonMatch = response.content.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          result = JSON.parse(jsonMatch[0])
-        } else {
-          throw new Error('无法解析返回结果')
-        }
-
-        result = {
-          platform: result.platform || '',
-          accountName: result.accountName || '',
-          followers: parseInt(result.followers) || 0,
-          totalExposure: parseInt(result.totalExposure) || 0,
-          totalWorks: parseInt(result.totalWorks) || 0,
-          avgLikes: parseInt(result.avgLikes) || 0,
-          avgComments: parseInt(result.avgComments) || 0,
-          avgShares: parseInt(result.avgShares) || 0
-        }
-
-      } catch (error) {
-        console.error('解析识别结果失败:', error)
-        throw new Error('图片识别失败，请重试')
+    // 解析返回结果
+    let result
+    try {
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0])
+      } else {
+        throw new Error('无法解析返回结果')
       }
 
-      return result
-    } else {
-      // 3b. 如果是页面链接，使用文本模型分析
-      // 注意：这里简化处理，直接提示用户使用截图
-      throw new Error('暂不支持页面链接抓取，请上传账号主页截图')
+      result = {
+        platform: result.platform || '',
+        accountName: result.accountName || '',
+        followers: parseInt(result.followers) || 0,
+        totalExposure: parseInt(result.totalExposure) || 0,
+        totalWorks: parseInt(result.totalWorks) || 0,
+        avgLikes: parseInt(result.avgLikes) || 0,
+        avgComments: parseInt(result.avgComments) || 0,
+        avgShares: parseInt(result.avgShares) || 0
+      }
+
+    } catch (error) {
+      console.error('解析识别结果失败:', error)
+      throw new Error('图片识别失败，请重试或使用截图功能')
     }
+
+    return result
   }
 }
