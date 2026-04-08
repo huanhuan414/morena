@@ -327,23 +327,6 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 功能状态标签 */
-.feature-status {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 22px;
-}
-
-.feature-status.enabled {
-  background: rgba(0, 245, 255, 0.15);
-  border: 1px solid rgba(0, 245, 255, 0.3);
-}
-
-.feature-status-text {
-  color: #00f5ff;
-  font-weight: 500;
-}
-
 /* 好友列表入口 */
 .friend-list-entry {
   display: flex;

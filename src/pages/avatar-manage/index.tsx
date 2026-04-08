@@ -336,33 +336,57 @@ export default function AvatarManagePage() {
                         </View>
                       </View>
 
-                      {/* 自动功能 - 托管开启时全部100%启用 */}
+                      {/* 自动功能 - 托管开启时全部启用，关闭时全部禁用 */}
                       <View className="auto-features">
                         <View className="feature-item">
                           <Text className="feature-text">自动发帖</Text>
-                          <View className="feature-status enabled">
-                            <Text className="feature-status-text">100%</Text>
-                          </View>
+                          <Switch
+                            checked={avatar.is_hosted}
+                            disabled={!avatar.is_hosted}
+                            onCheckedChange={(_checked) => {
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                              }
+                            }}
+                          />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动评论</Text>
-                          <View className="feature-status enabled">
-                            <Text className="feature-status-text">100%</Text>
-                          </View>
+                          <Switch
+                            checked={avatar.is_hosted}
+                            disabled={!avatar.is_hosted}
+                            onCheckedChange={(_checked) => {
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                              }
+                            }}
+                          />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动点赞</Text>
-                          <View className="feature-status enabled">
-                            <Text className="feature-status-text">100%</Text>
-                          </View>
+                          <Switch
+                            checked={avatar.is_hosted}
+                            disabled={!avatar.is_hosted}
+                            onCheckedChange={(_checked) => {
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                              }
+                            }}
+                          />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动交友</Text>
-                          <View className="feature-status enabled">
-                            <Text className="feature-status-text">100%</Text>
-                          </View>
+                          <Switch
+                            checked={avatar.is_hosted}
+                            disabled={!avatar.is_hosted}
+                            onCheckedChange={(_checked) => {
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                              }
+                            }}
+                          />
                         </View>
-                        
+
                         {/* 好友列表入口 */}
                         <View
                           className="friend-list-entry"

@@ -54,7 +54,9 @@ export default function AvatarAccountConfigPage() {
   useLoad((options) => {
     if (options.avatarId) {
       setAvatarId(options.avatarId as string)
-      setAvatarName(options.avatarName as string || '')
+      if (options.avatarName) {
+        setAvatarName(decodeURIComponent(options.avatarName as string) || '')
+      }
     }
   })
 
