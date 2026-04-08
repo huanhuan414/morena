@@ -1296,27 +1296,52 @@ export class AvatarService {
    * 通过图片识别账号信息
    */
   async recognizeAccountFromImage(file: Express.Multer.File) {
+    console.log('=== 开始图片识别流程 ===')
+    console.log('文件信息:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length
+    })
+
     const { S3Storage, LLMClient, Config } = await import('coze-coding-dev-sdk')
 
     // 1. 上传图片到 TOS
+    console.log('步骤1: 上传图片到TOS...')
     const storage = new S3Storage({
       bucketName: process.env.COZE_BUCKET_NAME,
       region: 'cn-beijing'
     })
 
-    const fileKey = await storage.uploadFile({
-      fileContent: file.buffer,
-      fileName: `account-recognition/${Date.now()}-${file.originalname}`,
-      contentType: file.mimetype
-    })
+    let fileKey: string
+    try {
+      fileKey = await storage.uploadFile({
+        fileContent: file.buffer,
+        fileName: `account-recognition/${Date.now()}-${file.originalname}`,
+        contentType: file.mimetype
+      })
+      console.log('上传成功，fileKey:', fileKey)
+    } catch (error: any) {
+      console.error('上传到TOS失败:', error)
+      throw new Error(`图片上传失败: ${error.message}`)
+    }
 
     // 2. 生成访问 URL
-    const imageUrl = await storage.generatePresignedUrl({
-      key: fileKey,
-      expireTime: 86400 // 1天
-    })
+    console.log('步骤2: 生成预签名URL...')
+    let imageUrl: string
+    try {
+      imageUrl = await storage.generatePresignedUrl({
+        key: fileKey,
+        expireTime: 86400 // 1天
+      })
+      console.log('生成URL成功:', imageUrl.substring(0, 100) + '...')
+    } catch (error: any) {
+      console.error('生成预签名URL失败:', error)
+      throw new Error(`生成URL失败: ${error.message}`)
+    }
 
     // 3. 使用 LLM 视觉模型识别图片
+    console.log('步骤3: 调用LLM视觉模型...')
     const config = new Config()
     const llmClient = new LLMClient(config)
 
@@ -1359,19 +1384,30 @@ export class AvatarService {
       }
     ]
 
-    const response = await llmClient.invoke(messages, {
-      model: 'doubao-seed-1-6-vision-250815',
-      temperature: 0.2
-    })
+    let response
+    try {
+      response = await llmClient.invoke(messages, {
+        model: 'doubao-seed-1-6-vision-250815',
+        temperature: 0.2
+      })
+      console.log('LLM调用成功，返回内容长度:', response.content?.length)
+      console.log('LLM返回内容:', response.content.substring(0, 200) + '...')
+    } catch (error: any) {
+      console.error('LLM调用失败:', error)
+      throw new Error(`图片识别失败: ${error.message}`)
+    }
 
     // 4. 解析返回结果
+    console.log('步骤4: 解析识别结果...')
     let result
     try {
       // 提取 JSON 部分
       const jsonMatch = response.content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0])
+        console.log('JSON解析成功:', result)
       } else {
+        console.error('未找到JSON格式的返回结果')
         throw new Error('无法解析返回结果')
       }
 
@@ -1386,12 +1422,14 @@ export class AvatarService {
         avgComments: parseInt(result.avgComments) || 0,
         avgShares: parseInt(result.avgShares) || 0
       }
+      console.log('最终结果:', result)
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('解析识别结果失败:', error)
       throw new Error('图片识别失败，请重试')
     }
 
+    console.log('=== 图片识别流程完成 ===')
     return result
   }
 

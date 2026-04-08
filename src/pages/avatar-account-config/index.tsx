@@ -136,6 +136,10 @@ export default function AvatarAccountConfigPage() {
         setPreviewImage(filePath)
         setIsRecognizing(true)
 
+        console.log('=== 开始图片识别 ===')
+        console.log('临时文件路径:', filePath)
+        console.log('开始上传...')
+
         // 上传图片并识别
         const uploadRes = await Network.uploadFile({
           url: '/api/avatar/accounts/recognize-image',
@@ -143,10 +147,27 @@ export default function AvatarAccountConfigPage() {
           name: 'image'
         })
 
-        console.log('图片识别响应:', uploadRes.data)
+        console.log('上传响应完整对象:', JSON.stringify(uploadRes, null, 2))
+        console.log('上传响应.data:', uploadRes.data)
+        console.log('上传响应.statusCode:', uploadRes.statusCode)
 
-        if (uploadRes.data?.code === 200) {
-          const data = uploadRes.data.data
+        // 处理响应数据
+        let responseData
+        if (typeof uploadRes.data === 'string') {
+          try {
+            responseData = JSON.parse(uploadRes.data)
+          } catch (e) {
+            console.error('解析响应数据失败:', e)
+            responseData = uploadRes.data
+          }
+        } else {
+          responseData = uploadRes.data
+        }
+
+        console.log('解析后的响应数据:', responseData)
+
+        if (responseData?.code === 200) {
+          const data = responseData.data
 
           // 填充表单数据
           if (data.platform) {
@@ -165,7 +186,7 @@ export default function AvatarAccountConfigPage() {
 
           showToast({ title: '识别成功', icon: 'success' })
         } else {
-          showToast({ title: uploadRes.data?.message || '识别失败', icon: 'none' })
+          showToast({ title: responseData?.message || '识别失败', icon: 'none' })
         }
 
         setIsRecognizing(false)
@@ -208,10 +229,27 @@ export default function AvatarAccountConfigPage() {
         data: { url: extractedUrl }
       })
 
-      console.log('链接抓取响应:', res.data)
+      console.log('链接抓取响应完整对象:', JSON.stringify(res, null, 2))
+      console.log('链接抓取响应.data:', res.data)
+      console.log('链接抓取响应.statusCode:', res.statusCode)
 
-      if (res.data?.code === 200) {
-        const data = res.data.data
+      // 处理响应数据
+      let responseData
+      if (typeof res.data === 'string') {
+        try {
+          responseData = JSON.parse(res.data)
+        } catch (e) {
+          console.error('解析响应数据失败:', e)
+          responseData = res.data
+        }
+      } else {
+        responseData = res.data
+      }
+
+      console.log('解析后的响应数据:', responseData)
+
+      if (responseData?.code === 200) {
+        const data = responseData.data
 
         // 填充表单数据
         if (data.platform) {
@@ -230,7 +268,7 @@ export default function AvatarAccountConfigPage() {
 
         showToast({ title: '抓取成功', icon: 'success' })
       } else {
-        showToast({ title: res.data?.message || '抓取失败', icon: 'none' })
+        showToast({ title: responseData?.message || '抓取失败', icon: 'none' })
       }
 
       setIsRecognizing(false)
