@@ -1320,7 +1320,7 @@ export class AvatarService {
     const config = new Config()
     const llmClient = new LLMClient(config)
 
-    const messages = [
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
       {
         role: 'system',
         content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
@@ -1426,7 +1426,7 @@ export class AvatarService {
       const config = new Config()
       const llmClient = new LLMClient(config)
 
-      const messages = [
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
         {
           role: 'system',
           content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
