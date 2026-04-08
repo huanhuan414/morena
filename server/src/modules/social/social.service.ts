@@ -206,15 +206,15 @@ export class SocialService {
       ...commentedPostIds
     ])]
     
-    // 限制ID数量，避免URI过长（最多500个）
-    const limitedPostIds = allRelatedPostIds.slice(0, 500)
+    // 限制ID数量，避免URI过长
     const limitedAvatarIds = avatarIds.slice(0, 50)
+    const limitedLikedPostIds = likedPostIds.slice(0, 100)
+    const limitedCommentedPostIds = commentedPostIds.slice(0, 100)
     
-    // 5. 查询帖子（分身发布的 OR 相关的帖子）
+    // 5. 分开查询，使用分页和限制避免URI过长
+    
+    // 5.1 获取分身发布的帖子
     let ownedPosts: any[] = []
-    let relatedPosts: any[] = []
-    
-    // 获取分身发布的帖子
     if (limitedAvatarIds.length > 0) {
       const { data, error } = await client
         .from('posts')
@@ -222,7 +222,7 @@ export class SocialService {
         .eq('is_public', true)
         .in('avatar_id', limitedAvatarIds)
         .order('created_at', { ascending: false })
-        .limit(200)
+        .limit(100)
       
       if (error) {
         throw new Error(`获取分身发布帖子失败: ${error.message}`)
@@ -230,24 +230,59 @@ export class SocialService {
       ownedPosts = data || []
     }
     
-    // 获取相关帖子（点赞、评论过的）
-    if (limitedPostIds.length > 0) {
-      const { data, error } = await client
-        .from('posts')
-        .select('*, users(nickname, avatar), avatars(name, avatar_url)')
-        .eq('is_public', true)
-        .in('id', limitedPostIds)
-        .order('created_at', { ascending: false })
-        .limit(500)
-      
-      if (error) {
-        throw new Error(`获取相关帖子失败: ${error.message}`)
+    // 5.2 获取分身点赞的帖子（分批查询）
+    let likedPosts: any[] = []
+    if (limitedLikedPostIds.length > 0) {
+      // 分批查询，每批20个ID
+      const batchSize = 20
+      const batches: string[][] = []
+      for (let i = 0; i < limitedLikedPostIds.length; i += batchSize) {
+        batches.push(limitedLikedPostIds.slice(i, i + batchSize))
       }
-      relatedPosts = data || []
+      
+      for (const batch of batches) {
+        const { data, error } = await client
+          .from('posts')
+          .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+          .eq('is_public', true)
+          .in('id', batch)
+          .order('created_at', { ascending: false })
+        
+        if (error) {
+          console.error('获取点赞帖子批次失败:', error)
+          continue
+        }
+        likedPosts.push(...(data || []))
+      }
+    }
+    
+    // 5.3 获取分身评论的帖子（分批查询）
+    let commentedPosts: any[] = []
+    if (limitedCommentedPostIds.length > 0) {
+      const batchSize = 20
+      const batches: string[][] = []
+      for (let i = 0; i < limitedCommentedPostIds.length; i += batchSize) {
+        batches.push(limitedCommentedPostIds.slice(i, i + batchSize))
+      }
+      
+      for (const batch of batches) {
+        const { data, error } = await client
+          .from('posts')
+          .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+          .eq('is_public', true)
+          .in('id', batch)
+          .order('created_at', { ascending: false })
+        
+        if (error) {
+          console.error('获取评论帖子批次失败:', error)
+          continue
+        }
+        commentedPosts.push(...(data || []))
+      }
     }
     
     // 合并并去重，按时间排序
-    const allPosts = [...ownedPosts, ...relatedPosts]
+    const allPosts = [...ownedPosts, ...likedPosts, ...commentedPosts]
     const uniquePosts = Array.from(new Map(allPosts.map(p => [p.id, p])).values())
     uniquePosts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     
