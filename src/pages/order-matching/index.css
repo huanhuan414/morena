@@ -744,6 +744,72 @@
   font-weight: 800;
 }
 
+/* 任务分配 */
+.task-allocation {
+  background: rgba(251, 191, 36, 0.08);
+  border: 1rpx solid rgba(251, 191, 36, 0.2);
+  border-radius: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.allocation-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.allocation-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.allocation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.allocation-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.allocation-label {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.allocation-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+.allocation-value.income {
+  color: #fbbf24;
+}
+
+.allocation-value.ratio {
+  color: #22c55e;
+}
+
+.allocation-hint {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid rgba(251, 191, 36, 0.2);
+}
+
+.hint-text {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
 /* 匹配理由 */
 .match-reasons {
   display: flex;

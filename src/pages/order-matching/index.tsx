@@ -31,6 +31,9 @@ interface MatchedAvatar {
   // 额外信息
   avgRating?: number
   totalEarnings?: number
+  // 新增：预估收益和任务分配
+  estimatedIncome?: number    // 预估收益（元）
+  estimatedTaskRatio?: string // 预估任务占比
   // 深度分析数据
   skillMatchScore?: number
   platformMatchScore?: number
@@ -127,7 +130,7 @@ const getPlatformName = (platform: string): string => {
 export default function OrderMatchingPage() {
   const router = useRouter()
   const { orderId } = router.params
-  
+
   const [currentStep, setCurrentStep] = useState(0)
   const [steps, setSteps] = useState<AlgorithmStep[]>(
     ALGORITHM_STEPS.map(s => ({ ...s, status: 'pending', details: s.details }))
@@ -139,7 +142,15 @@ export default function OrderMatchingPage() {
   const [avatarHistory, setAvatarHistory] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [dispatching, setDispatching] = useState(false)
-  
+
+  // 订单信息
+  const [orderInfo, setOrderInfo] = useState<{
+    title: string
+    budget: number
+    platforms?: string[]
+  } | null>(null)
+  const [recommendedCount, setRecommendedCount] = useState(0)  // 推荐分身数量
+
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
@@ -189,19 +200,45 @@ export default function OrderMatchingPage() {
 
   const fetchMatchingResults = async () => {
     try {
-      // 获取所有推荐分身（不传limit，返回全部）
-      const res = await Network.request({
-        url: `/api/order-dispatch/recommend/${orderId}`
-      })
-      
-      if (res.data?.code === 200) {
-        const avatars = res.data.data || []
-        
-        if (avatars.length > 0) {
+      // 并行获取订单信息和推荐分身
+      const [orderRes, recommendRes] = await Promise.all([
+        Network.request({ url: `/api/order/${orderId}` }),
+        Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
+      ])
+
+      // 获取订单信息
+      if (orderRes.data?.code === 200) {
+        const order = orderRes.data.data
+        setOrderInfo({
+          title: order.title,
+          budget: parseFloat(order.budget || 0),
+          platforms: order.requirements?.platforms || []
+        })
+      }
+
+      // 获取推荐分身
+      if (recommendRes.data?.code === 200) {
+        const avatars = recommendRes.data.data || []
+        const totalAvatars = avatars.length
+        setRecommendedCount(totalAvatars)
+
+        // 计算每个分身的预估收益（平台抽成20%后）
+        const budget = parseFloat(orderInfo?.budget?.toString() || '0') || 0
+        const distributableAmount = budget * 0.8
+        const incomePerAvatar = totalAvatars > 0 ? distributableAmount / totalAvatars : 0
+
+        // 为每个分身添加预估收益
+        const avatarsWithIncome = avatars.map((avatar) => ({
+          ...avatar,
+          estimatedIncome: incomePerAvatar,
+          estimatedTaskRatio: `${Math.round(100 / totalAvatars)}%`,  // 每个分身承担的任务比例
+        }))
+
+        if (totalAvatars > 0) {
           // 逐步显示分身卡片
-          for (let i = 0; i < avatars.length; i++) {
+          for (let i = 0; i < totalAvatars; i++) {
             await new Promise(resolve => setTimeout(resolve, 300))
-            setMatchedAvatars(prev => [...prev, avatars[i]])
+            setMatchedAvatars(prev => [...prev, avatarsWithIncome[i]])
           }
         } else {
           // 如果没有推荐，显示空状态
@@ -613,7 +650,7 @@ export default function OrderMatchingPage() {
                       </View>
                       <View className="effect-item">
                         <Text className="effect-label">质量</Text>
-                        <Text 
+                        <Text
                           className="effect-value quality"
                           style={{ color: getEffectColor(avatar.estimatedEffect.quality) }}
                         >
@@ -625,6 +662,37 @@ export default function OrderMatchingPage() {
                         <Text className="effect-value">{avatar.estimatedEffect.time}</Text>
                       </View>
                     </View>
+                  </View>
+                )}
+
+                {/* 预估收益和任务分配 */}
+                {avatar.estimatedIncome !== undefined && avatar.estimatedTaskRatio && (
+                  <View className="task-allocation">
+                    <View className="allocation-header">
+                      <Award size={12} color="#fbbf24" />
+                      <Text className="allocation-title">任务分配</Text>
+                    </View>
+                    <View className="allocation-grid">
+                      <View className="allocation-item">
+                        <Text className="allocation-label">预估收益</Text>
+                        <Text className="allocation-value income">
+                          ¥{avatar.estimatedIncome.toFixed(0)}
+                        </Text>
+                      </View>
+                      <View className="allocation-item">
+                        <Text className="allocation-label">任务占比</Text>
+                        <Text className="allocation-value ratio">
+                          {avatar.estimatedTaskRatio}
+                        </Text>
+                      </View>
+                    </View>
+                    {orderInfo && recommendedCount > 1 && (
+                      <View className="allocation-hint">
+                        <Text className="hint-text">
+                          共{recommendedCount}个分身协同，总金额 ¥{orderInfo.budget.toFixed(0)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 )}
 

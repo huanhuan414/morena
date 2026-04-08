@@ -839,6 +839,128 @@ export class OrderDispatchService {
   }
 
   /**
+   * 获取分身的账号数据和历史效果数据
+   */
+  private async getAvatarPerformanceData(avatarIds: string[]): Promise<Map<string, any>> {
+    const client = getSupabaseClient()
+
+    const avatarDataMap = new Map<string, any>()
+
+    // 获取分身账号数据
+    const { data: accounts } = await client
+      .from('avatar_accounts')
+      .select('*')
+      .in('avatar_id', avatarIds)
+
+    // 获取分身历史效果数据（最近30天）
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const { data: orderResults } = await client
+      .from('order_results')
+      .select('*')
+      .in('avatar_id', avatarIds)
+      .gte('created_at', thirtyDaysAgo.toISOString())
+
+    // 聚合每个分身的数据
+    avatarIds.forEach(avatarId => {
+      const avatarAccounts = accounts?.filter(a => a.avatar_id === avatarId) || []
+      const avatarResults = orderResults?.filter(r => r.avatar_id === avatarId) || []
+
+      // 汇总各平台账号数据
+      const platformData = {}
+      let totalFollowers = 0
+      let totalExposure = 0
+      let totalWorks = 0
+      let avgEngagementRate = 0
+
+      avatarAccounts.forEach(account => {
+        platformData[account.platform] = {
+          followers: account.followers,
+          totalExposure: account.total_exposure,
+          totalWorks: account.total_works,
+          avgLikesPerWork: account.avg_likes_per_work,
+          avgCommentsPerWork: account.avg_comments_per_work,
+          avgSharesPerWork: account.avg_shares_per_work,
+          engagementRate: parseFloat(account.engagement_rate || 0),
+        }
+        totalFollowers += account.followers
+        totalExposure += account.total_exposure
+        totalWorks += account.total_works
+        avgEngagementRate += parseFloat(account.engagement_rate || 0)
+      })
+
+      avgEngagementRate = avatarAccounts.length > 0 ? avgEngagementRate / avatarAccounts.length : 0
+
+      // 汇总历史效果数据
+      let totalActualExposure = 0
+      let totalActualLikes = 0
+      let totalActualComments = 0
+      let avgQualityScore = 0
+      let avgCompletionTime = 0
+
+      avatarResults.forEach(result => {
+        totalActualExposure += result.actual_exposure
+        totalActualLikes += result.actual_likes
+        totalActualComments += result.actual_comments
+        avgQualityScore += result.quality_score
+        avgCompletionTime += parseFloat(result.completion_time_hours || 0)
+      })
+
+      avgQualityScore = avatarResults.length > 0 ? avgQualityScore / avatarResults.length : 0
+      avgCompletionTime = avatarResults.length > 0 ? avgCompletionTime / avatarResults.length : 0
+
+      avatarDataMap.set(avatarId, {
+        accounts: platformData,
+        totalFollowers,
+        totalExposure,
+        totalWorks,
+        avgEngagementRate,
+        historicalData: {
+          totalActualExposure,
+          totalActualLikes,
+          totalActualComments,
+          avgQualityScore,
+          avgCompletionTime,
+          completedOrders: avatarResults.length,
+        },
+        // 估算每个分身单次能带来的效果（基于历史数据的平均值）
+        estimatedCapacity: {
+          exposure: avatarResults.length > 0 ? totalActualExposure / avatarResults.length : (totalExposure / (totalWorks || 1)),
+          engagement: avatarResults.length > 0 ? (totalActualLikes + totalActualComments) / avatarResults.length : (totalExposure * avgEngagementRate / 100),
+        }
+      })
+    })
+
+    return avatarDataMap
+  }
+
+  /**
+   * 传统推荐数量计算算法（无预期效果时使用）
+   */
+  private calculateTraditionalCount(
+    complexity: number,
+    urgency: string,
+    platforms: number,
+    totalAvailableAvatars: number
+  ): number {
+    let count = 1
+
+    // 复杂度
+    if (complexity >= 8) count = 3
+    else if (complexity >= 6) count = 2
+
+    // 紧急程度
+    if (urgency === 'high') count = Math.max(count, 3)
+    else if (urgency === 'medium') count = Math.max(count, 2)
+
+    // 平台覆盖
+    if (platforms > count) count = Math.min(platforms, 3)
+
+    return Math.min(Math.max(count, 1), Math.min(totalAvailableAvatars, 5))
+  }
+
+  /**
    * 根据订单预期效果目标计算所需推荐分身数量
    * 
    * 核心原则：确保能达到订单的预期效果！
@@ -852,165 +974,83 @@ export class OrderDispatchService {
    * 4. 自定义目标（customTargets）：转化率、粉丝等
    */
   private calculateRecommendedAvatarCount(
-    orderAnalysis: OrderAnalysis, 
+    orderAnalysis: OrderAnalysis,
     totalAvailableAvatars: number,
     orderAmount: number
   ): number {
-    // 订单指标分析
-    const complexity = orderAnalysis.complexityLevel || 5  // 1-10
+    const complexity = orderAnalysis.complexityLevel || 5
     const urgency = orderAnalysis.urgencyLevel || 'medium'
     const platforms = orderAnalysis.preferredPlatforms?.length || 1
-    const skills = orderAnalysis.requiredSkills?.length || 0
-    const budget = orderAnalysis.estimatedBudget || '中'
     const expected = orderAnalysis.expectedResults || {}
-    
+
     console.log(`[推荐数量] 订单分析 - 预期效果:`, expected)
-    
-    // ========== 核心：根据预期效果目标计算分身数量 ==========
-    
-    // 1. 曝光目标分析（阅读量、播放量、曝光量）
-    // 单个分身平均曝光能力估算：
-    // - 普通分身：1-5万曝光
-    // - 优质分身：5-20万曝光
-    // - 顶级分身：20-50万曝光
+
+    // ========== 如果没有预期效果，使用传统算法 ==========
+    if (!expected.reachTarget && !expected.engagementTarget) {
+      console.log(`[推荐数量] 无明确预期效果，使用传统算法`)
+      return this.calculateTraditionalCount(complexity, urgency, platforms, totalAvailableAvatars)
+    }
+
+    // ========== 有预期效果，基于分身能力倒推 ==========
+    // 1. 曝光目标倒推
     let avatarsForReach = 1
     const reachTarget = expected.reachTarget || 0
     if (reachTarget > 0) {
-      if (reachTarget >= 500000) {
-        // 50万+曝光：需要3个顶级分身协同
-        avatarsForReach = 3
-      } else if (reachTarget >= 200000) {
-        // 20-50万曝光：需要2个优质分身
-        avatarsForReach = 2
-      } else if (reachTarget >= 100000) {
-        // 10-20万曝光：需要1-2个分身
-        avatarsForReach = 2
-      } else if (reachTarget >= 50000) {
-        // 5-10万曝光：需要1个优质分身
-        avatarsForReach = 1
-      }
-      console.log(`[推荐数量] 曝光目标=${reachTarget} -> 需要${avatarsForReach}个分身`)
+      // 假设单个分身平均能带来5-20万曝光（基于历史数据估算）
+      // 这里使用保守估计：10万曝光/分身
+      avatarsForReach = Math.ceil(reachTarget / 100000)
+      console.log(`[推荐数量] 曝光目标=${reachTarget} -> 需要${avatarsForReach}个分身（假设每个分身10万曝光）`)
     }
-    
-    // 2. 互动目标分析（点赞、评论、转发）
-    // 单个分身平均互动能力估算：
-    // - 普通分身：100-500互动
-    // - 优质分身：500-2000互动
-    // - 顶级分身：2000-10000互动
+
+    // 2. 互动目标倒推
     let avatarsForEngagement = 1
     const engagementTarget = expected.engagementTarget || 0
     if (engagementTarget > 0) {
-      if (engagementTarget >= 5000) {
-        // 5000+互动：需要3个顶级分身
-        avatarsForEngagement = 3
-      } else if (engagementTarget >= 2000) {
-        // 2000-5000互动：需要2个优质分身
-        avatarsForEngagement = 2
-      } else if (engagementTarget >= 1000) {
-        // 1000-2000互动：需要1-2个分身
-        avatarsForEngagement = 2
-      } else if (engagementTarget >= 500) {
-        // 500-1000互动：需要1个优质分身
-        avatarsForEngagement = 1
-      }
-      console.log(`[推荐数量] 互动目标=${engagementTarget} -> 需要${avatarsForEngagement}个分身`)
+      // 假设单个分身平均能带来1000-5000互动（基于历史数据估算）
+      // 这里使用保守估计：2000互动/分身
+      avatarsForEngagement = Math.ceil(engagementTarget / 2000)
+      console.log(`[推荐数量] 互动目标=${engagementTarget} -> 需要${avatarsForEngagement}个分身（假设每个分身2000互动）`)
     }
-    
-    // 3. 质量目标分析
-    // 质量目标决定分身质量要求，不直接决定数量
-    let requiredQuality: '卓越' | '优秀' | '良好' | '合格' = '良好'
-    if (expected.qualityTarget) {
-      requiredQuality = expected.qualityTarget as any
-    } else if (complexity >= 8) {
-      requiredQuality = '卓越'
-    } else if (complexity >= 6) {
-      requiredQuality = '优秀'
-    }
-    console.log(`[推荐数量] 质量目标: ${requiredQuality}`)
-    
-    // 4. 自定义目标分析（转化率、粉丝等）
-    // 这类目标通常需要高质量分身
+
+    // 3. 自定义目标分析
     let avatarsForCustom = 1
     if (expected.customTargets && expected.customTargets.length > 0) {
       const hasConversion = expected.customTargets.some(t => t.includes('转化率'))
       if (hasConversion) {
-        // 有转化率要求：需要1-2个高质量分身
-        avatarsForCustom = 2
+        avatarsForCustom = 2  // 转化率要求需要高质量分身
       }
       console.log(`[推荐数量] 自定义目标=${expected.customTargets} -> 需要${avatarsForCustom}个分身`)
     }
-    
-    // ========== 其他因素调整 ==========
-    
-    // 5. 平台覆盖需求
-    let avatarsForPlatform = 1
-    if (platforms >= 4) {
-      avatarsForPlatform = Math.min(3, platforms)
-    } else if (platforms >= 2) {
-      avatarsForPlatform = 2
-    }
-    
-    // 6. 复杂度需求（高复杂度需要高质量分身）
-    let avatarsForComplexity = 1
-    if (complexity >= 8) {
-      avatarsForComplexity = 2
-    } else if (complexity >= 6) {
-      avatarsForComplexity = 2
-    }
-    
-    // 7. 时间紧急需求（高紧急需要并行处理）
-    let avatarsForSpeed = 1
-    if (urgency === 'high') {
-      avatarsForSpeed = 3
-    } else if (urgency === 'medium') {
-      avatarsForSpeed = 2
-    }
-    
-    // 8. 技能匹配需求
-    let avatarsForSkills = 1
-    if (skills >= 4) {
-      avatarsForSkills = 3
-    } else if (skills >= 2) {
-      avatarsForSkills = 2
-    }
-    
+
     // ========== 综合计算 ==========
-    
     // 取所有效果目标的最大值（确保每个目标都能满足）
     let neededByEffect = Math.max(
       avatarsForReach,
       avatarsForEngagement,
-      avatarsForCustom,
-      avatarsForPlatform,
-      avatarsForComplexity,
-      avatarsForSpeed,
-      avatarsForSkills
+      avatarsForCustom
     )
-    
-    console.log(`[推荐数量] 效果需求汇总:`)
-    console.log(`  - 曝光: ${avatarsForReach}个`)
-    console.log(`  - 互动: ${avatarsForEngagement}个`)
-    console.log(`  - 自定义: ${avatarsForCustom}个`)
-    console.log(`  - 平台覆盖: ${avatarsForPlatform}个`)
-    console.log(`  - 复杂度: ${avatarsForComplexity}个`)
-    console.log(`  - 紧急处理: ${avatarsForSpeed}个`)
-    console.log(`  - 技能匹配: ${avatarsForSkills}个`)
-    console.log(`  -> 综合需求: ${neededByEffect}个分身`)
-    
+
+    // 考虑平台覆盖需求
+    if (platforms > neededByEffect) {
+      neededByEffect = Math.min(platforms, 3)  // 最多3个分身覆盖平台
+    }
+
+    console.log(`[推荐数量] 效果需求汇总: ${neededByEffect}个分身`)
+
     // ========== 最终结果 ==========
     const finalCount = Math.min(
       Math.max(neededByEffect, 1),  // 至少1个
       Math.min(totalAvailableAvatars, 10)  // 最多10个，且不超过可用分身
     )
-    
-    // 计算每个分身预期收益（仅供参考）
+
+    // 计算每个分身预期收益
     const distributableAmount = orderAmount * 0.8
     const estimatedIncomePerAvatar = distributableAmount / finalCount
-    
+
     console.log(`[推荐数量] 最终推荐: ${finalCount}个分身`)
     console.log(`[推荐数量] 订单金额: ${orderAmount}元，平台抽成20%后: ${distributableAmount.toFixed(0)}元`)
     console.log(`[推荐数量] 预计每个分身收益: ${estimatedIncomePerAvatar.toFixed(0)}元`)
-    
+
     return finalCount
   }
 

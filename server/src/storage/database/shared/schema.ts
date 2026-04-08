@@ -372,6 +372,61 @@ export const platformConfigs = pgTable(
   ]
 )
 
+// 分身账号基础数据表 - 记录分身在各平台的粉丝、曝光、作品数等基础数据
+export const avatarAccounts = pgTable(
+  "avatar_accounts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 30 }).notNull(), // douyin, wechat, xiaohongshu, bilibili, weibo, etc.
+    account_name: varchar("account_name", { length: 100 }), // 账号名称
+    followers: integer("followers").default(0).notNull(), // 粉丝数
+    total_exposure: integer("total_exposure").default(0).notNull(), // 总曝光量
+    total_works: integer("total_works").default(0).notNull(), // 作品数量
+    avg_likes_per_work: integer("avg_likes_per_work").default(0).notNull(), // 每作品平均点赞数
+    avg_comments_per_work: integer("avg_comments_per_work").default(0).notNull(), // 每作品平均评论数
+    avg_shares_per_work: integer("avg_shares_per_work").default(0).notNull(), // 每作品平均转发数
+    engagement_rate: numeric("engagement_rate", { precision: 5, scale: 2 }).default("0"), // 互动率 = (likes + comments + shares) / exposure
+    last_updated_at: timestamp("last_updated_at", { withTimezone: true }).defaultNow().notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("avatar_accounts_avatar_id_idx").on(table.avatar_id),
+    index("avatar_accounts_platform_idx").on(table.platform),
+    index("avatar_accounts_followers_idx").on(table.followers),
+    index("avatar_accounts_total_exposure_idx").on(table.total_exposure),
+  ]
+)
+
+// 订单效果统计表 - 记录订单完成后的实际效果，用于历史数据分析
+export const orderResults = pgTable(
+  "order_results",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    order_id: varchar("order_id", { length: 36 }).notNull().references(() => orders.id, { onDelete: "cascade" }),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 30 }).notNull(), // 执行订单的平台
+    task_description: text("task_description"), // 任务描述
+    actual_exposure: integer("actual_exposure").default(0).notNull(), // 实际曝光量
+    actual_likes: integer("actual_likes").default(0).notNull(), // 实际点赞数
+    actual_comments: integer("actual_comments").default(0).notNull(), // 实际评论数
+    actual_shares: integer("actual_shares").default(0).notNull(), // 实际转发数
+    actual_views: integer("actual_views").default(0).notNull(), // 实际阅读/播放量
+    completion_time_hours: numeric("completion_time_hours", { precision: 5, scale: 2 }).default("0"), // 完成时间（小时）
+    quality_score: integer("quality_score").default(0).notNull(), // 质量评分（0-100）
+    customer_rating: integer("customer_rating"), // 客户评分（1-5）
+    notes: text("notes"), // 备注说明
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("order_results_order_id_idx").on(table.order_id),
+    index("order_results_avatar_id_idx").on(table.avatar_id),
+    index("order_results_platform_idx").on(table.platform),
+    index("order_results_actual_exposure_idx").on(table.actual_exposure),
+    index("order_results_created_at_idx").on(table.created_at),
+  ]
+)
+
 // 分身技能表
 export const avatarSkills = pgTable(
   "avatar_skills",
@@ -434,6 +489,8 @@ export const insertCommentSchema = createCoercedInsertSchema(comments)
 export const insertLikeSchema = createCoercedInsertSchema(likes)
 export const insertFollowSchema = createCoercedInsertSchema(follows)
 export const insertOrderSchema = createCoercedInsertSchema(orders)
+export const insertAvatarAccountSchema = createCoercedInsertSchema(avatarAccounts)
+export const insertOrderResultSchema = createCoercedInsertSchema(orderResults)
 
 // 类型导出
 export type User = typeof users.$inferSelect
@@ -456,3 +513,7 @@ export type Follow = typeof follows.$inferSelect
 export type InsertFollow = z.infer<typeof insertFollowSchema>
 export type Order = typeof orders.$inferSelect
 export type InsertOrder = z.infer<typeof insertOrderSchema>
+export type AvatarAccount = typeof avatarAccounts.$inferSelect
+export type InsertAvatarAccount = z.infer<typeof insertAvatarAccountSchema>
+export type OrderResult = typeof orderResults.$inferSelect
+export type InsertOrderResult = z.infer<typeof insertOrderResultSchema>

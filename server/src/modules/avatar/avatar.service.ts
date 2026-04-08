@@ -1150,15 +1150,140 @@ export class AvatarService {
       audioFormat: 'mp3',
       sampleRate: 24000,
     })
-    
+
     console.log(`[AvatarService] 语音通话问候生成成功: ${ttsResponse.audioUri}`)
-    
+
     return {
       greeting: response.content,
       audioUrl: ttsResponse.audioUri,
       friendName: friendAvatar.name,
       matchReason: friendship?.match_reason,
       compatibilityScore: friendship?.compatibility_score
+    }
+  }
+
+  /**
+   * 获取分身的账号数据列表
+   */
+  async getAccounts(avatarId: string) {
+    const client = getSupabaseClient()
+
+    const { data, error } = await client
+      .from('avatar_accounts')
+      .select('*')
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw new Error(`获取账号数据失败: ${error.message}`)
+    }
+
+    return data || []
+  }
+
+  /**
+   * 创建分身账号数据
+   */
+  async createAccount(userId: string, accountData: Record<string, any>) {
+    const client = getSupabaseClient()
+
+    // 验证分身是否属于当前用户
+    const { data: avatar, error: avatarError } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', accountData.avatar_id)
+      .eq('user_id', userId)
+      .single()
+
+    if (avatarError || !avatar) {
+      throw new Error('分身不存在或无权访问')
+    }
+
+    // 计算互动率
+    const totalInteraction = (accountData.avg_likes_per_work || 0) +
+                            (accountData.avg_comments_per_work || 0) +
+                            (accountData.avg_shares_per_work || 0)
+    const engagementRate = accountData.total_exposure > 0
+      ? (totalInteraction / accountData.total_exposure) * 100
+      : 0
+
+    const { data, error } = await client
+      .from('avatar_accounts')
+      .insert({
+        avatar_id: accountData.avatar_id,
+        platform: accountData.platform,
+        account_name: accountData.account_name,
+        followers: accountData.followers || 0,
+        total_exposure: accountData.total_exposure || 0,
+        total_works: accountData.total_works || 0,
+        avg_likes_per_work: accountData.avg_likes_per_work || 0,
+        avg_comments_per_work: accountData.avg_comments_per_work || 0,
+        avg_shares_per_work: accountData.avg_shares_per_work || 0,
+        engagement_rate: engagementRate,
+        last_updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`创建账号数据失败: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * 更新分身账号数据
+   */
+  async updateAccount(accountId: string, accountData: Record<string, any>) {
+    const client = getSupabaseClient()
+
+    // 计算互动率
+    const totalInteraction = (accountData.avg_likes_per_work || 0) +
+                            (accountData.avg_comments_per_work || 0) +
+                            (accountData.avg_shares_per_work || 0)
+    const engagementRate = accountData.total_exposure > 0
+      ? (totalInteraction / accountData.total_exposure) * 100
+      : 0
+
+    const { data, error } = await client
+      .from('avatar_accounts')
+      .update({
+        platform: accountData.platform,
+        account_name: accountData.account_name,
+        followers: accountData.followers || 0,
+        total_exposure: accountData.total_exposure || 0,
+        total_works: accountData.total_works || 0,
+        avg_likes_per_work: accountData.avg_likes_per_work || 0,
+        avg_comments_per_work: accountData.avg_comments_per_work || 0,
+        avg_shares_per_work: accountData.avg_shares_per_work || 0,
+        engagement_rate: engagementRate,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('id', accountId)
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`更新账号数据失败: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * 删除分身账号数据
+   */
+  async deleteAccount(accountId: string) {
+    const client = getSupabaseClient()
+
+    const { error } = await client
+      .from('avatar_accounts')
+      .delete()
+      .eq('id', accountId)
+
+    if (error) {
+      throw new Error(`删除账号数据失败: ${error.message}`)
     }
   }
 }

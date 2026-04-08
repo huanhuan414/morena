@@ -310,4 +310,62 @@ export class AvatarController {
       message: '通话发起成功'
     }
   }
+
+  /**
+   * 获取分身的账号数据列表
+   */
+  @Get(':avatarId/accounts')
+  async getAccounts(@Param('avatarId') avatarId: string) {
+    const accounts = await this.avatarService.getAccounts(avatarId)
+    return {
+      code: 200,
+      data: accounts,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 创建分身账号数据
+   */
+  @Post('accounts')
+  async createAccount(
+    @Headers('x-user-id') userId: string,
+    @Body() accountData: Record<string, any>
+  ) {
+    const account = await this.avatarService.createAccount(userId, accountData)
+    return {
+      code: 200,
+      data: account,
+      message: '创建成功'
+    }
+  }
+
+  /**
+   * 更新分身账号数据
+   */
+  @Put('accounts/:id')
+  async updateAccount(
+    @Param('id') accountId: string,
+    @Body() accountData: Record<string, any>
+  ) {
+    const account = await this.avatarService.updateAccount(accountId, accountData)
+    return {
+      code: 200,
+      data: account,
+      message: '更新成功'
+    }
+  }
+
+  /**
+   * 删除分身账号数据
+   */
+  @Delete('accounts/:id')
+  async deleteAccount(@Param('id') accountId: string) {
+    await this.avatarService.deleteAccount(accountId)
+    return {
+      code: 200,
+      data: null,
+      message: '删除成功'
+    }
+  }
 }

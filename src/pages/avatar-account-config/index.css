@@ -1,0 +1,309 @@
+.page-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+}
+
+/* 头部 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.header-left,
+.header-right {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-title-text {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 内容区 */
+.content {
+  flex: 1;
+  padding-top: 140rpx;
+  padding-bottom: 40rpx;
+}
+
+/* 说明卡片 */
+.info-card {
+  margin: 24rpx;
+  padding: 32rpx;
+  background-color: #e6f7ff;
+  border-radius: 16rpx;
+  border: 1rpx solid #91d5ff;
+}
+
+.info-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 16rpx;
+}
+
+.info-text {
+  display: block;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 区块 */
+.section {
+  margin: 24rpx;
+  padding: 32rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  background-color: #1890ff;
+  color: #fff;
+  border-radius: 8rpx;
+}
+
+.add-btn-text {
+  font-size: 26rpx;
+  color: #fff;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 80rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 账号卡片 */
+.account-card {
+  padding: 32rpx;
+  background-color: #fafafa;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+  border: 1rpx solid #f0f0f0;
+}
+
+.account-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.account-platform {
+  padding: 8rpx 16rpx;
+  background-color: #1890ff;
+  color: #fff;
+  font-size: 24rpx;
+  border-radius: 6rpx;
+}
+
+.account-name {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.account-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+}
+
+.stat-value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.account-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e8e8e8;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.action-text {
+  font-size: 26rpx;
+  color: #1890ff;
+}
+
+.action-text.danger {
+  color: #ff4d4f;
+}
+
+/* 弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 640rpx;
+  max-height: 80vh;
+  background-color: #fff;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+.modal-body {
+  flex: 1;
+  padding: 32rpx;
+  overflow-y: auto;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.form-label.required::before {
+  content: '*';
+  color: #ff4d4f;
+  margin-right: 8rpx;
+}
+
+.form-input {
+  width: 100%;
+  padding: 24rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  border: 1rpx solid #e8e8e8;
+}
+
+.picker {
+  width: 100%;
+  padding: 24rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  border: 1rpx solid #e8e8e8;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 32rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.modal-btn.cancel {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.modal-btn.confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  background-color: #1890ff;
+  color: #fff;
+}
+
+.btn-text {
+  font-size: 28rpx;
+  color: #fff;
+}
