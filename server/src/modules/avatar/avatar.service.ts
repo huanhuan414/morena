@@ -1450,55 +1450,12 @@ export class AvatarService {
 
     console.log('提取的有效链接:', validUrl)
 
-    // 1. 判断是否为抖音短链接
-    const isDouyinLink = /v\.douyin\.com/i.test(validUrl)
+    // 1. 判断是否为抖音链接
+    const isDouyinLink = /v\.douyin\.com|iesdouyin\.com|douyin\.com/i.test(validUrl)
 
     if (isDouyinLink) {
-      // 尝试多种方案获取抖音用户信息
-      try {
-        // 方案1: 使用笒鬼鬼API解析
-        console.log('尝试方案1: 笒鬼鬼API解析')
-        const userInfo = await this.parseWithCenguiGuiAPI(validUrl)
-        if (userInfo && userInfo.nickname) {
-          console.log('方案1成功获取用户信息')
-          return userInfo
-        }
-      } catch (error: any) {
-        console.log('方案1失败:', error.message)
-      }
-
-      try {
-        // 方案2: 从视频链接中提取用户sec_uid，再查询用户信息
-        console.log('尝试方案2: 提取sec_uid查询')
-        const secUid = await this.extractSecUidFromVideo(validUrl)
-        if (secUid) {
-          const userInfo = await this.getUserInfoBySecUid(secUid)
-          if (userInfo && userInfo.nickname) {
-            console.log('方案2成功获取用户信息')
-            return userInfo
-          }
-        }
-      } catch (error: any) {
-        console.log('方案2失败:', error.message)
-      }
-
-      try {
-        // 方案3: 尝试获取页面HTML，用LLM提取信息
-        console.log('尝试方案3: LLM解析HTML')
-        const htmlContent = await this.fetchUrlContent(validUrl)
-        if (htmlContent && htmlContent.length > 100) {
-          const userInfo = await this.extractUserInfoFromHtml(htmlContent)
-          if (userInfo && userInfo.accountName) {
-            console.log('方案3成功获取用户信息')
-            return userInfo
-          }
-        }
-      } catch (error: any) {
-        console.log('方案3失败:', error.message)
-      }
-
-      // 所有方案都失败，提示用户使用截图
-      throw new Error('无法从该抖音链接获取用户信息。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+      // 使用优化的抖音用户信息获取方法
+      return await this.fetchDouyinUserInfo(validUrl)
     }
 
     // 2. 非社交媒体链接，尝试用 S3Storage 下载并上传
@@ -1602,121 +1559,105 @@ export class AvatarService {
   }
 
   /**
-   * 方案1: 使用笒鬼鬼API解析
+   * 从抖音链接中获取用户信息（优化版）
    */
-  private async parseWithCenguiGuiAPI(url: string): Promise<any> {
-    const apiUrl = `https://api-v2.cenguigui.cn/api/douyin/userinfo.php?url=${encodeURIComponent(url)}`
-    const response = await fetch(apiUrl)
+  private async fetchDouyinUserInfo(url: string): Promise<any> {
+    console.log('尝试从抖音链接获取用户信息...')
 
-    if (!response.ok) {
-      throw new Error('API请求失败')
+    // 1. 获取重定向URL，提取 sec_uid
+    const redirectUrl = await this.getRedirectUrl(url)
+    if (!redirectUrl) {
+      throw new Error('无法获取重定向URL')
     }
 
-    const data = await response.json()
-
-    if (data.code === 200 && data.data && data.data.nickname) {
-      return {
-        platform: '抖音',
-        accountName: data.data.nickname || '',
-        followers: 0, // 需要额外接口获取
-        totalExposure: 0,
-        totalWorks: 0, // 需要额外接口获取
-        avgLikes: 0,
-        avgComments: 0,
-        avgShares: 0,
-        secUid: data.data.id || data.sec_uid
-      }
+    const secUidMatch = redirectUrl.match(/sec_uid=([^&]+)/)
+    if (!secUidMatch) {
+      throw new Error('无法从重定向URL中提取sec_uid')
     }
 
-    throw new Error('无法从API获取用户信息')
-  }
+    const secUid = secUidMatch[1]
+    console.log('提取的 sec_uid:', secUid)
 
-  /**
-   * 方案2: 从视频链接中提取sec_uid
-   */
-  private async extractSecUidFromVideo(url: string): Promise<string | null> {
-    try {
-      const response = await fetch(url, {
-        redirect: 'manual',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      })
-
-      // 检查重定向
-      const location = response.headers.get('location')
-      if (location) {
-        console.log('重定向URL:', location)
-        const secUidMatch = location.match(/user\/([^?\/]+)/)
-        if (secUidMatch) {
-          return secUidMatch[1]
-        }
-      }
-
-      // 尝试从HTML中提取
-      const html = await response.text()
-      const secUidMatch = html.match(/"sec_user_id"\s*:\s*"([^"]+)"/)
-      if (secUidMatch) {
-        return secUidMatch[1]
-      }
-
-      return null
-    } catch (error) {
-      console.error('提取sec_uid失败:', error)
-      return null
-    }
-  }
-
-  /**
-   * 通过sec_uid获取用户信息
-   */
-  private async getUserInfoBySecUid(secUid: string): Promise<any> {
-    try {
-      const apiUrl = `https://api-v2.cenguigui.cn/api/douyin/userinfo.php?id=${secUid}`
-      const response = await fetch(apiUrl)
-
-      if (!response.ok) {
-        throw new Error('API请求失败')
-      }
-
-      const data = await response.json()
-
-      if (data.code === 200 && data.data && data.data.nickname) {
-        return {
-          platform: '抖音',
-          accountName: data.data.nickname || '',
-          followers: 0,
-          totalExposure: 0,
-          totalWorks: 0,
-          avgLikes: 0,
-          avgComments: 0,
-          avgShares: 0
-        }
-      }
-
-      throw new Error('无法获取用户信息')
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
-      throw error
-    }
-  }
-
-  /**
-   * 方案3: 使用LLM从HTML中提取用户信息
-   */
-  private async extractUserInfoFromHtml(htmlContent: string): Promise<any> {
-    const { LLMClient, Config } = await import('coze-coding-dev-sdk')
-    const config = new Config()
-    const llmClient = new LLMClient(config)
-
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
+    // 2. 尝试多种API获取用户信息
+    const apiUrls = [
       {
-        role: 'system',
-        content: '你是一个HTML解析专家，擅长从网页HTML中提取社交媒体账号信息。请从HTML中提取账号信息，以JSON格式返回。'
+        name: '笒鬼鬼API - userinfo',
+        url: `https://api-v2.cenguigui.cn/api/douyin/userinfo.php?id=${secUid}`
       },
       {
-        role: 'user',
-        content: `请从以下抖音页面HTML内容中提取账号信息，返回JSON格式：
+        name: '抖音用户信息API',
+        url: `https://www.iesdouyin.com/web/api/v2/user/info/?sec_user_id=${secUid}`,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+        }
+      }
+    ]
+
+    for (const api of apiUrls) {
+      try {
+        console.log(`尝试API: ${api.name}`)
+
+        const headers = api.headers || {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+
+        const response = await fetch(api.url, { headers })
+
+        if (!response.ok) {
+          console.log(`API请求失败，状态码: ${response.status}`)
+          continue
+        }
+
+        const data = await response.json()
+        console.log(`API响应:`, JSON.stringify(data).substring(0, 200) + '...')
+
+        // 检查是否有用户信息
+        let userInfo: any = null
+        if (data.code === 200 && data.data && data.data.nickname) {
+          userInfo = data.data
+        } else if (data.user_info && data.user_info.nickname) {
+          userInfo = data.user_info
+        } else if (data.data && data.data.user_info && data.data.user_info.nickname) {
+          userInfo = data.data.user_info
+        }
+
+        if (userInfo) {
+          console.log('成功获取用户信息:', userInfo.nickname)
+          return {
+            platform: '抖音',
+            accountName: userInfo.nickname || '',
+            followers: (userInfo as any).followers_count || (userInfo as any).follower_count || 0,
+            totalExposure: 0,
+            totalWorks: (userInfo as any).aweme_count || (userInfo as any).video_count || 0,
+            avgLikes: 0,
+            avgComments: 0,
+            avgShares: 0
+          }
+        }
+
+      } catch (error: any) {
+        console.log(`${api.name} 失败:`, error.message)
+      }
+    }
+
+    // 3. 尝试获取页面HTML，用LLM解析
+    try {
+      console.log('尝试从页面HTML中解析用户信息...')
+      const htmlContent = await this.fetchUrlContent(redirectUrl)
+
+      if (htmlContent && htmlContent.length > 1000) {
+        const { LLMClient, Config } = await import('coze-coding-dev-sdk')
+        const config = new Config()
+        const llmClient = new LLMClient(config)
+
+        const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | any[] }> = [
+          {
+            role: 'system',
+            content: '你是一个HTML解析专家，擅长从网页HTML中提取社交媒体账号信息。请从HTML中提取账号信息，以JSON格式返回。'
+          },
+          {
+            role: 'user',
+            content: `请从以下抖音用户页面HTML内容中提取用户信息，返回JSON格式：
 ${htmlContent.substring(0, 15000)}
 
 请提取以下信息并返回JSON格式：
@@ -1732,39 +1673,71 @@ ${htmlContent.substring(0, 15000)}
 }
 
 注意事项：
+- HTML可能包含JavaScript代码，请查找JSON数据或文本内容
 - 粉丝数、作品数等必须提取为纯数字
 - 如果某个信息无法识别，设置为0
 - platform 设置为"抖音"
-- 从HTML中查找粉丝数、作品数等数据（通常在data属性或JavaScript变量中）
 - 只返回JSON，不要其他文字说明`
+          }
+        ]
+
+        const response = await llmClient.invoke(messages, {
+          model: 'doubao-seed-1-8-251228',
+          temperature: 0.2
+        })
+
+        console.log('LLM响应:', response.content.substring(0, 500))
+
+        const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0])
+          console.log('解析的JSON结果:', result)
+
+          // 即使没有提取到用户名，也返回结果
+          return {
+            platform: result.platform || '抖音',
+            accountName: result.accountName || '',
+            followers: parseInt(result.followers) || 0,
+            totalExposure: parseInt(result.totalExposure) || 0,
+            totalWorks: parseInt(result.totalWorks) || 0,
+            avgLikes: parseInt(result.avgLikes) || 0,
+            avgComments: parseInt(result.avgComments) || 0,
+            avgShares: parseInt(result.avgShares) || 0
+          }
+        }
       }
-    ]
-
-    const response = await llmClient.invoke(messages, {
-      model: 'doubao-pro-32k-250421',
-      temperature: 0.2
-    })
-
-    console.log('LLM响应:', response.content.substring(0, 500))
-
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0])
-      return {
-        platform: result.platform || '抖音',
-        accountName: result.accountName || '',
-        followers: parseInt(result.followers) || 0,
-        totalExposure: parseInt(result.totalExposure) || 0,
-        totalWorks: parseInt(result.totalWorks) || 0,
-        avgLikes: parseInt(result.avgLikes) || 0,
-        avgComments: parseInt(result.avgComments) || 0,
-        avgShares: parseInt(result.avgShares) || 0
-      }
+    } catch (error: any) {
+      console.log('LLM解析失败:', error.message)
     }
 
-    throw new Error('无法从HTML中提取信息')
+    throw new Error('无法从该抖音链接获取用户信息。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
   }
 
+  /**
+   * 获取重定向URL
+   */
+  private async getRedirectUrl(url: string): Promise<string | null> {
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',
+        redirect: 'manual'
+      })
+
+      const location = response.headers.get('location')
+      if (location) {
+        return location
+      }
+
+      return null
+    } catch (error) {
+      console.error('获取重定向URL失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 方案3: 使用LLM从HTML中提取用户信息
+   */
   /**
    * 获取URL内容
    */
