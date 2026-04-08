@@ -342,7 +342,6 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动发帖</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            disabled={!avatar.is_hosted}
                             onCheckedChange={(_checked) => {
                               if (!avatar.is_hosted) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
@@ -354,7 +353,6 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动评论</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            disabled={!avatar.is_hosted}
                             onCheckedChange={(_checked) => {
                               if (!avatar.is_hosted) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
@@ -366,7 +364,6 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动点赞</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            disabled={!avatar.is_hosted}
                             onCheckedChange={(_checked) => {
                               if (!avatar.is_hosted) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
@@ -378,7 +375,6 @@ export default function AvatarManagePage() {
                           <Text className="feature-text">自动交友</Text>
                           <Switch
                             checked={avatar.is_hosted}
-                            disabled={!avatar.is_hosted}
                             onCheckedChange={(_checked) => {
                               if (!avatar.is_hosted) {
                                 showToast({ title: '请先开启托管', icon: 'none' })

@@ -71,7 +71,6 @@ export default function AvatarAccountConfigPage() {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/accounts`
       })
-      console.log('获取账号数据响应:', res.data)
       if (res.data?.code === 200) {
         setAccounts(res.data.data || [])
       }
