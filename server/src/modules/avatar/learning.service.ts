@@ -447,9 +447,9 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
     // 风格匹配度
     const styleMatch = Math.round(styleConsistency * 100)
     
-    // 等级计算
+    // 等级计算（上限Lv.10）
     const totalExp = learning.messageCount * 10 + masteryLevel * 5
-    const level = Math.min(99, Math.floor(totalExp / 100) + 1)
+    const level = Math.min(10, Math.floor(totalExp / 100) + 1)
     
     return {
       masteryLevel,

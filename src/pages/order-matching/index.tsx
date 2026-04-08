@@ -551,7 +551,7 @@ export default function OrderMatchingPage() {
                     <View className="avatar-name-row">
                       <Text className="avatar-name">{avatar.name}</Text>
                       <View className="level-badge">
-                        <Text className="level-text">Lv.{avatar.level}</Text>
+                        <Text className="level-text">Lv.{Math.min(avatar.level, 10)}</Text>
                       </View>
                     </View>
                     
@@ -703,7 +703,7 @@ export default function OrderMatchingPage() {
                   <Text className="detail-name">{selectedAvatar.name}</Text>
                   <View className="detail-badges">
                     <View className="detail-level">
-                      <Text className="detail-level-text">Lv.{selectedAvatar.level}</Text>
+                      <Text className="detail-level-text">Lv.{Math.min(selectedAvatar.level, 10)}</Text>
                     </View>
                     {selectedAvatar.isHosted && (
                       <View className="detail-hosted">
