@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database } from 'lucide-react-taro'
 import './index.css'
 
 interface Avatar {
@@ -162,6 +162,10 @@ export default function AvatarManagePage() {
 
   const goToSettings = (avatarId: string) => {
     navigateTo({ url: `/pages/avatar-settings/index?avatarId=${avatarId}` })
+  }
+
+  const goToAccountConfig = (avatarId: string, avatarName: string) => {
+    navigateTo({ url: `/pages/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}` })
   }
 
   // 打开时间选择弹窗
@@ -360,13 +364,25 @@ export default function AvatarManagePage() {
                         </View>
                         
                         {/* 好友列表入口 */}
-                        <View 
+                        <View
                           className="friend-list-entry"
                           onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
                         >
                           <View className="friend-entry-left">
                             <Users size={18} color="#00f5ff" />
                             <Text className="friend-entry-text">查看好友列表</Text>
+                          </View>
+                          <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                        </View>
+
+                        {/* 账号配置入口 */}
+                        <View
+                          className="friend-list-entry"
+                          onClick={() => goToAccountConfig(avatar.id, avatar.name)}
+                        >
+                          <View className="friend-entry-left">
+                            <Database size={18} color="#fbbf24" />
+                            <Text className="friend-entry-text">配置账号数据</Text>
                           </View>
                           <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
                         </View>
