@@ -1,11 +1,11 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateBack, showToast, chooseImage } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Picker } from '@tarojs/components'
+import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft, Upload, Link as LinkIcon, Loader } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -50,6 +50,13 @@ export default function AvatarAccountConfigPage() {
   const [avgLikes, setAvgLikes] = useState<string>('')
   const [avgComments, setAvgComments] = useState<string>('')
   const [avgShares, setAvgShares] = useState<string>('')
+
+  // 图片识别相关状态
+  const [isRecognizing, setIsRecognizing] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string>('')
+
+  // 链接输入相关状态
+  const [accountUrl, setAccountUrl] = useState<string>('')
 
   useLoad((options) => {
     if (options.avatarId) {
@@ -108,6 +115,116 @@ export default function AvatarAccountConfigPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingAccount(null)
+    setPreviewImage('')
+    setAccountUrl('')
+    setIsRecognizing(false)
+  }
+
+  // 选择并识别图片
+  const chooseAndRecognizeImage = async () => {
+    try {
+      showToast({ title: '选择图片...', icon: 'loading' })
+
+      const res = await chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera']
+      })
+
+      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+        const filePath = res.tempFilePaths[0]
+        setPreviewImage(filePath)
+        setIsRecognizing(true)
+
+        // 上传图片并识别
+        const uploadRes = await Network.uploadFile({
+          url: '/api/avatar/accounts/recognize-image',
+          filePath: filePath,
+          name: 'image'
+        })
+
+        console.log('图片识别响应:', uploadRes.data)
+
+        if (uploadRes.data?.code === 200) {
+          const data = uploadRes.data.data
+
+          // 填充表单数据
+          if (data.platform) {
+            const foundPlatformIndex = PLATFORMS.findIndex(p => p.label === data.platform)
+            if (foundPlatformIndex >= 0) {
+              setPlatformIndex(foundPlatformIndex)
+            }
+          }
+          setAccountName(data.accountName || '')
+          setFollowers(data.followers?.toString() || '')
+          setTotalExposure(data.totalExposure?.toString() || '')
+          setTotalWorks(data.totalWorks?.toString() || '')
+          setAvgLikes(data.avgLikes?.toString() || '')
+          setAvgComments(data.avgComments?.toString() || '')
+          setAvgShares(data.avgShares?.toString() || '')
+
+          showToast({ title: '识别成功', icon: 'success' })
+        } else {
+          showToast({ title: uploadRes.data?.message || '识别失败', icon: 'none' })
+        }
+
+        setIsRecognizing(false)
+      }
+    } catch (error) {
+      console.error('图片识别失败:', error)
+      showToast({ title: '图片识别失败', icon: 'none' })
+      setIsRecognizing(false)
+    }
+  }
+
+  // 从链接抓取信息
+  const fetchFromUrl = async () => {
+    if (!accountUrl) {
+      showToast({ title: '请输入链接', icon: 'none' })
+      return
+    }
+
+    try {
+      setIsRecognizing(true)
+      showToast({ title: '正在抓取...', icon: 'loading' })
+
+      const res = await Network.request({
+        url: '/api/avatar/accounts/fetch-from-url',
+        method: 'POST',
+        data: { url: accountUrl }
+      })
+
+      console.log('链接抓取响应:', res.data)
+
+      if (res.data?.code === 200) {
+        const data = res.data.data
+
+        // 填充表单数据
+        if (data.platform) {
+          const foundPlatformIndex = PLATFORMS.findIndex(p => p.label === data.platform)
+          if (foundPlatformIndex >= 0) {
+            setPlatformIndex(foundPlatformIndex)
+          }
+        }
+        setAccountName(data.accountName || '')
+        setFollowers(data.followers?.toString() || '')
+        setTotalExposure(data.totalExposure?.toString() || '')
+        setTotalWorks(data.totalWorks?.toString() || '')
+        setAvgLikes(data.avgLikes?.toString() || '')
+        setAvgComments(data.avgComments?.toString() || '')
+        setAvgShares(data.avgShares?.toString() || '')
+
+        showToast({ title: '抓取成功', icon: 'success' })
+      } else {
+        showToast({ title: res.data?.message || '抓取失败', icon: 'none' })
+      }
+
+      setIsRecognizing(false)
+    } catch (error) {
+      console.error('链接抓取失败:', error)
+      showToast({ title: '链接抓取失败', icon: 'none' })
+      setIsRecognizing(false)
+    }
   }
 
   const saveAccount = async () => {
@@ -259,6 +376,59 @@ export default function AvatarAccountConfigPage() {
               <Text className="modal-title">{editingAccount ? '编辑账号' : '添加账号'}</Text>
             </View>
             <ScrollView className="modal-body" scrollY>
+              {/* 图片识别和链接抓取区域 */}
+              <View className="smart-input-section">
+                <Text className="smart-input-title">智能填充</Text>
+
+                {/* 图片上传 */}
+                <View className="smart-input-row">
+                  <View className="smart-input-item">
+                    <Text className="smart-input-label">上传主页截图</Text>
+                    <View className="smart-input-actions">
+                      {previewImage ? (
+                        <Image className="preview-image" src={previewImage} mode="aspectFill" />
+                      ) : (
+                        <Button
+                          className="smart-btn"
+                          size="small"
+                          onClick={chooseAndRecognizeImage}
+                          disabled={isRecognizing}
+                        >
+                          {isRecognizing ? <Loader className="animate-spin" /> : <Upload />}
+                          <Text className="smart-btn-text">{isRecognizing ? '识别中...' : '上传图片'}</Text>
+                        </Button>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {/* 链接输入 */}
+                <View className="smart-input-row">
+                  <View className="smart-input-item">
+                    <Text className="smart-input-label">输入主页链接</Text>
+                    <View className="smart-input-actions">
+                      <Input
+                        className="url-input"
+                        placeholder="请输入账号主页链接"
+                        value={accountUrl}
+                        onInput={(e) => setAccountUrl(e.detail.value)}
+                      />
+                      <Button
+                        className="smart-btn"
+                        size="small"
+                        onClick={fetchFromUrl}
+                        disabled={isRecognizing || !accountUrl}
+                      >
+                        {isRecognizing ? <Loader className="animate-spin" /> : <LinkIcon />}
+                        <Text className="smart-btn-text">{isRecognizing ? '抓取中...' : '抓取信息'}</Text>
+                      </Button>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <View className="divider" />
+
               <View className="form-item">
                 <Text className="form-label required">平台</Text>
                 <Picker

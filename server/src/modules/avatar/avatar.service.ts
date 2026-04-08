@@ -1291,4 +1291,216 @@ export class AvatarService {
       throw new Error(`删除账号数据失败: ${error.message}`)
     }
   }
+
+  /**
+   * 通过图片识别账号信息
+   */
+  async recognizeAccountFromImage(file: Express.Multer.File) {
+    const { S3Storage, LLMClient, Config } = await import('coze-coding-dev-sdk')
+
+    // 1. 上传图片到 TOS
+    const storage = new S3Storage({
+      bucketName: process.env.COZE_BUCKET_NAME,
+      region: 'cn-beijing'
+    })
+
+    const fileKey = await storage.uploadFile({
+      fileContent: file.buffer,
+      fileName: `account-recognition/${Date.now()}-${file.originalname}`,
+      contentType: file.mimetype
+    })
+
+    // 2. 生成访问 URL
+    const imageUrl = await storage.generatePresignedUrl({
+      key: fileKey,
+      expireTime: 86400 // 1天
+    })
+
+    // 3. 使用 LLM 视觉模型识别图片
+    const config = new Config()
+    const llmClient = new LLMClient(config)
+
+    const messages = [
+      {
+        role: 'system',
+        content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请分析这张社交媒体账号主页截图，提取以下信息并返回JSON格式：
+{
+  "platform": "平台名称（如抖音、小红书、B站等）",
+  "accountName": "账号名称",
+  "followers": 粉丝数（数字），
+  "totalExposure": 总曝光量（数字，如果没有则为0），
+  "totalWorks": 作品总数（数字），
+  "avgLikes": 平均点赞数（数字），
+  "avgComments": 平均评论数（数字），
+  "avgShares": 平均转发数（数字）
+}
+
+注意事项：
+- 粉丝数、作品数等必须提取为纯数字
+- 如果某个信息无法识别，设置为0
+- platform 必须是：抖音、微信公众号、小红书、B站、微博、快手、知乎 中的一个
+- 只返回JSON，不要其他文字说明`
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageUrl,
+              detail: 'high'
+            }
+          }
+        ]
+      }
+    ]
+
+    const response = await llmClient.invoke(messages, {
+      model: 'doubao-seed-1-6-vision-250815',
+      temperature: 0.2
+    })
+
+    // 4. 解析返回结果
+    let result
+    try {
+      // 提取 JSON 部分
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0])
+      } else {
+        throw new Error('无法解析返回结果')
+      }
+
+      // 数据清洗和默认值
+      result = {
+        platform: result.platform || '',
+        accountName: result.accountName || '',
+        followers: parseInt(result.followers) || 0,
+        totalExposure: parseInt(result.totalExposure) || 0,
+        totalWorks: parseInt(result.totalWorks) || 0,
+        avgLikes: parseInt(result.avgLikes) || 0,
+        avgComments: parseInt(result.avgComments) || 0,
+        avgShares: parseInt(result.avgShares) || 0
+      }
+
+    } catch (error) {
+      console.error('解析识别结果失败:', error)
+      throw new Error('图片识别失败，请重试')
+    }
+
+    return result
+  }
+
+  /**
+   * 通过链接抓取账号信息
+   */
+  async fetchAccountFromUrl(url: string) {
+    const { LLMClient, Config, S3Storage } = await import('coze-coding-dev-sdk')
+
+    // 1. 使用 S3Storage 从 URL 下载并上传
+    const storage = new S3Storage({
+      bucketName: process.env.COZE_BUCKET_NAME,
+      region: 'cn-beijing'
+    })
+
+    const fileKey = await storage.uploadFromUrl({
+      url: url,
+      timeout: 30000
+    })
+
+    // 2. 生成访问 URL
+    const imageUrl = await storage.generatePresignedUrl({
+      key: fileKey,
+      expireTime: 86400
+    })
+
+    // 3. 判断是图片链接还是页面链接
+    const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url)
+
+    if (isImage) {
+      // 3a. 如果是图片链接，使用视觉模型识别
+      const config = new Config()
+      const llmClient = new LLMClient(config)
+
+      const messages = [
+        {
+          role: 'system',
+          content: '你是一个社交媒体账号数据提取专家。请从图片中识别并提取账号的关键信息，以JSON格式返回。'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `请分析这张社交媒体账号主页图片，提取以下信息并返回JSON格式：
+{
+  "platform": "平台名称（如抖音、小红书、B站等）",
+  "accountName": "账号名称",
+  "followers": 粉丝数（数字），
+  "totalExposure": 总曝光量（数字，如果没有则为0），
+  "totalWorks": 作品总数（数字），
+  "avgLikes": 平均点赞数（数字），
+  "avgComments": 平均评论数（数字），
+  "avgShares": 平均转发数（数字）
+}
+
+注意事项：
+- 粉丝数、作品数等必须提取为纯数字
+- 如果某个信息无法识别，设置为0
+- platform 必须是：抖音、微信公众号、小红书、B站、微博、快手、知乎 中的一个
+- 只返回JSON，不要其他文字说明`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageUrl,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ]
+
+      const response = await llmClient.invoke(messages, {
+        model: 'doubao-seed-1-6-vision-250815',
+        temperature: 0.2
+      })
+
+      // 解析返回结果
+      let result
+      try {
+        const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          result = JSON.parse(jsonMatch[0])
+        } else {
+          throw new Error('无法解析返回结果')
+        }
+
+        result = {
+          platform: result.platform || '',
+          accountName: result.accountName || '',
+          followers: parseInt(result.followers) || 0,
+          totalExposure: parseInt(result.totalExposure) || 0,
+          totalWorks: parseInt(result.totalWorks) || 0,
+          avgLikes: parseInt(result.avgLikes) || 0,
+          avgComments: parseInt(result.avgComments) || 0,
+          avgShares: parseInt(result.avgShares) || 0
+        }
+
+      } catch (error) {
+        console.error('解析识别结果失败:', error)
+        throw new Error('图片识别失败，请重试')
+      }
+
+      return result
+    } else {
+      // 3b. 如果是页面链接，使用文本模型分析
+      // 注意：这里简化处理，直接提示用户使用截图
+      throw new Error('暂不支持页面链接抓取，请上传账号主页截图')
+    }
+  }
 }

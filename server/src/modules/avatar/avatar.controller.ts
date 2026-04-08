@@ -368,4 +368,57 @@ export class AvatarController {
       message: '删除成功'
     }
   }
+
+  /**
+   * 通过图片识别账号信息
+   */
+  @Post('accounts/recognize-image')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('image', {
+    storage: memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 最大10MB
+  }))
+  async recognizeAccountFromImage(@UploadedFile() file: Express.Multer.File) {
+    console.log('收到图片识别请求:', file?.originalname, file?.size)
+
+    if (!file) {
+      return {
+        code: 400,
+        message: '请上传图片',
+        data: null
+      }
+    }
+
+    const result = await this.avatarService.recognizeAccountFromImage(file)
+
+    return {
+      code: 200,
+      data: result,
+      message: '识别成功'
+    }
+  }
+
+  /**
+   * 通过链接抓取账号信息
+   */
+  @Post('accounts/fetch-from-url')
+  async fetchAccountFromUrl(@Body('url') url: string) {
+    console.log('收到链接抓取请求:', url)
+
+    if (!url) {
+      return {
+        code: 400,
+        message: '请提供链接',
+        data: null
+      }
+    }
+
+    const result = await this.avatarService.fetchAccountFromUrl(url)
+
+    return {
+      code: 200,
+      data: result,
+      message: '抓取成功'
+    }
+  }
 }
