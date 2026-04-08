@@ -8,7 +8,7 @@ export interface OrderAnalysis {
   coreRequirement: string        // 核心需求描述
   targetAudience: string[]       // 目标受众群体
   requiredSkills: string[]       // 必需技能
-  preferredPlatforms: string[]    // 偏好平台
+  preferredPlatforms: string[]   // 偏好平台
   toneStyle: string[]            // 语气风格
   contentType: string[]          // 内容类型
   urgencyLevel: 'high' | 'medium' | 'low'  // 紧急程度
@@ -18,7 +18,14 @@ export interface OrderAnalysis {
   // 语义分析结果
   semanticTags: string[]          // 语义标签
   category: string               // 订单类别
-  specialRequirements: string[]   // 特殊要求
+  specialRequirements: string[]  // 特殊要求
+  // 预期效果目标（新增）
+  expectedResults: {
+    reachTarget?: number          // 曝光目标（如 100000 = 10万）
+    engagementTarget?: number     // 互动目标（如 1000 = 点赞1000）
+    qualityTarget?: string        // 质量目标（卓越/优秀/良好/合格）
+    customTargets?: string[]      // 自定义目标（如 "转化率5%"）
+  }
 }
 
 export interface AvatarProfile {
@@ -166,11 +173,12 @@ export class OrderDispatchService {
       }
       
       // 如果解析失败，使用基础分析
+      const expectedResultsText = requirements?.expectedResults || ''
       return {
         coreRequirement: analysis.coreRequirement || `完成${title}`,
         targetAudience: analysis.targetAudience || this.extractKeywords(description, 3),
-        requiredSkills: analysis.requiredSkills || requirements.required_skills || [],
-        preferredPlatforms: analysis.preferredPlatforms || requirements.platforms || [],
+        requiredSkills: analysis.requiredSkills || requirements?.required_skills || [],
+        preferredPlatforms: analysis.preferredPlatforms || requirements?.platforms || [],
         toneStyle: analysis.toneStyle || [],
         contentType: analysis.contentType || [],
         urgencyLevel: analysis.urgencyLevel || 'medium',
@@ -179,7 +187,8 @@ export class OrderDispatchService {
         keywords: analysis.keywords || this.extractKeywords(title + ' ' + description, 10),
         semanticTags: analysis.semanticTags || [],
         category: analysis.category || 'general',
-        specialRequirements: analysis.specialRequirements || []
+        specialRequirements: analysis.specialRequirements || [],
+        expectedResults: this.parseExpectedResults(expectedResultsText)
       }
     } catch (error) {
       console.error('[订单分析] LLM分析失败:', error)
@@ -206,6 +215,10 @@ export class OrderDispatchService {
     const foundPlatforms = platformKeywords.filter(p => fullText.includes(p))
     const foundTones = toneKeywords.filter(t => fullText.includes(t))
     
+    // 解析预期效果
+    const expectedResultsText = requirements.expectedResults || ''
+    const parsedExpectedResults = this.parseExpectedResults(expectedResultsText)
+    
     return {
       coreRequirement: title,
       targetAudience: this.extractKeywords(description, 3),
@@ -219,8 +232,84 @@ export class OrderDispatchService {
       keywords: this.extractKeywords(title + ' ' + description, 10),
       semanticTags: this.generateSemanticTags(fullText),
       category: this.detectCategory(fullText),
-      specialRequirements: []
+      specialRequirements: [],
+      expectedResults: parsedExpectedResults
     }
+  }
+
+  /**
+   * 解析预期效果文本，提取量化指标
+   * 例如："阅读量10万+，点赞1000+" -> { reachTarget: 100000, engagementTarget: 1000 }
+   */
+  private parseExpectedResults(text: string): OrderAnalysis['expectedResults'] {
+    const result: OrderAnalysis['expectedResults'] = {}
+    
+    if (!text) return result
+    
+    // 曝光目标（阅读量、播放量、曝光量）
+    const reachPatterns = [
+      /阅读[量]?(\d+)[万]?/i,
+      /播放[量]?(\d+)[万]?/i,
+      /曝光[量]?(\d+)[万]?/i,
+      /展现[量]?(\d+)[万]?/i,
+      /浏览[量]?(\d+)[万]?/i
+    ]
+    for (const pattern of reachPatterns) {
+      const match = text.match(pattern)
+      if (match) {
+        let value = parseInt(match[1])
+        // 如果匹配到"万"字，乘以10000
+        if (text.includes('万')) value *= 10000
+        result.reachTarget = value
+        break
+      }
+    }
+    
+    // 互动目标（点赞、评论、转发、收藏）
+    const engagementPatterns = [
+      /点赞(\d+)[万+]?/i,
+      /评论(\d+)[万+]?/i,
+      /转发(\d+)[万+]?/i,
+      /收藏(\d+)[万+]?/i
+    ]
+    for (const pattern of engagementPatterns) {
+      const match = text.match(pattern)
+      if (match) {
+        let value = parseInt(match[1])
+        if (text.includes('万')) value *= 10000
+        result.engagementTarget = value
+        break
+      }
+    }
+    
+    // 质量目标
+    if (text.includes('卓越') || text.includes('顶级')) {
+      result.qualityTarget = '卓越'
+    } else if (text.includes('优秀')) {
+      result.qualityTarget = '优秀'
+    } else if (text.includes('良好')) {
+      result.qualityTarget = '良好'
+    } else if (text.includes('合格')) {
+      result.qualityTarget = '合格'
+    }
+    
+    // 自定义目标（提取其他数字指标）
+    const customTargets: string[] = []
+    const conversionMatch = text.match(/转化率(\d+)%/)
+    if (conversionMatch) {
+      customTargets.push(`转化率${conversionMatch[1]}%`)
+    }
+    const followerMatch = text.match(/粉丝[+]?(\d+)[万]?/)
+    if (followerMatch) {
+      customTargets.push(`粉丝+${followerMatch[1]}${text.includes('万') ? '万' : ''}`)
+    }
+    if (customTargets.length > 0) {
+      result.customTargets = customTargets
+    }
+    
+    console.log(`[预期效果解析] ${text} -> reach=${result.reachTarget}, engagement=${result.engagementTarget}, quality=${result.qualityTarget}`)
+    
+    return result
   }
 
   /**
@@ -750,135 +839,177 @@ export class OrderDispatchService {
   }
 
   /**
-   * 根据订单金额和预估效果目标计算所需推荐分身数量
+   * 根据订单预期效果目标计算所需推荐分身数量
    * 
-   * 核心逻辑：
-   * 1. 订单金额 - 平台20%抽成 = 可分配给分身的金额
-   * 2. 根据每个分身的成本收益和订单效果要求，安排分身数量
-   * 3. 确保分身能赚到钱，同时完成订单效果
+   * 核心原则：确保能达到订单的预期效果！
+   * - 金额只用于合理分配收益，不是不保证分身赚钱
+   * - 多个预期效果目标综合计算，取最大值
    * 
-   * 分身收益参考：
-   * - 基础订单：每个分身500-800元
-   * - 中等订单：每个分身800-1500元
-   * - 高端订单：每个分身1500-3000元
-   * - 等级加成：每级 +5% 收益
+   * 预期效果维度：
+   * 1. 曝光目标（reachTarget）：阅读量/播放量/曝光量
+   * 2. 互动目标（engagementTarget）：点赞/评论/转发
+   * 3. 质量目标（qualityTarget）：卓越/优秀/良好/合格
+   * 4. 自定义目标（customTargets）：转化率、粉丝等
    */
   private calculateRecommendedAvatarCount(
     orderAnalysis: OrderAnalysis, 
     totalAvailableAvatars: number,
     orderAmount: number
   ): number {
-    // 平台抽成20%，剩余可分配金额
-    const distributableAmount = orderAmount * 0.8
-    
     // 订单指标分析
     const complexity = orderAnalysis.complexityLevel || 5  // 1-10
     const urgency = orderAnalysis.urgencyLevel || 'medium'
     const platforms = orderAnalysis.preferredPlatforms?.length || 1
     const skills = orderAnalysis.requiredSkills?.length || 0
     const budget = orderAnalysis.estimatedBudget || '中'
+    const expected = orderAnalysis.expectedResults || {}
     
-    console.log(`[推荐数量] 订单金额=${orderAmount}元，可分配=${distributableAmount.toFixed(0)}元`)
+    console.log(`[推荐数量] 订单分析 - 预期效果:`, expected)
     
-    // ========== 第一步：计算每个分身的预期收益 ==========
-    // 基础收益（根据订单金额和复杂度）
-    let baseIncomePerAvatar = distributableAmount * 0.3  // 基础30%用于分身收益
+    // ========== 核心：根据预期效果目标计算分身数量 ==========
     
-    // 复杂度影响收益
-    if (complexity >= 8) {
-      baseIncomePerAvatar = distributableAmount * 0.4  // 高复杂度给分身更多
-    } else if (complexity >= 6) {
-      baseIncomePerAvatar = distributableAmount * 0.35
-    } else if (complexity <= 3) {
-      baseIncomePerAvatar = distributableAmount * 0.25  // 简单订单给少点
+    // 1. 曝光目标分析（阅读量、播放量、曝光量）
+    // 单个分身平均曝光能力估算：
+    // - 普通分身：1-5万曝光
+    // - 优质分身：5-20万曝光
+    // - 顶级分身：20-50万曝光
+    let avatarsForReach = 1
+    const reachTarget = expected.reachTarget || 0
+    if (reachTarget > 0) {
+      if (reachTarget >= 500000) {
+        // 50万+曝光：需要3个顶级分身协同
+        avatarsForReach = 3
+      } else if (reachTarget >= 200000) {
+        // 20-50万曝光：需要2个优质分身
+        avatarsForReach = 2
+      } else if (reachTarget >= 100000) {
+        // 10-20万曝光：需要1-2个分身
+        avatarsForReach = 2
+      } else if (reachTarget >= 50000) {
+        // 5-10万曝光：需要1个优质分身
+        avatarsForReach = 1
+      }
+      console.log(`[推荐数量] 曝光目标=${reachTarget} -> 需要${avatarsForReach}个分身`)
     }
     
-    // 每个分身应得的最低收益（确保分身能赚钱）
-    const minIncomePerAvatar = Math.max(200, baseIncomePerAvatar)  // 最低200元
-    const maxIncomePerAvatar = distributableAmount * 0.6  // 单个分身最高60%
-    
-    // ========== 第二步：根据效果目标计算需要多少分身 ==========
-    
-    // 1. 曝光效果：多平台需要多分身覆盖
-    let avatarsForExposure = 1
-    if (platforms >= 4) {
-      avatarsForExposure = Math.min(3, platforms)  // 最多3个覆盖4+平台
-    } else if (platforms >= 2) {
-      avatarsForExposure = 2
-    }
-    
-    // 2. 质量效果：高复杂度需要高质量分身
-    let avatarsForQuality = 1
-    if (complexity >= 8) {
-      avatarsForQuality = 2  // 顶级复杂度需要2个高质量候选
-    } else if (complexity >= 6) {
-      avatarsForQuality = 2
-    }
-    
-    // 3. 互动效果：技能要求多需要更多候选
+    // 2. 互动目标分析（点赞、评论、转发）
+    // 单个分身平均互动能力估算：
+    // - 普通分身：100-500互动
+    // - 优质分身：500-2000互动
+    // - 顶级分身：2000-10000互动
     let avatarsForEngagement = 1
-    if (skills >= 4) {
-      avatarsForEngagement = 3  // 4+技能很难完美匹配
-    } else if (skills >= 2) {
-      avatarsForEngagement = 2
+    const engagementTarget = expected.engagementTarget || 0
+    if (engagementTarget > 0) {
+      if (engagementTarget >= 5000) {
+        // 5000+互动：需要3个顶级分身
+        avatarsForEngagement = 3
+      } else if (engagementTarget >= 2000) {
+        // 2000-5000互动：需要2个优质分身
+        avatarsForEngagement = 2
+      } else if (engagementTarget >= 1000) {
+        // 1000-2000互动：需要1-2个分身
+        avatarsForEngagement = 2
+      } else if (engagementTarget >= 500) {
+        // 500-1000互动：需要1个优质分身
+        avatarsForEngagement = 1
+      }
+      console.log(`[推荐数量] 互动目标=${engagementTarget} -> 需要${avatarsForEngagement}个分身`)
     }
     
-    // 4. 时间效果：高紧急需要并行处理
+    // 3. 质量目标分析
+    // 质量目标决定分身质量要求，不直接决定数量
+    let requiredQuality: '卓越' | '优秀' | '良好' | '合格' = '良好'
+    if (expected.qualityTarget) {
+      requiredQuality = expected.qualityTarget as any
+    } else if (complexity >= 8) {
+      requiredQuality = '卓越'
+    } else if (complexity >= 6) {
+      requiredQuality = '优秀'
+    }
+    console.log(`[推荐数量] 质量目标: ${requiredQuality}`)
+    
+    // 4. 自定义目标分析（转化率、粉丝等）
+    // 这类目标通常需要高质量分身
+    let avatarsForCustom = 1
+    if (expected.customTargets && expected.customTargets.length > 0) {
+      const hasConversion = expected.customTargets.some(t => t.includes('转化率'))
+      if (hasConversion) {
+        // 有转化率要求：需要1-2个高质量分身
+        avatarsForCustom = 2
+      }
+      console.log(`[推荐数量] 自定义目标=${expected.customTargets} -> 需要${avatarsForCustom}个分身`)
+    }
+    
+    // ========== 其他因素调整 ==========
+    
+    // 5. 平台覆盖需求
+    let avatarsForPlatform = 1
+    if (platforms >= 4) {
+      avatarsForPlatform = Math.min(3, platforms)
+    } else if (platforms >= 2) {
+      avatarsForPlatform = 2
+    }
+    
+    // 6. 复杂度需求（高复杂度需要高质量分身）
+    let avatarsForComplexity = 1
+    if (complexity >= 8) {
+      avatarsForComplexity = 2
+    } else if (complexity >= 6) {
+      avatarsForComplexity = 2
+    }
+    
+    // 7. 时间紧急需求（高紧急需要并行处理）
     let avatarsForSpeed = 1
     if (urgency === 'high') {
-      avatarsForSpeed = 3  // 高紧急需要3个并行
+      avatarsForSpeed = 3
     } else if (urgency === 'medium') {
       avatarsForSpeed = 2
     }
     
-    // 取最大值（确保所有效果目标都能满足）
+    // 8. 技能匹配需求
+    let avatarsForSkills = 1
+    if (skills >= 4) {
+      avatarsForSkills = 3
+    } else if (skills >= 2) {
+      avatarsForSkills = 2
+    }
+    
+    // ========== 综合计算 ==========
+    
+    // 取所有效果目标的最大值（确保每个目标都能满足）
     let neededByEffect = Math.max(
-      avatarsForExposure,
-      avatarsForQuality,
+      avatarsForReach,
       avatarsForEngagement,
-      avatarsForSpeed
+      avatarsForCustom,
+      avatarsForPlatform,
+      avatarsForComplexity,
+      avatarsForSpeed,
+      avatarsForSkills
     )
     
-    // ========== 第三步：根据预算验证和调整 ==========
-    
-    // 计算按效果需要的分身数量所需的成本
-    const estimatedCostByEffect = neededByEffect * minIncomePerAvatar
-    
-    // 如果按效果计算的成本超过可分配金额，需要调整
-    if (estimatedCostByEffect > distributableAmount * 0.9) {
-      // 超出预算，尝试减少分身数量
-      const maxAffordable = Math.floor(distributableAmount * 0.9 / minIncomePerAvatar)
-      neededByEffect = Math.min(neededByEffect, maxAffordable)
-      console.log(`[推荐数量] 超出预算，调整为${neededByEffect}个`)
-    }
-    
-    // ========== 第四步：确保分身能赚到钱 ==========
-    
-    // 计算每个分身的实际收益
-    const actualIncomePerAvatar = distributableAmount * 0.6 / neededByEffect
-    
-    // 如果单个分身收益太低，减少分身数量
-    if (actualIncomePerAvatar < 150) {
-      // 收益太低，减少分身让每个赚更多
-      const optimalCount = Math.max(1, Math.floor(distributableAmount * 0.6 / 150))
-      neededByEffect = Math.min(optimalCount, neededByEffect)
-      console.log(`[推荐数量] 单分身收益过低(${actualIncomePerAvatar.toFixed(0)}元)，调整为${neededByEffect}个`)
-    }
+    console.log(`[推荐数量] 效果需求汇总:`)
+    console.log(`  - 曝光: ${avatarsForReach}个`)
+    console.log(`  - 互动: ${avatarsForEngagement}个`)
+    console.log(`  - 自定义: ${avatarsForCustom}个`)
+    console.log(`  - 平台覆盖: ${avatarsForPlatform}个`)
+    console.log(`  - 复杂度: ${avatarsForComplexity}个`)
+    console.log(`  - 紧急处理: ${avatarsForSpeed}个`)
+    console.log(`  - 技能匹配: ${avatarsForSkills}个`)
+    console.log(`  -> 综合需求: ${neededByEffect}个分身`)
     
     // ========== 最终结果 ==========
     const finalCount = Math.min(
       Math.max(neededByEffect, 1),  // 至少1个
-      Math.min(totalAvailableAvatars, 8)  // 最多8个，不超过可用分身
+      Math.min(totalAvailableAvatars, 10)  // 最多10个，且不超过可用分身
     )
     
-    // 计算预估收益
-    const finalIncomePerAvatar = distributableAmount / finalCount
+    // 计算每个分身预期收益（仅供参考）
+    const distributableAmount = orderAmount * 0.8
+    const estimatedIncomePerAvatar = distributableAmount / finalCount
     
-    console.log(`[推荐数量] 最终推荐: ${finalCount}个分身，每个约${finalIncomePerAvatar.toFixed(0)}元`)
-    console.log(`  - 曝光需求: ${avatarsForExposure}个`)
-    console.log(`  - 质量需求: ${avatarsForQuality}个`)
-    console.log(`  - 互动需求: ${avatarsForEngagement}个`)
-    console.log(`  - 时间需求: ${avatarsForSpeed}个`)
+    console.log(`[推荐数量] 最终推荐: ${finalCount}个分身`)
+    console.log(`[推荐数量] 订单金额: ${orderAmount}元，平台抽成20%后: ${distributableAmount.toFixed(0)}元`)
+    console.log(`[推荐数量] 预计每个分身收益: ${estimatedIncomePerAvatar.toFixed(0)}元`)
     
     return finalCount
   }
