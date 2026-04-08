@@ -460,6 +460,33 @@
   opacity: 0;
 }
 
+/* 第一名最佳推荐卡片 */
+.avatar-card.rank-1-card {
+  background: linear-gradient(135deg, rgba(40, 35, 50, 0.98), rgba(30, 25, 40, 0.98));
+  border: 2rpx solid rgba(251, 191, 36, 0.4);
+  box-shadow: 0 12rpx 40rpx rgba(251, 191, 36, 0.15), inset 0 1rpx 0 rgba(251, 191, 36, 0.1);
+}
+
+/* 最佳推荐标签 */
+.best-match-badge {
+  position: absolute;
+  top: -18rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8rpx 24rpx;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(251, 191, 36, 0.4);
+  z-index: 3;
+}
+
+.best-match-text {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #1a1a2e;
+  letter-spacing: 2rpx;
+}
+
 @keyframes card-slide-in {
   from {
     opacity: 0;
@@ -490,6 +517,11 @@
   box-shadow: 0 8rpx 20rpx rgba(251, 191, 36, 0.4);
 }
 
+/* 第一名卡片隐藏排名徽章（用最佳推荐代替） */
+.rank-1-card .rank-badge {
+  display: none;
+}
+
 .rank-badge.rank-2 {
   background: linear-gradient(135deg, #94a3b8, #64748b);
   box-shadow: 0 8rpx 20rpx rgba(148, 163, 184, 0.3);
@@ -512,6 +544,15 @@
   align-items: center;
   gap: 20rpx;
   margin-bottom: 20rpx;
+}
+
+/* 第一名头像更大更突出 */
+.rank-1-card .avatar-avatar-wrap .avatar-avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 32rpx;
+  border: 3rpx solid rgba(251, 191, 36, 0.4);
+  box-shadow: 0 8rpx 24rpx rgba(251, 191, 36, 0.2);
 }
 
 .avatar-avatar-wrap {

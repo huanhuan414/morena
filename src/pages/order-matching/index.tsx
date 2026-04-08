@@ -29,12 +29,27 @@ interface MatchedAvatar {
     time: string       // 预估完成时间
   }
   // 额外信息
-  user_id?: string
-  skills?: string[]
-  platforms?: string[]
-  totalEarnings?: number
   avgRating?: number
-  completedCount?: number
+  totalEarnings?: number
+  // 深度分析数据
+  skillMatchScore?: number
+  platformMatchScore?: number
+  semanticSimilarity?: number
+  personalityFit?: number
+  experienceMatch?: number
+  // 分身画像
+  avatarProfile?: {
+    expertise?: string[]
+    speakingStyle?: string[]
+    platforms?: string[]
+  }
+  // 订单分析
+  orderAnalysis?: {
+    coreRequirement?: string
+    category?: string
+    requiredSkills?: string[]
+    complexityLevel?: number
+  }
 }
 
 interface AlgorithmStep {
@@ -492,9 +507,16 @@ export default function OrderMatchingPage() {
             {matchedAvatars.map((avatar, idx) => (
               <View 
                 key={avatar.id} 
-                className="avatar-card"
+                className={`avatar-card ${idx === 0 ? 'rank-1-card' : ''}`}
                 style={{ animationDelay: `${idx * 0.15}s` }}
               >
+                {/* 第一名最佳推荐标签 */}
+                {idx === 0 && (
+                  <View className="best-match-badge">
+                    <Text className="best-match-text">最佳推荐</Text>
+                  </View>
+                )}
+
                 {/* 排名 */}
                 <View className={`rank-badge rank-${idx + 1}`}>
                   {idx === 0 ? (
@@ -510,7 +532,7 @@ export default function OrderMatchingPage() {
                   <View className="avatar-avatar-wrap">
                     <View className="avatar-avatar">
                       {avatar.avatar_url ? (
-                        <Image src={avatar.avatar_url} className="avatar-img" />
+                        <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
                       ) : (
                         <View className="avatar-placeholder">
                           <Bot size={32} color="#00f5ff" />
@@ -541,7 +563,7 @@ export default function OrderMatchingPage() {
                       <View className="metric-sep" />
                       <View className="metric-item">
                         <Star size={12} color="#fbbf24" />
-                        <Text className="metric-value">{avatar.avgRating || 4.5}</Text>
+                        <Text className="metric-value">{avatar.avgRating?.toFixed(1) || '4.5'}</Text>
                       </View>
                       <View className="metric-sep" />
                       <View className="metric-item">
@@ -761,7 +783,7 @@ export default function OrderMatchingPage() {
             <View className="detail-section">
               <Text className="section-title">擅长技能</Text>
               <View className="skill-tags">
-                {(selectedAvatar.skills || ['文案创作', '图片设计', '内容策划']).map((skill, i) => (
+                {(selectedAvatar.avatarProfile?.expertise || ['文案创作', '图片设计', '内容策划']).map((skill, i) => (
                   <View key={i} className="skill-tag">
                     <Text className="skill-text">{skill}</Text>
                   </View>
@@ -773,7 +795,7 @@ export default function OrderMatchingPage() {
             <View className="detail-section">
               <Text className="section-title">已配置平台</Text>
               <View className="platform-tags">
-                {(selectedAvatar.platforms || ['小红书', '微博']).map((platform, i) => (
+                {(selectedAvatar.avatarProfile?.platforms || ['小红书', '微博']).map((platform, i) => (
                   <View key={i} className="platform-tag">
                     <Text className="platform-text">{platform}</Text>
                   </View>
