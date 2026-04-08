@@ -537,7 +537,17 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
           console.log('[托管服务] 配图生成失败，将发布纯文字帖子')
         }
       } catch (imgError: any) {
-        console.log('[托管服务] 生成配图失败，将发布纯文字帖子:', imgError?.message || imgError)
+        // 打印详细错误信息，包括 axios 响应的详细信息
+        console.log('[托管服务] 生成配图失败，将发布纯文字帖子:', {
+          message: imgError?.message,
+          status: imgError?.response?.status,
+          statusText: imgError?.response?.statusText,
+          data: imgError?.response?.data,
+          code: imgError?.code,
+          // 尝试获取完整的 axios 错误信息
+          errorString: imgError.toString?.(),
+          errorKeys: imgError && typeof imgError === 'object' ? Object.keys(imgError) : []
+        })
       }
 
       // 即使没有图片也返回内容，让帖子能够发布
