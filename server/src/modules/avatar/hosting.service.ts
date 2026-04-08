@@ -139,8 +139,9 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private async executeAvatarHosting(avatar: any) {
     const settings: HostingSettings = avatar.config?.hosting_settings || {}
     const avatarId = avatar.id
-    
+
     console.log(`[托管服务] 执行分身 ${avatar.name}(${avatarId}) 的托管任务`)
+    console.log(`[托管服务] 子功能开关: auto_post=${settings.auto_post}, auto_comment=${settings.auto_comment}, auto_like=${settings.auto_like}, auto_friend=${settings.auto_friend}`)
 
     // 检查夜间模式
     const nightMode = avatar.config?.night_mode ?? true
@@ -160,17 +161,33 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       // 1. 自动接单（始终执行，不受设置控制）
       await this.autoAcceptOrders(avatar)
 
-      // 2. 自动交友（只要开启托管就100%执行）
-      await this.autoMakeFriends(avatar)
+      // 2. 自动交友（根据开关控制）
+      if (settings.auto_friend !== false) {
+        await this.autoMakeFriends(avatar)
+      } else {
+        console.log(`[托管服务] 自动交友已关闭，跳过`)
+      }
 
-      // 3. 自动发帖（只要开启托管就100%执行）
-      await this.autoCreatePost(avatar, settings)
+      // 3. 自动发帖（根据开关控制）
+      if (settings.auto_post !== false) {
+        await this.autoCreatePost(avatar, settings)
+      } else {
+        console.log(`[托管服务] 自动发帖已关闭，跳过`)
+      }
 
-      // 4. 自动评论（只要开启托管就100%执行）
-      await this.autoComment(avatar)
+      // 4. 自动评论（根据开关控制）
+      if (settings.auto_comment !== false) {
+        await this.autoComment(avatar)
+      } else {
+        console.log(`[托管服务] 自动评论已关闭，跳过`)
+      }
 
-      // 5. 自动点赞（只要开启托管就100%执行）
-      await this.autoLike(avatar)
+      // 5. 自动点赞（根据开关控制）
+      if (settings.auto_like !== false) {
+        await this.autoLike(avatar)
+      } else {
+        console.log(`[托管服务] 自动点赞已关闭，跳过`)
+      }
     } catch (error) {
       console.error(`[托管服务] 分身 ${avatar.name} 执行任务失败:`, error)
     }

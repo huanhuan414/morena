@@ -395,10 +395,16 @@ export class AvatarService {
 
   async updateHostingSettings(avatarId: string, userId: string, settings: Record<string, any>) {
     const client = getSupabaseClient()
-    
+
     const avatar = await this.getAvatarById(avatarId)
+
+    // 验证用户权限
+    if (avatar.user_id !== userId) {
+      throw new Error('无权修改此分身的设置')
+    }
+
     const currentSettings = avatar.config?.hosting_settings || {}
-    
+
     const { data, error } = await client
       .from('avatars')
       .update({
@@ -409,14 +415,13 @@ export class AvatarService {
         updated_at: new Date().toISOString()
       })
       .eq('id', avatarId)
-      .eq('user_id', userId)
       .select()
       .single()
-    
+
     if (error) {
       throw new Error(`更新托管设置失败: ${error.message}`)
     }
-    
+
     return data
   }
 

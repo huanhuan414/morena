@@ -348,65 +348,57 @@ export default function AvatarManagePage() {
                         </View>
                       </View>
 
-                      {/* 自动功能 - 托管开启时全部启用，关闭时全部禁用 */}
+                      {/* 自动功能 - 独立子功能开关 */}
                       <View className="auto-features">
                         <View className="feature-item">
                           <Text className="feature-text">自动发帖</Text>
                           <Switch
-                            checked={avatar.is_hosted}
+                            checked={avatar.hosting_settings?.auto_post ?? false}
                             onCheckedChange={async (checked) => {
-                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
-                              try {
-                                await toggleHosting(avatar.id, checked)
-                              } catch (error) {
-                                console.error('切换托管失败:', error)
-                                showToast({ title: '操作失败', icon: 'none' })
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                                return
                               }
+                              await updateHostingSettings(avatar.id, { auto_post: checked })
                             }}
                           />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动评论</Text>
                           <Switch
-                            checked={avatar.is_hosted}
+                            checked={avatar.hosting_settings?.auto_comment ?? false}
                             onCheckedChange={async (checked) => {
-                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
-                              try {
-                                await toggleHosting(avatar.id, checked)
-                              } catch (error) {
-                                console.error('切换托管失败:', error)
-                                showToast({ title: '操作失败', icon: 'none' })
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                                return
                               }
+                              await updateHostingSettings(avatar.id, { auto_comment: checked })
                             }}
                           />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动点赞</Text>
                           <Switch
-                            checked={avatar.is_hosted}
+                            checked={avatar.hosting_settings?.auto_like ?? false}
                             onCheckedChange={async (checked) => {
-                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
-                              try {
-                                await toggleHosting(avatar.id, checked)
-                              } catch (error) {
-                                console.error('切换托管失败:', error)
-                                showToast({ title: '操作失败', icon: 'none' })
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                                return
                               }
+                              await updateHostingSettings(avatar.id, { auto_like: checked })
                             }}
                           />
                         </View>
                         <View className="feature-item">
                           <Text className="feature-text">自动交友</Text>
                           <Switch
-                            checked={avatar.is_hosted}
+                            checked={avatar.hosting_settings?.auto_friend ?? false}
                             onCheckedChange={async (checked) => {
-                              console.log('Switch clicked, new checked:', checked, 'avatarId:', avatar.id)
-                              try {
-                                await toggleHosting(avatar.id, checked)
-                              } catch (error) {
-                                console.error('切换托管失败:', error)
-                                showToast({ title: '操作失败', icon: 'none' })
+                              if (!avatar.is_hosted) {
+                                showToast({ title: '请先开启托管', icon: 'none' })
+                                return
                               }
+                              await updateHostingSettings(avatar.id, { auto_friend: checked })
                             }}
                           />
                         </View>
@@ -426,7 +418,8 @@ export default function AvatarManagePage() {
                         {/* 账号配置入口 */}
                         <View
                           className="friend-list-entry"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             console.log('配置账号数据被点击, avatarId:', avatar.id, 'avatarName:', avatar.name)
                             goToAccountConfig(avatar.id, avatar.name)
                           }}
