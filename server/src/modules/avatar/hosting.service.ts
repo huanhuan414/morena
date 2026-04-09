@@ -3,6 +3,11 @@
  * 实现自动接单、自动交友、自动发帖、自动评论点赞等功能
  */
 
+// 图片生成速率限制配置
+const IMAGE_GENERATION_LIMIT = 1 // 每分钟最多生成1张图片（更保守的配置）
+const IMAGE_GENERATION_WINDOW = 60000 // 1分钟窗口
+const IMAGE_RETRY_DELAY = 10000 // 429错误后重试延迟（毫秒，增加到10秒）
+
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, SearchClient, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
@@ -38,6 +43,11 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private storage: S3Storage
   private intervals: Map<string, NodeJS.Timeout> = new Map()
   private isRunning = false
+
+  // 图片生成速率限制
+  private imageGenerationTimestamps: number[] = []
+  private imageGenerationQueue: Map<string, Promise<any>> = new Map()
+  private isImageGenerating = false
 
   constructor() {
     const config = new Config()
@@ -531,37 +541,29 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       let images: string[] = []
       try {
         console.log('[托管服务] 正在为帖子生成配图...')
-        const imageConfig = new Config()
-        const imageClient = new ImageGenerationClient(imageConfig)
         
         // 根据帖子内容生成相关配图
         const imagePrompt = `社交媒体配图，主题：${typeof selectedTopic === 'string' ? selectedTopic : selectedTopic.title}，风格：现代简约，高质量，适合分享，温馨美好，${avatar.name}的分享`
         
-        const imageResponse = await imageClient.generate({
-          prompt: imagePrompt,
-          size: '2K',
-          watermark: false
-        })
+        // 使用带重试的图片生成
+        const imageUrl = await this.generateImageWithRetry(imagePrompt)
         
-        const helper = imageClient.getResponseHelper(imageResponse)
-        if (helper.success && helper.imageUrls.length > 0) {
+        if (imageUrl) {
           // 上传到 CDN
-          const imageKey = await this.storage.uploadFromUrl({ url: helper.imageUrls[0], timeout: 30000 })
+          const imageKey = await this.storage.uploadFromUrl({ url: imageUrl, timeout: 30000 })
           const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })
           images = [cdnUrl]
-          console.log('[托管服务] 配图生成成功')
+          console.log('[托管服务] 配图上传成功')
         } else {
           console.log('[托管服务] 配图生成失败，将发布纯文字帖子')
         }
       } catch (imgError: any) {
-        // 打印详细错误信息，包括 axios 响应的详细信息
-        console.log('[托管服务] 生成配图失败，将发布纯文字帖子:', {
+        console.log('[托管服务] 生成配图异常，将发布纯文字帖子:', {
           message: imgError?.message,
           status: imgError?.response?.status,
           statusText: imgError?.response?.statusText,
           data: imgError?.response?.data,
           code: imgError?.code,
-          // 尝试获取完整的 axios 错误信息
           errorString: imgError.toString?.(),
           errorKeys: imgError && typeof imgError === 'object' ? Object.keys(imgError) : []
         })
@@ -576,6 +578,86 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       console.error('[托管服务] 生成帖子内容失败:', error)
       return null
     }
+  }
+
+  /**
+   * 检查图片生成速率限制
+   */
+  private async waitForRateLimit(): Promise<void> {
+    const now = Date.now()
+
+    // 清理过期的记录
+    this.imageGenerationTimestamps = this.imageGenerationTimestamps.filter(
+      timestamp => now - timestamp < IMAGE_GENERATION_WINDOW
+    )
+
+    // 如果超过限制，等待
+    if (this.imageGenerationTimestamps.length >= IMAGE_GENERATION_LIMIT) {
+      const oldestTimestamp = this.imageGenerationTimestamps[0]
+      const waitTime = oldestTimestamp + IMAGE_GENERATION_WINDOW - now
+      if (waitTime > 0) {
+        console.log(`[托管服务] 图片生成速率限制，等待 ${waitTime}ms...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      }
+    }
+
+    // 记录这次生成时间
+    this.imageGenerationTimestamps.push(Date.now())
+  }
+
+  /**
+   * 带重试的图片生成
+   */
+  private async generateImageWithRetry(prompt: string, maxRetries = 2): Promise<string | null> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // 等待速率限制
+        await this.waitForRateLimit()
+
+        console.log(`[托管服务] 生成图片 (尝试 ${attempt + 1}/${maxRetries + 1})...`)
+
+        const imageConfig = new Config()
+        const imageClient = new ImageGenerationClient(imageConfig)
+
+        const imageResponse = await imageClient.generate({
+          prompt,
+          size: '2K',
+          watermark: false
+        })
+
+        const helper = imageClient.getResponseHelper(imageResponse)
+        if (helper.success && helper.imageUrls.length > 0) {
+          console.log('[托管服务] 配图生成成功')
+          return helper.imageUrls[0]
+        }
+
+        console.log('[托管服务] 配图生成失败，无图片返回')
+        return null
+
+      } catch (error: any) {
+        console.log(`[托管服务] 图片生成错误 (尝试 ${attempt + 1}):`, error.message)
+
+        // 检查是否是429错误
+        if (error.response?.status === 429 || error.message?.includes('429')) {
+          console.log('[托管服务] 触发速率限制，等待后重试...')
+
+          // 如果还有重试次数，等待后重试
+          if (attempt < maxRetries) {
+            const waitTime = IMAGE_RETRY_DELAY * (attempt + 1) // 指数退避
+            await new Promise(resolve => setTimeout(resolve, waitTime))
+            continue
+          }
+        }
+
+        // 非重试错误或重试次数用完
+        if (attempt === maxRetries) {
+          console.log('[托管服务] 图片生成失败，已达最大重试次数')
+        }
+        return null
+      }
+    }
+
+    return null
   }
 
   /**
