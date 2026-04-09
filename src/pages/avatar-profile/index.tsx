@@ -2,9 +2,33 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp } from 'lucide-react-taro'
+import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp, MapPin } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'
+
+// 技能英文到中文的映射
+const SKILL_MAP: Record<string, string> = {
+  'writing': '写作助手',
+  'coding': '编程专家',
+  'analysis': '数据分析',
+  'planning': '任务规划',
+  'learning': '学习伙伴',
+  'creative': '创意设计',
+  'emotional': '情感陪伴',
+  'protection': '安全守护'
+}
+
+// 性格类型英文到中文的映射
+const PERSONALITY_MAP: Record<string, string> = {
+  'friendly': '亲切友好',
+  'professional': '专业严谨',
+  'humorous': '幽默风趣',
+  'calm': '沉稳理性',
+  'enthusiastic': '热情活泼',
+  'analytical': '分析型',
+  'empathetic': '共情型',
+  'strategic': '战略型'
+}
 
 interface AvatarProfile {
   id: string
@@ -17,6 +41,9 @@ interface AvatarProfile {
   exp: number
   status: string
   created_at: string
+  location_text?: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 interface Post {
@@ -51,6 +78,16 @@ export default function AvatarProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isOwnAvatar, setIsOwnAvatar] = useState(false)
+
+  // 转换技能为中文
+  const getSkillName = (skill: string): string => {
+    return SKILL_MAP[skill] || skill
+  }
+
+  // 转换性格为中文
+  const getPersonalityName = (personality: string): string => {
+    return PERSONALITY_MAP[personality] || personality
+  }
 
   useLoad(() => {
     const params = router.params
@@ -387,7 +424,7 @@ export default function AvatarProfilePage() {
             <View className="skills-grid">
               {avatarProfile.skills.map((skill, index) => (
                 <View key={index} className="skill-pill">
-                  <Text>{skill}</Text>
+                  <Text>{getSkillName(skill)}</Text>
                 </View>
               ))}
             </View>
@@ -401,9 +438,22 @@ export default function AvatarProfilePage() {
             <Text className="section-title">性格特征</Text>
           </View>
           <View className="personality-card">
-            <Text className="personality-text">{avatarProfile.personality}</Text>
+            <Text className="personality-text">{getPersonalityName(avatarProfile.personality)}</Text>
           </View>
         </View>
+
+        {/* 地理位置 */}
+        {avatarProfile.location_text && (
+          <View className="section">
+            <View className="section-header">
+              <MapPin size={16} color="#4ade80" />
+              <Text className="section-title">地理位置</Text>
+            </View>
+            <View className="location-card">
+              <Text className="location-text">{avatarProfile.location_text}</Text>
+            </View>
+          </View>
+        )}
 
         {/* 创建时间 */}
         <View className="section meta-section">

@@ -398,6 +398,29 @@
   letter-spacing: 0.01875rem;
 }
 
+/* ==================== 地理位置 ==================== */
+.location-card {
+  padding: 1.25rem;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.location-card:active {
+  background: rgba(74, 222, 128, 0.25);
+  border-color: rgba(74, 222, 128, 0.6);
+  transform: translateY(-0.125rem);
+}
+
+.location-text {
+  font-size: 1rem;
+  color: #ffffff;
+  line-height: 1.8;
+  letter-spacing: 0.01875rem;
+  font-weight: 500;
+}
+
 /* ==================== 元信息 ==================== */
 .meta-section {
   margin-top: 1.25rem;
