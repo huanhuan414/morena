@@ -139,10 +139,10 @@ export default function AvatarSettingsPage() {
         type: 'wgs84'
       })
 
+      // 只传递经纬度，让后端自动进行逆地理编码
       const locationData = {
         latitude: locationRes.latitude,
-        longitude: locationRes.longitude,
-        location_text: `${locationRes.latitude.toFixed(6)}, ${locationRes.longitude.toFixed(6)}`
+        longitude: locationRes.longitude
       }
 
       const res = await Network.request({
@@ -152,7 +152,8 @@ export default function AvatarSettingsPage() {
       })
 
       if (res.data?.code === 200) {
-        setAvatar({ ...avatar, ...locationData })
+        // 后端返回的数据包含逆地理编码后的详细地址
+        setAvatar({ ...avatar, ...res.data.data })
         showToast({ title: '位置已更新', icon: 'success', duration: 2000 })
       }
     } catch (error) {

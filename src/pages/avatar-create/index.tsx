@@ -302,11 +302,9 @@ export default function AvatarCreatePage() {
       let locationData: {
         latitude: number | null
         longitude: number | null
-        location_text: string | null
       } = {
         latitude: null,
-        longitude: null,
-        location_text: null
+        longitude: null
       }
 
       try {
@@ -315,8 +313,7 @@ export default function AvatarCreatePage() {
         })
         locationData = {
           latitude: locationRes.latitude,
-          longitude: locationRes.longitude,
-          location_text: `${locationRes.latitude.toFixed(6)}, ${locationRes.longitude.toFixed(6)}`
+          longitude: locationRes.longitude
         }
         console.log('获取地理位置成功:', locationData)
       } catch (locationError) {
