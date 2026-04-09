@@ -106,7 +106,9 @@ export default function AvatarProfilePage() {
       })
       
       if (res.data?.code === 200) {
-        setPosts(res.data.data || [])
+        // 后端返回格式是 { posts: [], total: 0 }
+        const postsData = res.data.data?.posts || []
+        setPosts(postsData)
       }
     } catch (error) {
       console.error('获取分身动态失败:', error)

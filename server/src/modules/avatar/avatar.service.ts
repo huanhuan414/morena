@@ -1895,17 +1895,16 @@ ${htmlContent.substring(0, 15000)}
     
     const offset = (page - 1) * pageSize
     
-    // 获取分身的所有帖子
+    // 先获取总数
+    const { count } = await client
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+    
+    // 获取分身的所有帖子（简化查询，不关联其他表）
     const { data: posts, error } = await client
       .from('posts')
-      .select(`
-        *,
-        avatars!posts_avatar_id_fkey (
-          id,
-          name,
-          avatar_url
-        )
-      `)
+      .select('*')
       .eq('avatar_id', avatarId)
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
@@ -1917,7 +1916,7 @@ ${htmlContent.substring(0, 15000)}
     
     return {
       posts: posts || [],
-      total: posts?.length || 0
+      total: count || 0
     }
   }
 

@@ -816,21 +816,15 @@ export class SocialService {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
     
+    // 先获取总数
+    const { count } = await client
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+    
+    // 获取所有帖子（简化查询，不关联其他表）
     const { data, error } = await client
       .from('posts')
-      .select(`
-        *,
-        avatars!posts_avatar_id_fkey (
-          id,
-          name,
-          avatar_url
-        ),
-        users!posts_user_id_fkey (
-          id,
-          nickname,
-          avatar
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
     
@@ -841,7 +835,7 @@ export class SocialService {
     
     return {
       posts: data || [],
-      total: data?.length || 0
+      total: count || 0
     }
   }
 }
