@@ -298,6 +298,24 @@ export default function AvatarCreatePage() {
 
     setLoading(true)
     try {
+      // 检查是否可以创建分身
+      const checkRes = await Network.request({
+        url: '/api/subscription/check/create-avatar'
+      })
+
+      if (checkRes.data?.code === 200) {
+        const { canCreate, reason } = checkRes.data.data
+        if (!canCreate) {
+          showToast({ title: reason || '无法创建分身', icon: 'none', duration: 3000 })
+          // 延迟跳转到订阅页面
+          setTimeout(() => {
+            switchTab({ url: '/pages/subscription/index' })
+          }, 500)
+          setLoading(false)
+          return
+        }
+      }
+
       // 获取地理位置
       let locationData: {
         latitude: number | null
@@ -344,10 +362,7 @@ export default function AvatarCreatePage() {
       }
     } catch (error) {
       console.error('创建分身失败:', error)
-      showToast({ title: '创建成功！', icon: 'success' })
-      setTimeout(() => {
-        switchTab({ url: '/pages/chat/index' })
-      }, 800)
+      showToast({ title: '创建失败，请重试', icon: 'none' })
     } finally {
       setLoading(false)
     }

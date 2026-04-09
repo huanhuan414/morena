@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap, Crown } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import './index.css'
 
@@ -75,6 +75,7 @@ export default function ProfilePage() {
 
   const menuItems = [
     { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/avatar-manage/index' },
+    { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', color: '#ffd700', path: '/pages/subscription/index' },
     { title: '订单管理', icon: Briefcase, desc: '查看和管理订单', color: '#00f5ff', path: '/pages/order-list/index' },
     { title: '任务大厅', icon: Zap, desc: '分身接单赚钱', color: '#bf00ff', path: '/pages/order-list/index?mode=avatar' },
     { title: '收益中心', icon: Wallet, desc: '查看收益和提现', color: '#00ff88', path: '/pages/earning-center/index' },

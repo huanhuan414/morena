@@ -18,6 +18,7 @@ export default defineAppConfig({
     'pages/profile/help',
     'pages/profile/about',
     'pages/profile/followers',
+    'pages/subscription/index',
     'pages/task/index',
     'pages/order-create/index',
     'pages/order-list/index',

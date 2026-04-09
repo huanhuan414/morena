@@ -15,23 +15,25 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { OrderDispatchModule } from './modules/order-dispatch/order-dispatch.module';
 import { EarningModule } from './modules/earning/earning.module';
 import { ReferralModule } from './modules/referral/referral.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 
 @Module({
   imports: [
     StorageModule,
-    OrderModule, 
-    ChatModule, 
-    AuthModule, 
-    AvatarModule, 
-    UserModule, 
-    TaskModule, 
-    SocialModule, 
-    AgentModule, 
+    OrderModule,
+    ChatModule,
+    AuthModule,
+    AvatarModule,
+    UserModule,
+    TaskModule,
+    SocialModule,
+    AgentModule,
     AudioModule,
     NotificationModule,
     OrderDispatchModule,
     EarningModule,
-    ReferralModule
+    ReferralModule,
+    SubscriptionModule
   ],
   controllers: [AppController],
   providers: [AppService],

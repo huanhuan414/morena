@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { NotificationService } from '../notification/notification.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface OrderAnalysis {
@@ -93,8 +94,11 @@ export interface DispatchResult {
 @Injectable()
 export class OrderDispatchService {
   private llmClient: LLMClient
-  
-  constructor(private readonly notificationService: NotificationService) {
+
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly subscriptionService: SubscriptionService
+  ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
   }
@@ -745,7 +749,23 @@ export class OrderDispatchService {
       order.longitude
     )
 
-    // 综合评分 (所有权重加起来不超过100)
+    // 订阅权重 (最高 100 分)
+    let subscriptionScore = 0
+    let subscriptionLevel = 'free'
+    try {
+      const subscription = await this.subscriptionService.getAvatarSubscription(avatar.id)
+      if (subscription && subscription.can_receive_orders) {
+        subscriptionScore = subscription.order_priority || 0
+        subscriptionLevel = subscription.subscription_level
+        semanticReasons.push(`订阅等级: ${subscriptionLevel} (优先级 +${subscriptionScore})`)
+      } else {
+        semanticReasons.push('免费用户：无法接单，请升级订阅')
+      }
+    } catch (error) {
+      console.error('[订单分配] 获取分身订阅信息失败:', error)
+    }
+
+    // 综合评分 (所有权重加起来不超过100 + 订阅权重)
     const totalScore =
       semanticScore * 0.35 +    // 语义相似度 35%
       baseScore * 0.25 +        // 基础能力 25%
@@ -755,7 +775,8 @@ export class OrderDispatchService {
       hostingBonusNormalized +  // 托管加分 0-10
       platformScore +           // 平台匹配 0-20
       locationScore +           // 地理位置 0-20
-      complexityBonusClamped    // 复杂度加成 -5~10
+      complexityBonusClamped +  // 复杂度加成 -5~10
+      subscriptionScore         // 订阅权重 0-100
     
     // 生成详细匹配理由
     const matchReasons = this.generateMatchReasons(

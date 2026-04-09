@@ -1,0 +1,277 @@
+.sub-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 顶部导航 */
+.sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 32rpx;
+  padding-top: calc(20rpx + env(safe-area-inset-top));
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.sub-header-left,
+.sub-header-right {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sub-header-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* 滚动区域 */
+.sub-scroll {
+  height: calc(100vh - 120rpx);
+}
+
+/* 当前订阅状态 */
+.sub-current {
+  margin: 32rpx;
+  padding: 32rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.1) 0%, rgba(255, 215, 0, 0.1) 100%);
+  border: 2rpx solid rgba(255, 215, 0, 0.3);
+  border-radius: 24rpx;
+}
+
+.sub-current-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.sub-current-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ffd700;
+}
+
+.sub-current-info {
+  margin-bottom: 24rpx;
+}
+
+.sub-current-plan {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 12rpx;
+}
+
+.sub-current-date {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sub-current-features {
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+/* 订阅计划列表 */
+.sub-plans {
+  padding: 0 32rpx;
+}
+
+.sub-section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 48rpx 0 32rpx;
+}
+
+.sub-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+/* 订阅卡片 */
+.sub-card {
+  position: relative;
+  padding: 40rpx 32rpx;
+  border-radius: 32rpx;
+  border: 2rpx solid;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sub-card-free {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.sub-card-basic {
+  border-color: rgba(0, 245, 255, 0.3);
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.05) 0%, rgba(0, 245, 255, 0.02) 100%);
+}
+
+.sub-card-premium {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 255, 136, 0.02) 100%);
+}
+
+.sub-card-vip {
+  border-color: rgba(255, 215, 0, 0.3);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.05) 100%);
+}
+
+/* 徽章 */
+.sub-badge {
+  position: absolute;
+  top: -16rpx;
+  right: 32rpx;
+  padding: 8rpx 24rpx;
+  border-radius: 32rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sub-badge-vip {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+  border-color: #ffd700;
+  color: #000000;
+}
+
+.sub-badge-premium {
+  background: linear-gradient(135deg, #00ff88 0%, #00f5ff 100%);
+  border-color: #00ff88;
+  color: #000000;
+}
+
+.sub-badge-text {
+  color: inherit;
+}
+
+/* 卡片头部 */
+.sub-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.sub-card-name {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.sub-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+
+.sub-card-amount {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.sub-card-period {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 卡片描述 */
+.sub-card-description {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 32rpx;
+  line-height: 1.6;
+}
+
+/* 功能列表 */
+.sub-features {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
+}
+
+.sub-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.sub-feature-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 订阅按钮 */
+.sub-card-button {
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 28rpx 32rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00f5ff 0%, #00a8ff 100%);
+  color: #000000;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(0, 245, 255, 0.3);
+}
+
+.sub-card-button-disabled {
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+}
+
+/* 加载状态 */
+.sub-loading {
+  padding: 120rpx 0;
+  text-align: center;
+}
+
+.sub-loading-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 订阅须知 */
+.sub-notice {
+  margin: 64rpx 32rpx;
+  padding: 32rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 24rpx;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sub-notice-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 24rpx;
+}
+
+.sub-notice-item {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 2;
+  margin-bottom: 8rpx;
+}
+
+/* 底部间距 */
+.sub-bottom-space {
+  height: 120rpx;
+}
