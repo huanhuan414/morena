@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -101,6 +101,32 @@ export default function OrderCreatePage() {
 
     setLoading(true)
     try {
+      // 获取地理位置
+      let locationData: {
+        latitude: number | null
+        longitude: number | null
+        location_text: string | null
+      } = {
+        latitude: null,
+        longitude: null,
+        location_text: null
+      }
+
+      try {
+        const locationRes = await getLocation({
+          type: 'wgs84'
+        })
+        locationData = {
+          latitude: locationRes.latitude,
+          longitude: locationRes.longitude,
+          location_text: `${locationRes.latitude.toFixed(6)}, ${locationRes.longitude.toFixed(6)}`
+        }
+        console.log('获取地理位置成功:', locationData)
+      } catch (locationError) {
+        console.warn('获取地理位置失败，将使用默认值:', locationError)
+        // 获取地理位置失败不影响订单创建，继续执行
+      }
+
       const res = await Network.request({
         url: '/api/order',
         method: 'POST',
@@ -108,7 +134,8 @@ export default function OrderCreatePage() {
           title: form.title,
           description: form.description,
           budget: parseFloat(form.budget),
-          requirements: form.requirements
+          requirements: form.requirements,
+          ...locationData
         }
       })
 

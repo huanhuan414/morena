@@ -510,6 +510,83 @@ export class OrderDispatchService {
   }
 
   /**
+   * 计算两个地理坐标之间的距离（单位：公里）
+   * 使用 Haversine 公式
+   */
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
+    if (!lat1 || !lon1 || !lat2 || !lon2) {
+      return Infinity // 如果任一位置信息缺失，返回无限大
+    }
+
+    const R = 6371 // 地球半径，单位：公里
+    const dLat = this.toRadians(lat2 - lat1)
+    const dLon = this.toRadians(lon2 - lon1)
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  /**
+   * 将角度转换为弧度
+   */
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180)
+  }
+
+  /**
+   * 计算地理位置权重
+   * 距离越近，权重越高（0-20分）
+   */
+  private calculateLocationWeight(
+    avatarLat: number,
+    avatarLon: number,
+    orderLat: number,
+    orderLon: number
+  ): { score: number; distance: number } {
+    const distance = this.calculateDistance(avatarLat, avatarLon, orderLat, orderLon)
+
+    // 如果任一位置信息缺失，不给权重
+    if (distance === Infinity) {
+      return { score: 0, distance: Infinity }
+    }
+
+    let score = 0
+
+    // 距离权重计算（单位：公里）
+    if (distance <= 5) {
+      score = 20 // 5公里以内，最高权重
+    } else if (distance <= 10) {
+      score = 18 // 10公里以内
+    } else if (distance <= 20) {
+      score = 15 // 20公里以内
+    } else if (distance <= 50) {
+      score = 12 // 50公里以内
+    } else if (distance <= 100) {
+      score = 8 // 100公里以内
+    } else if (distance <= 200) {
+      score = 5 // 200公里以内
+    } else if (distance <= 500) {
+      score = 2 // 500公里以内
+    } else {
+      score = 0 // 500公里以上，无权重
+    }
+
+    return { score, distance }
+  }
+
+  /**
    * 计算语义相似度
    */
   private calculateSemanticSimilarity(
@@ -656,12 +733,20 @@ export class OrderDispatchService {
     
     // 托管加分归一化 (转换为0-10的范围)
     const hostingBonusNormalized = avatar.is_hosted ? 10 : 0
-    
+
     // 复杂度加成归一化 (确保在-5到10之间)
     const complexityBonusClamped = Math.max(-5, Math.min(complexityBonus, 10))
-    
+
+    // 地理位置权重 (最高 20 分)
+    const { score: locationScore, distance: locationDistance } = this.calculateLocationWeight(
+      avatar.latitude,
+      avatar.longitude,
+      order.latitude,
+      order.longitude
+    )
+
     // 综合评分 (所有权重加起来不超过100)
-    const totalScore = 
+    const totalScore =
       semanticScore * 0.35 +    // 语义相似度 35%
       baseScore * 0.25 +        // 基础能力 25%
       levelScore * 0.15 +       // 等级 15%
@@ -669,6 +754,7 @@ export class OrderDispatchService {
       activityScore * 0.1 +     // 活跃度 10%
       hostingBonusNormalized +  // 托管加分 0-10
       platformScore +           // 平台匹配 0-20
+      locationScore +           // 地理位置 0-20
       complexityBonusClamped    // 复杂度加成 -5~10
     
     // 生成详细匹配理由
@@ -682,7 +768,9 @@ export class OrderDispatchService {
         completedOrders,
         activityScore,
         platformScore,
-        hostingBonus: hostingBonusNormalized
+        hostingBonus: hostingBonusNormalized,
+        locationScore,
+        locationDistance
       }
     )
     
@@ -730,48 +818,63 @@ export class OrderDispatchService {
       activityScore: number
       platformScore: number
       hostingBonus: number
+      locationScore: number
+      locationDistance: number
     }
   ): string[] {
     const reasons: string[] = []
-    
+
     // 语义匹配理由
     if (scores.semanticScore >= 70) {
       reasons.push(`语义匹配度 ${scores.semanticScore.toFixed(0)}% - 专业领域高度契合`)
     } else if (scores.semanticScore >= 50) {
       reasons.push(`语义匹配度 ${scores.semanticScore.toFixed(0)}% - 具备相关经验`)
     }
-    
+
     // 能力指标理由
     if (scores.completionRate >= 98) {
       reasons.push(`完成率 ${scores.completionRate}% - 近乎完美`)
     } else if (scores.completionRate >= 90) {
       reasons.push(`完成率 ${scores.completionRate}% - 非常可靠`)
     }
-    
+
     if (scores.level >= 5) {
       reasons.push(`等级 Lv.${scores.level} - 资深经验`)
     } else if (scores.level >= 3) {
       reasons.push(`等级 Lv.${scores.level} - 经验丰富`)
     }
-    
+
     if (scores.completedOrders >= 50) {
       reasons.push(`已完成 ${scores.completedOrders} 单 - 老练专业`)
     } else if (scores.completedOrders >= 20) {
       reasons.push(`已完成 ${scores.completedOrders} 单 - 熟练可靠`)
     }
-    
+
     // 活跃度理由
     if (scores.activityScore >= 90) {
       reasons.push('近期活跃 - 响应迅速')
     } else if (scores.activityScore >= 70) {
       reasons.push('保持活跃 - 状态良好')
     }
-    
+
     // 托管加分理由
     if (scores.hostingBonus > 0) {
       reasons.push('开启托管 - 全天候自动服务')
     }
-    
+
+    // 地理位置理由
+    if (scores.locationScore > 0 && scores.locationDistance !== Infinity) {
+      if (scores.locationDistance <= 5) {
+        reasons.push(`距离 ${scores.locationDistance.toFixed(1)}km - 就近快速响应`)
+      } else if (scores.locationDistance <= 20) {
+        reasons.push(`距离 ${scores.locationDistance.toFixed(1)}km - 地理位置便利`)
+      } else if (scores.locationDistance <= 100) {
+        reasons.push(`距离 ${scores.locationDistance.toFixed(1)}km - 地理位置适中`)
+      } else {
+        reasons.push(`距离 ${scores.locationDistance.toFixed(1)}km`)
+      }
+    }
+
     // 平台配置理由
     const platforms = orderAnalysis.preferredPlatforms || []
     if (platforms.length > 0 && scores.platformScore >= 80) {

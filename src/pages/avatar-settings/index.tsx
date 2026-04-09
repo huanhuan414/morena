@@ -1,4 +1,4 @@
-import Taro, { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { 
-  ChevronRight, Sparkles, Settings, Trash2, 
-  Volume2, Bell, Moon, Zap, Shield
+import {
+  ChevronRight, Sparkles, Settings, Trash2,
+  Volume2, Bell, Moon, Zap, Shield, MapPin
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -20,6 +20,9 @@ interface AvatarSettings {
   level: number
   exp: number
   is_hosted: boolean
+  latitude?: number | null
+  longitude?: number | null
+  location_text?: string | null
   config?: {
     voice_enabled?: boolean
     notification_enabled?: boolean
@@ -123,6 +126,38 @@ export default function AvatarSettingsPage() {
     } catch (error) {
       console.error('保存失败:', error)
       showToast({ title: '保存失败', icon: 'none' })
+    }
+  }
+
+  const updateLocation = async () => {
+    if (!avatar) return
+
+    try {
+      showToast({ title: '正在获取位置...', icon: 'loading', duration: 2000 })
+
+      const locationRes = await getLocation({
+        type: 'wgs84'
+      })
+
+      const locationData = {
+        latitude: locationRes.latitude,
+        longitude: locationRes.longitude,
+        location_text: `${locationRes.latitude.toFixed(6)}, ${locationRes.longitude.toFixed(6)}`
+      }
+
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}`,
+        method: 'PUT',
+        data: locationData
+      })
+
+      if (res.data?.code === 200) {
+        setAvatar({ ...avatar, ...locationData })
+        showToast({ title: '位置已更新', icon: 'success', duration: 2000 })
+      }
+    } catch (error) {
+      console.error('更新位置失败:', error)
+      showToast({ title: '更新失败，请检查定位权限', icon: 'none' })
     }
   }
 
@@ -265,7 +300,7 @@ export default function AvatarSettingsPage() {
         {/* 功能设置 */}
         <View className="as-section">
           <Text className="as-section-title">功能设置</Text>
-          
+
           {settingItems.map((item, idx) => {
             const Icon = item.icon
             return (
@@ -279,13 +314,40 @@ export default function AvatarSettingsPage() {
                     <Text className="as-setting-desc">{item.desc}</Text>
                   </View>
                 </View>
-                <Switch 
+                <Switch
                   checked={item.enabled}
                   onCheckedChange={(checked) => saveSettings(item.key, checked)}
                 />
               </View>
             )
           })}
+        </View>
+
+        {/* 地理位置 */}
+        <View className="as-section">
+          <Text className="as-section-title">地理位置</Text>
+
+          <View className="as-location-card">
+            <View className="as-location-info">
+              <View className="as-location-icon">
+                <MapPin size={20} color="#ff6b6b" />
+              </View>
+              <View className="as-location-details">
+                <Text className="as-location-label">当前位置</Text>
+                {avatar?.location_text ? (
+                  <Text className="as-location-value">{avatar.location_text}</Text>
+                ) : (
+                  <Text className="as-location-placeholder">未设置位置</Text>
+                )}
+              </View>
+            </View>
+            <Button
+              className="as-location-btn"
+              onClick={updateLocation}
+            >
+              <Text className="as-location-btn-text">更新位置</Text>
+            </Button>
+          </View>
         </View>
 
         {/* 托管设置 */}

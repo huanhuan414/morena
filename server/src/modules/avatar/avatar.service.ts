@@ -43,7 +43,11 @@ export class AvatarService {
         },
         level: 1,
         exp: 0,
-        status: 'active'
+        status: 'active',
+        // 地理位置信息
+        latitude: avatarData.latitude || null,
+        longitude: avatarData.longitude || null,
+        location_text: avatarData.location_text || null
       })
       .select()
       .single()

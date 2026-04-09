@@ -1,12 +1,12 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, chooseImage } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { 
-  Camera, Sparkles, Brain, Palette, Zap, Heart, Target, 
+import {
+  Camera, Sparkles, Brain, Palette, Zap, Heart, Target,
   Lightbulb, Shield, Star, ArrowRight, Check, Loader, User,
   Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
   Moon, Sun, Smile, Bot
@@ -298,6 +298,32 @@ export default function AvatarCreatePage() {
 
     setLoading(true)
     try {
+      // 获取地理位置
+      let locationData: {
+        latitude: number | null
+        longitude: number | null
+        location_text: string | null
+      } = {
+        latitude: null,
+        longitude: null,
+        location_text: null
+      }
+
+      try {
+        const locationRes = await getLocation({
+          type: 'wgs84'
+        })
+        locationData = {
+          latitude: locationRes.latitude,
+          longitude: locationRes.longitude,
+          location_text: `${locationRes.latitude.toFixed(6)}, ${locationRes.longitude.toFixed(6)}`
+        }
+        console.log('获取地理位置成功:', locationData)
+      } catch (locationError) {
+        console.warn('获取地理位置失败，将使用默认值:', locationError)
+        // 获取地理位置失败不影响分身创建，继续执行
+      }
+
       const res = await Network.request({
         url: '/api/avatar',
         method: 'POST',
@@ -308,7 +334,8 @@ export default function AvatarCreatePage() {
           appearance_style: appearanceStyle,
           speaking_style: speakingStyle,
           photo_url: photoUrl,
-          photo_analysis: photoAnalysis
+          photo_analysis: photoAnalysis,
+          ...locationData
         }
       })
 

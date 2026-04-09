@@ -5,7 +5,7 @@ import { getSupabaseClient } from '../../storage/database/supabase-client'
 export class OrderService {
   async createOrder(userId: string, orderData: Record<string, any>) {
     const client = getSupabaseClient()
-    
+
     const { data, error } = await client
       .from('orders')
       .insert({
@@ -14,15 +14,19 @@ export class OrderService {
         description: orderData.description,
         requirements: orderData.requirements || {},
         budget: orderData.budget,
-        status: 'open'
+        status: 'open',
+        // 地理位置信息
+        latitude: orderData.latitude || null,
+        longitude: orderData.longitude || null,
+        location_text: orderData.location_text || null
       })
       .select()
       .single()
-    
+
     if (error) {
       throw new Error(`创建订单失败: ${error.message}`)
     }
-    
+
     return data
   }
 
