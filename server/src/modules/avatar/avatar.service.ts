@@ -1047,57 +1047,6 @@ export class AvatarService {
   }
 
   /**
-   * 获取与好友的聊天记录
-   * 通过 avatar_friends 表中存储的 conversation_id 获取
-   */
-  async getChatWithFriend(avatarId: string, friendId: string, userId: string) {
-    const client = getSupabaseClient()
-    
-    // 验证分身属于该用户
-    const { data: avatar } = await client
-      .from('avatars')
-      .select('id')
-      .eq('id', avatarId)
-      .eq('user_id', userId)
-      .single()
-    
-    if (!avatar) {
-      throw new Error('分身不存在或无权访问')
-    }
-    
-    // 获取好友关系，查找是否有对话ID
-    const { data: friendship } = await client
-      .from('avatar_friends')
-      .select('conversation_id, match_reason, benefits')
-      .eq('avatar_id', avatarId)
-      .eq('friend_avatar_id', friendId)
-      .single()
-    
-    if (!friendship?.conversation_id) {
-      // 如果没有对话记录，返回空数组
-      return {
-        messages: [],
-        match_reason: friendship?.match_reason,
-        benefits: friendship?.benefits
-      }
-    }
-    
-    // 获取对话消息
-    const { data: messages } = await client
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', friendship.conversation_id)
-      .order('created_at', { ascending: true })
-      .limit(50)
-    
-    return {
-      messages: messages || [],
-      match_reason: friendship.match_reason,
-      benefits: friendship.benefits
-    }
-  }
-
-  /**
    * 发起与好友分身的语音通话
    * 生成好友分身的语音问候并返回音频URL
    */

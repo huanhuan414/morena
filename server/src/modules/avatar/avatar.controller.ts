@@ -10,7 +10,7 @@ export class AvatarController {
   constructor(
     private readonly avatarService: AvatarService,
     private readonly learningService: LearningService,
-    private readonly hostingService: HostingService
+    private readonly hostingService: HostingService,
   ) {}
 
   @Post()
@@ -273,23 +273,6 @@ export class AvatarController {
       code: 200,
       data: { audioUrl },
       message: '转换成功'
-    }
-  }
-
-  /**
-   * 获取与好友的聊天记录
-   */
-  @Get(':id/chat/:friendId')
-  async getChatWithFriend(
-    @Param('id') avatarId: string,
-    @Param('friendId') friendId: string,
-    @Headers('x-user-id') userId: string
-  ) {
-    const messages = await this.avatarService.getChatWithFriend(avatarId, friendId, userId)
-    return {
-      code: 200,
-      data: messages,
-      message: '获取成功'
     }
   }
 

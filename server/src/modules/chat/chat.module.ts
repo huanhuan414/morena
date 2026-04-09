@@ -5,7 +5,7 @@ import { AgentModule } from '../agent/agent.module';
 import { AvatarModule } from '../avatar/avatar.module';
 
 @Module({
-  imports: [forwardRef(() => AgentModule), AvatarModule],
+  imports: [forwardRef(() => AgentModule), forwardRef(() => AvatarModule)],
   controllers: [ChatController],
   providers: [ChatService],
   exports: [ChatService]

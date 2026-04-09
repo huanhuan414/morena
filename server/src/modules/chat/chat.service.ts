@@ -765,11 +765,12 @@ export class ChatService {
 
   async deleteConversation(conversationId: string, userId: string) {
     const client = getSupabaseClient()
-    
+
     await client
       .from('conversations')
       .delete()
       .eq('id', conversationId)
       .eq('user_id', userId)
   }
+
 }

@@ -7,6 +7,7 @@ import { VoiceCallGateway } from './voice-call.gateway';
 import { VoiceCallService } from './voice-call.service';
 
 @Module({
+  imports: [],
   controllers: [AvatarController],
   providers: [AvatarService, LearningService, HostingService, VoiceCallGateway, VoiceCallService],
   exports: [AvatarService, LearningService, HostingService, VoiceCallService]
