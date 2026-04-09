@@ -19,7 +19,8 @@ export interface ReverseGeocodingResult {
 @Injectable()
 export class ReverseGeocodingService {
   // 高德地图API Key
-  private readonly AMAP_API_KEY = 'a2fd21655a31c73e42294c459123adf5'
+  private readonly AMAP_WEB_SERVICE_KEY = '5f5b139f9cce3da88b6813304541b47d' // Web服务Key（后端使用）
+  private readonly AMAP_MINIPROGRAM_KEY = 'a2fd21655a31c73e42294c459123adf5' // 微信小程序Key（前端直接调用时使用）
   private readonly AMAP_BASE_URL = 'https://restapi.amap.com'
 
   /**
@@ -29,7 +30,7 @@ export class ReverseGeocodingService {
   private async convertWGS84ToGCJ02(latitude: number, longitude: number): Promise<{ lat: number; lon: number }> {
     try {
       const response = await fetch(
-        `${this.AMAP_BASE_URL}/v3/assistant/coordinate/convert?key=${this.AMAP_API_KEY}&locations=${longitude},${latitude}&coordsys=gps&output=json`
+        `${this.AMAP_BASE_URL}/v3/assistant/coordinate/convert?key=${this.AMAP_WEB_SERVICE_KEY}&locations=${longitude},${latitude}&coordsys=gps&output=json`
       )
 
       if (!response.ok) {
@@ -55,13 +56,13 @@ export class ReverseGeocodingService {
 
   /**
    * 逆地理编码：将经纬度转换为具体地理位置
-   * 使用高德地图逆地理编码API
+   * 使用高德地图逆地理编码API（Web服务）
    */
   async reverseGeocode(latitude: number, longitude: number): Promise<ReverseGeocodingResult> {
     try {
       // 直接调用高德逆地理编码API（使用WGS84坐标，会有少量偏移但可接受）
       const response = await fetch(
-        `${this.AMAP_BASE_URL}/v3/geocode/regeo?key=${this.AMAP_API_KEY}&location=${longitude},${latitude}&extensions=all&output=json`,
+        `${this.AMAP_BASE_URL}/v3/geocode/regeo?key=${this.AMAP_WEB_SERVICE_KEY}&location=${longitude},${latitude}&extensions=all&output=json`,
         {
           signal: AbortSignal.timeout(10000) // 10秒超时
         }
@@ -114,7 +115,8 @@ export class ReverseGeocodingService {
         province,
         city,
         district,
-        pois: pois.length
+        pois: pois.length,
+        adcode
       })
 
       return {
