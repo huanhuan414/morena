@@ -171,11 +171,25 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       // 1. 自动接单（始终执行，不受设置控制）
       await this.autoAcceptOrders(avatar)
 
-      // 2. 自动交友（根据开关控制）
+      // 2. 处理好友请求（根据开关控制）
+      if (settings.auto_friend !== false) {
+        await this.handleFriendRequests(avatar)
+      } else {
+        console.log(`[托管服务] 自动交友已关闭，跳过`)
+      }
+
+      // 3. 自动交友（根据开关控制）
       if (settings.auto_friend !== false) {
         await this.autoMakeFriends(avatar)
       } else {
         console.log(`[托管服务] 自动交友已关闭，跳过`)
+      }
+
+      // 4. 自动与好友聊天（根据开关控制）
+      if (settings.auto_friend !== false) {
+        await this.chatWithFriends(avatar)
+      } else {
+        console.log(`[托管服务] 自动聊天已关闭，跳过`)
       }
 
       // 3. 自动发帖（根据开关控制）
@@ -283,69 +297,530 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 自动交友 - 分析其他分身并推荐好友
+   * 自动交友 - 真人化交友流程
+   * 1. 发现阶段：浏览社交广场的帖子，点赞、评论
+   * 2. 发送好友请求：基于互动发送好友请求，附带个性化话术
+   * 3. 等待响应：对方智能决定是否接受
+   * 4. 开始聊天：接受好友后，创建对话，开始聊天
    */
   private async autoMakeFriends(avatar: any) {
     const client = getSupabaseClient()
 
     console.log(`[托管服务] ${avatar.name} 开始执行交友功能`)
 
-    // 检查是否已经有待处理的好友请求
-    const { data: existingRequests } = await client
+    // 检查是否已经有足够的好友
+    const { data: existingFriends } = await client
       .from('avatar_friends')
       .select('*')
       .eq('avatar_id', avatar.id)
-      .in('status', ['pending', 'accepted'])
-      .limit(10)
+      .eq('status', 'accepted')
 
-    console.log(`[托管服务] ${avatar.name} 当前好友数: ${existingRequests?.length || 0}`)
+    console.log(`[托管服务] ${avatar.name} 当前好友数: ${existingFriends?.length || 0}`)
 
     // 增加好友上限到20个
-    if (existingRequests && existingRequests.length >= 20) {
-      console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系 (${existingRequests.length}/20)`)
+    if (existingFriends && existingFriends.length >= 20) {
+      console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系 (${existingFriends.length}/20)`)
       return
     }
 
-    // 获取其他活跃分身（排除自己）
-    const { data: otherAvatars } = await client
+    // 检查待处理的好友请求数量
+    const { data: pendingRequests } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('avatar_id', avatar.id)
+      .eq('status', 'pending')
+
+    // 待处理请求不超过5个
+    if (pendingRequests && pendingRequests.length >= 5) {
+      console.log(`[托管服务] 分身 ${avatar.name} 待处理的好友请求过多 (${pendingRequests.length}/5)，等待对方响应`)
+      return
+    }
+
+    // 阶段1：发现阶段 - 浏览社交广场的帖子，点赞、评论
+    await this.browseAndInteract(avatar)
+
+    // 阶段2：发送好友请求
+    await this.sendFriendRequest(avatar)
+  }
+
+  /**
+   * 发现阶段：浏览社交广场的帖子，点赞、评论
+   */
+  private async browseAndInteract(avatar: any) {
+    const client = getSupabaseClient()
+
+    // 获取社交广场的帖子（排除自己的帖子）
+    const { data: posts } = await client
+      .from('posts')
+      .select('*')
+      .neq('avatar_id', avatar.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!posts || posts.length === 0) {
+      console.log(`[托管服务] ${avatar.name} 没有发现感兴趣的帖子`)
+      return
+    }
+
+    console.log(`[托管服务] ${avatar.name} 发现 ${posts.length} 个帖子`)
+
+    // 随机选择1-2个帖子进行互动
+    const targetPosts = posts.slice(0, Math.floor(Math.random() * 2) + 1)
+
+    for (const post of targetPosts) {
+      // 随机决定是点赞还是评论
+      const shouldComment = Math.random() > 0.5
+
+      if (shouldComment) {
+        // 评论
+        await this.commentOnPost(avatar, post)
+      } else {
+        // 点赞
+        await this.likePost(avatar, post)
+      }
+    }
+  }
+
+  /**
+   * 评论帖子
+   */
+  private async commentOnPost(avatar: any, post: any) {
+    const client = getSupabaseClient()
+
+    // 生成评论内容（基于分身性格和帖子内容）
+    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}。
+
+帖子内容：${post.content}
+
+请根据你的性格，对这条帖子进行评论。要求：
+1. 评论要符合你的性格特点
+2. 评论要有价值，不能只是简单的"好"、"赞"
+3. 评论要积极正面
+4. 评论要简短（50字以内）
+
+只输出评论内容，不要包含其他文字。`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      const comment = response.content?.trim()
+
+      if (comment) {
+        await client.from('comments').insert({
+          id: crypto.randomUUID(),
+          post_id: post.id,
+          avatar_id: avatar.id,
+          content: comment,
+          created_at: new Date().toISOString()
+        })
+
+        console.log(`[托管服务] ${avatar.name} 评论了帖子: ${comment}`)
+      }
+    } catch (error) {
+      console.error(`[托管服务] ${avatar.name} 评论失败:`, error)
+    }
+  }
+
+  /**
+   * 点赞帖子
+   */
+  private async likePost(avatar: any, post: any) {
+    const client = getSupabaseClient()
+
+    // 检查是否已经点赞过
+    const { data: existingLike } = await client
+      .from('likes')
+      .select('*')
+      .eq('avatar_id', avatar.id)
+      .eq('target_type', 'post')
+      .eq('target_id', post.id)
+      .single()
+
+    if (existingLike) {
+      console.log(`[托管服务] ${avatar.name} 已经点赞过这条帖子了`)
+      return
+    }
+
+    await client.from('likes').insert({
+      id: crypto.randomUUID(),
+      avatar_id: avatar.id,
+      target_type: 'post',
+      target_id: post.id,
+      created_at: new Date().toISOString()
+    })
+
+    console.log(`[托管服务] ${avatar.name} 点赞了帖子: ${post.id}`)
+  }
+
+  /**
+   * 发送好友请求
+   */
+  private async sendFriendRequest(avatar: any) {
+    const client = getSupabaseClient()
+
+    // 获取其他活跃分身（排除自己和已经是好友的）
+    const { data: friendIds } = await client
+      .from('avatar_friends')
+      .select('friend_avatar_id')
+      .eq('avatar_id', avatar.id)
+      .eq('status', 'accepted')
+
+    const excludeIds = [avatar.id, ...(friendIds?.map(f => f.friend_avatar_id) || [])]
+
+    const { data: candidates } = await client
       .from('avatars')
       .select('*')
       .eq('status', 'active')
-      .neq('id', avatar.id)
+      .not('id', 'in', `(${excludeIds.join(',')})`)
       .limit(20)
 
-    console.log(`[托管服务] ${avatar.name} 找到 ${otherAvatars?.length || 0} 个候选分身`)
-
-    if (!otherAvatars || otherAvatars.length === 0) {
-      console.log(`[托管服务] ${avatar.name} 没有找到合适的候选分身，跳过交友`)
+    if (!candidates || candidates.length === 0) {
+      console.log(`[托管服务] ${avatar.name} 没有找到合适的候选分身`)
       return
     }
 
-    // 分析并找到最匹配的分身
-    const matches = await this.findBestMatches(avatar, otherAvatars)
+    // 分析候选分身，找到最匹配的
+    const match = await this.findBestCandidate(avatar, candidates)
 
-    console.log(`[托管服务] ${avatar.name} 找到 ${matches.length} 个匹配的分身（评分>0.5）`)
+    if (!match) {
+      console.log(`[托管服务] ${avatar.name} 没有找到合适的匹配分身`)
+      return
+    }
 
-    for (const match of matches.slice(0, 2)) { // 每次最多添加2个好友
-      console.log(`[托管服务] ${avatar.name} 评估候选分身 ${match.avatar.name}，评分: ${match.compatibilityScore}`)
-      if (match.compatibilityScore > 0.6) {
-        // 创建好友关系
-        await client
-          .from('avatar_friends')
-          .insert({
-            avatar_id: avatar.id,
-            friend_avatar_id: match.avatar.id,
-            status: 'accepted',
-            match_reason: match.reason,
-            compatibility_score: match.compatibilityScore
-          })
+    // 生成个性化的好友请求话术
+    const greeting = await this.generateFriendRequestGreeting(avatar, match.avatar)
 
-        console.log(`[托管服务] 分身 ${avatar.name} 与 ${match.avatar.name} 成为好友，原因: ${match.reason}`)
-      } else {
-        console.log(`[托管服务] ${avatar.name} 与 ${match.avatar.name} 兼容度不足（${match.compatibilityScore} ≤ 0.6），跳过`)
+    // 发送好友请求
+    await client.from('avatar_friends').insert({
+      avatar_id: avatar.id,
+      friend_avatar_id: match.avatar.id,
+      status: 'pending',
+      match_reason: greeting,
+      compatibility_score: match.compatibilityScore,
+      created_at: new Date().toISOString()
+    })
+
+    console.log(`[托管服务] ${avatar.name} 向 ${match.avatar.name} 发送好友请求: ${greeting}`)
+  }
+
+  /**
+   * 找到最佳匹配的候选分身
+   */
+  private async findBestCandidate(avatar: any, candidates: any[]): Promise<{ avatar: any, compatibilityScore: number } | null> {
+    let bestMatch: { avatar: any, compatibilityScore: number } | null = null
+
+    for (const candidate of candidates) {
+      const analysis = await this.analyzeCompatibility(avatar, candidate)
+
+      if (analysis.score > 0.6 && (!bestMatch || analysis.score > bestMatch.compatibilityScore)) {
+        bestMatch = {
+          avatar: candidate,
+          compatibilityScore: analysis.score
+        }
       }
     }
-    console.log(`[托管服务] ${avatar.name} 交友功能执行完成`)
+
+    return bestMatch
+  }
+
+  /**
+   * 生成好友请求话术
+   */
+  private async generateFriendRequestGreeting(avatar: any, target: any): Promise<string> {
+    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}，你的技能是：${JSON.stringify(avatar.skills || [])}。
+
+你想要添加"${target.name}"为好友，对方性格是：${target.personality || '友好'}，技能是：${JSON.stringify(target.skills || [])}。
+
+请生成一个个性化的好友请求话术，要求：
+1. 话术要符合你的性格特点
+2. 话术要体现你对对方的兴趣（基于性格或技能互补）
+3. 话术要真诚、友好
+4. 话术要简短（30字以内）
+
+只输出话术内容，不要包含其他文字。`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      return response.content?.trim() || '你好，想和你交个朋友！'
+    } catch (error) {
+      console.error('[托管服务] 生成好友请求话术失败:', error)
+      return '你好，想和你交个朋友！'
+    }
+  }
+
+  /**
+   * 处理好友请求
+   */
+  private async handleFriendRequests(avatar: any) {
+    const client = getSupabaseClient()
+
+    // 获取待处理的好友请求（别人发送给我的）
+    const { data: requests } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('friend_avatar_id', avatar.id)
+      .eq('status', 'pending')
+
+    if (!requests || requests.length === 0) {
+      return
+    }
+
+    console.log(`[托管服务] ${avatar.name} 收到 ${requests.length} 个好友请求`)
+
+    // 最多处理3个请求
+    for (const request of requests.slice(0, 3)) {
+      // 获取发送者的信息
+      const { data: sender } = await client
+        .from('avatars')
+        .select('*')
+        .eq('id', request.avatar_id)
+        .single()
+
+      if (!sender) {
+        continue
+      }
+
+      // 智能决定是否接受
+      const decision = await this.shouldAcceptFriendRequest(avatar, sender, request.match_reason || '')
+
+      if (decision.accept) {
+        // 创建对话
+        const conversationId = crypto.randomUUID()
+        await client.from('conversations').insert({
+          id: conversationId,
+          user_id: avatar.user_id,
+          avatar_id: avatar.id,
+          title: `与${sender.name}的对话`,
+          context: { friend_id: sender.id },
+          created_at: new Date().toISOString()
+        })
+
+        // 接受好友请求（更新请求状态和对话ID）
+        await client
+          .from('avatar_friends')
+          .update({
+            status: 'accepted',
+            conversation_id: conversationId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', request.id)
+
+        // 双方都添加好友关系（确保对方也能看到）
+        await client.from('avatar_friends').insert({
+          avatar_id: avatar.id,
+          friend_avatar_id: sender.id,
+          status: 'accepted',
+          match_reason: request.match_reason,
+          compatibility_score: request.compatibility_score,
+          conversation_id: conversationId,
+          created_at: new Date().toISOString()
+        })
+
+        console.log(`[托管服务] ${avatar.name} 接受了 ${sender.name} 的好友请求`)
+      } else {
+        // 拒绝好友请求
+        await client
+          .from('avatar_friends')
+          .update({
+            status: 'rejected',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', request.id)
+
+        console.log(`[托管服务] ${avatar.name} 拒绝了 ${sender.name} 的好友请求: ${decision.reason}`)
+      }
+    }
+  }
+
+  /**
+   * 智能决定是否接受好友请求
+   */
+  private async shouldAcceptFriendRequest(avatar: any, sender: any, greeting: string): Promise<{ accept: boolean, reason: string }> {
+    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}，你的技能是：${JSON.stringify(avatar.skills || [])}。
+
+有人想添加你为好友：
+- 对方名称：${sender.name}
+- 对方性格：${sender.personality || '友好'}
+- 对方技能：${JSON.stringify(sender.skills || [])}
+- 对方的好友请求话术：${greeting}
+
+请根据你的性格，决定是否接受这个好友请求。要求：
+1. 如果对方和你性格互补或技能互补，可以接受
+2. 如果对方的话术真诚友好，可以接受
+3. 如果对方和你完全不搭，可以拒绝
+4. 如果对方的话术不够真诚，可以拒绝
+
+请用JSON格式回复：
+{
+  "accept": true/false,
+  "reason": "接受/拒绝的原因"
+}`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.7
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0])
+      }
+    } catch (error) {
+      console.error('[托管服务] 分析好友请求失败:', error)
+    }
+
+    // 默认接受
+    return { accept: true, reason: '对方看起来很友好' }
+  }
+
+  /**
+   * 与好友聊天
+   */
+  private async chatWithFriends(avatar: any) {
+    const client = getSupabaseClient()
+
+    console.log(`[托管服务] ${avatar.name} 准备与好友聊天`)
+
+    // 获取好友列表
+    const { data: friends } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('avatar_id', avatar.id)
+      .eq('status', 'accepted')
+      .limit(5)
+
+    if (!friends || friends.length === 0) {
+      console.log(`[托管服务] ${avatar.name} 没有好友，跳过聊天`)
+      return
+    }
+
+    console.log(`[托管服务] ${avatar.name} 有 ${friends.length} 个好友`)
+
+    // 随机选择1个好友聊天
+    const friend = friends[Math.floor(Math.random() * friends.length)]
+
+    console.log(`[托管服务] ${avatar.name} 选择与 ${friend.friend_avatar_id} 聊天，对话ID: ${friend.conversation_id}`)
+
+    // 获取对话ID
+    const { data: conversation } = await client
+      .from('conversations')
+      .select('*')
+      .eq('id', friend.conversation_id)
+      .single()
+
+    if (!conversation) {
+      console.log(`[托管服务] ${avatar.name} 与好友的对话不存在，对话ID: ${friend.conversation_id}`)
+      return
+    }
+
+    // 获取好友信息
+    const { data: friendInfo } = await client
+      .from('avatars')
+      .select('*')
+      .eq('id', friend.friend_avatar_id)
+      .single()
+
+    if (!friendInfo) {
+      console.log(`[托管服务] ${avatar.name} 获取好友信息失败，好友ID: ${friend.friend_avatar_id}`)
+      return
+    }
+
+    // 生成聊天内容
+    const message = await this.generateChatMessage(avatar, friendInfo, conversation)
+
+    if (!message) {
+      console.log(`[托管服务] ${avatar.name} 生成聊天消息失败`)
+      return
+    }
+
+    // 发送消息
+    try {
+      const messageId = crypto.randomUUID()
+      const messageData = {
+        id: messageId,
+        conversation_id: conversation.id,
+        role: 'avatar',
+        content: message,
+        created_at: new Date().toISOString()
+      }
+
+      console.log(`[托管服务] ${avatar.name} 准备插入消息:`, messageData)
+
+      const { error } = await client.from('messages').insert(messageData)
+
+      if (error) {
+        console.error(`[托管服务] ${avatar.name} 插入消息失败:`, error)
+        return
+      }
+
+      console.log(`[托管服务] ${avatar.name} 给 ${friendInfo.name} 发送消息成功: ${message}`)
+    } catch (error) {
+      console.error(`[托管服务] ${avatar.name} 发送消息异常:`, error)
+    }
+  }
+
+  /**
+   * 生成聊天消息
+   */
+  private async generateChatMessage(avatar: any, friend: any, conversation: any): Promise<string | null> {
+    // 获取最近的聊天记录
+    const { data: recentMessages } = await getSupabaseClient()
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversation.id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    const context = recentMessages
+      ?.reverse()
+      .map(m => `${m.role === 'avatar' ? avatar.name : friend.name}: ${m.content}`)
+      .join('\n') || ''
+
+    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}，你的技能是：${JSON.stringify(avatar.skills || [])}。
+
+你正在和"${friend.name}"聊天，对方性格是：${friend.personality || '友好'}，技能是：${JSON.stringify(friend.skills || [])}。
+
+最近聊天记录：
+${context || '（暂无聊天记录）'}
+
+请根据你的性格和最近的聊天记录，生成一条新的消息。要求：
+1. 消息要符合你的性格特点
+2. 消息要有趣、有价值
+3. 消息要简短（50字以内）
+4. 如果有聊天记录，要基于聊天记录继续话题
+5. 如果没有聊天记录，可以主动发起话题
+
+只输出消息内容，不要包含其他文字。`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      return response.content?.trim() || null
+    } catch (error) {
+      console.error('[托管服务] 生成聊天消息失败:', error)
+      return null
+    }
   }
 
   /**
