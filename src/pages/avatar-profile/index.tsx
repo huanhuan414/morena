@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, UserPlus, Shield, Calendar } from 'lucide-react-taro'
+import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'
 
@@ -64,28 +64,19 @@ export default function AvatarProfilePage() {
     try {
       setLoading(true)
       
-      // 获取分身详情
       const profileRes = await Network.request({
         url: `/api/avatar/${id}`
       })
       
       if (profileRes.data?.code === 200) {
         setAvatarProfile(profileRes.data.data)
-        // 检查是否是自己的分身
         const currentUserId = Taro.getStorageSync('userId')
         setIsOwnAvatar(profileRes.data.data.user_id === currentUserId)
       }
       
-      // 获取分身动态
       await fetchAvatarPosts(id)
-      
-      // 获取统计信息
       await fetchAvatarStats(id)
-      
-      // 检查好友关系
       await checkFriendStatus(id)
-      
-      // 检查拉黑状态
       await checkBlockStatus(id)
       
     } catch (error) {
@@ -106,7 +97,6 @@ export default function AvatarProfilePage() {
       })
       
       if (res.data?.code === 200) {
-        // 后端返回格式是 { posts: [], total: 0 }
         const postsData = res.data.data?.posts || []
         setPosts(postsData)
       }
@@ -191,7 +181,6 @@ export default function AvatarProfilePage() {
           return
         }
         
-        // 使用第一个分身发送好友请求
         const avatar = myAvatars[0]
         await Network.request({
           url: `/api/avatar-friend/${avatar.id}/request`,
@@ -229,7 +218,6 @@ export default function AvatarProfilePage() {
           return
         }
         
-        // 使用第一个分身拉黑
         const avatar = myAvatars[0]
         await Network.request({
           url: `/api/avatar/${avatar.id}/block/${avatarId}`,
@@ -276,152 +264,201 @@ export default function AvatarProfilePage() {
 
   if (loading) {
     return (
-      <View className="avatar-profile-loading">
-        <Text>加载中...</Text>
+      <View className="profile-container loading-state">
+        <View className="loading-spinner">
+          <Sparkles size={48} color="#00f5ff" />
+        </View>
+        <Text className="loading-text">正在加载...</Text>
       </View>
     )
   }
 
   if (!avatarProfile) {
     return (
-      <View className="avatar-profile-empty">
-        <Text>分身不存在</Text>
+      <View className="profile-container empty-state">
+        <Text className="empty-text">分身不存在</Text>
       </View>
     )
   }
 
   return (
-    <ScrollView className="avatar-profile" scrollY>
-      {/* 头部信息 */}
-      <View className="profile-header">
-        <View className="avatar-info">
-          <Image 
-            src={avatarProfile.avatar_url || '/assets/default-avatar.png'} 
-            className="avatar-image"
-            mode="aspectFill"
-          />
-          <View className="avatar-details">
-            <Text className="avatar-name">{avatarProfile.name}</Text>
-            <Text className="avatar-level">LV.{avatarProfile.level}</Text>
-            <Text className="avatar-personality">{avatarProfile.personality}</Text>
+    <ScrollView className="profile-container" scrollY>
+      {/* 动态背景 */}
+      <View className="bg-gradient-1"></View>
+      <View className="bg-gradient-2"></View>
+      
+      {/* 顶部装饰 */}
+      <View className="top-decoration">
+        <Sparkles className="sparkle-1" size={20} color="#00f5ff" />
+        <Sparkles className="sparkle-2" size={16} color="#ff6b9d" />
+        <Sparkles className="sparkle-3" size={24} color="#8b5cf6" />
+      </View>
+
+      {/* 主卡片 */}
+      <View className="main-card glass-effect">
+        {/* 头部信息区 */}
+        <View className="header-section">
+          <View className="avatar-wrapper">
+            <View className="avatar-ring">
+              <Image 
+                src={avatarProfile.avatar_url || '/assets/default-avatar.png'} 
+                className="avatar-image"
+                mode="aspectFill"
+              />
+            </View>
+            <View className="level-badge">
+              <Crown size={14} color="#ffd700" />
+              <Text className="level-text">LV.{avatarProfile.level}</Text>
+            </View>
+          </View>
+          
+          <View className="profile-info">
+            <Text className="profile-name">{avatarProfile.name}</Text>
+            <Text className="profile-tag">
+              <Sparkles size={12} color="#00f5ff" />
+              <Text> AI 分身</Text>
+            </Text>
+            <Text className="profile-desc">{avatarProfile.description}</Text>
           </View>
         </View>
-        
-        {/* 统计信息 */}
-        <View className="stats-grid">
-          <View className="stat-item">
+
+        {/* 统计数据 */}
+        <View className="stats-section">
+          <View className="stat-item gradient-purple">
+            <View className="stat-icon">
+              <Heart size={20} color="#fff" />
+            </View>
             <Text className="stat-value">{stats.friendsCount}</Text>
             <Text className="stat-label">好友</Text>
           </View>
-          <View className="stat-item">
+          
+          <View className="stat-item gradient-blue">
+            <View className="stat-icon">
+              <TrendingUp size={20} color="#fff" />
+            </View>
             <Text className="stat-value">{stats.postsCount}</Text>
             <Text className="stat-label">帖子</Text>
           </View>
-          <View className="stat-item">
-            <Text className="stat-value">{stats.likesReceived}</Text>
-            <Text className="stat-label">获赞</Text>
-          </View>
-          <View className="stat-item">
+          
+          <View className="stat-item gradient-pink">
+            <View className="stat-icon">
+              <MessageCircle size={20} color="#fff" />
+            </View>
             <Text className="stat-value">{stats.commentsReceived}</Text>
             <Text className="stat-label">评论</Text>
           </View>
+          
+          <View className="stat-item gradient-orange">
+            <View className="stat-icon">
+              <Zap size={20} color="#fff" />
+            </View>
+            <Text className="stat-value">{stats.likesReceived}</Text>
+            <Text className="stat-label">获赞</Text>
+          </View>
         </View>
-        
+
         {/* 操作按钮 */}
         {!isOwnAvatar && (
-          <View className="action-buttons">
+          <View className="actions-section">
             {!isFriend && !isBlocked && (
-              <Button className="action-btn primary" onClick={handleAddFriend}>
+              <Button className="action-btn btn-primary" onClick={handleAddFriend}>
                 <UserPlus size={16} color="#fff" />
                 <Text>添加好友</Text>
               </Button>
             )}
             
-            {isBlocked ? (
-              <Button className="action-btn" onClick={handleUnblock}>
-                <Shield size={16} color="#666" />
-                <Text>解除拉黑</Text>
-              </Button>
-            ) : (
-              <Button className="action-btn danger" onClick={handleBlock}>
-                <Shield size={16} color="#fff" />
-                <Text>拉黑</Text>
-              </Button>
-            )}
+            <Button 
+              className={`action-btn ${isBlocked ? 'btn-normal' : 'btn-danger'}`} 
+              onClick={isBlocked ? handleUnblock : handleBlock}
+            >
+              <Shield size={16} color="#fff" />
+              <Text>{isBlocked ? '解除拉黑' : '拉黑'}</Text>
+            </Button>
           </View>
         )}
-      </View>
 
-      {/* 技能标签 */}
-      {avatarProfile.skills && avatarProfile.skills.length > 0 && (
-        <View className="skills-section">
-          <Text className="section-title">技能</Text>
-          <View className="skills-list">
-            {avatarProfile.skills.map((skill, index) => (
-              <View key={index} className="skill-tag">
-                <Text>{skill}</Text>
-              </View>
-            ))}
+        {/* 技能标签 */}
+        {avatarProfile.skills && avatarProfile.skills.length > 0 && (
+          <View className="section">
+            <View className="section-header">
+              <Sparkles size={16} color="#00f5ff" />
+              <Text className="section-title">技能特长</Text>
+            </View>
+            <View className="skills-grid">
+              {avatarProfile.skills.map((skill, index) => (
+                <View key={index} className="skill-pill">
+                  <Text>{skill}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* 性格特征 */}
+        <View className="section">
+          <View className="section-header">
+            <Zap size={16} color="#ff6b9d" />
+            <Text className="section-title">性格特征</Text>
+          </View>
+          <View className="personality-card">
+            <Text className="personality-text">{avatarProfile.personality}</Text>
           </View>
         </View>
-      )}
 
-      {/* 简介 */}
-      {avatarProfile.description && (
-        <View className="description-section">
-          <Text className="section-title">简介</Text>
-          <Text className="description-text">{avatarProfile.description}</Text>
-        </View>
-      )}
-
-      {/* 创建时间 */}
-      <View className="meta-section">
-        <View className="meta-item">
-          <Calendar size={14} color="#999" />
-          <Text>创建于 {new Date(avatarProfile.created_at).toLocaleDateString()}</Text>
+        {/* 创建时间 */}
+        <View className="section meta-section">
+          <View className="meta-item">
+            <Calendar size={14} color="#999" />
+            <Text>创建于 {new Date(avatarProfile.created_at).toLocaleDateString()}</Text>
+          </View>
         </View>
       </View>
 
-      {/* 分身动态 */}
+      {/* 动态列表 */}
       <View className="posts-section">
-        <Text className="section-title">动态</Text>
+        <View className="section-header posts-header">
+          <Sparkles size={16} color="#00f5ff" />
+          <Text className="section-title">最新动态</Text>
+          <Text className="posts-count">{posts.length}</Text>
+        </View>
+        
         {posts.length === 0 ? (
-          <View className="empty-state">
+          <View className="empty-posts">
+            <MessageCircle size={48} color="#666" />
             <Text className="empty-text">暂无动态</Text>
           </View>
         ) : (
           <View className="posts-list">
-            {posts.map((post) => (
-              <View key={post.id} className="post-card">
-                <View className="post-content">
-                  <Text className="post-text">{post.content}</Text>
-                  
-                  {post.images && post.images.length > 0 && (
-                    <ScrollView scrollX className="post-images">
-                      {post.images.map((img, index) => (
-                        <Image 
-                          key={index}
-                          src={img}
-                          className="post-image"
-                          mode="aspectFill"
-                        />
-                      ))}
-                    </ScrollView>
-                  )}
-                  
+            {posts.map((post, index) => (
+              <View key={post.id} className="post-card glass-effect" style={{ animationDelay: `${index * 0.1}s` }}>
+                <Text className="post-content">{post.content}</Text>
+                
+                {post.images && post.images.length > 0 && (
+                  <ScrollView scrollX className="post-images">
+                    {post.images.map((img, imgIndex) => (
+                      <Image 
+                        key={imgIndex}
+                        src={img}
+                        className="post-image"
+                        mode="aspectFill"
+                      />
+                    ))}
+                  </ScrollView>
+                )}
+                
+                <View className="post-footer">
                   <View className="post-stats">
-                    <View className="post-stat">
-                      <Heart size={14} color="#999" />
+                    <View className="stat-badge">
+                      <Heart size={14} color="#ff6b9d" />
                       <Text>{post.likes_count}</Text>
                     </View>
-                    <View className="post-stat">
-                      <MessageCircle size={14} color="#999" />
+                    <View className="stat-badge">
+                      <MessageCircle size={14} color="#00f5ff" />
                       <Text>{post.comments_count}</Text>
                     </View>
                   </View>
-                  
                   <Text className="post-date">
-                    {new Date(post.created_at).toLocaleString()}
+                    {new Date(post.created_at).toLocaleDateString()}
                   </Text>
                 </View>
               </View>
@@ -429,6 +466,9 @@ export default function AvatarProfilePage() {
           </View>
         )}
       </View>
+
+      {/* 底部占位 */}
+      <View className="bottom-space"></View>
     </ScrollView>
   )
 }
