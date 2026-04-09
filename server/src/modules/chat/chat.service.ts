@@ -151,19 +151,51 @@ export class ChatService {
     headers?: Record<string, string>
   ) {
     const client = getSupabaseClient()
-    
+
+    // 获取对话信息
     const { data: conversation } = await client
       .from('conversations')
       .select('context, title')
       .eq('id', conversationId)
       .single()
-    
+
+    // 检查是否是好友对话（通过对话标题判断）
+    if (conversation?.title?.includes('与') && conversation?.title?.includes('的对话')) {
+      // 从对话上下文中提取好友ID
+      const friendId = (conversation.context as any)?.friend_id
+      if (friendId) {
+        // 检查是否被拉黑
+        const { data: block } = await client
+          .from('avatar_blocks')
+          .select('id')
+          .eq('avatar_id', avatarId)
+          .eq('blocked_avatar_id', friendId)
+          .single()
+
+        if (block) {
+          throw new Error('对方已将你拉黑，无法发送消息')
+        }
+
+        // 检查是否拉黑了对方
+        const { data: selfBlock } = await client
+          .from('avatar_blocks')
+          .select('id')
+          .eq('avatar_id', friendId)
+          .eq('blocked_avatar_id', avatarId)
+          .single()
+
+        if (selfBlock) {
+          throw new Error('你已拉黑对方，无法发送消息')
+        }
+      }
+    }
+
     const { data: avatar } = await client
       .from('avatars')
       .select('*')
       .eq('id', avatarId)
       .single()
-    
+
     // 检查隐私模式
     const privacyMode = avatar?.config?.privacy_mode ?? false
     const userContent = privacyMode ? this.sanitizeMessage(content) : content

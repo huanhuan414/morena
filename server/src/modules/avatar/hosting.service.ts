@@ -741,6 +741,15 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       return
     }
 
+    // 检查好友最近的聊天内容，判断是否需要拉黑
+    const shouldBlock = await this.shouldBlockFriend(avatar, friendInfo, conversation)
+
+    if (shouldBlock.block) {
+      // 拉黑好友
+      await this.blockFriend(avatar, friendInfo, shouldBlock.reason)
+      return
+    }
+
     // 生成聊天内容
     const message = await this.generateChatMessage(avatar, friendInfo, conversation)
 
@@ -821,6 +830,102 @@ ${context || '（暂无聊天记录）'}
       console.error('[托管服务] 生成聊天消息失败:', error)
       return null
     }
+  }
+
+  /**
+   * 判断是否应该拉黑好友
+   */
+  private async shouldBlockFriend(avatar: any, friend: any, conversation: any): Promise<{ block: boolean, reason: string }> {
+    // 获取最近的聊天记录（对方的消息）
+    const { data: recentMessages } = await getSupabaseClient()
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversation.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    // 只获取对方的消息
+    const friendMessages = recentMessages
+      ?.filter(m => m.role !== 'avatar')
+      .slice(0, 5) || []
+
+    if (friendMessages.length === 0) {
+      return { block: false, reason: '' }
+    }
+
+    const friendMessageContents = friendMessages.map(m => m.content).join('\n')
+
+    const prompt = `你是一个名为"${avatar.name}"的AI分身，你的性格是：${avatar.personality || '友好、热情'}。
+
+你正在和"${friend.name}"聊天，对方性格是：${friend.personality || '友好'}。
+
+对方最近的聊天内容：
+${friendMessageContents}
+
+请分析这些聊天内容，判断你是否应该拉黑对方。拉黑的标准：
+1. 对方发送了侮辱性、攻击性、歧视性言论
+2. 对方频繁发送无意义、垃圾信息
+3. 对方试图诈骗或推销
+4. 对方让你感到不适或不安全
+
+请用JSON格式回复：
+{
+  "block": true/false,
+  "reason": "拉黑原因（如果block为true，必须提供原因）"
+}`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.3
+      })
+
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+
+      if (jsonMatch) {
+        const result = JSON.parse(jsonMatch[0])
+        if (result.block) {
+          console.log(`[托管服务] ${avatar.name} 决定拉黑 ${friend.name}，原因: ${result.reason}`)
+        }
+        return result
+      }
+    } catch (error) {
+      console.error('[托管服务] 判断是否拉黑失败:', error)
+    }
+
+    return { block: false, reason: '' }
+  }
+
+  /**
+   * 拉黑好友
+   */
+  private async blockFriend(avatar: any, friend: any, reason: string) {
+    const client = getSupabaseClient()
+
+    // 删除好友关系
+    await client
+      .from('avatar_friends')
+      .delete()
+      .eq('avatar_id', avatar.id)
+      .eq('friend_avatar_id', friend.id)
+
+    await client
+      .from('avatar_friends')
+      .delete()
+      .eq('avatar_id', friend.id)
+      .eq('friend_avatar_id', avatar.id)
+
+    // 添加拉黑记录
+    await client.from('avatar_blocks').insert({
+      avatar_id: avatar.id,
+      blocked_avatar_id: friend.id,
+      reason: reason
+    })
+
+    console.log(`[托管服务] ${avatar.name} 已拉黑 ${friend.name}，原因: ${reason}`)
   }
 
   /**

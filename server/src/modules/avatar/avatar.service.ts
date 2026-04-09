@@ -1761,4 +1761,129 @@ ${htmlContent.substring(0, 15000)}
       throw error
     }
   }
+
+  /**
+   * 拉黑好友
+   */
+  async blockAvatar(avatarId: string, blockedAvatarId: string, reason?: string) {
+    const client = getSupabaseClient()
+
+    // 检查是否已经是好友
+    const { data: friend } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('avatar_id', avatarId)
+      .eq('friend_avatar_id', blockedAvatarId)
+      .eq('status', 'accepted')
+      .single()
+
+    if (friend) {
+      // 删除好友关系
+      await client
+        .from('avatar_friends')
+        .delete()
+        .eq('avatar_id', avatarId)
+        .eq('friend_avatar_id', blockedAvatarId)
+
+      // 同时删除对方的好友关系
+      await client
+        .from('avatar_friends')
+        .delete()
+        .eq('avatar_id', blockedAvatarId)
+        .eq('friend_avatar_id', avatarId)
+    }
+
+    // 添加拉黑记录
+    const { data, error } = await client
+      .from('avatar_blocks')
+      .insert({
+        avatar_id: avatarId,
+        blocked_avatar_id: blockedAvatarId,
+        reason: reason || '用户主动拉黑'
+      })
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error('拉黑失败: ' + error.message)
+    }
+
+    return data
+  }
+
+  /**
+   * 解除拉黑
+   */
+  async unblockAvatar(avatarId: string, blockedAvatarId: string) {
+    const client = getSupabaseClient()
+
+    const { error } = await client
+      .from('avatar_blocks')
+      .delete()
+      .eq('avatar_id', avatarId)
+      .eq('blocked_avatar_id', blockedAvatarId)
+
+    if (error) {
+      throw new Error('解除拉黑失败: ' + error.message)
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * 获取拉黑列表
+   */
+  async getBlockedAvatars(avatarId: string) {
+    const client = getSupabaseClient()
+
+    // 先获取拉黑记录
+    const { data: blocks, error } = await client
+      .from('avatar_blocks')
+      .select('*')
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw new Error('获取拉黑列表失败: ' + error.message)
+    }
+
+    // 获取被拉黑的分身信息
+    const blockedAvatarIds = blocks?.map(b => b.blocked_avatar_id) || []
+
+    if (blockedAvatarIds.length === 0) {
+      return []
+    }
+
+    const { data: blockedAvatars } = await client
+      .from('avatars')
+      .select('*')
+      .in('id', blockedAvatarIds)
+
+    // 组合数据
+    const result = blocks?.map(block => {
+      const avatar = blockedAvatars?.find(a => a.id === block.blocked_avatar_id)
+      return {
+        ...block,
+        blocked_avatar: avatar || null
+      }
+    }) || []
+
+    return result
+  }
+
+  /**
+   * 检查是否被拉黑
+   */
+  async isBlocked(avatarId: string, targetAvatarId: string): Promise<boolean> {
+    const client = getSupabaseClient()
+
+    const { data } = await client
+      .from('avatar_blocks')
+      .select('id')
+      .eq('avatar_id', avatarId)
+      .eq('blocked_avatar_id', targetAvatarId)
+      .single()
+
+    return !!data
+  }
 }

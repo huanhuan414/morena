@@ -430,4 +430,106 @@ export class AvatarController {
       }
     }
   }
+
+  /**
+   * 拉黑好友
+   */
+  @Post(':avatarId/block/:blockedAvatarId')
+  async blockAvatar(
+    @Param('avatarId') avatarId: string,
+    @Param('blockedAvatarId') blockedAvatarId: string,
+    @Body('reason') reason?: string
+  ) {
+    try {
+      const result = await this.avatarService.blockAvatar(avatarId, blockedAvatarId, reason)
+
+      return {
+        code: 200,
+        data: result,
+        message: '拉黑成功'
+      }
+    } catch (error: any) {
+      console.error('拉黑失败:', error)
+      return {
+        code: 400,
+        message: error.message || '拉黑失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 解除拉黑
+   */
+  @Delete(':avatarId/block/:blockedAvatarId')
+  async unblockAvatar(
+    @Param('avatarId') avatarId: string,
+    @Param('blockedAvatarId') blockedAvatarId: string
+  ) {
+    try {
+      const result = await this.avatarService.unblockAvatar(avatarId, blockedAvatarId)
+
+      return {
+        code: 200,
+        data: result,
+        message: '解除拉黑成功'
+      }
+    } catch (error: any) {
+      console.error('解除拉黑失败:', error)
+      return {
+        code: 400,
+        message: error.message || '解除拉黑失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 获取拉黑列表
+   */
+  @Get(':avatarId/blocks')
+  async getBlockedAvatars(@Param('avatarId') avatarId: string) {
+    try {
+      const result = await this.avatarService.getBlockedAvatars(avatarId)
+
+      return {
+        code: 200,
+        data: result,
+        message: '获取成功'
+      }
+    } catch (error: any) {
+      console.error('获取拉黑列表失败:', error)
+      return {
+        code: 400,
+        message: error.message || '获取失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 检查是否被拉黑
+   */
+  @Get(':avatarId/blocked/:targetAvatarId')
+  async isBlocked(
+    @Param('avatarId') avatarId: string,
+    @Param('targetAvatarId') targetAvatarId: string
+  ) {
+    try {
+      const isBlocked = await this.avatarService.isBlocked(avatarId, targetAvatarId)
+
+      return {
+        code: 200,
+        data: { isBlocked },
+        message: '检查成功'
+      }
+    } catch (error: any) {
+      console.error('检查拉黑状态失败:', error)
+      return {
+        code: 400,
+        message: error.message || '检查失败',
+        data: null
+      }
+    }
+  }
 }
