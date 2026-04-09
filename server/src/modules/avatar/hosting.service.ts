@@ -287,7 +287,9 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
    */
   private async autoMakeFriends(avatar: any) {
     const client = getSupabaseClient()
-    
+
+    console.log(`[托管服务] ${avatar.name} 开始执行交友功能`)
+
     // 检查是否已经有待处理的好友请求
     const { data: existingRequests } = await client
       .from('avatar_friends')
@@ -296,8 +298,11 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       .in('status', ['pending', 'accepted'])
       .limit(10)
 
-    if (existingRequests && existingRequests.length >= 5) {
-      console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系`)
+    console.log(`[托管服务] ${avatar.name} 当前好友数: ${existingRequests?.length || 0}`)
+
+    // 增加好友上限到20个
+    if (existingRequests && existingRequests.length >= 20) {
+      console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系 (${existingRequests.length}/20)`)
       return
     }
 
@@ -309,14 +314,20 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       .neq('id', avatar.id)
       .limit(20)
 
+    console.log(`[托管服务] ${avatar.name} 找到 ${otherAvatars?.length || 0} 个候选分身`)
+
     if (!otherAvatars || otherAvatars.length === 0) {
+      console.log(`[托管服务] ${avatar.name} 没有找到合适的候选分身，跳过交友`)
       return
     }
 
     // 分析并找到最匹配的分身
     const matches = await this.findBestMatches(avatar, otherAvatars)
 
+    console.log(`[托管服务] ${avatar.name} 找到 ${matches.length} 个匹配的分身（评分>0.5）`)
+
     for (const match of matches.slice(0, 2)) { // 每次最多添加2个好友
+      console.log(`[托管服务] ${avatar.name} 评估候选分身 ${match.avatar.name}，评分: ${match.compatibilityScore}`)
       if (match.compatibilityScore > 0.6) {
         // 创建好友关系
         await client
@@ -330,8 +341,11 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
           })
 
         console.log(`[托管服务] 分身 ${avatar.name} 与 ${match.avatar.name} 成为好友，原因: ${match.reason}`)
+      } else {
+        console.log(`[托管服务] ${avatar.name} 与 ${match.avatar.name} 兼容度不足（${match.compatibilityScore} ≤ 0.6），跳过`)
       }
     }
+    console.log(`[托管服务] ${avatar.name} 交友功能执行完成`)
   }
 
   /**
@@ -340,16 +354,25 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private async findBestMatches(avatar: any, candidates: any[]): Promise<AvatarMatch[]> {
     const matches: AvatarMatch[] = []
 
+    console.log(`[托管服务] ${avatar.name} 开始分析 ${candidates.length} 个候选分身`)
+
     for (const candidate of candidates) {
-      const analysis = await this.analyzeCompatibility(avatar, candidate)
-      if (analysis.score > 0.5) {
-        matches.push({
-          avatar: candidate,
-          compatibilityScore: analysis.score,
-          reason: analysis.reason
-        })
+      try {
+        const analysis = await this.analyzeCompatibility(avatar, candidate)
+        console.log(`[托管服务] ${avatar.name} vs ${candidate.name}: 评分=${analysis.score}`)
+        if (analysis.score > 0.5) {
+          matches.push({
+            avatar: candidate,
+            compatibilityScore: analysis.score,
+            reason: analysis.reason
+          })
+        }
+      } catch (error) {
+        console.error(`[托管服务] ${avatar.name} 分析 ${candidate.name} 失败:`, error)
       }
     }
+
+    console.log(`[托管服务] ${avatar.name} 找到 ${matches.length} 个匹配的分身（评分>0.5）`)
 
     // 按兼容度排序
     matches.sort((a, b) => b.compatibilityScore - a.compatibilityScore)
