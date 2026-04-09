@@ -213,4 +213,23 @@ export class SocialController {
       message: '分享成功'
     }
   }
+
+  /**
+   * 获取所有分身的帖子列表
+   */
+  @Get('all-posts')
+  async getAllPosts(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    const result = await this.socialService.getAllPosts(
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 20
+    )
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
 }

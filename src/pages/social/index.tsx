@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, getSystemInfoSync } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, getSystemInfoSync } from '@tarojs/taro'
 import { useState, useRef } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
@@ -82,6 +82,7 @@ export default function SocialPage() {
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const statsCardRef = useRef<any>(null)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [activeTab, setActiveTab] = useState<'related' | 'all'>('related')
 
   useLoad(() => {
     // showShareMenu 仅在小程序端可用
@@ -116,9 +117,13 @@ export default function SocialPage() {
     }
     
     try {
-      await fetchAvatarRelatedPosts(1, isRefresh)
-      await checkAvatars()
-      await fetchTodayStats()
+      if (activeTab === 'related') {
+        await fetchAvatarRelatedPosts(1, isRefresh)
+        await checkAvatars()
+        await fetchTodayStats()
+      } else {
+        await fetchAllPosts(1, isRefresh)
+      }
       
       if (isRefresh) {
         // 刷新成功特效
@@ -290,6 +295,122 @@ export default function SocialPage() {
     }
   }
 
+  const fetchAllPosts = async (pageNum: number, isRefresh = false) => {
+    if (!hasMore && pageNum > 1 && !isRefresh) return
+    
+    setLoading(true)
+    try {
+      // 获取所有分身的动态
+      const res = await Network.request({
+        url: `/api/social/all-posts?page=${pageNum}&pageSize=10`
+      })
+      console.log('获取所有帖子:', res.data)
+      if (res.data?.code === 200) {
+        const data = res.data.data
+        const postList = data.posts || []
+        
+        const postsWithComments = await Promise.all(
+          postList.map(async (post: Post) => {
+            try {
+              let images: string[] = []
+              let videos: string[] = []
+              
+              if (post.images) {
+                if (typeof post.images === 'string') {
+                  try {
+                    const parsed = JSON.parse(post.images)
+                    if (Array.isArray(parsed)) {
+                      images = parsed.map((item: any) => 
+                        typeof item === 'string' ? item : (item?.url || item?.src || '')
+                      ).filter(Boolean)
+                    }
+                  } catch {
+                    images = []
+                  }
+                } else if (Array.isArray(post.images)) {
+                  images = post.images.map((item: any) => 
+                    typeof item === 'string' ? item : (item?.url || item?.src || '')
+                  ).filter(Boolean)
+                }
+              }
+              
+              if (post.videos) {
+                if (typeof post.videos === 'string') {
+                  try {
+                    const parsed = JSON.parse(post.videos)
+                    if (Array.isArray(parsed)) {
+                      videos = parsed.map((item: any) => 
+                        typeof item === 'string' ? item : (item?.url || item?.src || '')
+                      ).filter(Boolean)
+                    }
+                  } catch {
+                    videos = []
+                  }
+                } else if (Array.isArray(post.videos)) {
+                  videos = post.videos.map((item: any) => 
+                    typeof item === 'string' ? item : (item?.url || item?.src || '')
+                  ).filter(Boolean)
+                }
+              }
+              
+              const commentsRes = await Network.request({
+                url: `/api/social/post/${post.id}/comments?page=1&pageSize=3`
+              })
+              
+              const likesRes = await Network.request({
+                url: `/api/social/post/${post.id}/likes?page=1&pageSize=5`
+              })
+              
+              const comments = commentsRes.data?.code === 200 
+                ? (commentsRes.data.data || []).map((c: any) => {
+                    const avatar = c.avatars || {}
+                    const user = c.users || {}
+                    return {
+                      id: c.id,
+                      content: c.content,
+                      user_name: avatar.name || user.nickname || '匿名',
+                      user_avatar: avatar.avatar_url || user.avatar,
+                      is_ai: !!c.avatar_id,
+                      user_id: c.user_id,
+                      avatar_id: c.avatar_id,
+                      created_at: c.created_at
+                    }
+                  })
+                : []
+              
+              const likers = likesRes.data?.code === 200 
+                ? (likesRes.data.data || []).map((l: any) => ({
+                    id: l.id,
+                    user_id: l.user_id,
+                    avatar_id: l.avatar_id,
+                    name: l.name || '匿名',
+                    avatar: l.avatar,
+                    is_ai: l.is_ai
+                  }))
+                : []
+              
+              return { ...post, images, videos, comments, likers }
+            } catch {
+              return post
+            }
+          })
+        )
+        
+        if (pageNum === 1 || isRefresh) {
+          setPosts(postsWithComments)
+        } else {
+          setPosts(prev => [...prev, ...postsWithComments])
+        }
+        setHasMore(postList.length === 10)
+        setPage(pageNum)
+      }
+    } catch (error) {
+      console.error('获取所有动态失败:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const likePost = async (postId: string) => {
     try {
       const res = await Network.request({
@@ -442,6 +563,19 @@ export default function SocialPage() {
     }
   }
 
+  const handleAvatarClick = (post: Post) => {
+    if (post.avatar_id) {
+      navigateToAvatarProfile(post.avatar_id)
+    }
+  }
+
+  const navigateToAvatarProfile = (avatarId: string) => {
+    if (!avatarId) return
+    Taro.navigateTo({
+      url: `/pages/avatar-profile/index?id=${avatarId}`
+    })
+  }
+
   const renderShareModal = () => (
     <View 
       className="share-modal" 
@@ -487,6 +621,32 @@ export default function SocialPage() {
         <View className="header-right-placeholder" />
       </View>
 
+      {/* Tab 切换 */}
+      <View className="tab-container">
+        <View 
+          className={`tab-item ${activeTab === 'related' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('related')
+            setPosts([])
+            setPage(1)
+            setHasMore(true)
+          }}
+        >
+          <Text className="tab-text">分身相关</Text>
+        </View>
+        <View 
+          className={`tab-item ${activeTab === 'all' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('all')
+            setPosts([])
+            setPage(1)
+            setHasMore(true)
+          }}
+        >
+          <Text className="tab-text">所有动态</Text>
+        </View>
+      </View>
+
       {/* 刷新成功动画遮罩 */}
       {refreshSuccess && (
         <View className="refresh-success-overlay">
@@ -505,11 +665,11 @@ export default function SocialPage() {
         refresherEnabled
         refresherTriggered={refreshing}
         onRefresherRefresh={() => fetchData(true)}
-        onScrollToLower={() => fetchAvatarRelatedPosts(page + 1)}
+        onScrollToLower={() => activeTab === 'related' ? fetchAvatarRelatedPosts(page + 1) : fetchAllPosts(page + 1)}
       >
         <>
-          {/* 收益统计卡片 - 带跑马灯特效 */}
-          {hasAvatars && (
+          {/* 分身相关 tab 显示收益统计 */}
+          {activeTab === 'related' && hasAvatars && (
             <View 
               ref={statsCardRef}
               className={`stats-card ${isUpdating ? 'updating' : ''}`}
@@ -554,7 +714,9 @@ export default function SocialPage() {
           {/* 分割线 */}
           <View className="divider">
             <View className="divider-line" />
-            <Text className="divider-text">以下是你分身点赞、评论过的帖子</Text>
+            <Text className="divider-text">
+              {activeTab === 'related' ? '以下是你分身点赞、评论过的帖子' : '以下所有分身的动态'}
+            </Text>
             <View className="divider-line" />
           </View>
 
@@ -575,7 +737,7 @@ export default function SocialPage() {
                     <View key={post.id} className="post-card">
                       {/* 作者信息 */}
                       <View className="post-header">
-                        <View className="author-info">
+                        <View className="author-info" onClick={() => handleAvatarClick(post)}>
                           <View className="author-avatar">
                             {author.avatar ? (
                               <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
@@ -674,7 +836,12 @@ export default function SocialPage() {
                         <View className="likers-section">
                           <View className="likers-avatars">
                             {post.likers.slice(0, 5).map((liker, idx) => (
-                              <View key={liker.id} className="liker-avatar-wrap" style={{ marginLeft: idx > 0 ? '-8px' : '0' }}>
+                              <View 
+                                key={liker.id} 
+                                className="liker-avatar-wrap" 
+                                style={{ marginLeft: idx > 0 ? '-8px' : '0' }}
+                                onClick={() => liker.is_ai && liker.avatar_id && navigateToAvatarProfile(liker.avatar_id)}
+                              >
                                 {liker.avatar ? (
                                   <Image 
                                     src={liker.avatar} 
@@ -707,7 +874,7 @@ export default function SocialPage() {
                         <View className="comments-section">
                           {post.comments.map(comment => (
                             <View key={comment.id} className="comment-item">
-                              <View className={`comment-avatar ${comment.is_ai ? 'is-ai' : 'is-human'}`}>
+                              <View className={`comment-avatar ${comment.is_ai ? 'is-ai' : 'is-human'}`} onClick={() => comment.is_ai && comment.avatar_id && navigateToAvatarProfile(comment.avatar_id)}>
                                 {comment.user_avatar && comment.user_avatar.startsWith('http') ? (
                                   <Image src={comment.user_avatar} className="comment-avatar-img" mode="aspectFill" />
                                 ) : (

@@ -808,4 +808,40 @@ export class SocialService {
     
     return { shared: true, shares_count: (post?.shares_count || 0) + 1 }
   }
+
+  /**
+   * 获取所有分身的帖子列表
+   */
+  async getAllPosts(page = 1, pageSize = 20) {
+    const client = getSupabaseClient()
+    const offset = (page - 1) * pageSize
+    
+    const { data, error } = await client
+      .from('posts')
+      .select(`
+        *,
+        avatars!posts_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        ),
+        users!posts_user_id_fkey (
+          id,
+          nickname,
+          avatar
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    
+    if (error) {
+      console.error('获取所有帖子失败:', error)
+      return { posts: [], total: 0 }
+    }
+    
+    return {
+      posts: data || [],
+      total: data?.length || 0
+    }
+  }
 }

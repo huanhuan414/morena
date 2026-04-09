@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode, Req } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode, Req, Query } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
@@ -522,6 +522,67 @@ export class AvatarController {
         code: 200,
         data: { isBlocked },
         message: '检查成功'
+      }
+    } catch (error: any) {
+      console.error('检查拉黑状态失败:', error)
+      return {
+        code: 400,
+        message: error.message || '检查失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 获取分身的动态列表
+   */
+  @Get(':id/posts')
+  async getAvatarPosts(
+    @Param('id') avatarId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    const result = await this.avatarService.getAvatarPosts(
+      avatarId,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 10
+    )
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取分身的统计信息
+   */
+  @Get(':id/stats')
+  async getAvatarStats(@Param('id') avatarId: string) {
+    const result = await this.avatarService.getAvatarStats(avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 检查分身是否被拉黑（面向分身详情页的入口）
+   * 遍历用户的所有分身，检查是否拉黑了目标分身
+   */
+  @Get(':id/blocked-status')
+  async getBlockedStatus(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      const isBlocked = await this.avatarService.isAvatarBlocked(avatarId, userId)
+
+      return {
+        code: 200,
+        data: { isBlocked },
+        message: '获取成功'
       }
     } catch (error: any) {
       console.error('检查拉黑状态失败:', error)

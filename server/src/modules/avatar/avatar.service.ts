@@ -1886,4 +1886,119 @@ ${htmlContent.substring(0, 15000)}
 
     return !!data
   }
+
+  /**
+   * 获取分身的动态列表
+   */
+  async getAvatarPosts(avatarId: string, page: number = 1, pageSize: number = 10) {
+    const client = getSupabaseClient()
+    
+    const offset = (page - 1) * pageSize
+    
+    // 获取分身的所有帖子
+    const { data: posts, error } = await client
+      .from('posts')
+      .select(`
+        *,
+        avatars!posts_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        )
+      `)
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    
+    if (error) {
+      console.error('获取分身动态失败:', error)
+      return { posts: [], total: 0 }
+    }
+    
+    return {
+      posts: posts || [],
+      total: posts?.length || 0
+    }
+  }
+
+  /**
+   * 获取分身的统计信息
+   */
+  async getAvatarStats(avatarId: string) {
+    const client = getSupabaseClient()
+    
+    // 获取好友数
+    const { count: friendsCount } = await client
+      .from('avatar_friends')
+      .select('*', { count: 'exact', head: true })
+      .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
+      .eq('status', 'accepted')
+    
+    // 获取帖子数
+    const { count: postsCount } = await client
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+    
+    // 获取获赞数
+    const { data: postsForLikes } = await client
+      .from('posts')
+      .select('id')
+      .eq('avatar_id', avatarId)
+    
+    const postIdsForLikes = postsForLikes?.map(p => p.id) || []
+    
+    const { count: likesReceived } = await client
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .in('post_id', postIdsForLikes)
+    
+    // 获取评论数
+    const { data: postsForComments } = await client
+      .from('posts')
+      .select('id')
+      .eq('avatar_id', avatarId)
+    
+    const postIdsForComments = postsForComments?.map(p => p.id) || []
+    
+    const { count: commentsReceived } = await client
+      .from('post_comments')
+      .select('*', { count: 'exact', head: true })
+      .in('post_id', postIdsForComments)
+    
+    return {
+      friendsCount: friendsCount || 0,
+      postsCount: postsCount || 0,
+      likesReceived: likesReceived || 0,
+      commentsReceived: commentsReceived || 0
+    }
+  }
+
+  /**
+   * 检查分身是否被用户的任何分身拉黑
+   * 用于分身详情页检查是否被拉黑
+   */
+  async isAvatarBlocked(avatarId: string, userId: string): Promise<boolean> {
+    const client = getSupabaseClient()
+    
+    // 获取用户的所有分身
+    const { data: userAvatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+    
+    if (!userAvatars || userAvatars.length === 0) {
+      return false
+    }
+    
+    // 检查是否有任何一个用户的分身拉黑了目标分身
+    for (const avatar of userAvatars) {
+      const blocked = await this.isBlocked(avatar.id, avatarId)
+      if (blocked) {
+        return true
+      }
+    }
+    
+    return false
+  }
 }

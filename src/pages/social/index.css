@@ -53,6 +53,47 @@
   flex-shrink: 0;
 }
 
+/* Tab 切换 */
+.tab-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20rpx;
+  background: #0a0a0f;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.tab-item {
+  flex: 1;
+  padding: 24rpx 0;
+  text-align: center;
+  position: relative;
+}
+
+.tab-text {
+  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.tab-item.active .tab-text {
+  color: #00f5ff;
+  font-weight: 600;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 4rpx;
+  background: linear-gradient(90deg, #00f5ff 0%, #6366f1 100%);
+  border-radius: 2rpx;
+}
+
 /* 刷新成功动画遮罩 */
 .refresh-success-overlay {
   position: fixed;
@@ -280,6 +321,12 @@
   flex-direction: row;
   align-items: center;
   gap: 24rpx;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.author-info:active {
+  opacity: 0.7;
 }
 
 .author-avatar {
@@ -490,6 +537,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.liker-avatar-wrap:active {
+  opacity: 0.7;
 }
 
 .liker-avatar {
@@ -585,6 +638,12 @@
   overflow: hidden;
   position: relative;
   border: 4rpx solid transparent;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.comment-avatar:active {
+  opacity: 0.7;
 }
 
 .comment-avatar.is-ai {
