@@ -238,6 +238,73 @@
   color: #fff;
 }
 
+/* 地理位置卡片 */
+.as-location-card {
+  padding: 24rpx;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.as-location-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.as-location-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 107, 107, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.as-location-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.as-location-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.as-location-value {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.as-location-placeholder {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.as-location-btn {
+  height: 72rpx;
+  background: rgba(255, 107, 107, 0.15);
+  border: 1rpx solid rgba(255, 107, 107, 0.3);
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.as-location-btn-text {
+  font-size: 28rpx;
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
 .as-danger-section {
   margin-top: 32rpx;
 }
