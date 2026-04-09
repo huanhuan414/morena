@@ -585,6 +585,19 @@ export class AvatarController {
   }
 
   /**
+   * 获取分身的今日统计
+   */
+  @Get(':id/today-stats')
+  async getAvatarTodayStats(@Param('id') avatarId: string) {
+    const result = await this.avatarService.getAvatarTodayStats(avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 检查分身是否被拉黑（面向分身详情页的入口）
    * 遍历用户的所有分身，检查是否拉黑了目标分身
    */

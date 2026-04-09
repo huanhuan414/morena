@@ -1979,6 +1979,55 @@ ${htmlContent.substring(0, 15000)}
   }
 
   /**
+   * 获取分身的今日统计
+   */
+  async getAvatarTodayStats(avatarId: string) {
+    const client = getSupabaseClient()
+
+    // 获取今天的时间范围
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayStart = today.toISOString()
+
+    // 今日发帖数
+    const { count: todayPostsCount } = await client
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+      .gte('created_at', todayStart)
+
+    // 今日点赞数
+    const { count: todayLikesCount } = await client
+      .from('likes')
+      .select('id', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+      .eq('target_type', 'post')
+      .gte('created_at', todayStart)
+
+    // 今日评论数
+    const { count: todayCommentsCount } = await client
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+      .gte('created_at', todayStart)
+
+    // 今日接单数
+    const { count: todayOrdersCount } = await client
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+      .eq('status', 'completed')
+      .gte('completed_at', todayStart)
+
+    return {
+      todayPostsCount: todayPostsCount || 0,
+      todayLikesCount: todayLikesCount || 0,
+      todayCommentsCount: todayCommentsCount || 0,
+      todayOrdersCount: todayOrdersCount || 0
+    }
+  }
+
+  /**
    * 检查分身是否被用户的任何分身拉黑
    * 用于分身详情页检查是否被拉黑
    */

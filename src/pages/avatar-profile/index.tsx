@@ -61,6 +61,11 @@ interface AvatarStats {
   postsCount: number
   likesReceived: number
   commentsReceived: number
+  // 今日统计
+  todayPostsCount?: number
+  todayLikesCount?: number
+  todayCommentsCount?: number
+  todayOrdersCount?: number
 }
 
 export default function AvatarProfilePage() {
@@ -72,7 +77,11 @@ export default function AvatarProfilePage() {
     friendsCount: 0,
     postsCount: 0,
     likesReceived: 0,
-    commentsReceived: 0
+    commentsReceived: 0,
+    todayPostsCount: 0,
+    todayLikesCount: 0,
+    todayCommentsCount: 0,
+    todayOrdersCount: 0
   })
   const [isFriend, setIsFriend] = useState(false)
   const [isBlocked, setIsBlocked] = useState(false)
@@ -147,9 +156,21 @@ export default function AvatarProfilePage() {
       const res = await Network.request({
         url: `/api/avatar/${id}/stats`
       })
-      
+
       if (res.data?.code === 200) {
         setStats(res.data.data)
+      }
+
+      // 获取今日统计
+      const todayRes = await Network.request({
+        url: `/api/avatar/${id}/today-stats`
+      })
+
+      if (todayRes.data?.code === 200) {
+        setStats(prev => ({
+          ...prev,
+          ...todayRes.data.data
+        }))
       }
     } catch (error) {
       console.error('获取统计信息失败:', error)
@@ -368,7 +389,7 @@ export default function AvatarProfilePage() {
             <Text className="stat-value">{stats.friendsCount}</Text>
             <Text className="stat-label">好友</Text>
           </View>
-          
+
           <View className="stat-item gradient-blue">
             <View className="stat-icon">
               <TrendingUp size={20} color="#fff" />
@@ -376,7 +397,7 @@ export default function AvatarProfilePage() {
             <Text className="stat-value">{stats.postsCount}</Text>
             <Text className="stat-label">帖子</Text>
           </View>
-          
+
           <View className="stat-item gradient-pink">
             <View className="stat-icon">
               <MessageCircle size={20} color="#fff" />
@@ -384,13 +405,39 @@ export default function AvatarProfilePage() {
             <Text className="stat-value">{stats.commentsReceived}</Text>
             <Text className="stat-label">评论</Text>
           </View>
-          
+
           <View className="stat-item gradient-orange">
             <View className="stat-icon">
               <Zap size={20} color="#fff" />
             </View>
             <Text className="stat-value">{stats.likesReceived}</Text>
             <Text className="stat-label">获赞</Text>
+          </View>
+        </View>
+
+        {/* 今日统计 */}
+        <View className="today-stats-section">
+          <View className="today-stats-header">
+            <Sparkles size={16} color="#00f5ff" />
+            <Text className="today-stats-title">今日统计</Text>
+          </View>
+          <View className="today-stats-grid">
+            <View className="today-stat-item">
+              <Text className="today-stat-value">{stats.todayPostsCount || 0}</Text>
+              <Text className="today-stat-label">今日发帖</Text>
+            </View>
+            <View className="today-stat-item">
+              <Text className="today-stat-value">{stats.todayLikesCount || 0}</Text>
+              <Text className="today-stat-label">今日点赞</Text>
+            </View>
+            <View className="today-stat-item">
+              <Text className="today-stat-value">{stats.todayCommentsCount || 0}</Text>
+              <Text className="today-stat-label">今日评论</Text>
+            </View>
+            <View className="today-stat-item">
+              <Text className="today-stat-value">{stats.todayOrdersCount || 0}</Text>
+              <Text className="today-stat-label">今日接单</Text>
+            </View>
           </View>
         </View>
 
