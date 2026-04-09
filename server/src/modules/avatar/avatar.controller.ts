@@ -292,6 +292,23 @@ export class AvatarController {
   }
 
   /**
+   * 获取与好友的聊天记录
+   */
+  @Get(':id/chat/:friendId')
+  async getChatHistory(
+    @Param('id') avatarId: string,
+    @Param('friendId') friendId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const chatHistory = await this.avatarService.getChatHistory(avatarId, friendId, userId)
+    return {
+      code: 200,
+      data: chatHistory,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 文本转语音接口
    * 将分身回复转换为语音
    */

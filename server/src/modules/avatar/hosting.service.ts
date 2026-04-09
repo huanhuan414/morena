@@ -560,6 +560,37 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * 生成欢迎消息
+   */
+  private async generateWelcomeMessage(avatar: any, friend: any, matchReason: string): Promise<string> {
+    const prompt = `你是一个分身，名字叫${avatar.name}，性格特点：${avatar.personality}。
+你刚刚接受了好友${friend.name}（性格特点：${friend.personality}）的请求，成为了好友。
+对方请求成为好友的原因是：${matchReason}
+
+现在你需要发送一条欢迎消息，要求：
+1. 话术要符合你的性格特点
+2. 话术要提到对方的好友请求原因
+3. 话术要表达愿意交流和建立友谊
+4. 话术要简短（50字以内）
+
+只输出消息内容，不要包含其他文字。`
+
+    try {
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      return response.content?.trim() || `很高兴认识你，${friend.name}！期待我们的交流。`
+    } catch (error) {
+      console.error('[托管服务] 生成欢迎消息失败:', error)
+      return `很高兴认识你，${friend.name}！期待我们的交流。`
+    }
+  }
+
+  /**
    * 处理好友请求
    */
   private async handleFriendRequests(avatar: any) {
@@ -627,7 +658,18 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
           created_at: new Date().toISOString()
         })
 
-        console.log(`[托管服务] ${avatar.name} 接受了 ${sender.name} 的好友请求`)
+        // 发送初始欢迎消息
+        const welcomeMessage = await this.generateWelcomeMessage(avatar, sender, request.match_reason || '')
+        const welcomeMessageId = crypto.randomUUID()
+        await client.from('messages').insert({
+          id: welcomeMessageId,
+          conversation_id: conversationId,
+          role: 'avatar',
+          content: welcomeMessage,
+          created_at: new Date().toISOString()
+        })
+
+        console.log(`[托管服务] ${avatar.name} 接受了 ${sender.name} 的好友请求，并发送欢迎消息: ${welcomeMessage}`)
       } else {
         // 拒绝好友请求
         await client

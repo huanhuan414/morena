@@ -1212,6 +1212,67 @@ export class AvatarService {
   }
 
   /**
+   * 获取与好友的聊天记录
+   */
+  async getChatHistory(avatarId: string, friendId: string, userId: string) {
+    const client = getSupabaseClient()
+
+    // 验证分身属于该用户
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('id, user_id')
+      .eq('id', avatarId)
+      .single()
+
+    if (!avatar || avatar.user_id !== userId) {
+      throw new Error('分身不存在或无权访问')
+    }
+
+    // 验证好友关系（双向查询）
+    const { data: friendships, error } = await client
+      .from('avatar_friends')
+      .select('id, avatar_id, friend_avatar_id, conversation_id, match_reason, benefits')
+      .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
+      .eq('status', 'accepted')
+
+    if (error) {
+      throw new Error(`查询好友关系失败: ${error.message}`)
+    }
+
+    // 从双向好友关系中找到对应的好友
+    const friendship = friendships?.find(f =>
+      (f.avatar_id === avatarId && f.friend_avatar_id === friendId) ||
+      (f.avatar_id === friendId && f.friend_avatar_id === avatarId)
+    )
+
+    if (!friendship) {
+      throw new Error('好友关系不存在')
+    }
+
+    // 查询聊天记录
+    const { data: messages, error: messagesError } = await client
+      .from('messages')
+      .select('id, role, content, created_at')
+      .eq('conversation_id', friendship.conversation_id)
+      .order('created_at', { ascending: true })
+
+    if (messagesError) {
+      throw new Error(`获取聊天记录失败: ${messagesError.message}`)
+    }
+
+    return {
+      messages: (messages || []).map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        created_at: m.created_at
+      })),
+      match_reason: friendship.match_reason,
+      benefits: friendship.benefits
+    }
+  }
+
+  /**
    * 获取分身的账号数据列表
    */
   async getAccounts(avatarId: string) {
