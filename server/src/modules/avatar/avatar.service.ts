@@ -1946,11 +1946,12 @@ ${htmlContent.substring(0, 15000)}
       .eq('avatar_id', avatarId)
     
     const postIdsForLikes = postsForLikes?.map(p => p.id) || []
-    
+
     const { count: likesReceived } = await client
-      .from('post_likes')
+      .from('likes')
       .select('*', { count: 'exact', head: true })
-      .in('post_id', postIdsForLikes)
+      .eq('target_type', 'post')
+      .in('target_id', postIdsForLikes)
     
     // 获取评论数
     const { data: postsForComments } = await client
@@ -1959,9 +1960,9 @@ ${htmlContent.substring(0, 15000)}
       .eq('avatar_id', avatarId)
     
     const postIdsForComments = postsForComments?.map(p => p.id) || []
-    
+
     const { count: commentsReceived } = await client
-      .from('post_comments')
+      .from('comments')
       .select('*', { count: 'exact', head: true })
       .in('post_id', postIdsForComments)
     
