@@ -218,12 +218,12 @@ export class SocialService {
     if (limitedAvatarIds.length > 0) {
       const { data, error } = await client
         .from('posts')
-        .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+        .select('*')
         .eq('is_public', true)
         .in('avatar_id', limitedAvatarIds)
         .order('created_at', { ascending: false })
         .limit(100)
-      
+
       if (error) {
         throw new Error(`获取分身发布帖子失败: ${error.message}`)
       }
@@ -243,11 +243,11 @@ export class SocialService {
       for (const batch of batches) {
         const { data, error } = await client
           .from('posts')
-          .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+          .select('*')
           .eq('is_public', true)
           .in('id', batch)
           .order('created_at', { ascending: false })
-        
+
         if (error) {
           console.error('获取点赞帖子批次失败:', error)
           continue
@@ -268,11 +268,11 @@ export class SocialService {
       for (const batch of batches) {
         const { data, error } = await client
           .from('posts')
-          .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+          .select('*')
           .eq('is_public', true)
           .in('id', batch)
           .order('created_at', { ascending: false })
-        
+
         if (error) {
           console.error('获取评论帖子批次失败:', error)
           continue
@@ -292,26 +292,51 @@ export class SocialService {
     // 6. 获取每个帖子的点赞者列表（前5个）和点赞状态
     const postsWithLikers = await Promise.all(
       (paginatedPosts || []).map(async (post) => {
-        // 获取前5个点赞者
+        // 获取前5个点赞者（不使用关联查询）
         const { data: likes } = await client
           .from('likes')
-          .select('id, user_id, avatar_id, users(nickname, avatar), avatars(name, avatar_url)')
+          .select('id, user_id, avatar_id')
           .eq('target_type', 'post')
           .eq('target_id', post.id)
           .limit(5)
-        
-        const likers = (likes || []).map(like => {
-          const user = Array.isArray(like.users) ? like.users[0] : like.users
-          const avatar = Array.isArray(like.avatars) ? like.avatars[0] : like.avatars
+
+        const likers = await Promise.all((likes || []).map(async (like) => {
+          let name = '匿名'
+          let avatar = ''
+
+          if (like.avatar_id) {
+            const { data: avatarData } = await client
+              .from('avatars')
+              .select('name, avatar_url')
+              .eq('id', like.avatar_id)
+              .single()
+
+            if (avatarData) {
+              name = avatarData.name
+              avatar = avatarData.avatar_url
+            }
+          } else if (like.user_id) {
+            const { data: userData } = await client
+              .from('users')
+              .select('nickname, avatar')
+              .eq('id', like.user_id)
+              .single()
+
+            if (userData) {
+              name = userData.nickname
+              avatar = userData.avatar
+            }
+          }
+
           return {
             id: like.id,
             user_id: like.user_id,
             avatar_id: like.avatar_id,
-            name: avatar?.name || user?.nickname || '匿名',
-            avatar: avatar?.avatar_url || user?.avatar,
+            name,
+            avatar,
             is_ai: !!like.avatar_id
           }
-        })
+        }))
         
         // 单独检查当前用户/分身是否点赞过（不限制数量）
         let isLiked = false
@@ -338,9 +363,39 @@ export class SocialService {
             .maybeSingle()
           if (userLike) isLiked = true
         }
-        
+
+        // 获取作者信息
+        let authorName = '匿名'
+        let authorAvatar = ''
+
+        if (post.avatar_id) {
+          const { data: avatarData } = await client
+            .from('avatars')
+            .select('name, avatar_url')
+            .eq('id', post.avatar_id)
+            .single()
+
+          if (avatarData) {
+            authorName = avatarData.name
+            authorAvatar = avatarData.avatar_url
+          }
+        } else if (post.user_id) {
+          const { data: userData } = await client
+            .from('users')
+            .select('nickname, avatar')
+            .eq('id', post.user_id)
+            .single()
+
+          if (userData) {
+            authorName = userData.nickname
+            authorAvatar = userData.avatar
+          }
+        }
+
         return {
           ...post,
+          author_name: authorName,
+          author_avatar: authorAvatar,
           likers,
           is_liked: isLiked
         }
@@ -375,20 +430,59 @@ export class SocialService {
   async getPosts(page = 1, pageSize = 20, userId?: string) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
-    
+
+    // 先获取帖子数据（不使用关联查询）
     const { data, error, count } = await client
       .from('posts')
-      .select('*, users(nickname, avatar), avatars(name, avatar_url)', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
-    
+
     if (error) {
       throw new Error(`获取动态列表失败: ${error.message}`)
     }
-    
+
+    // 为每条帖子补充作者信息
+    const postsWithAuthors = await Promise.all(
+      (data || []).map(async (post: any) => {
+        let authorName = '匿名'
+        let authorAvatar = ''
+
+        if (post.avatar_id) {
+          const { data: avatarData } = await client
+            .from('avatars')
+            .select('name, avatar_url')
+            .eq('id', post.avatar_id)
+            .single()
+
+          if (avatarData) {
+            authorName = avatarData.name
+            authorAvatar = avatarData.avatar_url
+          }
+        } else if (post.user_id) {
+          const { data: userData } = await client
+            .from('users')
+            .select('nickname, avatar')
+            .eq('id', post.user_id)
+            .single()
+
+          if (userData) {
+            authorName = userData.nickname
+            authorAvatar = userData.avatar
+          }
+        }
+
+        return {
+          ...post,
+          author_name: authorName,
+          author_avatar: authorAvatar
+        }
+      })
+    )
+
     // 如果有用户ID，获取用户的点赞状态
-    let postsWithLikeStatus = data || []
+    let postsWithLikeStatus = postsWithAuthors
     if (userId) {
       // 获取用户的所有分身ID
       const { data: userAvatars } = await client
@@ -399,7 +493,7 @@ export class SocialService {
       const avatarIds = userAvatars?.map(a => a.id) || []
       
       // 获取所有帖子ID
-      const postIds = (data || []).map(p => p.id)
+      const postIds = postsWithAuthors.map(p => p.id)
       
       if (postIds.length > 0) {
         // 查询用户/分身点赞过的帖子
@@ -420,13 +514,13 @@ export class SocialService {
         
         const likedPostIds = new Set(likes?.map(l => l.target_id) || [])
         
-        postsWithLikeStatus = (data || []).map(post => ({
+        postsWithLikeStatus = postsWithAuthors.map(post => ({
           ...post,
           is_liked: likedPostIds.has(post.id)
         }))
       }
     }
-    
+
     return {
       posts: postsWithLikeStatus,
       total: count || 0,
@@ -437,18 +531,51 @@ export class SocialService {
 
   async getPostById(postId: string) {
     const client = getSupabaseClient()
-    
+
+    // 先获取帖子数据（不使用关联查询）
     const { data, error } = await client
       .from('posts')
-      .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+      .select('*')
       .eq('id', postId)
       .single()
-    
+
     if (error) {
       throw new Error(`获取动态详情失败: ${error.message}`)
     }
-    
-    return data
+
+    // 获取作者信息
+    let authorName = '匿名'
+    let authorAvatar = ''
+
+    if (data.avatar_id) {
+      const { data: avatarData } = await client
+        .from('avatars')
+        .select('name, avatar_url')
+        .eq('id', data.avatar_id)
+        .single()
+
+      if (avatarData) {
+        authorName = avatarData.name
+        authorAvatar = avatarData.avatar_url
+      }
+    } else if (data.user_id) {
+      const { data: userData } = await client
+        .from('users')
+        .select('nickname, avatar')
+        .eq('id', data.user_id)
+        .single()
+
+      if (userData) {
+        authorName = userData.nickname
+        authorAvatar = userData.avatar
+      }
+    }
+
+    return {
+      ...data,
+      author_name: authorName,
+      author_avatar: authorAvatar
+    }
   }
 
   async deletePost(postId: string, userId: string) {
@@ -607,20 +734,61 @@ export class SocialService {
   async getComments(postId: string, page = 1, pageSize = 20) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
-    
+
+    // 先获取评论数据（不使用关联查询）
     const { data, error } = await client
       .from('comments')
-      .select('*, users(nickname, avatar), avatars(name, avatar_url)')
+      .select('*')
       .eq('post_id', postId)
       .is('parent_id', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
-    
+
     if (error) {
       throw new Error(`获取评论失败: ${error.message}`)
     }
-    
-    return data
+
+    // 为每条评论补充作者信息
+    const commentsWithAuthors = await Promise.all(
+      (data || []).map(async (comment: any) => {
+        let authorName = '匿名'
+        let authorAvatar = ''
+
+        if (comment.avatar_id) {
+          // 获取分身信息
+          const { data: avatar } = await client
+            .from('avatars')
+            .select('name, avatar_url')
+            .eq('id', comment.avatar_id)
+            .single()
+
+          if (avatar) {
+            authorName = avatar.name
+            authorAvatar = avatar.avatar_url
+          }
+        } else if (comment.user_id) {
+          // 获取用户信息
+          const { data: user } = await client
+            .from('users')
+            .select('nickname, avatar')
+            .eq('id', comment.user_id)
+            .single()
+
+          if (user) {
+            authorName = user.nickname
+            authorAvatar = user.avatar
+          }
+        }
+
+        return {
+          ...comment,
+          author_name: authorName,
+          author_avatar: authorAvatar
+        }
+      })
+    )
+
+    return commentsWithAuthors
   }
 
   async getLikes(postId: string, page = 1, pageSize = 20) {
@@ -815,26 +983,66 @@ export class SocialService {
   async getAllPosts(page = 1, pageSize = 20) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
-    
+
     // 先获取总数
     const { count } = await client
       .from('posts')
       .select('*', { count: 'exact', head: true })
-    
+
     // 获取所有帖子（简化查询，不关联其他表）
     const { data, error } = await client
       .from('posts')
       .select('*')
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
-    
+
     if (error) {
       console.error('获取所有帖子失败:', error)
       return { posts: [], total: 0 }
     }
-    
+
+    // 为每条帖子补充作者信息
+    const postsWithAuthors = await Promise.all(
+      (data || []).map(async (post: any) => {
+        let authorName = '匿名'
+        let authorAvatar = ''
+
+        if (post.avatar_id) {
+          // 获取分身信息
+          const { data: avatar } = await client
+            .from('avatars')
+            .select('name, avatar_url')
+            .eq('id', post.avatar_id)
+            .single()
+
+          if (avatar) {
+            authorName = avatar.name
+            authorAvatar = avatar.avatar_url
+          }
+        } else if (post.user_id) {
+          // 获取用户信息
+          const { data: user } = await client
+            .from('users')
+            .select('nickname, avatar')
+            .eq('id', post.user_id)
+            .single()
+
+          if (user) {
+            authorName = user.nickname
+            authorAvatar = user.avatar
+          }
+        }
+
+        return {
+          ...post,
+          author_name: authorName,
+          author_avatar: authorAvatar
+        }
+      })
+    )
+
     return {
-      posts: data || [],
+      posts: postsWithAuthors,
       total: count || 0
     }
   }

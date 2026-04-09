@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, getSystemInfoSync } from '@tarojs/taro'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,8 @@ interface Post {
   is_ai_generated?: boolean
   user_id?: string
   avatar_id?: string
+  author_name?: string
+  author_avatar?: string
   users?: {
     nickname: string
     avatar: string
@@ -99,6 +101,10 @@ export default function SocialPage() {
       console.log('获取状态栏高度失败', e)
     }
   })
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   useDidShow(() => {
     fetchData()
@@ -244,15 +250,16 @@ export default function SocialPage() {
               })
               
               // 评论数据：从 avatars 对象中提取分身信息
-              const comments = commentsRes.data?.code === 200 
+              const comments = commentsRes.data?.code === 200
                 ? (commentsRes.data.data || []).map((c: any) => {
+                    // 优先使用后端返回的 author_name 和 author_avatar
                     const avatar = c.avatars || {}
                     const user = c.users || {}
                     return {
                       id: c.id,
                       content: c.content,
-                      user_name: avatar.name || user.nickname || '匿名',
-                      user_avatar: avatar.avatar_url || user.avatar,
+                      user_name: c.author_name || avatar.name || user.nickname || '匿名',
+                      user_avatar: c.author_avatar || avatar.avatar_url || user.avatar,
                       is_ai: !!c.avatar_id,
                       user_id: c.user_id,
                       avatar_id: c.avatar_id,
@@ -542,6 +549,15 @@ export default function SocialPage() {
   }
 
   const getAuthorInfo = (post: Post) => {
+    // 优先使用后端返回的 author_name 和 author_avatar 字段
+    if (post.author_name || post.author_avatar) {
+      return {
+        name: post.author_name || '匿名用户',
+        avatar: post.author_avatar || '',
+        isAI: !!post.avatar_id
+      }
+    }
+    // 兼容旧数据格式
     if (post.avatar_id && post.avatars) {
       return {
         name: post.avatars.name,
@@ -630,6 +646,7 @@ export default function SocialPage() {
             setPosts([])
             setPage(1)
             setHasMore(true)
+            fetchAvatarRelatedPosts(1, true)
           }}
         >
           <Text className="tab-text">分身相关</Text>
@@ -641,6 +658,7 @@ export default function SocialPage() {
             setPosts([])
             setPage(1)
             setHasMore(true)
+            fetchAllPosts(1, true)
           }}
         >
           <Text className="tab-text">所有动态</Text>
