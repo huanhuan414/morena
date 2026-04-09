@@ -950,11 +950,11 @@ export class AvatarService {
   }
 
   /**
-   * 获取分身的好友列表
+   * 获取分身的好友列表（双向查询）
    */
   async getAvatarFriends(avatarId: string, userId: string) {
     const client = getSupabaseClient()
-    
+
     // 验证分身属于该用户
     const { data: avatar } = await client
       .from('avatars')
@@ -962,43 +962,83 @@ export class AvatarService {
       .eq('id', avatarId)
       .eq('user_id', userId)
       .single()
-    
+
     if (!avatar) {
       throw new Error('分身不存在或无权访问')
     }
-    
-    // 获取好友关系
+
+    // 获取所有好友关系（双向查询）
+    // 1. 分身发起的好友关系：avatar_id = avatarId，对方是 friend_avatar_id
+    // 2. 别人发起的好友关系：friend_avatar_id = avatarId，对方是 avatar_id
     const { data: friendships, error } = await client
       .from('avatar_friends')
       .select(`
         id,
+        avatar_id,
+        friend_avatar_id,
         match_reason,
         compatibility_score,
         status,
-        created_at,
-        friend_avatar:avatars!avatar_friends_friend_avatar_id_fkey (
-          id,
-          name,
-          avatar_url,
-          level,
-          personality
-        )
+        created_at
       `)
-      .eq('avatar_id', avatarId)
+      .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
+      .eq('status', 'accepted')
       .order('created_at', { ascending: false })
-    
+
     if (error) {
       throw new Error(`获取好友列表失败: ${error.message}`)
     }
-    
-    return (friendships || []).map(f => ({
-      id: f.id,
-      friend: f.friend_avatar,
-      match_reason: f.match_reason,
-      compatibility_score: f.compatibility_score,
-      status: f.status,
-      created_at: f.created_at
-    }))
+
+    // 获取所有好友分身ID（去重）
+    const friendAvatarIds = [...new Set(
+      (friendships || []).map(f => f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id)
+    )]
+
+    if (friendAvatarIds.length === 0) {
+      return []
+    }
+
+    // 批量查询好友分身信息
+    const { data: friendAvatars } = await client
+      .from('avatars')
+      .select('id, name, avatar_url, level, personality')
+      .in('id', friendAvatarIds)
+
+    const friendAvatarMap = new Map(
+      (friendAvatars || []).map(a => [a.id, a])
+    )
+
+    // 创建好友ID到好友关系的映射（保留最新的记录）
+    const friendRelationshipMap = new Map<string, any>()
+    for (const f of (friendships || [])) {
+      const friendAvatarId = f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id
+      if (!friendRelationshipMap.has(friendAvatarId)) {
+        friendRelationshipMap.set(friendAvatarId, f)
+      }
+    }
+
+    // 组装返回数据（按创建时间降序）
+    return Array.from(friendRelationshipMap.values())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map(f => {
+        const friendAvatarId = f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id
+        const friendAvatar = friendAvatarMap.get(friendAvatarId)
+
+        return {
+          id: f.id,
+          friend: friendAvatar || {
+            id: friendAvatarId,
+            name: '未知分身',
+            avatar_url: '',
+            level: 1,
+            personality: ''
+          },
+          match_reason: f.match_reason,
+          compatibility_score: f.compatibility_score,
+          status: f.status,
+          created_at: f.created_at
+        }
+      })
   }
 
   async deleteAvatar(avatarId: string, userId: string) {
@@ -1930,12 +1970,19 @@ ${htmlContent.substring(0, 15000)}
   async getAvatarStats(avatarId: string) {
     const client = getSupabaseClient()
     
-    // 获取好友数
-    const { count: friendsCount } = await client
+    // 获取好友数（统计唯一好友数，去重双向记录）
+    const { data: allFriendships } = await client
       .from('avatar_friends')
-      .select('*', { count: 'exact', head: true })
+      .select('avatar_id, friend_avatar_id')
       .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
       .eq('status', 'accepted')
+
+    const uniqueFriendIds = new Set(
+      (allFriendships || []).map(f =>
+        f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id
+      )
+    )
+    const friendsCount = uniqueFriendIds.size
     
     // 获取帖子数
     const { count: postsCount } = await client
