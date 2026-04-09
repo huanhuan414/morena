@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSClient, HeaderUtils } from 'coze-coding-dev-sdk'
 import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 
 @Injectable()
 export class AvatarService {
   private storage: S3Storage
 
-  constructor() {
+  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {
     // 初始化火山引擎CDN存储
     this.storage = new S3Storage({
       endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
@@ -20,10 +21,34 @@ export class AvatarService {
 
   async createAvatar(userId: string, avatarData: Record<string, any>) {
     const client = getSupabaseClient()
-    
+
     // 从图片分析结果构建分身配置
     const photoAnalysis = avatarData.photo_analysis || {}
-    
+
+    // 处理地理位置信息
+    let locationData = {
+      latitude: avatarData.latitude || null,
+      longitude: avatarData.longitude || null,
+      location_text: avatarData.location_text || null
+    }
+
+    // 如果有经纬度但没有详细地址，进行逆地理编码
+    if (locationData.latitude && locationData.longitude) {
+      try {
+        const geoResult = await this.reverseGeocodingService.reverseGeocode(
+          locationData.latitude,
+          locationData.longitude
+        )
+        // 使用逆地理编码的结果
+        locationData.location_text = geoResult.formatted_address
+        console.log('[创建分身] 逆地理编码成功:', geoResult.formatted_address)
+      } catch (error) {
+        console.warn('[创建分身] 逆地理编码失败，使用原始坐标:', error)
+        // 逆地理编码失败，使用原始坐标
+        locationData.location_text = `${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`
+      }
+    }
+
     const { data, error } = await client
       .from('avatars')
       .insert({
@@ -44,18 +69,16 @@ export class AvatarService {
         level: 1,
         exp: 0,
         status: 'active',
-        // 地理位置信息
-        latitude: avatarData.latitude || null,
-        longitude: avatarData.longitude || null,
-        location_text: avatarData.location_text || null
+        // 地理位置信息（包含逆地理编码结果）
+        ...locationData
       })
       .select()
       .single()
-    
+
     if (error) {
       throw new Error(`创建分身失败: ${error.message}`)
     }
-    
+
     return data
   }
 
@@ -299,34 +322,53 @@ export class AvatarService {
 
   async updateAvatar(avatarId: string, userId: string, updates: Record<string, any>) {
     const client = getSupabaseClient()
-    
+
     // 先检查分身是否存在
     const { data: existingAvatar, error: fetchError } = await client
       .from('avatars')
       .select('id, user_id')
       .eq('id', avatarId)
       .single()
-    
+
     if (fetchError || !existingAvatar) {
       throw new Error(`分身不存在: ${avatarId}`)
     }
-    
+
+    // 如果更新了地理位置，进行逆地理编码
+    let finalUpdates = { ...updates }
+
+    if (updates.latitude && updates.longitude) {
+      try {
+        const geoResult = await this.reverseGeocodingService.reverseGeocode(
+          updates.latitude,
+          updates.longitude
+        )
+        // 使用逆地理编码的结果
+        finalUpdates.location_text = geoResult.formatted_address
+        console.log('[更新分身] 逆地理编码成功:', geoResult.formatted_address)
+      } catch (error) {
+        console.warn('[更新分身] 逆地理编码失败，使用原始坐标:', error)
+        // 逆地理编码失败，使用原始坐标
+        finalUpdates.location_text = `${updates.latitude.toFixed(6)}, ${updates.longitude.toFixed(6)}`
+      }
+    }
+
     // 执行更新（不再强制要求 user_id 匹配，因为前端可能没有传正确的 userId）
     const { data, error } = await client
       .from('avatars')
       .update({
-        ...updates,
+        ...finalUpdates,
         updated_at: new Date().toISOString()
       })
       .eq('id', avatarId)
       .select()
       .single()
-    
+
     if (error) {
       console.error('[AvatarService] 更新分身失败:', error)
       throw new Error(`更新分身失败: ${error.message}`)
     }
-    
+
     return data
   }
 

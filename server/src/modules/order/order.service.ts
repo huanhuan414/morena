@@ -1,10 +1,37 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 
 @Injectable()
 export class OrderService {
+  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {}
+
   async createOrder(userId: string, orderData: Record<string, any>) {
     const client = getSupabaseClient()
+
+    // 处理地理位置信息
+    let locationData = {
+      latitude: orderData.latitude || null,
+      longitude: orderData.longitude || null,
+      location_text: orderData.location_text || null
+    }
+
+    // 如果有经纬度但没有详细地址，进行逆地理编码
+    if (locationData.latitude && locationData.longitude) {
+      try {
+        const geoResult = await this.reverseGeocodingService.reverseGeocode(
+          locationData.latitude,
+          locationData.longitude
+        )
+        // 使用逆地理编码的结果
+        locationData.location_text = geoResult.formatted_address
+        console.log('[创建订单] 逆地理编码成功:', geoResult.formatted_address)
+      } catch (error) {
+        console.warn('[创建订单] 逆地理编码失败，使用原始坐标:', error)
+        // 逆地理编码失败，使用原始坐标
+        locationData.location_text = `${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`
+      }
+    }
 
     const { data, error } = await client
       .from('orders')
@@ -15,10 +42,8 @@ export class OrderService {
         requirements: orderData.requirements || {},
         budget: orderData.budget,
         status: 'open',
-        // 地理位置信息
-        latitude: orderData.latitude || null,
-        longitude: orderData.longitude || null,
-        location_text: orderData.location_text || null
+        // 地理位置信息（包含逆地理编码结果）
+        ...locationData
       })
       .select()
       .single()
