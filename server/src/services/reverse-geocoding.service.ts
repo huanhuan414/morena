@@ -44,7 +44,7 @@ export class ReverseGeocodingService {
       const full_location_text = display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
 
       // 构建简化的格式化地址（优先显示中文信息）
-      const formatted_address_parts = []
+      const formatted_address_parts: string[] = []
       if (country) formatted_address_parts.push(country)
       if (province) formatted_address_parts.push(province)
       if (city) formatted_address_parts.push(city)
