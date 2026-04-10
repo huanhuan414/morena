@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Crown, ArrowLeft, Star, Zap, Shield, Gift, Users, Check, Sparkles } from 'lucide-react-taro'
+import './index.css'
 
 interface SubscriptionPlan {
   id: string
@@ -269,15 +270,17 @@ export default function SubscriptionPage() {
                       onClick={() => handlePurchase(plan)}
                       disabled={isPurchasing || isCurrentPlan}
                     >
-                      {isPurchasing ? (
-                        '购买中...'
-                      ) : isCurrentPlan ? (
-                        '当前订阅'
-                      ) : plan.price === 0 ? (
-                        '免费使用'
-                      ) : (
-                        '立即订阅'
-                      )}
+                      <Text>
+                        {isPurchasing ? (
+                          '购买中...'
+                        ) : isCurrentPlan ? (
+                          '当前订阅'
+                        ) : plan.price === 0 ? (
+                          '免费使用'
+                        ) : (
+                          '立即订阅'
+                        )}
+                      </Text>
                     </Button>
                   </View>
                 )
