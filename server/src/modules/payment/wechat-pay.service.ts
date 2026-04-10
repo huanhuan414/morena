@@ -18,6 +18,7 @@ export class WechatPayService {
   private pay: any = null
   private mchid: string
   private appid: string
+  private isAvailable: boolean = false
 
   constructor() {
     this.mchid = process.env.WECHAT_PAY_MCHID || '1290305501'
@@ -30,6 +31,7 @@ export class WechatPayService {
     if (!privateKeyPath || !publicKeyPath) {
       console.warn('[WechatPayService] 未配置完整的支付证书，支付功能将不可用')
       this.pay = null
+      this.isAvailable = false
       return
     }
 
@@ -48,6 +50,7 @@ export class WechatPayService {
         key: process.env.WECHAT_PAY_APIV3_KEY || ''
       })
 
+      this.isAvailable = true
       console.log('[WechatPayService] 微信支付服务初始化完成', {
         mchid: this.mchid,
         appid: this.appid
@@ -55,7 +58,15 @@ export class WechatPayService {
     } catch (error) {
       console.error('[WechatPayService] 微信支付服务初始化失败:', error)
       this.pay = null
+      this.isAvailable = false
     }
+  }
+
+  /**
+   * 检查支付服务是否可用
+   */
+  isServiceAvailable(): boolean {
+    return this.isAvailable && this.pay !== null
   }
 
   /**

@@ -84,7 +84,7 @@ export default function SubscriptionPage() {
     try {
       // 获取用户 openid
       const { code } = await Taro.login()
-      
+
       const openidRes = await Network.request({
         url: '/api/auth/wechat/get-openid',
         method: 'POST',
@@ -108,25 +108,41 @@ export default function SubscriptionPage() {
         }
       })
 
+      console.log('[订阅] 订单创建响应:', res.data)
+
       if (res.data?.code === 200) {
         const payParams = res.data.data
+        const message = res.data.message
 
-        // 调用微信支付
-        await Taro.requestPayment({
-          timeStamp: payParams.timeStamp,
-          nonceStr: payParams.nonceStr,
-          package: payParams.package,
-          signType: payParams.signType,
-          paySign: payParams.paySign,
-          success: async () => {
-            showToast({ title: '支付成功！', icon: 'success' })
-            await fetchUserSubscription()
-          },
-          fail: (err) => {
-            console.error('支付失败:', err)
-            showToast({ title: '支付已取消', icon: 'none' })
-          }
-        })
+        // 检查是否为模拟支付
+        if (message && message.includes('模拟支付')) {
+          // 模拟支付模式下，订阅已自动激活，直接刷新
+          console.log('[订阅] 使用模拟支付模式，订阅已激活')
+          showToast({ title: message, icon: 'success' })
+          await fetchUserSubscription()
+        } else if (payParams.isMock) {
+          // 模拟支付模式下直接调用支付成功回调
+          console.log('[订阅] 使用模拟支付模式')
+          showToast({ title: '支付成功（模拟）', icon: 'success' })
+          await fetchUserSubscription()
+        } else {
+          // 真实支付：调用微信支付
+          await Taro.requestPayment({
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: payParams.signType,
+            paySign: payParams.paySign,
+            success: async () => {
+              showToast({ title: '支付成功！', icon: 'success' })
+              await fetchUserSubscription()
+            },
+            fail: (err) => {
+              console.error('支付失败:', err)
+              showToast({ title: '支付已取消', icon: 'none' })
+            }
+          })
+        }
       } else {
         showToast({ title: res.data?.message || '创建订单失败', icon: 'none' })
       }

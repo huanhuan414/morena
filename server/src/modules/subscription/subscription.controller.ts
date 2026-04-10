@@ -203,6 +203,12 @@ export class SubscriptionController {
           }
         }
 
+        // 检查支付服务是否可用
+        if (!this.wechatPayService.isServiceAvailable()) {
+          console.warn('[SubscriptionController] 微信支付服务未配置，使用模拟支付模式')
+          return this.createMockOrder(userId, planId, plan, openid, client)
+        }
+
         // 生成商户订单号
         const outTradeNo = `SUB_${userId}_${Date.now()}`
 
@@ -270,6 +276,81 @@ export class SubscriptionController {
         message: error.message || '创建订阅失败',
         data: null
       }
+    }
+  }
+
+  /**
+   * 创建模拟支付订单（用于测试环境）
+   */
+  private async createMockOrder(
+    userId: string,
+    planId: string,
+    plan: any,
+    openid: string,
+    client: any
+  ) {
+    console.log('[SubscriptionController] 创建模拟支付订单')
+
+    // 生成商户订单号
+    const outTradeNo = `MOCK_SUB_${userId}_${Date.now()}`
+
+    // 模拟小程序支付参数
+    const payParams = {
+      appId: process.env.WECHAT_APPID || '',
+      timeStamp: Math.floor(Date.now() / 1000).toString(),
+      nonceStr: Math.random().toString(36).substr(2, 32),
+      package: 'prepay_id=mock_prepay_id',
+      signType: 'RSA',
+      paySign: 'mock_pay_sign_for_testing'
+    }
+
+    // 直接激活订阅，跳过支付订单记录
+    const startDate = new Date()
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + plan.duration_days)
+
+    const { data: subscription, error: subError } = await client
+      .from('user_subscriptions')
+      .insert({
+        user_id: userId,
+        plan_id: planId,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        status: 'active',
+        payment_id: outTradeNo,
+        payment_method: 'mock',
+        auto_renew: false
+      })
+      .select()
+      .single()
+
+    if (subError) {
+      console.error('[SubscriptionController] 创建订阅失败:', subError)
+      throw new Error('创建订阅失败')
+    }
+
+    // 更新用户所有分身的订阅信息
+    const { data: avatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (avatars) {
+      for (const avatar of avatars) {
+        await this.subscriptionService.updateAvatarSubscription(avatar.id, userId)
+      }
+    }
+
+    return {
+      code: 200,
+      data: {
+        orderId: 'mock-order-id',
+        outTradeNo,
+        prepayId: 'mock_prepay_id',
+        ...payParams,
+        isMock: true // 标记为模拟支付
+      },
+      message: '订阅成功（模拟支付）'
     }
   }
 
