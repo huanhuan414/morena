@@ -1076,14 +1076,19 @@ ${friendMessageContents}
     
     // 检查今天是否已经发帖
     const today = new Date().toISOString().split('T')[0]
+    console.log(`[托管服务] 检查分身 ${avatar.name} 今天的发帖情况...`)
+
     const { data: todayPosts } = await client
       .from('posts')
       .select('id')
       .eq('avatar_id', avatar.id)
       .gte('created_at', today)
 
-    if (todayPosts && todayPosts.length >= 3) {
-      console.log(`[托管服务] 分身 ${avatar.name} 今天发帖已达上限`)
+    const todayPostCount = todayPosts?.length || 0
+    console.log(`[托管服务] 分身 ${avatar.name} 今天已发 ${todayPostCount} 篇帖子`)
+
+    if (todayPostCount >= 1) {
+      console.log(`[托管服务] 分身 ${avatar.name} 今天已发帖，每天最多发1篇`)
       return
     }
 
@@ -1095,7 +1100,6 @@ ${friendMessageContents}
     }
 
     // 如果今天还没发帖，则大幅提高发帖概率
-    const todayPostCount = todayPosts?.length || 0
     const baseProbability = postProbability[settings.post_frequency || 'medium']
     const adjustedProbability = todayPostCount === 0 ? Math.min(baseProbability + 0.3, 1.0) : baseProbability
 
