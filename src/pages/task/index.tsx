@@ -12,6 +12,7 @@ import {
   Loader, Brain, Sparkles, Target,
   Calendar, FileText
 } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface Task {
@@ -76,10 +77,10 @@ export default function TaskPage() {
   const [executing, setExecuting] = useState(false)
 
   useEffect(() => {
-    // 初始化状态栏信息
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
+
     if (!isLoggedIn) {
       switchTab({ url: '/pages/social/index' })
       return

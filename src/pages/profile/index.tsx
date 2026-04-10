@@ -1,11 +1,12 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab, getSystemInfoSync } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap, Crown } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface UserStats {
@@ -34,13 +35,9 @@ export default function ProfilePage() {
     if (!isLoggedIn) {
       navigateTo({ url: '/pages/login/index' })
     }
-    // 获取状态栏高度用于适配安全区域
-    try {
-      const systemInfo = getSystemInfoSync()
-      setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    } catch (e) {
-      console.log('获取状态栏高度失败', e)
-    }
+    // 获取安全区域信息
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
   })
 
   useDidShow(() => {

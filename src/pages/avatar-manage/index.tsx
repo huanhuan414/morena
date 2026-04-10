@@ -1,10 +1,11 @@
-import Taro, { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database, Crown } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface Avatar {
@@ -59,25 +60,16 @@ export default function AvatarManagePage() {
   const [avatarCount, setAvatarCount] = useState(0)
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
-  
-  // 状态栏和胶囊按钮适配
+
+  // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleWidth, setCapsuleWidth] = useState(160)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
-    // 初始化状态栏和胶囊按钮信息
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-
-    // 仅在微信小程序中获取胶囊按钮信息
-    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
-      const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-      if (menuButtonBoundingClientRect) {
-        const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-        const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-        setCapsuleWidth(capsuleWidthWithMargins)
-      }
-    }
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
   })
 
   useDidShow(() => {
@@ -302,7 +294,7 @@ export default function AvatarManagePage() {
         <View className="header-left-wrap">
           <Text className="header-title">我的分身</Text>
         </View>
-        <View className="header-right-wrap" style={{ width: `${capsuleWidth}rpx` }}>
+        <View className="header-right-wrap" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
           <Button className="create-btn" onClick={createNewAvatar}>
             <Plus size={20} color="#00f5ff" />
             <Text className="create-text">创建分身</Text>

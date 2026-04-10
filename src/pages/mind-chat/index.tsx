@@ -18,6 +18,7 @@ import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
 } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface MessageMedia {
@@ -206,9 +207,8 @@ export default function MindChatPage() {
     styleMatch: 0
   })
   
-  // 状态栏和胶囊按钮适配
+  // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleWidth, setCapsuleWidth] = useState(160)
   
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
@@ -299,17 +299,10 @@ export default function MindChatPage() {
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
     }
-    
-    // 初始化状态栏和胶囊按钮信息
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
-    }
+
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
   })
 
   useDidShow(() => {
@@ -1823,7 +1816,7 @@ export default function MindChatPage() {
             )}
           </View>
         </View>
-        <View className="header-right" style={{ width: `${capsuleWidth}rpx` }}>
+        <View className="header-right">
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>

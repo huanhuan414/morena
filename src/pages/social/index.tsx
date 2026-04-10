@@ -1,9 +1,10 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, getSystemInfoSync } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface Post {
@@ -83,8 +84,11 @@ export default function SocialPage() {
   const [refreshSuccess, setRefreshSuccess] = useState(false)
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const statsCardRef = useRef<any>(null)
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [activeTab, setActiveTab] = useState<'related' | 'all'>('related')
+
+  // 安全区域适配
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
     // showShareMenu 仅在小程序端可用
@@ -93,13 +97,10 @@ export default function SocialPage() {
         withShareTicket: true
       } as any)
     }
-    // 获取状态栏高度用于适配安全区域
-    try {
-      const systemInfo = getSystemInfoSync()
-      setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    } catch (e) {
-      console.log('获取状态栏高度失败', e)
-    }
+    // 获取安全区域信息
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
   })
 
   useEffect(() => {
@@ -634,7 +635,7 @@ export default function SocialPage() {
           <Text className="header-title">莫瑞娜</Text>
           <Text className="header-subtitle">人机共生协同矩阵平台</Text>
         </View>
-        <View className="header-right-placeholder" />
+        <View className="header-right-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       {/* Tab 切换 */}

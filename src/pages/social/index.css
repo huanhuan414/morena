@@ -49,7 +49,6 @@
 
 /* 右侧占位 - 与小程序胶囊按钮对齐 */
 .header-right-placeholder {
-  width: 120rpx;
   flex-shrink: 0;
 }
 
