@@ -434,63 +434,105 @@ export class GenerateImageTool implements ITool {
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const config = new Config()
-      const client = new ImageGenerationClient(config)
-
       console.log('Agent工具 - 生成图片:', params.prompt)
 
       // 根据风格调整提示词
       const stylePrompts = {
-        realistic: 'photorealistic, high quality, detailed',
-        artistic: 'artistic, creative, masterpiece',
-        anime: 'anime style, vibrant colors, detailed',
-        '3d': '3D render, high quality, detailed',
-        logo: 'logo design, minimalist, clean, professional branding, vector style'
+        realistic: 'photorealistic, high quality, detailed, realistic style, movie quality',
+        artistic: 'artistic, creative, masterpiece, painterly',
+        anime: 'anime style, vibrant colors, detailed, manga style',
+        '3d': '3D render, high quality, detailed, octane render, cinema 4d',
+        logo: 'logo design, minimalist, clean, professional branding, vector style, flat design'
       }
 
       const enhancedPrompt = `${params.prompt}, ${stylePrompts[params.style] || stylePrompts.realistic}`
 
-      const response = await client.generate({
-        prompt: enhancedPrompt,
-        size: params.size || '2K',
-        watermark: false
+      // 调用豆包图片生成 API
+      const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
+      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+
+      console.log('Agent工具 - 调用豆包图片生成 API:', {
+        prompt_length: enhancedPrompt.length,
+        size: params.size || '2K'
       })
 
-      const helper = client.getResponseHelper(response)
+      const response = await axios.post(apiUrl, {
+        model: 'doubao-seedream-4-0-250828',
+        prompt: enhancedPrompt,
+        sequential_image_generation: 'disabled',
+        response_format: 'url',
+        size: params.size || '2K',
+        stream: false,
+        watermark: false
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        timeout: 120000 // 2分钟超时
+      })
 
-      if (helper.success && helper.imageUrls.length > 0) {
-        console.log('Agent工具 - 图片生成成功:', helper.imageUrls[0])
-        return {
-          success: true,
-          data: {
-            image_urls: helper.imageUrls,
-            prompt: params.prompt,
-            style: params.style,
-            message: `成功生成${helper.imageUrls.length}张图片`
-          }
+      console.log('Agent工具 - 豆包图片生成 API响应:', response.status, response.statusText)
+
+      if (response.status !== 200) {
+        const errorMsg = response.data?.error?.message || response.data?.message || '图片生成失败'
+        console.error('Agent工具 - 图片生成失败:', errorMsg)
+        return { success: false, error: `图片生成失败: ${errorMsg}` }
+      }
+
+      // 获取生成的图片 URL
+      const responseData = response.data
+      const imageData = responseData?.data || responseData
+
+      let imageUrls: string[] = []
+
+      // 处理不同的响应格式
+      if (Array.isArray(imageData)) {
+        imageUrls = imageData.map((img: any) => img.url).filter(Boolean)
+      } else if (imageData?.url) {
+        imageUrls = [imageData.url]
+      } else if (imageData?.image_urls) {
+        imageUrls = imageData.image_urls
+      } else if (typeof responseData === 'string') {
+        imageUrls = [responseData]
+      }
+
+      if (imageUrls.length === 0) {
+        const errorMsg = responseData?.message || '未获取到图片URL'
+        console.error('Agent工具 - 未获取到图片URL:', errorMsg, responseData)
+        return { success: false, error: `图片生成失败: ${errorMsg}` }
+      }
+
+      console.log('Agent工具 - 图片生成成功:', imageUrls[0])
+
+      return {
+        success: true,
+        data: {
+          image_urls: imageUrls,
+          prompt: params.prompt,
+          style: params.style,
+          message: `成功生成${imageUrls.length}张图片`
         }
-      } else {
-        return { success: false, error: `图片生成失败: ${helper.errorMessages.join(', ')}` }
       }
     } catch (err: any) {
       console.error('Agent工具 - 图片生成异常:', err)
 
-      // 根据错误类型返回更友好的错误信息
-      if (err.message?.includes('403') || err.statusCode === 403) {
-        return {
-          success: false,
-          error: '图片生成服务暂时不可用，可能是API配额已用完或权限问题，请稍后再试或联系管理员'
-        }
+      // 提取更友好的错误信息
+      let errorMsg = err.message || '未知错误'
+
+      if (err.response) {
+        // API 返回的错误
+        const apiError = err.response.data
+        errorMsg = apiError?.error?.message || apiError?.message || `API错误 (${err.response.status})`
+      } else if (err.code === 'ECONNABORTED' || errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+        errorMsg = '图片生成超时，请稍后重试。图片生成通常需要30-60秒。'
+      } else if (err.message?.includes('403') || err.statusCode === 403) {
+        errorMsg = '图片生成服务暂时不可用，可能是API配额已用完或权限问题，请稍后再试或联系管理员'
+      } else if (err.message?.includes('rate limit') || err.message?.includes('429')) {
+        errorMsg = '图片生成请求过于频繁，请稍等片刻再试'
       }
 
-      if (err.message?.includes('rate limit') || err.message?.includes('429')) {
-        return {
-          success: false,
-          error: '图片生成请求过于频繁，请稍等片刻再试'
-        }
-      }
-
-      return { success: false, error: `生成图片失败: ${err.message}` }
+      return { success: false, error: `生成图片失败: ${errorMsg}` }
     }
   }
 }
