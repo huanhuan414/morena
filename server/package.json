@@ -19,6 +19,7 @@
     "@nestjs/platform-socket.io": "^11.1.17",
     "@nestjs/websockets": "^11.1.17",
     "@supabase/supabase-js": "2.95.3",
+    "axios": "^1.15.0",
     "better-sqlite3": "^11.9.1",
     "coze-coding-dev-sdk": "^0.7.16",
     "dotenv": "^17.2.3",
