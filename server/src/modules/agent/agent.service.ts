@@ -542,7 +542,6 @@ export class AgentService {
         media: media.length > 0 ? media : undefined
       }
     })
-    
     // 更新对话上下文
     const { data: conversation } = await client
       .from('conversations')
@@ -554,7 +553,18 @@ export class AgentService {
     let currentContext: ConversationMessage[] = []
     if (conversation?.context) {
       const ctx = conversation.context
-      if (Array.isArray(ctx)) {
+      // 处理 Supabase 返回的 map 格式（如 map[key: value]）
+      if (ctx && typeof ctx === 'object' && !Array.isArray(ctx)) {
+        // 检查是否是 map 格式（只有一个属性）
+        const keys = Object.keys(ctx)
+        if (keys.length === 1 && keys[0].startsWith('friend_id:')) {
+          // 这是 friend_id 格式，忽略，使用空数组
+          currentContext = []
+        } else if (keys.length > 0) {
+          // 可能是其他对象格式，尝试转换为数组
+          currentContext = Object.values(ctx) as ConversationMessage[]
+        }
+      } else if (Array.isArray(ctx)) {
         currentContext = ctx as ConversationMessage[]
       } else if (typeof ctx === 'string') {
         try {

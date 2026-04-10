@@ -853,7 +853,15 @@ ${learning.interests.length > 0 ? learning.interests.slice(0, 5).join('、') : '
       .single()
     
     // 检查是否有有效的学习数据（messageCount > 0 表示有实际数据）
-    const rawLearning = avatar?.learning_data as UserLearningData | null
+    let rawLearning = avatar?.learning_data as UserLearningData | null
+    
+    // 处理 map 格式数据
+    if (rawLearning && typeof rawLearning === 'object' && !Array.isArray(rawLearning) && !('messageCount' in rawLearning)) {
+      // 如果是 map 格式但没有 messageCount，可能是空数据
+      console.log('[LearningService] learning_data 格式不正确，使用空数据:', typeof rawLearning)
+      rawLearning = null
+    }
+    
     if (!rawLearning || !rawLearning.messageCount || rawLearning.messageCount === 0) {
       return { learning: null, metrics: null }
     }
