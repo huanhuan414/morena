@@ -12,6 +12,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, SearchClient, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { SubscriptionService } from '../subscription/subscription.service'
+import axios from 'axios'
 
 interface HostingSettings {
   auto_post?: boolean
@@ -1261,7 +1262,7 @@ ${friendMessageContents}
   }
 
   /**
-   * 带重试的图片生成
+   * 带重试的图片生成（使用豆包API）
    */
   private async generateImageWithRetry(prompt: string, maxRetries = 2): Promise<string | null> {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -1270,20 +1271,64 @@ ${friendMessageContents}
         await this.waitForRateLimit()
 
         console.log(`[托管服务] 生成图片 (尝试 ${attempt + 1}/${maxRetries + 1})...`)
+        console.log(`[托管服务] 图片提示词: ${prompt.substring(0, 50)}...`)
 
-        const imageConfig = new Config()
-        const imageClient = new ImageGenerationClient(imageConfig)
+        // 使用豆包图片生成API
+        const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
+        const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
 
-        const imageResponse = await imageClient.generate({
-          prompt,
+        // 简单优化提示词（添加一些专业术语）
+        const optimizedPrompt = `${prompt}, photorealistic, high quality, detailed, cinematic lighting, soft shadows, professional photography, 8K`
+
+        const response = await axios.post(apiUrl, {
+          model: 'doubao-seedream-4-0-250828',
+          prompt: optimizedPrompt,
+          sequential_image_generation: 'disabled',
+          response_format: 'url',
           size: '2K',
+          stream: false,
           watermark: false
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          timeout: 120000 // 2分钟超时
         })
 
-        const helper = imageClient.getResponseHelper(imageResponse)
-        if (helper.success && helper.imageUrls.length > 0) {
-          console.log('[托管服务] 配图生成成功')
-          return helper.imageUrls[0]
+        console.log('[托管服务] 豆包API响应:', response.status)
+
+        if (response.status !== 200) {
+          const errorMsg = response.data?.error?.message || response.data?.message || '图片生成失败'
+          throw new Error(errorMsg)
+        }
+
+        // 获取图片URL
+        const responseData = response.data
+        const imageData = responseData?.data || responseData
+
+        let imageUrls: string[] = []
+
+        if (Array.isArray(imageData)) {
+          imageUrls = imageData.map((img: any) => img.url).filter(Boolean)
+        } else if (imageData?.url) {
+          imageUrls = [imageData.url]
+        } else if (imageData?.image_urls) {
+          imageUrls = imageData.image_urls
+        }
+
+        if (imageUrls.length > 0) {
+          console.log('[托管服务] 配图生成成功:', imageUrls[0])
+          // 确认URL来自TOS CDN
+          if (imageUrls[0].includes('tos-cn-beijing')) {
+            return imageUrls[0] // 直接返回TOS CDN URL
+          } else {
+            // 需要上传到CDN
+            console.log('[托管服务] 图片需要上传到CDN...')
+            const imageKey = await this.storage.uploadFromUrl({ url: imageUrls[0], timeout: 30000 })
+            const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })
+            return cdnUrl
+          }
         }
 
         console.log('[托管服务] 配图生成失败，无图片返回')
@@ -1292,8 +1337,8 @@ ${friendMessageContents}
       } catch (error: any) {
         console.log(`[托管服务] 图片生成错误 (尝试 ${attempt + 1}):`, error.message)
 
-        // 检查是否是429错误
-        if (error.response?.status === 429 || error.message?.includes('429')) {
+        // 检查是否是429错误（速率限制）
+        if (error.response?.status === 429 || error.message?.includes('429') || error.message?.includes('rate limit')) {
           console.log('[托管服务] 触发速率限制，等待后重试...')
 
           // 如果还有重试次数，等待后重试
@@ -1302,6 +1347,11 @@ ${friendMessageContents}
             await new Promise(resolve => setTimeout(resolve, waitTime))
             continue
           }
+        }
+
+        // 403错误（API密钥问题）
+        if (error.response?.status === 403 || error.message?.includes('403')) {
+          console.log('[托管服务] 图片生成API密钥错误或配额已用完')
         }
 
         // 非重试错误或重试次数用完
