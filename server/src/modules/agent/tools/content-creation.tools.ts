@@ -990,14 +990,84 @@ export class GenerateVideoTool implements ITool {
         return { success: false, error: `视频生成失败: ${errorMsg}` }
       }
 
-      // 获取生成的视频 URL（豆包API已自动上传到TOS CDN）
-      const responseData = response.data
-      const videoUrl = responseData?.data?.result_url || responseData?.result_url || responseData?.video_url
+      // 获取任务ID（豆包API是异步任务模式）
+      const taskId = response.data?.id || response.data?.task_id
 
-      if (!videoUrl) {
-        const errorMsg = responseData?.message || '未返回视频URL'
-        console.error('Agent工具 - 未获取到视频URL:', errorMsg, responseData)
+      if (!taskId) {
+        const errorMsg = response.data?.message || '未返回任务ID'
+        console.error('Agent工具 - 未获取到任务ID:', errorMsg, response.data)
         return { success: false, error: `视频生成失败: ${errorMsg}` }
+      }
+
+      console.log('Agent工具 - 视频生成任务已提交，任务ID:', taskId)
+      console.log('Agent工具 - 开始轮询任务状态...')
+
+      // 轮询任务状态，最多等待5分钟
+      const maxAttempts = 100 // 5分钟 * (60秒 / 3秒) = 100次
+      let videoUrl: string | null = null
+      let taskStatus = 'pending'
+      let attempt = 0
+
+      while (attempt < maxAttempts && !videoUrl) {
+        attempt++
+
+        // 每3秒查询一次
+        await new Promise(resolve => setTimeout(resolve, 3000))
+
+        try {
+          console.log(`Agent工具 - 轮询任务状态 (${attempt}/${maxAttempts})...`)
+
+          // 查询任务状态
+          const statusResponse = await axios.get(
+            `https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/${taskId}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`
+              },
+              timeout: 30000
+            }
+          )
+
+          if (statusResponse.status !== 200) {
+            console.error('Agent工具 - 查询任务状态失败:', statusResponse.status)
+            continue
+          }
+
+          const taskData = statusResponse.data
+          taskStatus = taskData?.status || 'unknown'
+
+          console.log('Agent工具 - 任务状态:', taskStatus)
+
+          // 检查任务状态
+          if (taskStatus === 'succeeded' || taskStatus === 'succeed' || taskStatus === 'success') {
+            // 任务成功，获取视频URL（支持多种可能的字段路径）
+            videoUrl = taskData?.content?.video_url || taskData?.data?.result_url || taskData?.result_url || taskData?.video_url
+            if (videoUrl) {
+              console.log('Agent工具 - 任务完成，获取到视频URL:', videoUrl)
+              break
+            }
+          } else if (taskStatus === 'failed' || taskStatus === 'error') {
+            // 任务失败
+            const errorMsg = taskData?.error?.message || taskData?.message || '视频生成任务失败'
+            console.error('Agent工具 - 视频生成任务失败:', errorMsg)
+            return { success: false, error: `视频生成任务失败: ${errorMsg}` }
+          } else if (taskStatus === 'processing' || taskStatus === 'pending' || taskStatus === 'running') {
+            // 任务进行中，继续轮询
+            console.log('Agent工具 - 任务进行中，继续等待...')
+            continue
+          }
+
+        } catch (pollErr: any) {
+          console.error('Agent工具 - 轮询任务状态异常:', pollErr.message)
+          continue
+        }
+      }
+
+      // 轮询结束，检查是否获取到视频URL
+      if (!videoUrl) {
+        const errorMsg = `视频生成超时，任务状态：${taskStatus}。视频生成通常需要1-5分钟，请稍后再试。`
+        console.error('Agent工具 - 未获取到视频URL:', errorMsg)
+        return { success: false, error: errorMsg }
       }
 
       // 确认URL已来自TOS CDN
