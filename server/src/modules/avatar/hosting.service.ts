@@ -1075,15 +1075,26 @@ ${friendMessageContents}
     const client = getSupabaseClient()
 
     // 检查今天是否已经发帖
-    const today = new Date().toISOString().split('T')[0]
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const todayDateStr = `${year}-${month}-${day}`
+
+    // 使用本地时间的零点和下一天的零点来查询
+    const startOfDay = new Date(year, now.getMonth(), now.getDate()).toISOString()
+    const endOfDay = new Date(year, now.getMonth(), now.getDate() + 1).toISOString()
+
     console.log(`[托管服务] 检查分身 ${avatar.name} 今天的发帖情况...`)
-    console.log(`[托管服务] 今天的日期: ${today}`)
+    console.log(`[托管服务] 今天的日期: ${todayDateStr}`)
+    console.log(`[托管服务] 查询范围: ${startOfDay} 到 ${endOfDay}`)
 
     const { data: todayPosts } = await client
       .from('posts')
       .select('id, created_at')
       .eq('avatar_id', avatar.id)
-      .gte('created_at', today)
+      .gte('created_at', startOfDay)
+      .lt('created_at', endOfDay)
 
     const todayPostCount = todayPosts?.length || 0
     console.log(`[托管服务] 分身 ${avatar.name} 查询结果: ${todayPostCount} 篇帖子`)
