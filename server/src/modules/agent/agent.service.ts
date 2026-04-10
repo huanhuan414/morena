@@ -627,7 +627,22 @@ export class AgentService {
         .single()
       
       if (conversation?.context) {
-        conversationHistory = conversation.context as ConversationMessage[]
+        // 确保 context 是数组格式
+        const ctx = conversation.context
+        if (Array.isArray(ctx)) {
+          conversationHistory = ctx as ConversationMessage[]
+        } else if (typeof ctx === 'string') {
+          // 如果是 JSON 字符串，尝试解析
+          try {
+            conversationHistory = JSON.parse(ctx) as ConversationMessage[]
+          } catch (e) {
+            console.error('[Agent] 解析对话历史失败:', e)
+            conversationHistory = []
+          }
+        } else {
+          console.warn('[Agent] conversation.context 格式不正确:', typeof ctx)
+          conversationHistory = []
+        }
       }
     }
 
@@ -925,7 +940,8 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
    * 格式化对话历史
    */
   private formatConversationHistory(history: ConversationMessage[]): string {
-    if (!history || history.length === 0) return ''
+    // 确保是数组
+    if (!history || !Array.isArray(history) || history.length === 0) return ''
     
     return history
       .slice(-10) // 最近 5 轮对话
