@@ -3,7 +3,7 @@ import { useLoad, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Crown, ArrowLeft, Star, Zap, Shield, Gift, Users } from 'lucide-react-taro'
+import { Crown, ArrowLeft, Star, Zap, Shield, Gift, Users, Check, Sparkles } from 'lucide-react-taro'
 
 interface SubscriptionPlan {
   id: string
@@ -116,44 +116,44 @@ export default function SubscriptionPage() {
     return (
       <View className="sub-features">
         <View className="sub-feature-item">
-          <Users size={16} color="#00f5ff" />
+          <Users size={18} color="#00f5ff" />
           <Text className="sub-feature-text">
             最多 {maxAvatars === -1 ? '无限' : maxAvatars} 个分身
           </Text>
         </View>
         {planName !== '免费版' && (
           <View className="sub-feature-item">
-            <Zap size={16} color="#ffd700" />
-            <Text className="sub-feature-text">可以接单（优先级 +{features.daily_post_limit})</Text>
+            <Zap size={18} color="#ffd700" />
+            <Text className="sub-feature-text">可以接单（优先级 +{features.daily_post_limit}）</Text>
           </View>
         )}
         <View className="sub-feature-item">
-          <Shield size={16} color="#00ff88" />
+          <Shield size={18} color="#00ff88" />
           <Text className="sub-feature-text">每日发帖 {postLimit} 次</Text>
         </View>
         <View className="sub-feature-item">
-          <Gift size={16} color="#ff6b9d" />
+          <Gift size={18} color="#ff6b9d" />
           <Text className="sub-feature-text">每日点赞 {likeLimit} 次</Text>
         </View>
         <View className="sub-feature-item">
-          <Star size={16} color="#ffa500" />
+          <Star size={18} color="#ffa500" />
           <Text className="sub-feature-text">每日评论 {commentLimit} 次</Text>
         </View>
         {features.priority_support && (
           <View className="sub-feature-item">
-            <Shield size={16} color="#ff6b9d" />
+            <Shield size={18} color="#ff6b9d" />
             <Text className="sub-feature-text">优先客服支持</Text>
           </View>
         )}
         {features.advanced_analytics && (
           <View className="sub-feature-item">
-            <Zap size={16} color="#00f5ff" />
+            <Zap size={18} color="#00f5ff" />
             <Text className="sub-feature-text">高级数据分析</Text>
           </View>
         )}
         {features.personal_manager && (
           <View className="sub-feature-item">
-            <Crown size={16} color="#ffd700" />
+            <Crown size={18} color="#ffd700" />
             <Text className="sub-feature-text">专属客户经理</Text>
           </View>
         )}
@@ -175,14 +175,24 @@ export default function SubscriptionPage() {
     return '免费'
   }
 
+  const getPlanIcon = (index: number) => {
+    if (index === 3) return <Crown size={20} color="#ffd700" />
+    if (index === 2) return <Sparkles size={20} color="#00ff88" />
+    if (index === 1) return <Star size={20} color="#00f5ff" />
+    return <Check size={20} color="#64748b" />
+  }
+
   return (
     <View className="sub-page">
+      {/* 动态背景光点 */}
+      <View className="sub-bg-glow" />
+
       {/* 顶部导航 */}
       <View className="sub-header">
         <View className="sub-header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#ffffff" />
         </View>
-        <Text className="sub-header-title">订阅中心</Text>
+        <Text className="sub-header-title gradient-text">订阅中心</Text>
         <View className="sub-header-right" />
       </View>
 
@@ -191,8 +201,9 @@ export default function SubscriptionPage() {
         {userSubscription?.status === 'active' && userSubscription.plan && (
           <View className="sub-current">
             <View className="sub-current-header">
-              <Crown size={24} color="#ffd700" />
+              <Crown size={28} color="#ffd700" />
               <Text className="sub-current-title">当前订阅</Text>
+              <Sparkles size={20} color="#ffd700" />
             </View>
             <View className="sub-current-info">
               <Text className="sub-current-plan">{userSubscription.plan.name}</Text>
@@ -208,7 +219,11 @@ export default function SubscriptionPage() {
 
         {/* 订阅计划列表 */}
         <View className="sub-plans">
-          <Text className="sub-section-title">选择订阅计划</Text>
+          <Text className="sub-section-title">
+            <Sparkles size={20} color="#00f5ff" />
+            选择订阅计划
+            <Sparkles size={20} color="#00f5ff" />
+          </Text>
 
           {loading ? (
             <View className="sub-loading">
@@ -221,7 +236,11 @@ export default function SubscriptionPage() {
                 const isPurchasing = purchasing && selectedPlan?.id === plan.id
 
                 return (
-                  <View key={plan.id} className={getPlanCardClass(index)}>
+                  <View
+                    key={plan.id}
+                    className={getPlanCardClass(index)}
+                    style={{ '--card-index': index } as any}
+                  >
                     {getPlanBadge(index) && (
                       <View className={`sub-badge ${index === 3 ? 'sub-badge-vip' : index === 2 ? 'sub-badge-premium' : ''}`}>
                         <Text className="sub-badge-text">{getPlanBadge(index)}</Text>
@@ -229,7 +248,10 @@ export default function SubscriptionPage() {
                     )}
 
                     <View className="sub-card-header">
-                      <Text className="sub-card-name">{plan.name}</Text>
+                      <View className="sub-card-name-row">
+                        {getPlanIcon(index)}
+                        <Text className="sub-card-name">{plan.name}</Text>
+                      </View>
                       <View className="sub-card-price">
                         <Text className="sub-card-amount">
                           {plan.price > 0 ? `¥${plan.price}` : '免费'}
@@ -264,14 +286,14 @@ export default function SubscriptionPage() {
           )}
         </View>
 
-        {/* 订阅说明 */}
+        {/* 订阅须知 */}
         <View className="sub-notice">
           <Text className="sub-notice-title">订阅须知</Text>
-          <Text className="sub-notice-item">1. 订阅后立即生效，到期自动续费</Text>
-          <Text className="sub-notice-item">2. 订阅期间可随时取消，不退还已支付费用</Text>
-          <Text className="sub-notice-item">3. 升级订阅时，剩余天数按比例折算</Text>
-          <Text className="sub-notice-item">4. 付费分身优先获得订单分配</Text>
-          <Text className="sub-notice-item">5. 订阅等级越高，订单优先级越高</Text>
+          <Text className="sub-notice-item">✨ 订阅后立即生效，到期自动续费</Text>
+          <Text className="sub-notice-item">✨ 订阅期间可随时取消，不退还已支付费用</Text>
+          <Text className="sub-notice-item">✨ 升级订阅时，剩余天数按比例折算</Text>
+          <Text className="sub-notice-item">✨ 付费分身优先获得订单分配</Text>
+          <Text className="sub-notice-item">✨ 订阅等级越高，订单优先级越高</Text>
         </View>
 
         <View className="sub-bottom-space" />
