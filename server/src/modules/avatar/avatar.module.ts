@@ -6,9 +6,10 @@ import { HostingService } from './hosting.service';
 import { VoiceCallGateway } from './voice-call.gateway';
 import { VoiceCallService } from './voice-call.service';
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
-  imports: [],
+  imports: [SubscriptionModule],
   controllers: [AvatarController],
   providers: [AvatarService, LearningService, HostingService, VoiceCallGateway, VoiceCallService, ReverseGeocodingService],
   exports: [AvatarService, LearningService, HostingService, VoiceCallService]
