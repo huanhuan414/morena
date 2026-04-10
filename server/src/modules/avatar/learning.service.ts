@@ -327,20 +327,24 @@ ${context && context.length > 0 ? `对话上下文：${context.slice(-3).join('\
   ): UserLearningData {
     const learningRate = 0.15 // 学习率，控制更新速度
     const newMessageCount = current.messageCount + 1
-    
+
     // 合并用户身份信息
-    const newIdentity = { ...current.userIdentity }
+    const newIdentity: any = { ...(current.userIdentity || {}) }
     if (analysis.userIdentity) {
       if (analysis.userIdentity.occupation) {
+        console.log('[LearningService] 学习到职业:', analysis.userIdentity.occupation)
         newIdentity.occupation = analysis.userIdentity.occupation
       }
       if (analysis.userIdentity.education) {
+        console.log('[LearningService] 学习到学历:', analysis.userIdentity.education)
         newIdentity.education = analysis.userIdentity.education
       }
       if (analysis.userIdentity.personalityType) {
+        console.log('[LearningService] 学习到性格:', analysis.userIdentity.personalityType)
         newIdentity.personalityType = analysis.userIdentity.personalityType
       }
       if (analysis.userIdentity.lifeEvents && analysis.userIdentity.lifeEvents.length > 0) {
+        console.log('[LearningService] 学习到生活事件:', analysis.userIdentity.lifeEvents)
         newIdentity.lifeEvents = [
           ...(newIdentity.lifeEvents || []),
           ...analysis.userIdentity.lifeEvents.filter((e: string) => !(newIdentity.lifeEvents || []).includes(e))

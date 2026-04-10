@@ -559,29 +559,50 @@ export default function MindChatPage() {
             commonPhrases: learning.commonPhrases,
             userIdentity: learning.userIdentity
           }
-          
+
           // 使用 messageCountBeforeSendRef 来检测变化（发送消息前记录的值）
           const oldMessageCount = messageCountBeforeSendRef.current
           const oldStats = learningStats
 
-          // 检测是否有新内容被学习到（通过比较新旧数据）
-          const hasNewLearning =
-            newStats.messageCount > oldMessageCount ||
-            JSON.stringify(newStats.userIdentity) !== JSON.stringify(oldStats.userIdentity) ||
-            JSON.stringify(newStats.interests) !== JSON.stringify(oldStats.interests) ||
-            JSON.stringify(newStats.commonPhrases) !== JSON.stringify(oldStats.commonPhrases)
+          // 检测是否有新内容被学习到
+          // 比较新旧数据的各个字段，判断是否有任何变化
+          const identityChanged = !oldStats.userIdentity || !newStats.userIdentity ||
+            JSON.stringify(oldStats.userIdentity) !== JSON.stringify(newStats.userIdentity)
 
-          console.log('[MindChat] 学习数据:', {
+          const interestsChanged = !oldStats.interests || !newStats.interests ||
+            JSON.stringify(oldStats.interests) !== JSON.stringify(newStats.interests)
+
+          const phrasesChanged = !oldStats.commonPhrases || !newStats.commonPhrases ||
+            JSON.stringify(oldStats.commonPhrases) !== JSON.stringify(newStats.commonPhrases)
+
+          const messageCountIncreased = newStats.messageCount > oldMessageCount
+
+          // 只要满足以下任一条件，就触发特效：
+          // 1. 消息数量增加
+          // 2. 用户身份信息变化（职业、学历、性格、生活事件）
+          // 3. 兴趣偏好变化
+          // 4. 常用表达变化
+          const hasNewLearning = messageCountIncreased || identityChanged || interestsChanged || phrasesChanged
+
+          console.log('[MindChat] 学习数据比较:', {
             oldMessageCount,
             newMessageCount: newStats.messageCount,
-            showEffect,
+            messageCountIncreased,
+            identityChanged,
+            interestsChanged,
+            phrasesChanged,
             hasNewLearning,
-            identityChanged: JSON.stringify(newStats.userIdentity) !== JSON.stringify(oldStats.userIdentity),
-            interestsChanged: JSON.stringify(newStats.interests) !== JSON.stringify(oldStats.interests)
+            oldUserIdentity: JSON.stringify(oldStats.userIdentity),
+            newUserIdentity: JSON.stringify(newStats.userIdentity)
           })
 
           if (showEffect && hasNewLearning) {
-            console.log('[MindChat] 🎉 触发学习特效!')
+            console.log('[MindChat] 🎉 触发学习特效! 原因:', {
+              messageCountIncreased,
+              identityChanged,
+              interestsChanged,
+              phrasesChanged
+            })
             
             // 计算这次对话获得的经验值（根据等级和消息长度）
             const currentLevel = avatar?.level || 1
@@ -1187,11 +1208,11 @@ export default function MindChatPage() {
     scrollToBottom()
     // 播放语音回复
     playVoiceReply(replyContent)
-    // 对话完成后刷新学习数据并显示学习特效
-    // 延迟 1.5 秒确保后端学习分析完成
+    // 对话完成后立即刷新学习数据并显示学习特效
+    // 后端已经 await 等待学习数据更新完成，所以只需要很短的延迟即可
     setTimeout(() => {
       fetchLearningStats(true)
-    }, 1500)
+    }, 500)
   }
   
   // 获取平台名称
