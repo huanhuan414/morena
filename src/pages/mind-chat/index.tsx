@@ -560,17 +560,27 @@ export default function MindChatPage() {
             userIdentity: learning.userIdentity
           }
           
-          // 如果显示学习特效且有消息数量变化
           // 使用 messageCountBeforeSendRef 来检测变化（发送消息前记录的值）
           const oldMessageCount = messageCountBeforeSendRef.current
-          console.log('[MindChat] 学习数据:', { 
-            oldMessageCount, 
+          const oldStats = learningStats
+
+          // 检测是否有新内容被学习到（通过比较新旧数据）
+          const hasNewLearning =
+            newStats.messageCount > oldMessageCount ||
+            JSON.stringify(newStats.userIdentity) !== JSON.stringify(oldStats.userIdentity) ||
+            JSON.stringify(newStats.interests) !== JSON.stringify(oldStats.interests) ||
+            JSON.stringify(newStats.commonPhrases) !== JSON.stringify(oldStats.commonPhrases)
+
+          console.log('[MindChat] 学习数据:', {
+            oldMessageCount,
             newMessageCount: newStats.messageCount,
             showEffect,
-            willShowEffect: showEffect && newStats.messageCount > oldMessageCount
+            hasNewLearning,
+            identityChanged: JSON.stringify(newStats.userIdentity) !== JSON.stringify(oldStats.userIdentity),
+            interestsChanged: JSON.stringify(newStats.interests) !== JSON.stringify(oldStats.interests)
           })
-          
-          if (showEffect && newStats.messageCount > oldMessageCount) {
+
+          if (showEffect && hasNewLearning) {
             console.log('[MindChat] 🎉 触发学习特效!')
             
             // 计算这次对话获得的经验值（根据等级和消息长度）
@@ -684,14 +694,36 @@ export default function MindChatPage() {
   const fetchOrCreateConversation = async (avatarId: string) => {
     try {
       const conversationsRes = await Network.request({ url: '/api/chat/conversations' })
-      
+
       if (conversationsRes.data?.code === 200 && conversationsRes.data.data?.length > 0) {
-        const latestConv = conversationsRes.data.data[0]
-        setConversation(latestConv)
-        // 启用滚动到底部
-        shouldScrollToBottomRef.current = true
-        await fetchMessages(latestConv.id)
+        // 过滤出当前分身的对话，并按更新时间排序
+        const avatarConversations = conversationsRes.data.data.filter(
+          (conv: any) => conv.avatar_id === avatarId
+        ).sort((a: any, b: any) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+
+        // 如果当前分身有对话，使用最新的对话
+        if (avatarConversations.length > 0) {
+          const latestConv = avatarConversations[0]
+          setConversation(latestConv)
+          // 启用滚动到底部
+          shouldScrollToBottomRef.current = true
+          await fetchMessages(latestConv.id)
+        } else {
+          // 当前分身没有对话，创建新对话
+          const res = await Network.request({
+            url: '/api/chat/conversation',
+            method: 'POST',
+            data: { avatar_id: avatarId }
+          })
+          if (res.data?.code === 200) {
+            setConversation(res.data.data)
+            setMessages([])
+          }
+        }
       } else {
+        // 没有任何对话，创建新对话
         const res = await Network.request({
           url: '/api/chat/conversation',
           method: 'POST',
