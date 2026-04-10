@@ -10,6 +10,336 @@ import { ToolResult } from '../agent.types'
 import axios from 'axios'
 
 /**
+ * 图片提示词优化器
+ * 将用户的不专业描述转换为专业的图片生成提示词
+ */
+class ImagePromptOptimizer {
+  // 专业光影效果词汇
+  private static lightingKeywords = [
+    'cinematic lighting', 'natural light', 'golden hour', 'dramatic shadows',
+    'soft ambient light', 'studio lighting', 'rim light', 'volumetric lighting',
+    'light rays', 'god rays', 'backlighting', 'side lighting', 'subsurface scattering',
+    'global illumination', 'ambient occlusion', 'ray tracing', 'physically based rendering',
+    'HDR lighting', 'bloom effect', 'lens flare', 'specular highlights', 'caustics'
+  ]
+
+  // 专业构图术语
+  private static compositionKeywords = [
+    'rule of thirds', 'golden ratio', 'symmetrical composition', 'dynamic composition',
+    'depth of field', 'shallow depth of field', 'bokeh', 'foreground and background',
+    'leading lines', 'negative space', 'center composition', 'low angle shot',
+    'high angle shot', 'extreme wide angle', 'macro shot', 'telephoto compression',
+    'layering', 'visual hierarchy', 'framing', 'camera movement'
+  ]
+
+  // 专业色彩术语
+  private static colorKeywords = [
+    'color grading', 'color palette', 'complementary colors', 'analogous colors',
+    'triadic colors', 'warm tones', 'cool tones', 'desaturated', 'vibrant colors',
+    'pastel colors', 'muted tones', 'high contrast', 'low contrast', 'color temperature',
+    'duotone', 'split toning', 'monochrome', 'black and white', 'sepia'
+  ]
+
+  // 专业渲染术语
+  private static renderingKeywords = [
+    '8K resolution', 'ultra detailed', 'photorealistic', 'hyperrealistic',
+    'octane render', 'unreal engine 5', 'ray tracing', 'ambient occlusion',
+    'global illumination', 'subsurface scattering', 'volumetric fog', 'particle effects',
+    'motion blur', 'depth of field', 'anti-aliasing', 'post-processing',
+    'sharp focus', 'crisp details', 'fine texture', 'realistic materials'
+  ]
+
+  // 专业氛围词汇
+  private static atmosphereKeywords = [
+    'epic scale', 'grand scale', 'intimate', 'mysterious', 'whimsical',
+    'melancholic', 'joyful', 'tense', 'peaceful', 'chaotic', 'ethereal',
+    'surreal', 'dreamlike', 'nightmare', 'utopian', 'dystopian',
+    'nostalgic', 'futuristic', 'timeless', 'timeless elegance'
+  ]
+
+  // 风格特定的专业提示词模板
+  private static styleTemplates = {
+    realistic: {
+      base: 'photorealistic, professional photography, 8K, ultra detailed, cinematic composition',
+      lighting: 'natural lighting, soft shadows, volumetric light, ambient occlusion',
+      camera: 'shot on Sony A7R IV, 85mm f/1.4 GM, sharp focus, shallow depth of field',
+      post: 'color graded, cinematic look, film grain, professional post-processing'
+    },
+    artistic: {
+      base: 'masterpiece, museum quality, award-winning artwork, fine art composition',
+      lighting: 'dramatic lighting, chiaroscuro, strong shadows, ethereal glow',
+      camera: 'oil painting style, watercolor, mixed media, digital art',
+      post: 'artistic brushstrokes, vibrant palette, expressionist style'
+    },
+    anime: {
+      base: 'high quality anime art, studio Ghibli style, Makoto Shinkai style',
+      lighting: 'anime lighting, soft bloom, vibrant colors, glowing effects',
+      camera: 'manga style, detailed line art, clean composition',
+      post: 'anime color palette, vibrant saturation, smooth gradients'
+    },
+    '3d': {
+      base: '3D render, octane render, unreal engine 5, physically based rendering',
+      lighting: 'global illumination, ambient occlusion, subsurface scattering, ray tracing',
+      camera: 'cinematic camera, depth of field, motion blur, anti-aliasing',
+      post: 'post-processing, bloom, chromatic aberration, color grading'
+    },
+    logo: {
+      base: 'professional logo design, minimalist, clean, vector art, scalable',
+      lighting: 'flat design, solid colors, subtle gradients',
+      camera: 'icon design, symbol design, brand identity',
+      post: 'modern branding, corporate identity, versatile usage'
+    }
+  }
+
+  // 识别场景类型并添加相应关键词
+  private static identifyScene(prompt: string): string[] {
+    const sceneKeywords: string[] = []
+
+    // 人物场景
+    if (prompt.match(/人|人物|肖像|face|portrait|character/i)) {
+      sceneKeywords.push(
+        'detailed facial features', 'expressive eyes', 'natural skin texture',
+        'hair details', 'professional portrait lighting'
+      )
+    }
+
+    // 风景场景
+    if (prompt.match(/风景|landscape|mountain|ocean|forest|sky|sunset|sunrise/i)) {
+      sceneKeywords.push(
+        'epic landscape', 'dramatic sky', 'volumetric clouds', 'atmospheric perspective',
+        'natural environment', 'environmental details'
+      )
+    }
+
+    // 城市场景
+    if (prompt.match(/城市|city|building|street|urban|architecture/i)) {
+      sceneKeywords.push(
+        'urban landscape', 'architecture details', 'cityscape', 'night city',
+        'street photography', 'urban atmosphere'
+      )
+    }
+
+    // 科幻场景
+    if (prompt.match(/科幻|sci-fi|future|space|alien|cyberpunk/i)) {
+      sceneKeywords.push(
+        'futuristic', 'sci-fi', 'high-tech', 'advanced technology',
+        'otherworldly', 'extraterrestrial', 'neon lights', 'cybernetic'
+      )
+    }
+
+    // 奇幻场景
+    if (prompt.match(/奇幻|fantasy|magic|dragon|elf|mythical/i)) {
+      sceneKeywords.push(
+        'fantasy world', 'magical atmosphere', 'mythical creatures',
+        'enchanted forest', 'mystical lighting', 'ethereal glow'
+      )
+    }
+
+    return sceneKeywords
+  }
+
+  // 识别动作和动态
+  private static identifyAction(prompt: string): string[] {
+    const actionKeywords: string[] = []
+
+    if (prompt.match(/跑|跑动|run|sprint|dash/i)) {
+      actionKeywords.push('dynamic motion', 'motion blur', 'dynamic composition')
+    }
+
+    if (prompt.match(/飞|飞行|fly|floating|hovering/i)) {
+      actionKeywords.push('levitation', 'aerial view', 'dynamic perspective')
+    }
+
+    if (prompt.match(/跳|跳跃|jump|leap|hop/i)) {
+      actionKeywords.push('action shot', 'dynamic pose', 'freeze frame')
+    }
+
+    if (prompt.match(/战斗|fight|battle|combat|war/i)) {
+      actionKeywords.push('epic battle', 'action scene', 'dynamic movement', 'intense atmosphere')
+    }
+
+    return actionKeywords
+  }
+
+  // 识别情感和氛围
+  private static identifyEmotion(prompt: string): string[] {
+    const emotionMap: { [key: string]: string[] } = {
+      悲伤: ['melancholic', 'sorrowful', 'somber', 'introspective'],
+      快乐: ['joyful', 'cheerful', 'uplifting', 'radiant'],
+      恐惧: ['menacing', 'ominous', 'threatening', 'dark'],
+      愤怒: ['fierce', 'aggressive', 'intense', 'powerful'],
+      爱: ['romantic', 'tender', 'affectionate', 'warm'],
+      孤独: ['lonely', 'isolated', 'solitary', 'contemplative'],
+      希望: ['hopeful', 'inspiring', 'optimistic', 'bright'],
+      神秘: ['mysterious', 'enigmatic', 'intriguing', 'hidden']
+    }
+
+    for (const [emotion, keywords] of Object.entries(emotionMap)) {
+      if (prompt.includes(emotion)) {
+        return keywords
+      }
+    }
+
+    return []
+  }
+
+  /**
+   * 优化图片提示词
+   * @param userPrompt 用户的原始描述
+   * @param style 图片风格
+   * @return 优化后的专业提示词
+   */
+  static optimize(userPrompt: string, style: string = 'realistic'): string {
+    console.log('提示词优化 - 原始描述:', userPrompt)
+
+    const styleTemplate = this.styleTemplates[style as keyof typeof this.styleTemplates] || this.styleTemplates.realistic
+
+    // 收集所有关键词
+    const allKeywords: string[] = []
+
+    // 添加风格特定关键词
+    allKeywords.push(styleTemplate.base)
+    allKeywords.push(styleTemplate.lighting)
+    allKeywords.push(styleTemplate.camera)
+    allKeywords.push(styleTemplate.post)
+
+    // 识别场景
+    const sceneKeywords = this.identifyScene(userPrompt)
+    allKeywords.push(...sceneKeywords)
+
+    // 识别动作
+    const actionKeywords = this.identifyAction(userPrompt)
+    allKeywords.push(...actionKeywords)
+
+    // 识别情感
+    const emotionKeywords = this.identifyEmotion(userPrompt)
+    allKeywords.push(...emotionKeywords)
+
+    // 随机添加一些通用专业关键词
+    const randomLighting = this.lightingKeywords[Math.floor(Math.random() * 3)]
+    const randomComposition = this.compositionKeywords[Math.floor(Math.random() * 3)]
+    const randomRendering = this.renderingKeywords[Math.floor(Math.random() * 3)]
+
+    allKeywords.push(randomLighting, randomComposition, randomRendering)
+
+    // 组合最终提示词
+    const optimizedPrompt = `${userPrompt}, ${allKeywords.join(', ')}`
+
+    console.log('提示词优化 - 优化后:', optimizedPrompt.substring(0, 200) + '...')
+
+    return optimizedPrompt
+  }
+}
+
+/**
+ * 视频提示词优化器
+ * 将用户的不专业描述转换为专业的视频生成提示词
+ */
+class VideoPromptOptimizer {
+  // 视频特定专业术语
+  private static videoKeywords = [
+    'cinematic video', 'high production value', 'smooth motion', 'professional cinematography',
+    'dynamic camera movement', 'stabilized footage', 'fluid motion', 'natural movement',
+    'atmospheric video', 'immersive experience', 'visual storytelling', 'narrative composition'
+  ]
+
+  // 摄像机运动术语
+  private static cameraMovement = [
+    'camera pan', 'camera tilt', 'tracking shot', 'dolly shot', 'crane shot',
+    'handheld camera', 'steady cam', 'drone shot', 'aerial view', 'POV shot',
+    'zoom in', 'zoom out', 'rack focus', 'follow focus', 'dutch angle',
+    'slow motion', 'fast motion', 'time-lapse', 'hyper-lapse', 'reverse motion'
+  ]
+
+  // 视频效果术语
+  private static videoEffects = [
+    'motion blur', 'depth of field', 'lens flare', 'film grain', 'vignette',
+    'color grading', 'cinematic color', 'anamorphic look', 'letterbox', 'film look',
+    'glitch effect', 'motion graphics', 'visual effects', 'CGI', 'practical effects'
+  ]
+
+  // 剪辑和转场术语
+  private static editingKeywords = [
+    'smooth transition', 'cross dissolve', 'fade in', 'fade out', 'match cut',
+    'jump cut', 'parallel editing', 'montage', 'slow-motion sequence', 'rhythmic editing'
+  ]
+
+  // 场景类型识别
+  private static identifyVideoScene(prompt: string): string[] {
+    const sceneKeywords: string[] = []
+
+    if (prompt.match(/叙事|story|narrative|plot/i)) {
+      sceneKeywords.push('narrative structure', 'storytelling', 'character development')
+    }
+
+    if (prompt.match(/动作|action|chase|fight/i)) {
+      sceneKeywords.push('action sequence', 'dynamic editing', 'fast-paced', 'intense')
+    }
+
+    if (prompt.match(/风景|landscape|travel|journey/i)) {
+      sceneKeywords.push('travel video', 'b-roll footage', 'scenic shots', 'establishing shot')
+    }
+
+    if (prompt.match(/采访|interview|documentary/i)) {
+      sceneKeywords.push('documentary style', 'interview shot', 'talking head', 'observational')
+    }
+
+    if (prompt.match(/音乐|music|dance|performance/i)) {
+      sceneKeywords.push('music video', 'performance shot', 'rhythmically edited', 'dynamic')
+    }
+
+    return sceneKeywords
+  }
+
+  /**
+   * 优化视频提示词
+   * @param userPrompt 用户的原始描述
+   * @param duration 视频时长
+   * @param ratio 视频比例
+   * @return 优化后的专业提示词
+   */
+  static optimize(userPrompt: string, duration: number = 5, ratio: string = '9:16'): string {
+    console.log('视频提示词优化 - 原始描述:', userPrompt)
+
+    const allKeywords: string[] = []
+
+    // 添加视频特定关键词
+    allKeywords.push(...this.videoKeywords.slice(0, 4))
+
+    // 根据比例添加构图关键词
+    if (ratio === '9:16') {
+      allKeywords.push('vertical composition', 'mobile-first', 'social media vertical')
+    } else if (ratio === '16:9') {
+      allKeywords.push('widescreen', 'cinematic aspect ratio', 'horizontal composition')
+    }
+
+    // 识别场景
+    const sceneKeywords = this.identifyVideoScene(userPrompt)
+    allKeywords.push(...sceneKeywords)
+
+    // 根据时长添加节奏关键词
+    if (duration <= 5) {
+      allKeywords.push('short video', 'quick impact', 'hook opening')
+    } else if (duration >= 10) {
+      allKeywords.push('long-form video', 'build-up', 'story progression')
+    }
+
+    // 随机添加摄像机运动和效果
+    const randomCameraMovement = this.cameraMovement[Math.floor(Math.random() * 5)]
+    const randomEffect = this.videoEffects[Math.floor(Math.random() * 3)]
+
+    allKeywords.push(randomCameraMovement, randomEffect)
+
+    // 组合最终提示词
+    const optimizedPrompt = `${userPrompt}, ${allKeywords.join(', ')}`
+
+    console.log('视频提示词优化 - 优化后:', optimizedPrompt.substring(0, 200) + '...')
+
+    return optimizedPrompt
+  }
+}
+
+/**
  * 根据文章内容自动添加配图
  * 提取为独立函数，供多个工具使用
  */
@@ -436,29 +766,22 @@ export class GenerateImageTool implements ITool {
     try {
       console.log('Agent工具 - 生成图片:', params.prompt)
 
-      // 根据风格调整提示词
-      const stylePrompts = {
-        realistic: 'photorealistic, high quality, detailed, realistic style, movie quality',
-        artistic: 'artistic, creative, masterpiece, painterly',
-        anime: 'anime style, vibrant colors, detailed, manga style',
-        '3d': '3D render, high quality, detailed, octane render, cinema 4d',
-        logo: 'logo design, minimalist, clean, professional branding, vector style, flat design'
-      }
-
-      const enhancedPrompt = `${params.prompt}, ${stylePrompts[params.style] || stylePrompts.realistic}`
+      // 使用专业提示词优化器
+      const optimizedPrompt = ImagePromptOptimizer.optimize(params.prompt, params.style || 'realistic')
 
       // 调用豆包图片生成 API
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
       const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
 
       console.log('Agent工具 - 调用豆包图片生成 API:', {
-        prompt_length: enhancedPrompt.length,
-        size: params.size || '2K'
+        prompt_length: optimizedPrompt.length,
+        size: params.size || '2K',
+        style: params.style || 'realistic'
       })
 
       const response = await axios.post(apiUrl, {
         model: 'doubao-seedream-4-0-250828',
-        prompt: enhancedPrompt,
+        prompt: optimizedPrompt,
         sequential_image_generation: 'disabled',
         response_format: 'url',
         size: params.size || '2K',
@@ -480,7 +803,7 @@ export class GenerateImageTool implements ITool {
         return { success: false, error: `图片生成失败: ${errorMsg}` }
       }
 
-      // 获取生成的图片 URL
+      // 获取生成的图片 URL（豆包API已自动上传到TOS CDN）
       const responseData = response.data
       const imageData = responseData?.data || responseData
 
@@ -503,15 +826,20 @@ export class GenerateImageTool implements ITool {
         return { success: false, error: `图片生成失败: ${errorMsg}` }
       }
 
-      console.log('Agent工具 - 图片生成成功:', imageUrls[0])
+      // 确认URL已来自TOS CDN
+      console.log('Agent工具 - 图片生成成功，CDN URL:', imageUrls[0])
+      console.log('Agent工具 - URL来源:', imageUrls[0].includes('tos-cn-beijing') ? '火山引擎TOS CDN' : '未知')
 
       return {
         success: true,
         data: {
           image_urls: imageUrls,
           prompt: params.prompt,
+          optimized_prompt: optimizedPrompt,
           style: params.style,
-          message: `成功生成${imageUrls.length}张图片`
+          size: params.size,
+          cdn_urls: imageUrls, // 明确标识CDN URL
+          message: `成功生成${imageUrls.length}张图片，已保存到火山引擎CDN`
         }
       }
     } catch (err: any) {
@@ -577,13 +905,20 @@ export class GenerateVideoTool implements ITool {
       console.log('Agent工具 - 生成视频开始:', params.prompt?.substring(0, 100))
       console.log('Agent工具 - 视频参数:', { duration: params.duration, ratio: params.ratio })
 
+      // 使用专业提示词优化器
+      const optimizedPrompt = VideoPromptOptimizer.optimize(
+        params.prompt,
+        params.duration || 5,
+        params.ratio || '9:16'
+      )
+
       // 构建 content 数组
       const content: any[] = []
 
-      // 添加文本描述
+      // 添加优化后的文本描述
       content.push({
         type: 'text',
-        text: params.prompt
+        text: optimizedPrompt
       })
 
       // 添加参考图片
@@ -627,7 +962,9 @@ export class GenerateVideoTool implements ITool {
         content_count: content.length,
         has_reference_images: params.reference_images?.length || 0,
         has_reference_videos: params.reference_videos?.length || 0,
-        has_reference_audios: params.reference_audios?.length || 0
+        has_reference_audios: params.reference_audios?.length || 0,
+        duration: params.duration || 5,
+        ratio: params.ratio || '9:16'
       })
 
       const response = await axios.post(apiUrl, {
@@ -653,7 +990,7 @@ export class GenerateVideoTool implements ITool {
         return { success: false, error: `视频生成失败: ${errorMsg}` }
       }
 
-      // 获取生成的视频 URL
+      // 获取生成的视频 URL（豆包API已自动上传到TOS CDN）
       const responseData = response.data
       const videoUrl = responseData?.data?.result_url || responseData?.result_url || responseData?.video_url
 
@@ -663,52 +1000,50 @@ export class GenerateVideoTool implements ITool {
         return { success: false, error: `视频生成失败: ${errorMsg}` }
       }
 
+      // 确认URL已来自TOS CDN
       console.log('Agent工具 - 视频生成成功，原始URL:', videoUrl)
+      console.log('Agent工具 - URL来源:', videoUrl.includes('tos-cn-beijing') ? '火山引擎TOS CDN' : '需要上传到CDN')
 
-      // 上传到火山引擎 TOS CDN，确保 URL 长期有效
-      try {
-        console.log('Agent工具 - 正在上传视频到 CDN...')
-        const videoKey = await this.storage.uploadFromUrl({ url: videoUrl, timeout: 60000 })
-        console.log('Agent工具 - CDN 上传成功, key:', videoKey)
-
-        // 生成 CDN 访问 URL（30天有效期）
-        const cdnUrl = await this.storage.generatePresignedUrl({
-          key: videoKey,
-          expireTime: 86400 * 30 // 30天有效期
-        })
-        console.log('Agent工具 - CDN URL:', cdnUrl)
-
-        return {
-          success: true,
-          data: {
-            video_url: cdnUrl,
-            video_key: videoKey,
-            prompt: params.prompt,
-            duration: params.duration || 5,
-            ratio: params.ratio || '9:16',
-            has_reference_images: params.reference_images?.length || 0,
-            has_reference_videos: params.reference_videos?.length || 0,
-            has_reference_audios: params.reference_audios?.length || 0,
-            generate_audio: params.generate_audio !== false,
-            message: `视频生成成功！时长: ${params.duration || 5}秒${params.reference_images?.length ? `，使用${params.reference_images.length}张参考图片` : ''}`
-          }
+      // 如果返回的URL不是TOS CDN，则上传到TOS
+      let finalVideoUrl = videoUrl
+      if (!videoUrl.includes('tos-cn-beijing')) {
+        console.log('Agent工具 - 视频需要上传到火山引擎CDN...')
+        try {
+          const response = await fetch(videoUrl)
+          const buffer = Buffer.from(await response.arrayBuffer())
+          const timestamp = Date.now()
+          const filename = `agent-video-${timestamp}.mp4`
+          const videoKey = await this.storage.uploadFile({
+            fileContent: buffer,
+            fileName: `agent-videos/${filename}`,
+            contentType: 'video/mp4'
+          })
+          // 生成CDN访问URL
+          finalVideoUrl = await this.storage.generatePresignedUrl({
+            key: videoKey,
+            expireTime: 86400 * 30 // 30天有效期
+          })
+          console.log('Agent工具 - 视频已上传到CDN:', finalVideoUrl)
+        } catch (uploadErr) {
+          console.error('Agent工具 - 视频上传失败:', uploadErr)
+          return { success: false, error: `视频上传到CDN失败: ${uploadErr.message}` }
         }
-      } catch (cdnErr: any) {
-        console.error('Agent工具 - CDN 上传失败，使用原始URL:', cdnErr)
-        // CDN 上传失败时，返回原始 URL（可能会有过期问题）
-        return {
-          success: true,
-          data: {
-            video_url: videoUrl,
-            prompt: params.prompt,
-            duration: params.duration || 5,
-            ratio: params.ratio || '9:16',
-            has_reference_images: params.reference_images?.length || 0,
-            has_reference_videos: params.reference_videos?.length || 0,
-            has_reference_audios: params.reference_audios?.length || 0,
-            generate_audio: params.generate_audio !== false,
-            message: `视频生成成功！时长: ${params.duration || 5}秒（注意：视频链接可能在一段时间后过期）`
-          }
+      }
+
+      return {
+        success: true,
+        data: {
+          video_url: finalVideoUrl,
+          prompt: params.prompt,
+          optimized_prompt: optimizedPrompt,
+          duration: params.duration || 5,
+          ratio: params.ratio || '9:16',
+          cdn_url: finalVideoUrl, // 明确标识CDN URL
+          generate_audio: params.generate_audio !== false,
+          has_reference_images: params.reference_images?.length || 0,
+          has_reference_videos: params.reference_videos?.length || 0,
+          has_reference_audios: params.reference_audios?.length || 0,
+          message: `成功生成视频，已保存到火山引擎CDN，时长${params.duration || 5}秒，比例${params.ratio || '9:16'}`
         }
       }
     } catch (err: any) {
@@ -723,6 +1058,10 @@ export class GenerateVideoTool implements ITool {
         errorMsg = apiError?.error?.message || apiError?.message || `API错误 (${err.response.status})`
       } else if (err.code === 'ECONNABORTED' || errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
         errorMsg = '视频生成超时，请稍后重试。视频生成通常需要1-5分钟。'
+      } else if (err.message?.includes('403') || err.statusCode === 403) {
+        errorMsg = '视频生成服务暂时不可用，可能是API配额已用完或权限问题，请稍后再试或联系管理员'
+      } else if (err.message?.includes('rate limit') || err.message?.includes('429')) {
+        errorMsg = '视频生成请求过于频繁，请稍等片刻再试'
       }
 
       return { success: false, error: `生成视频失败: ${errorMsg}` }
