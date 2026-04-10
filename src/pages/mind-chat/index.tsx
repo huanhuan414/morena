@@ -163,7 +163,14 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'check_platform_config': '检查平台配置',
   'app_create_task': '创建任务',
   'app_list_tasks': '查看任务列表',
-  'app_create_order': '创建订单'
+  'app_create_order': '创建订单',
+  'app_list_avatars': '查看分身列表',
+  'app_assign_order': '分配订单/找分身',
+  'app_add_friend': '添加好友',
+  'app_get_subscription': '获取订阅信息',
+  'app_subscribe': '订阅套餐',
+  'app_create_post': '发布帖子',
+  'app_update_avatar': '更新分身'
 }
 
 // 进度事件类型

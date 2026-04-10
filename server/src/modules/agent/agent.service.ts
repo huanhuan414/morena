@@ -31,7 +31,12 @@ import {
   ListTasksTool,
   CreateOrderTool,
   CreatePostTool,
-  UpdateAvatarTool
+  UpdateAvatarTool,
+  ListAvatarsTool,
+  AssignOrderTool,
+  AddFriendTool,
+  GetSubscriptionTool,
+  SubscribeTool
 } from './tools/app-function.tools'
 import {
   WriteArticleTool,
@@ -121,6 +126,12 @@ export class AgentService {
     this.tools.set('app_create_order', new CreateOrderTool())
     this.tools.set('app_create_post', new CreatePostTool())
     this.tools.set('app_update_avatar', new UpdateAvatarTool())
+    // 新增工具
+    this.tools.set('app_list_avatars', new ListAvatarsTool())
+    this.tools.set('app_assign_order', new AssignOrderTool())
+    this.tools.set('app_add_friend', new AddFriendTool())
+    this.tools.set('app_get_subscription', new GetSubscriptionTool())
+    this.tools.set('app_subscribe', new SubscribeTool())
 
     // 内容创作工具
     this.tools.set('write_article', new WriteArticleTool())
@@ -837,10 +848,25 @@ ${taskUnderstandingHint}
 ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
 【重要规则】
-1. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"等创作类任务时，才调用对应的工具。
-2. 对于普通对话、问候、咨询、关注、点赞等社交互动，直接用Final Answer回复，不要调用任何工具。
-3. 如果用户只是说"关注"、"点赞"、"分享"等，这是普通社交行为，不需要调用工具，直接回复即可。
-4. 不要随意调用generate_image或generate_video工具，除非用户明确要求创作图片或视频。
+1. **多步指令识别（CRITICAL）**：用户的指令可能包含多个子任务，使用"，"、"、"或空格分隔。
+   - 示例："找50个分身，做50张海报" 包含两个任务：【找分身】和【做海报】
+   - 示例："帮我生成海报，发布到小红书" 包含两个任务：【生成海报】和【发布小红书】
+   - 必须先分析指令中的所有子任务，然后按顺序逐个执行
+   - 如果包含"找分身"、"分配订单"、"添加好友"等内部功能操作，优先执行这些操作
+
+2. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"等创作类任务时，才调用对应的工具。
+3. 对于普通对话、问候、咨询、关注、点赞等社交互动，直接用Final Answer回复，不要调用任何工具。
+4. 如果用户只是说"关注"、"点赞"、"分享"等，这是普通社交行为，不需要调用工具，直接回复即可。
+5. 不要随意调用generate_image或generate_video工具，除非用户明确要求创作图片或视频。
+
+【小程序内部功能】
+当用户指令涉及以下关键词时，必须优先调用对应的小程序内部功能工具：
+- "找分身"、"分配订单"、"接单" → 使用 app_assign_order 工具
+- "添加好友"、"交朋友" → 使用 app_add_friend 工具
+- "查看分身"、"我的分身" → 使用 app_list_avatars 工具
+- "订阅"、"升级"、"开通套餐" → 使用 app_subscribe 或 app_get_subscription 工具
+- "创建任务"、"发布任务" → 使用 app_create_task 工具
+- "查看订单"、"我的订单" → 使用 app_list_tasks 工具
 
 请思考下一步应该做什么。
 - 如果需要使用工具，按以下格式回复：
@@ -871,9 +897,41 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
   private getTaskUnderstandingHint(task: string, history: ReActStep[]): string {
     const hints: string[] = []
     const lowerTask = task.toLowerCase()
-    
-    // 1. 图片生成任务（最高优先级）
-    if (lowerTask.match(/生成.*图|画.*图|设计.*图|做.*图|创作.*图|生成图片|画张图|做个图/)) {
+
+    // 【多步指令检测】 - 优先检测包含分隔符的复合指令
+    const hasMultiStepTask = /[，、,]\s*(找|生成|做|画|创作|写|发布|添加|分配)/.test(task)
+    if (hasMultiStepTask) {
+      const subTasks = task.split(/[，、,]/).map(t => t.trim()).filter(t => t)
+      hints.push(`【多步指令识别】检测到 ${subTasks.length} 个子任务：\n${subTasks.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)
+      hints.push(`【执行策略】必须按顺序逐个执行每个子任务，不能遗漏任何子任务。`)
+    }
+
+    // 优先级最高：小程序内部功能任务
+    if (lowerTask.match(/找.*分身|分配.*分身|接单|分配订单|派单|找人/)) {
+      hints.push(`【任务解析】这是一个订单分配/找分身任务：
+请使用 app_assign_order 工具为订单分配合适的分身。
+参数示例：{ "title": "任务标题", "description": "任务描述", "required_count": 需要的分身数量 }
+执行步骤：
+1. 首先调用 app_assign_order 创建订单并分配分身
+2. 如果还需要其他操作（如生成海报），继续执行后续步骤`)
+    }
+    else if (lowerTask.match(/添加好友|交朋友|扩列/)) {
+      hints.push(`【任务解析】这是一个添加好友任务：
+请使用 app_add_friend 工具为分身添加好友。
+参数示例：{ "avatar_id": "当前分身ID", "match_count": 需要添加的数量 }`)
+    }
+    else if (lowerTask.match(/查看分身|我的分身|分身列表|列表分身/)) {
+      hints.push(`【任务解析】这是一个查看分身列表任务：
+请使用 app_list_avatars 工具获取用户的分身列表。
+参数示例：{ "limit": 50, "filter_hosted": false }`)
+    }
+    else if (lowerTask.match(/订阅|升级|开通|购买套餐|套餐/)) {
+      hints.push(`【任务解析】这是一个订阅套餐任务：
+请先使用 app_get_subscription 工具查看当前订阅状态，然后根据用户需求使用 app_subscribe 工具订阅套餐。`)
+    }
+
+    // 1. 图片生成任务
+    if (lowerTask.match(/生成.*图|画.*图|设计.*图|做.*图|创作.*图|生成图片|画张图|做个图|海报/)) {
       hints.push(`【任务解析】这是一个图片生成任务：
 请直接使用 generate_image 工具生成图片，不要使用其他工具。
 参数示例：{ "prompt": "图片详细描述", "style": "realistic" }
@@ -888,7 +946,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     // 3. 社交互动/普通对话（优先检测，避免误判）
     else if (lowerTask.match(/^关注|点赞|收藏|分享|转发|评论|回复|你好|在吗|嗨|hi|hello|谢谢|感谢|再见|拜拜/) ||
              lowerTask.match(/帮我关注|帮我点赞|帮我收藏|帮我分享/) ||
-             lowerTask.match(/^.{0,20}$/) && !lowerTask.match(/生成|创作|设计|写|画|发布/)) {
+             lowerTask.match(/^.{0,20}$/) && !lowerTask.match(/生成|创作|设计|写|画|发布|找|分配|添加|订阅|升级/)) {
       hints.push(`【任务解析】这是一个普通对话或社交互动：
 请直接用 Final Answer 回复用户，不要调用任何工具。
 - 如果用户说"关注"，回复"好的，已为你关注该话题/用户"
@@ -903,53 +961,53 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
 3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
     }
-    // 4. 小红书任务
+    // 5. 小红书任务
     else if (lowerTask.includes('小红书') || lowerTask.includes('红书笔记')) {
       hints.push(`【任务解析】这是一个小红书内容创作任务：
 1. 首先使用 write_xiaohongshu_note 工具生成小红书笔记内容
 2. 然后使用 publish_xiaohongshu 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置小红书账号`)
     }
-    // 5. 微博任务
+    // 6. 微博任务
     else if (lowerTask.includes('微博') && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
       hints.push(`【任务解析】这是一个微博内容创作任务：
 1. 首先使用 write_article 工具生成微博内容（简短、话题性强）
 2. 然后使用 publish_weibo 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置微博账号`)
     }
-    // 6. 抖音任务
+    // 7. 抖音任务
     else if ((lowerTask.includes('抖音') || lowerTask.includes('tiktok')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
       hints.push(`【任务解析】这是一个抖音内容创作任务：
 1. 首先生成视频内容（使用 generate_video 或提供视频脚本）
 2. 然后使用 publish_douyin 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置抖音账号`)
     }
-    // 7. B站任务
+    // 8. B站任务
     else if ((lowerTask.includes('b站') || lowerTask.includes('哔哩') || lowerTask.includes('bilibili')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
       hints.push(`【任务解析】这是一个B站内容创作任务：
 1. 首先生成视频或文章内容
 2. 然后使用 publish_bilibili 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置B站账号`)
     }
-    // 8. 微信视频号任务
+    // 9. 微信视频号任务
     else if (lowerTask.includes('视频号') && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
       hints.push(`【任务解析】这是一个微信视频号内容创作任务：
 1. 首先生成视频内容
 2. 然后使用 publish_wechat_video 工具尝试发布
 3. 如果发布工具返回 requires_config=true，说明用户未配置视频号`)
     }
-    // 9. 今日头条任务
+    // 10. 今日头条任务
     else if ((lowerTask.includes('头条') || lowerTask.includes('今日头条')) && (lowerTask.includes('发') || lowerTask.includes('写') || lowerTask.includes('创作') || lowerTask.includes('生成'))) {
       hints.push(`【任务解析】这是一个今日头条内容创作任务：
 1. 首先使用 write_article 工具生成头条文章内容
 2. 注意：今日头条暂未集成，请告知用户当前支持的平台：微信公众号、小红书、微博、抖音、B站、微信视频号`)
     }
-    // 10. 通用文章写作
+    // 11. 通用文章写作
     else if (lowerTask.match(/写.*文章|撰写.*文|生成.*文|创作.*文/) && !lowerTask.includes('公众号') && !lowerTask.includes('小红书')) {
       hints.push(`【任务解析】这是一个通用文章写作任务：
 请使用 write_article 工具生成文章内容。`)
     }
-    
+
     // 如果已经有执行历史，提示继续
     if (history.length > 0) {
       const lastStep = history[history.length - 1]
@@ -957,7 +1015,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         hints.push(`【下一步建议】${lastStep.observation.next_action_hint}`)
       }
     }
-    
+
     return hints.length > 0 ? hints.join('\n\n') : ''
   }
 
