@@ -3,12 +3,16 @@ import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSCli
 import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 @Injectable()
 export class AvatarService {
   private storage: S3Storage
 
-  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {
+  constructor(
+    private readonly reverseGeocodingService: ReverseGeocodingService,
+    private readonly subscriptionService: SubscriptionService
+  ) {
     // 初始化火山引擎CDN存储
     this.storage = new S3Storage({
       endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
@@ -20,6 +24,12 @@ export class AvatarService {
   }
 
   async createAvatar(userId: string, avatarData: Record<string, any>) {
+    // 检查用户是否可以创建分身
+    const canCreate = await this.subscriptionService.canCreateAvatar(userId)
+    if (!canCreate.canCreate) {
+      throw new Error(canCreate.reason || '无法创建分身，请检查您的订阅计划')
+    }
+
     const client = getSupabaseClient()
 
     // 从图片分析结果构建分身配置
