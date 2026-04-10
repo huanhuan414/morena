@@ -11,6 +11,7 @@ const IMAGE_RETRY_DELAY = 10000 // 429错误后重试延迟（毫秒，增加到
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, SearchClient, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { SubscriptionService } from '../subscription/subscription.service'
 
 interface HostingSettings {
   auto_post?: boolean
@@ -41,6 +42,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private llmClient: LLMClient
   private searchClient: SearchClient
   private storage: S3Storage
+  private subscriptionService: SubscriptionService
   private intervals: Map<string, NodeJS.Timeout> = new Map()
   private isRunning = false
 
@@ -49,7 +51,8 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private imageGenerationQueue: Map<string, Promise<any>> = new Map()
   private isImageGenerating = false
 
-  constructor() {
+  constructor(subscriptionService: SubscriptionService) {
+    this.subscriptionService = subscriptionService
     const config = new Config()
     this.llmClient = new LLMClient(config)
     this.searchClient = new SearchClient(config)
@@ -462,6 +465,13 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
    */
   private async sendFriendRequest(avatar: any) {
     const client = getSupabaseClient()
+
+    // 检查用户的好友数量限制
+    const canAddFriend = await this.subscriptionService.canAddFriend(avatar.user_id)
+    if (!canAddFriend.canAdd) {
+      console.log(`[托管服务] ${avatar.name} 无法添加好友: ${canAddFriend.reason}`)
+      return
+    }
 
     // 获取其他活跃分身（排除自己和已经是好友的）
     const { data: friendIds } = await client

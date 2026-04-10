@@ -269,4 +269,86 @@ export class SubscriptionService {
   async initAvatarSubscription(avatarId: string, userId: string): Promise<void> {
     await this.updateAvatarSubscription(avatarId, userId)
   }
+
+  /**
+   * 检查用户是否可以添加好友
+   */
+  async canAddFriend(userId: string): Promise<{ canAdd: boolean, reason?: string }> {
+    const client = getSupabaseClient()
+
+    // 获取用户当前订阅
+    const subscription = await this.getUserSubscription(userId)
+
+    // 获取用户当前好友数量（包括已发送和已接受的）
+    const { count: friendCount } = await client
+      .from('avatar_friends')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['accepted', 'pending'])
+
+    // 没有订阅，只能添加10个好友
+    if (!subscription) {
+      if ((friendCount || 0) >= 10) {
+        return {
+          canAdd: false,
+          reason: '免费用户最多添加10个好友，请升级订阅以添加更多好友'
+        }
+      }
+      return { canAdd: true }
+    }
+
+    // 检查订阅是否过期
+    const now = new Date()
+    const endDate = new Date(subscription.end_date)
+    if (endDate < now) {
+      return {
+        canAdd: false,
+        reason: '订阅已过期，请续费以添加更多好友'
+      }
+    }
+
+    // 获取订阅计划中的好友数量限制
+    const maxFriends = subscription.plan?.features?.max_friends || 10
+
+    // -1 表示无限好友
+    if (maxFriends === -1) {
+      return { canAdd: true }
+    }
+
+    // 检查好友数量限制
+    if ((friendCount || 0) >= maxFriends) {
+      return {
+        canAdd: false,
+        reason: `当前订阅计划最多添加${maxFriends}个好友，请升级订阅以添加更多好友`
+      }
+    }
+
+    return { canAdd: true }
+  }
+
+  /**
+   * 获取用户的好友数量限制
+   */
+  async getFriendLimit(userId: string): Promise<{ limit: number, current: number, canAddMore: boolean }> {
+    const client = getSupabaseClient()
+
+    // 获取用户当前订阅
+    const subscription = await this.getUserSubscription(userId)
+
+    // 获取用户当前好友数量
+    const { count: friendCount } = await client
+      .from('avatar_friends')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['accepted', 'pending'])
+
+    // 没有订阅，限制10个好友
+    const maxFriends = subscription?.plan?.features?.max_friends || 10
+
+    return {
+      limit: maxFriends,
+      current: friendCount || 0,
+      canAddMore: maxFriends === -1 || (friendCount || 0) < maxFriends
+    }
+  }
 }

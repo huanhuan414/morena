@@ -195,4 +195,46 @@ export class SubscriptionController {
       }
     }
   }
+
+  /**
+   * 检查是否可以添加好友
+   */
+  @Get('check/add-friend')
+  async checkCanAddFriend(@Headers('x-user-id') userId: string) {
+    try {
+      const result = await this.subscriptionService.canAddFriend(userId)
+      return {
+        code: 200,
+        data: result,
+        message: result.canAdd ? '可以添加好友' : '无法添加好友'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        message: error.message || '检查失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 获取用户的好友数量限制
+   */
+  @Get('friend-limit')
+  async getFriendLimit(@Headers('x-user-id') userId: string) {
+    try {
+      const result = await this.subscriptionService.getFriendLimit(userId)
+      return {
+        code: 200,
+        data: result,
+        message: '获取成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        message: error.message || '获取失败',
+        data: null
+      }
+    }
+  }
 }

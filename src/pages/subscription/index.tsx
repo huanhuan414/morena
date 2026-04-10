@@ -3,7 +3,7 @@ import { useLoad, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Crown, ArrowLeft, Star, Zap, Shield, Gift, Users, Check, Sparkles } from 'lucide-react-taro'
+import { Crown, ArrowLeft, Star, Zap, Shield, Users, Check, Sparkles } from 'lucide-react-taro'
 import './index.css'
 
 interface SubscriptionPlan {
@@ -16,9 +16,7 @@ interface SubscriptionPlan {
   can_receive_orders: boolean
   order_priority: number
   features: {
-    daily_post_limit: number
-    daily_like_limit: number
-    daily_comment_limit: number
+    max_friends: number
     avatar_storage_limit: string
     priority_support?: boolean
     advanced_analytics?: boolean
@@ -108,11 +106,9 @@ export default function SubscriptionPage() {
     }
   }
 
-  const renderFeatures = (features: SubscriptionPlan['features'], planName: string) => {
-    const maxAvatars = features.daily_post_limit === -1 ? '无限' : features.daily_post_limit
-    const postLimit = features.daily_post_limit === -1 ? '无限' : features.daily_post_limit
-    const likeLimit = features.daily_like_limit === -1 ? '无限' : features.daily_like_limit
-    const commentLimit = features.daily_comment_limit === -1 ? '无限' : features.daily_comment_limit
+  const renderFeatures = (features: SubscriptionPlan['features'], plan: SubscriptionPlan) => {
+    const maxAvatars = plan.max_avatars === -1 ? '无限' : plan.max_avatars
+    const maxFriends = features.max_friends === -1 ? '无限' : features.max_friends
 
     return (
       <View className="sub-features">
@@ -122,24 +118,18 @@ export default function SubscriptionPage() {
             最多 {maxAvatars === -1 ? '无限' : maxAvatars} 个分身
           </Text>
         </View>
-        {planName !== '免费版' && (
+        <View className="sub-feature-item">
+          <Check size={18} color="#00ff88" />
+          <Text className="sub-feature-text">
+            最多 {maxFriends === -1 ? '无限' : maxFriends} 个好友
+          </Text>
+        </View>
+        {plan.can_receive_orders && (
           <View className="sub-feature-item">
             <Zap size={18} color="#ffd700" />
-            <Text className="sub-feature-text">可以接单（优先级 +{features.daily_post_limit}）</Text>
+            <Text className="sub-feature-text">可以接单（优先级 +{plan.order_priority}）</Text>
           </View>
         )}
-        <View className="sub-feature-item">
-          <Shield size={18} color="#00ff88" />
-          <Text className="sub-feature-text">每日发帖 {postLimit} 次</Text>
-        </View>
-        <View className="sub-feature-item">
-          <Gift size={18} color="#ff6b9d" />
-          <Text className="sub-feature-text">每日点赞 {likeLimit} 次</Text>
-        </View>
-        <View className="sub-feature-item">
-          <Star size={18} color="#ffa500" />
-          <Text className="sub-feature-text">每日评论 {commentLimit} 次</Text>
-        </View>
         {features.priority_support && (
           <View className="sub-feature-item">
             <Shield size={18} color="#ff6b9d" />
@@ -213,7 +203,7 @@ export default function SubscriptionPage() {
               </Text>
             </View>
             <View className="sub-current-features">
-              {renderFeatures(userSubscription.plan.features, userSubscription.plan.name)}
+              {renderFeatures(userSubscription.plan.features, userSubscription.plan)}
             </View>
           </View>
         )}
@@ -263,7 +253,7 @@ export default function SubscriptionPage() {
 
                     <Text className="sub-card-description">{plan.description}</Text>
 
-                    {renderFeatures(plan.features, plan.name)}
+                    {renderFeatures(plan.features, plan)}
 
                     <Button
                       className={`sub-card-button ${isCurrentPlan ? 'sub-card-button-disabled' : ''}`}
@@ -295,6 +285,8 @@ export default function SubscriptionPage() {
           <Text className="sub-notice-item">✨ 订阅后立即生效，到期自动续费</Text>
           <Text className="sub-notice-item">✨ 订阅期间可随时取消，不退还已支付费用</Text>
           <Text className="sub-notice-item">✨ 升级订阅时，剩余天数按比例折算</Text>
+          <Text className="sub-notice-item">✨ 好友数量限制根据订阅等级不同而不同</Text>
+          <Text className="sub-notice-item">✨ 订阅等级越高，好友数量越多</Text>
           <Text className="sub-notice-item">✨ 付费分身优先获得订单分配</Text>
           <Text className="sub-notice-item">✨ 订阅等级越高，订单优先级越高</Text>
         </View>
