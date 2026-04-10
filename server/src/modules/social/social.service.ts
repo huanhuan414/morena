@@ -129,6 +129,82 @@ export class SocialService {
     }
   }
 
+  /**
+   * 获取用户分身累计统计
+   * 统计用户所有分身的累计发帖数、点赞数、评论数
+   */
+  async getAvatarTotalStats(userId: string) {
+    const client = getSupabaseClient()
+    
+    // 获取用户的所有分身ID
+    const { data: avatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+    
+    const avatarIds = avatars?.map(a => a.id) || []
+    
+    // 累计发帖数（分身发布的）
+    let postCount = 0
+    if (avatarIds.length > 0) {
+      const { count } = await client
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+      postCount = count || 0
+    }
+    
+    // 累计点赞数（分身点赞的）
+    let likeCount = 0
+    if (avatarIds.length > 0) {
+      const { count } = await client
+        .from('likes')
+        .select('id', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+        .eq('target_type', 'post')
+      likeCount = count || 0
+    }
+    
+    // 累计评论数（分身评论的）
+    let commentCount = 0
+    if (avatarIds.length > 0) {
+      const { count } = await client
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+      commentCount = count || 0
+    }
+    
+    // 累计接单数
+    let orderCount = 0
+    const { count: completedOrders } = await client
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .in('avatar_id', avatarIds)
+      .eq('status', 'completed')
+    orderCount = completedOrders || 0
+    
+    // 累计收入
+    let totalEarnings = 0
+    const { data: earnings } = await client
+      .from('earnings')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+    
+    if (earnings && earnings.length > 0) {
+      totalEarnings = earnings.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+    }
+    
+    return {
+      postCount,
+      likeCount,
+      commentCount,
+      orderCount,
+      totalEarnings
+    }
+  }
+
   async createPost(userId: string, postData: Record<string, any>) {
     const client = getSupabaseClient()
     

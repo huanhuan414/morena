@@ -154,15 +154,15 @@ export default function SocialPage() {
     }
   }
 
-  // 获取今日统计
+  // 获取累计统计
   const fetchTodayStats = async () => {
     try {
-      const res = await Network.request({ url: '/api/social/today-stats' })
+      const res = await Network.request({ url: '/api/social/total-stats' })
       if (res.data?.code === 200) {
         setAvatarStats(res.data.data)
       }
     } catch (error) {
-      console.error('获取今日统计失败:', error)
+      console.error('获取累计统计失败:', error)
     }
   }
 
@@ -694,7 +694,7 @@ export default function SocialPage() {
             >
               {/* 收益区域 */}
               <View className="earnings-section">
-                <Text className="earnings-title">今日收益</Text>
+                <Text className="earnings-title">累计收益</Text>
                 <View className="earnings-row">
                   <View className="earning-item">
                     <DollarSign size={20} color="#00ff88" />

@@ -63,6 +63,19 @@ export class SocialController {
     }
   }
 
+  /**
+   * 获取用户分身累计统计
+   */
+  @Get('total-stats')
+  async getAvatarTotalStats(@Headers('x-user-id') userId: string) {
+    const result = await this.socialService.getAvatarTotalStats(userId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
   @Get('posts')
   async getPosts(
     @Headers('x-user-id') userId: string,
