@@ -1073,18 +1073,23 @@ ${friendMessageContents}
    */
   private async autoCreatePost(avatar: any, settings: HostingSettings) {
     const client = getSupabaseClient()
-    
+
     // 检查今天是否已经发帖
     const today = new Date().toISOString().split('T')[0]
     console.log(`[托管服务] 检查分身 ${avatar.name} 今天的发帖情况...`)
+    console.log(`[托管服务] 今天的日期: ${today}`)
 
     const { data: todayPosts } = await client
       .from('posts')
-      .select('id')
+      .select('id, created_at')
       .eq('avatar_id', avatar.id)
       .gte('created_at', today)
 
     const todayPostCount = todayPosts?.length || 0
+    console.log(`[托管服务] 分身 ${avatar.name} 查询结果: ${todayPostCount} 篇帖子`)
+    if (todayPosts && todayPostCount > 0) {
+      console.log(`[托管服务] 最新的帖子时间: ${todayPosts[todayPostCount - 1]?.created_at}`)
+    }
     console.log(`[托管服务] 分身 ${avatar.name} 今天已发 ${todayPostCount} 篇帖子`)
 
     if (todayPostCount >= 1) {
