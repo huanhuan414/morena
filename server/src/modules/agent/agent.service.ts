@@ -550,9 +550,24 @@ export class AgentService {
       .eq('id', conversationId)
       .single()
     
-    const currentContext = (conversation?.context || []) as ConversationMessage[]
+    // 确保 currentContext 是数组
+    let currentContext: ConversationMessage[] = []
+    if (conversation?.context) {
+      const ctx = conversation.context
+      if (Array.isArray(ctx)) {
+        currentContext = ctx as ConversationMessage[]
+      } else if (typeof ctx === 'string') {
+        try {
+          currentContext = JSON.parse(ctx) as ConversationMessage[]
+        } catch (e) {
+          console.error('[AgentService] 解析对话上下文失败:', e)
+          currentContext = []
+        }
+      }
+    }
+    
     const newContext = [
-      ...currentContext.slice(-18), // 保留最近 10 轮对话
+      ...(Array.isArray(currentContext) ? currentContext.slice(-18) : []), // 保留最近 10 轮对话
       { role: 'user', content: userMessage },
       { role: 'assistant', content: aiMessage }
     ]

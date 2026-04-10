@@ -473,6 +473,22 @@ export class GenerateImageTool implements ITool {
       }
     } catch (err: any) {
       console.error('Agent工具 - 图片生成异常:', err)
+      
+      // 根据错误类型返回更友好的错误信息
+      if (err.message?.includes('403') || err.statusCode === 403) {
+        return { 
+          success: false, 
+          error: '图片生成服务暂时不可用，可能是API配额已用完或权限问题，请稍后再试或联系管理员' 
+        }
+      }
+      
+      if (err.message?.includes('rate limit') || err.message?.includes('429')) {
+        return { 
+          success: false, 
+          error: '图片生成请求过于频繁，请稍等片刻再试' 
+        }
+      }
+      
       return { success: false, error: `生成图片失败: ${err.message}` }
     }
   }
