@@ -189,21 +189,66 @@ export default function SubscriptionPage() {
 
       <ScrollView className="sub-scroll" scrollY>
         {/* 当前订阅状态 */}
-        {userSubscription?.status === 'active' && userSubscription.plan && (
+        {!loading && userSubscription && userSubscription.plan && (
           <View className="sub-current">
             <View className="sub-current-header">
-              <Crown size={28} color="#ffd700" />
-              <Text className="sub-current-title">当前订阅</Text>
-              <Sparkles size={20} color="#ffd700" />
+              {userSubscription.status === 'active' ? (
+                <>
+                  <Crown size={28} color="#ffd700" />
+                  <Text className="sub-current-title">当前订阅</Text>
+                  <Sparkles size={20} color="#ffd700" />
+                </>
+              ) : (
+                <>
+                  <Crown size={28} color="#ff6b6b" />
+                  <Text className="sub-current-title" style={{ color: '#ff6b6b' }}>
+                    {userSubscription.status === 'expired' ? '订阅已过期' : '订阅已取消'}
+                  </Text>
+                </>
+              )}
             </View>
             <View className="sub-current-info">
               <Text className="sub-current-plan">{userSubscription.plan.name}</Text>
               <Text className="sub-current-date">
-                到期时间: {new Date(userSubscription.end_date).toLocaleDateString('zh-CN')}
+                {userSubscription.status === 'active'
+                  ? `到期时间: ${new Date(userSubscription.end_date).toLocaleDateString('zh-CN')}`
+                  : `到期时间: ${new Date(userSubscription.end_date).toLocaleDateString('zh-CN')}`
+                }
               </Text>
             </View>
             <View className="sub-current-features">
               {renderFeatures(userSubscription.plan.features, userSubscription.plan)}
+            </View>
+          </View>
+        )}
+
+        {!loading && !userSubscription && (
+          <View className="sub-current" style={{ border: '2rpx solid rgba(255, 255, 255, 0.1)' }}>
+            <View className="sub-current-header">
+              <Crown size={28} color="#64748b" />
+              <Text className="sub-current-title" style={{ color: '#64748b' }}>暂无订阅</Text>
+            </View>
+            <View className="sub-current-info">
+              <Text className="sub-current-plan" style={{ color: '#64748b' }}>免费用户</Text>
+              <Text className="sub-current-date" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                您可以创建 1 个分身，最多添加 10 个好友
+              </Text>
+            </View>
+            <View className="sub-current-features">
+              <View className="sub-features">
+                <View className="sub-feature-item">
+                  <Users size={18} color="#64748b" />
+                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>最多 1 个分身</Text>
+                </View>
+                <View className="sub-feature-item">
+                  <Check size={18} color="#64748b" />
+                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>最多 10 个好友</Text>
+                </View>
+                <View className="sub-feature-item">
+                  <Shield size={18} color="#64748b" />
+                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>不能接单</Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
