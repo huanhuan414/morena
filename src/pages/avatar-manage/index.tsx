@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database, Crown } from 'lucide-react-taro'
 import './index.css'
 
 interface Avatar {
@@ -54,6 +54,12 @@ export default function AvatarManagePage() {
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
   const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
   
+  // 订阅权益状态
+  const [canCreateAvatar, setCanCreateAvatar] = useState(true)
+  const [avatarCount, setAvatarCount] = useState(0)
+  const [maxAvatars, setMaxAvatars] = useState(1)
+  const [loadingSubscription, setLoadingSubscription] = useState(true)
+  
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
@@ -76,7 +82,49 @@ export default function AvatarManagePage() {
 
   useDidShow(() => {
     fetchAvatars()
+    loadSubscriptionInfo()
   })
+
+  const loadSubscriptionInfo = async () => {
+    try {
+      setLoadingSubscription(true)
+      // 获取订阅信息和分身数量
+      const [subscriptionRes, avatarListRes] = await Promise.all([
+        Network.request({ url: '/api/subscription/user' }),
+        Network.request({ url: '/api/avatar' })
+      ])
+
+      // 获取当前分身数量
+      const currentCount = avatarListRes.data?.data?.length || 0
+      setAvatarCount(currentCount)
+
+      // 检查订阅权益
+      if (subscriptionRes.data?.data?.plan) {
+        const plan = subscriptionRes.data.data.plan
+        setMaxAvatars(plan.max_avatars)
+        
+        // 检查是否可以创建分身
+        if (plan.max_avatars !== -1 && currentCount >= plan.max_avatars) {
+          setCanCreateAvatar(false)
+        } else {
+          setCanCreateAvatar(true)
+        }
+      } else {
+        // 免费用户最多1个分身
+        setMaxAvatars(1)
+        if (currentCount >= 1) {
+          setCanCreateAvatar(false)
+        } else {
+          setCanCreateAvatar(true)
+        }
+      }
+    } catch (error) {
+      console.error('加载订阅信息失败:', error)
+      setCanCreateAvatar(true) // 加载失败时允许创建，避免阻塞用户
+    } finally {
+      setLoadingSubscription(false)
+    }
+  }
 
   const fetchAvatars = async () => {
     try {
@@ -160,6 +208,16 @@ export default function AvatarManagePage() {
   }
 
   const createNewAvatar = () => {
+    // 检查是否可以创建分身
+    if (!canCreateAvatar) {
+      showToast({ 
+        title: `当前订阅最多支持 ${maxAvatars} 个分身，请升级订阅`,
+        icon: 'none',
+        duration: 3000
+      })
+      navigateTo({ url: '/pages/subscription/index' })
+      return
+    }
     navigateTo({ url: '/pages/avatar-create/index' })
   }
 
@@ -253,6 +311,35 @@ export default function AvatarManagePage() {
       </View>
 
       <ScrollView className="manage-scroll" scrollY>
+        {/* 订阅权益提示 */}
+        {!loadingSubscription && (
+          <View className="subscription-info-card">
+            <View className="subscription-info-header">
+              <Crown className="subscription-icon" size={20} color="#fbbf24" />
+              <Text className="subscription-info-title">分身配额</Text>
+            </View>
+            <View className="subscription-info-content">
+              <Text className="subscription-info-text">
+                当前已有 <Text className="highlight">{avatarCount}</Text> 个分身
+                {maxAvatars === -1 ? (
+                  <Text className="highlight"> · 无限</Text>
+                ) : (
+                  <Text>，还可创建 <Text className="highlight">{maxAvatars - avatarCount}</Text> 个</Text>
+                )}
+              </Text>
+              {!canCreateAvatar && (
+                <View 
+                  className="subscription-upgrade-btn"
+                  onClick={() => navigateTo({ url: '/pages/subscription/index' })}
+                >
+                  <Text className="subscription-upgrade-text">升级订阅以创建更多</Text>
+                  <ChevronRight size={16} color="#fbbf24" />
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* 分身列表 */}
         {avatars.length === 0 ? (
           <View className="empty-section">

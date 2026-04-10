@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, chooseImage, getLocation } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation, navigateTo } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -9,7 +9,7 @@ import {
   Camera, Sparkles, Brain, Palette, Zap, Heart, Target,
   Lightbulb, Shield, Star, ArrowRight, Check, Loader, User,
   Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
-  Moon, Sun, Smile, Bot
+  Moon, Sun, Smile, Bot, ChevronRight
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -81,12 +81,64 @@ export default function AvatarCreatePage() {
   const [appearanceStyle, setAppearanceStyle] = useState<string>('tech')
   const [speakingStyle, setSpeakingStyle] = useState<string>('friendly')
   const [loading, setLoading] = useState(false)
+  const [canCreateAvatar, setCanCreateAvatar] = useState(true)
+  const [createLimitReason, setCreateLimitReason] = useState('')
+  const [avatarCount, setAvatarCount] = useState(0)
+  const [maxAvatars, setMaxAvatars] = useState(1)
+  const [loadingSubscription, setLoadingSubscription] = useState(true)
 
   useEffect(() => {
     if (!isLoggedIn) {
       switchTab({ url: '/pages/social/index' })
+      return
     }
+    
+    // 加载订阅信息
+    loadSubscriptionInfo()
   }, [isLoggedIn])
+
+  const loadSubscriptionInfo = async () => {
+    try {
+      setLoadingSubscription(true)
+      // 获取订阅信息和分身数量
+      const [subscriptionRes, avatarListRes] = await Promise.all([
+        Network.request({ url: '/api/subscription/user' }),
+        Network.request({ url: '/api/avatar/list' })
+      ])
+
+      // 获取当前分身数量
+      const currentCount = avatarListRes.data?.data?.length || 0
+      setAvatarCount(currentCount)
+
+      // 检查订阅权益
+      if (subscriptionRes.data?.data?.plan) {
+        const plan = subscriptionRes.data.data.plan
+        setMaxAvatars(plan.max_avatars)
+        
+        // 检查是否可以创建分身
+        if (plan.max_avatars !== -1 && currentCount >= plan.max_avatars) {
+          setCanCreateAvatar(false)
+          setCreateLimitReason(`当前订阅计划最多支持 ${plan.max_avatars} 个分身，请升级订阅以创建更多分身`)
+        } else {
+          setCanCreateAvatar(true)
+        }
+      } else {
+        // 免费用户最多1个分身
+        setMaxAvatars(1)
+        if (currentCount >= 1) {
+          setCanCreateAvatar(false)
+          setCreateLimitReason('免费用户最多创建 1 个分身，请升级订阅以创建更多分身')
+        } else {
+          setCanCreateAvatar(true)
+        }
+      }
+    } catch (error) {
+      console.error('加载订阅信息失败:', error)
+      setCanCreateAvatar(true) // 加载失败时允许创建，避免阻塞用户
+    } finally {
+      setLoadingSubscription(false)
+    }
+  }
 
   const personalities: PersonalityOption[] = [
     {
@@ -376,10 +428,41 @@ export default function AvatarCreatePage() {
         <Text className="step-desc">AI将深度分析你的照片，为你生成专属分身形象</Text>
       </View>
 
+      {/* 订阅权益提示 */}
+      {!loadingSubscription && (
+        <View className="subscription-info-card">
+          <View className="subscription-info-header">
+            <Crown className="subscription-icon" size={20} color="#fbbf24" />
+            <Text className="subscription-info-title">分身配额</Text>
+          </View>
+          <View className="subscription-info-content">
+            <Text className="subscription-info-text">
+              当前已有 <Text className="highlight">{avatarCount}</Text> 个分身
+              {maxAvatars === -1 ? (
+                <Text className="highlight"> · 无限</Text>
+              ) : (
+                <Text>，还可创建 <Text className="highlight">{maxAvatars - avatarCount}</Text> 个</Text>
+              )}
+            </Text>
+            {!canCreateAvatar && (
+              <View 
+                className="subscription-upgrade-btn"
+                onClick={() => navigateTo({ url: '/pages/subscription/index' })}
+              >
+                <Text className="subscription-upgrade-text">升级订阅以创建更多</Text>
+                <ChevronRight size={16} color="#fbbf24" />
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
       <View className="upload-section">
         <View 
           className={`upload-area ${photoPath ? 'with-photo' : ''}`}
-          onClick={handleChoosePhoto}
+          onClick={canCreateAvatar ? handleChoosePhoto : () => {
+            showToast({ title: createLimitReason, icon: 'none' })
+          }}
         >
           {photoPath ? (
             <Image 
