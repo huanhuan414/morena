@@ -1,5 +1,5 @@
 import { View, Text, ScrollView } from '@tarojs/components'
-import { useLoad, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useLoad, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
@@ -82,20 +82,53 @@ export default function SubscriptionPage() {
     setSelectedPlan(plan)
 
     try {
+      // 获取用户 openid
+      const { code } = await Taro.login()
+      
+      const openidRes = await Network.request({
+        url: '/api/auth/wechat/get-openid',
+        method: 'POST',
+        data: { code }
+      })
+
+      const openid = openidRes.data?.data?.openid
+      if (!openid) {
+        showToast({ title: '获取用户信息失败', icon: 'none' })
+        return
+      }
+
+      // 创建支付订单
       const res = await Network.request({
         url: '/api/subscription/order',
         method: 'POST',
         data: {
           planId: plan.id,
-          paymentMethod: 'wechat'
+          paymentMethod: 'wechat',
+          openid
         }
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '订阅成功！', icon: 'success' })
-        await fetchUserSubscription()
+        const payParams = res.data.data
+
+        // 调用微信支付
+        await Taro.requestPayment({
+          timeStamp: payParams.timeStamp,
+          nonceStr: payParams.nonceStr,
+          package: payParams.package,
+          signType: payParams.signType,
+          paySign: payParams.paySign,
+          success: async () => {
+            showToast({ title: '支付成功！', icon: 'success' })
+            await fetchUserSubscription()
+          },
+          fail: (err) => {
+            console.error('支付失败:', err)
+            showToast({ title: '支付已取消', icon: 'none' })
+          }
+        })
       } else {
-        showToast({ title: res.data?.message || '订阅失败', icon: 'none' })
+        showToast({ title: res.data?.message || '创建订单失败', icon: 'none' })
       }
     } catch (error) {
       console.error('订阅失败:', error)

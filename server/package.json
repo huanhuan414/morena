@@ -22,6 +22,7 @@
     "axios": "^1.15.0",
     "better-sqlite3": "^11.9.1",
     "coze-coding-dev-sdk": "^0.7.16",
+    "crypto": "^1.0.1",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.1",
@@ -31,6 +32,7 @@
     "puppeteer": "^24.40.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
+    "wechatpay-node-v3": "^2.2.1",
     "zod": "^4.3.5"
   },
   "devDependencies": {

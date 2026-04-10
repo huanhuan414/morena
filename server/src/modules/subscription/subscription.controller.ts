@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Headers, Param, Body } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { WechatPayService } from '../payment/wechat-pay.service'
 
 @Controller('subscription')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly wechatPayService: WechatPayService
+  ) {}
 
   /**
    * 获取所有订阅计划
@@ -112,15 +116,15 @@ export class SubscriptionController {
   }
 
   /**
-   * 创建订阅订单（模拟支付流程）
+   * 创建订阅订单（支持微信支付）
    */
   @Post('order')
   async createSubscriptionOrder(
     @Headers('x-user-id') userId: string,
-    @Body() body: { planId: string, paymentMethod?: string }
+    @Body() body: { planId: string, paymentMethod?: string, openid?: string }
   ) {
     try {
-      const { planId, paymentMethod } = body
+      const { planId, paymentMethod, openid } = body
 
       const client = getSupabaseClient()
 
@@ -139,60 +143,153 @@ export class SubscriptionController {
         }
       }
 
-      // 计算结束日期
-      const startDate = new Date()
-      const endDate = new Date(startDate)
-      endDate.setDate(endDate.getDate() + plan.duration_days)
+      // 免费订阅直接激活
+      if (plan.price === 0) {
+        const startDate = new Date()
+        const endDate = new Date(startDate)
+        endDate.setDate(endDate.getDate() + plan.duration_days)
 
-      // 创建订阅记录
-      const { data: subscription, error: subError } = await client
-        .from('user_subscriptions')
-        .insert({
-          user_id: userId,
-          plan_id: planId,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: 'active',
-          payment_id: `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          payment_method: paymentMethod || 'wechat',
-          auto_renew: false
-        })
-        .select()
-        .single()
+        const { data: subscription, error: subError } = await client
+          .from('user_subscriptions')
+          .insert({
+            user_id: userId,
+            plan_id: planId,
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            status: 'active',
+            payment_id: `FREE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            payment_method: 'free',
+            auto_renew: false
+          })
+          .select()
+          .single()
 
-      if (subError) {
-        throw new Error(`创建订阅失败: ${subError.message}`)
+        if (subError) {
+          throw new Error(`创建订阅失败: ${subError.message}`)
+        }
+
+        // 更新用户所有分身的订阅信息
+        const { data: avatars } = await client
+          .from('avatars')
+          .select('id')
+          .eq('user_id', userId)
+
+        if (avatars) {
+          for (const avatar of avatars) {
+            await this.subscriptionService.updateAvatarSubscription(avatar.id, userId)
+          }
+        }
+
+        return {
+          code: 200,
+          data: {
+            subscriptionId: subscription.id,
+            plan: plan.name,
+            price: plan.price,
+            startDate: subscription.start_date,
+            endDate: subscription.end_date
+          },
+          message: '订阅成功'
+        }
       }
 
-      // 更新用户所有分身的订阅信息
-      const { data: avatars } = await client
-        .from('avatars')
-        .select('id')
-        .eq('user_id', userId)
+      // 付费订阅需要微信支付
+      if (paymentMethod === 'wechat') {
+        if (!openid) {
+          return {
+            code: 400,
+            message: '缺少用户openid',
+            data: null
+          }
+        }
 
-      if (avatars) {
-        for (const avatar of avatars) {
-          await this.subscriptionService.updateAvatarSubscription(avatar.id, userId)
+        // 生成商户订单号
+        const outTradeNo = `SUB_${userId}_${Date.now()}`
+
+        // 创建统一下单（金额单位：分）
+        const totalAmount = Math.round(plan.price * 100) // 元转分
+
+        const orderResult = await this.wechatPayService.createOrder(
+          `订阅-${plan.name}`,
+          outTradeNo,
+          totalAmount,
+          openid
+        )
+
+        console.log('[SubscriptionController] 微信支付订单创建成功:', orderResult)
+
+        if (orderResult.prepay_id) {
+          // 生成小程序支付参数
+          const payParams = this.generateMiniProgramPayParams(orderResult.prepay_id)
+
+          // 创建支付订单记录
+          const { data: order, error: orderError } = await client
+            .from('payment_orders')
+            .insert({
+              user_id: userId,
+              plan_id: planId,
+              out_trade_no: outTradeNo,
+              transaction_id: orderResult.prepay_id,
+              total_amount: totalAmount,
+              status: 'pending',
+              payment_method: 'wechat',
+              payment_params: payParams
+            })
+            .select()
+            .single()
+
+          if (orderError) {
+            console.error('[SubscriptionController] 创建支付订单记录失败:', orderError)
+            throw new Error('创建支付订单记录失败')
+          }
+
+          return {
+            code: 200,
+            data: {
+              orderId: order.id,
+              outTradeNo,
+              prepayId: orderResult.prepay_id,
+              ...payParams
+            },
+            message: '订单创建成功'
+          }
+        } else {
+          throw new Error('微信支付订单创建失败')
         }
       }
 
       return {
-        code: 200,
-        data: {
-          subscriptionId: subscription.id,
-          plan: plan.name,
-          price: plan.price,
-          startDate: subscription.start_date,
-          endDate: subscription.end_date
-        },
-        message: '订阅成功'
+        code: 400,
+        message: '暂不支持该支付方式',
+        data: null
       }
     } catch (error: any) {
+      console.error('[SubscriptionController] 创建订阅订单失败:', error)
       return {
         code: 500,
         message: error.message || '创建订阅失败',
         data: null
       }
+    }
+  }
+
+  /**
+   * 生成小程序支付参数
+   */
+  private generateMiniProgramPayParams(prepayId: string): any {
+    const appId = process.env.WECHAT_PAY_APPID || ''
+    const timeStamp = Math.floor(Date.now() / 1000).toString()
+    const nonceStr = Math.random().toString(36).substr(2, 32)
+    const packageStr = `prepay_id=${prepayId}`
+
+    return {
+      appId,
+      timeStamp,
+      nonceStr,
+      package: packageStr,
+      signType: 'RSA',
+      // paySign 需要使用商户私钥签名，这里先返回占位符
+      paySign: 'TODO_USE_WECHAT_PAY_SDK_TO_SIGN'
     }
   }
 
