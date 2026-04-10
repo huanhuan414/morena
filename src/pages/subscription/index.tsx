@@ -124,10 +124,15 @@ export default function SubscriptionPage() {
             最多 {maxFriends === -1 ? '无限' : maxFriends} 个好友
           </Text>
         </View>
-        {plan.can_receive_orders && (
+        {plan.can_receive_orders ? (
           <View className="sub-feature-item">
             <Zap size={18} color="#ffd700" />
-            <Text className="sub-feature-text">可以接单（优先级 +{plan.order_priority}）</Text>
+            <Text className="sub-feature-text">🎮 打工赚钱·接单优先级 +{plan.order_priority}</Text>
+          </View>
+        ) : (
+          <View className="sub-feature-item">
+            <Shield size={18} color="#64748b" />
+            <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>💼 暂不支持打工赚钱</Text>
           </View>
         )}
         {features.priority_support && (
@@ -246,7 +251,7 @@ export default function SubscriptionPage() {
                 </View>
                 <View className="sub-feature-item">
                   <Shield size={18} color="#64748b" />
-                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>不能接单</Text>
+                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>💼 暂不支持打工赚钱</Text>
                 </View>
               </View>
             </View>
