@@ -229,6 +229,8 @@ export default function MindChatPage() {
   const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
   
   // 记录发送消息前的 messageCount，用于检测学习进度
+  // 初始加载标记：是否已经加载过学习数据（用于区分首次加载和对话学习）
+  const isInitialLoadRef = useRef(true)
   const messageCountBeforeSendRef = useRef<number>(0)
   
   // 学习详情弹窗
@@ -560,22 +562,31 @@ export default function MindChatPage() {
             userIdentity: learning.userIdentity
           }
 
+          // 检查是否是首次加载
+          const isInitialLoad = isInitialLoadRef.current
+          if (isInitialLoad) {
+            isInitialLoadRef.current = false
+          }
+
           // 使用 messageCountBeforeSendRef 来检测变化（发送消息前记录的值）
           const oldMessageCount = messageCountBeforeSendRef.current
           const oldStats = learningStats
 
           // 检测是否有新内容被学习到
-          // 比较新旧数据的各个字段，判断是否有任何变化
-          const identityChanged = !oldStats.userIdentity || !newStats.userIdentity ||
+          // 首次加载不触发特效，只在对话后触发
+          const messageCountIncreased = !isInitialLoad && newStats.messageCount > oldMessageCount
+          const identityChanged = !isInitialLoad && (
+            !oldStats.userIdentity || !newStats.userIdentity ||
             JSON.stringify(oldStats.userIdentity) !== JSON.stringify(newStats.userIdentity)
-
-          const interestsChanged = !oldStats.interests || !newStats.interests ||
+          )
+          const interestsChanged = !isInitialLoad && (
+            !oldStats.interests || !newStats.interests ||
             JSON.stringify(oldStats.interests) !== JSON.stringify(newStats.interests)
-
-          const phrasesChanged = !oldStats.commonPhrases || !newStats.commonPhrases ||
+          )
+          const phrasesChanged = !isInitialLoad && (
+            !oldStats.commonPhrases || !newStats.commonPhrases ||
             JSON.stringify(oldStats.commonPhrases) !== JSON.stringify(newStats.commonPhrases)
-
-          const messageCountIncreased = newStats.messageCount > oldMessageCount
+          )
 
           // 只要满足以下任一条件，就触发特效：
           // 1. 消息数量增加
@@ -585,6 +596,7 @@ export default function MindChatPage() {
           const hasNewLearning = messageCountIncreased || identityChanged || interestsChanged || phrasesChanged
 
           console.log('[MindChat] 学习数据比较:', {
+            isInitialLoad,
             oldMessageCount,
             newMessageCount: newStats.messageCount,
             messageCountIncreased,
