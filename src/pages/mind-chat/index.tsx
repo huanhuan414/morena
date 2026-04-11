@@ -147,7 +147,8 @@ interface LearningStats {
   }
 }
 
-// 工具名称映射（用于友好展示）
+// 工具名称映射（用于友好展示）- 已废弃，保留用于兼容
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'write_wechat_mp_article': '撰写公众号图文',
   'write_xiaohongshu_note': '撰写小红书笔记',
@@ -243,13 +244,16 @@ export default function MindChatPage() {
   // 学习详情弹窗
   const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
   
-  // Agent 实时状态（每个分身都是 Agent）
+  // Agent 实时状态（每个分身都是独立智能体）
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
-  
-  // 轮询定时器
+
+  // 旧的轮询定时器（已废弃，保留用于兼容）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProgressCountRef = useRef<number>(0)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const currentTaskIdRef = useRef<string | null>(null)
   
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
@@ -333,51 +337,75 @@ export default function MindChatPage() {
       }, 500)
     }
   })
-  
-  // 当前任务的 taskId（用于轮询时传递）
-  const currentTaskIdRef = useRef<string | null>(null)
-  
   // 组件卸载时停止轮询
   useEffect(() => {
     return () => {
-      stopProgressPolling()
-      stopResultPolling()
+      // 旧的轮询机制已废弃，保留注释以防需要回退
+      // stopProgressPolling()
+      // stopResultPolling()
     }
   }, [])
-  
+
   /**
-   * 开始轮询进度
+   * 开始轮询进度（已废弃 - 新 Avatar Agent 不需要轮询）
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const startProgressPolling = (taskId: string) => {
+    console.log('[MindChat] startProgressPolling 已废弃，新 Avatar Agent 不需要轮询')
+    return
+    /*
     // 先清除之前的定时器
     stopProgressPolling()
     currentTaskIdRef.current = taskId
     lastProgressCountRef.current = 0
-    
+
     // 立即查询一次
     fetchProgress(taskId)
-    
+
     // 每 500ms 轮询一次
     pollingTimerRef.current = setInterval(() => {
       fetchProgress(taskId)
     }, 500)
+    */
   }
-  
+
   /**
-   * 停止轮询进度
+   * 停止轮询进度（已废弃）
    */
   const stopProgressPolling = () => {
+    console.log('[MindChat] stopProgressPolling 已废弃')
+    return
+    /*
     if (pollingTimerRef.current) {
       clearInterval(pollingTimerRef.current)
       pollingTimerRef.current = null
     }
     currentTaskIdRef.current = null
+    */
+  }
+
+  /**
+   * 停止结果轮询（已废弃）
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const stopResultPolling = () => {
+    console.log('[MindChat] stopResultPolling 已废弃')
+    return
+    /*
+    if (resultPollingTimerRef.current) {
+      clearInterval(resultPollingTimerRef.current)
+      resultPollingTimerRef.current = null
+    }
+    */
   }
   
   /**
-   * 获取进度（指定 taskId）
+   * 获取进度（已废弃 - 新 Avatar Agent 不需要轮询）
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fetchProgress = async (taskId: string) => {
+    console.log('[MindChat] fetchProgress 已废弃')
+    return
     try {
       const res = await Network.request({ 
         url: `/api/agent/progress?taskId=${taskId}` 
@@ -890,235 +918,93 @@ export default function MindChatPage() {
     }, 50)
 
     try {
-      // 所有消息都通过 Agent 处理，Agent 会自动判断是简单对话还是需要执行工具
+      // 所有消息都通过新的 Avatar Agent 处理（独立智能体模式）
       await executeAsAgent(messageText)
+      scrollToBottom()
     } catch (error) {
-      console.error('Agent 执行失败:', error)
-      // 降级为普通对话
+      console.error('[MindChat] Avatar Agent 执行失败:', error)
+      // 降级为普通对话（暂不修改，保持兼容）
       await fallbackToNormalChat(messageText)
+    } finally {
+      setLoading(false)
+      loadingRef.current = false
     }
   }
 
-  // Agent 执行 - 纯轮询模式（解决 HTTP 超时问题）
+  // 使用新的 Avatar Agent 系统（独立智能体）
   const executeAsAgent = async (content: string) => {
     try {
-      // 先停止之前的轮询，避免旧任务干扰
-      stopProgressPolling()
-      stopResultPolling()
-      setAgentSteps([])
-      lastProgressCountRef.current = 0
-      
-      console.log('[MindChat] 开始执行 Agent 任务:', content)
-      console.log('[MindChat] 当前环境:', Taro.getEnv())
+      console.log('[MindChat] 使用 Avatar Agent 系统，独立智能体模式')
       console.log('[MindChat] 分身信息:', avatar)
       console.log('[MindChat] 会话信息:', conversation)
-      
-      // 发送 HTTP 请求（异步模式，立即返回 taskId）
-      console.log('[MindChat] 准备发送请求...')
+
+      const userStore = useUserStore.getState()
+      const userId = userStore.userInfo?.id
+
+      if (!avatar?.id) {
+        throw new Error('分身信息不存在')
+      }
+
+      if (!userId) {
+        throw new Error('用户信息不存在')
+      }
+
+      setCurrentStatus('思考中...')
+
+      // 调用新的 Avatar Agent API
       const res = await Network.request({
-        url: '/api/agent/execute',
+        url: `/api/avatar-agent/${avatar.id}/chat`,
         method: 'POST',
         data: {
-          avatar_id: avatar?.id,
-          task_description: content,
-          conversation_id: conversation?.id
-        }
-      })
-      
-      console.log('[MindChat] 请求完成，statusCode:', res.statusCode)
-      console.log('[MindChat] 任务已提交，完整响应:', JSON.stringify(res))
-      console.log('[MindChat] 响应数据:', JSON.stringify(res.data))
-      
-      // 检查 HTTP 状态码
-      if (res.statusCode !== 200) {
-        console.error('[MindChat] HTTP 错误:', res.statusCode)
-        throw new Error(`HTTP 错误: ${res.statusCode}`)
-      }
-      
-      // 兼容不同的响应结构
-      const responseData = res.data?.data || res.data
-      const taskId = responseData?.taskId || responseData?.task_id
-      
-      console.log('[MindChat] 解析的 taskId:', taskId)
-      
-      if (!taskId) {
-        console.error('[MindChat] taskId 获取失败，响应结构:', {
-          'res.data': res.data,
-          'res.data?.data': res.data?.data,
-          'res.statusCode': res.statusCode
-        })
-        throw new Error('任务提交失败：无法获取 taskId')
-      }
-      
-      // 启动结果轮询
-      startResultPolling(taskId, content)
-      
-    } catch (err: any) {
-      console.error('[MindChat] Agent 执行失败:', err)
-      console.error('[MindChat] 错误详情:', {
-        message: err.message,
-        errMsg: err.errMsg,
-        stack: err.stack,
-        name: err.name
-      })
-      setLoading(false)
-      loadingRef.current = false
-      setCurrentStatus('')
-      
-      // 显示更具体的错误信息
-      const errorMsg = err.errMsg || err.message || '执行失败，请重试'
-      showToast({ title: errorMsg, icon: 'none', duration: 3000 })
-      
-      // 抛出异常，让外层处理
-      throw err
-    }
-  }
-  
-  // 结果轮询定时器
-  const resultPollingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
-  /**
-   * 启动结果轮询
-   */
-  const startResultPolling = (taskId: string, originalContent: string) => {
-    // 先启动进度轮询（传递 taskId，确保只获取当前任务的进度）
-    startProgressPolling(taskId)
-    
-    // 结果轮询
-    const pollResult = async () => {
-      try {
-        const res = await Network.request({
-          url: `/api/agent/result/${taskId}`
-        })
-        
-        const code = res.data?.code
-        
-        // 任务不存在或已过期
-        if (code === 404) {
-          console.log('[MindChat] 任务不存在或已过期:', taskId)
-          stopResultPolling()
-          stopProgressPolling()
-          setLoading(false)
-          loadingRef.current = false
-          setCurrentStatus('')
-          showToast({ title: '任务已过期，请重新提交', icon: 'none' })
-          return
-        }
-        
-        if (code === 200) {
-          const taskResult = res.data?.data || {}
-          
-          // 任务完成
-          if (taskResult.status === 'completed') {
-            stopResultPolling()
-            stopProgressPolling()
-            handleTaskComplete(taskResult.result, originalContent)
-          }
-          // 任务失败
-          else if (taskResult.status === 'failed') {
-            stopResultPolling()
-            stopProgressPolling()
-            setLoading(false)
-            loadingRef.current = false
-            setCurrentStatus('')
-            showToast({ title: taskResult.error || '执行失败', icon: 'none' })
-          }
-        }
-      } catch (err) {
-        console.error('[MindChat] 获取任务结果失败:', err)
-        // 网络错误时继续轮询，不中断
-      }
-    }
-    
-    // 每 1 秒轮询一次结果
-    resultPollingTimerRef.current = setInterval(pollResult, 1000)
-  }
-  
-  /**
-   * 停止结果轮询
-   */
-  const stopResultPolling = () => {
-    if (resultPollingTimerRef.current) {
-      clearInterval(resultPollingTimerRef.current)
-      resultPollingTimerRef.current = null
-    }
-  }
-  
-  /**
-   * 处理任务完成
-   */
-  const handleTaskComplete = (result: AgentResult, originalContent: string) => {
-    console.log('[MindChat] 任务完成:', result)
-    
-    if (!result) {
-      setLoading(false)
-      loadingRef.current = false
-      setCurrentStatus('')
-      showToast({ title: '执行结果为空', icon: 'none' })
-      return
-    }
-    
-    // 从轮询结果中获取步骤
-    const steps: AgentStepDisplay[] = agentSteps.length > 0 
-      ? agentSteps 
-      : (result.steps || [])
-          .filter(s => s.action)
-          .map(s => ({
-            action: s.action || '',
-            displayName: TOOL_DISPLAY_NAMES[s.action || ''] || s.action || '执行操作',
-            // success 字段可能在 observation 顶层，也可能在 observation.data 里面
-            status: (s.observation?.success ?? s.observation?.data?.success ?? false) ? 'success' : 'failed',
-            message: s.observation?.message || s.observation?.data?.message || s.observation?.error || ''
+          message: content,
+          userId: userId,
+          conversationId: conversation?.id,
+          conversationHistory: messages.slice(-5).map(msg => ({
+            role: msg.role,
+            content: msg.content
           }))
-    
-    // 提取媒体内容
-    const media: MessageMedia[] = []
-    ;(result.steps || []).forEach(step => {
-      if (step.observation?.data) {
-        const data = step.observation.data
-        console.log('[MindChat] 步骤数据:', step.action, data)
-        
-        // 文章内容
-        if (data.content && data.title) {
-          media.push({
-            type: 'article',
-            title: data.title,
-            content: data.content,
-            coverImage: data.cover_image_url
-          })
         }
-        
-        // 图片
-        if (data.image_urls && Array.isArray(data.image_urls) && data.image_urls.length > 0) {
-          console.log('[MindChat] 提取图片:', data.image_urls)
-          data.image_urls.forEach((url: string) => {
-            if (url && typeof url === 'string') {
-              media.push({ type: 'image', url })
-            }
-          })
-        }
-        
-        // 封面图
-        if (data.cover_image_url && !data.content) {
-          media.push({ type: 'image', url: data.cover_image_url })
-        }
-        
-        // 视频
-        if (data.video_url) {
-          media.push({ type: 'video', url: data.video_url })
+      })
+
+      console.log('[MindChat] Avatar Agent 响应:', res.data)
+
+      if (res.data?.code !== 200) {
+        throw new Error(res.data?.message || 'Avatar Agent 调用失败')
+      }
+
+      const responseData = res.data.data
+
+      // 创建助手消息
+      const assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: responseData.content || responseData.message,
+        created_at: new Date().toISOString(),
+        metadata: {
+          agent_result: {
+            success: true,
+            finalAnswer: responseData.content,
+            steps: [],
+            requiresConfig: false
+          }
         }
       }
-    })
-    
-    console.log('[MindChat] 最终提取的媒体内容:', media)
-    
-    processAgentResult(result, media, steps, originalContent)
+
+      setMessages(prev => [...prev, assistantMessage])
+      setCurrentStatus('完成')
+
+      return responseData
+    } catch (error: any) {
+      console.error('[MindChat] Avatar Agent 执行失败:', error)
+      throw error
+    }
   }
-  
-  // 处理 Agent 执行结果
+
+  // 处理 Agent 执行结果（已废弃 - 保留用于兼容）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const processAgentResult = (
-    result: AgentResult, 
-    media: MessageMedia[], 
+    result: AgentResult,
+    media: MessageMedia[],
     steps: AgentStepDisplay[],
     _originalContent: string
   ) => {
