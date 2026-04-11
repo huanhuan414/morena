@@ -9,6 +9,7 @@ import { UserModule } from './modules/user/user.module';
 import { TaskModule } from './modules/task/task.module';
 import { SocialModule } from './modules/social/social.module';
 import { AgentModule } from './modules/agent/agent.module';
+import { AvatarAgentModule } from './modules/avatar-agent/avatar-agent.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { NotificationModule } from './modules/notification/notification.module';
@@ -28,6 +29,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     TaskModule,
     SocialModule,
     AgentModule,
+    AvatarAgentModule,
     AudioModule,
     NotificationModule,
     OrderDispatchModule,

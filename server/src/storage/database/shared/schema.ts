@@ -1,4 +1,4 @@
-import { pgTable, varchar, serial, timestamp, boolean, integer, text, jsonb, numeric, index } from "drizzle-orm/pg-core"
+import { pgTable, varchar, serial, timestamp, boolean, integer, text, jsonb, numeric, index, unique } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { createSchemaFactory } from "drizzle-zod"
 import { z } from "zod"
@@ -492,6 +492,95 @@ export const insertOrderSchema = createCoercedInsertSchema(orders)
 export const insertAvatarAccountSchema = createCoercedInsertSchema(avatarAccounts)
 export const insertOrderResultSchema = createCoercedInsertSchema(orderResults)
 
+// 分身长期记忆表
+export const avatarMemories = pgTable(
+  "avatar_memories",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    memory_type: varchar("memory_type", { length: 50 }).notNull(), // conversation, learning, preference, experience
+    content: text("content").notNull(),
+    embedding: jsonb("embedding"), // 向量存储（JSON 格式存储数组）
+    metadata: jsonb("metadata").default("{}"),
+    access_count: integer("access_count").default(0).notNull(),
+    last_accessed_at: timestamp("last_accessed_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("avatar_memories_avatar_id_idx").on(table.avatar_id),
+    index("avatar_memories_memory_type_idx").on(table.memory_type),
+  ]
+)
+
+// 分身对话上下文表
+export const avatarContexts = pgTable(
+  "avatar_contexts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    context_type: varchar("context_type", { length: 50 }).notNull(), // current, recent, important
+    context_data: jsonb("context_data").notNull(),
+    priority: integer("priority").default(0).notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("avatar_contexts_avatar_id_idx").on(table.avatar_id),
+    index("avatar_contexts_context_type_idx").on(table.context_type),
+    index("avatar_contexts_priority_idx").on(table.priority),
+  ]
+)
+
+// 分身 Agent 配置表
+export const avatarAgentConfigs = pgTable(
+  "avatar_agent_configs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    system_prompt: text("system_prompt").notNull(),
+    role_prompt: text("role_prompt"),
+    temperature: numeric("temperature", { precision: 3, scale: 2 }).default("0.7"),
+    max_tokens: integer("max_tokens").default(2000),
+    enabled_tools: jsonb("enabled_tools").default("[]").notNull(),
+    knowledge_bases: jsonb("knowledge_bases").default("[]").notNull(),
+    reasoning_mode: varchar("reasoning_mode", { length: 50 }).default("react").notNull(), // react, chain_of_thought, few_shot
+    learning_enabled: boolean("learning_enabled").default(true).notNull(),
+    memory_config: jsonb("memory_config").default("{}").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("avatar_agent_configs_avatar_id_unique").on(table.avatar_id)
+  ]
+)
+
+// 分身学习记录表
+export const avatarLearningRecords = pgTable(
+  "avatar_learning_records",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    learning_type: varchar("learning_type", { length: 50 }).notNull(), // feedback, observation, interaction, task_completion
+    input_data: jsonb("input_data").notNull(),
+    output_data: jsonb("output_data").notNull(),
+    feedback_score: integer("feedback_score"), // 1-5
+    learned_knowledge: text("learned_knowledge"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("avatar_learning_records_avatar_id_idx").on(table.avatar_id),
+    index("avatar_learning_records_learning_type_idx").on(table.learning_type),
+    index("avatar_learning_records_created_at_idx").on(table.created_at),
+  ]
+)
+
+export const insertAvatarMemorySchema = createCoercedInsertSchema(avatarMemories)
+export const insertAvatarContextSchema = createCoercedInsertSchema(avatarContexts)
+export const insertAvatarAgentConfigSchema = createCoercedInsertSchema(avatarAgentConfigs)
+export const insertAvatarLearningRecordSchema = createCoercedInsertSchema(avatarLearningRecords)
+
 // 类型导出
 export type User = typeof users.$inferSelect
 export type InsertUser = z.infer<typeof insertUserSchema>
@@ -517,3 +606,11 @@ export type AvatarAccount = typeof avatarAccounts.$inferSelect
 export type InsertAvatarAccount = z.infer<typeof insertAvatarAccountSchema>
 export type OrderResult = typeof orderResults.$inferSelect
 export type InsertOrderResult = z.infer<typeof insertOrderResultSchema>
+export type AvatarMemory = typeof avatarMemories.$inferSelect
+export type InsertAvatarMemory = z.infer<typeof insertAvatarMemorySchema>
+export type AvatarContext = typeof avatarContexts.$inferSelect
+export type InsertAvatarContext = z.infer<typeof insertAvatarContextSchema>
+export type AvatarAgentConfig = typeof avatarAgentConfigs.$inferSelect
+export type InsertAvatarAgentConfig = z.infer<typeof insertAvatarAgentConfigSchema>
+export type AvatarLearningRecord = typeof avatarLearningRecords.$inferSelect
+export type InsertAvatarLearningRecord = z.infer<typeof insertAvatarLearningRecordSchema>
