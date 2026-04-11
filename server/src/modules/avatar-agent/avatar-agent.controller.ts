@@ -59,13 +59,15 @@ export class AvatarAgentController {
     @Param('avatarId') avatarId: string,
     @Body() body: {
       message: string
-      userId?: string
+      userId: string
+      conversationId?: string
       conversationHistory?: ConversationMessage[]
     }
   ) {
     try {
       const thought = await this.agentService.think(avatarId, body.message, {
         userId: body.userId,
+        conversationId: body.conversationId,
         history: body.conversationHistory
       })
 

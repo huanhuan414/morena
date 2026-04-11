@@ -42,7 +42,7 @@ export class AvatarLearningService {
             requires_tool: thought.requiresTool
           },
           output_data: result,
-          feedback_score,
+          feedback_score: feedbackScore,
           learned_knowledge: result.success
             ? `成功执行任务: ${thought.content}`
             : `任务执行失败: ${result.error}`
@@ -168,7 +168,7 @@ export class AvatarLearningService {
    * 分析用户偏好
    */
   private analyzeUserPreferences(interactions: Interaction[]): any[] {
-    const preferences = []
+    const preferences: any[] = []
 
     // 分析反馈模式
     const positiveFeedback = interactions.filter(i => i.feedback && i.feedback >= 4)

@@ -17,6 +17,8 @@ import {
 } from './avatar-agent.types'
 import { AvatarMemoryService } from './avatar-memory.service'
 import { AvatarLearningService } from './avatar-learning.service'
+import { AvatarToolRegistry } from './tools/tool-registry'
+import { ToolContext } from './tools/tool.interface'
 
 @Injectable()
 export class AvatarAgentService {
@@ -26,7 +28,8 @@ export class AvatarAgentService {
   constructor(
     private readonly memoryService: AvatarMemoryService,
     @Inject(forwardRef(() => AvatarLearningService))
-    private readonly learningService: AvatarLearningService
+    private readonly learningService: AvatarLearningService,
+    private readonly toolRegistry: AvatarToolRegistry
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -272,7 +275,7 @@ export class AvatarAgentService {
     relevantMemories?: any[],
     config?: AvatarAgentConfig
   ): Promise<string> {
-    const parts = []
+    const parts: string[] = []
 
     // 系统提示词
     if (config?.systemPrompt) {
@@ -283,6 +286,26 @@ export class AvatarAgentService {
     if (config?.rolePrompt) {
       parts.push(`【角色设定】\n${config.rolePrompt}`)
     }
+
+    // 可用工具列表
+    const toolsDescription = this.toolRegistry.getToolsDescription()
+    parts.push(`【可用工具】\n${toolsDescription}`)
+
+    // 工具使用指南
+    parts.push(`【工具使用指南】
+当用户请求需要使用工具时，请：
+1. 识别用户意图，判断是否需要工具
+2. 如果需要工具，从【可用工具】中选择最合适的工具
+3. 填写工具所需的参数（注意必填和可选参数）
+4. 在回复中包含以下字段：
+   - Requires Tool: true
+   - Tool Name: [工具名称]
+   - Parameters: [JSON格式的参数]
+
+注意：
+- 只在真正需要时才使用工具
+- 确保参数符合工具的要求
+- 如果工具执行失败，请尝试分析原因并告知用户`)
 
     // 对话历史
     if (context?.history && context.history.length > 0) {
@@ -439,8 +462,7 @@ Confidence: [置信度 0-1]`
         [{ role: 'user', content: prompt }],
         {
           model: 'doubao-seed-1-8-251228',
-          temperature: config.temperature,
-          maxTokens: config.maxTokens
+          temperature: config.temperature
         }
       )
 
@@ -476,18 +498,24 @@ Confidence: [置信度 0-1]`
     try {
       this.logger.log(`Executing tool: ${toolName} with params:`, params)
 
-      // TODO: 实现实际的工具调用逻辑
-      // 目前返回模拟结果
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 构建工具上下文
+      const toolContext: ToolContext = {
+        avatarId,
+        userId: context?.userId || '',
+        conversationId: context?.conversationId,
+        metadata: context?.metadata
+      }
 
+      // 使用工具注册表执行工具
+      const result = await this.toolRegistry.executeTool(toolName, params, toolContext)
+
+      // 转换为 AvatarActionResult 格式
       return {
-        success: true,
-        toolName,
-        data: {
-          message: `工具 ${toolName} 执行成功`,
-          result: params
-        },
-        executionTime: 500
+        success: result.success,
+        toolName: result.toolName,
+        data: result.data,
+        error: result.error,
+        executionTime: result.executionTime
       }
     } catch (error) {
       this.logger.error(`Error executing tool ${toolName}:`, error)

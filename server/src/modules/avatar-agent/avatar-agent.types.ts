@@ -4,6 +4,7 @@
 
 export interface AvatarContext {
   userId: string
+  conversationId?: string
   history?: ConversationMessage[]
   currentTask?: string
   metadata?: Record<string, any>
