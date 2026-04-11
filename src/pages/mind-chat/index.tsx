@@ -1569,6 +1569,17 @@ export default function MindChatPage() {
 
   // 渲染消息内容（支持富媒体）
   const renderMessageContent = (msg: Message) => {
+    // 检测分身列表数据
+    const hasAvatarList = (() => {
+      if (msg.metadata?.agent_result?.steps) {
+        const steps = msg.metadata.agent_result.steps || []
+        return steps.some((step: ReActStep) =>
+          step.action === 'app_list_avatars' && step.observation?.data?.avatars
+        )
+      }
+      return false
+    })()
+
     return (
       <View className="message-content-wrapper">
         {/* Agent 执行步骤展示 */}
@@ -1588,6 +1599,65 @@ export default function MindChatPage() {
             ))}
           </View>
         )}
+
+        {/* 分身列表卡片展示 */}
+        {hasAvatarList && (() => {
+          const steps = msg.metadata?.agent_result?.steps || []
+          const listStep = steps.find((step: ReActStep) =>
+            step.action === 'app_list_avatars' && step.observation?.data?.avatars
+          )
+          const avatarList = listStep?.observation?.data?.avatars || []
+
+          if (avatarList.length === 0) {
+            return (
+              <View className="avatar-list-empty">
+                <Text className="empty-text">暂无分身，快去创建一个吧！</Text>
+              </View>
+            )
+          }
+
+          return (
+            <View className="avatar-list-cards">
+              {avatarList.map((item: any) => (
+                <View
+                  key={item.id}
+                  className="avatar-card"
+                  onClick={() => {
+                    Taro.navigateTo({
+                      url: `/pages/avatar-profile/index?id=${item.id}`
+                    })
+                  }}
+                >
+                  <View className="avatar-card-header">
+                    <View className="avatar-card-avatar">
+                      {item.avatar_url ? (
+                        <Image src={item.avatar_url} className="avatar-card-img" mode="aspectFill" />
+                      ) : (
+                        <Sparkles size={24} color="#00f5ff" />
+                      )}
+                    </View>
+                    <View className="avatar-card-info">
+                      <Text className="avatar-card-name">{item.name}</Text>
+                      <View className="avatar-card-tags">
+                        <Text className="avatar-card-level">Lv.{item.level}</Text>
+                        {item.is_active && (
+                          <Text className="avatar-card-status">活跃</Text>
+                        )}
+                        {item.is_hosted && (
+                          <Text className="avatar-card-hosted">托管中</Text>
+                        )}
+                      </View>
+                    </View>
+                    <ChevronDown size={16} color="rgba(255,255,255,0.4)" />
+                  </View>
+                  {item.personality && (
+                    <Text className="avatar-card-personality">{item.personality}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )
+        })()}
         
         {/* 文本内容 */}
         <Text className="message-text">{msg.content}</Text>
