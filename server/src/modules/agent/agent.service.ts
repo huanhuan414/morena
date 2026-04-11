@@ -852,7 +852,7 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
    - 示例："找50个分身，做50张海报" 包含两个任务：【找分身】和【做海报】
    - 示例："帮我生成海报，发布到小红书" 包含两个任务：【生成海报】和【发布小红书】
    - 必须先分析指令中的所有子任务，然后按顺序逐个执行
-   - 如果包含"找分身"、"分配订单"、"添加好友"等内部功能操作，优先执行这些操作
+   - 如果包含"查看分身"、"找分身"、"添加好友"等内部功能操作，优先执行这些操作
 
 2. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"等创作类任务时，才调用对应的工具。
 3. 对于普通对话、问候、咨询、关注、点赞等社交互动，直接用Final Answer回复，不要调用任何工具。
@@ -861,9 +861,9 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
 【小程序内部功能】
 当用户指令涉及以下关键词时，必须优先调用对应的小程序内部功能工具：
-- "找分身"、"分配订单"、"接单" → 使用 app_assign_order 工具
+- "分配订单"、"派单"、"接单"（不包含"查看"或"寻找"时） → 使用 app_assign_order 工具
+- "找分身"、"寻找分身"、"查看分身"、"我的分身" → 使用 app_list_avatars 工具
 - "添加好友"、"交朋友" → 使用 app_add_friend 工具
-- "查看分身"、"我的分身" → 使用 app_list_avatars 工具
 - "订阅"、"升级"、"开通套餐" → 使用 app_subscribe 或 app_get_subscription 工具
 - "创建任务"、"发布任务" → 使用 app_create_task 工具
 - "查看订单"、"我的订单" → 使用 app_list_tasks 工具
@@ -908,8 +908,9 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
     }
 
     // 优先级最高：小程序内部功能任务（使用 if-else 确保只匹配一个）
-    if (lowerTask.match(/找.*分身|分配.*分身|接单|分配订单|派单|找人/)) {
-      hints.push(`【任务解析】这是一个订单分配/找分身任务：
+    // 注意：找分身/分配订单任务需要明确是"分配"场景，否则默认为查看分身列表
+    if (lowerTask.match(/分配.*订单|派单|接单|分配任务|派任务/) && !lowerTask.match(/查看|寻找|找分身列表|我的分身/)) {
+      hints.push(`【任务解析】这是一个订单分配/派单任务：
 请使用 app_assign_order 工具为订单分配合适的分身。
 参数示例：{ "title": "任务标题", "description": "任务描述", "required_count": 需要的分身数量 }
 执行步骤：
@@ -917,16 +918,17 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 2. 如果还需要其他操作（如生成海报），继续执行后续步骤`)
       return hints.join('\n\n')
     }
+    // "找分身"、"寻找分身"等关键词优先映射到查看分身列表，而不是分配订单
+    else if (lowerTask.match(/找.*分身|寻找.*分身|我的.*分身|分身.*列表|列表.*分身|分身.*信息|当前.*分身|分身.*详情/)) {
+      hints.push(`【任务解析】这是一个查看分身列表任务：
+请使用 app_list_avatars 工具获取用户的分身列表。
+参数示例：{ "limit": 50, "filter_hosted": false }`)
+      return hints.join('\n\n')
+    }
     else if (lowerTask.match(/添加好友|交朋友|扩列/)) {
       hints.push(`【任务解析】这是一个添加好友任务：
 请使用 app_add_friend 工具为分身添加好友。
 参数示例：{ "avatar_id": "当前分身ID", "match_count": 需要添加的数量 }`)
-      return hints.join('\n\n')
-    }
-    else if (lowerTask.match(/查看.*分身|我的.*分身|分身.*列表|列表.*分身|分身.*信息|当前.*分身|分身.*详情/)) {
-      hints.push(`【任务解析】这是一个查看分身列表任务：
-请使用 app_list_avatars 工具获取用户的分身列表。
-参数示例：{ "limit": 50, "filter_hosted": false }`)
       return hints.join('\n\n')
     }
     else if (lowerTask.match(/订阅|升级|开通|购买套餐|套餐/)) {

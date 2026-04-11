@@ -399,7 +399,7 @@ export class ListAvatarsTool implements ITool {
         .limit(params.limit || 50)
 
       if (params.filter_active) {
-        query = query.eq('is_active', true)
+        query = query.eq('status', 'active')
       }
 
       if (params.filter_hosted !== undefined) {
@@ -419,7 +419,7 @@ export class ListAvatarsTool implements ITool {
         level: avatar.level,
         personality: avatar.personality,
         is_hosted: avatar.is_hosted,
-        is_active: avatar.is_active,
+        is_active: avatar.status === 'active',
         created_at: avatar.created_at
       }))
 
@@ -482,11 +482,12 @@ export class AssignOrderTool implements ITool {
         return { success: false, error: `创建订单失败: ${orderError.message}` }
       }
 
-      // 2. 查找合适的分身
+      // 2. 查找合适的分身（按当前用户的活跃分身查询）
       const { data: avatars, error: avatarsError } = await client
         .from('avatars')
         .select('*')
-        .eq('is_active', true)
+        .eq('user_id', context.userId)
+        .eq('status', 'active')
         .order('level', { ascending: false })
         .limit(params.required_count || 1)
 
