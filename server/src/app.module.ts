@@ -17,6 +17,7 @@ import { OrderDispatchModule } from './modules/order-dispatch/order-dispatch.mod
 import { EarningModule } from './modules/earning/earning.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { SkillsModule } from './modules/skills/skills.module';
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     OrderDispatchModule,
     EarningModule,
     ReferralModule,
-    SubscriptionModule
+    SubscriptionModule,
+    SkillsModule
   ],
   controllers: [AppController],
   providers: [AppService],
