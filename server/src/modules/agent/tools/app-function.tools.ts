@@ -824,9 +824,7 @@ export class ListFriendsTool implements ITool {
         return { success: false, error: '缺少分身ID，请先选择一个分身' }
       }
 
-      // 注意：avatar_friends 表尚未创建，先返回空列表
-      // TODO: 创建 avatar_friends 表后，取消注释以下代码
-      /*
+      // 查询分身好友关系（双向查询）
       const { data: friendships, error: friendshipsError } = await client
         .from('avatar_friends')
         .select(`
@@ -840,7 +838,7 @@ export class ListFriendsTool implements ITool {
             status
           )
         `)
-        .eq('avatar_id', avatarId)
+        .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
         .eq('status', 'active')
         .limit(params.limit || 50)
         .order('created_at', { ascending: false })
@@ -848,15 +846,30 @@ export class ListFriendsTool implements ITool {
       if (friendshipsError) {
         return { success: false, error: `获取好友列表失败: ${friendshipsError.message}` }
       }
-      */
+
+      // 整理好友列表：只返回对方分身的信息
+      const friends = (friendships || []).map((friendship: any) => {
+        const isInitiator = friendship.avatar_id === avatarId
+        const friendData = isInitiator ? friendship.avatars : null
+        return {
+          id: friendData?.id,
+          name: friendData?.name,
+          avatar_url: friendData?.avatar_url,
+          level: friendData?.level,
+          personality: friendData?.personality,
+          status: friendData?.status,
+          match_reason: friendship.match_reason,
+          compatibility_score: friendship.compatibility_score,
+          created_at: friendship.created_at
+        }
+      })
 
       return {
         success: true,
         data: {
           avatar_id: avatarId,
-          count: 0,
-          friends: [],
-          message: '分身好友功能暂未开放，敬请期待'
+          count: friends.length,
+          friends: friends
         }
       }
     } catch (err: any) {
