@@ -200,7 +200,10 @@ export default function MindChatPage() {
   const messageCountBeforeSendRef = useRef<number>(0)
   
   // 学习详情弹窗
-  const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | null>(null)
+  const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | 'capabilities' | null>(null)
+
+  // 分身能力数据
+  const [avatarCapabilities, setAvatarCapabilities] = useState<any>(null)
   
   // Agent 实时状态（每个分身都是独立智能体）
   const [currentStatus, setCurrentStatus] = useState<string>('')
@@ -256,6 +259,18 @@ export default function MindChatPage() {
   // H5链接弹窗（小程序环境）
   const [showH5PublishDialog, setShowH5PublishDialog] = useState(false)
   const [h5PublishUrl, setH5PublishUrl] = useState('')
+
+  // 辅助函数：获取记忆类型名称
+  const getMemoryTypeName = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      'user_preference': '用户偏好',
+      'conversation': '对话记忆',
+      'avatar_experience': '分身经验',
+      'user_profile': '用户画像',
+      'context': '上下文'
+    }
+    return typeMap[type] || type
+  }
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -493,6 +508,21 @@ export default function MindChatPage() {
       lengthBonus += Math.floor((messageLength - 200) / 100)
     }
     return baseExp + lengthBonus
+  }
+
+  // 获取分身能力数据
+  const fetchAvatarCapabilities = async () => {
+    if (!avatar?.id) return
+    try {
+      const res = await Network.request({
+        url: `/api/avatar-agent/${avatar.id}/capabilities`
+      })
+      if (res.data?.code === 200) {
+        setAvatarCapabilities(res.data.data)
+      }
+    } catch (error) {
+      console.error('[MindChat] 获取分身能力失败:', error)
+    }
   }
 
   const fetchDefaultAvatar = async () => {
@@ -1736,6 +1766,34 @@ export default function MindChatPage() {
             </View>
           </View>
         )}
+
+        {/* 分身能力 */}
+        <View
+          className="learn-capabilities-section clickable"
+          onClick={() => {
+            fetchAvatarCapabilities()
+            setShowLearningDetail('capabilities')
+          }}
+        >
+          <Text className="learn-section-title">分身能力</Text>
+          <View className="learn-capabilities-preview">
+            <View className="capability-item">
+              <Brain size={16} color="#00f5ff" />
+              <Text className="capability-label">记忆</Text>
+              <Text className="capability-value">{avatarCapabilities?.memory?.total || 0} 条</Text>
+            </View>
+            <View className="capability-item">
+              <Sparkles size={16} color="#00f5ff" />
+              <Text className="capability-label">技能</Text>
+              <Text className="capability-value">{avatarCapabilities?.skills?.length || 0} 个</Text>
+            </View>
+            <View className="capability-item">
+              <Target size={16} color="#00f5ff" />
+              <Text className="capability-label">思考</Text>
+              <Text className="capability-value">{avatarCapabilities?.thoughts?.length || 0} 次</Text>
+            </View>
+          </View>
+        </View>
         </ScrollView>
         )}
         </>
@@ -1755,6 +1813,7 @@ export default function MindChatPage() {
                 {showLearningDetail === 'style' && '风格分析'}
                 {showLearningDetail === 'interests' && '兴趣话题'}
                 {showLearningDetail === 'phrases' && '常用表达'}
+                {showLearningDetail === 'capabilities' && '分身能力'}
               </Text>
               <View className="learning-detail-close" onClick={() => setShowLearningDetail(null)}>
                 <X size={24} color="rgba(255,255,255,0.6)" />
@@ -1979,6 +2038,70 @@ export default function MindChatPage() {
                   </View>
                   <Text className="detail-hint">
                     我会学习你的口头禅和常用表达，让对话更自然。
+                  </Text>
+                </View>
+              )}
+
+              {/* 分身能力详情 */}
+              {showLearningDetail === 'capabilities' && (
+                <View className="detail-section">
+                  {/* 记忆能力 */}
+                  <Text className="detail-section-title">记忆能力</Text>
+                  <View className="detail-stat-card">
+                    <Text className="detail-stat-value">{avatarCapabilities?.memory?.total || 0}</Text>
+                    <Text className="detail-stat-label">总记忆条数</Text>
+                  </View>
+                  <View className="memory-types">
+                    {Object.entries(avatarCapabilities?.memory?.byType || {}).map(([type, count]: [string, any]) => (
+                      <View key={type} className="memory-type-item">
+                        <Text className="memory-type-name">{getMemoryTypeName(type)}</Text>
+                        <Text className="memory-type-count">{count}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text className="detail-hint">
+                    我会记住你分享的重要信息，包括你的喜好、经历和约定。
+                  </Text>
+
+                  {/* 技能能力 */}
+                  <Text className="detail-section-title" style={{ marginTop: '24px' }}>技能掌握</Text>
+                  {avatarCapabilities?.skills?.length > 0 ? (
+                    <View className="skills-list">
+                      {avatarCapabilities.skills.map((skill: any) => (
+                        <View key={skill.id} className="skill-item">
+                          <View className="skill-header">
+                            <Text className="skill-name">{skill.skill_name}</Text>
+                            <Text className="skill-level">Lv.{skill.skill_level}</Text>
+                          </View>
+                          <View className="skill-meta">
+                            <Text className="skill-meta-item">使用 {skill.usage_count} 次</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text className="empty-hint">还没有掌握技能，多和我对话吧！</Text>
+                  )}
+                  <Text className="detail-hint">
+                    通过对话和学习，我会逐渐掌握各种技能，提供更智能的帮助。
+                  </Text>
+
+                  {/* 思考过程 */}
+                  <Text className="detail-section-title" style={{ marginTop: '24px' }}>最近思考</Text>
+                  {avatarCapabilities?.thoughts?.length > 0 ? (
+                    <View className="thoughts-list">
+                      {avatarCapabilities.thoughts.map((thought: any) => (
+                        <View key={thought.id} className="thought-item">
+                          <Text className="thought-action">{thought.action}</Text>
+                          <Text className="thought-time">{formatTime(new Date(thought.created_at))}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text className="empty-hint">还没有思考记录，快开始对话吧！</Text>
+                  )}
+                  <Text className="detail-hint">
+                    我会在每次对话中仔细思考，分析你的需求并提供最佳回答。
                   </Text>
                 </View>
               )}

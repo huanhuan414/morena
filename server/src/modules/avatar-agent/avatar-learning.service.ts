@@ -72,7 +72,7 @@ export class AvatarLearningService {
   /**
    * 更新技能熟练度
    */
-  async updateSkillProficiency(
+  async updateSkillLevel(
     avatarId: string,
     thought: AvatarThought,
     response: AvatarResponse
@@ -99,13 +99,13 @@ export class AvatarLearningService {
 
       if (existingSkill) {
         // 更新现有技能
-        const currentProficiency = parseFloat(existingSkill.proficiency)
-        const newProficiency = (currentProficiency * 0.9) + ((feedback / 5) * 0.1)
+        const currentLevel = existingSkill.skill_level || 0
+        const newLevel = Math.min(currentLevel + 1, 10) // 最高10级
 
         const { error: updateError } = await getSupabaseClient()
           .from('avatar_skills')
           .update({
-            proficiency: Math.min(newProficiency, 1),
+            skill_level: newLevel,
             usage_count: existingSkill.usage_count + 1,
             last_used_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -124,7 +124,6 @@ export class AvatarLearningService {
             skill_type: skillType,
             skill_name: this.getSkillDisplayName(skillType),
             skill_level: 1,
-            proficiency: feedback / 5,
             usage_count: 1,
             last_used_at: new Date().toISOString()
           })
@@ -134,7 +133,7 @@ export class AvatarLearningService {
         }
       }
     } catch (error) {
-      this.logger.error('Error updating skill proficiency:', error)
+      this.logger.error('Error updating skill level:', error)
     }
   }
 

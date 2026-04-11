@@ -2111,3 +2111,151 @@ del {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
 }
+
+/* 分身能力视图 */
+.learn-capabilities-section {
+  background: rgba(20, 20, 30, 0.5);
+  border: 2rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.learn-capabilities-preview {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.capability-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.1);
+}
+
+.capability-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.capability-value {
+  font-size: 32rpx;
+  color: #00f5ff;
+  font-weight: 600;
+}
+
+.memory-types {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.memory-type-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 12rpx;
+}
+
+.memory-type-name {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.memory-type-count {
+  font-size: 28rpx;
+  color: #00f5ff;
+  font-weight: 600;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.skill-item {
+  padding: 16rpx 20rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.1);
+}
+
+.skill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.skill-name {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.skill-level {
+  font-size: 24rpx;
+  color: #00f5ff;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  background: rgba(0, 245, 255, 0.2);
+  border-radius: 8rpx;
+}
+
+.skill-meta {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.skill-meta-item {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.thoughts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.thought-item {
+  padding: 16rpx 20rpx;
+  background: rgba(0, 245, 255, 0.05);
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(0, 245, 255, 0.1);
+}
+
+.thought-action {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.thought-time {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+}
+
+.empty-hint {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 40rpx 0;
+  display: block;
+}

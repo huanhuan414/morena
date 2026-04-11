@@ -173,7 +173,7 @@ export class AvatarAgentService {
       })
 
       // 4. 更新技能熟练度
-      await this.learningService.updateSkillProficiency(avatarId, thought, response)
+      await this.learningService.updateSkillLevel(avatarId, thought, response)
 
       return response
     } catch (error) {
@@ -362,6 +362,9 @@ Confidence: [置信度 0-1]`
         }
       )
 
+      // 打印大模型的原始回复，用于调试
+      this.logger.log(`[大模型原始回复]\n${response.content}`)
+
       // 解析响应
       const thought = this.parseReasoningResponse(avatarId, response.content)
 
@@ -419,13 +422,20 @@ Confidence: [置信度 0-1]`
       thought.intent.toolName = toolNameMatch[1].trim()
     }
 
-    const paramsMatch = content.match(/Parameters:\s*(.+)/is)
+    // 匹配参数（改进：匹配到 JSON 结束或换行）
+    const paramsMatch = content.match(/Parameters:\s*(\{.*?\})/s)
     if (paramsMatch) {
+      const rawParams = paramsMatch[1].trim()
+      this.logger.log(`[原始参数内容] ${rawParams.substring(0, 500)}`)
       try {
-        thought.intent.params = JSON.parse(paramsMatch[1].trim())
+        thought.intent.params = JSON.parse(rawParams)
+        this.logger.log(`[解析成功] ${JSON.stringify(thought.intent.params)}`)
       } catch (e) {
-        this.logger.warn('Failed to parse parameters:', e)
+        this.logger.warn(`[解析失败] ${e.message}`)
+        this.logger.warn(`[参数内容] ${rawParams}`)
       }
+    } else {
+      this.logger.warn('[未找到参数]')
     }
 
     const confidenceMatch = content.match(/Confidence:\s*(.+)/i)

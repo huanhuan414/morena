@@ -8,6 +8,7 @@ import { AvatarAgentService } from './avatar-agent.service'
 import { AvatarMemoryService } from './avatar-memory.service'
 import { AvatarLearningService } from './avatar-learning.service'
 import { ConversationMessage } from './avatar-agent.types'
+import { getSupabaseClient } from '../../storage/database/supabase-client'
 
 @Controller('avatar-agent')
 export class AvatarAgentController {
@@ -321,6 +322,66 @@ export class AvatarAgentController {
         code: 500,
         data: null,
         message: error.message || '获取学习统计失败'
+      }
+    }
+  }
+
+  /**
+   * 获取分身能力概览
+   */
+  @Get(':avatarId/capabilities')
+  async getCapabilities(@Param('avatarId') avatarId: string) {
+    try {
+      // 获取记忆统计
+      const memories = await this.memoryService.retrieveRelevantMemories(
+        avatarId,
+        '',
+        { maxRetrieval: 50 }
+      )
+
+      const memoryByType = memories.reduce((acc: any, m: any) => {
+        acc[m.type] = (acc[m.type] || 0) + 1
+        return acc
+      }, {})
+
+      // 获取技能
+      const { data: skills, error: skillError } = await getSupabaseClient()
+        .from('avatar_skills')
+        .select('*')
+        .eq('avatar_id', avatarId)
+        .order('skill_level', { ascending: false })
+        .limit(10)
+
+      // 获取学习统计
+      const learningStats = await this.learningService.getLearningStats(avatarId)
+
+      // 获取最近的思考过程
+      const { data: recentThoughts, error: thoughtError } = await getSupabaseClient()
+        .from('avatar_thoughts')
+        .select('*, created_at')
+        .eq('avatar_id', avatarId)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      return {
+        code: 200,
+        data: {
+          memory: {
+            total: memories.length,
+            byType: memoryByType,
+            recentMemories: memories.slice(0, 5)
+          },
+          skills: skills || [],
+          learning: learningStats,
+          thoughts: recentThoughts || []
+        },
+        message: '获取成功'
+      }
+    } catch (error) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取能力概览失败'
       }
     }
   }
