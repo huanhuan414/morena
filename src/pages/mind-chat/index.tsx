@@ -272,6 +272,21 @@ export default function MindChatPage() {
     return typeMap[type] || type
   }
 
+  // 辅助函数：获取意图类型显示名称
+  const getIntentDisplayName = (intent: string): string => {
+    const intentMap: Record<string, string> = {
+      'unknown': '一般对话',
+      'greeting': '问候',
+      'question': '提问',
+      'task': '任务',
+      'creative': '创作',
+      'analysis': '分析',
+      'recommendation': '推荐',
+      'tool_call': '工具调用'
+    }
+    return intentMap[intent] || intent
+  }
+
   useLoad(() => {
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
@@ -2092,8 +2107,11 @@ export default function MindChatPage() {
                     <View className="thoughts-list">
                       {avatarCapabilities.thoughts.map((thought: any) => (
                         <View key={thought.id} className="thought-item">
-                          <Text className="thought-action">{thought.action}</Text>
-                          <Text className="thought-time">{formatTime(new Date(thought.created_at))}</Text>
+                          <View className="thought-header">
+                            <Text className="thought-action">{thought.action}</Text>
+                            <Text className="thought-intent">{getIntentDisplayName(thought.intent)}</Text>
+                          </View>
+                          <Text className="thought-time">{formatTime(new Date(thought.createdAt))}</Text>
                         </View>
                       ))}
                     </View>

@@ -355,13 +355,22 @@ export class AvatarAgentController {
       // 获取学习统计
       const learningStats = await this.learningService.getLearningStats(avatarId)
 
-      // 获取最近的思考过程
+      // 获取最近的思考过程（从 avatar_memories 表中查询 memory_type = 'learning' 的记录）
       const { data: recentThoughts, error: thoughtError } = await getSupabaseClient()
-        .from('avatar_thoughts')
-        .select('*, created_at')
+        .from('avatar_memories')
+        .select('id, content, metadata, created_at')
         .eq('avatar_id', avatarId)
+        .eq('memory_type', 'learning')
         .order('created_at', { ascending: false })
         .limit(5)
+
+      // 格式化思考过程
+      const formattedThoughts = recentThoughts?.map((thought: any) => ({
+        id: thought.id,
+        action: thought.content || '思考中...',
+        intent: thought.metadata?.intent?.type || 'unknown',
+        createdAt: thought.created_at
+      })) || []
 
       return {
         code: 200,
@@ -373,7 +382,7 @@ export class AvatarAgentController {
           },
           skills: skills || [],
           learning: learningStats,
-          thoughts: recentThoughts || []
+          thoughts: formattedThoughts
         },
         message: '获取成功'
       }
