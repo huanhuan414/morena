@@ -35,6 +35,7 @@ import {
   ListAvatarsTool,
   AssignOrderTool,
   AddFriendTool,
+  ListFriendsTool,
   GetSubscriptionTool,
   SubscribeTool
 } from './tools/app-function.tools'
@@ -863,7 +864,8 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 当用户指令涉及以下关键词时，必须优先调用对应的小程序内部功能工具：
 - "分配订单"、"派单"、"接单"（不包含"查看"或"寻找"时） → 使用 app_assign_order 工具
 - "找分身"、"寻找分身"、"查看分身"、"我的分身" → 使用 app_list_avatars 工具
-- "添加好友"、"交朋友" → 使用 app_add_friend 工具
+- "添加好友"、"交朋友"、"扩列" → 使用 app_add_friend 工具
+- "查看好友"、"我的好友"、"好友列表" → 使用 app_list_friends 工具
 - "订阅"、"升级"、"开通套餐" → 使用 app_subscribe 或 app_get_subscription 工具
 - "创建任务"、"发布任务" → 使用 app_create_task 工具
 - "查看订单"、"我的订单" → 使用 app_list_tasks 工具
@@ -931,6 +933,12 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 参数示例：{ "avatar_id": "当前分身ID", "match_count": 需要添加的数量 }`)
       return hints.join('\n\n')
     }
+    else if (lowerTask.match(/查看.*好友|我的.*好友|好友列表|好友.*信息/)) {
+      hints.push(`【任务解析】这是一个查看好友列表任务：
+请使用 app_list_friends 工具获取指定分身的好友列表。
+参数示例：{ "limit": 50 }`)
+      return hints.join('\n\n')
+    }
     else if (lowerTask.match(/订阅|升级|开通|购买套餐|套餐/)) {
       hints.push(`【任务解析】这是一个订阅套餐任务：
 请先使用 app_get_subscription 工具查看当前订阅状态，然后根据用户需求使用 app_subscribe 工具订阅套餐。`)
@@ -955,7 +963,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     // 4. 社交互动/普通对话（优先检测，避免误判）
     else if (lowerTask.match(/^关注|点赞|收藏|分享|转发|评论|回复|你好|在吗|嗨|hi|hello|谢谢|感谢|再见|拜拜/) ||
              lowerTask.match(/帮我关注|帮我点赞|帮我收藏|帮我分享/) ||
-             lowerTask.match(/^.{0,20}$/) && !lowerTask.match(/生成|创作|设计|写|画|发布|找|分配|添加|订阅|升级|查看|分身|信息/)) {
+             lowerTask.match(/^.{0,20}$/) && !lowerTask.match(/生成|创作|设计|写|画|发布|找|分配|添加|订阅|升级|查看|分身|信息|好友/)) {
       hints.push(`【任务解析】这是一个普通对话或社交互动：
 请直接用 Final Answer 回复用户，不要调用任何工具。
 - 如果用户说"关注"，回复"好的，已为你关注该话题/用户"

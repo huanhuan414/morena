@@ -1580,6 +1580,17 @@ export default function MindChatPage() {
       return false
     })()
 
+    // 检测好友列表数据
+    const hasFriendList = (() => {
+      if (msg.metadata?.agent_result?.steps) {
+        const steps = msg.metadata.agent_result.steps || []
+        return steps.some((step: ReActStep) =>
+          step.action === 'app_list_friends' && step.observation?.data?.friends
+        )
+      }
+      return false
+    })()
+
     return (
       <View className="message-content-wrapper">
         {/* Agent 执行步骤展示 */}
@@ -1665,7 +1676,70 @@ export default function MindChatPage() {
             </View>
           )
         })()}
-        
+
+        {/* 好友列表卡片展示 */}
+        {hasFriendList && (() => {
+          const steps = msg.metadata?.agent_result?.steps || []
+          const listStep = steps.find((step: ReActStep) =>
+            step.action === 'app_list_friends' && step.observation?.data?.friends
+          )
+          const friends = listStep?.observation?.data?.friends || []
+
+          if (friends.length === 0) {
+            return (
+              <View className="avatar-list-empty">
+                <Text className="empty-text">暂无好友，快去添加好友吧！</Text>
+              </View>
+            )
+          }
+
+          return (
+            <View className="avatar-list-cards">
+              {friends.map((friend: any) => (
+                <View
+                  key={friend.friend_id}
+                  className="avatar-card"
+                  onClick={() => {
+                    Taro.navigateTo({
+                      url: `/pages/avatar-profile/index?id=${friend.friend_id}`
+                    })
+                  }}
+                >
+                  <View className="avatar-card-header">
+                    <View className="avatar-card-avatar">
+                      {friend.friend_avatar_url ? (
+                        <Image
+                          src={friend.friend_avatar_url}
+                          className="avatar-card-img"
+                          mode="aspectFill"
+                          onError={() => {
+                            // 图片加载失败时不做处理
+                          }}
+                        />
+                      ) : (
+                        <Sparkles size={24} color="#00f5ff" />
+                      )}
+                    </View>
+                    <View className="avatar-card-info">
+                      <Text className="avatar-card-name">{friend.friend_name || '未命名好友'}</Text>
+                      <View className="avatar-card-tags">
+                        <Text className="avatar-card-level">Lv.{friend.friend_level || 1}</Text>
+                        {friend.compatibility_score && (
+                          <Text className="avatar-card-hosted">匹配度 {Math.round(friend.compatibility_score * 100)}%</Text>
+                        )}
+                      </View>
+                    </View>
+                    <ChevronDown size={16} color="rgba(255,255,255,0.4)" />
+                  </View>
+                  {friend.match_reason && (
+                    <Text className="avatar-card-personality">{friend.match_reason}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )
+        })()}
+
         {/* 文本内容 */}
         <Text className="message-text">{msg.content}</Text>
         

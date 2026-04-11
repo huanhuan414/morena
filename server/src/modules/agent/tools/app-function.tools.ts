@@ -706,6 +706,98 @@ export class AddFriendTool implements ITool {
 }
 
 /**
+ * 查看分身好友列表工具
+ */
+@Injectable()
+export class ListFriendsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_list_friends',
+    displayName: '查看好友列表',
+    description: '获取指定分身的好友列表，包括好友名称、等级、匹配度等信息',
+    category: 'app_function',
+    paramsSchema: {
+      avatar_id: { type: 'string', description: '分身ID（可选，不指定则使用当前对话的分身）' },
+      limit: { type: 'number', description: '返回数量限制', default: 50 }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const client = getSupabaseClient()
+
+      // 如果没有传递 avatar_id，使用当前对话的分身ID
+      const avatarId = params.avatar_id || context.avatarId
+
+      if (!avatarId) {
+        return { success: false, error: '缺少分身ID，请先选择一个分身' }
+      }
+
+      // 查询该分身的好友列表
+      const { data: friendships, error: friendshipsError } = await client
+        .from('avatar_friends')
+        .select(`
+          *,
+          avatars!avatar_friends_friend_avatar_id_fkey (
+            id,
+            name,
+            avatar_url,
+            level,
+            personality,
+            status
+          )
+        `)
+        .eq('avatar_id', avatarId)
+        .eq('status', 'active')
+        .limit(params.limit || 50)
+        .order('created_at', { ascending: false })
+
+      if (friendshipsError) {
+        return { success: false, error: `获取好友列表失败: ${friendshipsError.message}` }
+      }
+
+      if (!friendships || friendships.length === 0) {
+        return {
+          success: true,
+          data: {
+            avatar_id: avatarId,
+            count: 0,
+            friends: [],
+            message: '暂无好友'
+          }
+        }
+      }
+
+      // 格式化好友列表
+      const friends = friendships
+        .filter(f => f.avatars)
+        .map(f => ({
+          friend_id: f.avatars.id,
+          friend_name: f.avatars.name,
+          friend_avatar_url: f.avatars.avatar_url,
+          friend_level: f.avatars.level,
+          friend_personality: f.avatars.personality,
+          friend_status: f.avatars.status,
+          compatibility_score: f.compatibility_score,
+          match_reason: f.match_reason,
+          created_at: f.created_at
+        }))
+
+      return {
+        success: true,
+        data: {
+          avatar_id: avatarId,
+          count: friends.length,
+          friends,
+          message: `找到 ${friends.length} 个好友`
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+/**
  * 获取订阅信息工具
  */
 @Injectable()
