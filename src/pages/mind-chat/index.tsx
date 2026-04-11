@@ -1631,15 +1631,22 @@ export default function MindChatPage() {
                   <View className="avatar-card-header">
                     <View className="avatar-card-avatar">
                       {item.avatar_url ? (
-                        <Image src={item.avatar_url} className="avatar-card-img" mode="aspectFill" />
+                        <Image
+                          src={item.avatar_url}
+                          className="avatar-card-img"
+                          mode="aspectFill"
+                          onError={() => {
+                            // 图片加载失败时不做处理，使用默认图标
+                          }}
+                        />
                       ) : (
                         <Sparkles size={24} color="#00f5ff" />
                       )}
                     </View>
                     <View className="avatar-card-info">
-                      <Text className="avatar-card-name">{item.name}</Text>
+                      <Text className="avatar-card-name">{item.name || '未命名分身'}</Text>
                       <View className="avatar-card-tags">
-                        <Text className="avatar-card-level">Lv.{item.level}</Text>
+                        <Text className="avatar-card-level">Lv.{item.level || 1}</Text>
                         {item.is_active && (
                           <Text className="avatar-card-status">活跃</Text>
                         )}
@@ -1875,7 +1882,14 @@ export default function MindChatPage() {
               <>
                 <View className="avatar-avatar">
                   {avatar.avatar_url ? (
-                    <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                    <Image
+                      src={avatar.avatar_url}
+                      className="avatar-img"
+                      mode="aspectFill"
+                      onError={() => {
+                        // 图片加载失败时不做处理
+                      }}
+                    />
                   ) : (
                     <Sparkles size={24} color="#00f5ff" />
                   )}
@@ -2389,7 +2403,14 @@ export default function MindChatPage() {
             <View className="empty-icon">
               <View className="empty-avatar-glow">
                 {avatar?.avatar_url ? (
-                  <Image src={avatar.avatar_url} className="empty-avatar-img" mode="aspectFill" />
+                  <Image
+                    src={avatar.avatar_url}
+                    className="empty-avatar-img"
+                    mode="aspectFill"
+                    onError={() => {
+                      // 图片加载失败时不做处理
+                    }}
+                  />
                 ) : (
                   <Sparkles size={64} color="#00f5ff" />
                 )}
@@ -2413,7 +2434,14 @@ export default function MindChatPage() {
               {msg.role === 'assistant' && (
                 <View className="message-avatar">
                   {avatar?.avatar_url ? (
-                    <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
+                    <Image
+                      src={avatar.avatar_url}
+                      className="msg-avatar-img"
+                      mode="aspectFill"
+                      onError={() => {
+                        // 图片加载失败时不做处理
+                      }}
+                    />
                   ) : (
                     <Sparkles size={24} color="#00f5ff" />
                   )}
@@ -2438,7 +2466,14 @@ export default function MindChatPage() {
               {msg.role === 'user' && (
                 <View className="message-user-avatar">
                   {userInfo?.avatar ? (
-                    <Image src={userInfo.avatar} className="msg-avatar-img" mode="aspectFill" />
+                    <Image
+                      src={userInfo.avatar}
+                      className="msg-avatar-img"
+                      mode="aspectFill"
+                      onError={() => {
+                        // 图片加载失败时不做处理
+                      }}
+                    />
                   ) : (
                     <Text className="user-avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
                   )}
@@ -2453,7 +2488,14 @@ export default function MindChatPage() {
           <View id="msg-loading" className="message-item assistant">
             <View className="message-avatar">
               {avatar?.avatar_url ? (
-                <Image src={avatar.avatar_url} className="msg-avatar-img" mode="aspectFill" />
+                <Image
+                  src={avatar.avatar_url}
+                  className="msg-avatar-img"
+                  mode="aspectFill"
+                  onError={() => {
+                    // 图片加载失败时不做处理
+                  }}
+                />
               ) : (
                 <Sparkles size={24} color="#00f5ff" />
               )}
