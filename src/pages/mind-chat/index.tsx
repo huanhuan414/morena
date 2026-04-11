@@ -695,7 +695,7 @@ export default function MindChatPage() {
     }
   }
 
-  // 发送消息 - 每个分身都是 Agent，默认启用 Agent 能力
+  // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
   const sendMessage = async (text?: string) => {
     const messageText = text || inputText
     if (!messageText.trim() || !conversation || loading) {
@@ -743,10 +743,10 @@ export default function MindChatPage() {
     }
   }
 
-  // 使用新的 Avatar Agent 系统（独立智能体）
+  // 使用旧的 Agent 系统（ReAct 模式）
   const executeAsAgent = async (content: string) => {
     try {
-      console.log('[MindChat] 使用 Avatar Agent 系统，独立智能体模式')
+      console.log('[MindChat] 使用旧的 Agent 系统，ReAct 模式')
       console.log('[MindChat] 分身信息:', avatar)
       console.log('[MindChat] 会话信息:', conversation)
 
@@ -763,53 +763,135 @@ export default function MindChatPage() {
 
       setCurrentStatus('思考中...')
 
-      // 调用新的 Avatar Agent API
+      // 调用旧的 Agent API（异步模式）
       const res = await Network.request({
-        url: `/api/avatar-agent/${avatar.id}/chat`,
+        url: `/api/agent/execute`,
         method: 'POST',
         data: {
-          message: content,
-          userId: userId,
-          conversationId: conversation?.id,
-          conversationHistory: messages.slice(-5).map(msg => ({
+          avatar_id: avatar.id,
+          task_description: content,
+          conversation_id: conversation?.id,
+          conversation_history: messages.slice(-5).map(msg => ({
             role: msg.role,
             content: msg.content
           }))
         }
       })
 
-      console.log('[MindChat] Avatar Agent 响应:', res.data)
+      console.log('[MindChat] Agent 响应:', res.data)
 
       if (res.data?.code !== 200) {
-        throw new Error(res.data?.message || 'Avatar Agent 调用失败')
+        throw new Error(res.data?.message || 'Agent 调用失败')
       }
 
-      const responseData = res.data.data
+      const taskId = res.data.data.taskId
+      console.log('[MindChat] 任务ID:', taskId)
 
-      // 创建助手消息
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: responseData.content || responseData.message,
-        created_at: new Date().toISOString(),
-        metadata: {
-          agent_result: {
-            success: true,
-            finalAnswer: responseData.content,
-            steps: [],
-            requiresConfig: false
-          }
-        }
-      }
+      // 轮询获取结果
+      await pollAgentResult(taskId)
 
-      setMessages(prev => [...prev, assistantMessage])
       setCurrentStatus('完成')
-
-      return responseData
     } catch (error: any) {
-      console.error('[MindChat] Avatar Agent 执行失败:', error)
+      console.error('[MindChat] Agent 执行失败:', error)
       throw error
     }
+  }
+
+  // 轮询获取 Agent 结果
+  const pollAgentResult = async (taskId: string) => {
+    const maxAttempts = 60 // 最多轮询 60 次（约 2 分钟）
+    const interval = 2000 // 每 2 秒轮询一次
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        // 获取进度
+        const progressRes = await Network.request({
+          url: `/api/agent/progress`,
+          method: 'GET',
+          data: {
+            taskId
+          }
+        })
+
+        if (progressRes.data?.code === 200) {
+          const progress = progressRes.data.data.progress || []
+
+          // 更新步骤显示
+          if (progress.length > 0) {
+            const latestProgress = progress[progress.length - 1]
+            const stepDisplay: AgentStepDisplay = {
+              action: latestProgress.action || latestProgress.step || '执行中',
+              displayName: latestProgress.action || latestProgress.step || '执行中',
+              status: latestProgress.status === 'completed' ? 'success' : latestProgress.status === 'failed' ? 'failed' : 'running',
+              message: latestProgress.message || latestProgress.result || ''
+            }
+            setAgentSteps(prev => {
+              // 避免重复添加相同的步骤
+              const lastStep = prev[prev.length - 1]
+              if (lastStep && lastStep.action === stepDisplay.action) {
+                return prev
+              }
+              return [...prev, stepDisplay]
+            })
+            setCurrentStatus(latestProgress.message || latestProgress.step || '执行中...')
+          }
+        }
+
+        // 获取结果
+        const resultRes = await Network.request({
+          url: `/api/agent/result/${taskId}`,
+          method: 'GET'
+        })
+
+        if (resultRes.data?.code === 200 && resultRes.data.data) {
+          const result = resultRes.data.data
+
+          // 检查任务是否完成
+          if (result.status === 'completed' || result.status === 'failed') {
+            // 创建助手消息
+            const assistantMessage: Message = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: result.finalAnswer || result.result || result.message || '任务完成',
+              created_at: new Date().toISOString(),
+              metadata: {
+                agent_result: {
+                  success: result.status === 'completed',
+                  finalAnswer: result.finalAnswer || result.result || result.message,
+                  steps: result.steps || [],
+                  requiresConfig: false
+                },
+                agent_steps: result.steps ? result.steps.map((step: any) => ({
+                  action: step.action || step.step || '',
+                  displayName: step.action || step.step || '',
+                  status: step.status === 'completed' ? 'success' : step.status === 'failed' ? 'failed' : 'running',
+                  message: step.message || step.result || step.observation || ''
+                })) : []
+              }
+            }
+
+            setMessages(prev => [...prev, assistantMessage])
+
+            // 检查是否需要平台配置
+            if (result.requiresConfig) {
+              setConfigPlatform(result.configPlatform)
+              setShowConfigDialog(true)
+            }
+
+            return
+          }
+        }
+
+        // 等待下一次轮询
+        await new Promise(resolve => setTimeout(resolve, interval))
+      } catch (error) {
+        console.error('[MindChat] 轮询失败:', error)
+        // 继续轮询，不中断
+      }
+    }
+
+    // 超时
+    throw new Error('任务执行超时')
   }
 
   // 获取平台名称
