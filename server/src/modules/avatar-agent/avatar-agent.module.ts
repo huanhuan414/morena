@@ -32,6 +32,13 @@ import {
   QueryTasksTool,
   AssignTaskTool
 } from './tools/task-tools'
+import {
+  ChangePasswordTool,
+  UpdateProfileTool,
+  UploadAvatarTool,
+  BindPhoneTool,
+  DeleteAccountTool
+} from './tools/user-management-tools'
 
 @Module({
   controllers: [AvatarAgentController],
@@ -56,7 +63,13 @@ import {
     CreateTaskTool,
     UpdateTaskStatusTool,
     QueryTasksTool,
-    AssignTaskTool
+    AssignTaskTool,
+    // 用户管理工具
+    ChangePasswordTool,
+    UpdateProfileTool,
+    UploadAvatarTool,
+    BindPhoneTool,
+    DeleteAccountTool
   ],
   exports: [
     AvatarAgentService,

@@ -28,6 +28,13 @@ import {
   QueryTasksTool,
   AssignTaskTool
 } from './task-tools'
+import {
+  ChangePasswordTool,
+  UpdateProfileTool,
+  UploadAvatarTool,
+  BindPhoneTool,
+  DeleteAccountTool
+} from './user-management-tools'
 
 @Injectable()
 export class AvatarToolRegistry {
@@ -48,7 +55,12 @@ export class AvatarToolRegistry {
     private readonly createTaskTool: CreateTaskTool,
     private readonly updateTaskStatusTool: UpdateTaskStatusTool,
     private readonly queryTasksTool: QueryTasksTool,
-    private readonly assignTaskTool: AssignTaskTool
+    private readonly assignTaskTool: AssignTaskTool,
+    private readonly changePasswordTool: ChangePasswordTool,
+    private readonly updateProfileTool: UpdateProfileTool,
+    private readonly uploadAvatarTool: UploadAvatarTool,
+    private readonly bindPhoneTool: BindPhoneTool,
+    private readonly deleteAccountTool: DeleteAccountTool
   ) {
     this.registerAllTools()
   }
@@ -77,6 +89,13 @@ export class AvatarToolRegistry {
     this.registerTool(this.updateTaskStatusTool)
     this.registerTool(this.queryTasksTool)
     this.registerTool(this.assignTaskTool)
+
+    // 用户管理工具
+    this.registerTool(this.changePasswordTool)
+    this.registerTool(this.updateProfileTool)
+    this.registerTool(this.uploadAvatarTool)
+    this.registerTool(this.bindPhoneTool)
+    this.registerTool(this.deleteAccountTool)
 
     this.logger.log(`已注册 ${this.tools.size} 个工具`)
   }

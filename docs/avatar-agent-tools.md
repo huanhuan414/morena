@@ -222,6 +222,13 @@ export interface AvatarTool {
 - **QueryTasksTool**：查询任务列表
 - **AssignTaskTool**：分配任务
 
+#### 用户管理工具
+- **ChangePasswordTool**：修改密码
+- **UpdateProfileTool**：更新个人资料
+- **UploadAvatarTool**：上传头像
+- **BindPhoneTool**：绑定手机号
+- **DeleteAccountTool**：删除账号
+
 ## 完整流程示例
 
 ### 示例 1：写文章
@@ -354,6 +361,50 @@ QueryOrdersTool.execute({
 您一共有 2 个订单：
 1. 订单 ord-001 - 已完成 - ¥99.00
 2. 订单 ord-002 - 进行中 - ¥199.00
+```
+
+### 示例 3：修改密码
+
+**用户输入**：
+```
+帮我修改一下账号密码，旧密码是123456，新密码是abcdef
+```
+
+**Step 1: 大模型识别意图**
+```
+Thought: 用户想要修改密码，需要使用修改密码工具。
+Intent Type: system
+Requires Tool: true
+Tool Name: change_password
+Parameters: {"userId":"user123","oldPassword":"123456","newPassword":"abcdef"}
+Confidence: 0.98
+```
+
+**Step 2: 执行工具**
+```typescript
+ChangePasswordTool.execute({
+  userId: "user123",
+  oldPassword: "123456",
+  newPassword: "abcdef"
+}, context)
+```
+
+**Step 3: 返回结果**
+```typescript
+{
+  success: true,
+  toolName: "change_password",
+  data: {
+    message: "密码修改成功",
+    userId: "user123"
+  },
+  executionTime: 456
+}
+```
+
+**Step 4: 生成自然语言回复**
+```
+密码修改成功！请记住您的新密码，下次登录时使用新密码。
 ```
 
 ## 扩展工具系统
