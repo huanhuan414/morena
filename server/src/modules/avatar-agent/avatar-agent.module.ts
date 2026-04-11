@@ -39,6 +39,12 @@ import {
   BindPhoneTool,
   DeleteAccountTool
 } from './tools/user-management-tools'
+import {
+  QueryAvatarFriendsTool,
+  AddAvatarFriendTool,
+  RemoveAvatarFriendTool,
+  QueryAvatarProfileTool
+} from './tools/avatar-management-tools'
 
 @Module({
   controllers: [AvatarAgentController],
@@ -69,7 +75,12 @@ import {
     UpdateProfileTool,
     UploadAvatarTool,
     BindPhoneTool,
-    DeleteAccountTool
+    DeleteAccountTool,
+    // 分身管理工具
+    QueryAvatarFriendsTool,
+    AddAvatarFriendTool,
+    RemoveAvatarFriendTool,
+    QueryAvatarProfileTool
   ],
   exports: [
     AvatarAgentService,

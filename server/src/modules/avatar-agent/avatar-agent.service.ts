@@ -302,6 +302,11 @@ export class AvatarAgentService {
    - Tool Name: [工具名称]
    - Parameters: [JSON格式的参数]
 
+重要：好友查询的区别
+- 当用户说"我的好友"、"我有多少好友"时，使用 query_friends 工具（查询用户的好友）
+- 当用户说"我的分身好友"、"分身有多少好友"、"分身的好友"时，使用 query_avatar_friends 工具（查询分身的好友）
+- 这两个是不同的好友列表，不要混淆！
+
 注意：
 - 只在真正需要时才使用工具
 - 确保参数符合工具的要求
