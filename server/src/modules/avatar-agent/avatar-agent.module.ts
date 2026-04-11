@@ -17,6 +17,19 @@ import {
   SummarizeTool
 } from './tools/content-tools'
 import {
+  WriteWechatMpArticleTool,
+  WriteXiaohongshuNoteTool
+} from './tools/content-creation-tools'
+import {
+  GenerateImageTool as ContentGenerateImageTool,
+  GenerateVideoTool
+} from './tools/content-generation-tools'
+import {
+  PublishWechatMpTool,
+  PublishXiaohongshuTool,
+  PublishWechatVideoTool
+} from './tools/platform-publish-tools'
+import {
   QueryUserProfileTool,
   QueryOrdersTool,
   QueryFriendsTool
@@ -53,10 +66,20 @@ import {
     AvatarMemoryService,
     AvatarLearningService,
     AvatarToolRegistry,
-    // 内容创作工具
+    // 原有内容创作工具
     WriteArticleTool,
     GenerateImageTool,
     SummarizeTool,
+    // 内容创作工具（从旧系统迁移）
+    WriteWechatMpArticleTool,
+    WriteXiaohongshuNoteTool,
+    // 内容生成工具（从旧系统迁移）
+    ContentGenerateImageTool,
+    GenerateVideoTool,
+    // 平台发布工具（从旧系统迁移）
+    PublishWechatMpTool,
+    PublishXiaohongshuTool,
+    PublishWechatVideoTool,
     // 数据查询工具
     QueryUserProfileTool,
     QueryOrdersTool,

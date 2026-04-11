@@ -13,6 +13,19 @@ import {
   SummarizeTool
 } from './content-tools'
 import {
+  WriteWechatMpArticleTool,
+  WriteXiaohongshuNoteTool
+} from './content-creation-tools'
+import {
+  GenerateImageTool as ContentGenerateImageTool,
+  GenerateVideoTool
+} from './content-generation-tools'
+import {
+  PublishWechatMpTool,
+  PublishXiaohongshuTool,
+  PublishWechatVideoTool
+} from './platform-publish-tools'
+import {
   QueryUserProfileTool,
   QueryOrdersTool,
   QueryFriendsTool
@@ -52,21 +65,36 @@ export class AvatarToolRegistry {
     private readonly writeArticleTool: WriteArticleTool,
     private readonly generateImageTool: GenerateImageTool,
     private readonly summarizeTool: SummarizeTool,
+    // 内容创作工具（从旧系统迁移）
+    private readonly writeWechatMpArticleTool: WriteWechatMpArticleTool,
+    private readonly writeXiaohongshuNoteTool: WriteXiaohongshuNoteTool,
+    // 内容生成工具（从旧系统迁移）
+    private readonly contentGenerateImageTool: ContentGenerateImageTool,
+    private readonly generateVideoTool: GenerateVideoTool,
+    // 平台发布工具（从旧系统迁移）
+    private readonly publishWechatMpTool: PublishWechatMpTool,
+    private readonly publishXiaohongshuTool: PublishXiaohongshuTool,
+    private readonly publishWechatVideoTool: PublishWechatVideoTool,
+    // 数据查询工具
     private readonly queryUserProfileTool: QueryUserProfileTool,
     private readonly queryOrdersTool: QueryOrdersTool,
     private readonly queryFriendsTool: QueryFriendsTool,
+    // 社交互动工具
     private readonly sendMessageTool: SendMessageTool,
     private readonly createMomentTool: CreateMomentTool,
     private readonly addCommentTool: AddCommentTool,
+    // 任务管理工具
     private readonly createTaskTool: CreateTaskTool,
     private readonly updateTaskStatusTool: UpdateTaskStatusTool,
     private readonly queryTasksTool: QueryTasksTool,
     private readonly assignTaskTool: AssignTaskTool,
+    // 用户管理工具
     private readonly changePasswordTool: ChangePasswordTool,
     private readonly updateProfileTool: UpdateProfileTool,
     private readonly uploadAvatarTool: UploadAvatarTool,
     private readonly bindPhoneTool: BindPhoneTool,
     private readonly deleteAccountTool: DeleteAccountTool,
+    // 分身管理工具
     private readonly queryAvatarFriendsTool: QueryAvatarFriendsTool,
     private readonly addAvatarFriendTool: AddAvatarFriendTool,
     private readonly removeAvatarFriendTool: RemoveAvatarFriendTool,
@@ -79,10 +107,23 @@ export class AvatarToolRegistry {
    * 注册所有工具
    */
   private registerAllTools() {
-    // 内容创作工具
+    // 原有内容创作工具
     this.registerTool(this.writeArticleTool)
     this.registerTool(this.generateImageTool)
     this.registerTool(this.summarizeTool)
+
+    // 内容创作工具（从旧系统迁移）
+    this.registerTool(this.writeWechatMpArticleTool)
+    this.registerTool(this.writeXiaohongshuNoteTool)
+
+    // 内容生成工具（从旧系统迁移）
+    this.registerTool(this.contentGenerateImageTool)
+    this.registerTool(this.generateVideoTool)
+
+    // 平台发布工具（从旧系统迁移）
+    this.registerTool(this.publishWechatMpTool)
+    this.registerTool(this.publishXiaohongshuTool)
+    this.registerTool(this.publishWechatVideoTool)
 
     // 数据查询工具
     this.registerTool(this.queryUserProfileTool)
