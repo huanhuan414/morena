@@ -577,6 +577,13 @@ export class AddFriendTool implements ITool {
     try {
       const client = getSupabaseClient()
 
+      // 如果没有传递 avatar_id，使用当前对话的分身ID
+      const avatarId = params.avatar_id || context.avatarId
+
+      if (!avatarId) {
+        return { success: false, error: '缺少分身ID，请先选择一个分身' }
+      }
+
       const addedFriends: Array<{
         friend_avatar_id: string
         status?: string
@@ -591,7 +598,7 @@ export class AddFriendTool implements ITool {
         const { data: existing } = await client
           .from('avatar_friends')
           .select('*')
-          .eq('avatar_id', params.avatar_id)
+          .eq('avatar_id', avatarId)
           .eq('friend_avatar_id', params.friend_avatar_id)
           .maybeSingle()
 
@@ -599,7 +606,7 @@ export class AddFriendTool implements ITool {
           const { data: friendship, error } = await client
             .from('avatar_friends')
             .insert({
-              avatar_id: params.avatar_id,
+              avatar_id: avatarId,
               friend_avatar_id: params.friend_avatar_id,
               status: 'active',
               compatibility_score: 0.8,
@@ -627,12 +634,24 @@ export class AddFriendTool implements ITool {
         const { data: candidates, error: candidatesError } = await client
           .from('avatars')
           .select('*')
-          .neq('id', params.avatar_id)
-          .eq('is_active', true)
+          .neq('id', avatarId)
+          .eq('status', 'active')
           .limit(params.match_count || 1)
 
         if (candidatesError) {
           return { success: false, error: `查找候选好友失败: ${candidatesError.message}` }
+        }
+
+        if (!candidates || candidates.length === 0) {
+          return {
+            success: true,
+            data: {
+              avatar_id: avatarId,
+              added_count: 0,
+              friends: [],
+              message: '暂时没有找到合适的候选好友'
+            }
+          }
         }
 
         for (const candidate of candidates || []) {
@@ -640,7 +659,7 @@ export class AddFriendTool implements ITool {
           const { data: existing } = await client
             .from('avatar_friends')
             .select('*')
-            .eq('avatar_id', params.avatar_id)
+            .eq('avatar_id', avatarId)
             .eq('friend_avatar_id', candidate.id)
             .maybeSingle()
 
@@ -648,7 +667,7 @@ export class AddFriendTool implements ITool {
             const { data: friendship, error } = await client
               .from('avatar_friends')
               .insert({
-                avatar_id: params.avatar_id,
+                avatar_id: avatarId,
                 friend_avatar_id: candidate.id,
                 status: 'active',
                 compatibility_score: 0.7 + Math.random() * 0.3,
@@ -674,7 +693,7 @@ export class AddFriendTool implements ITool {
       return {
         success: true,
         data: {
-          avatar_id: params.avatar_id,
+          avatar_id: avatarId,
           added_count: addedFriends.length,
           friends: addedFriends,
           message: `成功添加 ${addedFriends.length} 个好友`
