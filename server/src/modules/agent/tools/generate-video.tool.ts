@@ -210,7 +210,8 @@ export class GenerateVideoTool implements ITool {
           ratio,
           resolution
         },
-        message: `视频已生成成功！`
+        message: `视频已生成成功！`,
+        percentage: 100 // 视频生成完成
       }
     } catch (error) {
       console.error('[GenerateVideoTool] 生成失败:', error)

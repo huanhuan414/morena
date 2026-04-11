@@ -94,24 +94,33 @@ export class AgentService {
   /**
    * 推送任务进度（通过 WebSocket + 缓存）
    */
-  private emitProgress(userId: string, type: string, message: string, data?: any) {
+  private emitProgress(
+    userId: string,
+    type: string,
+    message: string,
+    data?: any,
+    percentage?: number
+  ) {
     const taskContext = this.currentTaskMap.get(userId)
     const taskId = taskContext?.taskId || `task-${Date.now()}`
-    
+
     const progress = {
       taskId,
       userId,
       type,
+      action: type, // 兼容前端，action 和 type 相同
       message,
+      status: data?.status || 'running',
+      percentage: percentage || data?.percentage || 0, // 进度百分比
       data,
       timestamp: Date.now()
     }
-    
+
     // 通过 WebSocket 推送
     if (this.gateway) {
       this.gateway.emitProgress(userId, progress)
     }
-    
+
     // 同时保存到缓存（用于轮询）
     this.progressCache.addProgress(userId, progress)
   }
@@ -715,20 +724,31 @@ export class AgentService {
 
     while (context.currentStep < context.maxSteps) {
       context.currentStep++
-      
+
+      // 计算当前进度百分比（简单估算：思考阶段 0-20%，执行阶段 20-80%，完成 100%）
+      const progressPercentage = Math.min(20 + ((context.currentStep - 1) / context.maxSteps) * 60, 80)
+
       // Step 1: 思考 (Reasoning)
-      this.emitProgress(userId, 'thinking', `正在思考第 ${context.currentStep} 步...`)
+      this.emitProgress(
+        userId,
+        'thinking',
+        `正在思考第 ${context.currentStep} 步...`,
+        {},
+        progressPercentage
+      )
       const thought = await this.think(context, steps)
-      
+
       // 检查是否已经有最终答案
       if (thought.includes('Final Answer:') || thought.includes('最终答案:')) {
         finalAnswer = this.extractFinalAnswer(thought)
+        // 完成思考，进度到 90%
+        this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
         break
       }
 
       // Step 2: 决定行动 (Action Selection)
       const actionInfo = this.parseAction(thought)
-      
+
       if (!actionInfo) {
         // 无法解析行动，直接生成回答
         finalAnswer = await this.generateDirectAnswer(context)
@@ -746,12 +766,20 @@ export class AgentService {
       const toolDef = this.tools.get(actionInfo.action)?.definition
       const toolDisplayName = toolDef?.displayName || actionInfo.action
 
-      // 推送执行中状态
-      this.emitProgress(userId, 'action', `正在执行: ${toolDisplayName}`, {
-        action: actionInfo.action,
-        displayName: toolDisplayName,
-        params: actionInfo.action_input
-      })
+      // 推送执行中状态（进度在 20-80% 之间）
+      const actionProgress = Math.min(progressPercentage + 10, 80)
+      this.emitProgress(
+        userId,
+        'action',
+        `正在执行: ${toolDisplayName}`,
+        {
+          action: actionInfo.action,
+          displayName: toolDisplayName,
+          params: actionInfo.action_input,
+          status: 'running'
+        },
+        actionProgress
+      )
 
       // Step 3: 执行工具 (Acting)
       const toolResult = await this.executeTool(
@@ -762,14 +790,22 @@ export class AgentService {
 
       step.observation = toolResult
 
-      // 推送执行结果
-      this.emitProgress(userId, 'observation', toolResult.success ? '执行成功' : '执行失败', {
-        action: actionInfo.action,
-        displayName: toolDisplayName,
-        success: toolResult.success,
-        message: toolResult.data?.message || toolResult.error,
-        data: toolResult.data
-      })
+      // 推送执行结果（工具可能返回自己的进度）
+      const toolPercentage = toolResult.percentage || (actionProgress + 10)
+      this.emitProgress(
+        userId,
+        'observation',
+        toolResult.success ? '执行成功' : '执行失败',
+        {
+          action: actionInfo.action,
+          displayName: toolDisplayName,
+          success: toolResult.success,
+          status: toolResult.success ? 'completed' : 'failed',
+          message: toolResult.data?.message || toolResult.error,
+          data: toolResult.data
+        },
+        toolPercentage
+      )
 
       // 检查是否需要配置
       if (toolResult.requires_config) {

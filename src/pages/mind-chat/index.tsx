@@ -208,6 +208,7 @@ export default function MindChatPage() {
   // Agent 实时状态（每个分身都是独立智能体）
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [agentSteps, setAgentSteps] = useState<AgentStepDisplay[]>([])
+  const [taskProgress, setTaskProgress] = useState<number>(0) // 任务进度百分比
 
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
@@ -722,6 +723,7 @@ export default function MindChatPage() {
     setLoading(true)
     loadingRef.current = true
     setAgentSteps([])  // 清空之前的步骤
+    setTaskProgress(0) // 重置进度百分比
     setCurrentStatus('思考中...')
     
     // 立即滚动到底部，显示新消息
@@ -816,9 +818,16 @@ export default function MindChatPage() {
         if (progressRes.data?.code === 200) {
           const progress = progressRes.data.data.progress || []
 
-          // 更新步骤显示
+          // 更新进度百分比
           if (progress.length > 0) {
             const latestProgress = progress[progress.length - 1]
+
+            // 更新进度百分比（如果有百分比字段）
+            if (typeof latestProgress.percentage === 'number') {
+              setTaskProgress(latestProgress.percentage)
+            }
+
+            // 更新步骤显示
             const stepDisplay: AgentStepDisplay = {
               action: latestProgress.action || latestProgress.step || '执行中',
               displayName: latestProgress.action || latestProgress.step || '执行中',
@@ -878,6 +887,8 @@ export default function MindChatPage() {
               setShowConfigDialog(true)
             }
 
+            // 任务完成，设置进度为100%
+            setTaskProgress(100)
             return
           }
         }
@@ -1517,7 +1528,19 @@ export default function MindChatPage() {
                 if (data.video_url) {
                   mediaList.push({ type: 'video', url: data.video_url })
                 }
-                
+
+                // 通用 URL（兼容不同的工具返回格式）
+                if (data.url && !data.video_url) {
+                  // 根据文件扩展名判断类型
+                  const urlLower = data.url.toLowerCase()
+                  if (urlLower.includes('.mp4') || urlLower.includes('.mov') || urlLower.includes('.webm')) {
+                    mediaList.push({ type: 'video', url: data.url })
+                  } else if (data.type === 'video') {
+                    // 如果工具明确标记为视频类型
+                    mediaList.push({ type: 'video', url: data.url })
+                  }
+                }
+
                 // 封面图
                 if (data.cover_image_url && !data.content) {
                   mediaList.push({ type: 'image', url: data.cover_image_url })
@@ -2414,6 +2437,18 @@ export default function MindChatPage() {
                 <Loader size={18} color="#00f5ff" className="spinning" />
                 <Text className="status-message">{currentStatus || '思考中...'}</Text>
               </View>
+              {/* 进度百分比 */}
+              {taskProgress > 0 && taskProgress < 100 && (
+                <View className="task-progress">
+                  <View className="progress-bar">
+                    <View
+                      className="progress-fill"
+                      style={{ width: `${taskProgress}%` }}
+                    />
+                  </View>
+                  <Text className="progress-text">{taskProgress}%</Text>
+                </View>
+              )}
               {agentSteps.length > 0 && (
                 <View className="agent-steps-live">
                   {agentSteps.map((step, idx) => (
