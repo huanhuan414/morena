@@ -506,7 +506,12 @@ export class AssignOrderTool implements ITool {
       }
 
       // 3. 为每个分身创建订单执行记录
-      const assignedAvatars = []
+      const assignedAvatars: Array<{
+        avatar_id: string
+        avatar_name: string
+        level: number
+        execution_id: string
+      }> = []
       for (const avatar of avatars.slice(0, params.required_count || 1)) {
         const { data: execution, error: execError } = await client
           .from('order_executions')
@@ -571,7 +576,13 @@ export class AddFriendTool implements ITool {
     try {
       const client = getSupabaseClient()
 
-      const addedFriends = []
+      const addedFriends: Array<{
+        friend_avatar_id: string
+        status?: string
+        friend_name?: string
+        compatibility_score?: number
+        match_reason?: string
+      }> = []
 
       // 如果指定了好友ID，直接添加
       if (params.friend_avatar_id) {
