@@ -14,9 +14,9 @@ import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import '@/components/level-detail-dialog/index.css'
 import { ExpPopup, LevelUpEffect } from '@/components/exp-popup'
 import '@/components/exp-popup/index.css'
-import { 
+import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp
+  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User
 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -1580,12 +1580,23 @@ export default function MindChatPage() {
       return false
     })()
 
-    // 检测好友列表数据
-    const hasFriendList = (() => {
+    // 检测用户好友列表数据
+    const hasUserFriendList = (() => {
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
         return steps.some((step: ReActStep) =>
-          step.action === 'app_list_friends' && step.observation?.data?.friends
+          step.action === 'app_list_user_friends' && step.observation?.data?.friends
+        )
+      }
+      return false
+    })()
+
+    // 检测分身好友列表数据
+    const hasAvatarFriendList = (() => {
+      if (msg.metadata?.agent_result?.steps) {
+        const steps = msg.metadata.agent_result.steps || []
+        return steps.some((step: ReActStep) =>
+          step.action === 'app_list_avatar_friends' && step.observation?.data?.friends
         )
       }
       return false
@@ -1677,18 +1688,79 @@ export default function MindChatPage() {
           )
         })()}
 
-        {/* 好友列表卡片展示 */}
-        {hasFriendList && (() => {
+        {/* 用户好友列表卡片展示 */}
+        {hasUserFriendList && (() => {
           const steps = msg.metadata?.agent_result?.steps || []
           const listStep = steps.find((step: ReActStep) =>
-            step.action === 'app_list_friends' && step.observation?.data?.friends
+            step.action === 'app_list_user_friends' && step.observation?.data?.friends
           )
           const friends = listStep?.observation?.data?.friends || []
 
           if (friends.length === 0) {
             return (
               <View className="avatar-list-empty">
-                <Text className="empty-text">暂无好友，快去添加好友吧！</Text>
+                <Text className="empty-text">暂无好友，快去关注其他用户吧！</Text>
+              </View>
+            )
+          }
+
+          return (
+            <View className="avatar-list-cards">
+              {friends.map((friend: any) => (
+                <View
+                  key={friend.friend_id}
+                  className="avatar-card"
+                  onClick={() => {
+                    // 跳转到用户详情页（需要创建对应的页面）
+                    // Taro.navigateTo({
+                    //   url: `/pages/user-profile/index?id=${friend.friend_id}`
+                    // })
+                  }}
+                >
+                  <View className="avatar-card-header">
+                    <View className="avatar-card-avatar">
+                      {friend.friend_avatar_url ? (
+                        <Image
+                          src={friend.friend_avatar_url}
+                          className="avatar-card-img"
+                          mode="aspectFill"
+                          onError={() => {
+                            // 图片加载失败时不做处理
+                          }}
+                        />
+                      ) : (
+                        <User size={24} color="#00f5ff" />
+                      )}
+                    </View>
+                    <View className="avatar-card-info">
+                      <Text className="avatar-card-name">{friend.friend_name || '未命名好友'}</Text>
+                      <View className="avatar-card-tags">
+                        <Text className="avatar-card-level">Lv.{friend.friend_level || 1}</Text>
+                      </View>
+                    </View>
+                    <ChevronDown size={16} color="rgba(255,255,255,0.4)" />
+                  </View>
+                  {friend.friend_bio && (
+                    <Text className="avatar-card-personality">{friend.friend_bio}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )
+        })()}
+
+        {/* 分身好友列表卡片展示 */}
+        {hasAvatarFriendList && (() => {
+          const steps = msg.metadata?.agent_result?.steps || []
+          const listStep = steps.find((step: ReActStep) =>
+            step.action === 'app_list_avatar_friends' && step.observation?.data?.friends
+          )
+          const friends = listStep?.observation?.data?.friends || []
+
+          if (friends.length === 0) {
+            return (
+              <View className="avatar-list-empty">
+                <Text className="empty-text">{listStep?.observation?.data?.message || '暂无分身好友，敬请期待！'}</Text>
               </View>
             )
           }
@@ -1721,7 +1793,7 @@ export default function MindChatPage() {
                       )}
                     </View>
                     <View className="avatar-card-info">
-                      <Text className="avatar-card-name">{friend.friend_name || '未命名好友'}</Text>
+                      <Text className="avatar-card-name">{friend.friend_name || '未命名分身'}</Text>
                       <View className="avatar-card-tags">
                         <Text className="avatar-card-level">Lv.{friend.friend_level || 1}</Text>
                         {friend.compatibility_score && (

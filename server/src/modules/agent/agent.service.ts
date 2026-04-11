@@ -35,6 +35,7 @@ import {
   ListAvatarsTool,
   AssignOrderTool,
   AddFriendTool,
+  ListUserFriendsTool,
   ListFriendsTool,
   GetSubscriptionTool,
   SubscribeTool
@@ -131,6 +132,8 @@ export class AgentService {
     this.tools.set('app_list_avatars', new ListAvatarsTool())
     this.tools.set('app_assign_order', new AssignOrderTool())
     this.tools.set('app_add_friend', new AddFriendTool())
+    this.tools.set('app_list_user_friends', new ListUserFriendsTool())
+    this.tools.set('app_list_avatar_friends', new ListFriendsTool())
     this.tools.set('app_get_subscription', new GetSubscriptionTool())
     this.tools.set('app_subscribe', new SubscribeTool())
 
@@ -865,7 +868,8 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 - "分配订单"、"派单"、"接单"（不包含"查看"或"寻找"时） → 使用 app_assign_order 工具
 - "找分身"、"寻找分身"、"查看分身"、"我的分身" → 使用 app_list_avatars 工具
 - "添加好友"、"交朋友"、"扩列" → 使用 app_add_friend 工具
-- "查看好友"、"我的好友"、"好友列表" → 使用 app_list_friends 工具
+- "我的好友"、"我有多少好友"、"查看好友"、"好友列表" → 使用 app_list_user_friends 工具（查询用户的好友）
+- "分身的好友"、"分身有多少好友" → 使用 app_list_avatar_friends 工具（查询分身的好友）
 - "订阅"、"升级"、"开通套餐" → 使用 app_subscribe 或 app_get_subscription 工具
 - "创建任务"、"发布任务" → 使用 app_create_task 工具
 - "查看订单"、"我的订单" → 使用 app_list_tasks 工具

@@ -709,10 +709,102 @@ export class AddFriendTool implements ITool {
  * 查看分身好友列表工具
  */
 @Injectable()
+/**
+ * 查询用户好友列表工具
+ * 基于互相关注关系查询用户的好友列表
+ */
+@Injectable()
+export class ListUserFriendsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_list_user_friends',
+    displayName: '查询用户好友列表',
+    description: '获取当前用户的好友列表（基于互相关注关系），包括好友昵称、头像、等级等',
+    category: 'app_function',
+    paramsSchema: {
+      limit: { type: 'number', description: '返回数量限制', default: 20 }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const client = getSupabaseClient()
+
+      // 查询用户的好友（互相关注的用户）
+      const { data: friends, error: friendsError } = await client
+        .from('follows')
+        .select(`
+          following_id,
+          users!follows_following_id_fkey (
+            id,
+            nickname,
+            avatar,
+            level,
+            bio
+          ),
+          created_at
+        `)
+        .eq('follower_id', context.userId)
+        .limit(params.limit || 20)
+        .order('created_at', { ascending: false })
+
+      if (friendsError) {
+        return { success: false, error: `获取好友列表失败: ${friendsError.message}` }
+      }
+
+      if (!friends || friends.length === 0) {
+        return {
+          success: true,
+          data: {
+            user_id: context.userId,
+            count: 0,
+            friends: [],
+            message: '暂无好友，快去关注其他用户吧！'
+          }
+        }
+      }
+
+      // 格式化好友列表
+      const friendsList = friends
+        .map(f => {
+          // 处理 Supabase 返回的数据结构
+          const userData: any = Array.isArray(f.users) ? f.users[0] : f.users
+          if (!userData) return null
+
+          return {
+            friend_id: userData.id,
+            friend_name: userData.nickname || '未命名好友',
+            friend_avatar_url: userData.avatar,
+            friend_level: userData.level || 1,
+            friend_bio: userData.bio,
+            follow_time: f.created_at
+          }
+        })
+        .filter(f => f !== null)
+
+      return {
+        success: true,
+        data: {
+          user_id: context.userId,
+          count: friendsList.length,
+          friends: friendsList,
+          message: `找到 ${friendsList.length} 个好友`
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+/**
+ * 查询分身好友列表工具
+ * 查询指定分身的好友列表
+ */
+@Injectable()
 export class ListFriendsTool implements ITool {
   readonly definition: ToolDefinition = {
-    name: 'app_list_friends',
-    displayName: '查看好友列表',
+    name: 'app_list_avatar_friends',
+    displayName: '查询分身好友列表',
     description: '获取指定分身的好友列表，包括好友名称、等级、匹配度等信息',
     category: 'app_function',
     paramsSchema: {
@@ -732,7 +824,9 @@ export class ListFriendsTool implements ITool {
         return { success: false, error: '缺少分身ID，请先选择一个分身' }
       }
 
-      // 查询该分身的好友列表
+      // 注意：avatar_friends 表尚未创建，先返回空列表
+      // TODO: 创建 avatar_friends 表后，取消注释以下代码
+      /*
       const { data: friendships, error: friendshipsError } = await client
         .from('avatar_friends')
         .select(`
@@ -754,41 +848,15 @@ export class ListFriendsTool implements ITool {
       if (friendshipsError) {
         return { success: false, error: `获取好友列表失败: ${friendshipsError.message}` }
       }
-
-      if (!friendships || friendships.length === 0) {
-        return {
-          success: true,
-          data: {
-            avatar_id: avatarId,
-            count: 0,
-            friends: [],
-            message: '暂无好友'
-          }
-        }
-      }
-
-      // 格式化好友列表
-      const friends = friendships
-        .filter(f => f.avatars)
-        .map(f => ({
-          friend_id: f.avatars.id,
-          friend_name: f.avatars.name,
-          friend_avatar_url: f.avatars.avatar_url,
-          friend_level: f.avatars.level,
-          friend_personality: f.avatars.personality,
-          friend_status: f.avatars.status,
-          compatibility_score: f.compatibility_score,
-          match_reason: f.match_reason,
-          created_at: f.created_at
-        }))
+      */
 
       return {
         success: true,
         data: {
           avatar_id: avatarId,
-          count: friends.length,
-          friends,
-          message: `找到 ${friends.length} 个好友`
+          count: 0,
+          friends: [],
+          message: '分身好友功能暂未开放，敬请期待'
         }
       }
     } catch (err: any) {
