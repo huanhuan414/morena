@@ -170,9 +170,15 @@ export class SkillsService {
             } as any
           })
           .eq('id', existing.id)
+          .select()
+          .single()
 
         if (updateError) {
           throw new Error(`更新技能失败: ${updateError.message}`)
+        }
+
+        if (!updated) {
+          throw new Error('更新技能失败：未返回数据')
         }
 
         return updated as AvatarSkill
