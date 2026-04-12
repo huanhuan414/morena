@@ -870,25 +870,30 @@ export default function MindChatPage() {
 
           // 检查任务是否完成
           if (result.status === 'completed' || result.status === 'failed') {
+            // result.result 是 AgentExecutionResult 对象，包含 finalAnswer, steps 等字段
+            const executionResult = result.result
+
+            console.log('[MindChat] 任务完成，执行结果:', executionResult)
+
             // 创建助手消息
             const assistantMessage: Message = {
               id: Date.now().toString(),
               role: 'assistant',
-              content: result.finalAnswer || result.result || result.message || '任务完成',
+              content: executionResult?.finalAnswer || result.result?.finalAnswer || result.result?.result || result.message || '任务完成',
               created_at: new Date().toISOString(),
               metadata: {
                 agent_result: {
                   success: result.status === 'completed',
-                  finalAnswer: result.finalAnswer || result.result || result.message,
-                  steps: result.steps || [],
-                  requiresConfig: false
+                  finalAnswer: executionResult?.finalAnswer || result.result?.finalAnswer || result.result?.result || result.message || '任务完成',
+                  steps: executionResult?.steps || result.result?.steps || result.steps || [],
+                  requiresConfig: executionResult?.requiresConfig ?? result.result?.requiresConfig ?? false
                 },
-                agent_steps: result.steps ? result.steps.map((step: any) => ({
+                agent_steps: (executionResult?.steps || result.result?.steps || result.steps || []).map((step: any) => ({
                   action: step.action || step.step || '',
                   displayName: step.action || step.step || '',
                   status: step.status === 'completed' ? 'success' : step.status === 'failed' ? 'failed' : 'running',
                   message: step.message || step.result || step.observation || ''
-                })) : []
+                }))
               }
             }
 

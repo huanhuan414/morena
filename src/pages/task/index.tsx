@@ -75,6 +75,7 @@ export default function TaskPage() {
   })
   const [creating, setCreating] = useState(false)
   const [executing, setExecuting] = useState(false)
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // 初始化安全区域信息
@@ -86,6 +87,13 @@ export default function TaskPage() {
       return
     }
     loadData()
+
+    // 组件卸载时清除定时器
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+      }
+    }
   }, [isLoggedIn])
 
   const loadData = async () => {
@@ -101,7 +109,7 @@ export default function TaskPage() {
       if (tasksRes.data?.code === 200) {
         setTasks(tasksRes.data.data || [])
       }
-      
+
       if (avatarsRes.data?.code === 200) {
         const avatarList = avatarsRes.data.data || []
         setAvatars(avatarList)
@@ -109,7 +117,7 @@ export default function TaskPage() {
           setNewTask(prev => ({ ...prev, avatar_id: avatarList[0].id }))
         }
       }
-      
+
       if (statsRes.data?.code === 200) {
         setStats(statsRes.data.data)
       }
@@ -117,6 +125,48 @@ export default function TaskPage() {
       console.error('加载数据失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const pollTaskStatus = async (taskId: string) => {
+    try {
+      const res = await Network.request({ url: `/api/task/${taskId}` })
+      if (res.data?.code === 200) {
+        const updatedTask = res.data.data
+
+        // 更新任务列表中的任务
+        setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+
+        // 如果当前选中的就是这个任务，也更新详情
+        if (selectedTask?.id === taskId) {
+          setSelectedTask(updatedTask)
+        }
+
+        // 如果任务完成或失败，停止轮询
+        if (updatedTask.status === 'completed' || updatedTask.status === 'failed' || updatedTask.status === 'cancelled') {
+          if (pollingInterval) {
+            clearInterval(pollingInterval)
+            setPollingInterval(null)
+          }
+
+          // 显示完成提示
+          if (updatedTask.status === 'completed') {
+            Taro.showToast({ title: '任务执行完成', icon: 'success' })
+          } else if (updatedTask.status === 'failed') {
+            Taro.showToast({ title: '任务执行失败', icon: 'none' })
+          }
+
+          setExecuting(false)
+
+          // 刷新统计数据
+          const statsRes = await Network.request({ url: '/api/task/stats' })
+          if (statsRes.data?.code === 200) {
+            setStats(statsRes.data.data)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('轮询任务状态失败:', error)
     }
   }
 
@@ -175,19 +225,22 @@ export default function TaskPage() {
       })
 
       if (res.data?.code === 200) {
-        Taro.showToast({ title: '任务执行完成', icon: 'success' })
+        Taro.showToast({ title: '任务已开始执行', icon: 'success' })
         loadData()
-        if (selectedTask?.id === taskId) {
-          const detailRes = await Network.request({ url: `/api/task/${taskId}` })
-          if (detailRes.data?.code === 200) {
-            setSelectedTask(detailRes.data.data)
-          }
-        }
+
+        // 启动轮询，每 2 秒检查一次任务状态
+        const interval = setInterval(() => {
+          pollTaskStatus(taskId)
+        }, 2000)
+
+        setPollingInterval(interval)
+
+        // 立即执行一次轮询
+        pollTaskStatus(taskId)
       }
     } catch (error) {
       console.error('执行任务失败:', error)
       Taro.showToast({ title: '执行失败', icon: 'none' })
-    } finally {
       setExecuting(false)
     }
   }
@@ -217,8 +270,16 @@ export default function TaskPage() {
 
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已删除', icon: 'success' })
+
+        // 清除轮询
+        if (pollingInterval) {
+          clearInterval(pollingInterval)
+          setPollingInterval(null)
+        }
+
         setShowDetail(false)
         setSelectedTask(null)
+        setExecuting(false)
         loadData()
       }
     } catch (error) {
@@ -227,14 +288,30 @@ export default function TaskPage() {
   }
 
   const openTaskDetail = async (task: Task) => {
+    // 清除之前的轮询
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      setPollingInterval(null)
+    }
+
     setSelectedTask(task)
     setShowDetail(true)
-    
+
     // 获取最新详情
     try {
       const res = await Network.request({ url: `/api/task/${task.id}` })
       if (res.data?.code === 200) {
-        setSelectedTask(res.data.data)
+        const updatedTask = res.data.data
+        setSelectedTask(updatedTask)
+
+        // 如果任务正在执行中，启动轮询
+        if (updatedTask.status === 'executing' && !pollingInterval) {
+          setExecuting(true)
+          const interval = setInterval(() => {
+            pollTaskStatus(task.id)
+          }, 2000)
+          setPollingInterval(interval)
+        }
       }
     } catch (error) {
       console.error('获取任务详情失败:', error)
@@ -498,7 +575,15 @@ export default function TaskPage() {
 
       {/* 任务详情弹窗 */}
       {showDetail && selectedTask && (
-        <View className="modal-overlay" onClick={() => setShowDetail(false)}>
+        <View className="modal-overlay" onClick={() => {
+          setShowDetail(false)
+          // 关闭详情时清除轮询
+          if (pollingInterval) {
+            clearInterval(pollingInterval)
+            setPollingInterval(null)
+          }
+          setExecuting(false)
+        }}>
           <View className="modal-content detail-modal" onClick={e => e.stopPropagation()}>
             <View className="modal-header">
               <View className="detail-header-info">
