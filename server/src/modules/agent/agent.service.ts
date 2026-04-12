@@ -791,7 +791,7 @@ export class AgentService {
       step.observation = toolResult
 
       // 推送执行结果（工具可能返回自己的进度）
-      const toolPercentage = toolResult.percentage || (actionProgress + 10)
+      const toolPercentage = (toolResult as any).percentage || (actionProgress + 10)
       this.emitProgress(
         userId,
         'observation',
@@ -1724,3 +1724,4 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     }
   }
 }
+

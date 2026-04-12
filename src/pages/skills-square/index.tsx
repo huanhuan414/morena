@@ -1,12 +1,13 @@
 // eslint-disable-next-line no-restricted-syntax
 import { View, Text, ScrollView } from '@tarojs/components'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useUserStore } from '@/stores/user'
+import Taro from '@tarojs/taro'
 import {
   Sparkles,
   ShoppingCart,
@@ -14,9 +15,6 @@ import {
   Search,
   TrendingUp,
   Package,
-  Crown,
-  Zap,
-  Check,
   Loader
 } from 'lucide-react-taro'
 import './index.css'
@@ -25,25 +23,32 @@ interface Skill {
   id: string
   name: string
   description: string
-  type: 'prebuilt' | 'custom' | 'paid'
-  price: number
   category?: string
+  price: number
   icon?: string
   tags: string[]
   rating: number
-  ratingCount: number
-  purchaseCount: number
-  usageCount: number
-  createdAt: string
+  rating_count: number
+  purchase_count: number
+  capabilities?: any
+  requirements?: string
+  status: string
+  created_at: string
+  updated_at: string
 }
 
-interface SkillFilter {
-  type?: 'prebuilt' | 'custom' | 'paid'
-  category?: string
-  search?: string
-}
+export default function SkillsSquare() {
+  const { avatarId } = useUserStore()
 
-
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [loading, setLoading] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [filter, setFilter] = useState<any>({})
+  const [categories, setCategories] = useState<string[]>([])
+  const [mySkills, setMySkills] = useState<string[]>([])
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
+  const [purchasing, setPurchasing] = useState(false)
 
   // 获取技能列表
   const fetchSkills = async () => {
@@ -63,7 +68,7 @@ interface SkillFilter {
       }
     } catch (error) {
       console.error('[SkillSquare] 获取技能列表失败:', error)
-      showToast({ title: '获取技能列表失败', icon: 'none' })
+      Taro.showToast({ title: '获取技能列表失败', icon: 'none' })
     } finally {
       setLoading(false)
     }
@@ -121,16 +126,16 @@ interface SkillFilter {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '购买成功！', icon: 'success' })
+        Taro.showToast({ title: '购买成功！', icon: 'success' })
         setShowPurchaseDialog(false)
         // 刷新列表
         fetchMySkills()
       } else {
-        showToast({ title: res.data?.message || '购买失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '购买失败', icon: 'none' })
       }
     } catch (error) {
       console.error('[SkillSquare] 购买技能失败:', error)
-      showToast({ title: '购买失败', icon: 'none' })
+      Taro.showToast({ title: '购买失败', icon: 'none' })
     } finally {
       setPurchasing(false)
     }
@@ -139,30 +144,16 @@ interface SkillFilter {
   // 检查是否已拥有该技能
   const isOwned = (skillId: string) => mySkills.includes(skillId)
 
-  // 获取类型显示名称
-  const getTypeName = (type: string) => {
-    const typeMap: Record<string, string> = {
-      prebuilt: '预置',
-      custom: '自定义',
-      paid: '付费'
-    }
-    return typeMap[type] || type
-  }
-
-  // 获取类型颜色
-  const getTypeColor = (type: string) => {
-    const colorMap: Record<string, string> = {
-      prebuilt: 'bg-blue-500',
-      custom: 'bg-purple-500',
-      paid: 'bg-orange-500'
-    }
-    return colorMap[type] || 'bg-gray-500'
-  }
-
   // 搜索处理
   const handleSearch = () => {
     fetchSkills()
   }
+
+  useEffect(() => {
+    fetchSkills()
+    fetchCategories()
+    fetchMySkills()
+  }, [])
 
   return (
     <View className="skill-square-container">
@@ -192,30 +183,22 @@ interface SkillFilter {
             <View className={`filter-item ${!filter.type ? 'active' : ''}`} onClick={() => {
               setFilter({ ...filter, type: undefined })
               fetchSkills()
-            }}>
+            }}
+            >
               <Text className="filter-text">全部</Text>
             </View>
-            <View className={`filter-item ${filter.type === 'prebuilt' ? 'active' : ''}`} onClick={() => {
-              setFilter({ ...filter, type: 'prebuilt' })
-              fetchSkills()
-            }}>
-              <Sparkles size={14} />
-              <Text className="filter-text">预置</Text>
-            </View>
-            <View className={`filter-item ${filter.type === 'custom' ? 'active' : ''}`} onClick={() => {
-              setFilter({ ...filter, type: 'custom' })
-              fetchSkills()
-            }}>
-              <Zap size={14} />
-              <Text className="filter-text">自定义</Text>
-            </View>
-            <View className={`filter-item ${filter.type === 'paid' ? 'active' : ''}`} onClick={() => {
-              setFilter({ ...filter, type: 'paid' })
-              fetchSkills()
-            }}>
-              <Crown size={14} />
-              <Text className="filter-text">付费</Text>
-            </View>
+            {categories.slice(0, 4).map((cat) => (
+              <View
+                key={cat}
+                className={`filter-item ${filter.category === cat ? 'active' : ''}`}
+                onClick={() => {
+                  setFilter({ ...filter, category: cat })
+                  fetchSkills()
+                }}
+              >
+                <Text className="filter-text">{cat}</Text>
+              </View>
+            ))}
           </ScrollView>
         </View>
       </View>
@@ -242,8 +225,8 @@ interface SkillFilter {
               <View className="skill-info">
                 <View className="skill-header">
                   <Text className="skill-name">{skill.name}</Text>
-                  <Badge className={getTypeColor(skill.type)}>
-                    {getTypeName(skill.type)}
+                  <Badge className="bg-blue-500">
+                    {skill.category}
                   </Badge>
                 </View>
 
@@ -260,11 +243,11 @@ interface SkillFilter {
                 <View className="skill-meta">
                   <View className="meta-item">
                     <Star size={14} color="#ffb800" />
-                    <Text className="meta-text">{skill.rating.toFixed(1)} ({skill.ratingCount})</Text>
+                    <Text className="meta-text">{skill.rating.toFixed(1)} ({skill.rating_count})</Text>
                   </View>
                   <View className="meta-item">
                     <TrendingUp size={14} color="rgba(255,255,255,0.6)" />
-                    <Text className="meta-text">{skill.purchaseCount} 人购买</Text>
+                    <Text className="meta-text">{skill.purchase_count} 人购买</Text>
                   </View>
                 </View>
               </View>
@@ -340,3 +323,16 @@ interface SkillFilter {
             </View>
           )}
 
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPurchaseDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handlePurchase} disabled={purchasing}>
+              {purchasing ? '购买中...' : '确认购买'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </View>
+  )
+}

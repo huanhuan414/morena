@@ -122,7 +122,7 @@ export class SkillsService {
         .single()
 
       if (error || !data) {
-        throw new Error(`创建技能失败: ${error.message}`)
+        throw new Error(`创建技能失败: ${error?.message || '未知错误'}`)
       }
 
       return data as Skill
@@ -184,7 +184,7 @@ export class SkillsService {
         .single()
 
       if (insertError || !avatarSkill) {
-        throw new Error(`购买技能失败: ${insertError.message}`)
+        throw new Error(`购买技能失败: ${insertError?.message || '未知错误'}`)
       }
 
       // 更新技能购买次数
@@ -260,7 +260,7 @@ export class SkillsService {
         .single()
 
       if (insertError || !review) {
-        throw new Error(`添加评价失败: ${insertError.message}`)
+        throw new Error(`添加评价失败: ${insertError?.message || '未知错误'}`)
       }
 
       // 更新技能评分
@@ -349,7 +349,7 @@ export class SkillsService {
         .from('skills')
         .select('*')
         .eq('status', 'active')
-        .or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%,tags.cs.{${keyword}}`)
+        .or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
         .limit(limit)
 
       if (error) {

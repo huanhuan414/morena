@@ -7,6 +7,7 @@ interface User {
   openid?: string
   nickname: string
   avatar: string
+  avatarId?: string
   phone?: string
   bio?: string
   level?: number
@@ -20,6 +21,7 @@ interface UserState {
   userInfo: User | null
   token: string
   isLoggedIn: boolean
+  avatarId?: string
   setUserInfo: (info: User) => void
   setToken: (token: string) => void
   setLoggedIn: (status: boolean) => void
@@ -32,6 +34,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   userInfo: null,
   token: '',
   isLoggedIn: false,
+  avatarId: undefined,
 
   setUserInfo: (info) => {
     setStorageSync('userInfo', info)

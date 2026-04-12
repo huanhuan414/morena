@@ -44,6 +44,7 @@ export interface ToolResult {
   data?: any
   error?: string
   message: string
+  percentage?: number // 任务进度百分比（可选，用于推送执行进度）
 }
 
 /**
