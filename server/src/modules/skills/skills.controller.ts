@@ -71,6 +71,28 @@ export class SkillsController {
   }
 
   /**
+   * 获取分身已拥有的技能
+   */
+  @Get('avatar/:avatarId')
+  async getAvatarSkills(@Param('avatarId') avatarId: string) {
+    try {
+      const skills = await this.skillsService.getAvatarSkills(avatarId)
+
+      return {
+        code: 200,
+        data: skills,
+        message: '获取成功'
+      }
+    } catch (error) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取分身技能失败'
+      }
+    }
+  }
+
+  /**
    * 获取技能详情
    */
   @Get(':id')
@@ -138,28 +160,6 @@ export class SkillsController {
         code: 400,
         data: null,
         message: error.message || '购买技能失败'
-      }
-    }
-  }
-
-  /**
-   * 获取分身已拥有的技能
-   */
-  @Get('avatar/:avatarId')
-  async getAvatarSkills(@Param('avatarId') avatarId: string) {
-    try {
-      const skills = await this.skillsService.getAvatarSkills(avatarId)
-
-      return {
-        code: 200,
-        data: skills,
-        message: '获取成功'
-      }
-    } catch (error) {
-      return {
-        code: 500,
-        data: null,
-        message: error.message || '获取分身技能失败'
       }
     }
   }
