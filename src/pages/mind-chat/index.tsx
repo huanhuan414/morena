@@ -636,6 +636,31 @@ export default function MindChatPage() {
         const data = res.data.data || []
         setMessages(data)
         setHasMoreMessages(data.length >= 20)
+
+        // 检查最后一条助手消息是否有未完成的任务
+        const lastAssistantMessage = data.findLast((msg: Message) => msg.role === 'assistant')
+        if (lastAssistantMessage?.metadata?.agent_steps) {
+          const steps = lastAssistantMessage.metadata.agent_steps
+          const lastStep = steps[steps.length - 1]
+
+          // 如果最后一步是 running 状态，说明任务可能还在执行或已中断
+          if (lastStep?.status === 'running') {
+            console.log('[MindChat] 检测到未完成的任务，恢复状态')
+
+            // 恢复任务状态
+            setLoading(true)
+            setCurrentStatus(lastStep.message || '任务执行中...')
+            setAgentSteps(steps)
+
+            // 提示用户任务状态
+            Taro.showModal({
+              title: '任务状态',
+              content: '检测到有任务正在执行中，但可能已中断。如需继续，请重新发送相同指令。',
+              showCancel: false
+            })
+          }
+        }
+
         // 确保启用滚动到底部
         shouldScrollToBottomRef.current = true
         // useEffect 会在 messages 变化时自动滚动

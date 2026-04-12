@@ -177,11 +177,19 @@ export class AgentService {
    */
   async getAvatarTools(avatarId: string): Promise<ToolDefinition[]> {
     try {
+      console.log(`[AgentService] 获取分身工具，分身ID: ${avatarId}`)
+
       // 获取分身的技能列表
       const { data: avatarSkills, error } = await getSupabaseClient()
         .from('avatar_skills')
         .select('skill_type, metadata')
         .eq('avatar_id', avatarId)
+
+      console.log(`[AgentService] 查询分身技能结果:`, {
+        error: !!error,
+        count: avatarSkills?.length || 0,
+        skills: avatarSkills?.map(s => ({ skill_type: s.skill_type, metadata: s.metadata }))
+      })
 
       // 定义基础工具（所有分身都能使用的内部功能）
       const basicTools: string[] = [
@@ -202,7 +210,7 @@ export class AgentService {
 
       // 如果没有技能，只返回基础工具
       if (error || !avatarSkills || avatarSkills.length === 0) {
-        console.log('[AgentService] 分身没有技能，只返回基础工具')
+        console.log(`[AgentService] ⚠️ 分身没有技能，只返回基础工具`)
         return this.getToolsByNames(basicTools)
       }
 
@@ -220,6 +228,9 @@ export class AgentService {
           skillIds.push(item.metadata.skill_id)
         }
       }
+
+      console.log(`[AgentService] 提取的工具名称:`, toolNames)
+      console.log(`[AgentService] 提取的技能ID:`, skillIds)
 
       // 如果有 skill_id，需要从 skills 表中获取 tool_name
       if (skillIds.length > 0) {
@@ -239,19 +250,24 @@ export class AgentService {
 
       // 如果技能中没有工具名称，只返回基础工具
       if (toolNames.length === 0) {
-        console.log('[AgentService] 技能列表为空，只返回基础工具')
+        console.log(`[AgentService] ⚠️ 技能列表为空，只返回基础工具`)
         return this.getToolsByNames(basicTools)
       }
 
       // 返回分身拥有的工具 + 基础工具（任务管理、分身管理等）
       const allToolNames = [...new Set([...basicTools, ...toolNames])]
 
-      return allToolNames
+      console.log(`[AgentService] 最终工具列表:`, allToolNames)
+
+      const result = allToolNames
         .map(toolName => {
           const tool = this.tools.get(toolName)
           return tool ? tool.definition : null
         })
         .filter((t): t is ToolDefinition => t !== null)
+
+      console.log(`[AgentService] 返回工具数量: ${result.length}`)
+      return result
     } catch (error) {
       console.error('[AgentService] 获取分身工具失败:', error)
       // 出错时只返回基础工具，而不是所有工具
@@ -1372,8 +1388,14 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   ): Promise<ToolResult> {
     // 检查工具是否在分身可用工具列表中
     const isToolAvailable = context.availableTools.some(tool => tool.name === toolName)
+
+    // 强制日志输出
+    console.log(`[Agent] 执行工具检查 - 工具名: ${toolName}`)
+    console.log(`[Agent] 可用工具列表:`, context.availableTools.map(t => t.name))
+    console.log(`[Agent] 工具是否可用: ${isToolAvailable}`)
+
     if (!isToolAvailable) {
-      console.warn(`[Agent] 工具 ${toolName} 不在分身的可用工具列表中，拒绝执行`)
+      console.warn(`[Agent] ⛔ 工具 ${toolName} 不在分身的可用工具列表中，拒绝执行`)
 
       // 获取技能的中文名称
       const skillDisplayName = await this.getSkillDisplayName(toolName)
