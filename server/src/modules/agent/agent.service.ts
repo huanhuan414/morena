@@ -783,6 +783,13 @@ export class AgentService {
       platformMap.set(config.platform_type as PlatformType, config)
     })
 
+    // 获取分身信息
+    const { data: avatarInfo } = await client
+      .from('avatars')
+      .select('name, description, personality, level, avatar_url')
+      .eq('id', avatarId)
+      .single()
+
     // 获取分身的技能
     const { data: avatarSkills } = await client
       .from('avatar_skills')
@@ -791,7 +798,7 @@ export class AgentService {
 
     // 获取对话历史
     let conversationHistory: ConversationMessage[] = options?.conversationHistory || []
-    
+
     // 如果有 conversationId 但没有传入历史，从数据库获取
     if (options?.conversationId && conversationHistory.length === 0) {
       const { data: conversation } = await client
@@ -799,7 +806,7 @@ export class AgentService {
         .select('context')
         .eq('id', options.conversationId)
         .single()
-      
+
       if (conversation?.context) {
         // 确保 context 是数组格式
         const ctx = conversation.context
@@ -826,6 +833,7 @@ export class AgentService {
     return {
       userId,
       avatarId,
+      avatarInfo: avatarInfo || undefined,
       conversationId: options?.conversationId,
       taskId: options?.taskId,
       taskDescription,
@@ -1008,10 +1016,26 @@ export class AgentService {
     const historyText = this.formatHistory(history)
     const conversationHistoryText = this.formatConversationHistory(context.conversationHistory)
 
+    // 构建分身身份信息
+    let avatarInfoText = ''
+    if (context.avatarInfo) {
+      avatarInfoText = `
+【分身身份信息】
+- 名字：${context.avatarInfo.name}
+- 描述：${context.avatarInfo.description || '无'}
+- 性格：${context.avatarInfo.personality || '无'}
+- 等级：${context.avatarInfo.level || 1}
+
+重要提示：你是一个AI分身，名字叫"${context.avatarInfo.name}"。用户正在与你进行对话。当用户询问你的身份或是否是分身时，请明确告知用户你的名字和身份，不要说"我没有创建任何分身"之类的错误回答。
+`
+    }
+
     // 智能任务理解提示
     const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history)
 
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
+
+${avatarInfoText}
 
 可用工具：
 ${toolsDescription}

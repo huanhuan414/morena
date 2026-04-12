@@ -118,6 +118,13 @@ export interface ReActStep {
 export interface AgentContext {
   userId: string
   avatarId: string
+  avatarInfo?: {
+    name: string
+    description: string
+    personality: string
+    level: number
+    avatar_url: string
+  }
   conversationId?: string
   taskId?: string
   taskDescription: string
