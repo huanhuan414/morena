@@ -1036,7 +1036,7 @@ export class AgentService {
     }
 
     // 智能任务理解提示
-    const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history)
+    const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history, context)
 
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
 
@@ -1113,9 +1113,20 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
    * 获取任务理解提示
    * 帮助 Agent 正确理解各种任务类型
    */
-  private getTaskUnderstandingHint(task: string, history: ReActStep[]): string {
+  private getTaskUnderstandingHint(task: string, history: ReActStep[], context: AgentContext): string {
     const hints: string[] = []
     const lowerTask = task.toLowerCase()
+
+    // 【技能缺失检查】 - 优先检查用户需要的技能是否可用
+    const skillCheckResult = this.checkRequiredSkills(task, context.availableTools)
+    if (skillCheckResult.missing.length > 0) {
+      // 将缺失的技能名称转换为中文
+      const missingSkillNames = skillCheckResult.missing.map(s => this.getToolDisplayNameChinese(s.toolName)).join('、')
+      hints.push(`【技能缺失提醒】检测到您的分身缺少以下技能：${missingSkillNames}`)
+      hints.push(`请前往技能广场添加这些技能后再执行任务。`)
+      // 如果只是技能缺失，直接返回提示，不继续分析其他规则
+      return hints.join('\n')
+    }
 
     // 【多步指令检测】 - 优先检测包含分隔符的复合指令
     // 支持的分隔符：中文逗号、顿号、英文逗号、"并"、"然后"、"接下来"、"之后"、"同时"、"以及"、"还有"、"再"
@@ -1316,9 +1327,13 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     const isToolAvailable = context.availableTools.some(tool => tool.name === toolName)
     if (!isToolAvailable) {
       console.warn(`[Agent] 工具 ${toolName} 不在分身的可用工具列表中，拒绝执行`)
+
+      // 获取技能的中文名称
+      const skillDisplayName = await this.getSkillDisplayName(toolName)
+
       return {
         success: false,
-        error: `您的分身尚未添加该功能，请前往技能广场添加"${toolName}"技能`
+        error: `您的分身尚未添加该功能，请前往技能广场添加"${skillDisplayName}"技能`
       }
     }
 
@@ -1364,6 +1379,25 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       return result
     } catch (err: any) {
       return { success: false, error: err.message }
+    }
+  }
+
+  /**
+   * 获取技能的中文名称
+   * 根据 tool_name 从 skills 表中获取对应的中文显示名称
+   */
+  private async getSkillDisplayName(toolName: string): Promise<string> {
+    try {
+      const { data } = await getSupabaseClient()
+        .from('skills')
+        .select('name')
+        .eq('tool_name', toolName)
+        .single()
+
+      return data?.name || toolName
+    } catch (error) {
+      console.warn(`[Agent] 获取技能 ${toolName} 的中文名称失败:`, error)
+      return toolName
     }
   }
 
@@ -1960,6 +1994,88 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       console.error(`[AgentService] 发布失败:`, err)
       return { success: false, message: err.message || '发布失败' }
     }
+  }
+
+  /**
+   * 检查任务需要的技能
+   * 返回缺失的技能列表
+   */
+  private checkRequiredSkills(task: string, availableTools: any[]): { required: Array<{ toolName: string; skillName: string }>; missing: Array<{ toolName: string; skillName: string }> } {
+    const required: Array<{ toolName: string; skillName: string }> = []
+    const missing: Array<{ toolName: string; skillName: string }> = []
+
+    const lowerTask = task.toLowerCase()
+
+    // 检测各种操作类型
+    if (lowerTask.match(/生成.*图|画.*图|设计.*图|做.*图|创作.*图|生成图片|画张图|做个图|海报/)) {
+      required.push({ toolName: 'generate_image', skillName: '图像生成' })
+    }
+
+    if (lowerTask.match(/生成.*视频|做.*视频|制作.*视频|视频生成/)) {
+      required.push({ toolName: 'generate_video', skillName: '视频生成' })
+    }
+
+    if (lowerTask.match(/写.*文章|创作.*文章|写公众号|写内容/)) {
+      required.push({ toolName: 'write_article', skillName: '文章创作' })
+    }
+
+    if (lowerTask.match(/写.*小红书|小红书.*笔记/)) {
+      required.push({ toolName: 'write_xiaohongshu_note', skillName: '小红书笔记' })
+    }
+
+    if (lowerTask.match(/写.*公众号|公众号.*文章/)) {
+      required.push({ toolName: 'write_wechat_mp_article', skillName: '公众号文章' })
+    }
+
+    if (lowerTask.match(/发.*公众号|发布.*公众号/)) {
+      required.push({ toolName: 'publish_wechat_mp', skillName: '公众号发布' })
+    }
+
+    if (lowerTask.match(/发.*小红书|发布.*小红书/)) {
+      required.push({ toolName: 'publish_xiaohongshu', skillName: '小红书发布' })
+    }
+
+    if (lowerTask.match(/发.*抖音|发布.*抖音/)) {
+      required.push({ toolName: 'publish_douyin', skillName: '抖音发布' })
+    }
+
+    if (lowerTask.match(/发.*B站|发布.*B站|发.*Bilibili/)) {
+      required.push({ toolName: 'publish_bilibili', skillName: 'B站发布' })
+    }
+
+    if (lowerTask.match(/发.*视频号|发布.*视频号/)) {
+      required.push({ toolName: 'publish_wechat_video', skillName: '视频号发布' })
+    }
+
+    // 检查哪些技能在可用工具列表中缺失
+    for (const skill of required) {
+      const isAvailable = availableTools.some(tool => tool.name === skill.toolName)
+      if (!isAvailable) {
+        missing.push(skill)
+      }
+    }
+
+    return { required, missing }
+  }
+
+  /**
+   * 获取工具的中文名称（简化版，用于技能检查提示）
+   */
+  private getToolDisplayNameChinese(toolName: string): string {
+    const toolNameMap: Record<string, string> = {
+      'generate_image': '图像生成',
+      'generate_video': '视频生成',
+      'write_article': '文章创作',
+      'write_xiaohongshu_note': '小红书笔记',
+      'write_wechat_mp_article': '公众号文章',
+      'publish_wechat_mp': '公众号发布',
+      'publish_xiaohongshu': '小红书发布',
+      'publish_douyin': '抖音发布',
+      'publish_bilibili': 'B站发布',
+      'publish_wechat_video': '视频号发布'
+    }
+
+    return toolNameMap[toolName] || toolName
   }
 }
 
