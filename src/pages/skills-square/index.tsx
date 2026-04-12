@@ -365,9 +365,17 @@ export default function SkillsSquare() {
               })
               return (
                 <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
-                  {/* 图标 */}
-                  <View className="icon-wrapper">
-                    <Text className="skill-icon">{skill.icon || '🎯'}</Text>
+                  {/* 图标和分类 */}
+                  <View className="card-top">
+                    <View className="icon-wrapper">
+                      <Text className="skill-icon">{skill.icon || '🎯'}</Text>
+                    </View>
+                    {owned && (
+                      <View className="owned-badge">
+                        <Check size={10} color="#00ff88" />
+                        <Text className="owned-text">已添加</Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* 内容 */}
@@ -386,11 +394,13 @@ export default function SkillsSquare() {
                         ))}
                       </View>
                     )}
+                  </View>
 
-                    {/* 统计信息 */}
+                  {/* 底部 */}
+                  <View className="card-footer">
                     <View className="stats">
                       <View className="stat-item">
-                        <Star size={12} color="#ffb800" />
+                        <Star size={10} color="#ffb800" />
                         <Text className="stat-value">{skill.rating}</Text>
                         <Text className="stat-label">({skill.rating_count})</Text>
                       </View>
@@ -399,19 +409,9 @@ export default function SkillsSquare() {
                         <Text className="stat-label">人使用</Text>
                       </View>
                     </View>
-                  </View>
-
-                  {/* 右侧操作区 */}
-                  <View className="card-action">
-                    {owned && (
-                      <View className="owned-badge">
-                        <Check size={12} color="#00ff88" />
-                        <Text className="owned-text">已添加</Text>
-                      </View>
-                    )}
                     {owned ? (
                       <Button className="action-btn owned" disabled>
-                        <Check size={14} color="#00ff88" />
+                        <Check size={12} color="#00ff88" />
                         <Text>已添加</Text>
                       </Button>
                     ) : (
@@ -422,7 +422,7 @@ export default function SkillsSquare() {
                           setShowPurchaseDialog(true)
                         }}
                       >
-                        <ShoppingCart size={14} color="#fff" />
+                        <ShoppingCart size={12} color="#fff" />
                         <Text>添加</Text>
                       </Button>
                     )}
