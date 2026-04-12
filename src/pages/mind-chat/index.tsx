@@ -152,7 +152,7 @@ interface LearningStats {
 // 解析 Markdown 为段落数组，用于分段渲染
 export default function MindChatPage() {
   const router = useRouter()
-  const { isLoggedIn, userInfo, avatarId } = useUserStore()
+  const { isLoggedIn, userInfo, avatarId, setAvatarId } = useUserStore()
   const [avatar, setAvatar] = useState<Avatar | null>(null)
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -558,6 +558,7 @@ export default function MindChatPage() {
       if (res.data?.code === 200 && res.data.data?.length > 0) {
         const defaultAvatar = res.data.data[0]
         setAvatar(defaultAvatar)
+        setAvatarId?.(defaultAvatar.id)  // 更新 store 中的 avatarId
         fetchOrCreateConversation(defaultAvatar.id)
       }
     } catch (error) {
@@ -570,6 +571,7 @@ export default function MindChatPage() {
       const res = await Network.request({ url: `/api/avatar/${targetAvatarId}` })
       if (res.data?.code === 200) {
         setAvatar(res.data.data)
+        setAvatarId?.(targetAvatarId)  // 更新 store 中的 avatarId
       }
     } catch (error) {
       console.error('[MindChat] 获取分身失败:', error)
