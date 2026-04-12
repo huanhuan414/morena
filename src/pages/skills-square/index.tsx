@@ -85,12 +85,13 @@ export default function SkillsSquare() {
 
       console.log('[SkillSquare] 开始获取技能列表，搜索关键词:', searchKeyword)
 
-      // 使用 Network.request 发送请求
+      // 使用 Network.request 发送请求，增加 pageSize 以获取所有技能
       const res = await Network.request({
         url: '/api/skills',
         method: 'GET',
         data: {
           search: searchKeyword || undefined,
+          pageSize: 100, // 增加 pageSize 以获取所有技能
           _t: Date.now() // 添加时间戳避免缓存
         }
       })
