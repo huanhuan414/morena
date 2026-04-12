@@ -293,11 +293,27 @@ export default function SkillsSquare() {
         Taro.showToast({ title: '移除成功', icon: 'success' })
         fetchMySkills()
       } else {
-        Taro.showToast({ title: res.data?.message || '移除失败', icon: 'none' })
+        const errorMessage = res.data?.message || '移除失败'
+        // 如果错误提示技能不存在，则认为技能已经被移除，刷新列表
+        if (errorMessage.includes('未找到该技能') || errorMessage.includes('可能已经移除')) {
+          console.log('[SkillSquare] 技能不存在，可能已经移除，刷新列表')
+          Taro.showToast({ title: '技能已移除', icon: 'success' })
+          fetchMySkills()
+        } else {
+          Taro.showToast({ title: errorMessage, icon: 'none' })
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SkillSquare] 移除技能失败:', error)
-      Taro.showToast({ title: '移除失败', icon: 'none' })
+      const errorMessage = error?.message || '移除失败'
+      // 如果错误提示技能不存在，则认为技能已经被移除，刷新列表
+      if (errorMessage.includes('未找到该技能') || errorMessage.includes('可能已经移除')) {
+        console.log('[SkillSquare] 技能不存在，可能已经移除，刷新列表')
+        Taro.showToast({ title: '技能已移除', icon: 'success' })
+        fetchMySkills()
+      } else {
+        Taro.showToast({ title: errorMessage, icon: 'none' })
+      }
     }
   }
 
