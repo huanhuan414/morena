@@ -411,8 +411,10 @@ export default function SkillsSquare() {
                     </View>
                     {owned ? (
                       <Button className="action-btn owned" disabled>
-                        <Check size={14} color="#00ff88" />
-                        <Text>已添加</Text>
+                        <View className="btn-content">
+                          <Check size={14} color="#00ff88" />
+                          <Text>已添加</Text>
+                        </View>
                       </Button>
                     ) : (
                       <Button
@@ -422,8 +424,10 @@ export default function SkillsSquare() {
                           setShowPurchaseDialog(true)
                         }}
                       >
-                        <ShoppingCart size={14} color="#fff" />
-                        <Text>添加</Text>
+                        <View className="btn-content">
+                          <ShoppingCart size={14} color="#fff" />
+                          <Text>添加</Text>
+                        </View>
                       </Button>
                     )}
                   </View>
