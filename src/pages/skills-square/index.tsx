@@ -147,8 +147,8 @@ export default function SkillsSquare() {
 
       if (res.data?.code === 200) {
         const mySkillsList = res.data.data || []
+        console.log('[SkillSquare] 技能列表数组长度:', mySkillsList.length)
         console.log('[SkillSquare] 技能列表数组:', mySkillsList)
-        console.log('[SkillSquare] 第一个技能项:', mySkillsList[0])
 
         // 提取技能ID，尝试多种可能的字段名
         const skillIds = mySkillsList.map((s: any) => {
@@ -162,13 +162,17 @@ export default function SkillsSquare() {
         console.log('[SkillSquare] 提取的技能ID列表:', skillIds)
 
         // 打印每个技能的详细信息
+        console.log('[SkillSquare] ========== 分身已拥有的技能详情 ==========')
         mySkillsList.forEach((skill: any, index: number) => {
-          console.log(`[SkillSquare] 技能 ${index + 1}:`, {
-            id: skill.id || skill.skillId || skill.skill_id,
-            name: skill.name || skill.skill?.name,
-            entireObject: skill
-          })
+          const skillInfo = {
+            序号: index + 1,
+            ID: skill.id || skill.skillId || skill.skill_id,
+            名称: skill.name || skill.skill?.name,
+            完整对象: skill
+          }
+          console.log(`[SkillSquare] 技能${index + 1}:`, skillInfo)
         })
+        console.log('[SkillSquare] ===========================================')
 
         setMySkills(skillIds)
       }
@@ -239,6 +243,16 @@ export default function SkillsSquare() {
   // 追踪 skills 状态变化
   useEffect(() => {
     console.log('[SkillSquare] skills 状态变化，长度:', skills.length)
+    if (skills.length > 0) {
+      console.log('[SkillSquare] 所有技能列表:')
+      skills.forEach((skill, index) => {
+        console.log(`[SkillSquare]   技能${index + 1}:`, {
+          id: skill.id,
+          name: skill.name,
+          category: skill.category
+        })
+      })
+    }
   }, [skills])
 
   // 追踪 mySkills 状态变化
