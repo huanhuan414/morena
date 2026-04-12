@@ -90,7 +90,8 @@ export default function SkillsSquare() {
         url: '/api/skills',
         method: 'GET',
         data: {
-          search: searchKeyword || undefined
+          search: searchKeyword || undefined,
+          _t: Date.now() // 添加时间戳避免缓存
         }
       })
 

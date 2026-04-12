@@ -22,27 +22,16 @@ export const request = (option) => {
       return url
     }
 
-    // H5 环境下，如果是本地开发环境，使用相对路径（让 Vite 代理生效）
-    if (getEnv() === ENV_TYPE.H5) {
-      // 检查是否在本地开发环境
-      const isLocalhost = typeof window !== 'undefined' &&
-                         (window.location.hostname === 'localhost' ||
-                          window.location.hostname === '127.0.0.1' ||
-                          window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('10.'))
-      if (isLocalhost && url.startsWith('/api/')) {
-        console.log('[Network.request] 本地开发环境，使用相对路径:', url)
-        return url
-      }
-    }
-
-    // PROJECT_DOMAIN is globally injected by Taro config
+    // 在 Coze 平台环境中，使用相对路径，让 Coze 网关处理 /api 路由
+    // PROJECT_DOMAIN 在开发模式下为空字符串
     const domain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
     return `${domain}${url}`
   }
 
   const headers = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
     ...(option.header || {}),
     ...(userId ? { 'x-user-id': userId } : {})
   }
