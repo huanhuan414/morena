@@ -1107,9 +1107,13 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
     const lowerTask = task.toLowerCase()
 
     // 【多步指令检测】 - 优先检测包含分隔符的复合指令
-    const hasMultiStepTask = /[，、,]\s*(找|生成|做|画|创作|写|发布|添加|分配)/.test(task)
+    // 支持的分隔符：中文逗号、顿号、英文逗号、"并"、"然后"、"接下来"、"之后"、"同时"、"以及"、"还有"、"再"
+    const hasMultiStepTask = /[，、,并然后接下来之后同时以及还有再]\s*(找|生成|做|画|创作|写|发布|添加|分配|发)/.test(task)
     if (hasMultiStepTask) {
-      const subTasks = task.split(/[，、,]/).map(t => t.trim()).filter(t => t)
+      // 按多种分隔符拆分
+      const subTasks = task.split(/[，、,并然后接下来之后同时以及还有再]/)
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
       hints.push(`【多步指令识别】检测到 ${subTasks.length} 个子任务：\n${subTasks.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)
       hints.push(`【执行策略】必须按顺序逐个执行每个子任务，不能遗漏任何子任务。`)
       return hints.join('\n\n') // 多步任务直接返回，不继续匹配其他规则
