@@ -1128,6 +1128,14 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
       return hints.join('\n')
     }
 
+    // 【未知技能检测】 - 检测用户需求是否超出现有技能范围
+    const unknownSkillCheck = this.detectUnknownSkillRequirements(task, context.availableTools)
+    if (unknownSkillCheck) {
+      hints.push(unknownSkillCheck)
+      // 如果是未知技能需求，直接返回提示
+      return hints.join('\n')
+    }
+
     // 【多步指令检测】 - 优先检测包含分隔符的复合指令
     // 支持的分隔符：中文逗号、顿号、英文逗号、"并"、"然后"、"接下来"、"之后"、"同时"、"以及"、"还有"、"再"
     const hasMultiStepTask = /[，、,并然后接下来之后同时以及还有再]\s*(找|生成|做|画|创作|写|发布|添加|分配|发)/.test(task)
@@ -2076,6 +2084,144 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     }
 
     return toolNameMap[toolName] || toolName
+  }
+
+  /**
+   * 检测未知技能需求
+   * 当用户需求超出现有技能范围时，给出友好提示
+   */
+  private detectUnknownSkillRequirements(task: string, availableTools: any[]): string | null {
+    const lowerTask = task.toLowerCase()
+
+    // 获取所有可用工具的名称
+    const availableToolNames = availableTools.map(t => t.name.toLowerCase())
+
+    // 检测常见的未知需求类型
+    const unknownRequirements: Array<{ pattern: RegExp; description: string; suggestion: string }> = [
+      // 翻译类
+      {
+        pattern: /翻译|translate|中译英|英译中|日译中/,
+        description: '翻译功能',
+        suggestion: '目前技能广场暂未提供翻译功能。您可以：\n1. 使用其他翻译工具（如百度翻译、Google翻译）\n2. 或者尝试换一种方式描述您的需求'
+      },
+      // 代码生成类
+      {
+        pattern: /写代码|编程|code|生成代码|开发|写程序|写脚本/,
+        description: '代码生成功能',
+        suggestion: '目前技能广场暂未提供代码生成功能。您可以：\n1. 描述具体的需求，看是否可以用其他方式实现\n2. 联系我们反馈需求'
+      },
+      // 数据分析类
+      {
+        pattern: /分析.*数据|数据分析|统计.*数据|数据处理|数据挖掘/,
+        description: '数据分析功能',
+        suggestion: '目前技能广场暂未提供数据分析功能。您可以：\n1. 提供具体的数据和分析需求\n2. 使用专业数据分析工具'
+      },
+      // AI 对话类（非内容创作）
+      {
+        pattern: /聊天|对话|问答|咨询|问.*问题|解答/,
+        description: 'AI 对话功能',
+        suggestion: '我是专门用于内容创作和平台发布的 AI 分身。我可以帮您：\n1. 生成图片和视频\n2. 写文章、笔记\n3. 发布到各大平台\n4. 添加好友、管理订单'
+      },
+      // 音频处理类
+      {
+        pattern: /音频|音乐|语音|配音|录音|TTS|ASR/,
+        description: '音频处理功能',
+        suggestion: '目前技能广场暂未提供音频处理功能。您可以：\n1. 描述具体需求\n2. 使用专业音频工具'
+      },
+      // 文件处理类
+      {
+        pattern: /转换.*格式|格式转换|压缩.*文件|文件压缩|OCR|识别.*文字/,
+        description: '文件处理功能',
+        suggestion: '目前技能广场暂未提供文件处理功能。您可以：\n1. 使用在线转换工具\n2. 描述具体需求'
+      },
+      // 财务类
+      {
+        pattern: /理财|投资|股票|基金|期货|外汇|财务分析|记账/,
+        description: '财务理财功能',
+        suggestion: '目前技能广场暂未提供财务理财功能。请您：\n1. 咨询专业理财顾问\n2. 使用专业理财工具'
+      },
+      // 医疗健康类
+      {
+        pattern: /医疗|健康|诊断|治疗|症状|疾病|看病|体检/,
+        description: '医疗健康功能',
+        suggestion: '我不是医疗助手，无法提供医疗建议。请您：\n1. 咨询专业医生\n2. 前往正规医疗机构'
+      },
+      // 法律类
+      {
+        pattern: /法律|律师|合同|起诉|诉讼|维权|法律咨询/,
+        description: '法律咨询功能',
+        suggestion: '我不是法律助手，无法提供法律建议。请您：\n1. 咨询专业律师\n2. 寻求法律援助'
+      }
+    ]
+
+    // 检测是否匹配任何未知需求
+    for (const req of unknownRequirements) {
+      if (req.pattern.test(lowerTask)) {
+        return `【功能暂未开放】检测到您需要使用${req.description}
+
+${req.suggestion}
+
+【我的能力范围】
+我可以帮您完成以下任务：
+- 🎨 生成图片、视频（图像生成、视频生成）
+- 📝 创作内容（文章创作、小红书笔记、公众号文章）
+- 📤 发布内容（小红书、公众号、抖音、B站、视频号）
+- 👥 社交互动（添加好友、查看好友）
+- 📋 订单管理（分配订单、查看订单）
+- 🎁 订阅管理（查看订阅、升级套餐）
+
+您可以尝试换个说法，或者告诉我更具体的需求。`
+      }
+    }
+
+    // 如果用户的需求包含明确的动词，但找不到对应工具
+    const actionVerbs = ['生成', '制作', '创建', '设计', '处理', '计算', '分析', '转换']
+    const hasActionVerb = actionVerbs.some(verb => lowerTask.includes(verb))
+
+    // 检查是否是简单的问答（不需要工具）
+    if (hasActionVerb && !this.matchesAvailableTaskTypes(lowerTask)) {
+      return `【无法识别的功能】抱歉，我暂时无法理解您的需求。
+
+请尝试用更具体的方式描述您想要做的事情。
+
+【我可以帮您】
+- 生成图片："生成一张风景画"
+- 生成视频："制作一个10秒的短视频"
+- 写文章："写一篇关于XX的文章"
+- 发布内容："发布这篇内容到小红书"
+- 添加好友："帮我添加50个好友"
+- 分配订单："分配订单给分身"
+
+如果您的需求不在上述范围内，欢迎反馈给我们！`
+    }
+
+    return null
+  }
+
+  /**
+   * 检查任务是否匹配可用的任务类型
+   */
+  private matchesAvailableTaskTypes(task: string): boolean {
+    const taskTypes = [
+      // 图像生成
+      /生成.*图|画.*图|设计.*图|海报/,
+      // 视频生成
+      /生成.*视频|制作.*视频|视频创作/,
+      // 文章创作
+      /写.*文章|创作.*文章|写内容/,
+      // 发布内容
+      /发布|发.*到|推送/,
+      // 社交互动
+      /添加好友|查看好友|分身列表/,
+      // 订单管理
+      /分配.*订单|派单|接单|查看订单/,
+      // 订阅管理
+      /订阅|升级|开通套餐/,
+      // 普通对话
+      /你好|你是谁|介绍一下/
+    ]
+
+    return taskTypes.some(regex => regex.test(task))
   }
 }
 
