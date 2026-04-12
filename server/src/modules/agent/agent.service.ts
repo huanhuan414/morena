@@ -183,9 +183,27 @@ export class AgentService {
         .select('skill_type, metadata')
         .eq('avatar_id', avatarId)
 
+      // 定义基础工具（所有分身都能使用的内部功能）
+      const basicTools: string[] = [
+        'app_create_task',
+        'app_update_task',
+        'app_delete_task',
+        'app_list_tasks',
+        'app_update_avatar',
+        'app_list_avatars',
+        'app_assign_order',
+        'app_add_friend',
+        'app_list_user_friends',
+        'app_list_avatar_friends',
+        'app_subscribe',
+        'app_get_subscription',
+        'check_platform_config'
+      ]
+
+      // 如果没有技能，只返回基础工具
       if (error || !avatarSkills || avatarSkills.length === 0) {
-        // 如果没有技能，返回所有默认工具
-        return this.getAvailableTools()
+        console.log('[AgentService] 分身没有技能，只返回基础工具')
+        return this.getToolsByNames(basicTools)
       }
 
       // 获取所有 tool_name 和 skill_id
@@ -219,22 +237,13 @@ export class AgentService {
         }
       }
 
-      // 如果技能中没有工具名称，返回所有工具
+      // 如果技能中没有工具名称，只返回基础工具
       if (toolNames.length === 0) {
-        return this.getAvailableTools()
+        console.log('[AgentService] 技能列表为空，只返回基础工具')
+        return this.getToolsByNames(basicTools)
       }
 
       // 返回分身拥有的工具 + 基础工具（任务管理、分身管理等）
-      const basicTools = [
-        'app_create_task',
-        'app_update_task',
-        'app_delete_task',
-        'app_list_tasks',
-        'app_update_avatar',
-        'app_list_avatars',
-        'check_platform_config'
-      ]
-
       const allToolNames = [...new Set([...basicTools, ...toolNames])]
 
       return allToolNames
@@ -245,8 +254,38 @@ export class AgentService {
         .filter((t): t is ToolDefinition => t !== null)
     } catch (error) {
       console.error('[AgentService] 获取分身工具失败:', error)
-      return this.getAvailableTools()
+      // 出错时只返回基础工具，而不是所有工具
+      const basicTools = [
+        'app_create_task',
+        'app_update_task',
+        'app_delete_task',
+        'app_list_tasks',
+        'app_update_avatar',
+        'app_list_avatars',
+        'app_assign_order',
+        'app_add_friend',
+        'app_list_user_friends',
+        'app_list_avatar_friends',
+        'app_subscribe',
+        'app_get_subscription',
+        'check_platform_config'
+      ]
+      return this.getToolsByNames(basicTools)
     }
+  }
+
+  /**
+   * 根据工具名称列表获取工具定义
+   * @param toolNames 工具名称列表
+   * @returns 工具定义列表
+   */
+  private getToolsByNames(toolNames: string[]): ToolDefinition[] {
+    return toolNames
+      .map(toolName => {
+        const tool = this.tools.get(toolName)
+        return tool ? tool.definition : null
+      })
+      .filter((t): t is ToolDefinition => t !== null)
   }
 
   /**
