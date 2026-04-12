@@ -1597,62 +1597,64 @@ export default function MindChatPage() {
         
         {/* 富媒体内容 */}
         {(() => {
-          // 优先使用 metadata.media
-          let mediaList = msg.metadata?.media || []
-          
-          // 如果没有 media，尝试从 agent_result 中提取
-          if (mediaList.length === 0 && msg.metadata?.agent_result?.steps) {
+          // 检查是否有文章内容（避免重复渲染）
+          const hasArticleInMedia = msg.metadata?.media?.some((m: MessageMedia) => m.type === 'article')
+
+          // 优先使用 metadata.media，但如果 metadata.media 不完整，从 agent_result 中补充
+          let mediaList = [...(msg.metadata?.media || [])]
+
+          // 从 agent_result.steps 中提取媒体内容（补充提取，确保不遗漏）
+          if (msg.metadata?.agent_result?.steps) {
             const steps = msg.metadata.agent_result.steps || []
+            const existingUrls = new Set(mediaList.map((m: MessageMedia) => m.url).filter(Boolean))
+
             steps.forEach((step: ReActStep) => {
               if (step.observation?.data) {
                 const data = step.observation.data
-                
-                // 图片
+
+                // 图片 - 只添加不重复的图片
                 if (data.image_urls && Array.isArray(data.image_urls)) {
                   data.image_urls.forEach((url: string) => {
-                    if (url && typeof url === 'string') {
+                    if (url && typeof url === 'string' && !existingUrls.has(url)) {
                       mediaList.push({ type: 'image', url })
+                      existingUrls.add(url)
                     }
                   })
                 }
-                
-                // 文章
-                if (data.content && data.title) {
-                  mediaList.push({
-                    type: 'article',
-                    title: data.title,
-                    content: data.content,
-                    coverImage: data.cover_image_url
-                  })
-                }
-                
-                // 视频
-                if (data.video_url) {
-                  mediaList.push({ type: 'video', url: data.video_url })
+
+                // 封面图 - 只添加不重复的图片
+                if (data.cover_image_url && !existingUrls.has(data.cover_image_url)) {
+                  mediaList.push({ type: 'image', url: data.cover_image_url })
+                  existingUrls.add(data.cover_image_url)
                 }
 
-                // 通用 URL（兼容不同的工具返回格式）
-                if (data.url && !data.video_url) {
-                  // 根据文件扩展名判断类型
-                  const urlLower = data.url.toLowerCase()
-                  if (urlLower.includes('.mp4') || urlLower.includes('.mov') || urlLower.includes('.webm')) {
-                    mediaList.push({ type: 'video', url: data.url })
-                  } else if (data.type === 'video') {
-                    // 如果工具明确标记为视频类型
-                    mediaList.push({ type: 'video', url: data.url })
+                // 文章 - 如果 metadata.media 中没有文章，才添加
+                if (data.content && data.title && !hasArticleInMedia) {
+                  // 检查是否已经添加了相同标题的文章
+                  const hasSameArticle = mediaList.some(
+                    (m: MessageMedia) => m.type === 'article' && m.title === data.title
+                  )
+                  if (!hasSameArticle) {
+                    mediaList.push({
+                      type: 'article',
+                      title: data.title,
+                      content: data.content,
+                      coverImage: data.cover_image_url
+                    })
                   }
                 }
 
-                // 封面图
-                if (data.cover_image_url && !data.content) {
-                  mediaList.push({ type: 'image', url: data.cover_image_url })
+                // 视频
+                if (data.video_url && !existingUrls.has(data.video_url)) {
+                  mediaList.push({ type: 'video', url: data.video_url })
+                  existingUrls.add(data.video_url)
                 }
               }
             })
           }
-          
+
           if (mediaList.length === 0) return null
-          
+
           return (
             <View className="media-container">
               {mediaList.map((media, idx) => {
@@ -1760,15 +1762,21 @@ export default function MindChatPage() {
           )
         })()}
 
-        {/* 文本消息渲染 - 只在没有内嵌视频时渲染 */}
+        {/* 文本消息渲染 - 只在没有内嵌视频且没有文章时渲染 */}
         {(() => {
           // 检查是否有内嵌视频链接
           const { videoUrl } = extractVideoUrlFromText(msg.content)
 
+          // 检查是否有文章内容（避免重复渲染）
+          const hasArticle = msg.metadata?.media?.some((m: MessageMedia) => m.type === 'article')
+
           // 如果有视频链接，文本已经在视频处理中渲染过了，不再重复渲染
           if (videoUrl) return null
 
-          // 如果没有视频链接，渲染文本
+          // 如果有文章内容，文本会在文章渲染中显示，不再重复渲染
+          if (hasArticle) return null
+
+          // 如果没有视频链接和文章内容，才渲染文本
           if (msg.content && typeof msg.content === 'string') {
             return (
               <View className="text-message">
