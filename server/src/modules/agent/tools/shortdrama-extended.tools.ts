@@ -518,12 +518,3 @@ export class RecommendBGMTool implements ITool {
     }
   }
 }
-
-// 导出所有短剧扩展工具
-export {
-  GenerateMultiEpisodeDramaTool,
-  GenerateDramaVoiceoverTool,
-  EditShortDramaVideoTool,
-  GenerateSubtitleTool,
-  RecommendBGMTool
-}
