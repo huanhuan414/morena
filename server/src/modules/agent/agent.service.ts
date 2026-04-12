@@ -1125,8 +1125,32 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
       const subTasks = task.split(/[，、,并然后接下来之后同时以及还有再]/)
         .map(t => t.trim())
         .filter(t => t.length > 0)
+
+      // 检查是否有"找分身分发"模式
+      const hasFindAndDistribute = subTasks.some(t =>
+        /找.*分身.*分发|找.*人.*分发|分配.*分身|派.*分身/.test(t)
+      )
+
+      let executionStrategy = `【执行策略】必须按顺序逐个执行每个子任务，不能遗漏任何子任务。`
+
+      if (hasFindAndDistribute) {
+        executionStrategy += `
+【关键提示】检测到"找分身分发"任务：
+- 这应该使用 app_assign_order 工具（分配订单/找分身）
+- 该工具会根据订单需求、分身等级、优先级等智能匹配最合适的分身
+- 系统会自动为匹配的分身创建订单执行记录
+- 不要使用 app_list_avatars 工具（那是查看分身列表）
+- app_assign_order 工具参数示例：
+  {
+    "title": "订单标题（从前面任务中提取）",
+    "description": "订单详细描述（结合营销方案内容）",
+    "required_count": 50,
+    "priority_level": "high"
+  }`
+      }
+
       hints.push(`【多步指令识别】检测到 ${subTasks.length} 个子任务：\n${subTasks.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)
-      hints.push(`【执行策略】必须按顺序逐个执行每个子任务，不能遗漏任何子任务。`)
+      hints.push(executionStrategy)
       hints.push(`【重要提示】如果子任务中包含"找分身"、"寻找分身"，这是后续步骤，不要单独提前执行。`)
       return hints.join('\n\n') // 多步任务直接返回，不继续匹配其他规则
     }
