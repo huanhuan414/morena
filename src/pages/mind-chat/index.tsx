@@ -2819,7 +2819,7 @@ export default function MindChatPage() {
                     <View key={skill.id} className="skill-item owned">
                       <View className="skill-icon">{skill.icon || '🎯'}</View>
                       <View className="skill-info">
-                        <Text className="skill-name">{skill.skill_name || skill.skill_type}</Text>
+                        <Text className="skill-name">{skill.metadata?.skill_name || skill.skill_name || skill.skill_type}</Text>
                         <Text className="skill-type">{skill.skill_type}</Text>
                       </View>
                       <View className="skill-badge owned">
