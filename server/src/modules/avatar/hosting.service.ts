@@ -1072,10 +1072,6 @@ ${friendMessageContents}
    * 自动发帖
    */
   private async autoCreatePost(avatar: any, settings: HostingSettings) {
-    // 🚨 紧急禁用：今天所有分身都不许发帖
-    console.log(`[托管服务] ⚠️ 发帖功能已全局禁用，分身 ${avatar.name} 跳过发帖`)
-    return
-
     const client = getSupabaseClient()
 
     // 检查今天是否已经发帖（使用 UTC 时间避免时区问题）
