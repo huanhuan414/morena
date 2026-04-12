@@ -83,8 +83,26 @@ export default function SkillsSquare() {
         }
       })
 
+      // 开发环境下，如果返回的数据是空的，尝试使用本地服务器
+      if (!res.data?.data?.skills || res.data.data.skills.length === 0) {
+        console.log('[SkillSquare] 尝试从本地服务器获取数据')
+        const localRes = await fetch('http://localhost:3000/api/skills').then(r => r.json())
+        console.log('[SkillSquare] 本地服务器响应:', localRes)
+        if (localRes.code === 200 && localRes.data?.skills) {
+          const skillsList = localRes.data.skills || []
+          console.log('[SkillSquare] 本地服务器 skillsList:', skillsList)
+          setSkills(skillsList)
+          return
+        }
+      }
+
+      console.log('[SkillSquare] fetchSkills response:', res.data)
+      console.log('[SkillSquare] res.data.data:', res.data?.data)
+
       if (res.data?.code === 200) {
-        setSkills(res.data.data.skills || [])
+        const skillsList = res.data.data.skills || []
+        console.log('[SkillSquare] skillsList:', skillsList)
+        setSkills(skillsList)
       }
     } catch (error) {
       console.error('[SkillSquare] 获取技能列表失败:', error)
