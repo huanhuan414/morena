@@ -290,7 +290,8 @@ function renderBlock(block: ParsedBlock, index: number): React.ReactNode {
               urls: [block.url || '']
             })}
           />
-          {block.alt && (
+          {/* 只有当 alt 文本简短且不是 URL 时才显示，避免显示长链接 */}
+          {block.alt && !block.alt.startsWith('http') && block.alt.length < 50 && (
             <Text className="text-sm text-gray-500 text-center mt-1">{block.alt}</Text>
           )}
         </View>
