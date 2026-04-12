@@ -771,7 +771,6 @@ export default function MindChatPage() {
 
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
   const sendMessage = async (text?: string) => {
-    // 兼容性处理：优先使用传入的 text 参数，否则使用 inputText 状态
     const messageText = text || inputText
 
     console.log('[MindChat] sendMessage 被调用:', {
@@ -783,20 +782,14 @@ export default function MindChatPage() {
       isLoading: loading
     })
 
-    if (!messageText.trim()) {
-      console.warn('[MindChat] 消息为空，提示用户输入')
-      showToast({ title: '请输入消息', icon: 'none' })
-      return
-    }
-
-    if (!conversation) {
-      console.warn('[MindChat] 对话不存在')
-      showToast({ title: '对话不存在', icon: 'none' })
-      return
-    }
-
-    if (loading) {
-      console.warn('[MindChat] 正在处理中，忽略重复请求')
+    if (!messageText.trim() || !conversation || loading) {
+      if (!messageText.trim()) {
+        showToast({ title: '请输入消息', icon: 'none' })
+      } else if (!conversation) {
+        showToast({ title: '对话不存在', icon: 'none' })
+      } else if (loading) {
+        showToast({ title: '正在处理中，请稍候', icon: 'none' })
+      }
       return
     }
 
@@ -888,7 +881,8 @@ export default function MindChatPage() {
       // 轮询获取结果
       await pollAgentResult(taskId)
 
-      setCurrentStatus('完成')
+      // 任务完成，清空状态提示
+      setCurrentStatus('')
     } catch (error: any) {
       console.error('[MindChat] Agent 执行失败:', error)
       throw error
@@ -988,8 +982,9 @@ export default function MindChatPage() {
               setShowConfigDialog(true)
             }
 
-            // 任务完成，设置进度为100%
+            // 任务完成，设置进度为100%，清空状态提示
             setTaskProgress(100)
+            setCurrentStatus('')
             return
           }
         }
@@ -2720,7 +2715,7 @@ export default function MindChatPage() {
                 <Loader size={18} color="#00f5ff" className="spinning" />
                 <Text className="status-message">{currentStatus || '思考中...'}</Text>
               </View>
-              {/* 进度百分比 */}
+              {/* 进度百分比 - 只在任务进行中显示 */}
               {taskProgress > 0 && taskProgress < 100 && (
                 <View className="task-progress">
                   <View className="progress-bar">
@@ -2829,11 +2824,8 @@ export default function MindChatPage() {
                   setInputHeight(88 + (newLines - 1) * lineHeight)
                 }}
                 onConfirm={() => {
-                  console.log('[MindChat] 点击确认键，发送消息，输入值:', inputText)
-                  // 使用 ref 获取实际的 DOM 值（H5 端兼容）
-                  const actualValue = textareaRef.current?.value || textareaRef.current?.props?.value || inputText
-                  console.log('[MindChat] 实际 DOM 值:', actualValue)
-                  sendMessage(actualValue)
+                  console.log('[MindChat] 点击确认键，发送消息')
+                  sendMessage()
                 }}
                 confirmType="send"
                 adjustPosition
@@ -2865,10 +2857,7 @@ export default function MindChatPage() {
               className={`send-action ${inputText && inputText.trim() ? 'active' : ''}`}
               onClick={() => {
                 console.log('[MindChat] 点击发送按钮，输入值:', inputText)
-                // 使用 ref 获取实际的 DOM 值（H5 端兼容）
-                const actualValue = textareaRef.current?.value || textareaRef.current?.props?.value || inputText
-                console.log('[MindChat] 实际 DOM 值:', actualValue)
-                sendMessage(actualValue)
+                sendMessage()
               }}
             >
               <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
