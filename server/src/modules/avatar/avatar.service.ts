@@ -89,7 +89,62 @@ export class AvatarService {
       throw new Error(`创建分身失败: ${error.message}`)
     }
 
+    // 自动为新创建的分身添加默认技能
+    await this.addDefaultSkills(data.id)
+
     return data
+  }
+
+  /**
+   * 为分身添加默认技能
+   */
+  private async addDefaultSkills(avatarId: string) {
+    try {
+      const client = getSupabaseClient()
+
+      // 定义默认技能
+      const defaultSkills = [
+        {
+          skill_type: 'generate_image',
+          skill_level: 1,
+          usage_count: 0,
+          metadata: { skill_name: '图像生成' }
+        },
+        {
+          skill_type: 'generate_video',
+          skill_level: 1,
+          usage_count: 0,
+          metadata: { skill_name: '文字生成视频' }
+        },
+        {
+          skill_type: 'write_article',
+          skill_level: 1,
+          usage_count: 0,
+          metadata: { skill_name: '文章创作' }
+        }
+      ]
+
+      // 批量插入技能
+      const skillsToInsert = defaultSkills.map(skill => ({
+        id: crypto.randomUUID(),
+        avatar_id: avatarId,
+        ...skill,
+        created_at: new Date().toISOString()
+      }))
+
+      const { error } = await client
+        .from('avatar_skills')
+        .insert(skillsToInsert)
+
+      if (error) {
+        console.warn(`[AvatarService] 为分身 ${avatarId} 添加默认技能失败:`, error.message)
+      } else {
+        console.log(`[AvatarService] 成功为分身 ${avatarId} 添加 ${defaultSkills.length} 个默认技能`)
+      }
+    } catch (error) {
+      console.error(`[AvatarService] 添加默认技能异常:`, error)
+      // 不抛出错误，避免影响分身创建流程
+    }
   }
 
   /**
