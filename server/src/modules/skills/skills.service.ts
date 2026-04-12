@@ -147,13 +147,32 @@ export class SkillsService {
       // 检查技能是否存在
       const skill = await this.getSkillById(dto.skillId)
 
+      // Supabase 返回 snake_case 字段名
+      const skillToolName = (skill as any).tool_name || (skill as any).toolName || 'custom'
+
+      console.log('[SkillsService] purchaseSkill - 技能信息:', {
+        skillId: dto.skillId,
+        skillName: skill.name,
+        tool_name: (skill as any).tool_name,
+        toolName: (skill as any).toolName,
+        skillToolName
+      })
+
       // 检查是否已购买（通过 skill_type）
-      const { data: existing } = await getSupabaseClient()
+      const { data: existing, error: checkError } = await getSupabaseClient()
         .from('avatar_skills')
         .select('*')
         .eq('avatar_id', dto.avatarId)
-        .eq('skill_type', skill.toolName)
-        .single()
+        .eq('skill_type', skillToolName)
+        .maybeSingle()  // 使用 maybeSingle 避免 PGRST116 错误
+
+      console.log('[SkillsService] purchaseSkill - 检查技能是否存在:', {
+        avatarId: dto.avatarId,
+        skillType: skillToolName,
+        skillId: dto.skillId,
+        existing: existing,
+        checkError: checkError
+      })
 
       if (existing) {
         console.log('[SkillsService] 技能已存在，更新 metadata')
@@ -174,6 +193,7 @@ export class SkillsService {
           .single()
 
         if (updateError) {
+          console.error('[SkillsService] 更新技能失败:', updateError)
           throw new Error(`更新技能失败: ${updateError.message}`)
         }
 
@@ -181,8 +201,12 @@ export class SkillsService {
           throw new Error('更新技能失败：未返回数据')
         }
 
+        console.log('[SkillsService] 技能更新成功:', updated)
         return updated as AvatarSkill
       }
+
+      console.log('[SkillsService] 技能不存在，准备插入新记录')
+
 
       // 检查用户余额（如果是付费技能）
       if (skill.price > 0) {
@@ -209,7 +233,7 @@ export class SkillsService {
         .insert({
           id: crypto.randomUUID(),
           avatar_id: dto.avatarId,
-          skill_type: skill.toolName || 'custom',
+          skill_type: skillToolName,
           skill_level: 1,
           usage_count: 0,
           metadata: {
@@ -225,6 +249,8 @@ export class SkillsService {
       if (insertError || !avatarSkill) {
         throw new Error(`购买技能失败: ${insertError?.message || '未知错误'}`)
       }
+
+      console.log('[SkillsService] 技能插入成功:', avatarSkill)
 
       // 更新技能购买次数
       await getSupabaseClient()

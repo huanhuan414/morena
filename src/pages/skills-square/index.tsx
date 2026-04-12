@@ -216,8 +216,20 @@ export default function SkillsSquare() {
   const handlePurchase = async () => {
     if (!selectedSkill || !currentAvatar?.id) return
 
+    // 防止重复点击
+    if (purchasing) {
+      console.warn('[SkillSquare] 正在处理中，请勿重复点击')
+      return
+    }
+
     try {
       setPurchasing(true)
+      console.log('[SkillSquare] 开始添加技能:', {
+        skillId: selectedSkill.id,
+        skillName: selectedSkill.name,
+        avatarId: currentAvatar.id
+      })
+
       const res = await Network.request({
         url: '/api/skills/purchase',
         method: 'POST',
@@ -226,6 +238,8 @@ export default function SkillsSquare() {
           avatarId: currentAvatar.id
         }
       })
+
+      console.log('[SkillSquare] 添加技能响应:', res)
 
       if (res.data?.code === 200) {
         Taro.showToast({ title: '添加成功', icon: 'success' })
