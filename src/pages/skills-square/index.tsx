@@ -146,7 +146,13 @@ export default function SkillsSquare() {
 
   // 获取我的技能
   const fetchMySkills = async () => {
-    if (!currentAvatar?.id) return
+    console.log('[SkillSquare] fetchMySkills - currentAvatar:', currentAvatar)
+    console.log('[SkillSquare] fetchMySkills - currentAvatar.id:', currentAvatar?.id)
+
+    if (!currentAvatar?.id) {
+      console.warn('[SkillSquare] currentAvatar.id 为空，跳过获取分身技能')
+      return
+    }
 
     try {
       console.log('[SkillSquare] 开始获取分身技能，分身ID:', currentAvatar.id)

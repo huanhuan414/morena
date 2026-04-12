@@ -147,7 +147,7 @@ export class SkillsService {
       // 检查技能是否存在
       const skill = await this.getSkillById(dto.skillId)
 
-      // 检查是否已购买（通过 skill_type 和 metadata 中的 skill_id）
+      // 检查是否已购买（通过 skill_type）
       const { data: existing } = await getSupabaseClient()
         .from('avatar_skills')
         .select('*')
@@ -156,11 +156,26 @@ export class SkillsService {
         .single()
 
       if (existing) {
-        // 检查 metadata 中的 skill_id 是否相同
-        const existingSkillId = existing.metadata?.skill_id
-        if (existingSkillId === dto.skillId) {
-          throw new Error('该分身已拥有此技能')
+        console.log('[SkillsService] 技能已存在，更新 metadata')
+        // 技能已存在，更新 metadata
+        const { data: updated, error: updateError } = await getSupabaseClient()
+          .from('avatar_skills')
+          .update({
+            metadata: {
+              ...existing.metadata,
+              skill_id: dto.skillId,
+              skill_name: skill.name,
+              purchase_price: skill.price,
+              updated_at: new Date().toISOString()
+            } as any
+          })
+          .eq('id', existing.id)
+
+        if (updateError) {
+          throw new Error(`更新技能失败: ${updateError.message}`)
         }
+
+        return updated as AvatarSkill
       }
 
       // 检查用户余额（如果是付费技能）
