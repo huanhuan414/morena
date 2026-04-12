@@ -385,31 +385,33 @@ export class SkillsService {
   /**
    * 使用 AI 生成技能描述和标签
    */
-  async generateSkillWithAI(name: string, description: string) {
+  async generateSkillWithAI(prompt: string) {
     try {
-      const prompt = `你是一个技能设计专家。请根据用户提供的信息，生成一个详细的技能描述。
+      const systemPrompt = `你是一个专业的技能设计专家，擅长从用户描述中提取关键信息，生成详细的技能描述和标签。
 
-用户输入：
-- 技能名称：${name}
-- 技能描述：${description}
+用户会提供一个简短的需求描述，你需要：
+1. 生成一个专业的技能名称（8-20字）
+2. 生成详细的技能描述（50-100字）
+3. 识别技能所属分类（从以下分类中选择：内容创作、平台发布、平台管理、社交互动、订阅管理、图像生成、视频生成、文本分析、语音识别）
+4. 生成3-5个相关标签
+5. 描述技能的核心能力（JSON格式）
+6. 说明使用要求（如果没有，填"无"）`
+
+      const userPrompt = `用户需求描述：
+${prompt}
 
 请以 JSON 格式返回以下信息：
 {
   "name": "优化后的技能名称",
   "description": "优化后的详细描述（50-100字）",
+  "category": "技能分类（从以下选择：内容创作、平台发布、平台管理、社交互动、订阅管理、图像生成、视频生成、文本分析、语音识别）",
   "tags": ["标签1", "标签2", "标签3"],
   "capabilities": {
     "功能描述": "这个技能的主要功能"
   },
-  "requirements": "使用要求（如需要特定配置）"
+  "requirements": "使用要求（如需要特定配置）",
+  "icon": "推荐一个emoji图标"
 }
-
-要求：
-1. 优化技能名称，使其更专业
-2. 详细描述技能的功能和用途
-3. 生成3-5个相关标签
-4. 描述技能的核心能力
-5. 说明使用要求（如果没有，填"无"）
 
 直接返回 JSON，不要有任何额外文字说明。`
 
@@ -417,11 +419,11 @@ export class SkillsService {
         [
           {
             role: 'system',
-            content: '你是一个专业的技能设计专家，擅长优化技能描述和生成技能标签。'
+            content: systemPrompt
           },
           {
             role: 'user',
-            content: prompt
+            content: userPrompt
           }
         ],
         {
@@ -436,32 +438,55 @@ export class SkillsService {
 
       if (jsonMatch) {
         const generatedData = JSON.parse(jsonMatch[0])
+
+        // 根据分类选择合适的工具名称
+        const toolNameMap: Record<string, string> = {
+          '内容创作': 'write_article',
+          '平台发布': 'publish_content',
+          '平台管理': 'manage_platform',
+          '社交互动': 'social_interaction',
+          '订阅管理': 'manage_subscription',
+          '图像生成': 'generate_image',
+          '视频生成': 'generate_video',
+          '文本分析': 'analyze_text',
+          '语音识别': 'recognize_speech'
+        }
+
         return {
-          name: generatedData.name || name,
-          description: generatedData.description || description,
+          name: generatedData.name || '未命名技能',
+          description: generatedData.description || prompt,
+          category: generatedData.category || '内容创作',
           tags: generatedData.tags || [],
           capabilities: generatedData.capabilities || {},
-          requirements: generatedData.requirements || '无'
+          requirements: generatedData.requirements || '无',
+          icon: generatedData.icon || '🎯',
+          tool_name: toolNameMap[generatedData.category] || 'custom'
         }
       }
 
-      // 如果解析失败，返回原始数据
+      // 如果解析失败，返回默认数据
       return {
-        name,
-        description,
+        name: '自定义技能',
+        description: prompt,
+        category: '内容创作',
         tags: [],
         capabilities: {},
-        requirements: '无'
+        requirements: '无',
+        icon: '🎯',
+        tool_name: 'custom'
       }
     } catch (error) {
       console.error('[SkillsService] AI 生成失败:', error)
-      // 返回原始数据
+      // 返回默认数据
       return {
-        name,
-        description,
+        name: '自定义技能',
+        description: prompt,
+        category: '内容创作',
         tags: [],
         capabilities: {},
-        requirements: '无'
+        requirements: '无',
+        icon: '🎯',
+        tool_name: 'custom'
       }
     }
   }

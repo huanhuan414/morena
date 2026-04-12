@@ -180,23 +180,44 @@ export class AgentService {
       // 获取分身的技能列表
       const { data: avatarSkills, error } = await getSupabaseClient()
         .from('avatar_skills')
-        .select(`
-          skill_id,
-          skills (
-            tool_name
-          )
-        `)
-        .eq('avatarId', avatarId)
+        .select('skill_type, metadata')
+        .eq('avatar_id', avatarId)
 
       if (error || !avatarSkills || avatarSkills.length === 0) {
         // 如果没有技能，返回所有默认工具
         return this.getAvailableTools()
       }
 
-      // 获取所有 tool_name
-      const toolNames = avatarSkills
-        .map((item: any) => item.skills?.tool_name)
-        .filter((name: string | null) => name)
+      // 获取所有 tool_name 和 skill_id
+      const toolNames: string[] = []
+      const skillIds: string[] = []
+
+      for (const item of avatarSkills) {
+        // 首先使用 skill_type
+        if (item.skill_type) {
+          toolNames.push(item.skill_type)
+        }
+        // 然后从 metadata 中获取 skill_id
+        if (item.metadata?.skill_id) {
+          skillIds.push(item.metadata.skill_id)
+        }
+      }
+
+      // 如果有 skill_id，需要从 skills 表中获取 tool_name
+      if (skillIds.length > 0) {
+        const { data: skills } = await getSupabaseClient()
+          .from('skills')
+          .select('tool_name')
+          .in('id', skillIds)
+
+        if (skills) {
+          for (const skill of skills) {
+            if (skill.tool_name) {
+              toolNames.push(skill.tool_name)
+            }
+          }
+        }
+      }
 
       // 如果技能中没有工具名称，返回所有工具
       if (toolNames.length === 0) {

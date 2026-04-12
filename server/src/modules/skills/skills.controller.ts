@@ -279,16 +279,13 @@ export class SkillsController {
    * 使用 AI 生成技能
    */
   @Post('ai-generate')
-  async generateSkillWithAI(@Body() body: { name: string; description: string }) {
+  async generateSkillWithAI(@Body() body: { prompt: string }) {
     try {
-      const generatedSkill = await this.skillsService.generateSkillWithAI(
-        body.name,
-        body.description
-      )
+      const generatedSkill = await this.skillsService.generateSkillWithAI(body.prompt)
 
       return {
         code: 200,
-        data: generatedSkill,
+        data: { skill: generatedSkill },
         message: 'AI 生成成功'
       }
     } catch (error) {
