@@ -1268,13 +1268,26 @@ export default function MindChatPage() {
     // 确保 text 是字符串类型
     const textStr = typeof text === 'string' ? text : String(text || '')
 
-    // 清理调试信息（移除"图片链接如下："、"视频链接如下："等）
-    const cleanedText = textStr
-      .replace(/图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
-      .replace(/视频链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
-      .replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
-      .replace(/\n\s*\n\s*\n/g, '\n\n')
-      .trim()
+    // 清理调试信息（移除所有类型的调试文本和链接）
+    let cleanedText = textStr
+
+    // 移除"已为你生成.*链接如下："模式（包含后续的所有编号链接）
+    cleanedText = cleanedText.replace(/已为你生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
+    // 移除"图片链接如下："模式（移除行内的URL和编号）
+    cleanedText = cleanedText.replace(/图片链接如下[::：]\s*(\d+[\.、]\s*)?https?:\/\/[^\s\n]+(\s*\n\s*\d+[\.、]\s*https?:\/\/[^\s\n]+)*/gi, '')
+
+    // 移除"视频链接如下："模式
+    cleanedText = cleanedText.replace(/视频链接如下[::：]\s*(\d+[\.、]\s*)?https?:\/\/[^\s\n]+(\s*\n\s*\d+[\.、]\s*https?:\/\/[^\s\n]+)*/gi, '')
+
+    // 移除"已为你生成.*配图"模式（包含后续的链接信息）
+    cleanedText = cleanedText.replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+    // 移除独立的链接行（单独一行的带编号URL）
+    cleanedText = cleanedText.replace(/^\s*\d+[\.、]\s*https?:\/\/[^\s\n]+$/gm, '')
+
+    // 移除多余的空行
+    cleanedText = cleanedText.replace(/\n\s*\n\s*\n/g, '\n\n')
 
     // 匹配视频链接（支持 .mp4、.mov、.webm 结尾的 URL）
     // 使用正则表达式匹配 "视频链接：" 或 "video:" 等关键词后的 URL
