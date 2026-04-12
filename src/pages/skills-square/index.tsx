@@ -268,7 +268,7 @@ export default function SkillsSquare() {
                     {owned && (
                       <View className="owned-badge">
                         <Check size={14} color="#00ff88" />
-                        <Text className="owned-text">已拥有</Text>
+                        <Text className="owned-text">已添加</Text>
                       </View>
                     )}
                   </View>
@@ -306,8 +306,8 @@ export default function SkillsSquare() {
                     </View>
                     {owned ? (
                       <Button className="action-btn owned" disabled>
-                        <Check size={16} color="rgba(255,255,255,0.5)" />
-                        <Text>已拥有</Text>
+                        <Check size={16} color="#00ff88" />
+                        <Text>已添加</Text>
                       </Button>
                     ) : (
                       <Button
