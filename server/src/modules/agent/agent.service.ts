@@ -914,6 +914,14 @@ export class AgentService {
 
       // Step 4: 观察 (Observation) - 更新上下文
       context.executionHistory = steps
+
+      // 检查是否是技能缺失错误
+      if (!toolResult.success && toolResult.error?.includes('您的分身尚未添加该功能')) {
+        // 直接返回技能缺失错误，不继续执行
+        finalAnswer = toolResult.error
+        console.log(`[Agent] 检测到技能缺失错误，直接返回: ${finalAnswer}`)
+        break
+      }
     }
 
     // 如果没有生成最终答案，基于步骤生成

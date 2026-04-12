@@ -1074,37 +1074,30 @@ ${friendMessageContents}
   private async autoCreatePost(avatar: any, settings: HostingSettings) {
     const client = getSupabaseClient()
 
-    // 检查今天是否已经发帖
+    // 检查今天是否已经发帖（使用 UTC 时间避免时区问题）
     const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const todayDateStr = `${year}-${month}-${day}`
-
-    // 使用本地时间的零点和下一天的零点来查询
-    const startOfDay = new Date(year, now.getMonth(), now.getDate()).toISOString()
-    const endOfDay = new Date(year, now.getMonth(), now.getDate() + 1).toISOString()
+    
+    // 获取今天的 00:00:00（UTC）
+    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
+    
+    // 获取明天的 00:00:00（UTC）
+    const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0))
 
     console.log(`[托管服务] 检查分身 ${avatar.name} 今天的发帖情况...`)
-    console.log(`[托管服务] 今天的日期: ${todayDateStr}`)
-    console.log(`[托管服务] 查询范围: ${startOfDay} 到 ${endOfDay}`)
+    console.log(`[托管服务] 查询范围: ${startOfDay.toISOString()} 到 ${endOfDay.toISOString()}`)
 
     const { data: todayPosts } = await client
       .from('posts')
       .select('id, created_at')
       .eq('avatar_id', avatar.id)
-      .gte('created_at', startOfDay)
-      .lt('created_at', endOfDay)
+      .gte('created_at', startOfDay.toISOString())
+      .lt('created_at', endOfDay.toISOString())
 
     const todayPostCount = todayPosts?.length || 0
-    console.log(`[托管服务] 分身 ${avatar.name} 查询结果: ${todayPostCount} 篇帖子`)
-    if (todayPosts && todayPostCount > 0) {
-      console.log(`[托管服务] 最新的帖子时间: ${todayPosts[todayPostCount - 1]?.created_at}`)
-    }
     console.log(`[托管服务] 分身 ${avatar.name} 今天已发 ${todayPostCount} 篇帖子`)
 
     if (todayPostCount >= 1) {
-      console.log(`[托管服务] 分身 ${avatar.name} 今天已发帖，每天最多发1篇`)
+      console.log(`[托管服务] 分身 ${avatar.name} 今天已发帖，每天最多发1篇，跳过`)
       return
     }
 
