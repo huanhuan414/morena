@@ -269,10 +269,11 @@ export default function SkillsSquare() {
       {/* 头部区域 */}
       <View className="skill-square-header">
         <View className="header-content">
+          {/* 第一行：标题和创建按钮 */}
           <View className="header-top">
             <View className="header-title-section">
               <View className="title-row">
-                <Crown size={28} color="url(#crownGradient)" />
+                <Crown size={24} color="url(#crownGradient)" />
                 <Text className="header-title">技能商城</Text>
               </View>
               <Text className="header-subtitle">为分身解锁强大能力</Text>
@@ -283,30 +284,27 @@ export default function SkillsSquare() {
                 className="create-skill-btn premium"
                 onClick={goToCreateSkill}
               >
-                <Sparkles size={18} color="#fff" />
-                <Text>创建技能</Text>
+                <Sparkles size={16} color="#fff" />
+                <Text>创建</Text>
               </Button>
-              <View className="avatar-selector" onClick={() => setShowAvatarSelector(true)}>
-                {currentAvatar ? (
-                  <>
-                    <View className="current-avatar premium">
-                      <Text className="avatar-emoji">{currentAvatar.name[0]}</Text>
-                    </View>
-                    <View className="avatar-info">
-                      <Text className="avatar-name">{currentAvatar.name}</Text>
-                      <Text className="avatar-skill-count">{mySkills.length}个技能</Text>
-                    </View>
-                    <ChevronDown size={16} color="rgba(255,255,255,0.7)" />
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={20} color="rgba(255,255,255,0.7)" />
-                    <Text className="avatar-name">选择分身</Text>
-                  </>
-                )}
-              </View>
             </View>
           </View>
+
+          {/* 第二行：分身选择器 */}
+          {currentAvatar && (
+            <View className="header-avatar-row">
+              <View className="avatar-selector" onClick={() => setShowAvatarSelector(true)}>
+                <View className="current-avatar premium">
+                  <Text className="avatar-emoji">{currentAvatar.name[0]}</Text>
+                </View>
+                <View className="avatar-info">
+                  <Text className="avatar-name">{currentAvatar.name}</Text>
+                  <Text className="avatar-skill-count">{mySkills.length}个技能</Text>
+                </View>
+                <ChevronDown size={16} color="rgba(255,255,255,0.7)" />
+              </View>
+            </View>
+          )}
         </View>
       </View>
 
