@@ -476,7 +476,7 @@ ${params.outline ? `- 参考大纲：${params.outline}` : ''}
           content,
           word_count: content.length,
           style: params.style,
-          message: `文章「${title}」撰写完成，共${content.length}字`
+          message: `${title}`
         }
       }
     } catch (err: any) {
@@ -629,7 +629,7 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
           cover_prompt: coverPrompt,
           tags,
           word_count: mainContent.length,
-          message: `公众号爆款图文「${titles[0] || params.topic}」创作完成，共${mainContent.length}字${coverImageUrl ? '，已生成封面图' : ''}`,
+          message: `${titles[0] || params.topic}`,
           // 提供完整的发布参数，Agent 可以直接使用
           next_action_hint: `内容已生成，如需发布到公众号，请使用 publish_wechat_mp 工具，参数如下：
 {
@@ -755,7 +755,7 @@ export class WriteXiaohongshuNoteTool implements ITool {
           tags,
           images: imageUrls,
           image_count: imageUrls.length,
-          message: `小红书笔记「${titles[0] || params.topic}」创作完成，已生成${imageUrls.length}张配图`,
+          message: `${titles[0] || params.topic}`,
           xiaohongshu_content: {
             title: titles[0] || params.topic,
             content: mainContent,
@@ -864,7 +864,7 @@ export class GenerateImageTool implements ITool {
           style: params.style,
           size: params.size,
           cdn_urls: imageUrls, // 明确标识CDN URL
-          message: `成功生成${imageUrls.length}张图片，已保存到火山引擎CDN`
+          message: `图片已生成`
         }
       }
     } catch (err: any) {

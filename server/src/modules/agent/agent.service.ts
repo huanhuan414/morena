@@ -400,10 +400,11 @@ export class AgentService {
         if (generatedContent?.observation?.data) {
           const data = generatedContent.observation.data
           if (data.title && data.content) {
-            // 有文章内容，返回文章摘要
-            finalAnswer = `✅ 内容已生成完成！\n\n📝 标题：${data.title}\n📊 字数：${data.word_count || data.content.length}字${data.cover_image_url ? '\n🖼️ 封面图：已生成' : ''}\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+            // 有文章内容，返回简洁提示
+            finalAnswer = `✅ ${data.title}`
           } else if (data.image_urls?.length) {
-            finalAnswer = `✅ 已生成 ${data.image_urls.length} 张图片！\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+            // 有图片，返回简洁提示
+            finalAnswer = `✅ 图片已生成`
           } else {
             finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
           }
@@ -972,10 +973,11 @@ export class AgentService {
         if (generatedContent?.observation?.data) {
           const data = generatedContent.observation.data
           if (data.title && data.content) {
-            // 有文章内容，返回文章摘要
-            finalAnswer = `✅ 内容已生成完成！\n\n📝 标题：${data.title}\n📊 字数：${data.word_count || data.content.length}字${data.cover_image_url ? '\n🖼️ 封面图：已生成' : ''}\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+            // 有文章内容，返回简洁提示
+            finalAnswer = `✅ ${data.title}`
           } else if (data.image_urls?.length) {
-            finalAnswer = `✅ 已生成 ${data.image_urls.length} 张图片！\n\n⚠️ 如需发布到平台，请先配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}授权信息。`
+            // 有图片，返回简洁提示
+            finalAnswer = `✅ 图片已生成`
           } else {
             finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
           }
@@ -1351,14 +1353,36 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
    * 总结执行结果
    */
   private async summarizeExecution(context: AgentContext, steps: ReActStep[]): Promise<string> {
-    const stepsSummary = steps.map(s => 
+    // 过滤步骤信息，移除 message 和 next_action_hint 等调试信息
+    const filteredSteps = steps.map(s => {
+      const filteredObservation = s.observation ? { ...s.observation } : s.observation
+      if (filteredObservation?.data) {
+        // 移除调试信息字段，只保留关键业务数据
+        const { message, next_action_hint, ...businessData } = filteredObservation.data
+        filteredObservation.data = businessData
+      }
+      return {
+        step_index: s.step_index,
+        thought: s.thought,
+        action: s.action,
+        observation: filteredObservation
+      }
+    })
+
+    const stepsSummary = filteredSteps.map(s =>
       `步骤${s.step_index}: ${s.thought}\n行动: ${s.action || '无'}\n结果: ${JSON.stringify(s.observation).substring(0, 200)}`
     ).join('\n\n')
 
     const response = await this.llmClient.invoke([
       {
         role: 'user',
-        content: `任务：${context.taskDescription}\n\n执行记录：\n${stepsSummary}\n\n请用简洁的语言总结任务执行结果。`
+        content: `任务：${context.taskDescription}\n\n执行记录：\n${stepsSummary}\n\n请用简洁的语言总结任务执行结果。
+要求：
+1. 只总结最终生成的结果（如：文章、图片、视频等）
+2. 不要提及中间过程、工具调用细节、数量统计等调试信息
+3. 如果生成了图片，直接说"已生成图片"，不要说"已生成3张图片"
+4. 如果生成了文章，直接说"文章已生成"，不要说"文章已生成，共1000字"
+5. 使用简洁、自然的语言，就像一个普通人在回复朋友一样`
       }
     ], {
       model: 'doubao-seed-1-8-251228',
