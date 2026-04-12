@@ -152,6 +152,7 @@ export default function SkillsSquare() {
       })
 
       if (res.data?.code === 200) {
+        console.log('[SkillSquare] 技能数据:', res.data.data)
         setSkills(res.data.data.skills || [])
       }
     } catch (error) {
@@ -274,9 +275,9 @@ export default function SkillsSquare() {
             <View className="header-title-section">
               <View className="title-row">
                 <Crown size={24} color="url(#crownGradient)" />
-                <Text className="header-title">技能商城</Text>
+                <Text className="header-title block">技能商城</Text>
               </View>
-              <Text className="header-subtitle">为分身解锁强大能力</Text>
+              <Text className="header-subtitle block">为分身解锁强大能力</Text>
             </View>
 
             <View className="header-actions">
@@ -285,7 +286,7 @@ export default function SkillsSquare() {
                 onClick={goToCreateSkill}
               >
                 <Sparkles size={16} color="#fff" />
-                <Text>创建</Text>
+                <Text className="block">创建</Text>
               </Button>
             </View>
           </View>
@@ -295,11 +296,11 @@ export default function SkillsSquare() {
             <View className="header-avatar-row">
               <View className="avatar-selector" onClick={() => setShowAvatarSelector(true)}>
                 <View className="current-avatar premium">
-                  <Text className="avatar-emoji">{currentAvatar.name[0]}</Text>
+                  <Text className="avatar-emoji block">{currentAvatar.name[0]}</Text>
                 </View>
                 <View className="avatar-info">
-                  <Text className="avatar-name">{currentAvatar.name}</Text>
-                  <Text className="avatar-skill-count">{mySkills.length}个技能</Text>
+                  <Text className="avatar-name block">{currentAvatar.name}</Text>
+                  <Text className="avatar-skill-count block">{mySkills.length}个技能</Text>
                 </View>
                 <ChevronDown size={16} color="rgba(255,255,255,0.7)" />
               </View>
@@ -352,8 +353,8 @@ export default function SkillsSquare() {
             }}
           >
             <Package size={16} color="rgba(255,255,255,0.8)" />
-            <Text className="category-text">全部</Text>
-            <Badge className="category-count">{skills.length}</Badge>
+            <Text className="category-text block">全部</Text>
+            <Badge className="category-count"><Text>{skills.length}</Text></Badge>
           </View>
           {categories.map((cat) => {
             const count = skills.filter(s => s.category === cat).length
@@ -373,9 +374,9 @@ export default function SkillsSquare() {
                 }}
               >
                 {Icon && <Icon size={16} color={filter.category === cat ? '#fff' : 'rgba(255,255,255,0.6)'} />}
-                <Text className="category-text">{cat}</Text>
+                <Text className="category-text block">{cat}</Text>
                 <Badge className="category-count" style={{ background: filter.category === cat ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)' }}>
-                  {count}
+                  <Text>{count}</Text>
                 </Badge>
               </View>
             )
@@ -388,21 +389,21 @@ export default function SkillsSquare() {
         {loading ? (
           <View className="loading-container">
             <Loader size={48} color="url(#loaderGradient)" className="spinning" />
-            <Text className="loading-text">加载技能中...</Text>
+            <Text className="loading-text block">加载技能中...</Text>
           </View>
         ) : !currentAvatar ? (
           <View className="empty-state">
             <View className="empty-icon-wrapper">
               <UserPlus size={64} color="url(#iconGradient)" />
             </View>
-            <Text className="empty-title">请先选择分身</Text>
-            <Text className="empty-desc">选择一个分身后，可以为它添加技能</Text>
+            <Text className="empty-title block">请先选择分身</Text>
+            <Text className="empty-desc block">选择一个分身后，可以为它添加技能</Text>
             <Button
               className="primary-action-btn"
               onClick={() => Taro.navigateTo({ url: '/pages/avatar-create/index' })}
             >
               <Sparkles size={20} color="#fff" />
-              <Text>创建分身</Text>
+              <Text className="block">创建分身</Text>
             </Button>
           </View>
         ) : skills.length === 0 ? (
@@ -410,8 +411,8 @@ export default function SkillsSquare() {
             <View className="empty-icon-wrapper">
               <Package size={64} color="url(#iconGradient)" />
             </View>
-            <Text className="empty-title">暂无技能</Text>
-            <Text className="empty-desc">换个关键词试试吧</Text>
+            <Text className="empty-title block">暂无技能</Text>
+            <Text className="empty-desc block">换个关键词试试吧</Text>
           </View>
         ) : (
           <View className={`skills-${viewMode}`}>
@@ -426,12 +427,12 @@ export default function SkillsSquare() {
                   {/* 卡片头部 - 图标和状态 */}
                   <View className="card-header">
                     <View className="skill-icon-wrapper" style={{ background: gradient }}>
-                      <Text className="skill-icon">{skill.icon || '🎯'}</Text>
+                      <Text className="skill-icon block">{skill.icon || '🎯'}</Text>
                     </View>
                     {owned && (
                       <View className="owned-badge premium">
                         <Check size={14} color="#fff" />
-                        <Text className="owned-text">已添加</Text>
+                        <Text className="owned-text block">已添加</Text>
                       </View>
                     )}
                   </View>
@@ -441,21 +442,21 @@ export default function SkillsSquare() {
                     {/* 分类标签 */}
                     <View className="skill-category-tag" style={{ background: bgColor }}>
                       {Icon && <Icon size={12} />}
-                      <Text className="category-label">{skill.category}</Text>
+                      <Text className="category-label block">{skill.category}</Text>
                     </View>
 
                     {/* 技能名称 */}
-                    <Text className="skill-name">{skill.name}</Text>
+                    <Text className="skill-name block">{skill.name}</Text>
 
                     {/* 技能描述 */}
-                    <Text className="skill-description">{skill.description}</Text>
+                    <Text className="skill-description block">{skill.description}</Text>
 
                     {/* 标签 */}
                     {skill.tags && skill.tags.length > 0 && (
                       <View className="skill-tags">
                         {skill.tags.slice(0, 3).map((tag, idx) => (
                           <Badge key={idx} className="skill-tag" variant="outline">
-                            {tag}
+                            <Text>{tag}</Text>
                           </Badge>
                         ))}
                       </View>
@@ -465,13 +466,13 @@ export default function SkillsSquare() {
                     <View className="skill-stats">
                       <View className="stat-item">
                         <Star size={14} color="#ffb800" />
-                        <Text className="stat-value">{skill.rating.toFixed(1)}</Text>
-                        <Text className="stat-label">({skill.rating_count})</Text>
+                        <Text className="stat-value block">{skill.rating.toFixed(1)}</Text>
+                        <Text className="stat-label block">({skill.rating_count})</Text>
                       </View>
                       <View className="stat-item">
                         <TrendingUp size={14} color="rgba(255,255,255,0.5)" />
-                        <Text className="stat-value">{skill.purchase_count}</Text>
-                        <Text className="stat-label">人使用</Text>
+                        <Text className="stat-value block">{skill.purchase_count}</Text>
+                        <Text className="stat-label block">人使用</Text>
                       </View>
                     </View>
 
@@ -479,7 +480,7 @@ export default function SkillsSquare() {
                     {skill.requirements && skill.requirements !== '无' && (
                       <View className="requirement-notice">
                         <Clock size={12} color="rgba(255,107,107,0.8)" />
-                        <Text className="requirement-text">{skill.requirements}</Text>
+                        <Text className="requirement-text block">{skill.requirements}</Text>
                       </View>
                     )}
                   </View>
@@ -489,7 +490,7 @@ export default function SkillsSquare() {
                     {owned ? (
                       <Button variant="outline" className="action-btn owned" disabled>
                         <Check size={16} color="rgba(255,255,255,0.5)" />
-                        <Text>已添加</Text>
+                        <Text className="block">已添加</Text>
                       </Button>
                     ) : (
                       <Button
@@ -500,7 +501,7 @@ export default function SkillsSquare() {
                         }}
                       >
                         <Zap size={16} color="#fff" />
-                        <Text>添加技能</Text>
+                        <Text className="block">添加技能</Text>
                       </Button>
                     )}
                   </View>
@@ -525,12 +526,12 @@ export default function SkillsSquare() {
                 onClick={() => handleSelectAvatar(avatar)}
               >
                 <View className="avatar-card-icon premium">
-                  <Text className="avatar-card-emoji">{avatar.name[0]}</Text>
+                  <Text className="avatar-card-emoji block">{avatar.name[0]}</Text>
                 </View>
                 <View className="avatar-card-info">
-                  <Text className="avatar-card-name">{avatar.name}</Text>
+                  <Text className="avatar-card-name block">{avatar.name}</Text>
                   {avatar.description && (
-                    <Text className="avatar-card-desc">{avatar.description}</Text>
+                    <Text className="avatar-card-desc block">{avatar.description}</Text>
                   )}
                 </View>
                 {currentAvatar?.id === avatar.id && (
@@ -540,7 +541,7 @@ export default function SkillsSquare() {
             ))}
             {avatars.length === 0 && (
               <View className="no-avatar-tip">
-                <Text className="no-avatar-text">暂无分身</Text>
+                <Text className="no-avatar-text block">暂无分身</Text>
                 <Button
                   className="create-btn premium"
                   onClick={() => {
@@ -549,7 +550,7 @@ export default function SkillsSquare() {
                   }}
                 >
                   <Sparkles size={18} color="#fff" />
-                  <Text>创建分身</Text>
+                  <Text className="block">创建分身</Text>
                 </Button>
               </View>
             )}
@@ -568,29 +569,29 @@ export default function SkillsSquare() {
             <View className="purchase-confirm">
               <View className="skill-preview">
                 <View className="skill-preview-icon" style={{ background: CATEGORY_COLORS[selectedSkill.category || ''] || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                  <Text className="skill-preview-emoji">{selectedSkill.icon || '🎯'}</Text>
+                  <Text className="skill-preview-emoji block">{selectedSkill.icon || '🎯'}</Text>
                 </View>
                 <View className="skill-preview-info">
-                  <Text className="skill-preview-name">{selectedSkill.name}</Text>
-                  <Text className="skill-preview-desc">{selectedSkill.description}</Text>
+                  <Text className="skill-preview-name block">{selectedSkill.name}</Text>
+                  <Text className="skill-preview-desc block">{selectedSkill.description}</Text>
                   {selectedSkill.requirements && selectedSkill.requirements !== '无' && (
                     <View className="preview-requirement">
                       <Clock size={14} color="rgba(255,107,107,0.9)" />
-                      <Text className="preview-requirement-text">{selectedSkill.requirements}</Text>
+                      <Text className="preview-requirement-text block">{selectedSkill.requirements}</Text>
                     </View>
                   )}
                 </View>
               </View>
 
               <View className="avatar-target">
-                <Text className="target-label">目标分身</Text>
+                <Text className="target-label block">目标分身</Text>
                 <View className="target-avatar-card premium">
                   <View className="target-avatar-icon">
-                    <Text className="target-avatar-emoji">{currentAvatar.name[0]}</Text>
+                    <Text className="target-avatar-emoji block">{currentAvatar.name[0]}</Text>
                   </View>
                   <View className="target-avatar-info">
-                    <Text className="target-avatar-name">{currentAvatar.name}</Text>
-                    <Text className="target-avatar-desc">添加后将立即具备此能力</Text>
+                    <Text className="target-avatar-name block">{currentAvatar.name}</Text>
+                    <Text className="target-avatar-desc block">添加后将立即具备此能力</Text>
                   </View>
                 </View>
               </View>
