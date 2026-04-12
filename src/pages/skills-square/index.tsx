@@ -9,6 +9,37 @@ import Taro from '@tarojs/taro'
 import { Star, Check, ShoppingCart, Search } from 'lucide-react-taro'
 import './index.css'
 
+// 根据 tool_name 获取图标
+const getSkillIcon = (toolName?: string): string => {
+  const iconMap: Record<string, string> = {
+    // 短剧相关
+    'generate_shortdrama_script': '📝',
+    'generate_storyboard': '🎬',
+    'produce_shortdrama': '🎥',
+    'generate_multi_episode_drama': '📺',
+    'generate_drama_voiceover': '🎙️',
+    'edit_shortdrama_video': '✂️',
+    'generate_subtitle': '💬',
+    'recommend_bgm': '🎵',
+    // 内容创作
+    'write_article': '✍️',
+    'write_wechat_mp_article': '📰',
+    'write_xiaohongshu_note': '📝',
+    'generate_image': '🖼️',
+    'generate_video': '🎬',
+    // 平台发布
+    'publish_wechat_mp': '💬',
+    'publish_xiaohongshu': '📱',
+    'publish_bilibili': '📺',
+    'publish_weibo': '🌐',
+    'publish_douyin': '🎵',
+    'publish_wechat_video': '📱',
+    // 其他
+    'default': '🎯'
+  }
+  return iconMap[toolName || ''] || iconMap['default']
+}
+
 interface Skill {
   id: string
   name: string
@@ -428,7 +459,7 @@ export default function SkillsSquare() {
                   {/* 图标和分类 */}
                   <View className="card-top">
                     <View className="icon-wrapper">
-                      <Text className="skill-icon">{skill.icon || '🎯'}</Text>
+                      <Text className="skill-icon">{getSkillIcon(skill.tool_name)}</Text>
                     </View>
                     {owned && (
                       <View className="owned-badge">
@@ -509,7 +540,7 @@ export default function SkillsSquare() {
           {selectedSkill && (
             <View className="dialog-content">
               <View className="skill-preview">
-                <Text className="preview-icon">{selectedSkill.icon || '🎯'}</Text>
+                <Text className="preview-icon">{getSkillIcon(selectedSkill.tool_name)}</Text>
                 <View className="preview-info">
                   <Text className="preview-name">{selectedSkill.name}</Text>
                   <Text className="preview-desc">{selectedSkill.description}</Text>
