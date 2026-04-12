@@ -255,6 +255,47 @@ export default function SkillsSquare() {
     }
   }
 
+  // 移除技能
+  const handleRemoveSkill = async (skillId: string, skillName: string) => {
+    if (!currentAvatar?.id) return
+
+    try {
+      const result = await Taro.showModal({
+        title: '确认移除',
+        content: `确定要移除"${skillName}"技能吗？移除后分身将无法使用该技能。`
+      })
+
+      if (!result.confirm) return
+
+      console.log('[SkillSquare] 开始移除技能:', {
+        skillId,
+        skillName,
+        avatarId: currentAvatar.id
+      })
+
+      const res = await Network.request({
+        url: '/api/skills/remove',
+        method: 'DELETE',
+        data: {
+          skillId,
+          avatarId: currentAvatar.id
+        }
+      })
+
+      console.log('[SkillSquare] 移除技能响应:', res)
+
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '移除成功', icon: 'success' })
+        fetchMySkills()
+      } else {
+        Taro.showToast({ title: res.data?.message || '移除失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[SkillSquare] 移除技能失败:', error)
+      Taro.showToast({ title: '移除失败', icon: 'none' })
+    }
+  }
+
   // 搜索
   const handleSearch = () => {
     fetchSkills()
@@ -408,10 +449,12 @@ export default function SkillsSquare() {
                       </View>
                     </View>
                     {owned ? (
-                      <Button className="action-btn owned" disabled>
+                      <Button
+                        className="action-btn remove"
+                        onClick={() => handleRemoveSkill(skill.id, skill.name)}
+                      >
                         <View className="btn-content">
-                          <Check size={14} color="#00ff88" />
-                          <Text>已添加</Text>
+                          <Text>移除</Text>
                         </View>
                       </Button>
                     ) : (

@@ -297,4 +297,29 @@ export class SkillsController {
       }
     }
   }
+
+  /**
+   * 移除分身技能
+   */
+  @Delete('remove')
+  async removeSkill(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { skillId: string; avatarId: string }
+  ) {
+    try {
+      await this.skillsService.removeSkill(userId, body)
+
+      return {
+        code: 200,
+        data: null,
+        message: '移除成功'
+      }
+    } catch (error) {
+      return {
+        code: 400,
+        data: null,
+        message: error.message || '移除技能失败'
+      }
+    }
+  }
 }

@@ -637,4 +637,41 @@ ${prompt}
       }
     }
   }
+
+  /**
+   * 移除分身技能
+   */
+  async removeSkill(userId: string, dto: { skillId: string; avatarId: string }) {
+    try {
+      // 检查技能是否存在
+      const skill = await this.getSkillById(dto.skillId)
+
+      // 获取技能的 tool_name
+      const skillToolName = (skill as any).tool_name || (skill as any).toolName || 'custom'
+
+      console.log('[SkillsService] removeSkill - 技能信息:', {
+        skillId: dto.skillId,
+        skillName: skill.name,
+        tool_name: skillToolName,
+        avatarId: dto.avatarId
+      })
+
+      // 从 avatar_skills 表中删除
+      const { error: deleteError } = await getSupabaseClient()
+        .from('avatar_skills')
+        .delete()
+        .eq('avatar_id', dto.avatarId)
+        .eq('skill_type', skillToolName)
+
+      if (deleteError) {
+        console.error('[SkillsService] 移除技能失败:', deleteError)
+        throw new Error(`移除技能失败: ${deleteError.message}`)
+      }
+
+      console.log('[SkillsService] 技能移除成功')
+    } catch (error) {
+      console.error('[SkillsService] removeSkill error:', error)
+      throw error
+    }
+  }
 }
