@@ -56,6 +56,11 @@ import {
   PublishDouyinTool,
   PublishWechatVideoTool
 } from './tools/platform-publish.tools'
+import {
+  GenerateShortDramaScriptTool,
+  GenerateStoryboardTool,
+  ProduceShortDramaTool
+} from './tools/shortdrama.tools'
 
 // 对话消息类型
 interface ConversationMessage {
@@ -152,6 +157,11 @@ export class AgentService {
     this.tools.set('write_xiaohongshu_note', new WriteXiaohongshuNoteTool())
     this.tools.set('generate_image', new GenerateImageTool())
     this.tools.set('generate_video', new GenerateVideoTool())
+
+    // 短剧制作工具
+    this.tools.set('generate_shortdrama_script', new GenerateShortDramaScriptTool())
+    this.tools.set('generate_storyboard', new GenerateStoryboardTool())
+    this.tools.set('produce_shortdrama', new ProduceShortDramaTool())
 
     // 平台发布工具
     this.tools.set('check_platform_config', new CheckPlatformConfigTool())

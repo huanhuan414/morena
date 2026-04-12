@@ -1,0 +1,524 @@
+/**
+ * 短剧生成工具
+ * 专业短剧制作：剧本生成、分镜头脚本、角色设计、场景设计、视频制作
+ */
+
+import { Injectable } from '@nestjs/common'
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
+import { ITool, ToolContext, ToolDefinition } from './tool.interface'
+import { ToolResult } from '../agent.types'
+
+/**
+ * 短剧剧本生成器
+ * 根据用户输入的想法，生成专业的短剧剧本
+ */
+@Injectable()
+export class GenerateShortDramaScriptTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'generate_shortdrama_script',
+    displayName: '生成短剧剧本',
+    description: '根据用户输入的想法，生成专业的短剧剧本，包含故事梗概、角色设定、场景列表、分场对白。适合用于制作1-3分钟的短视频短剧。',
+    category: 'content_creation',
+    paramsSchema: {
+      theme: { type: 'string', description: '短剧主题/想法', required: true },
+      genre: { type: 'string', enum: ['爱情', '悬疑', '喜剧', '剧情', '都市', '古装', '科幻', '青春'], default: '剧情' },
+      duration: { type: 'number', description: '目标时长（分钟）', default: 2 },
+      episode: { type: 'number', description: '集数', default: 1 },
+      style: { type: 'string', enum: ['轻松', '紧张', '温馨', '励志', '治愈', '搞笑'], default: '轻松' }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const config = new Config()
+      const client = new LLMClient(config)
+
+      const genreStyles = {
+        爱情: '浪漫、甜蜜、情感细腻，注重人物情感表达',
+        悬疑: '紧张、神秘、层层递进，注重悬念和反转',
+        喜剧: '轻松、幽默、搞笑，注重包袱和笑点',
+        剧情: '真实、深刻、有深度，注重人物成长和故事寓意',
+        都市: '现代、时尚、贴近生活，注重都市职场和情感',
+        古装: '古典、唯美、有韵味，注重历史背景和传统文化',
+        科幻: '未来、科技、想象力，注重科技感和世界观',
+        青春: '活力、阳光、热血，注重青春期的成长和友情'
+      }
+
+      const emotionTone = {
+        轻松: '轻快、愉悦、放松',
+        紧张: '紧凑、刺激、压迫感',
+        温馨: '温暖、感人、治愈',
+        励志: '积极、向上、充满正能量',
+        治愈: '柔和、舒缓、抚慰心灵',
+        搞笑: '幽默、诙谐、轻松愉快'
+      }
+
+      // 计算剧本字数和场次
+      const totalMinutes = (params.duration || 2) * (params.episode || 1)
+      const targetWordCount = Math.floor(totalMinutes * 1500) // 每分钟约1500字
+      const sceneCount = Math.ceil(totalMinutes * 2) // 每分钟约2场戏
+
+      const prompt = `你是一位专业的短剧编剧大师，擅长创作爆款短剧剧本。请根据以下要求创作短剧剧本：
+
+【创作要求】
+主题：${params.theme}
+类型：${params.genre}（${genreStyles[params.genre] || genreStyles.剧情}）
+时长：${totalMinutes}分钟（${params.episode || 1}集）
+情感基调：${emotionTone[params.style] || emotionTone.轻松}
+目标字数：约${targetWordCount}字
+
+【剧本格式要求】
+
+请严格按照以下格式输出：
+
+## 短剧信息
+剧名：（创作一个吸引人的剧名）
+类型：${params.genre}
+时长：${totalMinutes}分钟
+情感基调：${emotionTone[params.style] || emotionTone.轻松}
+一句话简介：（一句话概括整个故事）
+
+## 角色设定
+### 主角1：姓名
+- 性别/年龄：
+- 性格特点：
+- 背景故事：
+- 造型描述：（用于AI生成角色形象）
+
+### 主角2：姓名
+- 性别/年龄：
+- 性格特点：
+- 背景故事：
+- 造型描述：（用于AI生成角色形象）
+
+（如需要，可继续添加配角）
+
+## 场景列表
+1. 场景名 - 时段（日/夜） - 场地描述
+2. 场景名 - 时段（日/夜） - 场地描述
+...
+
+## 剧本正文
+（按照以下分场格式，共${sceneCount}场戏）
+
+### 第1场：场景名 - 时段
+【场景】
+（描述场景环境、氛围，用于AI生成场景画面）
+
+【人物】
+（出场人物）
+
+【剧情】
+（简要描述本场剧情）
+
+【对白】
+（对白格式）
+角色名：对白内容
+（动作描述）
+角色名：对白内容
+
+（每场戏1-3分钟，用简洁的对白推动剧情，注重画面感和节奏）
+
+---
+
+【创作要点】
+1. 开头3秒必须抓住眼球（用冲突、悬念、强视觉开场）
+2. 每场戏都要有冲突和转折
+3. 对白要精炼，符合人物性格
+4. 善用留白，给镜头留出表现空间
+5. 结尾要有反转或悬念，吸引继续观看
+
+现在开始创作剧本：`
+
+      const response = await client.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      const scriptContent = response.content.trim()
+
+      // 提取关键信息
+      const titleMatch = scriptContent.match(/剧名[：:]\s*(.+?)(?:\n|$)/i)
+      const title = titleMatch ? titleMatch[1].trim() : params.theme
+
+      return {
+        success: true,
+        data: {
+          title,
+          genre: params.genre,
+          duration: totalMinutes,
+          episode: params.episode || 1,
+          script: scriptContent,
+          word_count: scriptContent.length,
+          target_word_count: targetWordCount,
+          message: `已生成短剧剧本《${title}》，共${params.episode || 1}集，预计时长${totalMinutes}分钟`
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: `生成短剧剧本失败: ${err.message}` }
+    }
+  }
+}
+
+/**
+ * 分镜头脚本生成器
+ * 将剧本转换为详细的分镜头脚本，指导视频拍摄/制作
+ */
+@Injectable()
+export class GenerateStoryboardTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'generate_storyboard',
+    displayName: '生成分镜头脚本',
+    description: '将短剧剧本转换为专业的分镜头脚本，包含每个镜头的景别、镜头运动、画面描述、对白、时长。用于指导视频拍摄和AI视频生成。',
+    category: 'content_creation',
+    paramsSchema: {
+      script_content: { type: 'string', description: '剧本内容', required: true },
+      target_duration: { type: 'number', description: '目标时长（分钟）', default: 2 },
+      style: { type: 'string', enum: ['电影感', '短视频风', 'Vlog风', '纪录片风'], default: '电影感' }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const config = new Config()
+      const client = new LLMClient(config)
+
+      const shotCounts = Math.floor((params.target_duration || 2) * 15) // 每分钟约15个镜头
+      const avgShotDuration = Math.floor(60 / 15) // 每个镜头平均4秒
+
+      const styleGuides = {
+        电影感: '电影质感，注重镜头语言，多用固定镜头和推拉镜头，景深层次丰富，色调有电影感',
+        短视频风: '快节奏，多用特写和近景，镜头切换频繁，节奏感强，色彩鲜艳',
+        Vlog风: '手持感，自然真实，多用第一人称视角，镜头运动随意，有生活气息',
+        纪录片风: '客观记录，多用全景和中景，镜头稳定，注重真实感和叙事性'
+      }
+
+      const prompt = `你是一位专业的分镜头脚本设计师。请将以下剧本转换为专业的分镜头脚本：
+
+【剧本内容】
+${params.script_content}
+
+【制作要求】
+目标时长：${params.target_duration || 2}分钟
+总镜头数：约${shotCounts}个
+平均镜头时长：约${avgShotDuration}秒
+风格：${styleGuides[params.style] || styleGuides.电影感}
+
+【分镜头脚本格式】
+
+请严格按照以下格式输出每个镜头：
+
+## 镜头 #编号
+- 景别：全景/中景/近景/特写/大特写
+- 镜头运动：固定/推/拉/摇/移/跟/升/降/组合
+- 画面描述：（详细描述画面内容，用于AI生成画面）
+- 时长：X秒
+- 对白/旁白：（该镜头的对白或旁白内容）
+- 音效/配乐：（该镜头的音效或配乐建议）
+
+---
+
+【分镜头设计要点】
+1. 开场用大景别（全景/远景）交代环境
+2. 重要对白用近景/特写突出人物表情
+3. 动作场面用运动镜头（推拉摇移）增强动感
+4. 转场处用特写做衔接
+5. 每个镜头画面描述要具体、生动，包含光影、色彩、构图信息
+6. 景别搭配要有变化，避免单调
+7. 关键情感镜头用慢镜头或特写放大
+
+现在开始生成分镜头脚本：`
+
+      const response = await client.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.7
+      })
+
+      const storyboardContent = response.content.trim()
+
+      // 统计镜头数量
+      const shotMatches = storyboardContent.match(/镜头\s*#\d+/g)
+      const actualShotCount = shotMatches ? shotMatches.length : 0
+
+      return {
+        success: true,
+        data: {
+          storyboard: storyboardContent,
+          shot_count: actualShotCount,
+          target_shot_count: shotCounts,
+          target_duration: params.target_duration || 2,
+          style: params.style,
+          avg_shot_duration: avgShotDuration,
+          message: `已生成分镜头脚本，共${actualShotCount}个镜头，预计时长${params.target_duration || 2}分钟`
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: `生成分镜头脚本失败: ${err.message}` }
+    }
+  }
+}
+
+/**
+ * 完整短剧制作工具
+ * 一站式短剧制作：剧本 + 分镜头 + 角色图 + 场景图 + 关键视频
+ */
+@Injectable()
+export class ProduceShortDramaTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'produce_shortdrama',
+    displayName: '制作短剧',
+    description: '一站式短剧制作工具，根据用户想法自动生成完整的短剧，包含剧本、角色形象、场景设计、分镜头脚本、关键镜头视频。适合快速制作1-2分钟的短视频短剧。',
+    category: 'content_creation',
+    paramsSchema: {
+      theme: { type: 'string', description: '短剧主题/想法', required: true },
+      genre: { type: 'string', enum: ['爱情', '悬疑', '喜剧', '剧情', '都市', '古装', '科幻', '青春'], default: '剧情' },
+      duration: { type: 'number', description: '目标时长（分钟）', default: 2 },
+      include_video: { type: 'boolean', description: '是否生成关键镜头视频（较慢）', default: true },
+      key_scenes_count: { type: 'number', description: '关键视频镜头数量（最多3个）', default: 2 }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const config = new Config()
+      const client = new LLMClient(config)
+      const imageClient = new ImageGenerationClient(config)
+      const videoClient = new VideoGenerationClient(config)
+
+      console.log('[短剧制作] 开始制作短剧...')
+
+      // Step 1: 生成剧本
+      console.log('[短剧制作] Step 1: 生成剧本...')
+      const scriptPrompt = `请为以下主题创作一个短剧剧本：
+
+主题：${params.theme}
+类型：${params.genre}
+时长：${params.duration || 2}分钟
+
+【剧本格式】
+## 短剧信息
+剧名：
+类型：
+时长：
+一句话简介：
+
+## 角色设定
+### 主角1：姓名
+- 性别/年龄：
+- 性格特点：
+- 造型描述：（详细描述，用于生成角色形象）
+
+### 主角2：姓名
+- 性别/年龄：
+- 性格特点：
+- 造型描述：（详细描述，用于生成角色形象）
+
+## 场景列表
+1. 场景名 - 时段 - 场地描述
+2. 场景名 - 时段 - 场地描述
+
+## 剧本正文
+（共3-5场戏，每场包含场景、人物、剧情、对白）
+
+【创作要点】
+- 开头3秒必须抓住眼球
+- 每场戏都要有冲突
+- 对白精炼有力
+
+请直接输出剧本内容：`
+
+      const scriptResponse = await client.invoke([
+        { role: 'user', content: scriptPrompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      const scriptContent = scriptResponse.content.trim()
+
+      // 提取角色造型描述
+      const characterPrompts: string[] = []
+      const characterRegex = /### 主角\d+[：:]\s*(.+?)(?:\n|$)/g
+      let charMatch
+      while ((charMatch = characterRegex.exec(scriptContent)) !== null) {
+        const characterName = charMatch[1].trim()
+        const appearanceRegex = new RegExp(`${characterName}[\\s\\S]*?造型描述[：:]\\s*([\\s\\S]*?)(?:\\n###|\\n##|$)`, 'i')
+        const appearanceMatch = appearanceRegex.exec(scriptContent)
+        if (appearanceMatch) {
+          characterPrompts.push(`${characterName}, ${appearanceMatch[1].trim()}`)
+        }
+      }
+
+      // 提取场景描述
+      const scenePrompts: string[] = []
+      const sceneRegex = /场景列表[\\s\\S]*?(?=## 剧本正文|$)/i
+      const sceneMatch = sceneRegex.exec(scriptContent)
+      if (sceneMatch) {
+        const sceneLines = sceneMatch[0].split('\n').filter((line: string) => line.match(/^\s*\d+\./))
+        sceneLines.forEach((line: string) => {
+          const sceneDesc = line.replace(/^\s*\d+\.\s*/, '').trim()
+          if (sceneDesc) {
+            scenePrompts.push(sceneDesc)
+          }
+        })
+      }
+
+      // Step 2: 生成分镜头脚本
+      console.log('[短剧制作] Step 2: 生成分镜头脚本...')
+      const storyboardPrompt = `请将以下剧本转换为分镜头脚本，共${(params.duration || 2) * 15}个镜头：
+
+${scriptContent}
+
+【分镜头格式】
+## 镜头 #编号
+- 景别：全景/中景/近景/特写
+- 镜头运动：固定/推/拉/摇/移
+- 画面描述：（详细描述画面内容）
+- 时长：3-5秒
+- 对白：（该镜头的对白）
+
+请直接输出分镜头脚本：`
+
+      const storyboardResponse = await client.invoke([
+        { role: 'user', content: storyboardPrompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.7
+      })
+
+      const storyboardContent = storyboardResponse.content.trim()
+
+      // Step 3: 生成角色形象
+      console.log('[短剧制作] Step 3: 生成角色形象...')
+      const characterImages: any[] = []
+
+      for (let i = 0; i < Math.min(characterPrompts.length, 2); i++) {
+        try {
+          const prompt = `${characterPrompts[i]}, professional portrait, cinematic lighting, high quality, 8K`
+          console.log(`[短剧制作] 生成角色${i + 1}形象...`)
+
+          const imageResponse = await imageClient.generate({
+            prompt,
+            size: '1K',
+            watermark: false
+          })
+
+          const helper = imageClient.getResponseHelper(imageResponse)
+          if (helper.success && helper.imageUrls.length > 0) {
+            characterImages.push({
+              character: characterPrompts[i].split(',')[0].trim(),
+              url: helper.imageUrls[0],
+              prompt: characterPrompts[i]
+            })
+          }
+        } catch (err) {
+          console.error(`[短剧制作] 生成角色${i + 1}形象失败:`, err)
+        }
+      }
+
+      // Step 4: 生成场景设计图
+      console.log('[短剧制作] Step 4: 生成场景设计图...')
+      const sceneImages: any[] = []
+
+      for (let i = 0; i < Math.min(scenePrompts.length, 3); i++) {
+        try {
+          const prompt = `${scenePrompts[i]}, cinematic scene, detailed environment, atmospheric lighting, professional photography, 8K`
+          console.log(`[短剧制作] 生成场景${i + 1}设计...`)
+
+          const imageResponse = await imageClient.generate({
+            prompt,
+            size: '1K',
+            watermark: false
+          })
+
+          const helper = imageClient.getResponseHelper(imageResponse)
+          if (helper.success && helper.imageUrls.length > 0) {
+            sceneImages.push({
+              scene: scenePrompts[i],
+              url: helper.imageUrls[0],
+              prompt: scenePrompts[i]
+            })
+          }
+        } catch (err) {
+          console.error(`[短剧制作] 生成场景${i + 1}设计失败:`, err)
+        }
+      }
+
+      // Step 5: 生成关键镜头视频（可选）
+      const videoClips: any[] = []
+      if (params.include_video && params.key_scenes_count > 0) {
+        console.log('[短剧制作] Step 5: 生成关键镜头视频...')
+
+        // 提取分镜头中的关键画面描述
+        const shotDescriptions: string[] = []
+        const shotRegex = /镜头\s*#\d+[\\s\\S]*?画面描述[：:]\s*([\\s\\S]*?)(?:\n-|\n##|$)/g
+        let shotMatch
+        while ((shotMatch = shotRegex.exec(storyboardContent)) !== null && shotDescriptions.length < (params.key_scenes_count || 2)) {
+          const desc = shotMatch[1].trim()
+          if (desc && desc.length > 10) {
+            shotDescriptions.push(desc)
+          }
+        }
+
+        for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 2); i++) {
+          try {
+            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography`
+            console.log(`[短剧制作] 生成关键镜头${i + 1}视频...`)
+
+            const content = [{ type: 'text' as const, text: prompt }]
+            const videoResponse = await videoClient.videoGeneration(content, {
+              model: 'doubao-seedance-1-5-pro-251215',
+              duration: 5,
+              ratio: '16:9',
+              resolution: '720p',
+              watermark: false,
+              generateAudio: false
+            })
+
+            if (videoResponse.videoUrl) {
+              videoClips.push({
+                clip_number: i + 1,
+                url: videoResponse.videoUrl,
+                prompt: shotDescriptions[i]
+              })
+            }
+          } catch (err) {
+            console.error(`[短剧制作] 生成关键镜头${i + 1}视频失败:`, err)
+          }
+        }
+      }
+
+      // 提取剧名
+      const titleMatch = scriptContent.match(/剧名[：:]\s*(.+?)(?:\n|$)/i)
+      const title = titleMatch ? titleMatch[1].trim() : params.theme
+
+      console.log('[短剧制作] 短剧制作完成！')
+
+      return {
+        success: true,
+        data: {
+          title,
+          genre: params.genre,
+          duration: params.duration || 2,
+          script: scriptContent,
+          storyboard: storyboardContent,
+          characters: characterImages,
+          scenes: sceneImages,
+          video_clips: videoClips,
+          production_stats: {
+            characters_generated: characterImages.length,
+            scenes_generated: sceneImages.length,
+            videos_generated: videoClips.length
+          },
+          message: `短剧《${title}》制作完成！包含剧本、${characterImages.length}个角色形象、${sceneImages.length}个场景设计、${videoClips.length}个关键镜头视频`
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: `制作短剧失败: ${err.message}` }
+    }
+  }
+}
