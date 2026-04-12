@@ -1750,20 +1750,21 @@ export default function MindChatPage() {
         })()}
 
         {/* 文本消息渲染 */}
-        {msg.content && (
+        {msg.content && typeof msg.content === 'string' && (
           <View className="text-message">
-            <MarkdownRender content={msg.content || ''} />
+            <MarkdownRender content={msg.content} />
           </View>
         )}
 
         {/* 技能缺失提示和添加技能按钮 */}
         {(() => {
           // 检测技能缺失错误消息
-          const isSkillMissing = msg.content?.includes('您的分身尚未添加该功能')
+          const contentStr = typeof msg.content === 'string' ? msg.content : ''
+          const isSkillMissing = contentStr.includes('您的分身尚未添加该功能')
           if (!isSkillMissing) return null
 
           // 提取技能名称（从错误消息中）
-          const skillNameMatch = msg.content?.match(/"([^"]+)"/)
+          const skillNameMatch = contentStr.match(/"([^"]+)"/)
           const skillName = skillNameMatch ? skillNameMatch[1] : ''
 
           return (
@@ -2517,7 +2518,7 @@ export default function MindChatPage() {
                   {msg.role === 'assistant' && (
                     <View 
                       className="message-action"
-                      onClick={() => copyMessage(msg.content)}
+                      onClick={() => copyMessage(typeof msg.content === 'string' ? msg.content : '')}
                     >
                       <Copy size={14} color="rgba(255,255,255,0.4)" />
                     </View>
