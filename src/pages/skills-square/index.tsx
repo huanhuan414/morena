@@ -44,9 +44,7 @@ export default function SkillsSquare() {
 
   // 打印环境信息
   useEffect(() => {
-    console.log('[SkillSquare] 环境信息:')
-    console.log('[SkillSquare] PROJECT_DOMAIN:', typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : 'undefined')
-    console.log('[SkillSquare] window.location.hostname:', typeof window !== 'undefined' ? window.location.hostname : 'undefined')
+    console.log('[SkillSquare] 环境信息')
   }, [])
 
   // 获取分身列表
