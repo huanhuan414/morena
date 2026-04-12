@@ -26,7 +26,8 @@ export default defineAppConfig({
     'pages/order-matching/index',
     'pages/earning-center/index',
     'pages/referral-center/index',
-    'pages/skills-square/index'
+    'pages/skills-square/index',
+    'pages/skill-create/index'
   ],
   window: {
     backgroundTextStyle: 'dark',

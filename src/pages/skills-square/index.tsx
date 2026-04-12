@@ -4,7 +4,6 @@ import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useUserStore } from '@/stores/user'
 import Taro from '@tarojs/taro'
@@ -16,8 +15,13 @@ import {
   Package,
   Loader,
   UserPlus,
-  Brain,
-  ChevronDown
+  ChevronDown,
+  Check,
+  Clock,
+  Zap,
+  Settings,
+  Pencil,
+  Share2
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -48,6 +52,22 @@ interface Avatar {
   personality?: string
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  '内容创作': '#00f5ff',
+  '平台发布': '#ff6b6b',
+  '平台管理': '#ffd700',
+  '社交互动': '#bf00ff',
+  '订阅管理': '#00ff88'
+}
+
+const CATEGORY_ICONS: Record<string, any> = {
+  '内容创作': Pencil,
+  '平台发布': Share2,
+  '平台管理': Settings,
+  '社交互动': UserPlus,
+  '订阅管理': Sparkles
+}
+
 export default function SkillsSquare() {
   const { userInfo, avatarId, setAvatarId } = useUserStore()
 
@@ -62,11 +82,7 @@ export default function SkillsSquare() {
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
   const [showAvatarSelector, setShowAvatarSelector] = useState(false)
-  const [showCreateSkillDialog, setShowCreateSkillDialog] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
-  const [creatingSkill, setCreatingSkill] = useState(false)
-  const [newSkillName, setNewSkillName] = useState('')
-  const [newSkillDescription, setNewSkillDescription] = useState('')
 
   // 获取分身列表
   const fetchAvatars = async () => {
@@ -82,14 +98,12 @@ export default function SkillsSquare() {
         const avatarList = res.data.data || []
         setAvatars(avatarList)
 
-        // 如果有当前分身，设置为当前分身
         if (avatarId) {
           const current = avatarList.find((a: Avatar) => a.id === avatarId)
           if (current) {
             setCurrentAvatar(current)
           }
         } else if (avatarList.length > 0) {
-          // 如果没有当前分身，使用第一个分身
           const firstAvatar = avatarList[0]
           setCurrentAvatar(firstAvatar)
           setAvatarId?.(firstAvatar.id)
@@ -186,7 +200,6 @@ export default function SkillsSquare() {
       if (res.data?.code === 200) {
         Taro.showToast({ title: '技能添加成功！', icon: 'success' })
         setShowPurchaseDialog(false)
-        // 刷新列表
         fetchMySkills()
       } else {
         Taro.showToast({ title: res.data?.message || '添加失败', icon: 'none' })
@@ -202,74 +215,14 @@ export default function SkillsSquare() {
   // 检查是否已拥有该技能
   const isOwned = (skillId: string) => mySkills.includes(skillId)
 
-  // 创建自定义技能
-  const handleCreateSkill = async () => {
-    if (!newSkillName.trim() || !newSkillDescription.trim()) {
-      Taro.showToast({ title: '请填写技能名称和描述', icon: 'none' })
-      return
-    }
-
-    if (!userInfo?.id) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
-      return
-    }
-
-    try {
-      setCreatingSkill(true)
-
-      // 使用 AI 生成技能的详细描述和标签
-      const res = await Network.request({
-        url: '/api/skills/ai-generate',
-        method: 'POST',
-        data: {
-          name: newSkillName,
-          description: newSkillDescription
-        }
-      })
-
-      if (res.data?.code === 200) {
-        const generatedSkill = res.data.data
-
-        // 保存技能到数据库
-        const saveRes = await Network.request({
-          url: '/api/skills',
-          method: 'POST',
-          data: {
-            name: generatedSkill.name,
-            description: generatedSkill.description,
-            type: 'custom',
-            category: '自定义',
-            icon: '🤖',
-            tags: generatedSkill.tags || [],
-            capabilities: generatedSkill.capabilities || {},
-            requirements: generatedSkill.requirements || '无'
-          }
-        })
-
-        if (saveRes.data?.code === 200) {
-          Taro.showToast({ title: '技能创建成功！', icon: 'success' })
-          setShowCreateSkillDialog(false)
-          setNewSkillName('')
-          setNewSkillDescription('')
-          // 刷新技能列表
-          fetchSkills()
-        } else {
-          Taro.showToast({ title: saveRes.data?.message || '保存失败', icon: 'none' })
-        }
-      } else {
-        Taro.showToast({ title: res.data?.message || 'AI 生成失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('[SkillSquare] 创建技能失败:', error)
-      Taro.showToast({ title: '创建失败', icon: 'none' })
-    } finally {
-      setCreatingSkill(false)
-    }
-  }
-
   // 搜索处理
   const handleSearch = () => {
     fetchSkills()
+  }
+
+  // 跳转到创建技能页面
+  const goToCreateSkill = () => {
+    Taro.navigateTo({ url: '/pages/skill-create/index' })
   }
 
   useEffect(() => {
@@ -290,7 +243,19 @@ export default function SkillsSquare() {
       <View className="skill-square-header">
         <View className="header-content">
           <View className="header-top">
-            <Text className="header-title">技能广场</Text>
+            <View className="header-left">
+              <View>
+                <Text className="header-title">技能广场</Text>
+                <Text className="header-subtitle">为分身解锁更多能力</Text>
+              </View>
+              <Button
+                className="create-skill-mini-btn"
+                onClick={goToCreateSkill}
+              >
+                <Sparkles size={14} color="#fff" />
+                <Text>创建</Text>
+              </Button>
+            </View>
             <View className="avatar-selector" onClick={() => setShowAvatarSelector(true)}>
               {currentAvatar ? (
                 <>
@@ -308,152 +273,198 @@ export default function SkillsSquare() {
               )}
             </View>
           </View>
-          <Text className="header-subtitle">为分身解锁更多能力</Text>
         </View>
       </View>
 
-      {/* 当前分身已具备的技能 */}
+      {/* 当前分身已具备的技能统计 */}
       {currentAvatar && mySkills.length > 0 && (
-        <View className="my-skills-section">
-          <View className="section-header">
-            <Sparkles size={16} color="#00f5ff" />
-            <Text className="section-title">{currentAvatar.name} 已具备 {mySkills.length} 个技能</Text>
+        <View className="my-skills-stats">
+          <View className="stats-content">
+            <Sparkles size={20} color="#00f5ff" />
+            <View className="stats-info">
+              <Text className="stats-title">{currentAvatar.name}</Text>
+              <Text className="stats-count">已具备 {mySkills.length} 个技能</Text>
+            </View>
           </View>
-          <ScrollView className="my-skills-scroll" scrollX>
-            {skills.filter(s => mySkills.includes(s.id)).map((skill) => (
-              <View key={skill.id} className="my-skill-tag">
-                <Text className="my-skill-icon">{skill.icon}</Text>
-                <Text className="my-skill-name">{skill.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
         </View>
       )}
 
-      {/* 搜索和筛选 */}
-      <View className="search-section">
-        <View className="search-bar">
-          <Search size={18} color="rgba(255,255,255,0.6)" />
+      {/* 搜索栏 */}
+      <View className="search-container">
+        <View className="search-box">
+          <Search size={20} color="rgba(255,255,255,0.4)" />
           <Input
             className="search-input"
-            placeholder="搜索技能名称或描述"
+            placeholder="搜索技能名称、描述或标签"
             value={searchKeyword}
             onInput={(e) => setSearchKeyword(e.detail.value)}
             onConfirm={handleSearch}
           />
-        </View>
-
-        <View className="filter-bar">
-          <ScrollView className="filter-scroll" scrollX>
-            <View
-              className={`filter-item ${!filter.category ? 'active' : ''}`}
-              onClick={() => {
-                setFilter({ ...filter, category: undefined })
-                fetchSkills()
-              }}
+          {searchKeyword && (
+            <Button
+              className="search-btn"
+              size="sm"
+              onClick={handleSearch}
             >
-              <Text className="filter-text">全部</Text>
-            </View>
-            {categories.slice(0, 5).map((cat) => (
+              搜索
+            </Button>
+          )}
+        </View>
+      </View>
+
+      {/* 分类筛选 */}
+      <View className="category-container">
+        <ScrollView className="category-scroll" scrollX>
+          <View
+            className={`category-item ${!filter.category ? 'active' : ''}`}
+            onClick={() => {
+              setFilter({ ...filter, category: undefined })
+              fetchSkills()
+            }}
+          >
+            <Package size={16} color="rgba(255,255,255,0.8)" />
+            <Text className="category-text">全部 ({skills.length})</Text>
+          </View>
+          {categories.map((cat) => {
+            const count = skills.filter(s => s.category === cat).length
+            const Icon = CATEGORY_ICONS[cat]
+            const color = CATEGORY_COLORS[cat] || '#00f5ff'
+            return (
               <View
                 key={cat}
-                className={`filter-item ${filter.category === cat ? 'active' : ''}`}
+                className={`category-item ${filter.category === cat ? 'active' : ''}`}
+                style={{ borderColor: filter.category === cat ? color : 'rgba(255,255,255,0.1)' }}
                 onClick={() => {
                   setFilter({ ...filter, category: cat })
                   fetchSkills()
                 }}
               >
-                <Text className="filter-text">{cat}</Text>
+                {Icon && <Icon size={16} color={filter.category === cat ? color : 'rgba(255,255,255,0.6)'} />}
+                <Text className="category-text">{cat}</Text>
+                <Badge className="category-badge">{count}</Badge>
               </View>
-            ))}
-            <View className="create-skill-filter-item" onClick={() => setShowCreateSkillDialog(true)}>
-              <Brain size={14} color="#bf00ff" />
-              <Text className="filter-text">创建技能</Text>
-            </View>
-          </ScrollView>
-        </View>
+            )
+          })}
+        </ScrollView>
       </View>
 
       {/* 技能列表 */}
       <ScrollView className="skills-list" scrollY>
         {loading ? (
           <View className="loading-container">
-            <Loader size={24} color="#00f5ff" className="spinning" />
+            <Loader size={32} color="#00f5ff" className="spinning" />
             <Text className="loading-text">加载中...</Text>
           </View>
         ) : !currentAvatar ? (
           <View className="empty-container">
-            <UserPlus size={48} color="rgba(255,255,255,0.3)" />
-            <Text className="empty-text">请先选择分身</Text>
+            <UserPlus size={64} color="rgba(255,255,255,0.3)" />
+            <Text className="empty-title">请先选择分身</Text>
+            <Text className="empty-desc">选择一个分身后，可以为它添加技能</Text>
             <Button
               className="create-avatar-btn"
               onClick={() => Taro.navigateTo({ url: '/pages/avatar-create/index' })}
             >
-              <Sparkles size={16} color="#fff" />
+              <Sparkles size={18} color="#fff" />
               <Text>创建分身</Text>
             </Button>
           </View>
         ) : skills.length === 0 ? (
           <View className="empty-container">
-            <Package size={48} color="rgba(255,255,255,0.3)" />
-            <Text className="empty-text">暂无技能</Text>
+            <Package size={64} color="rgba(255,255,255,0.3)" />
+            <Text className="empty-title">暂无技能</Text>
+            <Text className="empty-desc">换个关键词试试吧</Text>
           </View>
         ) : (
-          skills.map((skill) => (
-            <View key={skill.id} className="skill-card">
-              <View className="skill-icon">
-                <Text className="skill-icon-text">{skill.icon || '🎯'}</Text>
-              </View>
+          <View className="skills-grid">
+            {skills.map((skill) => {
+              const CategoryIcon = CATEGORY_ICONS[skill.category || '']
+              const categoryColor = CATEGORY_COLORS[skill.category || ''] || '#00f5ff'
+              const owned = isOwned(skill.id)
 
-              <View className="skill-info">
-                <View className="skill-header">
-                  <Text className="skill-name">{skill.name}</Text>
-                  <Badge className="bg-blue-500">{skill.category}</Badge>
-                </View>
-
-                <Text className="skill-description">{skill.description}</Text>
-
-                <View className="skill-tags">
-                  {skill.tags.slice(0, 3).map((tag, idx) => (
-                    <Badge key={idx} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
-                </View>
-
-                <View className="skill-meta">
-                  <View className="meta-item">
-                    <Star size={14} color="#ffb800" />
-                    <Text className="meta-text">{skill.rating.toFixed(1)} ({skill.rating_count})</Text>
+              return (
+                <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
+                  {/* 卡片头部 */}
+                  <View className="card-header">
+                    <View className="skill-icon-large" style={{ background: `linear-gradient(135deg, ${categoryColor}22, ${categoryColor}44)` }}>
+                      <Text className="skill-emoji-large">{skill.icon || '🎯'}</Text>
+                    </View>
+                    {owned && (
+                      <View className="owned-badge">
+                        <Check size={16} color="#00ff88" />
+                        <Text className="owned-badge-text">已具备</Text>
+                      </View>
+                    )}
                   </View>
-                  <View className="meta-item">
-                    <TrendingUp size={14} color="rgba(255,255,255,0.6)" />
-                    <Text className="meta-text">{skill.purchase_count} 人添加</Text>
+
+                  {/* 卡片内容 */}
+                  <View className="card-body">
+                    <View className="card-category">
+                      {CategoryIcon && <CategoryIcon size={14} color={categoryColor} />}
+                      <Text className="category-text" style={{ color: categoryColor }}>{skill.category}</Text>
+                    </View>
+
+                    <Text className="skill-name-large">{skill.name}</Text>
+
+                    <Text className="skill-desc-full">{skill.description}</Text>
+
+                    {/* 能力标签 */}
+                    {skill.tags && skill.tags.length > 0 && (
+                      <View className="skill-tags-row">
+                        {skill.tags.slice(0, 3).map((tag, idx) => (
+                          <Badge key={idx} variant="outline" className="skill-tag-mini">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* 统计信息 */}
+                    <View className="skill-stats-row">
+                      <View className="stat-item">
+                        <Star size={14} color="#ffb800" />
+                        <Text className="stat-text">{skill.rating.toFixed(1)}</Text>
+                        <Text className="stat-count">({skill.rating_count})</Text>
+                      </View>
+                      <View className="stat-item">
+                        <TrendingUp size={14} color="rgba(255,255,255,0.5)" />
+                        <Text className="stat-text">{skill.purchase_count}</Text>
+                        <Text className="stat-label">人使用</Text>
+                      </View>
+                    </View>
+
+                    {/* 要求提示 */}
+                    {skill.requirements && skill.requirements !== '无' && (
+                      <View className="requirement-tip">
+                        <Clock size={12} color="rgba(255,255,255,0.5)" />
+                        <Text className="requirement-text">{skill.requirements}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* 卡片底部操作 */}
+                  <View className="card-footer">
+                    {owned ? (
+                      <Button variant="outline" className="owned-btn" disabled>
+                        <Check size={16} color="#00ff88" />
+                        <Text>已添加</Text>
+                      </Button>
+                    ) : (
+                      <Button
+                        className="add-btn"
+                        onClick={() => {
+                          setSelectedSkill(skill)
+                          setShowPurchaseDialog(true)
+                        }}
+                      >
+                        <Zap size={16} color="#fff" />
+                        <Text>添加技能</Text>
+                      </Button>
+                    )}
                   </View>
                 </View>
-              </View>
-
-              <View className="skill-action">
-                {isOwned(skill.id) ? (
-                  <Badge className="bg-green-500">
-                    <Sparkles size={12} color="#fff" />
-                    <Text className="owned-text">已具备</Text>
-                  </Badge>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedSkill(skill)
-                      setShowPurchaseDialog(true)
-                    }}
-                  >
-                    <Sparkles size={14} color="#fff" />
-                    <Text>添加技能</Text>
-                  </Button>
-                )}
-              </View>
-            </View>
-          ))
+              )
+            })}
+          </View>
         )}
       </ScrollView>
 
@@ -480,7 +491,7 @@ export default function SkillsSquare() {
                   )}
                 </View>
                 {currentAvatar?.id === avatar.id && (
-                  <Star size={18} color="#00f5ff" />
+                  <Check size={20} color="#00f5ff" />
                 )}
               </View>
             ))}
@@ -513,27 +524,32 @@ export default function SkillsSquare() {
           {selectedSkill && currentAvatar && (
             <View className="purchase-content">
               <View className="purchase-skill-info">
-                <View className="skill-icon large">
-                  <Text className="skill-icon-text large">{selectedSkill.icon || '🎯'}</Text>
+                <View className="skill-icon extra-large">
+                  <Text className="skill-emoji-extra-large">{selectedSkill.icon || '🎯'}</Text>
                 </View>
                 <View className="skill-detail">
-                  <Text className="skill-name large">{selectedSkill.name}</Text>
-                  <Text className="skill-description">{selectedSkill.description}</Text>
+                  <Text className="skill-name-extra-large">{selectedSkill.name}</Text>
+                  <Text className="skill-desc-extra">{selectedSkill.description}</Text>
+                  {selectedSkill.requirements && selectedSkill.requirements !== '无' && (
+                    <View className="requirement-note">
+                      <Clock size={14} color="#ff6b6b" />
+                      <Text className="requirement-note-text">{selectedSkill.requirements}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
               <View className="purchase-avatar">
-                <Text className="purchase-label">目标分身：</Text>
-                <View className="purchase-avatar-info">
-                  <Text className="purchase-avatar-emoji">{currentAvatar.name[0]}</Text>
-                  <Text className="purchase-avatar-name">{currentAvatar.name}</Text>
+                <Text className="purchase-label">目标分身</Text>
+                <View className="purchase-avatar-card">
+                  <View className="purchase-avatar-icon">
+                    <Text className="purchase-avatar-emoji">{currentAvatar.name[0]}</Text>
+                  </View>
+                  <View className="purchase-avatar-detail">
+                    <Text className="purchase-avatar-name">{currentAvatar.name}</Text>
+                    <Text className="purchase-avatar-desc">添加后将立即具备此能力</Text>
+                  </View>
                 </View>
-              </View>
-
-              <View className="purchase-info">
-                <Text className="purchase-hint">
-                  添加后，{currentAvatar.name} 将具备 {selectedSkill.name} 能力，可以执行相关任务
-                </Text>
               </View>
             </View>
           )}
@@ -544,57 +560,6 @@ export default function SkillsSquare() {
             </Button>
             <Button onClick={handlePurchase} disabled={purchasing}>
               {purchasing ? '添加中...' : '确认添加'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 创建自定义技能弹窗 */}
-      <Dialog open={showCreateSkillDialog} onOpenChange={setShowCreateSkillDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              <Brain size={20} color="#00f5ff" style={{ display: 'inline', marginRight: '8px' }} />
-              创建自定义技能
-            </DialogTitle>
-          </DialogHeader>
-
-          <View className="create-skill-content">
-            <View className="form-item">
-              <Text className="form-label">技能名称 *</Text>
-              <Input
-                className="form-input"
-                placeholder="例如：智能客服助手"
-                value={newSkillName}
-                onInput={(e) => setNewSkillName(e.detail.value)}
-              />
-            </View>
-
-            <View className="form-item">
-              <Text className="form-label">技能描述 *</Text>
-              <Textarea
-                className="form-input form-textarea"
-                placeholder="描述这个技能的功能和用途..."
-                value={newSkillDescription}
-                onInput={(e) => setNewSkillDescription(e.detail.value)}
-                maxlength={500}
-              />
-            </View>
-
-            <View className="ai-tip">
-              <Sparkles size={14} color="#00f5ff" />
-              <Text className="ai-tip-text">
-                AI 将自动优化你的描述，生成技能标签和能力定义
-              </Text>
-            </View>
-          </View>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateSkillDialog(false)}>
-              取消
-            </Button>
-            <Button onClick={handleCreateSkill} disabled={creatingSkill || !newSkillName.trim() || !newSkillDescription.trim()}>
-              {creatingSkill ? 'AI 生成中...' : 'AI 生成并创建'}
             </Button>
           </DialogFooter>
         </DialogContent>

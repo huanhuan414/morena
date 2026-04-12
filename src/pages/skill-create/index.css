@@ -1,0 +1,605 @@
+.skill-create-container {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+  padding-top: 88px;
+}
+
+/* 头部导航 */
+.create-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 40px 16px 16px;
+  background: rgba(10, 10, 26, 0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.header-nav-text {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.header-spacer {
+  width: 64px;
+}
+
+/* 步骤容器 */
+.step-container {
+  padding: 20px 16px;
+}
+
+.step-container.scroll {
+  padding-bottom: 100px;
+}
+
+/* 步骤1：模板选择 */
+.step-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+  margin-bottom: 20px;
+}
+
+.intro-icon {
+  margin-bottom: 16px;
+}
+
+.intro-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.intro-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  display: block;
+}
+
+.template-list {
+  max-height: calc(100vh - 420px);
+  margin-bottom: 16px;
+}
+
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.template-card:active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(0, 245, 255, 0.2);
+  transform: scale(0.98);
+}
+
+.template-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.template-content {
+  flex: 1;
+}
+
+.template-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.custom-section {
+  display: flex;
+  justify-content: center;
+}
+
+.custom-btn {
+  padding: 12px 32px;
+  background: rgba(0, 245, 255, 0.08);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #00f5ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 步骤2：输入描述 */
+.input-header {
+  margin-bottom: 24px;
+}
+
+.input-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.input-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.input-content {
+  margin-bottom: 24px;
+}
+
+.prompt-container {
+  margin-bottom: 20px;
+}
+
+.prompt-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.prompt-textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  font-size: 14px;
+  color: #ffffff;
+  line-height: 1.6;
+}
+
+.prompt-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.prompt-count {
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+  display: block;
+}
+
+.tips-section {
+  padding: 16px;
+  background: rgba(0, 245, 255, 0.05);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  border-radius: 12px;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tip-item:last-child {
+  margin-bottom: 0;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+}
+
+.input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00f5ff, #0088ff);
+  border: none;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 步骤3：生成结果 */
+.result-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 16px;
+  margin-bottom: 24px;
+}
+
+.result-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.result-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.result-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.form-item {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #ffffff;
+  line-height: 1.5;
+}
+
+.form-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 分类网格 */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.category-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-option:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.category-option.active {
+  background: rgba(0, 245, 255, 0.08);
+}
+
+.category-option-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.category-option.active .category-option-text {
+  color: #00f5ff;
+  font-weight: 600;
+}
+
+/* 图标网格 */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.icon-option {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-option:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-option.active {
+  background: rgba(0, 245, 255, 0.15);
+  border-color: #00f5ff;
+}
+
+.icon-option-text {
+  font-size: 24px;
+}
+
+/* 标签输入 */
+.tags-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tag-input-field {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.tag-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tag-add-btn {
+  padding: 10px 16px;
+  background: rgba(0, 245, 255, 0.15);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #00f5ff;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.tag-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tags-empty {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 6px 8px;
+}
+
+/* 保存按钮 */
+.result-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background: rgba(10, 10, 26, 0.9);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.save-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00f5ff, #0088ff);
+  border: none;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 确认弹窗 */
+.confirm-content {
+  padding: 8px 0;
+}
+
+.confirm-skill-preview {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.confirm-skill-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.confirm-skill-emoji {
+  font-size: 28px;
+}
+
+.confirm-skill-info {
+  flex: 1;
+}
+
+.confirm-skill-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.confirm-skill-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.confirm-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirm-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.confirm-detail-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.confirm-detail-value {
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 600;
+  text-align: right;
+}
+
+.confirm-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.confirm-tag {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.confirm-detail-empty {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}

@@ -147,16 +147,20 @@ export class SkillsService {
       // 检查技能是否存在
       const skill = await this.getSkillById(dto.skillId)
 
-      // 检查是否已购买
+      // 检查是否已购买（通过 skill_type 和 metadata 中的 skill_id）
       const { data: existing } = await getSupabaseClient()
         .from('avatar_skills')
         .select('*')
         .eq('avatar_id', dto.avatarId)
-        .eq('skill_id', dto.skillId)
+        .eq('skill_type', skill.toolName)
         .single()
 
       if (existing) {
-        throw new Error('该分身已拥有此技能')
+        // 检查 metadata 中的 skill_id 是否相同
+        const existingSkillId = existing.metadata?.skill_id
+        if (existingSkillId === dto.skillId) {
+          throw new Error('该分身已拥有此技能')
+        }
       }
 
       // 检查用户余额（如果是付费技能）
@@ -182,10 +186,17 @@ export class SkillsService {
       const { data: avatarSkill, error: insertError } = await getSupabaseClient()
         .from('avatar_skills')
         .insert({
-          avatarId: dto.avatarId,
-          skillId: dto.skillId,
-          userId: userId,
-          purchasePrice: skill.price
+          id: crypto.randomUUID(),
+          avatar_id: dto.avatarId,
+          skill_type: skill.toolName || 'custom',
+          skill_level: 1,
+          usage_count: 0,
+          metadata: {
+            skill_id: dto.skillId,
+            skill_name: skill.name,
+            purchase_price: skill.price,
+            purchased_at: new Date().toISOString()
+          } as any
         })
         .select()
         .single()
@@ -197,7 +208,7 @@ export class SkillsService {
       // 更新技能购买次数
       await getSupabaseClient()
         .from('skills')
-        .update({ purchaseCount: skill.purchaseCount + 1 })
+        .update({ purchase_count: (skill.purchaseCount || 0) + 1 })
         .eq('id', dto.skillId)
 
       return avatarSkill as AvatarSkill
@@ -214,18 +225,19 @@ export class SkillsService {
     try {
       const { data, error } = await getSupabaseClient()
         .from('avatar_skills')
-        .select(`
-          *,
-          skill:skills(*)
-        `)
+        .select('*')
         .eq('avatar_id', avatarId)
-        .order('purchased_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) {
         throw new Error(`获取分身技能失败: ${error.message}`)
       }
 
-      return data || []
+      // 返回包含 metadata 中的 skill_id 的数组
+      return (data || []).map((item: any) => ({
+        ...item,
+        skillId: item.metadata?.skill_id
+      }))
     } catch (error) {
       console.error('[SkillsService] getAvatarSkills error:', error)
       throw error
