@@ -335,19 +335,20 @@ export default function MindChatPage() {
     }
   }, [])
 
-  // 防止 loading 状态卡住：如果 loading 状态超过 30 秒，自动清空
+  // 防止 loading 状态卡住：如果 loading 状态超过 5 分钟，提示用户任务可能还在执行
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null
 
     if (loading) {
       timer = setTimeout(() => {
-        console.warn('[MindChat] loading 状态超过 30 秒，自动清空')
-        setLoading(false)
-        loadingRef.current = false
-        setCurrentStatus('')
-        setTaskProgress(0)
-        showToast({ title: '任务执行超时，已自动取消', icon: 'none' })
-      }, 30000)
+        console.warn('[MindChat] loading 状态超过 5 分钟，提示用户')
+        // 不清空 loading 状态，只是提示用户任务可能仍在执行中
+        showToast({
+          title: '任务执行时间较长，请耐心等待...',
+          icon: 'loading',
+          duration: 3000
+        })
+      }, 5 * 60 * 1000) // 5 分钟超时
     }
 
     return () => {
