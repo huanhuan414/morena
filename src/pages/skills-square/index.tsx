@@ -167,13 +167,15 @@ export default function SkillsSquare() {
         console.log('[SkillSquare] 技能列表数组长度:', mySkillsList.length)
         console.log('[SkillSquare] 技能列表数组:', mySkillsList)
 
-        // 提取技能ID，尝试多种可能的字段名
+        // 提取技能ID，优先使用后端返回的 skillId 字段
         const skillIds = mySkillsList.map((s: any) => {
-          // 尝试多种可能的字段名
+          // 优先使用后端返回的 skillId
           if (s.skillId) return s.skillId
+          // 其次尝试其他可能的字段名
           if (s.skill_id) return s.skill_id
+          if (s.metadata?.skill_id) return s.metadata.skill_id
+          // 最后尝试 id（不推荐，但作为兜底）
           if (s.id) return s.id
-          if (s.skill) return s.skill?.id || s.skill?.skillId || s.skill?.skill_id
           return s
         })
         console.log('[SkillSquare] 提取的技能ID列表:', skillIds)
@@ -184,7 +186,10 @@ export default function SkillsSquare() {
           const skillInfo = {
             序号: index + 1,
             ID: skill.id || skill.skillId || skill.skill_id,
+            skillId: skill.skillId,
+            skill_type: skill.skill_type,
             名称: skill.name || skill.skill?.name,
+            metadata: skill.metadata,
             完整对象: skill
           }
           console.log(`[SkillSquare] 技能${index + 1}:`, skillInfo)

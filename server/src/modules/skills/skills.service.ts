@@ -643,18 +643,51 @@ ${prompt}
    */
   async removeSkill(userId: string, dto: { skillId: string; avatarId: string }) {
     try {
-      // 检查技能是否存在
-      const skill = await this.getSkillById(dto.skillId)
+      let skillToolName: string
 
-      // 获取技能的 tool_name
-      const skillToolName = (skill as any).tool_name || (skill as any).toolName || 'custom'
+      // 尝试从 skills 表中查询技能信息
+      try {
+        const skill = await this.getSkillById(dto.skillId)
+        skillToolName = (skill as any).tool_name || (skill as any).toolName || 'custom'
 
-      console.log('[SkillsService] removeSkill - 技能信息:', {
-        skillId: dto.skillId,
-        skillName: skill.name,
-        tool_name: skillToolName,
-        avatarId: dto.avatarId
+        console.log('[SkillsService] removeSkill - 通过 skillId 查询到技能信息:', {
+          skillId: dto.skillId,
+          skillName: skill.name,
+          tool_name: skillToolName
+        })
+      } catch (skillError) {
+        // 如果通过 skillId 查询失败，说明传入的可能是 skill_type
+        // 直接使用传入的 skillId 作为 skill_type
+        skillToolName = dto.skillId
+
+        console.log('[SkillsService] removeSkill - 通过 skillId 查询失败，将 skillId 作为 skill_type 使用:', {
+          skillId: dto.skillId,
+          skillType: skillToolName
+        })
+      }
+
+      console.log('[SkillsService] removeSkill - 开始删除:', {
+        avatarId: dto.avatarId,
+        skillType: skillToolName
       })
+
+      // 先检查是否存在该技能
+      const { data: existingData, error: checkError } = await getSupabaseClient()
+        .from('avatar_skills')
+        .select('id')
+        .eq('avatar_id', dto.avatarId)
+        .eq('skill_type', skillToolName)
+        .maybeSingle()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('[SkillsService] 检查技能是否存在时出错:', checkError)
+        throw new Error(`检查技能失败: ${checkError.message}`)
+      }
+
+      if (!existingData) {
+        console.warn('[SkillsService] 未找到该技能记录')
+        throw new Error('未找到该技能，可能已经移除')
+      }
 
       // 从 avatar_skills 表中删除
       const { error: deleteError } = await getSupabaseClient()
