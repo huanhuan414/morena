@@ -2706,20 +2706,25 @@ export default function MindChatPage() {
                 placeholderClass="text-input-placeholder"
                 value={inputText}
                 onInput={(e: any) => {
-                  setInputText(e.detail.value)
+                  const newValue = e.detail.value || ''
+                  console.log('[MindChat] 输入框值变化:', newValue)
+                  setInputText(newValue)
                   // 自动调整高度
                   const lineHeight = 40 // 每行高度，rpx
-                  const lines = Math.ceil(e.detail.value.length / 20) // 估算行数
+                  const lines = Math.ceil(newValue.length / 20) // 估算行数
                   const minLines = 1
                   const maxLines = 6
                   const newLines = Math.max(minLines, Math.min(lines, maxLines))
                   setInputHeight(88 + (newLines - 1) * lineHeight)
                 }}
-                onConfirm={() => sendMessage()}
+                onConfirm={() => {
+                  console.log('[MindChat] 点击确认键，发送消息，输入值:', inputText)
+                  sendMessage()
+                }}
                 confirmType="send"
-                adjustPosition={false}
+                adjustPosition
                 autoHeight
-                cursorSpacing={20}
+                cursorSpacing={80}
                 style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
               />
               <View className="agent-mode-indicator">
@@ -2731,9 +2736,12 @@ export default function MindChatPage() {
 
         <View className="input-right">
           {!isVoiceMode && (
-            <View 
-              className={`send-action ${inputText.trim() ? 'active' : ''}`}
-              onClick={() => sendMessage()}
+            <View
+              className={`send-action ${inputText && inputText.trim() ? 'active' : ''}`}
+              onClick={() => {
+                console.log('[MindChat] 点击发送按钮，输入值:', inputText)
+                sendMessage()
+              }}
             >
               <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
             </View>

@@ -1146,7 +1146,17 @@ del {
   box-sizing: border-box;
 }
 
-.input-left, .input-right {
+.input-left {
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  gap: 16rpx;
+  padding-left: 8rpx;
+}
+
+.input-right {
   width: 100rpx;
   display: flex;
   align-items: center;
