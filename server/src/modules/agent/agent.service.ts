@@ -1188,8 +1188,18 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     params: Record<string, any>,
     context: AgentContext
   ): Promise<ToolResult> {
+    // 检查工具是否在分身可用工具列表中
+    const isToolAvailable = context.availableTools.some(tool => tool.name === toolName)
+    if (!isToolAvailable) {
+      console.warn(`[Agent] 工具 ${toolName} 不在分身的可用工具列表中，拒绝执行`)
+      return {
+        success: false,
+        error: `您的分身尚未添加该功能，请前往技能广场添加"${toolName}"技能`
+      }
+    }
+
     const tool = this.tools.get(toolName)
-    
+
     if (!tool) {
       return { success: false, error: `工具 ${toolName} 不存在` }
     }
@@ -1205,13 +1215,13 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     // 解决 LLM 无法传递完整长内容的问题
     if (toolName.startsWith('publish_') && context.executionHistory?.length > 0) {
       // 查找最近的生成内容
-      const lastGeneratedContent = [...context.executionHistory].reverse().find(step => 
+      const lastGeneratedContent = [...context.executionHistory].reverse().find(step =>
         step.observation?.data?.content && step.observation?.data?.title
       )
-      
+
       if (lastGeneratedContent?.observation?.data) {
         const generatedData = lastGeneratedContent.observation.data
-        
+
         // 如果 params.content 为空或长度太短，使用历史记录中的完整内容
         if (!params.content || params.content.length < 100) {
           console.log(`[Agent] 自动填充发布内容，原 content 长度: ${params.content?.length || 0}，新长度: ${generatedData.content?.length || 0}`)
