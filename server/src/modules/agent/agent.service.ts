@@ -588,15 +588,16 @@ export class AgentService {
     const media: Array<{
       type: 'image' | 'video' | 'article'
       url?: string
+      key?: string  // 添加 key 字段，用于重新生成签名链接
       title?: string
       content?: string
       coverImage?: string
     }> = []
-    
+
     agentResult.steps.forEach(step => {
       if (step.observation?.data) {
         const data = step.observation.data
-        
+
         // 图片
         if (data.image_urls && Array.isArray(data.image_urls)) {
           data.image_urls.forEach((url: string) => {
@@ -605,7 +606,7 @@ export class AgentService {
             }
           })
         }
-        
+
         // 文章
         if (data.content && data.title) {
           media.push({
@@ -615,12 +616,16 @@ export class AgentService {
             coverImage: data.cover_image_url
           })
         }
-        
-        // 视频
+
+        // 视频（同时保存 url 和 key）
         if (data.video_url) {
-          media.push({ type: 'video', url: data.video_url })
+          media.push({
+            type: 'video',
+            url: data.video_url,
+            key: data.video_key || data.key  // 保存 key 用于重新生成签名链接
+          })
         }
-        
+
         // 封面图（单独展示）
         if (data.cover_image_url && !data.content) {
           media.push({ type: 'image', url: data.cover_image_url })

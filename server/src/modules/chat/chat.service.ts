@@ -131,9 +131,32 @@ export class ChatService {
           }, {})
         }
 
-        // 转换 media_urls 为 media 数组格式（前端需要的格式）
+        // 处理 metadata.media 数组，重新生成签名链接（解决视频链接过期问题）
         let mediaList: any[] = []
-        if (msg.metadata?.media_urls && typeof msg.metadata.media_urls === 'object') {
+        if (msg.metadata?.media && Array.isArray(msg.metadata.media)) {
+          mediaList = await Promise.all(
+            msg.metadata.media.map(async (mediaItem: any) => {
+              // 如果 media 有 key，重新生成签名链接
+              if (mediaItem.key) {
+                try {
+                  const newUrl = await this.storage.generatePresignedUrl({ key: mediaItem.key, expireTime: 86400 * 7 })
+                  return {
+                    ...mediaItem,
+                    url: newUrl  // 使用新的签名链接替换旧链接
+                  }
+                } catch (error) {
+                  console.error('[ChatService] 重新生成签名链接失败:', error)
+                  return mediaItem  // 失败时返回原始数据
+                }
+              }
+              // 如果没有 key，直接返回原始数据
+              return mediaItem
+            })
+          )
+        }
+
+        // 转换 media_urls 为 media 数组格式（前端需要的格式）
+        if (msg.metadata?.media_urls && typeof msg.metadata.media_urls === 'object' && mediaList.length === 0) {
           mediaList = Object.entries(msg.metadata.media_urls).map(([key, url]) => {
             // 根据文件扩展名判断类型
             const keyLower = key.toLowerCase()
@@ -146,16 +169,12 @@ export class ChatService {
           })
         }
 
-        // 如果 metadata 中已有 media 数组，保留它（兼容实时消息）
-        const existingMedia = msg.metadata?.media || []
-
         return {
           ...msg,
           metadata: {
             ...msg.metadata,
             media_urls: mediaUrls,
-            // 合并现有 media 和从 media_urls 转换的 media
-            media: existingMedia.length > 0 ? existingMedia : mediaList
+            media: mediaList
           }
         }
       })
