@@ -233,11 +233,31 @@ export class SkillsService {
         throw new Error(`获取分身技能失败: ${error.message}`)
       }
 
+      console.log('[SkillsService] getAvatarSkills - 原始数据:', data)
+      console.log('[SkillsService] getAvatarSkills - 数据长度:', data?.length)
+
+      // 打印每个项的结构
+      if (data && data.length > 0) {
+        data.forEach((item: any, index: number) => {
+          console.log(`[SkillsService] avatar_skills[${index}]:`, {
+            id: item.id,
+            avatar_id: item.avatar_id,
+            skill_id: item.skill_id,
+            metadata: item.metadata,
+            全部字段: Object.keys(item)
+          })
+        })
+      }
+
       // 返回包含 metadata 中的 skill_id 的数组
-      return (data || []).map((item: any) => ({
+      const result = (data || []).map((item: any) => ({
         ...item,
-        skillId: item.metadata?.skill_id
+        skillId: item.metadata?.skill_id || item.skill_id // 兼容两种字段
       }))
+
+      console.log('[SkillsService] getAvatarSkills - 返回数据:', result)
+
+      return result
     } catch (error) {
       console.error('[SkillsService] getAvatarSkills error:', error)
       throw error
