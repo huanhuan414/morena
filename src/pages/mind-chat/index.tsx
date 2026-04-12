@@ -301,8 +301,14 @@ export default function MindChatPage() {
 
   useDidShow(() => {
     if (isLoggedIn) {
-      fetchConversations()
+      // 页面显示时，强制清空 loading 状态，防止用户无法发送消息
+      setLoading(false)
+      loadingRef.current = false
+      setCurrentStatus('')
+      setTaskProgress(0)
       
+      fetchConversations()
+
       if (isFirstLoadRef.current) {
         isFirstLoadRef.current = false
         const routeAvatarId = router.params.avatarId
@@ -328,6 +334,28 @@ export default function MindChatPage() {
       // stopResultPolling()
     }
   }, [])
+
+  // 防止 loading 状态卡住：如果 loading 状态超过 30 秒，自动清空
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
+
+    if (loading) {
+      timer = setTimeout(() => {
+        console.warn('[MindChat] loading 状态超过 30 秒，自动清空')
+        setLoading(false)
+        loadingRef.current = false
+        setCurrentStatus('')
+        setTaskProgress(0)
+        showToast({ title: '任务执行超时，已自动取消', icon: 'none' })
+      }, 30000)
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer)
+      }
+    }
+  }, [loading])
 
   // 新消息时滚动到底部（排除加载历史消息的情况）
   const shouldScrollToBottomRef = useRef(true)
@@ -667,10 +695,25 @@ export default function MindChatPage() {
                 Taro.showModal({
                   title: '任务状态',
                   content: '检测到有任务可能已中断。如需继续，请重新发送相同指令。',
-                  showCancel: false
+                  showCancel: false,
+                  success: () => {
+                    // 用户点击确定后清空 loading 状态
+                    setLoading(false)
+                    setCurrentStatus('')
+                    setTaskProgress(0)
+                    setAgentSteps([])
+                  }
                 })
-                setLoading(false) // 停止加载状态
+                // 即使弹窗未显示，也清空 loading 状态
+                setLoading(false)
               }
+            }
+
+            // 如果任务已完成，清空 loading 状态
+            if (taskState.status === 'completed') {
+              setLoading(false)
+              setCurrentStatus('')
+              setTaskProgress(100)
             }
           }
         } else if (lastAssistantMessage?.metadata?.agent_steps) {
@@ -691,8 +734,17 @@ export default function MindChatPage() {
             Taro.showModal({
               title: '任务状态',
               content: '检测到有任务正在执行中，但可能已中断。如需继续，请重新发送相同指令。',
-              showCancel: false
+              showCancel: false,
+              success: () => {
+                // 用户点击确定后清空 loading 状态
+                setLoading(false)
+                setCurrentStatus('')
+                setTaskProgress(0)
+                setAgentSteps([])
+              }
             })
+            // 即使弹窗未显示，也清空 loading 状态
+            setLoading(false)
           }
         }
 
