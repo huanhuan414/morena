@@ -1811,14 +1811,31 @@ export default function MindChatPage() {
 
         {/* 技能缺失提示和添加技能按钮 */}
         {(() => {
-          // 检测技能缺失错误消息
+          // 检测技能缺失错误消息 - 支持多种错误格式
           const contentStr = typeof msg.content === 'string' ? msg.content : ''
-          const isSkillMissing = contentStr.includes('您的分身尚未添加该功能')
+
+          // 检测多种可能的技能缺失错误格式
+          const isSkillMissing =
+            contentStr.includes('您的分身尚未添加该功能') ||
+            contentStr.includes('未配置') ||
+            (contentStr.includes('技能') && (contentStr.includes('未添加') || contentStr.includes('缺少') || contentStr.includes('需要')))
+
           if (!isSkillMissing) return null
 
           // 提取技能名称（从错误消息中）
-          const skillNameMatch = contentStr.match(/"([^"]+)"/)
-          const skillName = skillNameMatch ? skillNameMatch[1] : ''
+          let skillName = ''
+
+          // 尝试匹配引号中的技能名称
+          const quotedNameMatch = contentStr.match(/"([^"]+)"/)
+          if (quotedNameMatch) {
+            skillName = quotedNameMatch[1]
+          } else {
+            // 尝试匹配"未配置xxx"格式
+            const unconfiguredMatch = contentStr.match(/未配置(.+)/)
+            if (unconfiguredMatch) {
+              skillName = unconfiguredMatch[1].trim()
+            }
+          }
 
           return (
             <View className="skill-missing-action-bar">
