@@ -152,7 +152,7 @@ interface LearningStats {
 // 解析 Markdown 为段落数组，用于分段渲染
 export default function MindChatPage() {
   const router = useRouter()
-  const { isLoggedIn, userInfo } = useUserStore()
+  const { isLoggedIn, userInfo, avatarId } = useUserStore()
   const [avatar, setAvatar] = useState<Avatar | null>(null)
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -304,10 +304,10 @@ export default function MindChatPage() {
       
       if (isFirstLoadRef.current) {
         isFirstLoadRef.current = false
-        const avatarId = router.params.avatarId
-        if (avatarId) {
-          fetchAvatar(avatarId)
-          fetchOrCreateConversation(avatarId)
+        const routeAvatarId = router.params.avatarId
+        if (routeAvatarId) {
+          fetchAvatar(routeAvatarId)
+          fetchOrCreateConversation(routeAvatarId)
         } else {
           fetchDefaultAvatar()
         }
@@ -543,7 +543,13 @@ export default function MindChatPage() {
 
   // 跳转到技能广场
   const navigateToSkillsSquare = () => {
-    Taro.switchTab({ url: '/pages/skills-square/index' })
+    if (avatarId) {
+      Taro.navigateTo({
+        url: `/pages/skills-square/index?avatarId=${avatarId}`
+      })
+    } else {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+    }
   }
 
   const fetchDefaultAvatar = async () => {
@@ -559,9 +565,9 @@ export default function MindChatPage() {
     }
   }
 
-  const fetchAvatar = async (avatarId: string) => {
+  const fetchAvatar = async (targetAvatarId: string) => {
     try {
-      const res = await Network.request({ url: `/api/avatar/${avatarId}` })
+      const res = await Network.request({ url: `/api/avatar/${targetAvatarId}` })
       if (res.data?.code === 200) {
         setAvatar(res.data.data)
       }
@@ -570,14 +576,14 @@ export default function MindChatPage() {
     }
   }
 
-  const fetchOrCreateConversation = async (avatarId: string) => {
+  const fetchOrCreateConversation = async (targetAvatarId: string) => {
     try {
       const conversationsRes = await Network.request({ url: '/api/chat/conversations' })
 
       if (conversationsRes.data?.code === 200 && conversationsRes.data.data?.length > 0) {
         // 过滤出当前分身的对话，并按更新时间排序
         const avatarConversations = conversationsRes.data.data.filter(
-          (conv: any) => conv.avatar_id === avatarId
+          (conv: any) => conv.avatar_id === targetAvatarId
         ).sort((a: any, b: any) =>
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         )
@@ -594,7 +600,7 @@ export default function MindChatPage() {
           const res = await Network.request({
             url: '/api/chat/conversation',
             method: 'POST',
-            data: { avatar_id: avatarId }
+            data: { avatar_id: targetAvatarId }
           })
           if (res.data?.code === 200) {
             setConversation(res.data.data)
@@ -606,7 +612,7 @@ export default function MindChatPage() {
         const res = await Network.request({
           url: '/api/chat/conversation',
           method: 'POST',
-          data: { avatar_id: avatarId }
+          data: { avatar_id: targetAvatarId }
         })
         if (res.data?.code === 200) {
           setConversation(res.data.data)

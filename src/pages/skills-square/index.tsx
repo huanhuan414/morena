@@ -62,15 +62,28 @@ export default function SkillsSquare() {
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
 
-        if (avatarId) {
-          const current = avatarList.find((a: Avatar) => a.id === avatarId)
+        // 从 URL 参数中获取 avatarId
+        const router = Taro.getCurrentInstance().router
+        const urlAvatarId = router?.params?.avatarId as string
+        const targetAvatarId = urlAvatarId || avatarId
+
+        console.log('[SkillSquare] fetchAvatars - targetAvatarId:', targetAvatarId)
+        console.log('[SkillSquare] fetchAvatars - urlAvatarId:', urlAvatarId)
+        console.log('[SkillSquare] fetchAvatars - store avatarId:', avatarId)
+
+        if (targetAvatarId) {
+          const current = avatarList.find((a: Avatar) => a.id === targetAvatarId)
           if (current) {
             setCurrentAvatar(current)
+            console.log('[SkillSquare] 找到匹配的分身:', current.name)
+          } else {
+            console.warn('[SkillSquare] 未找到匹配的分身，ID:', targetAvatarId)
           }
         } else if (avatarList.length > 0) {
           const firstAvatar = avatarList[0]
           setCurrentAvatar(firstAvatar)
           setAvatarId?.(firstAvatar.id)
+          console.log('[SkillSquare] 使用第一个分身:', firstAvatar.name)
         }
       }
     } catch (error) {
@@ -230,6 +243,18 @@ export default function SkillsSquare() {
   }
 
   useEffect(() => {
+    // 从 URL 参数中获取 avatarId
+    const router = Taro.getCurrentInstance().router
+    const urlAvatarId = router?.params?.avatarId as string
+
+    console.log('[SkillSquare] URL 参数 avatarId:', urlAvatarId)
+
+    // 如果 URL 参数中有 avatarId，更新 store
+    if (urlAvatarId && setAvatarId) {
+      setAvatarId(urlAvatarId)
+      console.log('[SkillSquare] 更新 store 中的 avatarId:', urlAvatarId)
+    }
+
     fetchAvatars()
     fetchSkills()
   }, [])
