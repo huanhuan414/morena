@@ -213,7 +213,8 @@ export default function MindChatPage() {
   const [scrollIntoView, setScrollIntoView] = useState('')
   const isFirstLoadRef = useRef<boolean>(true)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
+  const textareaRef = useRef<any>(null) // 输入框引用（使用 any 兼容 Taro）
+
   // 使用 scrollTop 滚动到底部
   const [scrollTop, setScrollTop] = useState(0)
   // 滚动计数器，确保每次 scrollTop 值都不同
@@ -770,9 +771,32 @@ export default function MindChatPage() {
 
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
   const sendMessage = async (text?: string) => {
+    // 兼容性处理：优先使用传入的 text 参数，否则使用 inputText 状态
     const messageText = text || inputText
-    if (!messageText.trim() || !conversation || loading) {
+
+    console.log('[MindChat] sendMessage 被调用:', {
+      textParam: text,
+      inputTextState: inputText,
+      messageText,
+      trimmedMessageText: messageText.trim(),
+      hasConversation: !!conversation,
+      isLoading: loading
+    })
+
+    if (!messageText.trim()) {
+      console.warn('[MindChat] 消息为空，提示用户输入')
       showToast({ title: '请输入消息', icon: 'none' })
+      return
+    }
+
+    if (!conversation) {
+      console.warn('[MindChat] 对话不存在')
+      showToast({ title: '对话不存在', icon: 'none' })
+      return
+    }
+
+    if (loading) {
+      console.warn('[MindChat] 正在处理中，忽略重复请求')
       return
     }
 
@@ -2777,13 +2801,24 @@ export default function MindChatPage() {
           ) : (
             <View className="text-input-box" style={{ minHeight: `${inputHeight}rpx`, height: 'auto' }}>
               <Textarea
+                ref={textareaRef}
                 className="text-input-control"
                 placeholder="告诉我要做什么..."
                 placeholderClass="text-input-placeholder"
                 value={inputText}
                 onInput={(e: any) => {
-                  const newValue = e.detail.value || ''
-                  console.log('[MindChat] 输入框值变化:', newValue)
+                  // 兼容多种事件格式
+                  let newValue = ''
+                  if (e.detail && e.detail.value !== undefined) {
+                    newValue = e.detail.value
+                  } else if (e.detail && e.detail.value !== undefined) {
+                    newValue = e.detail.value
+                  } else if (e.target && e.target.value !== undefined) {
+                    newValue = e.target.value
+                  } else if (typeof e === 'string') {
+                    newValue = e
+                  }
+                  console.log('[MindChat] 输入框值变化:', { newValue, e })
                   setInputText(newValue)
                   // 自动调整高度
                   const lineHeight = 40 // 每行高度，rpx
@@ -2795,12 +2830,26 @@ export default function MindChatPage() {
                 }}
                 onConfirm={() => {
                   console.log('[MindChat] 点击确认键，发送消息，输入值:', inputText)
-                  sendMessage()
+                  // 使用 ref 获取实际的 DOM 值（H5 端兼容）
+                  const actualValue = textareaRef.current?.value || textareaRef.current?.props?.value || inputText
+                  console.log('[MindChat] 实际 DOM 值:', actualValue)
+                  sendMessage(actualValue)
                 }}
                 confirmType="send"
                 adjustPosition
                 autoHeight
                 cursorSpacing={80}
+                onBlur={(e: any) => {
+                  // 在失去焦点时也更新值（兼容性处理）
+                  let newValue = inputText
+                  if (e.detail && e.detail.value !== undefined) {
+                    newValue = e.detail.value
+                  } else if (e.target && e.target.value !== undefined) {
+                    newValue = e.target.value
+                  }
+                  console.log('[MindChat] 输入框失去焦点，值:', newValue)
+                  setInputText(newValue)
+                }}
                 style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
               />
               <View className="agent-mode-indicator">
@@ -2816,7 +2865,10 @@ export default function MindChatPage() {
               className={`send-action ${inputText && inputText.trim() ? 'active' : ''}`}
               onClick={() => {
                 console.log('[MindChat] 点击发送按钮，输入值:', inputText)
-                sendMessage()
+                // 使用 ref 获取实际的 DOM 值（H5 端兼容）
+                const actualValue = textareaRef.current?.value || textareaRef.current?.props?.value || inputText
+                console.log('[MindChat] 实际 DOM 值:', actualValue)
+                sendMessage(actualValue)
               }}
             >
               <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
