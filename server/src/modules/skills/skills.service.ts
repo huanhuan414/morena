@@ -242,18 +242,42 @@ export class SkillsService {
           console.log(`[SkillsService] avatar_skills[${index}]:`, {
             id: item.id,
             avatar_id: item.avatar_id,
-            skill_id: item.skill_id,
+            skill_type: item.skill_type,
             metadata: item.metadata,
             全部字段: Object.keys(item)
           })
         })
       }
 
-      // 返回包含 metadata 中的 skill_id 的数组
-      const result = (data || []).map((item: any) => ({
-        ...item,
-        skillId: item.metadata?.skill_id || item.skill_id // 兼容两种字段
-      }))
+      // 通过 skill_type 查询 skills 表，获取对应的 id
+      const result: any[] = []
+      for (const item of data || []) {
+        const skillType = item.skill_type
+        console.log('[SkillsService] 查询技能，skill_type:', skillType)
+
+        // 查询 skills 表，获取 id
+        const { data: skillData, error: skillError } = await getSupabaseClient()
+          .from('skills')
+          .select('id, name, tool_name')
+          .eq('tool_name', skillType)
+          .single()
+
+        if (skillError) {
+          console.warn(`[SkillsService] 未找到技能，skill_type: ${skillType}, error:`, skillError)
+          continue
+        }
+
+        result.push({
+          ...item,
+          skillId: skillData.id
+        })
+
+        console.log('[SkillsService] 找到技能匹配:', {
+          skill_type: skillType,
+          skill_id: skillData.id,
+          skill_name: skillData.name
+        })
+      }
 
       console.log('[SkillsService] getAvatarSkills - 返回数据:', result)
 
