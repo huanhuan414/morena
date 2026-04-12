@@ -85,32 +85,47 @@ export default function SkillsSquare() {
 
       console.log('[SkillSquare] 开始获取技能列表，搜索关键词:', searchKeyword)
 
-      // 使用 Network.request 发送请求，增加 pageSize 以获取所有技能
+      // 构建请求参数，只传递有值的参数
+      const params: any = {
+        pageSize: 100,
+        _t: Date.now()
+      }
+      if (searchKeyword && searchKeyword.trim()) {
+        params.search = searchKeyword.trim()
+      }
+
+      // 使用 Network.request 发送请求
       const res = await Network.request({
         url: '/api/skills',
         method: 'GET',
-        data: {
-          search: searchKeyword || undefined,
-          pageSize: 100, // 增加 pageSize 以获取所有技能
-          _t: Date.now() // 添加时间戳避免缓存
-        }
+        data: params
       })
 
       console.log('[SkillSquare] 完整响应:', res)
       console.log('[SkillSquare] res.data:', res.data)
       console.log('[SkillSquare] res.statusCode:', res.statusCode)
 
-      if (res.data?.code === 200 && res.data?.data?.skills) {
-        const skillsList = res.data.data.skills || []
+      // 直接使用已验证的方式：res.data.data.skills
+      if (res.statusCode === 200 && res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
+        const skillsList = res.data.data.skills
         console.log('[SkillSquare] 技能列表长度:', skillsList.length)
         console.log('[SkillSquare] 技能列表内容:', skillsList.slice(0, 2))
+        console.log('[SkillSquare] 即将调用 setSkills')
         setSkills(skillsList)
+        console.log('[SkillSquare] 已调用 setSkills，skillsList 长度:', skillsList.length)
       } else {
-        console.log('[SkillSquare] 未获取到技能数据，code:', res.data?.code, 'data:', res.data?.data)
+        console.log('[SkillSquare] 未获取到技能数据')
+        console.log('[SkillSquare] statusCode:', res.statusCode)
+        console.log('[SkillSquare] res.data.code:', res.data?.code)
+        console.log('[SkillSquare] res.data.data?.skills:', res.data?.data?.skills)
+        console.log('[SkillSquare] 即将调用 setSkills([])')
+        setSkills([])
+        console.log('[SkillSquare] 已调用 setSkills([])')
       }
     } catch (error) {
       console.error('[SkillSquare] 获取技能列表失败:', error)
       Taro.showToast({ title: '获取技能列表失败', icon: 'none' })
+      setSkills([])
     } finally {
       setLoading(false)
     }
@@ -186,6 +201,11 @@ export default function SkillsSquare() {
       fetchMySkills()
     }
   }, [currentAvatar?.id])
+
+  // 追踪 skills 状态变化
+  useEffect(() => {
+    console.log('[SkillSquare] skills 状态变化，长度:', skills.length)
+  }, [skills])
 
   return (
     <View className="skills-square-container">
