@@ -2463,3 +2463,12 @@ del {
   color: #00f5ff;
   font-weight: 500;
 }
+
+/* 技能按钮（在输入栏中） */
+.skills-action {
+  border: 2rpx solid rgba(0, 245, 255, 0.15);
+}
+
+.skills-action:active {
+  background: rgba(0, 245, 255, 0.1);
+}

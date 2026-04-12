@@ -1859,14 +1859,6 @@ export default function MindChatPage() {
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
           </View>
-          <View
-            className="skills-btn"
-            onClick={openSkillsDialog}
-            style={{ marginLeft: '12px' }}
-          >
-            <Wrench size={20} color="#00f5ff" />
-            <Text className="skills-btn-text">技能</Text>
-          </View>
         </View>
       </View>
 
@@ -2601,6 +2593,9 @@ export default function MindChatPage() {
             ) : (
               <Mic size={24} color="#00f5ff" />
             )}
+          </View>
+          <View className="quick-action skills-action" onClick={openSkillsDialog}>
+            <Wrench size={24} color="#00f5ff" />
           </View>
         </View>
 
