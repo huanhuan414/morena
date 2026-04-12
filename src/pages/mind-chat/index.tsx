@@ -1748,7 +1748,45 @@ export default function MindChatPage() {
             </View>
           )
         })()}
-        
+
+        {/* 文本消息渲染 */}
+        {msg.content && (
+          <View className="text-message">
+            <MarkdownRender content={msg.content || ''} />
+          </View>
+        )}
+
+        {/* 技能缺失提示和添加技能按钮 */}
+        {(() => {
+          // 检测技能缺失错误消息
+          const isSkillMissing = msg.content?.includes('您的分身尚未添加该功能')
+          if (!isSkillMissing) return null
+
+          // 提取技能名称（从错误消息中）
+          const skillNameMatch = msg.content?.match(/"([^"]+)"/)
+          const skillName = skillNameMatch ? skillNameMatch[1] : ''
+
+          return (
+            <View className="skill-missing-action-bar">
+              <Text className="skill-missing-hint">⚠️ 检测到缺少技能</Text>
+              <Button
+                className="add-skill-btn"
+                onClick={() => {
+                  // 跳转到技能广场，传递分身ID
+                  const currentAvatarId = avatar?.id || ''
+                  Taro.navigateTo({
+                    url: `/pages/skills-square/index?avatarId=${currentAvatarId}&from=mindchat`
+                  })
+                }}
+              >
+                <Text className="add-skill-btn-text">
+                  {skillName ? `添加"${skillName}"技能` : '添加技能'}
+                </Text>
+              </Button>
+            </View>
+          )
+        })()}
+
         {/* 发布按钮 - 当有待发布内容时显示 */}
         {msg.metadata?.agent_result?.requiresConfig && 
          msg.metadata?.agent_result?.configPlatform && 

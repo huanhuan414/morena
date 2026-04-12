@@ -2472,3 +2472,58 @@ del {
 .skills-action:active {
   background: rgba(0, 245, 255, 0.1);
 }
+
+/* 文本消息渲染 */
+.text-message {
+  margin-top: 16rpx;
+  width: 100%;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.text-message .markdown-render {
+  font-size: 28rpx;
+  line-height: 44rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 技能缺失提示和添加技能按钮 */
+.skill-missing-action-bar {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+  border: 2rpx solid rgba(255, 193, 7, 0.4);
+  border-radius: 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.skill-missing-hint {
+  font-size: 26rpx;
+  color: #ffc107;
+  font-weight: 500;
+  display: block;
+}
+
+.add-skill-btn {
+  width: 100%;
+  padding: 20rpx 32rpx;
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  border-radius: 28rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(255, 193, 7, 0.3);
+}
+
+.add-skill-btn:active {
+  opacity: 0.8;
+}
+
+.add-skill-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
