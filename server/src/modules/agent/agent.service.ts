@@ -61,6 +61,13 @@ import {
   GenerateStoryboardTool,
   ProduceShortDramaTool
 } from './tools/shortdrama.tools'
+import {
+  GenerateMultiEpisodeDramaTool,
+  GenerateDramaVoiceoverTool,
+  EditShortDramaVideoTool,
+  GenerateSubtitleTool,
+  RecommendBGMTool
+} from './tools/shortdrama-extended.tools'
 
 // 对话消息类型
 interface ConversationMessage {
@@ -162,6 +169,11 @@ export class AgentService {
     this.tools.set('generate_shortdrama_script', new GenerateShortDramaScriptTool())
     this.tools.set('generate_storyboard', new GenerateStoryboardTool())
     this.tools.set('produce_shortdrama', new ProduceShortDramaTool())
+    this.tools.set('generate_multi_episode_drama', new GenerateMultiEpisodeDramaTool())
+    this.tools.set('generate_drama_voiceover', new GenerateDramaVoiceoverTool())
+    this.tools.set('edit_shortdrama_video', new EditShortDramaVideoTool())
+    this.tools.set('generate_subtitle', new GenerateSubtitleTool())
+    this.tools.set('recommend_bgm', new RecommendBGMTool())
 
     // 平台发布工具
     this.tools.set('check_platform_config', new CheckPlatformConfigTool())
