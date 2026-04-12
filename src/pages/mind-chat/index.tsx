@@ -16,7 +16,7 @@ import { ExpPopup, LevelUpEffect } from '@/components/exp-popup'
 import '@/components/exp-popup/index.css'
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User
+  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench
 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -260,6 +260,11 @@ export default function MindChatPage() {
   // H5链接弹窗（小程序环境）
   const [showH5PublishDialog, setShowH5PublishDialog] = useState(false)
   const [h5PublishUrl, setH5PublishUrl] = useState('')
+
+  // 技能库弹窗
+  const [showSkillsDialog, setShowSkillsDialog] = useState(false)
+  const [avatarSkills, setAvatarSkills] = useState<any[]>([])
+  const [loadingSkills, setLoadingSkills] = useState(false)
 
   // 辅助函数：获取记忆类型名称
   const getMemoryTypeName = (type: string): string => {
@@ -539,6 +544,37 @@ export default function MindChatPage() {
     } catch (error) {
       console.error('[MindChat] 获取分身能力失败:', error)
     }
+  }
+
+  // 获取分身技能
+  const fetchAvatarSkills = async () => {
+    if (!avatar?.id) return
+    setLoadingSkills(true)
+    try {
+      const res = await Network.request({
+        url: `/api/skills/avatar/${avatar.id}`
+      })
+      if (res.data?.code === 200) {
+        setAvatarSkills(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('[MindChat] 获取分身技能失败:', error)
+      Taro.showToast({ title: '获取技能失败', icon: 'none' })
+    } finally {
+      setLoadingSkills(false)
+    }
+  }
+
+  // 打开技能库
+  const openSkillsDialog = () => {
+    setShowSkillsDialog(true)
+    fetchAvatarSkills()
+  }
+
+  // 跳转到技能广场
+  const navigateToSkillsSquare = () => {
+    setShowSkillsDialog(false)
+    Taro.switchTab({ url: '/pages/skills-square/index' })
   }
 
   const fetchDefaultAvatar = async () => {
@@ -1823,6 +1859,14 @@ export default function MindChatPage() {
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
           </View>
+          <View
+            className="skills-btn"
+            onClick={openSkillsDialog}
+            style={{ marginLeft: '12px' }}
+          >
+            <Wrench size={20} color="#00f5ff" />
+            <Text className="skills-btn-text">技能</Text>
+          </View>
         </View>
       </View>
 
@@ -2736,7 +2780,7 @@ export default function MindChatPage() {
             <View className="h5-url-box">
               <Text className="h5-url-text">{h5PublishUrl}</Text>
             </View>
-            <Button 
+            <Button
               className="copy-url-btn"
               onClick={() => {
                 Taro.setClipboardData({
@@ -2758,7 +2802,71 @@ export default function MindChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
+      {/* 技能库弹窗 */}
+      <Dialog open={showSkillsDialog} onOpenChange={setShowSkillsDialog}>
+        <DialogContent className="skills-dialog">
+          <DialogHeader>
+            <DialogTitle>技能库</DialogTitle>
+          </DialogHeader>
+          <View className="skills-content">
+            {/* 当前分身已拥有的技能 */}
+            <View className="skills-section">
+              <Text className="skills-section-title">已拥有技能 ({avatarSkills.length})</Text>
+              {loadingSkills ? (
+                <View className="skills-loading">
+                  <Loader size={24} color="#00f5ff" />
+                  <Text className="loading-text">加载中...</Text>
+                </View>
+              ) : avatarSkills.length > 0 ? (
+                <View className="skills-list">
+                  {avatarSkills.map((skill: any) => (
+                    <View key={skill.id} className="skill-item owned">
+                      <View className="skill-icon">{skill.icon || '🎯'}</View>
+                      <View className="skill-info">
+                        <Text className="skill-name">{skill.skill_name || skill.skill_type}</Text>
+                        <Text className="skill-type">{skill.skill_type}</Text>
+                      </View>
+                      <View className="skill-badge owned">
+                        <Text className="badge-text">已拥有</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className="skills-empty">
+                  <Text className="empty-text">暂无技能，去技能广场看看吧！</Text>
+                </View>
+              )}
+            </View>
+
+            {/* 平台技能广场入口 */}
+            <View className="skills-section">
+              <Text className="skills-section-title">技能广场</Text>
+              <View className="skills-square-card">
+                <Sparkles size={32} color="#ff6b6b" />
+                <Text className="square-card-title">发现更多技能</Text>
+                <Text className="square-card-desc">
+                  内容创作、图像生成、视频制作等数百种技能
+                </Text>
+                <Button
+                  className="square-card-btn"
+                  onClick={navigateToSkillsSquare}
+                >
+                  <Text className="btn-text">前往技能广场</Text>
+                  <ChevronDown size={16} color="#fff" />
+                </Button>
+              </View>
+            </View>
+          </View>
+          <DialogFooter>
+            <Button className="dialog-cancel-btn" onClick={() => setShowSkillsDialog(false)}>
+              <Text className="dialog-btn-text">关闭</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 经验值飘字特效 */}
       {showExpPopup && (
         <ExpPopup

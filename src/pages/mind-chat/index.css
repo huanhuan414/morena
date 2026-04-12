@@ -2276,3 +2276,190 @@ del {
   padding: 40rpx 0;
   display: block;
 }
+
+/* 技能库弹窗 */
+.skills-dialog {
+  background: rgba(15, 15, 20, 0.95);
+  border: 2rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 32rpx;
+  max-width: 600rpx;
+  width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.skills-content {
+  padding: 24rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.skills-section {
+  margin-bottom: 32rpx;
+}
+
+.skills-section:last-child {
+  margin-bottom: 0;
+}
+
+.skills-section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #00f5ff;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.skill-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: rgba(30, 30, 40, 0.8);
+  border-radius: 20rpx;
+  border: 2rpx solid rgba(0, 245, 255, 0.15);
+  gap: 20rpx;
+}
+
+.skill-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15), rgba(191, 0, 255, 0.15));
+  border: 2rpx solid rgba(0, 245, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.skill-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.skill-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.skill-type {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  display: block;
+}
+
+.skill-badge {
+  padding: 8rpx 16rpx;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.skill-badge.owned {
+  background: rgba(0, 255, 136, 0.15);
+  border: 2rpx solid rgba(0, 255, 136, 0.3);
+}
+
+.skill-badge.owned .badge-text {
+  color: #00ff88;
+}
+
+.skills-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 0;
+  gap: 16rpx;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.skills-empty {
+  padding: 60rpx 24rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  display: block;
+}
+
+/* 技能广场卡片 */
+.skills-square-card {
+  padding: 32rpx;
+  background: linear-gradient(135deg, rgba(191, 0, 255, 0.1), rgba(255, 107, 107, 0.1));
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 107, 107, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16rpx;
+}
+
+.square-card-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ff6b6b;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.square-card-desc {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  display: block;
+}
+
+.square-card-btn {
+  margin-top: 8rpx;
+  padding: 16rpx 32rpx;
+  background: linear-gradient(135deg, #ff6b6b, #ff8787);
+  border-radius: 24rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.square-card-btn .btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* 技能按钮 */
+.skills-btn {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(20, 20, 30, 0.8);
+  backdrop-filter: blur(40rpx);
+  border: 2rpx solid rgba(0, 245, 255, 0.2);
+  border-radius: 20rpx;
+}
+
+.skills-btn-text {
+  font-size: 26rpx;
+  color: #00f5ff;
+  font-weight: 500;
+}
