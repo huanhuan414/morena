@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import Taro, { getStorageSync, getEnv, ENV_TYPE } from '@tarojs/taro'
+import Taro, { getStorageSync } from '@tarojs/taro'
 
 /**
  * Network Request Module

@@ -82,14 +82,14 @@ export class ChatService {
 
   async getConversationMessages(conversationId: string, limit: number = 20, before?: string) {
     const client = getSupabaseClient()
-    
+
     let query = client
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(limit)
-    
+
     // 如果有 before 参数，获取该消息之前的消息
     if (before) {
       const { data: beforeMsg } = await client
@@ -97,46 +97,70 @@ export class ChatService {
         .select('created_at')
         .eq('id', before)
         .single()
-      
+
       if (beforeMsg) {
         query = query.lt('created_at', beforeMsg.created_at)
       }
     }
-    
+
     const { data, error } = await query
-    
+
     if (error) {
       throw new Error(`获取消息失败: ${error.message}`)
     }
-    
+
     // 反转顺序，使其按时间正序排列
     const messages = (data || []).reverse()
-    
-    // 处理消息中的媒体URL，生成签名链接
+
+    // 处理消息中的媒体URL，生成签名链接并转换为 media 数组格式
     const processedMessages = await Promise.all(
       messages.map(async (msg) => {
+        let mediaUrls: Record<string, string> = {}
+
+        // 处理 media_keys，生成签名链接
         if (msg.metadata?.media_keys) {
-          const mediaUrls = await Promise.all(
+          const urls = await Promise.all(
             msg.metadata.media_keys.map(async (key: string) => {
               const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 })
               return { key, url }
             })
           )
-          return {
-            ...msg,
-            metadata: {
-              ...msg.metadata,
-              media_urls: mediaUrls.reduce((acc: any, { key, url }) => {
-                acc[key] = url
-                return acc
-              }, {})
+          mediaUrls = urls.reduce((acc: any, { key, url }) => {
+            acc[key] = url
+            return acc
+          }, {})
+        }
+
+        // 转换 media_urls 为 media 数组格式（前端需要的格式）
+        let mediaList: any[] = []
+        if (msg.metadata?.media_urls && typeof msg.metadata.media_urls === 'object') {
+          mediaList = Object.entries(msg.metadata.media_urls).map(([key, url]) => {
+            // 根据文件扩展名判断类型
+            const keyLower = key.toLowerCase()
+            if (keyLower.includes('.mp4') || keyLower.includes('.mov') || keyLower.includes('.webm') || keyLower.includes('video')) {
+              return { type: 'video', url, key }
+            } else if (keyLower.includes('.jpg') || keyLower.includes('.jpeg') || keyLower.includes('.png') || keyLower.includes('.gif') || keyLower.includes('image')) {
+              return { type: 'image', url, key }
             }
+            return { type: 'image', url, key } // 默认为图片
+          })
+        }
+
+        // 如果 metadata 中已有 media 数组，保留它（兼容实时消息）
+        const existingMedia = msg.metadata?.media || []
+
+        return {
+          ...msg,
+          metadata: {
+            ...msg.metadata,
+            media_urls: mediaUrls,
+            // 合并现有 media 和从 media_urls 转换的 media
+            media: existingMedia.length > 0 ? existingMedia : mediaList
           }
         }
-        return msg
       })
     )
-    
+
     return processedMessages
   }
 
