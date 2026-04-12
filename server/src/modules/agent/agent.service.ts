@@ -790,6 +790,8 @@ export class AgentService {
       .eq('id', avatarId)
       .single()
 
+    console.log('[AgentService] 获取分身信息:', { avatarId, avatarInfo })
+
     // 获取分身的技能
     const { data: avatarSkills } = await client
       .from('avatar_skills')
@@ -1028,6 +1030,9 @@ export class AgentService {
 
 重要提示：你是一个AI分身，名字叫"${context.avatarInfo.name}"。用户正在与你进行对话。当用户询问你的身份或是否是分身时，请明确告知用户你的名字和身份，不要说"我没有创建任何分身"之类的错误回答。
 `
+      console.log('[AgentService] 分身身份信息已生成:', avatarInfoText)
+    } else {
+      console.log('[AgentService] 警告：context.avatarInfo 为空，分身无法识别自己的身份')
     }
 
     // 智能任务理解提示
