@@ -372,7 +372,7 @@ export default function SkillsSquare() {
                     </View>
                     {owned && (
                       <View className="owned-badge">
-                        <Check size={10} color="#00ff88" />
+                        <Check size={14} color="#00ff88" />
                         <Text className="owned-text">已添加</Text>
                       </View>
                     )}
@@ -400,7 +400,7 @@ export default function SkillsSquare() {
                   <View className="card-footer">
                     <View className="stats">
                       <View className="stat-item">
-                        <Star size={10} color="#ffb800" />
+                        <Star size={14} color="#ffb800" />
                         <Text className="stat-value">{skill.rating}</Text>
                         <Text className="stat-label">({skill.rating_count})</Text>
                       </View>
@@ -411,7 +411,7 @@ export default function SkillsSquare() {
                     </View>
                     {owned ? (
                       <Button className="action-btn owned" disabled>
-                        <Check size={12} color="#00ff88" />
+                        <Check size={14} color="#00ff88" />
                         <Text>已添加</Text>
                       </Button>
                     ) : (
@@ -422,7 +422,7 @@ export default function SkillsSquare() {
                           setShowPurchaseDialog(true)
                         }}
                       >
-                        <ShoppingCart size={12} color="#fff" />
+                        <ShoppingCart size={14} color="#fff" />
                         <Text>添加</Text>
                       </Button>
                     )}
