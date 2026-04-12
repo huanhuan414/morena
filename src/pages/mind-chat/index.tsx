@@ -1535,53 +1535,59 @@ export default function MindChatPage() {
         {/* 文本内容和内嵌视频 */}
         {(() => {
           const { videoUrl, textWithoutVideo } = extractVideoUrlFromText(msg.content)
+          const hasVideo = !!videoUrl
 
-          return (
-            <>
-              {/* 如果提取到视频链接，先渲染文本（去掉视频链接部分） */}
-              {textWithoutVideo && (
-                <Text className="message-text">{textWithoutVideo}</Text>
-              )}
+          // 如果有视频链接，渲染去掉视频链接的文本和视频
+          if (hasVideo) {
+            return (
+              <>
+                {textWithoutVideo && (
+                  <Text className="message-text">{textWithoutVideo}</Text>
+                )}
 
-              {/* 渲染内嵌视频 */}
-              {videoUrl && (() => {
-                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                {(() => {
+                  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
-                return (
-                  <View className="media-item video" style={{ marginTop: '12px' }}>
-                    {isH5 ? (
-                      <video
-                        src={videoUrl}
-                        className="media-video"
-                        controls
-                        playsInline
-                        webkit-playsinline="true"
-                        x5-playsinline="true"
-                        style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
-                      />
-                    ) : (
-                      <Video
-                        src={videoUrl}
-                        className="media-video"
-                        controls
-                        showFullscreenBtn
-                        showPlayBtn
-                        showCenterPlayBtn
-                        enableProgressGesture
-                        objectFit="contain"
-                        style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
-                        onError={(e) => {
-                          console.error('小程序视频播放错误:', e)
-                          Taro.showToast({ title: '视频加载失败', icon: 'none' })
-                        }}
-                        onPlay={() => console.log('视频开始播放')}
-                      />
-                    )}
-                  </View>
-                )
-              })()}
-            </>
-          )
+                  return (
+                    <View className="media-item video" style={{ marginTop: '12px' }}>
+                      {isH5 ? (
+                        <video
+                          src={videoUrl}
+                          className="media-video"
+                          controls
+                          playsInline
+                          webkit-playsinline="true"
+                          x5-playsinline="true"
+                          style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+                        />
+                      ) : (
+                        <Video
+                          src={videoUrl}
+                          className="media-video"
+                          controls
+                          showFullscreenBtn
+                          showPlayBtn
+                          showCenterPlayBtn
+                          enableProgressGesture
+                          objectFit="contain"
+                          style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
+                          onError={(e) => {
+                            console.error('小程序视频播放错误:', e)
+                            Taro.showToast({ title: '视频加载失败', icon: 'none' })
+                          }}
+                          onPlay={() => console.log('视频开始播放')}
+                        />
+                      )}
+                    </View>
+                  )
+                })()}
+              </>
+            )
+          }
+
+          // 没有视频链接，不在这里渲染文本
+          // 文本会在后面的统一渲染逻辑中显示
+          return null
         })()}
         
         {/* 富媒体内容 */}
@@ -1749,12 +1755,25 @@ export default function MindChatPage() {
           )
         })()}
 
-        {/* 文本消息渲染 */}
-        {msg.content && typeof msg.content === 'string' && (
-          <View className="text-message">
-            <MarkdownRender content={msg.content} />
-          </View>
-        )}
+        {/* 文本消息渲染 - 只在没有内嵌视频时渲染 */}
+        {(() => {
+          // 检查是否有内嵌视频链接
+          const { videoUrl } = extractVideoUrlFromText(msg.content)
+
+          // 如果有视频链接，文本已经在视频处理中渲染过了，不再重复渲染
+          if (videoUrl) return null
+
+          // 如果没有视频链接，渲染文本
+          if (msg.content && typeof msg.content === 'string') {
+            return (
+              <View className="text-message">
+                <MarkdownRender content={msg.content} />
+              </View>
+            )
+          }
+
+          return null
+        })()}
 
         {/* 技能缺失提示和添加技能按钮 */}
         {(() => {
