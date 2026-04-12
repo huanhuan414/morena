@@ -1250,28 +1250,11 @@ ${friendMessageContents}
   }
 
   /**
-   * 检查图片生成速率限制
+   * 检查图片生成速率限制（已取消限制）
    */
   private async waitForRateLimit(): Promise<void> {
-    const now = Date.now()
-
-    // 清理过期的记录
-    this.imageGenerationTimestamps = this.imageGenerationTimestamps.filter(
-      timestamp => now - timestamp < IMAGE_GENERATION_WINDOW
-    )
-
-    // 如果超过限制，等待
-    if (this.imageGenerationTimestamps.length >= IMAGE_GENERATION_LIMIT) {
-      const oldestTimestamp = this.imageGenerationTimestamps[0]
-      const waitTime = oldestTimestamp + IMAGE_GENERATION_WINDOW - now
-      if (waitTime > 0) {
-        console.log(`[托管服务] 图片生成速率限制，等待 ${waitTime}ms...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-      }
-    }
-
-    // 记录这次生成时间
-    this.imageGenerationTimestamps.push(Date.now())
+    // 已取消速率限制，直接返回
+    return
   }
 
   /**
@@ -1280,9 +1263,6 @@ ${friendMessageContents}
   private async generateImageWithRetry(prompt: string, maxRetries = 2): Promise<string | null> {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        // 等待速率限制
-        await this.waitForRateLimit()
-
         console.log(`[托管服务] 生成图片 (尝试 ${attempt + 1}/${maxRetries + 1})...`)
         console.log(`[托管服务] 图片提示词: ${prompt.substring(0, 50)}...`)
 
