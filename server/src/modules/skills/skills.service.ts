@@ -4,6 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common'
+import { LLMClient, Config } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import {
   Skill,
@@ -16,6 +17,12 @@ import {
 
 @Injectable()
 export class SkillsService {
+  private llmClient: LLMClient
+
+  constructor() {
+    const config = new Config()
+    this.llmClient = new LLMClient(config)
+  }
   /**
    * 获取技能列表
    */
@@ -360,6 +367,90 @@ export class SkillsService {
     } catch (error) {
       console.error('[SkillsService] searchSkills error:', error)
       return []
+    }
+  }
+
+  /**
+   * 使用 AI 生成技能描述和标签
+   */
+  async generateSkillWithAI(name: string, description: string) {
+    try {
+      const prompt = `你是一个技能设计专家。请根据用户提供的信息，生成一个详细的技能描述。
+
+用户输入：
+- 技能名称：${name}
+- 技能描述：${description}
+
+请以 JSON 格式返回以下信息：
+{
+  "name": "优化后的技能名称",
+  "description": "优化后的详细描述（50-100字）",
+  "tags": ["标签1", "标签2", "标签3"],
+  "capabilities": {
+    "功能描述": "这个技能的主要功能"
+  },
+  "requirements": "使用要求（如需要特定配置）"
+}
+
+要求：
+1. 优化技能名称，使其更专业
+2. 详细描述技能的功能和用途
+3. 生成3-5个相关标签
+4. 描述技能的核心能力
+5. 说明使用要求（如果没有，填"无"）
+
+直接返回 JSON，不要有任何额外文字说明。`
+
+      const response = await this.llmClient.invoke(
+        [
+          {
+            role: 'system',
+            content: '你是一个专业的技能设计专家，擅长优化技能描述和生成技能标签。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        {
+          model: 'doubao-seed-1-8-251228',
+          temperature: 0.7
+        }
+      )
+
+      // 解析 AI 返回的 JSON
+      const content = response.content || ''
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+
+      if (jsonMatch) {
+        const generatedData = JSON.parse(jsonMatch[0])
+        return {
+          name: generatedData.name || name,
+          description: generatedData.description || description,
+          tags: generatedData.tags || [],
+          capabilities: generatedData.capabilities || {},
+          requirements: generatedData.requirements || '无'
+        }
+      }
+
+      // 如果解析失败，返回原始数据
+      return {
+        name,
+        description,
+        tags: [],
+        capabilities: {},
+        requirements: '无'
+      }
+    } catch (error) {
+      console.error('[SkillsService] AI 生成失败:', error)
+      // 返回原始数据
+      return {
+        name,
+        description,
+        tags: [],
+        capabilities: {},
+        requirements: '无'
+      }
     }
   }
 }

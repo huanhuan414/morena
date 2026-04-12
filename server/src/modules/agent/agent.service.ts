@@ -171,6 +171,64 @@ export class AgentService {
   }
 
   /**
+   * 根据分身技能获取可用工具
+   * @param avatarId 分身 ID
+   * @returns 分身可用的工具列表
+   */
+  async getAvatarTools(avatarId: string): Promise<ToolDefinition[]> {
+    try {
+      // 获取分身的技能列表
+      const { data: avatarSkills, error } = await getSupabaseClient()
+        .from('avatar_skills')
+        .select(`
+          skill_id,
+          skills (
+            tool_name
+          )
+        `)
+        .eq('avatarId', avatarId)
+
+      if (error || !avatarSkills || avatarSkills.length === 0) {
+        // 如果没有技能，返回所有默认工具
+        return this.getAvailableTools()
+      }
+
+      // 获取所有 tool_name
+      const toolNames = avatarSkills
+        .map((item: any) => item.skills?.tool_name)
+        .filter((name: string | null) => name)
+
+      // 如果技能中没有工具名称，返回所有工具
+      if (toolNames.length === 0) {
+        return this.getAvailableTools()
+      }
+
+      // 返回分身拥有的工具 + 基础工具（任务管理、分身管理等）
+      const basicTools = [
+        'app_create_task',
+        'app_update_task',
+        'app_delete_task',
+        'app_list_tasks',
+        'app_update_avatar',
+        'app_list_avatars',
+        'check_platform_config'
+      ]
+
+      const allToolNames = [...new Set([...basicTools, ...toolNames])]
+
+      return allToolNames
+        .map(toolName => {
+          const tool = this.tools.get(toolName)
+          return tool ? tool.definition : null
+        })
+        .filter((t): t is ToolDefinition => t !== null)
+    } catch (error) {
+      console.error('[AgentService] 获取分身工具失败:', error)
+      return this.getAvailableTools()
+    }
+  }
+
+  /**
    * 执行 Agent 任务（带进度回调）
    * 通过 AsyncGenerator 实现流式输出
    */
@@ -695,13 +753,16 @@ export class AgentService {
       }
     }
 
+    // 获取分身的工具列表（基于技能）
+    const availableTools = await this.getAvatarTools(avatarId)
+
     return {
       userId,
       avatarId,
       conversationId: options?.conversationId,
       taskId: options?.taskId,
       taskDescription,
-      availableTools: this.getAvailableTools(),
+      availableTools,
       platformConfigs: platformMap,
       avatarSkills: (avatarSkills || []) as AvatarSkill[],
       executionHistory: [],

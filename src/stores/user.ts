@@ -25,6 +25,7 @@ interface UserState {
   setUserInfo: (info: User) => void
   setToken: (token: string) => void
   setLoggedIn: (status: boolean) => void
+  setAvatarId: (avatarId: string) => void
   logout: () => void
   login: (code: string) => Promise<void>
   loadUserFromStorage: () => Promise<void>
@@ -47,6 +48,8 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   setLoggedIn: (status) => set({ isLoggedIn: status }),
+
+  setAvatarId: (avatarId) => set({ avatarId }),
 
   logout: () => {
     removeStorageSync('token')

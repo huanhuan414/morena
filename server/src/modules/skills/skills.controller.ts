@@ -274,4 +274,30 @@ export class SkillsController {
       }
     }
   }
+
+  /**
+   * 使用 AI 生成技能
+   */
+  @Post('ai-generate')
+  async generateSkillWithAI(@Body() body: { name: string; description: string }) {
+    try {
+      const generatedSkill = await this.skillsService.generateSkillWithAI(
+        body.name,
+        body.description
+      )
+
+      return {
+        code: 200,
+        data: generatedSkill,
+        message: 'AI 生成成功'
+      }
+    } catch (error) {
+      console.error('[SkillsController] AI 生成失败:', error)
+      return {
+        code: 500,
+        data: null,
+        message: 'AI 生成失败'
+      }
+    }
+  }
 }
