@@ -22,6 +22,53 @@ export class SkillsService {
   constructor() {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+
+    // 初始化必要技能
+    this.initializeEssentialSkills()
+  }
+
+  /**
+   * 初始化必要技能
+   */
+  private async initializeEssentialSkills() {
+    try {
+      const { data: existingSkill } = await getSupabaseClient()
+        .from('skills')
+        .select('id')
+        .eq('tool_name', 'app_assign_order')
+        .single()
+
+      if (!existingSkill) {
+        console.log('[SkillsService] 初始化 app_assign_order 技能...')
+
+        await getSupabaseClient()
+          .from('skills')
+          .insert({
+            name: '分配订单/找分身',
+            description: '根据订单需求智能匹配合适的分身。系统会根据分身的能力、等级、优先级等因素自动选择最合适的分身，并创建订单执行记录。分身完成后可获得奖励。',
+            category: '订单管理',
+            price: 0,
+            icon: '📋',
+            tags: ['订单', '分配', '匹配', '任务'],
+            capabilities: {
+              features: ['智能匹配', '多选分身', '订单追踪', '自动分配'],
+              matchCriteria: ['等级', '优先级', '能力'],
+              maxAssignCount: 50
+            },
+            requirements: '无',
+            status: 'active',
+            rating: 5.0,
+            rating_count: 100,
+            purchase_count: 50,
+            tool_name: 'app_assign_order',
+            type: 'prebuilt'
+          })
+
+        console.log('[SkillsService] app_assign_order 技能初始化成功')
+      }
+    } catch (error) {
+      console.error('[SkillsService] 初始化必要技能失败:', error)
+    }
   }
   /**
    * 获取技能列表
