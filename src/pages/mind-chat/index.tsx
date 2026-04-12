@@ -1245,6 +1245,32 @@ export default function MindChatPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  // 从文本中提取视频链接
+  const extractVideoUrlFromText = (text: string): { videoUrl: string | null; textWithoutVideo: string } => {
+    // 匹配视频链接（支持 .mp4、.mov、.webm 结尾的 URL）
+    // 使用正则表达式匹配 "视频链接：" 或 "video:" 等关键词后的 URL
+    const videoUrlPattern = /(视频链接[:：]\s*)?(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
+    const match = text.match(videoUrlPattern)
+
+    if (match && match[2]) {
+      const videoUrl = match[2]
+      const textWithoutVideo = text.replace(match[0], '').trim()
+      return { videoUrl, textWithoutVideo }
+    }
+
+    // 如果没有匹配到，尝试直接查找以 .mp4、.mov、.webm 结尾的 URL
+    const directUrlPattern = /(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
+    const directMatch = text.match(directUrlPattern)
+
+    if (directMatch && directMatch[1]) {
+      const videoUrl = directMatch[1]
+      const textWithoutVideo = text.replace(directMatch[0], '').trim()
+      return { videoUrl, textWithoutVideo }
+    }
+
+    return { videoUrl: null, textWithoutVideo: text }
+  }
+
   // 渲染消息内容（支持富媒体）
   const renderMessageContent = (msg: Message) => {
     // 检测分身列表数据
@@ -1490,8 +1516,57 @@ export default function MindChatPage() {
           )
         })()}
 
-        {/* 文本内容 */}
-        <Text className="message-text">{msg.content}</Text>
+        {/* 文本内容和内嵌视频 */}
+        {(() => {
+          const { videoUrl, textWithoutVideo } = extractVideoUrlFromText(msg.content)
+
+          return (
+            <>
+              {/* 如果提取到视频链接，先渲染文本（去掉视频链接部分） */}
+              {textWithoutVideo && (
+                <Text className="message-text">{textWithoutVideo}</Text>
+              )}
+
+              {/* 渲染内嵌视频 */}
+              {videoUrl && (() => {
+                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+
+                return (
+                  <View className="media-item video" style={{ marginTop: '12px' }}>
+                    {isH5 ? (
+                      <video
+                        src={videoUrl}
+                        className="media-video"
+                        controls
+                        playsInline
+                        webkit-playsinline="true"
+                        x5-playsinline="true"
+                        style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+                      />
+                    ) : (
+                      <Video
+                        src={videoUrl}
+                        className="media-video"
+                        controls
+                        showFullscreenBtn
+                        showPlayBtn
+                        showCenterPlayBtn
+                        enableProgressGesture
+                        objectFit="contain"
+                        style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
+                        onError={(e) => {
+                          console.error('小程序视频播放错误:', e)
+                          Taro.showToast({ title: '视频加载失败', icon: 'none' })
+                        }}
+                        onPlay={() => console.log('视频开始播放')}
+                      />
+                    )}
+                  </View>
+                )
+              })()}
+            </>
+          )
+        })()}
         
         {/* 富媒体内容 */}
         {(() => {
