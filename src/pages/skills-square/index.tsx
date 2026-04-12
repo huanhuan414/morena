@@ -42,6 +42,13 @@ export default function SkillsSquare() {
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
 
+  // 打印环境信息
+  useEffect(() => {
+    console.log('[SkillSquare] 环境信息:')
+    console.log('[SkillSquare] PROJECT_DOMAIN:', typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : 'undefined')
+    console.log('[SkillSquare] window.location.hostname:', typeof window !== 'undefined' ? window.location.hostname : 'undefined')
+  }, [])
+
   // 获取分身列表
   const fetchAvatars = async () => {
     if (!userInfo?.id) return
@@ -75,6 +82,10 @@ export default function SkillsSquare() {
   const fetchSkills = async () => {
     try {
       setLoading(true)
+
+      console.log('[SkillSquare] 开始获取技能列表，搜索关键词:', searchKeyword)
+
+      // 使用 Network.request 发送请求
       const res = await Network.request({
         url: '/api/skills',
         method: 'GET',
@@ -83,26 +94,17 @@ export default function SkillsSquare() {
         }
       })
 
-      // 开发环境下，如果返回的数据是空的，尝试使用本地服务器
-      if (!res.data?.data?.skills || res.data.data.skills.length === 0) {
-        console.log('[SkillSquare] 尝试从本地服务器获取数据')
-        const localRes = await fetch('http://localhost:3000/api/skills').then(r => r.json())
-        console.log('[SkillSquare] 本地服务器响应:', localRes)
-        if (localRes.code === 200 && localRes.data?.skills) {
-          const skillsList = localRes.data.skills || []
-          console.log('[SkillSquare] 本地服务器 skillsList:', skillsList)
-          setSkills(skillsList)
-          return
-        }
-      }
+      console.log('[SkillSquare] 完整响应:', res)
+      console.log('[SkillSquare] res.data:', res.data)
+      console.log('[SkillSquare] res.statusCode:', res.statusCode)
 
-      console.log('[SkillSquare] fetchSkills response:', res.data)
-      console.log('[SkillSquare] res.data.data:', res.data?.data)
-
-      if (res.data?.code === 200) {
+      if (res.data?.code === 200 && res.data?.data?.skills) {
         const skillsList = res.data.data.skills || []
-        console.log('[SkillSquare] skillsList:', skillsList)
+        console.log('[SkillSquare] 技能列表长度:', skillsList.length)
+        console.log('[SkillSquare] 技能列表内容:', skillsList.slice(0, 2))
         setSkills(skillsList)
+      } else {
+        console.log('[SkillSquare] 未获取到技能数据，code:', res.data?.code, 'data:', res.data?.data)
       }
     } catch (error) {
       console.error('[SkillSquare] 获取技能列表失败:', error)

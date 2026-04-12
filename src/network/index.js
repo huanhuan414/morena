@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import Taro, { getStorageSync } from '@tarojs/taro'
+import Taro, { getStorageSync, getEnv, ENV_TYPE } from '@tarojs/taro'
 
 /**
  * Network Request Module
@@ -21,6 +21,21 @@ export const request = (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
+
+    // H5 环境下，如果是本地开发环境，使用相对路径（让 Vite 代理生效）
+    if (getEnv() === ENV_TYPE.H5) {
+      // 检查是否在本地开发环境
+      const isLocalhost = typeof window !== 'undefined' &&
+                         (window.location.hostname === 'localhost' ||
+                          window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.startsWith('192.168.') ||
+                          window.location.hostname.startsWith('10.'))
+      if (isLocalhost && url.startsWith('/api/')) {
+        console.log('[Network.request] 本地开发环境，使用相对路径:', url)
+        return url
+      }
+    }
+
     // PROJECT_DOMAIN is globally injected by Taro config
     const domain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
     return `${domain}${url}`
