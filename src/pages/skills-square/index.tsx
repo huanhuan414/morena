@@ -160,6 +160,16 @@ export default function SkillsSquare() {
           return s
         })
         console.log('[SkillSquare] 提取的技能ID列表:', skillIds)
+
+        // 打印每个技能的详细信息
+        mySkillsList.forEach((skill: any, index: number) => {
+          console.log(`[SkillSquare] 技能 ${index + 1}:`, {
+            id: skill.id || skill.skillId || skill.skill_id,
+            name: skill.name || skill.skill?.name,
+            entireObject: skill
+          })
+        })
+
         setMySkills(skillIds)
       }
     } catch (error) {
@@ -289,10 +299,10 @@ export default function SkillsSquare() {
             {skills.map((skill) => {
               const owned = isOwned(skill.id)
               console.log('[SkillSquare] 渲染技能卡片:', {
-                skillId: skill.id,
-                skillName: skill.name,
-                owned,
-                mySkills
+                技能ID: skill.id,
+                技能名称: skill.name,
+                是否已添加: owned,
+                已添加技能列表: mySkills
               })
               return (
                 <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
