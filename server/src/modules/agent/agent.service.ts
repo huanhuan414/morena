@@ -417,12 +417,15 @@ export class AgentService {
 
     // 保存对话记录
     if (options?.conversationId) {
+      // 清理 finalAnswer 中的调试信息（如图片链接等）
+      const cleanedFinalAnswer = this.cleanDebugInfo(finalAnswer)
+      
       await this.saveConversationHistory(
         options.conversationId,
         userId,
         avatarId,
         taskDescription,
-        finalAnswer,
+        cleanedFinalAnswer,
         { success: !requiresConfig, finalAnswer, steps, requiresConfig, configPlatform, configFields }
       )
     }
@@ -483,12 +486,15 @@ export class AgentService {
       
       // 保存对话记录
       if (options?.conversationId) {
+        // 清理 finalAnswer 中的调试信息（如图片链接等）
+        const cleanedFinalAnswer = this.cleanDebugInfo(result.finalAnswer)
+        
         await this.saveConversationHistory(
           options.conversationId,
           userId,
           avatarId,
           taskDescription,
-          result.finalAnswer,
+          cleanedFinalAnswer,
           result
         )
       }
@@ -713,6 +719,28 @@ export class AgentService {
       console.error('[AgentService] 学习分析失败:', error)
       // 学习失败不影响主流程
     }
+  }
+
+  /**
+   * 清理消息中的调试信息
+   * 移除工具返回的调试信息（如"图片链接如下：https://..."）
+   */
+  private cleanDebugInfo(content: string): string {
+    if (!content || typeof content !== 'string') return content
+
+    // 移除"图片链接如下："模式
+    let cleaned = content.replace(/图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+    // 移除"视频链接如下："模式
+    cleaned = cleaned.replace(/视频链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+    // 移除"已为你生成.*配图"模式（包含后续的链接信息）
+    cleaned = cleaned.replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+    // 移除多余的空行
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n')
+
+    return cleaned.trim()
   }
 
   /**

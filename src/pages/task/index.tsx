@@ -575,15 +575,18 @@ export default function TaskPage() {
 
       {/* 任务详情弹窗 */}
       {showDetail && selectedTask && (
-        <View className="modal-overlay" onClick={() => {
-          setShowDetail(false)
-          // 关闭详情时清除轮询
-          if (pollingInterval) {
-            clearInterval(pollingInterval)
-            setPollingInterval(null)
-          }
-          setExecuting(false)
-        }}>
+        <View
+          className="modal-overlay"
+          onClick={() => {
+            setShowDetail(false)
+            // 关闭详情时清除轮询
+            if (pollingInterval) {
+              clearInterval(pollingInterval)
+              setPollingInterval(null)
+            }
+            setExecuting(false)
+          }}
+        >
           <View className="modal-content detail-modal" onClick={e => e.stopPropagation()}>
             <View className="modal-header">
               <View className="detail-header-info">

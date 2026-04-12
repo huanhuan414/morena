@@ -1268,28 +1268,36 @@ export default function MindChatPage() {
     // 确保 text 是字符串类型
     const textStr = typeof text === 'string' ? text : String(text || '')
 
+    // 清理调试信息（移除"图片链接如下："、"视频链接如下："等）
+    const cleanedText = textStr
+      .replace(/图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+      .replace(/视频链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+      .replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .trim()
+
     // 匹配视频链接（支持 .mp4、.mov、.webm 结尾的 URL）
     // 使用正则表达式匹配 "视频链接：" 或 "video:" 等关键词后的 URL
     const videoUrlPattern = /(视频链接[:：]\s*)?(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
-    const match = textStr.match(videoUrlPattern)
+    const match = cleanedText.match(videoUrlPattern)
 
     if (match && match[2]) {
       const videoUrl = match[2]
-      const textWithoutVideo = textStr.replace(match[0], '').trim()
+      const textWithoutVideo = cleanedText.replace(match[0], '').trim()
       return { videoUrl, textWithoutVideo }
     }
 
     // 如果没有匹配到，尝试直接查找以 .mp4、.mov、.webm 结尾的 URL
     const directUrlPattern = /(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
-    const directMatch = textStr.match(directUrlPattern)
+    const directMatch = cleanedText.match(directUrlPattern)
 
     if (directMatch && directMatch[1]) {
       const videoUrl = directMatch[1]
-      const textWithoutVideo = textStr.replace(directMatch[0], '').trim()
+      const textWithoutVideo = cleanedText.replace(directMatch[0], '').trim()
       return { videoUrl, textWithoutVideo }
     }
 
-    return { videoUrl: null, textWithoutVideo: textStr }
+    return { videoUrl: null, textWithoutVideo: cleanedText }
   }
 
   // 渲染消息内容（支持富媒体）
