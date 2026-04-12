@@ -1259,29 +1259,32 @@ export default function MindChatPage() {
   }
 
   // 从文本中提取视频链接
-  const extractVideoUrlFromText = (text: string): { videoUrl: string | null; textWithoutVideo: string } => {
+  const extractVideoUrlFromText = (text: any): { videoUrl: string | null; textWithoutVideo: string } => {
+    // 确保 text 是字符串类型
+    const textStr = typeof text === 'string' ? text : String(text || '')
+
     // 匹配视频链接（支持 .mp4、.mov、.webm 结尾的 URL）
     // 使用正则表达式匹配 "视频链接：" 或 "video:" 等关键词后的 URL
     const videoUrlPattern = /(视频链接[:：]\s*)?(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
-    const match = text.match(videoUrlPattern)
+    const match = textStr.match(videoUrlPattern)
 
     if (match && match[2]) {
       const videoUrl = match[2]
-      const textWithoutVideo = text.replace(match[0], '').trim()
+      const textWithoutVideo = textStr.replace(match[0], '').trim()
       return { videoUrl, textWithoutVideo }
     }
 
     // 如果没有匹配到，尝试直接查找以 .mp4、.mov、.webm 结尾的 URL
     const directUrlPattern = /(https?:\/\/[^\s]+?\.(?:mp4|mov|webm)(?:\?[^\s]*)?)/i
-    const directMatch = text.match(directUrlPattern)
+    const directMatch = textStr.match(directUrlPattern)
 
     if (directMatch && directMatch[1]) {
       const videoUrl = directMatch[1]
-      const textWithoutVideo = text.replace(directMatch[0], '').trim()
+      const textWithoutVideo = textStr.replace(directMatch[0], '').trim()
       return { videoUrl, textWithoutVideo }
     }
 
-    return { videoUrl: null, textWithoutVideo: text }
+    return { videoUrl: null, textWithoutVideo: textStr }
   }
 
   // 渲染消息内容（支持富媒体）
