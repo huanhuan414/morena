@@ -277,11 +277,19 @@ export class SkillsService {
         console.log('[SkillsService] 查询技能，skill_type:', skillType)
 
         // 查询 skills 表，获取 id
-        const { data: skillData, error: skillError } = await getSupabaseClient()
+        // 优先选择 category 为 "内容创作" 的技能
+        let query = getSupabaseClient()
           .from('skills')
-          .select('id, name, tool_name')
-          .eq('tool_name', skillType)
-          .single()
+          .select('id, name, tool_name, category')
+
+        // 对于特定的 skill_type，优先选择特定 category
+        if (skillType === 'generate_image' || skillType === 'generate_video' || skillType === 'write_article') {
+          query = query.eq('tool_name', skillType).eq('category', '内容创作')
+        } else {
+          query = query.eq('tool_name', skillType)
+        }
+
+        const { data: skillData, error: skillError } = await query.limit(1).single()
 
         if (skillError) {
           console.warn(`[SkillsService] 未找到技能，skill_type: ${skillType}, error:`, skillError)
@@ -296,7 +304,8 @@ export class SkillsService {
         console.log('[SkillsService] 找到技能匹配:', {
           skill_type: skillType,
           skill_id: skillData.id,
-          skill_name: skillData.name
+          skill_name: skillData.name,
+          skill_category: skillData.category
         })
       }
 
