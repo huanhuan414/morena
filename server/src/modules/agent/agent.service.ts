@@ -728,14 +728,26 @@ export class AgentService {
   private cleanDebugInfo(content: string): string {
     if (!content || typeof content !== 'string') return content
 
-    // 移除"图片链接如下："模式
-    let cleaned = content.replace(/图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+    let cleaned = content
+
+    // 移除"已为你生成.*链接如下："模式（包含后续的多个链接）
+    // 匹配 "已为你生成3张图片，链接如下：1. URL 2. URL 3. URL" 这种格式
+    cleaned = cleaned.replace(/已为你生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
+    // 移除"图片链接如下："模式（移除行内的URL）
+    cleaned = cleaned.replace(/图片链接如下[::：]\s*\d*[\.、]?\s*https?:\/\/[^\s\n]+/gi, '')
 
     // 移除"视频链接如下："模式
-    cleaned = cleaned.replace(/视频链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+    cleaned = cleaned.replace(/视频链接如下[::：]\s*\d*[\.、]?\s*https?:\/\/[^\s\n]+/gi, '')
 
     // 移除"已为你生成.*配图"模式（包含后续的链接信息）
     cleaned = cleaned.replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+    // 移除独立的链接行（单独一行的URL）
+    cleaned = cleaned.replace(/^\s*\d+[\.、]\s*https?:\/\/[^\s\n]+$/gm, '')
+
+    // 移除"链接如下："引导的多链接列表
+    cleaned = cleaned.replace(/链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
 
     // 移除多余的空行
     cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n')

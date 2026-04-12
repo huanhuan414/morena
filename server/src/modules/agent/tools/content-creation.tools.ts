@@ -655,7 +655,7 @@ export class WriteXiaohongshuNoteTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'write_xiaohongshu_note',
     displayName: '撰写小红书笔记',
-    description: '生成适合小红书传播的爆款笔记，包含emoji标题、分段式正文、话题标签。此工具仅生成内容，发布需要配合 publish_xiaohongshu 工具。',
+    description: '生成适合小红书传播的爆款笔记，包含emoji标题、分段式正文、话题标签、多张配图。此工具仅生成内容，发布需要配合 publish_xiaohongshu 工具。',
     category: 'content_creation',
     paramsSchema: {
       topic: { type: 'string', description: '笔记主题', required: true },
@@ -668,6 +668,7 @@ export class WriteXiaohongshuNoteTool implements ITool {
     try {
       const config = new Config()
       const client = new LLMClient(config)
+      const imageClient = new ImageGenerationClient(config)
 
       const prompt = `你是一位小红书爆款笔记撰写专家。请为以下主题撰写一篇小红书笔记：
 
@@ -685,6 +686,8 @@ export class WriteXiaohongshuNoteTool implements ITool {
 2. 分点阐述，每点用emoji开头
 3. 中间穿插「」强调关键词
 4. 结尾引导互动（点赞收藏评论）
+5. 正文300-500字，短小精悍
+6. 每段1-2行，方便阅读
 
 ## 话题标签
 （生成5-10个热门话题标签，带#号）
@@ -722,6 +725,27 @@ export class WriteXiaohongshuNoteTool implements ITool {
         tags = tagsMatch[1].match(/#[^\s#]+/g) || []
       }
 
+      // 生成配图
+      const imageCount = Math.min(Math.max(params.images_count || 3, 1), 9)
+      const imageUrls: string[] = []
+
+      for (let i = 0; i < imageCount; i++) {
+        try {
+          const imgPrompt = `小红书风格${params.style}笔记配图，${params.topic}，${titles[0] || ''}，ins风格，色彩鲜艳，种草感强，简洁明了`
+          const imgResponse = await imageClient.generate({
+            prompt: imgPrompt,
+            size: '1K',
+            watermark: false
+          })
+          const imgHelper = imageClient.getResponseHelper(imgResponse)
+          if (imgHelper.success && imgHelper.imageUrls.length > 0) {
+            imageUrls.push(imgHelper.imageUrls[0])
+          }
+        } catch (err) {
+          console.error(`生成第 ${i + 1} 张配图失败:`, err)
+        }
+      }
+
       return {
         success: true,
         data: {
@@ -729,13 +753,14 @@ export class WriteXiaohongshuNoteTool implements ITool {
           title_options: titles,
           content: mainContent,
           tags,
-          message: `小红书笔记「${titles[0] || params.topic}」创作完成，已复制到下方`,
-          // 不再提示 Agent 自动发布，让用户自己决定
-          // 用户可以点击"一键发布"按钮来发布
+          images: imageUrls,
+          image_count: imageUrls.length,
+          message: `小红书笔记「${titles[0] || params.topic}」创作完成，已生成${imageUrls.length}张配图`,
           xiaohongshu_content: {
             title: titles[0] || params.topic,
             content: mainContent,
-            tags
+            tags,
+            images: imageUrls
           }
         }
       }
