@@ -136,14 +136,31 @@ export default function SkillsSquare() {
     if (!currentAvatar?.id) return
 
     try {
+      console.log('[SkillSquare] 开始获取分身技能，分身ID:', currentAvatar.id)
       const res = await Network.request({
         url: `/api/skills/avatar/${currentAvatar.id}`,
         method: 'GET'
       })
 
+      console.log('[SkillSquare] 分身技能响应:', res)
+      console.log('[SkillSquare] 分身技能数据:', res.data?.data)
+
       if (res.data?.code === 200) {
         const mySkillsList = res.data.data || []
-        setMySkills(mySkillsList.map((s: any) => s.skillId))
+        console.log('[SkillSquare] 技能列表数组:', mySkillsList)
+        console.log('[SkillSquare] 第一个技能项:', mySkillsList[0])
+
+        // 提取技能ID，尝试多种可能的字段名
+        const skillIds = mySkillsList.map((s: any) => {
+          // 尝试多种可能的字段名
+          if (s.skillId) return s.skillId
+          if (s.skill_id) return s.skill_id
+          if (s.id) return s.id
+          if (s.skill) return s.skill?.id || s.skill?.skillId || s.skill?.skill_id
+          return s
+        })
+        console.log('[SkillSquare] 提取的技能ID列表:', skillIds)
+        setMySkills(skillIds)
       }
     } catch (error) {
       console.error('[SkillSquare] 获取我的技能失败:', error)
@@ -152,7 +169,14 @@ export default function SkillsSquare() {
 
   // 检查是否已拥有
   const isOwned = (skillId: string) => {
-    return mySkills.includes(skillId)
+    const result = mySkills.includes(skillId)
+    console.log('[SkillSquare] 检查技能是否已拥有:', {
+      skillId,
+      mySkills,
+      result,
+      mySkillsLength: mySkills.length
+    })
+    return result
   }
 
   // 购买技能
@@ -207,6 +231,12 @@ export default function SkillsSquare() {
     console.log('[SkillSquare] skills 状态变化，长度:', skills.length)
   }, [skills])
 
+  // 追踪 mySkills 状态变化
+  useEffect(() => {
+    console.log('[SkillSquare] mySkills 状态变化:', mySkills)
+    console.log('[SkillSquare] mySkills 长度:', mySkills.length)
+  }, [mySkills])
+
   return (
     <View className="skills-square-container">
       {/* 头部 */}
@@ -258,6 +288,12 @@ export default function SkillsSquare() {
           <View className="skills-grid">
             {skills.map((skill) => {
               const owned = isOwned(skill.id)
+              console.log('[SkillSquare] 渲染技能卡片:', {
+                skillId: skill.id,
+                skillName: skill.name,
+                owned,
+                mySkills
+              })
               return (
                 <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
                   {/* 图标和分类 */}
