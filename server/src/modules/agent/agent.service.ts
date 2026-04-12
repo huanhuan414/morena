@@ -645,7 +645,7 @@ export class AgentService {
     agentResult: AgentExecutionResult
   ): Promise<void> {
     const client = getSupabaseClient()
-    
+
     // 提取媒体内容
     const media: Array<{
       type: 'image' | 'video' | 'article'
@@ -694,22 +694,38 @@ export class AgentService {
         }
       }
     })
-    
+
+    // 获取当前任务上下文
+    const taskContext = this.currentTaskMap.get(userId)
+    const taskId = taskContext?.taskId || `task-${Date.now()}`
+
+    // 获取进度缓存的所有进度历史（用于恢复任务进度）
+    const progressHistory = this.progressCache.getProgress(userId, taskId)
+
     // 保存用户消息
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
       content: userMessage
     })
-    
-    // 保存 AI 回复（包含提取后的 media 数组）
+
+    // 保存 AI 回复（包含提取后的 media 数组和任务状态）
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content: aiMessage,
-      metadata: { 
+      metadata: {
         agent_result: agentResult,
-        media: media.length > 0 ? media : undefined
+        media: media.length > 0 ? media : undefined,
+        // 保存任务状态，用于恢复
+        task_state: {
+          taskId,
+          taskDescription: userMessage,
+          status: agentResult.success ? 'completed' : 'failed',
+          startTime: taskContext?.startTime,
+          endTime: Date.now(),
+          progressHistory: progressHistory.length > 0 ? progressHistory : undefined
+        }
       }
     })
     // 更新对话上下文

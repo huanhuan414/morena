@@ -637,15 +637,49 @@ export default function MindChatPage() {
         setMessages(data)
         setHasMoreMessages(data.length >= 20)
 
-        // 检查最后一条助手消息是否有未完成的任务
+        // 检查最后一条助手消息是否有任务状态
         const lastAssistantMessage = data.findLast((msg: Message) => msg.role === 'assistant')
-        if (lastAssistantMessage?.metadata?.agent_steps) {
+        if (lastAssistantMessage?.metadata?.task_state) {
+          const taskState = lastAssistantMessage.metadata.task_state
+          const agentResult = lastAssistantMessage.metadata.agent_result
+
+          // 如果任务状态是 running，或者状态是 completed 但有进度历史，则恢复显示
+          if (taskState.status === 'running' || (taskState.status === 'completed' && taskState.progressHistory && taskState.progressHistory.length > 0)) {
+            console.log('[MindChat] 检测到任务状态，恢复进度显示:', taskState)
+
+            // 恢复任务状态
+            setLoading(true)
+            setCurrentStatus(taskState.status === 'running' ? '任务执行中...' : '任务已完成')
+            setAgentSteps(agentResult?.steps || [])
+
+            // 恢复进度历史（显示给用户）
+            if (taskState.progressHistory && taskState.progressHistory.length > 0) {
+              const lastProgress = taskState.progressHistory[taskState.progressHistory.length - 1]
+              setCurrentStatus(lastProgress.message || '任务执行中...')
+            }
+
+            // 如果任务已中断（running 状态但时间已过去较久），提示用户
+            if (taskState.status === 'running' && taskState.startTime) {
+              const elapsed = Date.now() - taskState.startTime
+              const timeout = 5 * 60 * 1000 // 5分钟超时
+              if (elapsed > timeout) {
+                Taro.showModal({
+                  title: '任务状态',
+                  content: '检测到有任务可能已中断。如需继续，请重新发送相同指令。',
+                  showCancel: false
+                })
+                setLoading(false) // 停止加载状态
+              }
+            }
+          }
+        } else if (lastAssistantMessage?.metadata?.agent_steps) {
+          // 兼容旧格式（metadata.agent_steps）
           const steps = lastAssistantMessage.metadata.agent_steps
           const lastStep = steps[steps.length - 1]
 
           // 如果最后一步是 running 状态，说明任务可能还在执行或已中断
           if (lastStep?.status === 'running') {
-            console.log('[MindChat] 检测到未完成的任务，恢复状态')
+            console.log('[MindChat] 检测到未完成的任务（旧格式），恢复状态')
 
             // 恢复任务状态
             setLoading(true)
