@@ -844,8 +844,13 @@ export class AgentService {
         // 图片 - 支持单个 url 和 image_urls 数组两种格式
         if (data.url && typeof data.url === 'string') {
           // 单个URL（generate-image.tool.ts 返回的格式）
-          console.log('[媒体提取] 提取单个图片 URL:', data.url)
-          media.push({ type: 'image', url: data.url, key: data.key })
+          console.log('[媒体提取] 提取单个图片 URL:', data.url, 'key:', data.key)
+          const mediaItem = { type: 'image', url: data.url }
+          if (data.key) {
+            (mediaItem as any).key = data.key
+          }
+          console.log('[媒体提取] 准备添加的 mediaItem:', mediaItem)
+          media.push(mediaItem)
         }
         if (data.image_urls && Array.isArray(data.image_urls)) {
           // URL数组
