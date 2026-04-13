@@ -1091,6 +1091,31 @@ export class AgentService {
    * Reasoning -> Acting -> Observing -> 循环或结束
    */
   private async runReActLoop(context: AgentContext, userId: string): Promise<AgentExecutionResult> {
+    // 【前置检查】技能检测 - 如果缺少技能，直接返回答案，不执行任何操作
+    const skillCheckResult = this.checkRequiredSkills(context.taskDescription, context.availableTools)
+    if (skillCheckResult.missing.length > 0) {
+      const missingSkillNames = skillCheckResult.missing.map(s => this.getToolDisplayNameChinese(s.toolName)).join('、')
+      const finalAnswer = `检测到您的分身缺少以下技能：${missingSkillNames}
+
+请前往技能广场添加这些技能后，再重新发送相同指令，我会帮您完成${context.taskDescription}主题短剧成品的生成任务。`
+
+      console.log(`[AgentService] 检测到缺少技能: ${missingSkillNames}，直接返回答案`)
+
+      // 保存错误信息到缓存
+      const taskId = context.taskId || `task-${Date.now()}`
+      this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, finalAnswer)
+
+      // 推送错误事件
+      this.emitProgress(userId, 'error', finalAnswer)
+
+      return {
+        success: false,
+        finalAnswer,
+        steps: [],
+        requiresConfig: false
+      }
+    }
+
     const steps: ReActStep[] = []
     let finalAnswer = ''
     let requiresConfig = false
@@ -1272,7 +1297,7 @@ export class AgentService {
       console.log('[AgentService] 警告：context.avatarInfo 为空，分身无法识别自己的身份')
     }
 
-    // 智能任务理解提示
+    // 智能任务理解提示（不包含技能检测，因为已经在前面处理了）
     const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history, context)
 
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
@@ -1354,29 +1379,11 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
   /**
    * 获取任务理解提示
    * 帮助 Agent 正确理解各种任务类型
+   * 注意：技能缺失检测已在 think 方法前置处理，此处不包含技能检测逻辑
    */
   private getTaskUnderstandingHint(task: string, history: ReActStep[], context: AgentContext): string {
     const hints: string[] = []
     const lowerTask = task.toLowerCase()
-
-    // 【技能缺失检查】 - 优先检查用户需要的技能是否可用
-    const skillCheckResult = this.checkRequiredSkills(task, context.availableTools)
-    if (skillCheckResult.missing.length > 0) {
-      // 将缺失的技能名称转换为中文
-      const missingSkillNames = skillCheckResult.missing.map(s => this.getToolDisplayNameChinese(s.toolName)).join('、')
-      hints.push(`【技能缺失提醒】检测到您的分身缺少以下技能：${missingSkillNames}`)
-      hints.push(`请前往技能广场添加这些技能后再执行任务。`)
-      // 如果只是技能缺失，直接返回提示，不继续分析其他规则
-      return hints.join('\n')
-    }
-
-    // 【未知技能检测】 - 检测用户需求是否超出现有技能范围
-    const unknownSkillCheck = this.detectUnknownSkillRequirements(task, context.availableTools)
-    if (unknownSkillCheck) {
-      hints.push(unknownSkillCheck)
-      // 如果是未知技能需求，直接返回提示
-      return hints.join('\n')
-    }
 
     // 【多步指令检测】 - 优先检测包含分隔符的复合指令
     // 支持的分隔符：中文逗号、顿号、英文逗号、"并"、"然后"、"接下来"、"之后"、"同时"、"以及"、"还有"、"再"
