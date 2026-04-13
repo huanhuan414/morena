@@ -119,7 +119,9 @@ export class ChatService {
 
         // 调试日志：打印原始消息数据
         if (msg.metadata?.media) {
-          console.log('[ChatService getConversationMessages] 处理消息', msg.id, '原始 media:', msg.metadata.media)
+          console.log('[ChatService getConversationMessages] 处理消息', msg.id, '原始 media:', JSON.stringify(msg.metadata.media))
+        } else {
+          console.log('[ChatService getConversationMessages] 处理消息', msg.id, '没有 media 字段')
         }
 
         // 处理 media_keys，生成签名链接
@@ -138,11 +140,16 @@ export class ChatService {
 
         // 处理 metadata.media 数组，重新生成签名链接（解决视频链接过期问题）
         let mediaList: any[] = []
+
         if (msg.metadata?.media && Array.isArray(msg.metadata.media)) {
           console.log('[ChatService] 开始处理 media 数组，数量:', msg.metadata.media.length)
+          if (msg.metadata.media.length === 0) {
+            console.log('[ChatService] 警告：media 数组为空！')
+          }
+
           mediaList = await Promise.all(
             msg.metadata.media.map(async (mediaItem: any) => {
-              console.log('[ChatService] 处理 mediaItem:', mediaItem)
+              console.log('[ChatService] 处理 mediaItem:', JSON.stringify(mediaItem))
 
               // 如果 media 有 key，重新生成签名链接
               if (mediaItem.key) {
@@ -164,7 +171,9 @@ export class ChatService {
               return mediaItem
             })
           )
-          console.log('[ChatService] 处理完成，mediaList:', mediaList)
+          console.log('[ChatService] 处理完成，mediaList:', JSON.stringify(mediaList))
+        } else {
+          console.log('[ChatService] 没有找到 media 数组或不是数组')
         }
 
         // 转换 media_urls 为 media 数组格式（前端需要的格式）
