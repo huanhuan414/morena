@@ -814,8 +814,10 @@ export default function MindChatPage() {
           const steps = lastAssistantMessage.metadata.agent_steps
           const lastStep = steps[steps.length - 1]
 
-          // 如果最后一步是 running 状态，说明任务可能还在执行或已中断
-          if (lastStep?.status === 'running') {
+          // 检查任务是否已完成（有 result 字段或者 status 是 completed）
+          const isTaskCompleted = lastStep?.status === 'completed' || lastStep?.status === 'failed' || lastAssistantMessage?.metadata?.result
+
+          if (!isTaskCompleted && lastStep?.status === 'running') {
             console.log('[MindChat] 检测到未完成的任务（旧格式），恢复状态')
 
             // 恢复任务状态
@@ -836,6 +838,14 @@ export default function MindChatPage() {
                 setAgentSteps([])
               }
             })
+          } else if (isTaskCompleted) {
+            // 任务已完成，清空状态
+            console.log('[MindChat] 任务已完成（旧格式），清空状态')
+            setLoading(false)
+            loadingRef.current = false
+            setCurrentStatus('')
+            setTaskProgress(0)
+            setAgentSteps([])
           }
         } else {
           // 没有任务状态，清空所有状态
