@@ -857,6 +857,19 @@ export default function MindChatPage() {
           setAgentSteps([])
         }
 
+        // 额外检查：如果最后一条消息是 assistant 消息且 loading 仍然为 true，强制清空
+        if (loading && messages.length > 0) {
+          const lastMessage = messages[messages.length - 1]
+          if (lastMessage.role === 'assistant') {
+            console.warn('[MindChat] 检测到最后一条消息是 assistant 但 loading 仍为 true，强制清空')
+            setLoading(false)
+            loadingRef.current = false
+            setCurrentStatus('')
+            setTaskProgress(0)
+            setAgentSteps([])
+          }
+        }
+
         // 确保启用滚动到底部
         shouldScrollToBottomRef.current = true
         // useEffect 会在 messages 变化时自动滚动
@@ -940,17 +953,32 @@ export default function MindChatPage() {
       messageText,
       trimmedMessageText: messageText.trim(),
       hasConversation: !!conversation,
-      isLoading: loading
+      isLoading: loading,
+      loadingRef: loadingRef.current
     })
 
-    if (!messageText.trim() || !conversation || loading) {
+    if (!messageText.trim() || !conversation) {
       if (!messageText.trim()) {
         showToast({ title: '请输入消息', icon: 'none' })
       } else if (!conversation) {
         showToast({ title: '对话不存在', icon: 'none' })
-      } else if (loading) {
-        showToast({ title: '正在处理中，请稍候', icon: 'none' })
       }
+      return
+    }
+
+    // 如果 loading 状态卡住，强制清空
+    if (loading && loadingRef.current) {
+      console.warn('[MindChat] 检测到 loading 状态卡住，强制清空')
+      setLoading(false)
+      loadingRef.current = false
+      setCurrentStatus('')
+      setTaskProgress(0)
+      setAgentSteps([])
+    }
+
+    // 再次检查 loading 状态
+    if (loading) {
+      showToast({ title: '正在处理中，请稍候', icon: 'none' })
       return
     }
 
