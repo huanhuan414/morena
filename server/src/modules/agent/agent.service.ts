@@ -904,17 +904,34 @@ export class AgentService {
     if (messages && messages.length > 0) {
       const lastMessage = messages[0]
 
-      // 更新已存在的消息
+      // 检查 agentResult 是否有效，如果无效则不更新（保留原有数据）
+      const hasValidAgentResult = agentResult && agentResult.steps && agentResult.steps.length > 0
+      const hasValidMedia = media && media.length > 0
+
+      // 只在有有效数据时才更新，避免覆盖原有数据
+      const updateData: any = {
+        content: aiMessage
+      }
+
+      if (hasValidAgentResult || hasValidMedia) {
+        updateData.metadata = {
+          ...lastMessage.metadata,  // 保留原有 metadata
+          agent_result: hasValidAgentResult ? agentResult : lastMessage.metadata?.agent_result,
+          media: hasValidMedia ? media : lastMessage.metadata?.media
+        }
+      }
+
+      console.log('[AgentService updateAssistantMessage] 更新消息:', {
+        messageId: lastMessage.id,
+        hasValidAgentResult,
+        hasValidMedia,
+        stepsCount: agentResult?.steps?.length || 0,
+        mediaCount: media?.length || 0
+      })
+
       await client
         .from('messages')
-        .update({
-          content: aiMessage,
-          metadata: {
-            agent_result: agentResult,
-            media: media.length > 0 ? media : undefined
-            // 任务完成后不保存 task_state，避免前端误认为任务还在运行
-          }
-        })
+        .update(updateData)
         .eq('id', lastMessage.id)
     }
 
