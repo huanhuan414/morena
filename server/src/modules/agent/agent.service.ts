@@ -904,9 +904,22 @@ export class AgentService {
     if (messages && messages.length > 0) {
       const lastMessage = messages[0]
 
+      console.log('[AgentService updateAssistantMessage] 准备更新消息:', {
+        messageId: lastMessage.id,
+        原有metadata: (lastMessage as any).metadata,
+        新mediaCount: media.length,
+        新media: media,
+        新agentResultStepsCount: agentResult?.steps?.length || 0
+      })
+
       // 检查 agentResult 是否有效，如果无效则不更新（保留原有数据）
       const hasValidAgentResult = agentResult && agentResult.steps && agentResult.steps.length > 0
       const hasValidMedia = media && media.length > 0
+
+      console.log('[AgentService updateAssistantMessage] 数据有效性检查:', {
+        hasValidAgentResult,
+        hasValidMedia
+      })
 
       // 只在有有效数据时才更新，避免覆盖原有数据
       const updateData: any = {
@@ -921,6 +934,10 @@ export class AgentService {
           agent_result: hasValidAgentResult ? agentResult : existingMetadata.agent_result,
           media: hasValidMedia ? media : existingMetadata.media
         }
+
+        console.log('[AgentService updateAssistantMessage] 最终更新的 metadata:', updateData.metadata)
+      } else {
+        console.log('[AgentService updateAssistantMessage] 没有有效数据，只更新 content')
       }
 
       console.log('[AgentService updateAssistantMessage] 更新消息:', {
