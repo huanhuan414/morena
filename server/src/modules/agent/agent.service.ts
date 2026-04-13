@@ -590,6 +590,7 @@ export class AgentService {
 
       // 推送完成事件
       this.emitProgress(userId, 'complete', '任务执行完成', {
+        status: 'completed',
         success: result.success,
         requiresConfig: result.requiresConfig
       })
@@ -669,6 +670,7 @@ export class AgentService {
 
       // 推送完成事件
       this.emitProgress(userId, 'complete', '任务执行完成', {
+        status: 'completed',
         success: result.success,
         requiresConfig: result.requiresConfig
       })
@@ -693,7 +695,7 @@ export class AgentService {
     } catch (error) {
       // 保存错误信息
       this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, error.message)
-      this.emitProgress(userId, 'error', error.message)
+      this.emitProgress(userId, 'error', error.message, { status: 'failed' })
 
       // 更新 assistant 消息为失败状态
       if (options?.conversationId) {
@@ -1106,7 +1108,7 @@ export class AgentService {
       this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, finalAnswer)
 
       // 推送错误事件
-      this.emitProgress(userId, 'error', finalAnswer)
+      this.emitProgress(userId, 'error', finalAnswer, { status: 'failed' })
 
       return {
         success: false,
