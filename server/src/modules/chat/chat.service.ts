@@ -219,6 +219,15 @@ export class ChatService {
       })
     )
 
+    console.log('[ChatService] 处理完成的消息列表:', processedMessages.map(m => ({
+      id: m.id,
+      role: m.role,
+      hasAgentResult: !!m.metadata?.agent_result,
+      agentResultStepsCount: m.metadata?.agent_result?.steps?.length || 0,
+      hasMedia: !!m.metadata?.media,
+      mediaCount: m.metadata?.media?.length || 0
+    })))
+
     return processedMessages
   }
 

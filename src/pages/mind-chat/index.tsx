@@ -732,8 +732,28 @@ export default function MindChatPage() {
       const res = await Network.request({
         url: `/api/chat/conversation/${conversationId}/messages?limit=20`
       })
+
+      console.log('[MindChat fetchMessages] API 响应:', res.data)
+
       if (res.data?.code === 200) {
         const data = res.data.data || []
+
+        console.log('[MindChat fetchMessages] 新消息数量:', data.length)
+        if (data.length > 0) {
+          const lastMsg = data[data.length - 1]
+          if (lastMsg.role === 'assistant') {
+            console.log('[MindChat fetchMessages] 最后一条 assistant 消息详情:', {
+              id: lastMsg.id,
+              hasAgentResult: !!lastMsg.metadata?.agent_result,
+              agentResultStepsCount: lastMsg.metadata?.agent_result?.steps?.length || 0,
+              hasMedia: !!lastMsg.metadata?.media,
+              mediaCount: lastMsg.metadata?.media?.length || 0,
+              media: lastMsg.metadata?.media,
+              agentResult: lastMsg.metadata?.agent_result
+            })
+          }
+        }
+
         setMessages(data)
         setHasMoreMessages(data.length >= 20)
 
