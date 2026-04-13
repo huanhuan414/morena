@@ -709,6 +709,7 @@ export default function MindChatPage() {
 
             // 恢复任务状态
             setLoading(true)
+            loadingRef.current = true
             setCurrentStatus(taskState.status === 'running' ? '任务执行中...' : '任务已完成')
             setAgentSteps(agentResult?.steps || [])
             setTaskProgress(taskState.progress || 0)
@@ -772,6 +773,7 @@ export default function MindChatPage() {
 
                       // 清空状态
                       setLoading(false)
+                      loadingRef.current = false
                       setCurrentStatus('')
                       taskTimeoutRef.current = null
 
@@ -790,6 +792,7 @@ export default function MindChatPage() {
 
                     // 清空状态
                     setLoading(false)
+                    loadingRef.current = false
                     setCurrentStatus('')
                     taskTimeoutRef.current = null
                   }
@@ -822,6 +825,7 @@ export default function MindChatPage() {
 
             // 恢复任务状态
             setLoading(true)
+            loadingRef.current = true
             setCurrentStatus(lastStep.message || '任务执行中...')
             setAgentSteps(steps)
 
@@ -833,6 +837,7 @@ export default function MindChatPage() {
               success: () => {
                 // 用户点击确定后清空 loading 状态
                 setLoading(false)
+                loadingRef.current = false
                 setCurrentStatus('')
                 setTaskProgress(0)
                 setAgentSteps([])
@@ -966,8 +971,8 @@ export default function MindChatPage() {
       return
     }
 
-    // 如果 loading 状态卡住，强制清空
-    if (loading && loadingRef.current) {
+    // 如果 loading 状态卡住，强制清空（不考虑 loadingRef）
+    if (loading) {
       console.warn('[MindChat] 检测到 loading 状态卡住，强制清空')
       setLoading(false)
       loadingRef.current = false
@@ -1254,6 +1259,7 @@ export default function MindChatPage() {
     
     try {
       setLoading(true)
+      loadingRef.current = true
       setCurrentStatus('正在检查平台配置...')
       
       // 先检查平台配置
