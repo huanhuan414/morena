@@ -24,27 +24,43 @@ export class ChatService {
 
   async createConversation(userId: string, avatarId: string, title?: string) {
     const client = getSupabaseClient()
-    
+
+    // 验证 avatarId 是否存在
+    if (!avatarId) {
+      avatarId = 'default-avatar'
+    }
+
+    // 验证分身是否存在
+    const { data: avatar, error: avatarError } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', avatarId)
+      .maybeSingle()
+
+    if (avatarError || !avatar) {
+      console.warn(`分身 ${avatarId} 不存在，使用默认处理`)
+    }
+
     const { data: existingUser, error: userError } = await client
       .from('users')
       .select('id')
       .eq('id', userId)
-      .single()
-    
+      .maybeSingle()
+
     if (userError || !existingUser) {
       await client
         .from('users')
         .insert({
           id: userId,
           openid: `mock_openid_${userId}`,
-          nickname: `用户${userId.slice(-4)}`,
+          nickname: userId ? `用户${userId.slice(-4)}` : '测试用户',
           avatar: '',
           level: 1,
           exp: 0,
           credits: 0
         })
     }
-    
+
     const { data, error } = await client
       .from('conversations')
       .insert({
@@ -55,12 +71,31 @@ export class ChatService {
         updated_at: new Date().toISOString()
       })
       .select()
-      .single()
-    
+      .maybeSingle()
+
     if (error) {
+      // 如果是外键约束错误，使用 NULL
+      if (error.message.includes('foreign key constraint')) {
+        const { data: newData, error: newError } = await client
+          .from('conversations')
+          .insert({
+            user_id: userId,
+            avatar_id: null,
+            title: title || '新对话',
+            context: [],
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .maybeSingle()
+
+        if (newError) {
+          throw new Error(`创建对话失败: ${newError.message}`)
+        }
+        return newData
+      }
       throw new Error(`创建对话失败: ${error.message}`)
     }
-    
+
     return data
   }
 

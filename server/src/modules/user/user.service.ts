@@ -9,12 +9,12 @@ export class UserService {
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single()
-    
+      .maybeSingle()
+
     if (error) {
       throw new Error(`获取用户信息失败: ${error.message}`)
     }
-    
+
     return data
   }
 

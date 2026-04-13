@@ -376,8 +376,8 @@ export class AvatarService {
       .from('avatars')
       .select('*')
       .eq('id', avatarId)
-      .single()
-    
+      .maybeSingle()
+
     if (error) {
       throw new Error(`获取分身详情失败: ${error.message}`)
     }
