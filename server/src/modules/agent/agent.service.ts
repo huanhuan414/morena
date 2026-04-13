@@ -892,10 +892,10 @@ export class AgentService {
     // 获取进度缓存的所有进度历史（用于恢复任务进度）
     const progressHistory = this.progressCache.getProgress(userId, taskId)
 
-    // 获取最新的 assistant 消息
+    // 获取最新的 assistant 消息（包含 metadata）
     const { data: messages } = await client
       .from('messages')
-      .select('id')
+      .select('id, metadata')
       .eq('conversation_id', conversationId)
       .eq('role', 'assistant')
       .order('created_at', { ascending: false })
@@ -914,10 +914,12 @@ export class AgentService {
       }
 
       if (hasValidAgentResult || hasValidMedia) {
+        // 保留原有的 metadata，只更新必要的字段
+        const existingMetadata = (lastMessage as any).metadata || {}
         updateData.metadata = {
-          ...lastMessage.metadata,  // 保留原有 metadata
-          agent_result: hasValidAgentResult ? agentResult : lastMessage.metadata?.agent_result,
-          media: hasValidMedia ? media : lastMessage.metadata?.media
+          ...existingMetadata,
+          agent_result: hasValidAgentResult ? agentResult : existingMetadata.agent_result,
+          media: hasValidMedia ? media : existingMetadata.media
         }
       }
 
