@@ -1300,10 +1300,15 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
    - **如果在执行过程中已经生成了部分内容，不要提前返回，必须继续执行剩余的子任务**
    - 如果包含"查看分身"、"找分身"、"添加好友"等内部功能操作，优先执行这些操作
 
-2. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"等创作类任务时，才调用对应的工具。
+2. 只有当用户明确要求"生成图片"、"画图"、"设计图片"、"生成视频"、"写文章"、"发布内容"、"生成短剧"、"制作短剧"等创作类任务时，才调用对应的工具。
 3. 对于普通对话、问候、咨询、关注、点赞等社交互动，直接用Final Answer回复，不要调用任何工具。
 4. 如果用户只是说"关注"、"点赞"、"分享"等，这是普通社交行为，不需要调用工具，直接回复即可。
-5. 不要随意调用generate_image或generate_video工具，除非用户明确要求创作图片或视频。
+5. 不要随意调用generate_image、generate_video或produce_shortdrama工具，除非用户明确要求创作图片、视频或短剧。
+6. 【短剧工具使用规则】
+   - 当用户要求"生成短剧"、"制作短剧"、"真人短剧"、"短剧成品"时，必须使用 produce_shortdrama 工具
+   - 当用户要求"多集短剧"、"连续短剧"、"系列短剧"时，必须使用 generate_multi_episode_drama 工具
+   - 当用户明确要求"只要剧本"、"剧本文字"时，才使用 generate_shortdrama_script 工具
+   - 短剧工具会自动生成剧本、角色形象、场景设计和视频，不需要分步调用多个工具
 
 【多步指令执行规则】
 - 当识别到多步指令时，必须按顺序执行所有子任务
@@ -2257,13 +2262,43 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 
     const lowerTask = task.toLowerCase()
 
+    // 【优先检测短剧相关需求】
+    // 短剧成品制作（优先级最高）
+    if (lowerTask.match(/短剧.*成品|真人短剧|短剧成品|制作短剧|生成短剧|短剧制作/)) {
+      required.push({ toolName: 'produce_shortdrama', skillName: '完整短剧制作' })
+    }
+    // 多集连续短剧
+    else if (lowerTask.match(/多集.*短剧|连续短剧|系列短剧|短剧集/)) {
+      required.push({ toolName: 'generate_multi_episode_drama', skillName: '多集连续短剧' })
+    }
+    // 短剧剧本
+    else if (lowerTask.match(/短剧.*剧本|剧本.*短剧/)) {
+      required.push({ toolName: 'generate_shortdrama_script', skillName: '短剧剧本生成' })
+    }
+    // 短剧配音
+    else if (lowerTask.match(/短剧.*配音|配音.*短剧/)) {
+      required.push({ toolName: 'generate_drama_voiceover', skillName: '短剧配音' })
+    }
+    // 短剧视频剪辑
+    else if (lowerTask.match(/短剧.*剪辑|剪辑.*短剧/)) {
+      required.push({ toolName: 'edit_shortdrama_video', skillName: '视频剪辑' })
+    }
+    // 短剧字幕
+    else if (lowerTask.match(/短剧.*字幕|字幕.*短剧/)) {
+      required.push({ toolName: 'generate_subtitle', skillName: '字幕生成' })
+    }
+    // 短剧配乐
+    else if (lowerTask.match(/短剧.*配乐|配乐.*短剧|短剧.*背景音乐/)) {
+      required.push({ toolName: 'recommend_bgm', skillName: '配乐推荐' })
+    }
+    // 检测各种操作类型（普通视频生成，不是短剧）
+    else if (lowerTask.match(/生成.*视频|做.*视频|制作.*视频|视频生成/)) {
+      required.push({ toolName: 'generate_video', skillName: '视频生成' })
+    }
+
     // 检测各种操作类型
     if (lowerTask.match(/生成.*图|画.*图|设计.*图|做.*图|创作.*图|生成图片|画张图|做个图|海报/)) {
       required.push({ toolName: 'generate_image', skillName: '图像生成' })
-    }
-
-    if (lowerTask.match(/生成.*视频|做.*视频|制作.*视频|视频生成/)) {
-      required.push({ toolName: 'generate_video', skillName: '视频生成' })
     }
 
     if (lowerTask.match(/写.*文章|创作.*文章|写公众号|写内容/)) {
@@ -2314,11 +2349,21 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
    */
   private getToolDisplayNameChinese(toolName: string): string {
     const toolNameMap: Record<string, string> = {
+      // 短剧相关
+      'produce_shortdrama': '完整短剧制作',
+      'generate_multi_episode_drama': '多集连续短剧',
+      'generate_shortdrama_script': '短剧剧本生成',
+      'generate_drama_voiceover': '短剧配音',
+      'edit_shortdrama_video': '视频剪辑',
+      'generate_subtitle': '字幕生成',
+      'recommend_bgm': '配乐推荐',
+      // 内容创作
       'generate_image': '图像生成',
       'generate_video': '视频生成',
       'write_article': '文章创作',
       'write_xiaohongshu_note': '小红书笔记',
       'write_wechat_mp_article': '公众号文章',
+      // 平台发布
       'publish_wechat_mp': '公众号发布',
       'publish_xiaohongshu': '小红书发布',
       'publish_douyin': '抖音发布',
