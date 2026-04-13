@@ -703,14 +703,14 @@ export default function MindChatPage() {
 
           console.log('[MindChat] 检测到任务状态:', taskState.status, 'pageLoaded:', pageLoadedRef.current)
 
-          // 如果任务状态是 running，或者状态是 completed 但有进度历史，则恢复显示
-          if (taskState.status === 'running' || (taskState.status === 'completed' && taskState.progressHistory && taskState.progressHistory.length > 0)) {
+          // 只对未完成的任务恢复状态，已完成的任务不恢复
+          if (taskState.status === 'running') {
             console.log('[MindChat] 恢复任务状态显示:', taskState)
 
             // 恢复任务状态
             setLoading(true)
             loadingRef.current = true
-            setCurrentStatus(taskState.status === 'running' ? '任务执行中...' : '任务已完成')
+            setCurrentStatus('任务执行中...')
             setAgentSteps(agentResult?.steps || [])
             setTaskProgress(taskState.progress || 0)
 
@@ -724,7 +724,7 @@ export default function MindChatPage() {
             }
 
             // 如果任务状态是 running，启动轮询
-            if (taskState.status === 'running' && taskState.taskId) {
+            if (taskState.taskId) {
               const taskId = taskState.taskId
               console.log('[MindChat] 检测到任务正在执行中，启动轮询:', taskId)
 
@@ -804,13 +804,14 @@ export default function MindChatPage() {
               // 将 pollInterval 保存到 ref 中，以便在组件卸载时清理
               ;(pollIntervalRef as any).current = pollInterval
             }
-
-            // 如果任务已完成，清空 loading 状态
-            if (taskState.status === 'completed') {
-              setLoading(false)
-              setCurrentStatus('')
-              setTaskProgress(100)
-            }
+          } else {
+            // 任务已完成，清空所有状态
+            console.log('[MindChat] 任务已完成，清空所有状态')
+            setLoading(false)
+            loadingRef.current = false
+            setCurrentStatus('')
+            setTaskProgress(0)
+            setAgentSteps([])
           }
         } else if (lastAssistantMessage?.metadata?.agent_steps) {
           // 兼容旧格式（metadata.agent_steps）
