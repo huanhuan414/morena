@@ -306,15 +306,7 @@ export default function MindChatPage() {
 
   useDidShow(() => {
     if (isLoggedIn) {
-      // 页面显示时，强制清空 loading 状态和所有任务相关状态，防止用户无法发送消息
-      console.log('[MindChat] 页面显示，清空所有状态')
-
-      // 强制清空所有状态
-      setLoading(false)
-      loadingRef.current = false
-      setCurrentStatus('')
-      setTaskProgress(0)
-      setAgentSteps([])
+      console.log('[MindChat] 页面显示，检查是否有正在执行的任务')
 
       // 清除所有定时器
       if (taskTimeoutRef.current) {
@@ -328,7 +320,7 @@ export default function MindChatPage() {
         ;(pollIntervalRef as any).current = null
       }
 
-      // 标记页面已加载，避免在 fetchMessages 中自动恢复任务状态
+      // 标记页面已加载，让 fetchMessages 能够自动恢复任务状态
       pageLoadedRef.current = true
       console.log('[MindChat] pageLoadedRef 设置为 true')
 
@@ -705,13 +697,15 @@ export default function MindChatPage() {
 
         // 检查最后一条助手消息是否有任务状态
         const lastAssistantMessage = data.findLast((msg: Message) => msg.role === 'assistant')
-        if (lastAssistantMessage?.metadata?.task_state && !pageLoadedRef.current) {
+        if (lastAssistantMessage?.metadata?.task_state) {
           const taskState = lastAssistantMessage.metadata.task_state
           const agentResult = lastAssistantMessage.metadata.agent_result
 
+          console.log('[MindChat] 检测到任务状态:', taskState.status, 'pageLoaded:', pageLoadedRef.current)
+
           // 如果任务状态是 running，或者状态是 completed 但有进度历史，则恢复显示
           if (taskState.status === 'running' || (taskState.status === 'completed' && taskState.progressHistory && taskState.progressHistory.length > 0)) {
-            console.log('[MindChat] 检测到任务状态，恢复进度显示:', taskState)
+            console.log('[MindChat] 恢复任务状态显示:', taskState)
 
             // 恢复任务状态
             setLoading(true)
@@ -843,6 +837,14 @@ export default function MindChatPage() {
               }
             })
           }
+        } else {
+          // 没有任务状态，清空所有状态
+          console.log('[MindChat] 没有任务状态，清空所有状态')
+          setLoading(false)
+          loadingRef.current = false
+          setCurrentStatus('')
+          setTaskProgress(0)
+          setAgentSteps([])
         }
 
         // 确保启用滚动到底部
