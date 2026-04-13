@@ -73,9 +73,48 @@
   font-weight: 600;
 }
 
+/* 快捷分类标签 */
+.quick-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 1.25rem 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.625rem;
+  backdrop-filter: blur(20px);
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.tag-item text {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tag-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+}
+
+.tag-item.active text {
+  color: #ffffff;
+  font-weight: 600;
+}
+
 /* 技能列表 */
 .skills-scroll {
-  height: calc(100vh - 250px);
+  height: calc(100vh - 320px);
   padding: 0 1.25rem;
 }
 

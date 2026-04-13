@@ -427,6 +427,55 @@ export default function SkillsSquare() {
         )}
       </View>
 
+      {/* 快捷分类标签 */}
+      <View className="quick-tags">
+        <View
+          className={`tag-item ${!searchKeyword ? 'active' : ''}`}
+          onClick={() => {
+            setSearchKeyword('')
+            fetchSkills()
+          }}
+        >
+          <Text>全部</Text>
+        </View>
+        <View
+          className={`tag-item ${searchKeyword === '短剧' ? 'active' : ''}`}
+          onClick={() => {
+            setSearchKeyword('短剧')
+            handleSearch()
+          }}
+        >
+          <Text>🎬 短剧</Text>
+        </View>
+        <View
+          className={`tag-item ${searchKeyword === '视频' ? 'active' : ''}`}
+          onClick={() => {
+            setSearchKeyword('视频')
+            handleSearch()
+          }}
+        >
+          <Text>🎥 视频</Text>
+        </View>
+        <View
+          className={`tag-item ${searchKeyword === '写作' ? 'active' : ''}`}
+          onClick={() => {
+            setSearchKeyword('写作')
+            handleSearch()
+          }}
+        >
+          <Text>✍️ 写作</Text>
+        </View>
+        <View
+          className={`tag-item ${searchKeyword === '发布' ? 'active' : ''}`}
+          onClick={() => {
+            setSearchKeyword('发布')
+            handleSearch()
+          }}
+        >
+          <Text>📤 发布</Text>
+        </View>
+      </View>
+
       {/* 技能列表 */}
       <ScrollView className="skills-scroll" scrollY>
         {loading ? (
