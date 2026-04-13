@@ -841,8 +841,15 @@ export class AgentService {
       if (step.observation?.data) {
         const data = step.observation.data
 
-        // 图片
+        // 图片 - 支持单个 url 和 image_urls 数组两种格式
+        if (data.url && typeof data.url === 'string') {
+          // 单个URL（generate-image.tool.ts 返回的格式）
+          console.log('[媒体提取] 提取单个图片 URL:', data.url)
+          media.push({ type: 'image', url: data.url, key: data.key })
+        }
         if (data.image_urls && Array.isArray(data.image_urls)) {
+          // URL数组
+          console.log('[媒体提取] 提取图片数组:', data.image_urls)
           data.image_urls.forEach((url: string) => {
             if (url && typeof url === 'string') {
               media.push({ type: 'image', url })
@@ -871,10 +878,13 @@ export class AgentService {
 
         // 封面图（单独展示）
         if (data.cover_image_url && !data.content) {
+          console.log('[媒体提取] 提取封面图 URL:', data.cover_image_url)
           media.push({ type: 'image', url: data.cover_image_url })
         }
       }
     })
+
+    console.log('[媒体提取] 最终提取的媒体列表:', media)
 
     // 获取当前任务上下文
     const taskContext = this.currentTaskMap.get(userId)
@@ -901,16 +911,8 @@ export class AgentService {
           content: aiMessage,
           metadata: {
             agent_result: agentResult,
-            media: media.length > 0 ? media : undefined,
-            // 更新任务状态为 completed
-            task_state: {
-              taskId,
-              taskDescription: userMessage,
-              status: agentResult.success ? 'completed' : 'failed',
-              startTime: taskContext?.startTime,
-              endTime: Date.now(),
-              progressHistory: progressHistory.length > 0 ? progressHistory : undefined
-            }
+            media: media.length > 0 ? media : undefined
+            // 任务完成后不保存 task_state，避免前端误认为任务还在运行
           }
         })
         .eq('id', lastMessage.id)

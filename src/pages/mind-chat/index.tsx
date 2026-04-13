@@ -1921,8 +1921,16 @@ export default function MindChatPage() {
               if (step.observation?.data) {
                 const data = step.observation.data
 
-                // 图片 - 只添加不重复的图片
+                // 图片 - 支持单个 url 和 image_urls 数组两种格式
+                if (data.url && typeof data.url === 'string') {
+                  // 单个URL（generate-image.tool.ts 返回的格式）
+                  if (!existingUrls.has(data.url)) {
+                    mediaList.push({ type: 'image', url: data.url, key: data.key })
+                    existingUrls.add(data.url)
+                  }
+                }
                 if (data.image_urls && Array.isArray(data.image_urls)) {
+                  // URL数组
                   data.image_urls.forEach((url: string) => {
                     if (url && typeof url === 'string' && !existingUrls.has(url)) {
                       mediaList.push({ type: 'image', url })
@@ -1964,16 +1972,23 @@ export default function MindChatPage() {
 
           if (mediaList.length === 0) return null
 
+          // 调试日志：打印媒体列表
+          console.log('[图片渲染] mediaList:', mediaList)
+
           return (
             <View className="media-container">
               {mediaList.map((media, idx) => {
                 if (media.type === 'image') {
+                  console.log('[图片渲染] 渲染图片 URL:', media.url)
                   return (
                     <View key={idx} className="media-item image">
-                      <Image 
-                        src={media.url || ''} 
-                        className="media-image" 
+                      <Image
+                        src={media.url || ''}
+                        className="media-image"
                         mode="widthFix"
+                        onError={(e) => {
+                          console.error('[图片渲染] 图片加载失败:', media.url, e)
+                        }}
                         onClick={() => {
                           Taro.previewImage({
                             current: media.url,
