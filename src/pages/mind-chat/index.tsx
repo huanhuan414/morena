@@ -681,11 +681,13 @@ export default function MindChatPage() {
             setLoading(true)
             setCurrentStatus(taskState.status === 'running' ? '任务执行中...' : '任务已完成')
             setAgentSteps(agentResult?.steps || [])
+            setTaskProgress(taskState.progress || 0)
 
-            // 恢复进度历史（显示给用户）
+            // 获取最后一个进度记录
+            let lastProgress: any = null
             if (taskState.progressHistory && taskState.progressHistory.length > 0) {
-              const lastProgress = taskState.progressHistory[taskState.progressHistory.length - 1]
-              setCurrentStatus(lastProgress.message || '任务执行中...')
+              lastProgress = taskState.progressHistory[taskState.progressHistory.length - 1]
+              setCurrentStatus(lastProgress?.message || '任务执行中...')
             }
 
             // 如果任务已中断（running 状态但时间已过去较久），提示用户
@@ -693,20 +695,24 @@ export default function MindChatPage() {
               const elapsed = Date.now() - taskState.startTime
               const timeout = 5 * 60 * 1000 // 5分钟超时
               if (elapsed > timeout) {
+                // 保留 loading 状态，让用户可以看到任务信息
+                // 但改为非阻塞状态，允许用户发送新消息
+                setLoading(false)
+                const progressMessage = lastProgress?.message || taskState.progressDescription || '任务执行中'
+                setCurrentStatus('任务可能已中断，如需继续请重新发送指令')
+                setTaskProgress(taskState.progress || 0)
+
                 Taro.showModal({
                   title: '任务状态',
-                  content: '检测到有任务可能已中断。如需继续，请重新发送相同指令。',
+                  content: '检测到有任务可能已中断，当前停留在：' + progressMessage + '\n\n如需继续，请重新发送相同指令。',
                   showCancel: false,
                   success: () => {
-                    // 用户点击确定后清空 loading 状态
-                    setLoading(false)
+                    // 用户点击确定后，清空状态
                     setCurrentStatus('')
                     setTaskProgress(0)
                     setAgentSteps([])
                   }
                 })
-                // 即使弹窗未显示，也清空 loading 状态
-                setLoading(false)
               }
             }
 
@@ -734,7 +740,7 @@ export default function MindChatPage() {
             // 提示用户任务状态
             Taro.showModal({
               title: '任务状态',
-              content: '检测到有任务正在执行中，但可能已中断。如需继续，请重新发送相同指令。',
+              content: '检测到有任务正在执行中，但可能已中断，当前停留在：' + (lastStep.message || '任务执行中') + '\n\n如需继续，请重新发送相同指令。',
               showCancel: false,
               success: () => {
                 // 用户点击确定后清空 loading 状态
@@ -744,8 +750,6 @@ export default function MindChatPage() {
                 setAgentSteps([])
               }
             })
-            // 即使弹窗未显示，也清空 loading 状态
-            setLoading(false)
           }
         }
 
