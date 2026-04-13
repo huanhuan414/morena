@@ -57,6 +57,18 @@ function cleanMessageContent(content: string): string {
   // 移除"链接如下："引导的多链接列表
   cleaned = cleaned.replace(/链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
 
+  // 🔴 新增：移除"Image: [URL]"格式（包含中英文）- 匹配整行
+  cleaned = cleaned.replace(/^Image[图片]?\s*[:：].*$/gim, '')
+
+  // 🔴 新增：移除"Video: [URL]"格式（包含中英文）- 匹配整行
+  cleaned = cleaned.replace(/^Video[视频]?\s*[:：].*$/gim, '')
+
+  // 🔴 新增：移除"图片：[URL]"和"图片:[URL]"格式 - 匹配整行
+  cleaned = cleaned.replace(/^图片\s*[:：].*$/gim, '')
+
+  // 🔴 新增：移除"视频：[URL]"和"视频:[URL]"格式 - 匹配整行
+  cleaned = cleaned.replace(/^视频\s*[:：].*$/gim, '')
+
   // 移除多余的空行
   cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n')
 

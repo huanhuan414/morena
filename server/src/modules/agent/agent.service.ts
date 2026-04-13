@@ -1013,6 +1013,19 @@ export class AgentService {
 
     let cleaned = content
 
+    // 🔴 优先处理：移除"Image: [URL]"格式（包含中英文）- 匹配整行
+    // 使用更简单的正则：匹配 Image: 开头，后跟任何内容直到行尾
+    cleaned = cleaned.replace(/^Image[图片]?\s*[:：].*$/gim, '')
+
+    // 🔴 优先处理：移除"Video: [URL]"格式（包含中英文）- 匹配整行
+    cleaned = cleaned.replace(/^Video[视频]?\s*[:：].*$/gim, '')
+
+    // 🔴 优先处理：移除"图片：[URL]"和"图片:[URL]"格式 - 匹配整行
+    cleaned = cleaned.replace(/^图片\s*[:：].*$/gim, '')
+
+    // 🔴 优先处理：移除"视频：[URL]"和"视频:[URL]"格式 - 匹配整行
+    cleaned = cleaned.replace(/^视频\s*[:：].*$/gim, '')
+
     // 移除 Coze 临时文件代理链接（包含 file_path 参数的链接）
     cleaned = cleaned.replace(/https?:\/\/code\.coze\.cn\/api\/sandbox\/[^\s\n]+/gi, '')
 
