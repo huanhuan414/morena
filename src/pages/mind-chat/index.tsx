@@ -1954,14 +1954,23 @@ export default function MindChatPage() {
           // 优先使用 metadata.media，但如果 metadata.media 不完整，从 agent_result 中补充
           let mediaList = [...(msg.metadata?.media || [])]
 
+          // 调试日志：打印初始 mediaList
+          if (msg.metadata?.media) {
+            console.log('[图片渲染] metadata.media:', msg.metadata.media)
+          }
+
           // 从 agent_result.steps 中提取媒体内容（补充提取，确保不遗漏）
           if (msg.metadata?.agent_result?.steps) {
             const steps = msg.metadata.agent_result.steps || []
             const existingUrls = new Set(mediaList.map((m: MessageMedia) => m.url).filter(Boolean))
 
-            steps.forEach((step: ReActStep) => {
+            console.log('[图片渲染] 从 agent_result.steps 提取媒体，现有 URLs:', existingUrls)
+            console.log('[图片渲染] agent_result.steps 数量:', steps.length)
+
+            steps.forEach((step: ReActStep, stepIdx: number) => {
               if (step.observation?.data) {
                 const data = step.observation.data
+                console.log(`[图片渲染] Step ${stepIdx} data:`, data)
 
                 // 图片 - 支持单个 url 和 image_urls 数组两种格式
                 if (data.url && typeof data.url === 'string') {
@@ -2012,22 +2021,30 @@ export default function MindChatPage() {
             })
           }
 
-          if (mediaList.length === 0) return null
+          if (mediaList.length === 0) {
+            console.log('[图片渲染] mediaList 为空，不渲染媒体内容')
+            return null
+          }
 
           // 调试日志：打印媒体列表
-          console.log('[图片渲染] mediaList:', mediaList)
+          console.log('[图片渲染] 最终 mediaList:', mediaList)
+          console.log('[图片渲染] 准备渲染', mediaList.length, '个媒体项')
 
           return (
             <View className="media-container">
               {mediaList.map((media, idx) => {
+                console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
                 if (media.type === 'image') {
                   console.log('[图片渲染] 渲染图片 URL:', media.url)
                   return (
-                    <View key={idx} className="media-item image">
+                    <View key={`image-${idx}-${media.url}`} className="media-item image">
                       <Image
                         src={media.url || ''}
                         className="media-image"
                         mode="widthFix"
+                        onLoad={() => {
+                          console.log('[图片渲染] 图片加载成功:', media.url)
+                        }}
                         onError={(e) => {
                           console.error('[图片渲染] 图片加载失败:', media.url, e)
                         }}
