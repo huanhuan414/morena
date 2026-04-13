@@ -845,9 +845,9 @@ export class AgentService {
         if (data.url && typeof data.url === 'string') {
           // 单个URL（generate-image.tool.ts 返回的格式）
           console.log('[媒体提取] 提取单个图片 URL:', data.url, 'key:', data.key)
-          const mediaItem = { type: 'image', url: data.url }
+          const mediaItem: any = { type: 'image', url: data.url }
           if (data.key) {
-            (mediaItem as any).key = data.key
+            mediaItem.key = data.key
           }
           console.log('[媒体提取] 准备添加的 mediaItem:', mediaItem)
           media.push(mediaItem)
