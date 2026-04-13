@@ -117,6 +117,11 @@ export class ChatService {
       messages.map(async (msg) => {
         let mediaUrls: Record<string, string> = {}
 
+        // 调试日志：打印原始消息数据
+        if (msg.metadata?.media) {
+          console.log('[ChatService getConversationMessages] 处理消息', msg.id, '原始 media:', msg.metadata.media)
+        }
+
         // 处理 media_keys，生成签名链接
         if (msg.metadata?.media_keys) {
           const urls = await Promise.all(
@@ -134,64 +139,32 @@ export class ChatService {
         // 处理 metadata.media 数组，重新生成签名链接（解决视频链接过期问题）
         let mediaList: any[] = []
         if (msg.metadata?.media && Array.isArray(msg.metadata.media)) {
+          console.log('[ChatService] 开始处理 media 数组，数量:', msg.metadata.media.length)
           mediaList = await Promise.all(
             msg.metadata.media.map(async (mediaItem: any) => {
+              console.log('[ChatService] 处理 mediaItem:', mediaItem)
+
               // 如果 media 有 key，重新生成签名链接
               if (mediaItem.key) {
                 try {
                   const newUrl = await this.storage.generatePresignedUrl({ key: mediaItem.key, expireTime: 86400 * 7 })
+                  console.log('[ChatService] 重新生成签名链接成功:', mediaItem.key, '->', newUrl)
                   return {
                     ...mediaItem,
                     url: newUrl  // 使用新的签名链接替换旧链接
                   }
                 } catch (error) {
-                  console.error('[ChatService] 重新生成签名链接失败:', error)
+                  console.error('[ChatService] 重新生成签名链接失败:', mediaItem.key, error)
                   return mediaItem  // 失败时返回原始数据
                 }
               }
 
-              // 如果没有 key，尝试从 URL 中提取 key（兼容旧数据）
-              if (mediaItem.type === 'video' && mediaItem.url && !mediaItem.key) {
-                const url = mediaItem.url
-                let extractedKey = ''
-
-                // 方法1：从 URL path 中提取文件名
-                const urlMatch = url.match(/\/([^\/?]+\.mp4)/)
-                if (urlMatch) {
-                  const pathMatch = url.match(/\/(doubao-seedance-\d+-\d+\/[^\/?]+\.mp4)/)
-                  if (pathMatch) {
-                    extractedKey = pathMatch[1]
-                  } else {
-                    extractedKey = urlMatch[1]
-                  }
-                }
-
-                // 方法2：如果是 coze_storage 格式
-                const cozeMatch = url.match(/coze_storage_\d+\/([^\/?]+\.mp4)/)
-                if (cozeMatch) {
-                  extractedKey = `video_generate_${cozeMatch[1]}`
-                }
-
-                // 如果成功提取到 key，重新生成签名链接
-                if (extractedKey) {
-                  try {
-                    const newUrl = await this.storage.generatePresignedUrl({ key: extractedKey, expireTime: 86400 * 7 })
-                    console.log('[ChatService] 从 URL 提取 key 并重新生成签名链接:', extractedKey)
-                    return {
-                      ...mediaItem,
-                      url: newUrl,
-                      key: extractedKey  // 补充 key 字段
-                    }
-                  } catch (error) {
-                    console.error('[ChatService] 使用提取的 key 重新生成签名链接失败:', error)
-                  }
-                }
-              }
-
+              console.log('[ChatService] mediaItem 没有 key，返回原始数据')
               // 如果没有 key 或提取失败，直接返回原始数据
               return mediaItem
             })
           )
+          console.log('[ChatService] 处理完成，mediaList:', mediaList)
         }
 
         // 转换 media_urls 为 media 数组格式（前端需要的格式）
