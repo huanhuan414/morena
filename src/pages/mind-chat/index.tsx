@@ -306,12 +306,32 @@ export default function MindChatPage() {
 
   useDidShow(() => {
     if (isLoggedIn) {
-      // 页面显示时，强制清空 loading 状态，防止用户无法发送消息
+      // 页面显示时，强制清空 loading 状态和所有任务相关状态，防止用户无法发送消息
+      console.log('[MindChat] 页面显示，清空所有状态')
+
+      // 强制清空所有状态
       setLoading(false)
       loadingRef.current = false
       setCurrentStatus('')
       setTaskProgress(0)
-      
+      setAgentSteps([])
+
+      // 清除所有定时器
+      if (taskTimeoutRef.current) {
+        console.log('[MindChat] 清除 taskTimeoutRef')
+        clearTimeout(taskTimeoutRef.current)
+        taskTimeoutRef.current = null
+      }
+      if ((pollIntervalRef as any).current) {
+        console.log('[MindChat] 清除 pollIntervalRef')
+        clearInterval((pollIntervalRef as any).current)
+        ;(pollIntervalRef as any).current = null
+      }
+
+      // 标记页面已加载，避免在 fetchMessages 中自动恢复任务状态
+      pageLoadedRef.current = true
+      console.log('[MindChat] pageLoadedRef 设置为 true')
+
       fetchConversations()
 
       if (isFirstLoadRef.current) {
@@ -324,7 +344,7 @@ export default function MindChatPage() {
           fetchDefaultAvatar()
         }
       }
-      
+
       // 延迟获取学习数据，确保 avatar 已加载
       setTimeout(() => {
         fetchLearningStats()
@@ -375,7 +395,8 @@ export default function MindChatPage() {
 
   // 新消息时滚动到底部（排除加载历史消息的情况）
   const shouldScrollToBottomRef = useRef(true)
-  
+  const pageLoadedRef = useRef(false) // 标记页面是否已加载
+
   useEffect(() => {
     // 只有在需要滚动到底部时才滚动（新消息、发送消息时）
     if (shouldScrollToBottomRef.current && messages.length > 0) {
@@ -684,7 +705,7 @@ export default function MindChatPage() {
 
         // 检查最后一条助手消息是否有任务状态
         const lastAssistantMessage = data.findLast((msg: Message) => msg.role === 'assistant')
-        if (lastAssistantMessage?.metadata?.task_state) {
+        if (lastAssistantMessage?.metadata?.task_state && !pageLoadedRef.current) {
           const taskState = lastAssistantMessage.metadata.task_state
           const agentResult = lastAssistantMessage.metadata.agent_result
 
@@ -762,6 +783,21 @@ export default function MindChatPage() {
 
                       console.log('[MindChat] 任务已完成')
                     }
+                  } else if (progressRes.data?.data?.result) {
+                    // 如果没有 latest 但有 result，说明任务已经完成
+                    console.log('[MindChat] 任务已完成（通过 result）')
+                    clearInterval(pollInterval)
+                    clearTimeout(timeoutId)
+
+                    // 刷新消息列表，获取最终结果
+                    if (conversation) {
+                      await fetchMessages(conversation.id)
+                    }
+
+                    // 清空状态
+                    setLoading(false)
+                    setCurrentStatus('')
+                    taskTimeoutRef.current = null
                   }
                 } catch (error) {
                   console.error('[MindChat] 轮询任务进度失败:', error)
