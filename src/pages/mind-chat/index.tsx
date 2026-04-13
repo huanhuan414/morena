@@ -942,6 +942,7 @@ export default function MindChatPage() {
       // 降级为普通对话（暂不修改，保持兼容）
       await fallbackToNormalChat(messageText)
     } finally {
+      console.log('[MindChat] 发送消息完成，重置 loading 状态')
       setLoading(false)
       loadingRef.current = false
     }
@@ -996,8 +997,17 @@ export default function MindChatPage() {
 
       // 任务完成，清空状态提示
       setCurrentStatus('')
+      setAgentSteps([])
+      setTaskProgress(0)
+      console.log('[MindChat] 任务完成，已清空所有状态')
     } catch (error: any) {
       console.error('[MindChat] Agent 执行失败:', error)
+      // 清空状态提示，确保不会影响下一次发送
+      setCurrentStatus('')
+      setAgentSteps([])
+      setTaskProgress(0)
+      console.log('[MindChat] 已清空所有状态')
+      // 重新抛出错误，让外层 catch 块处理
       throw error
     }
   }
@@ -1058,6 +1068,8 @@ export default function MindChatPage() {
         if (resultRes.data?.code === 200 && resultRes.data.data) {
           const result = resultRes.data.data
 
+          console.log('[MindChat] 任务状态:', result.status, '任务数据:', result)
+
           // 检查任务是否完成
           if (result.status === 'completed' || result.status === 'failed') {
             // result.result 是 AgentExecutionResult 对象，包含 finalAnswer, steps 等字段
@@ -1073,7 +1085,7 @@ export default function MindChatPage() {
               created_at: new Date().toISOString(),
               metadata: {
                 agent_result: {
-                  success: result.status === 'completed',
+                  success: result.status === 'completed' && executionResult?.success !== false,
                   finalAnswer: executionResult?.finalAnswer || result.result?.finalAnswer || result.result?.result || result.message || '任务完成',
                   steps: executionResult?.steps || result.result?.steps || result.steps || [],
                   requiresConfig: executionResult?.requiresConfig ?? result.result?.requiresConfig ?? false
@@ -1098,6 +1110,8 @@ export default function MindChatPage() {
             // 任务完成，设置进度为100%，清空状态提示
             setTaskProgress(100)
             setCurrentStatus('')
+            setAgentSteps([])
+            console.log('[MindChat] 任务完成，已清空状态')
             return
           }
         }
