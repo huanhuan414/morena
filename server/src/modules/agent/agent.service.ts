@@ -975,8 +975,14 @@ export class AgentService {
     // 移除 Coze 临时文件代理链接（包含 file_path 参数的链接）
     cleaned = cleaned.replace(/https?:\/\/code\.coze\.cn\/api\/sandbox\/[^\s\n]+/gi, '')
 
+    // 移除所有 TOS 对象存储链接（ark-content-generation-v2）
+    // 匹配模式：https://ark-content-generation-v2-*.tos-cn-*.volces.com/...
+    cleaned = cleaned.replace(/https?:\/\/ark-content-generation-v2[\w-]+\.tos-cn-[\w-]+\.volces\.com\/[^\s\n]*/gi, '')
+
+    // 移除"已为您生成.*链接如下："模式（包含后续的多个链接）
+    cleaned = cleaned.replace(/已为您?生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
     // 移除"已为你生成.*链接如下："模式（包含后续的多个链接）
-    // 匹配 "已为你生成3张图片，链接如下：1. URL 2. URL 3. URL" 这种格式
     cleaned = cleaned.replace(/已为你生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
 
     // 移除"图片链接如下："模式（移除行内的URL）

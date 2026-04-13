@@ -21,6 +21,48 @@ import {
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
+/**
+ * 前端清理函数：移除消息内容中的图片链接等调试信息
+ * 与后端 cleanDebugInfo 方法保持一致
+ */
+function cleanMessageContent(content: string): string {
+  if (!content || typeof content !== 'string') return content
+
+  let cleaned = content
+
+  // 移除 Coze 临时文件代理链接
+  cleaned = cleaned.replace(/https?:\/\/code\.coze\.cn\/api\/sandbox\/[^\s\n]+/gi, '')
+
+  // 移除所有 TOS 对象存储链接
+  cleaned = cleaned.replace(/https?:\/\/ark-content-generation-v2[\w-]+\.tos-cn-[\w-]+\.volces\.com\/[^\s\n]*/gi, '')
+
+  // 移除"已为您生成.*链接如下："模式
+  cleaned = cleaned.replace(/已为您?生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
+  // 移除"已为你生成.*链接如下："模式
+  cleaned = cleaned.replace(/已为你生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
+  // 移除"图片链接如下："模式
+  cleaned = cleaned.replace(/图片链接如下[::：]\s*\d*[\.、]?\s*https?:\/\/[^\s\n]+/gi, '')
+
+  // 移除"视频链接如下："模式
+  cleaned = cleaned.replace(/视频链接如下[::：]\s*\d*[\.、]?\s*https?:\/\/[^\s\n]+/gi, '')
+
+  // 移除"已为你生成.*配图"模式
+  cleaned = cleaned.replace(/已为你生成.*配图[，,]\s*图片链接如下[::：]\s*https?:\/\/[^\s\n]+/gi, '')
+
+  // 移除独立的链接行
+  cleaned = cleaned.replace(/^\s*\d+[\.、]\s*https?:\/\/[^\s\n]+$/gm, '')
+
+  // 移除"链接如下："引导的多链接列表
+  cleaned = cleaned.replace(/链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
+
+  // 移除多余的空行
+  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n')
+
+  return cleaned.trim()
+}
+
 interface MessageMedia {
   type: 'image' | 'video' | 'article'
   url?: string
@@ -2102,9 +2144,11 @@ export default function MindChatPage() {
 
           // 如果没有视频链接和文章内容，才渲染文本
           if (msg.content && typeof msg.content === 'string') {
+            // 清理消息内容，移除图片链接等调试信息
+            const cleanedContent = cleanMessageContent(msg.content)
             return (
               <View className="text-message">
-                <MarkdownRender content={msg.content} />
+                <MarkdownRender content={cleanedContent} />
               </View>
             )
           }
@@ -2115,7 +2159,7 @@ export default function MindChatPage() {
         {/* 技能缺失提示和添加技能按钮 */}
         {(() => {
           // 检测技能缺失错误消息 - 支持多种错误格式
-          const contentStr = typeof msg.content === 'string' ? msg.content : ''
+          const contentStr = typeof msg.content === 'string' ? cleanMessageContent(msg.content) : ''
 
           // 检测多种可能的技能缺失错误格式
           const isSkillMissing =
