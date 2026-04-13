@@ -16,8 +16,8 @@ import { ToolResult } from '../agent.types'
 export class GenerateShortDramaScriptTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'generate_shortdrama_script',
-    displayName: '生成短剧剧本',
-    description: '根据用户输入的想法，生成专业的短剧剧本，包含故事梗概、角色设定、场景列表、分场对白。适合用于制作1-3分钟的短视频短剧。',
+    displayName: '生成短剧剧本（仅文字）',
+    description: '【注意】此工具只生成剧本文字，不包含角色形象、场景设计和视频！如果用户要求"成品"、"视频"、"可视化内容"，必须使用 produce_shortdrama 工具。此工具仅适用于用户明确要求"只要剧本"、"只要文字内容"的场景。输出包含故事梗概、角色设定、场景列表、分场对白。',
     category: 'content_creation',
     paramsSchema: {
       theme: { type: 'string', description: '短剧主题/想法', required: true },
@@ -170,8 +170,8 @@ export class GenerateShortDramaScriptTool implements ITool {
 export class GenerateStoryboardTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'generate_storyboard',
-    displayName: '生成分镜头脚本',
-    description: '将短剧剧本转换为专业的分镜头脚本，包含每个镜头的景别、镜头运动、画面描述、对白、时长。用于指导视频拍摄和AI视频生成。',
+    displayName: '生成分镜头脚本（仅文字）',
+    description: '【注意】此工具只生成分镜头脚本文字，不包含视频！如果用户要求"成品"、"视频"，必须使用 produce_shortdrama 工具。此工具仅适用于已有剧本，需要进一步细化镜头描述的场景。输出包含每个镜头的景别、镜头运动、画面描述、对白、时长。',
     category: 'content_creation',
     paramsSchema: {
       script_content: { type: 'string', description: '剧本内容', required: true },
@@ -270,15 +270,15 @@ ${params.script_content}
 export class ProduceShortDramaTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'produce_shortdrama',
-    displayName: '制作短剧',
-    description: '一站式短剧制作工具，根据用户想法自动生成完整的短剧，包含剧本、角色形象、场景设计、分镜头脚本、关键镜头视频。适合快速制作1-2分钟的短视频短剧。',
+    displayName: '制作短剧成品',
+    description: '【重要】这是直接生成短剧成品的工具！当用户要求"生成短剧"、"制作视频"、"给我成品"时，必须使用此工具。工具会自动完成：1）生成完整剧本 2）创建角色形象（2个）3）设计场景（3个）4）制作关键镜头视频（2个）。用户将看到可视化的角色、场景和视频内容，而不仅仅是剧本文字。',
     category: 'content_creation',
     paramsSchema: {
-      theme: { type: 'string', description: '短剧主题/想法', required: true },
+      theme: { type: 'string', description: '短剧主题/故事梗概（用户提供的完整想法）', required: true },
       genre: { type: 'string', enum: ['爱情', '悬疑', '喜剧', '剧情', '都市', '古装', '科幻', '青春'], default: '剧情' },
       duration: { type: 'number', description: '目标时长（分钟）', default: 2 },
-      include_video: { type: 'boolean', description: '是否生成关键镜头视频（较慢）', default: true },
-      key_scenes_count: { type: 'number', description: '关键视频镜头数量（最多3个）', default: 2 }
+      include_video: { type: 'boolean', description: '是否生成关键镜头视频（必须为 true 以提供成品）', default: true },
+      key_scenes_count: { type: 'number', description: '关键视频镜头数量（默认2个）', default: 2 }
     }
   }
 
@@ -498,6 +498,27 @@ ${scriptContent}
 
       console.log('[短剧制作] 短剧制作完成！')
 
+      // 提取所有图片URL（角色形象 + 场景设计）
+      const allImageUrls: string[] = []
+      characterImages.forEach((char: any) => {
+        if (char.url) {
+          allImageUrls.push(char.url)
+        }
+      })
+      sceneImages.forEach((scene: any) => {
+        if (scene.url) {
+          allImageUrls.push(scene.url)
+        }
+      })
+
+      // 提取所有视频URL
+      const allVideoUrls: string[] = []
+      videoClips.forEach((clip: any) => {
+        if (clip.url) {
+          allVideoUrls.push(clip.url)
+        }
+      })
+
       return {
         success: true,
         data: {
@@ -509,6 +530,9 @@ ${scriptContent}
           characters: characterImages,
           scenes: sceneImages,
           video_clips: videoClips,
+          // 兼容前端提取逻辑
+          image_urls: allImageUrls,
+          video_url: allVideoUrls.length > 0 ? allVideoUrls[0] : undefined,
           production_stats: {
             characters_generated: characterImages.length,
             scenes_generated: sceneImages.length,
