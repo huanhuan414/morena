@@ -198,7 +198,12 @@ export default function MindChatPage() {
   // 初始加载标记：是否已经加载过学习数据（用于区分首次加载和对话学习）
   const isInitialLoadRef = useRef(true)
   const messageCountBeforeSendRef = useRef<number>(0)
-  
+
+  // 轮询定时器 ref（用于任务状态恢复时的轮询）
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  // 任务超时定时器 ref（用于任务状态恢复时的超时保护）
+  const taskTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   // 学习详情弹窗
   const [showLearningDetail, setShowLearningDetail] = useState<'dialog' | 'days' | 'mastery' | 'level' | 'identity' | 'style' | 'interests' | 'phrases' | 'capabilities' | null>(null)
 
@@ -329,6 +334,16 @@ export default function MindChatPage() {
   // 组件卸载时停止轮询
   useEffect(() => {
     return () => {
+      // 清理任务状态恢复时的轮询定时器
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+      // 清理任务超时定时器
+      if (taskTimeoutRef.current) {
+        clearTimeout(taskTimeoutRef.current)
+        taskTimeoutRef.current = null
+      }
       // 旧的轮询机制已废弃，保留注释以防需要回退
       // stopProgressPolling()
       // stopResultPolling()
@@ -688,32 +703,73 @@ export default function MindChatPage() {
             if (taskState.progressHistory && taskState.progressHistory.length > 0) {
               lastProgress = taskState.progressHistory[taskState.progressHistory.length - 1]
               setCurrentStatus(lastProgress?.message || '任务执行中...')
+            } else if (taskState.lastProgressMessage) {
+              setCurrentStatus(taskState.lastProgressMessage)
             }
 
-            // 如果任务已中断（running 状态但时间已过去较久），提示用户
-            if (taskState.status === 'running' && taskState.startTime) {
-              const elapsed = Date.now() - taskState.startTime
-              const timeout = 5 * 60 * 1000 // 5分钟超时
-              if (elapsed > timeout) {
-                // 保留 loading 状态，让用户可以看到任务信息
-                // 但改为非阻塞状态，允许用户发送新消息
-                setLoading(false)
-                const progressMessage = lastProgress?.message || taskState.progressDescription || '任务执行中'
-                setCurrentStatus('任务可能已中断，如需继续请重新发送指令')
-                setTaskProgress(taskState.progress || 0)
+            // 如果任务状态是 running，启动轮询
+            if (taskState.status === 'running' && taskState.taskId) {
+              const taskId = taskState.taskId
+              console.log('[MindChat] 检测到任务正在执行中，启动轮询:', taskId)
 
-                Taro.showModal({
-                  title: '任务状态',
-                  content: '检测到有任务可能已中断，当前停留在：' + progressMessage + '\n\n如需继续，请重新发送相同指令。',
-                  showCancel: false,
-                  success: () => {
-                    // 用户点击确定后，清空状态
-                    setCurrentStatus('')
-                    setTaskProgress(0)
-                    setAgentSteps([])
+              // 启动超时保护，但不自动取消任务
+              const timeoutId = setTimeout(() => {
+                if (loading) {
+                  console.log('[MindChat] 任务执行时间较长，提示用户耐心等待')
+                  setCurrentStatus('任务执行时间较长，请耐心等待...')
+                }
+              }, 5 * 60 * 1000) // 5 分钟
+
+              taskTimeoutRef.current = timeoutId
+
+              // 持续轮询直到任务完成
+              const pollInterval = setInterval(async () => {
+                try {
+                  const progressRes = await Network.request({
+                    url: '/api/agent/progress',
+                    method: 'GET',
+                    data: { taskId }
+                  })
+
+                  if (progressRes.data?.data?.latest) {
+                    const latest = progressRes.data.data.latest
+                    console.log('[MindChat] 任务进度更新:', latest)
+
+                    // 更新进度提示
+                    if (latest.message) {
+                      setCurrentStatus(latest.message)
+                    }
+
+                    // 更新进度百分比
+                    if (latest.percentage !== undefined) {
+                      setTaskProgress(latest.percentage)
+                    }
+
+                    // 检查任务是否完成
+                    if (latest.status === 'completed' || latest.status === 'failed') {
+                      clearInterval(pollInterval)
+                      clearTimeout(timeoutId)
+
+                      // 刷新消息列表，获取最终结果
+                      if (conversation) {
+                        await fetchMessages(conversation.id)
+                      }
+
+                      // 清空状态
+                      setLoading(false)
+                      setCurrentStatus('')
+                      taskTimeoutRef.current = null
+
+                      console.log('[MindChat] 任务已完成')
+                    }
                   }
-                })
-              }
+                } catch (error) {
+                  console.error('[MindChat] 轮询任务进度失败:', error)
+                }
+              }, 2000)
+
+              // 将 pollInterval 保存到 ref 中，以便在组件卸载时清理
+              ;(pollIntervalRef as any).current = pollInterval
             }
 
             // 如果任务已完成，清空 loading 状态

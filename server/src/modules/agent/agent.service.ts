@@ -80,6 +80,7 @@ interface ConversationMessage {
 interface TaskContext {
   taskId: string
   startTime: number
+  conversationId?: string
 }
 
 @Injectable()
@@ -135,6 +136,11 @@ export class AgentService {
 
     // 同时保存到缓存（用于轮询）
     this.progressCache.addProgress(userId, progress)
+
+    // 同步更新 assistant 消息的 metadata（用于任务中断后恢复）
+    if (taskContext?.conversationId) {
+      this.updateAssistantMessageProgress(taskContext.conversationId, userId, taskId, message, percentage)
+    }
   }
 
   /**
@@ -497,14 +503,28 @@ export class AgentService {
     if (options?.conversationId) {
       // 清理 finalAnswer 中的调试信息（如图片链接等）
       const cleanedFinalAnswer = this.cleanDebugInfo(finalAnswer)
-      
-      await this.saveConversationHistory(
+
+      // 获取任务上下文
+      const taskContext = this.currentTaskMap.get(userId)
+      const taskId = taskContext?.taskId || `task-${Date.now()}`
+
+      // 创建初始消息并更新为完成状态
+      await this.createInitialAssistantMessage(
+        options.conversationId,
+        userId,
+        avatarId,
+        taskDescription,
+        taskId
+      )
+
+      await this.updateAssistantMessage(
         options.conversationId,
         userId,
         avatarId,
         taskDescription,
         cleanedFinalAnswer,
-        { success: !requiresConfig, finalAnswer, steps, requiresConfig, configPlatform, configFields }
+        { success: !requiresConfig, finalAnswer, steps, requiresConfig, configPlatform, configFields },
+        taskId
       )
     }
 
@@ -539,44 +559,57 @@ export class AgentService {
     const taskId = options?.taskId || `task-${Date.now()}`
     this.currentTaskMap.set(userId, {
       taskId,
-      startTime: Date.now()
+      startTime: Date.now(),
+      conversationId: options?.conversationId
     })
-    
+
     // 清除之前的进度缓存
     this.progressCache.clearProgress(userId)
-    
+
+    // 如果有 conversationId，创建初始的 assistant 消息
+    if (options?.conversationId) {
+      await this.createInitialAssistantMessage(
+        options.conversationId,
+        userId,
+        avatarId,
+        taskDescription,
+        taskId
+      )
+    }
+
     try {
       // 推送开始事件
       this.emitProgress(userId, 'start', '开始分析任务...')
-      
+
       // 初始化上下文
       this.emitProgress(userId, 'progress', '初始化执行环境...')
       const context = await this.initContext(userId, avatarId, taskDescription, options)
-      
+
       // 执行 ReAct 循环
       const result = await this.runReActLoop(context, userId)
-      
+
       // 推送完成事件
-      this.emitProgress(userId, 'complete', '任务执行完成', { 
+      this.emitProgress(userId, 'complete', '任务执行完成', {
         success: result.success,
-        requiresConfig: result.requiresConfig 
+        requiresConfig: result.requiresConfig
       })
-      
+
       // 保存对话记录
       if (options?.conversationId) {
         // 清理 finalAnswer 中的调试信息（如图片链接等）
         const cleanedFinalAnswer = this.cleanDebugInfo(result.finalAnswer)
-        
-        await this.saveConversationHistory(
+
+        await this.updateAssistantMessage(
           options.conversationId,
           userId,
           avatarId,
           taskDescription,
           cleanedFinalAnswer,
-          result
+          result,
+          taskId
         )
       }
-      
+
       return result
     } finally {
       // 清理任务上下文
@@ -601,53 +634,85 @@ export class AgentService {
     }
   ): Promise<AgentExecutionResult> {
     const taskId = options?.taskId || `task-${Date.now()}`
-    
+
     // 更新任务状态为 running
     this.progressCache.updateTaskStatus(userId, taskId, 'running')
-    
+
     // 设置任务上下文
     this.currentTaskMap.set(userId, {
       taskId,
-      startTime: Date.now()
+      startTime: Date.now(),
+      conversationId: options?.conversationId
     })
-    
+
+    // 如果有 conversationId，创建初始的 assistant 消息（用于保存任务状态）
+    if (options?.conversationId) {
+      await this.createInitialAssistantMessage(
+        options.conversationId,
+        userId,
+        avatarId,
+        taskDescription,
+        taskId
+      )
+    }
+
     try {
       // 推送开始事件
       this.emitProgress(userId, 'start', '开始分析任务...')
-      
+
       // 初始化上下文
       this.emitProgress(userId, 'progress', '初始化执行环境...')
       const context = await this.initContext(userId, avatarId, taskDescription, options)
-      
+
       // 执行 ReAct 循环
       const result = await this.runReActLoop(context, userId)
-      
+
       // 推送完成事件
-      this.emitProgress(userId, 'complete', '任务执行完成', { 
+      this.emitProgress(userId, 'complete', '任务执行完成', {
         success: result.success,
-        requiresConfig: result.requiresConfig 
+        requiresConfig: result.requiresConfig
       })
-      
+
       // 保存任务结果到缓存
       this.progressCache.updateTaskStatus(userId, taskId, 'completed', result)
-      
-      // 保存对话记录
+
+      // 保存对话记录（更新已存在的 assistant 消息）
       if (options?.conversationId) {
-        await this.saveConversationHistory(
+        await this.updateAssistantMessage(
           options.conversationId,
           userId,
           avatarId,
           taskDescription,
           result.finalAnswer,
-          result
+          result,
+          taskId
         )
       }
-      
+
       return result
     } catch (error) {
       // 保存错误信息
       this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, error.message)
       this.emitProgress(userId, 'error', error.message)
+
+      // 更新 assistant 消息为失败状态
+      if (options?.conversationId) {
+        await this.updateAssistantMessage(
+          options.conversationId,
+          userId,
+          avatarId,
+          taskDescription,
+          `任务执行失败: ${error.message}`,
+          {
+            success: false,
+            finalAnswer: `任务执行失败: ${error.message}`,
+            steps: [],
+            requiresConfig: false
+          } as AgentExecutionResult,
+          taskId
+        )
+      }
+
       throw error
     } finally {
       // 清理任务上下文
@@ -656,15 +721,107 @@ export class AgentService {
   }
 
   /**
-   * 保存对话历史
+   * 创建初始的 assistant 消息（用于保存任务状态）
+   * 在任务开始时调用，确保即使任务中断也能恢复进度
    */
-  private async saveConversationHistory(
+  private async createInitialAssistantMessage(
+    conversationId: string,
+    userId: string,
+    avatarId: string,
+    taskDescription: string,
+    taskId: string
+  ): Promise<void> {
+    const client = getSupabaseClient()
+
+    // 保存用户消息
+    await client.from('messages').insert({
+      conversation_id: conversationId,
+      role: 'user',
+      content: taskDescription
+    })
+
+    // 创建初始的 assistant 消息（content 为空，metadata 包含任务状态）
+    await client.from('messages').insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: '',
+      metadata: {
+        task_state: {
+          taskId,
+          taskDescription,
+          status: 'running',
+          startTime: Date.now(),
+          endTime: null,
+          progressHistory: []
+        }
+      }
+    })
+  }
+
+  /**
+   * 更新 assistant 消息的进度信息
+   * 在任务执行过程中调用，同步更新消息 metadata 中的进度历史
+   */
+  private async updateAssistantMessageProgress(
+    conversationId: string,
+    userId: string,
+    taskId: string,
+    message: string,
+    percentage?: number
+  ): Promise<void> {
+    try {
+      const client = getSupabaseClient()
+
+      // 获取当前的进度历史
+      const progressHistory = this.progressCache.getProgress(userId, taskId)
+
+      // 获取最新的 assistant 消息
+      const { data: messages } = await client
+        .from('messages')
+        .select('id, metadata')
+        .eq('conversation_id', conversationId)
+        .eq('role', 'assistant')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (messages && messages.length > 0) {
+        const lastMessage = messages[0]
+
+        // 更新消息的 metadata
+        await client
+          .from('messages')
+          .update({
+            metadata: {
+              ...lastMessage.metadata,
+              task_state: {
+                ...lastMessage.metadata?.task_state,
+                status: 'running',
+                progressHistory: progressHistory.length > 0 ? progressHistory : undefined,
+                lastProgressMessage: message,
+                lastProgressPercentage: percentage
+              }
+            }
+          })
+          .eq('id', lastMessage.id)
+      }
+    } catch (error) {
+      console.error('[AgentService] 更新 assistant 消息进度失败:', error)
+      // 不抛出错误，避免影响任务执行
+    }
+  }
+
+  /**
+   * 更新 assistant 消息（任务完成后调用）
+   * 补充 content 和 metadata 中的完整信息
+   */
+  private async updateAssistantMessage(
     conversationId: string,
     userId: string,
     avatarId: string,
     userMessage: string,
     aiMessage: string,
-    agentResult: AgentExecutionResult
+    agentResult: AgentExecutionResult,
+    taskId: string
   ): Promise<void> {
     const client = getSupabaseClient()
 
@@ -719,44 +876,51 @@ export class AgentService {
 
     // 获取当前任务上下文
     const taskContext = this.currentTaskMap.get(userId)
-    const taskId = taskContext?.taskId || `task-${Date.now()}`
 
     // 获取进度缓存的所有进度历史（用于恢复任务进度）
     const progressHistory = this.progressCache.getProgress(userId, taskId)
 
-    // 保存用户消息
-    await client.from('messages').insert({
-      conversation_id: conversationId,
-      role: 'user',
-      content: userMessage
-    })
+    // 获取最新的 assistant 消息
+    const { data: messages } = await client
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    // 保存 AI 回复（包含提取后的 media 数组和任务状态）
-    await client.from('messages').insert({
-      conversation_id: conversationId,
-      role: 'assistant',
-      content: aiMessage,
-      metadata: {
-        agent_result: agentResult,
-        media: media.length > 0 ? media : undefined,
-        // 保存任务状态，用于恢复
-        task_state: {
-          taskId,
-          taskDescription: userMessage,
-          status: agentResult.success ? 'completed' : 'failed',
-          startTime: taskContext?.startTime,
-          endTime: Date.now(),
-          progressHistory: progressHistory.length > 0 ? progressHistory : undefined
-        }
-      }
-    })
+    if (messages && messages.length > 0) {
+      const lastMessage = messages[0]
+
+      // 更新已存在的消息
+      await client
+        .from('messages')
+        .update({
+          content: aiMessage,
+          metadata: {
+            agent_result: agentResult,
+            media: media.length > 0 ? media : undefined,
+            // 更新任务状态为 completed
+            task_state: {
+              taskId,
+              taskDescription: userMessage,
+              status: agentResult.success ? 'completed' : 'failed',
+              startTime: taskContext?.startTime,
+              endTime: Date.now(),
+              progressHistory: progressHistory.length > 0 ? progressHistory : undefined
+            }
+          }
+        })
+        .eq('id', lastMessage.id)
+    }
+
     // 更新对话上下文
     const { data: conversation } = await client
       .from('conversations')
       .select('context')
       .eq('id', conversationId)
       .single()
-    
+
     // 确保 currentContext 是数组
     let currentContext: ConversationMessage[] = []
     if (conversation?.context) {
@@ -768,51 +932,31 @@ export class AgentService {
         if (keys.length === 1 && keys[0].startsWith('friend_id:')) {
           // 这是 friend_id 格式，忽略，使用空数组
           currentContext = []
-        } else if (keys.length > 0) {
-          // 可能是其他对象格式，尝试转换为数组
-          currentContext = Object.values(ctx) as ConversationMessage[]
+        } else {
+          // 假设是标准的 JSON 数组格式
+          currentContext = ctx as any
         }
       } else if (Array.isArray(ctx)) {
-        currentContext = ctx as ConversationMessage[]
-      } else if (typeof ctx === 'string') {
-        try {
-          currentContext = JSON.parse(ctx) as ConversationMessage[]
-        } catch (e) {
-          console.error('[AgentService] 解析对话上下文失败:', e)
-          currentContext = []
-        }
+        currentContext = ctx
       }
     }
-    
-    const newContext = [
-      ...(Array.isArray(currentContext) ? currentContext.slice(-18) : []), // 保留最近 10 轮对话
+
+    // 添加新的对话上下文
+    currentContext.push(
       { role: 'user', content: userMessage },
       { role: 'assistant', content: aiMessage }
-    ]
-    
+    )
+
+    // 只保留最近 20 条消息
+    if (currentContext.length > 20) {
+      currentContext = currentContext.slice(-20)
+    }
+
+    // 更新对话上下文
     await client
       .from('conversations')
-      .update({
-        context: newContext,
-        updated_at: new Date().toISOString()
-      })
+      .update({ context: currentContext })
       .eq('id', conversationId)
-    
-    // 调用学习系统，分析用户消息并更新分身的学习数据
-    try {
-      console.log('[AgentService] 开始学习分析:', { avatarId, userId, userMessage: userMessage.substring(0, 50) })
-      await this.learningService.analyzeAndUpdate(
-        avatarId,
-        userId,
-        userMessage,
-        aiMessage,
-        newContext.slice(-10).map(msg => msg.content)
-      )
-      console.log('[AgentService] 学习分析完成')
-    } catch (error) {
-      console.error('[AgentService] 学习分析失败:', error)
-      // 学习失败不影响主流程
-    }
   }
 
   /**
