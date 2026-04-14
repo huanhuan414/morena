@@ -2034,6 +2034,15 @@ export default function MindChatPage() {
         
         {/* 富媒体内容 */}
         {(() => {
+          console.log('[富媒体渲染] 开始处理消息:', {
+            id: msg.id,
+            role: msg.role,
+            hasMetadata: !!msg.metadata,
+            metadata: msg.metadata,
+            hasMedia: !!msg.metadata?.media,
+            mediaLength: msg.metadata?.media?.length || 0
+          })
+
           // 检查是否有文章内容（避免重复渲染）
           const hasArticleInMedia = msg.metadata?.media?.some((m: MessageMedia) => m.type === 'article')
 
@@ -2176,6 +2185,14 @@ export default function MindChatPage() {
                   // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
                   const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
                   const videoUrl = media.url || ''
+
+                  console.log('[视频渲染] 渲染视频:', {
+                    idx,
+                    isH5,
+                    videoUrl: videoUrl.substring(0, 80),
+                    hasKey: !!media.key,
+                    key: media.key?.substring(0, 50) || ''
+                  })
 
                   return (
                     <View key={idx} className="media-item video">

@@ -874,11 +874,13 @@ export class AgentService {
 
         // 视频（同时保存 url 和 key）
         if (data.video_url) {
+          console.log('[媒体提取] 提取视频 URL:', data.video_url, 'key:', data.video_key || data.key)
           media.push({
             type: 'video',
             url: data.video_url,
             key: data.video_key || data.key  // 保存 key 用于重新生成签名链接
           })
+          console.log('[媒体提取] 已添加视频到 media 列表，当前 media 数量:', media.length)
         }
 
         // 封面图（单独展示）
@@ -923,7 +925,10 @@ export class AgentService {
 
       console.log('[AgentService updateAssistantMessage] 数据有效性检查:', {
         hasValidAgentResult,
-        hasValidMedia
+        hasValidMedia,
+        mediaList: media,
+        mediaTypes: media.map(m => m.type),
+        mediaCount: media.length
       })
 
       // 只在有有效数据时才更新，避免覆盖原有数据
@@ -947,6 +952,12 @@ export class AgentService {
         if (updateData.metadata.task_state) {
           delete updateData.metadata.task_state
         }
+
+        console.log('[AgentService updateAssistantMessage] 准备更新的 metadata.media:', {
+          mediaCount: updateData.metadata.media?.length || 0,
+          mediaTypes: updateData.metadata.media?.map(m => m.type) || [],
+          media: updateData.metadata.media
+        })
 
         console.log('[AgentService updateAssistantMessage] 最终更新的 metadata:', updateData.metadata)
       } else {
