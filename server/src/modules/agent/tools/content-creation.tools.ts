@@ -1101,6 +1101,8 @@ export class GenerateVideoTool implements ITool {
 
       // 如果返回的URL不是TOS CDN，则上传到TOS
       let finalVideoUrl = videoUrl
+      let videoKey: string | undefined // 🔴 声明变量
+
       if (!videoUrl.includes('tos-cn-beijing')) {
         console.log('Agent工具 - 视频需要上传到火山引擎CDN...')
         try {
@@ -1108,7 +1110,7 @@ export class GenerateVideoTool implements ITool {
           const buffer = Buffer.from(await response.arrayBuffer())
           const timestamp = Date.now()
           const filename = `agent-video-${timestamp}.mp4`
-          const videoKey = await this.storage.uploadFile({
+          videoKey = await this.storage.uploadFile({
             fileContent: buffer,
             fileName: `agent-videos/${filename}`,
             contentType: 'video/mp4'
@@ -1125,21 +1127,29 @@ export class GenerateVideoTool implements ITool {
         }
       }
 
+      // 🔴 构建返回数据，只在有 videoKey 时才包含该字段
+      const resultData: any = {
+        video_url: finalVideoUrl,
+        prompt: params.prompt,
+        optimized_prompt: optimizedPrompt,
+        duration: params.duration || 5,
+        ratio: params.ratio || '9:16',
+        cdn_url: finalVideoUrl, // 明确标识CDN URL
+        generate_audio: params.generate_audio !== false,
+        has_reference_images: params.reference_images?.length || 0,
+        has_reference_videos: params.reference_videos?.length || 0,
+        has_reference_audios: params.reference_audios?.length || 0,
+        message: `成功生成视频，已保存到火山引擎CDN，时长${params.duration || 5}秒，比例${params.ratio || '9:16'}`
+      }
+
+      // 🔴 如果视频上传到了TOS（有videoKey），则添加 video_key 字段
+      if (videoKey) {
+        resultData.video_key = videoKey
+      }
+
       return {
         success: true,
-        data: {
-          video_url: finalVideoUrl,
-          prompt: params.prompt,
-          optimized_prompt: optimizedPrompt,
-          duration: params.duration || 5,
-          ratio: params.ratio || '9:16',
-          cdn_url: finalVideoUrl, // 明确标识CDN URL
-          generate_audio: params.generate_audio !== false,
-          has_reference_images: params.reference_images?.length || 0,
-          has_reference_videos: params.reference_videos?.length || 0,
-          has_reference_audios: params.reference_audios?.length || 0,
-          message: `成功生成视频，已保存到火山引擎CDN，时长${params.duration || 5}秒，比例${params.ratio || '9:16'}`
-        }
+        data: resultData
       }
     } catch (err: any) {
       console.error('Agent工具 - 视频生成异常:', err)

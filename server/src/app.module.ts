@@ -18,6 +18,7 @@ import { EarningModule } from './modules/earning/earning.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { SkillsModule } from './modules/skills/skills.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { SkillsModule } from './modules/skills/skills.module';
     EarningModule,
     ReferralModule,
     SubscriptionModule,
-    SkillsModule
+    SkillsModule,
+    MediaModule
   ],
   controllers: [AppController],
   providers: [AppService],

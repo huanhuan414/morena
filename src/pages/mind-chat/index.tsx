@@ -2147,7 +2147,11 @@ export default function MindChatPage() {
 
                 // 视频
                 if (data.video_url && !existingUrls.has(data.video_url)) {
-                  mediaList.push({ type: 'video', url: data.video_url })
+                  mediaList.push({
+                    type: 'video',
+                    url: data.video_url,
+                    key: data.video_key || data.key // 🔴 保存 key 用于重新生成签名URL
+                  })
                   existingUrls.add(data.video_url)
                 }
               }
@@ -2242,7 +2246,53 @@ export default function MindChatPage() {
                           playsInline
                           webkit-playsinline="true"
                           x5-playsinline="true"
+                          preload="metadata"
+                          muted={false}
+                          loop={false}
                           style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+                          onError={async (e) => {
+                            console.error('[视频渲染] H5视频播放错误:', e)
+                            console.error('[视频渲染] 视频URL:', videoUrl.substring(0, 60))
+                            const video = e.target as HTMLVideoElement
+                            console.error('[视频渲染] 视频错误详情:', video.error)
+
+                            // 🔴 如果有 key，尝试重新生成签名URL
+                            if (media.key) {
+                              console.log('[视频渲染] 尝试使用 key 重新生成签名URL:', media.key?.substring(0, 50) || 'undefined')
+                              try {
+                                const res = await Network.request({
+                                  url: '/api/media/sign-url',
+                                  method: 'GET',
+                                  data: { key: media.key }
+                                })
+
+                                if (res.data?.code === 200 && res.data?.data?.url) {
+                                  const newUrl = res.data.data.url
+                                  console.log('[视频渲染] 重新生成的签名URL:', newUrl.substring(0, 60))
+                                  // 更新 video 的 src
+                                  video.src = newUrl
+                                  // 更新 mediaList 中的 url
+                                  mediaList[idx].url = newUrl
+                                  console.log('[视频渲染] 签名URL已更新')
+                                  return
+                                }
+                              } catch (err: any) {
+                                console.error('[视频渲染] 重新生成签名URL失败:', err)
+                              }
+                            }
+
+                            // 如果无法重新生成签名URL，显示错误提示
+                            Taro.showToast({ title: '视频加载失败，请刷新页面重试', icon: 'none' })
+                          }}
+                          onLoadStart={() => {
+                            console.log('[视频渲染] 视频开始加载:', videoUrl.substring(0, 60))
+                          }}
+                          onCanPlay={() => {
+                            console.log('[视频渲染] 视频可以播放了')
+                          }}
+                          onPlay={() => {
+                            console.log('[视频渲染] 视频开始播放')
+                          }}
                         />
                       ) : (
                         <Video
