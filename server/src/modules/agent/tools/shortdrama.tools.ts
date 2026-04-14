@@ -541,6 +541,8 @@ ${scriptContent}
       console.log(`[短剧制作] 每个视频时长: ${clipDuration}秒，总时长: ${clipCount * clipDuration}秒`)
       console.log(`[短剧制作] 视频宽高比: ${videoRatio}`)
       console.log(`[短剧制作] 是否生成音频: ${shouldGenerateAudio}`)
+      console.log(`[短剧制作] 是否包含视频: ${params.include_video}`)
+      console.log(`[短剧制作] 关键镜头数量: ${params.key_scenes_count}`)
 
       if (params.include_video && params.key_scenes_count > 0) {
         console.log('[短剧制作] Step 5: 生成关键镜头视频...')
@@ -627,9 +629,17 @@ ${scriptContent}
           console.log(`[短剧制作] 角色参考图像: ${characterName} -> ${char.url}`)
         })
 
+        // 🔴 新增：记录视频生成开始时间
+        const videoGenerationStartTime = Date.now()
+        console.log(`[短剧制作] 视频生成开始时间: ${new Date(videoGenerationStartTime).toISOString()}`)
+
         for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 6); i++) {
           try {
             const shotDesc = shotDescriptions[i]
+            const loopStartTime = Date.now()
+
+            console.log(`[短剧制作] ========== 开始生成镜头 ${i + 1}/${Math.min(shotDescriptions.length, params.key_scenes_count || 6)} ==========`)
+            console.log(`[短剧制作] 画面描述: ${shotDesc.substring(0, 100)}...`)
 
             // 🔴 修复：从画面描述中提取角色名称
             let referencedCharacterImage: string | undefined
@@ -646,7 +656,7 @@ ${scriptContent}
               ? `Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
               : `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
 
-            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${consistencyPrompt.substring(0, 100)}...`)
+            console.log(`[短剧制作] 视频提示词: ${consistencyPrompt.substring(0, 100)}...`)
 
             // 🔴 修复：添加延迟，避免请求过于频繁
             if (i > 0) {
@@ -665,6 +675,7 @@ ${scriptContent}
                 image_url: { url: referencedCharacterImage },
                 role: 'reference_image' // 🔴 修复：正确的 role 是 reference_image
               })
+              console.log(`[短剧制作] 添加角色参考图像: ${referencedCharacterImage.substring(0, 50)}...`)
             }
 
             // 添加文本描述
@@ -672,6 +683,8 @@ ${scriptContent}
               type: 'text',
               text: consistencyPrompt
             })
+
+            console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-2-0-260128'}, duration=${clipDuration}s, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
 
             const videoResponse = await videoClient.videoGeneration(content, {
               model: 'doubao-seedance-2-0-260128', // 🔴 修复：使用支持参考图像的新版本模型
@@ -681,6 +694,12 @@ ${scriptContent}
               watermark: false,
               generateAudio: shouldGenerateAudio // 🔴 修复：使用用户指定的音频生成设置，或默认true
             })
+
+            const loopEndTime = Date.now()
+            const loopDuration = (loopEndTime - loopStartTime) / 1000
+
+            console.log(`[短剧制作] 镜头 ${i + 1} 视频生成耗时: ${loopDuration.toFixed(2)}秒`)
+            console.log(`[短剧制作] 镜头 ${i + 1} 视频生成响应:`, JSON.stringify(videoResponse).substring(0, 200))
 
             if (videoResponse.videoUrl) {
               videoClips.push({
@@ -693,14 +712,30 @@ ${scriptContent}
               console.log(`[短剧制作] ✅ 关键镜头${i + 1}视频生成成功: ${videoResponse.videoUrl}`)
             } else {
               console.log(`[短剧制作] ⚠️ 关键镜头${i + 1}视频生成失败: 未返回视频URL`)
+              console.log(`[短剧制作] ⚠️ 完整响应: ${JSON.stringify(videoResponse)}`)
             }
           } catch (err: any) {
-            console.error(`[短剧制作] ❌ 生成关键镜头${i + 1}视频失败:`, err.message)
+            console.error(`[短剧制作] ❌ 生成关键镜头${i + 1}视频失败:`)
+            console.error(`[短剧制作] ❌ 错误信息: ${err.message}`)
+            console.error(`[短剧制作] ❌ 错误堆栈: ${err.stack}`)
+            if (err.response) {
+              console.error(`[短剧制作] ❌ API响应状态: ${err.response.status}`)
+              console.error(`[短剧制作] ❌ API响应数据: ${JSON.stringify(err.response.data)}`)
+            }
           }
         }
 
-        console.log(`[短剧制作] 视频生成完成，共生成 ${videoClips.length} 个视频剪辑`)
+        // 🔴 新增：记录视频生成结束时间
+        const videoGenerationEndTime = Date.now()
+        const totalVideoGenerationDuration = (videoGenerationEndTime - videoGenerationStartTime) / 1000
+        console.log(`[短剧制作] 视频生成结束时间: ${new Date(videoGenerationEndTime).toISOString()}`)
+        console.log(`[短剧制作] 视频生成总耗时: ${totalVideoGenerationDuration.toFixed(2)}秒`)
+        console.log(`[短剧制作] 成功生成视频数量: ${videoClips.length}`)
+      } else {
+        console.log(`[短剧制作] 跳过视频生成: include_video=${params.include_video}, key_scenes_count=${params.key_scenes_count}`)
       }
+
+      console.log(`[短剧制作] 视频生成完成，共生成 ${videoClips.length} 个视频剪辑`)
 
       // 提取剧名
       const titleMatch = scriptContent.match(/剧名[：:]\s*(.+?)(?:\n|$)/i)
