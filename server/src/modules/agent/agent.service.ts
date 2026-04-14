@@ -972,7 +972,23 @@ export class AgentService {
           })
         }
 
-        // 视频（同时保存 url 和 key）
+        // 视频剪辑数组（如短剧制作返回的多个视频）
+        if (data.video_clips && Array.isArray(data.video_clips)) {
+          console.log('[媒体提取] 提取视频剪辑数组:', data.video_clips.length)
+          data.video_clips.forEach((clip: any) => {
+            if (clip.url) {
+              media.push({
+                type: 'video',
+                url: clip.url,
+                key: clip.key || undefined,
+                title: clip.clip_number ? `镜头 ${clip.clip_number}` : undefined
+              })
+              console.log(`[媒体提取] 已添加视频剪辑 ${clip.clip_number || ''} 到 media 列表`)
+            }
+          })
+        }
+
+        // 单个视频（兼容旧逻辑）
         if (data.video_url) {
           console.log('[媒体提取] 提取视频 URL:', data.video_url, 'key:', data.video_key || data.key)
           media.push({
