@@ -934,6 +934,25 @@ export default function MindChatPage() {
               console.log('[MindChat] 检测到消息已有完整内容（content:', hasContent, ', media:', hasMedia, ', agent_result:', hasAgentResult, '），忽略 task_state.running，视为任务完成')
             } else {
               console.log('[MindChat] 任务已完成，清空所有状态')
+
+              // 🔴 检查是否有失败的步骤（如视频生成超时）
+              const hasFailedStep = taskState.progressHistory?.some((step: any) =>
+                step.status === 'failed' || step.type === 'observation' && step.data?.success === false
+              )
+
+              if (hasFailedStep && !hasMedia && taskState.lastProgressMessage?.includes('生成视频')) {
+                console.log('[MindChat] 检测到视频生成失败，提示用户')
+
+                // 延迟显示提示，避免影响页面渲染
+                setTimeout(() => {
+                  Taro.showModal({
+                    title: '视频生成失败',
+                    content: '抱歉，视频生成超时，无法生成视频。豆包视频生成 API 较慢，通常需要 5-10 分钟，请稍后再试。',
+                    showCancel: false,
+                    confirmText: '知道了'
+                  })
+                }, 500)
+              }
             }
             setLoading(false)
             loadingRef.current = false

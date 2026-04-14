@@ -1293,6 +1293,13 @@ export class AgentService {
         toolPercentage
       )
 
+      // 🔴 关键修复：如果工具执行失败，且是关键步骤（如生成视频），则停止循环并返回失败
+      if (!toolResult.success) {
+        console.error(`[AgentService] 工具执行失败，停止任务: ${actionInfo.action}`, toolResult.error)
+        finalAnswer = toolResult.error || `工具执行失败: ${toolDisplayName}`
+        break
+      }
+
       // 检查是否需要配置
       if (toolResult.requires_config) {
         requiresConfig = true
