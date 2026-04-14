@@ -1340,12 +1340,37 @@ export class AgentService {
       )
       const thought = await this.think(context, steps)
 
+      // 🔴 修复：不要在思考阶段就返回 final_answer，强制执行工具
       // 检查是否已经有最终答案
       if (thought.includes('Final Answer:') || thought.includes('最终答案:')) {
-        finalAnswer = this.extractFinalAnswer(thought)
-        // 完成思考，进度到 90%
-        this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
-        break
+        const potentialFinalAnswer = this.extractFinalAnswer(thought)
+
+        // 🔴 修复：检查是否包含短剧相关关键词（镜头、画面等）但没有媒体数据
+        const hasDramaKeywords = /镜头|画面|场景|角色|视频|剧本|短剧/gi.test(potentialFinalAnswer)
+        const hasMedia = this.hasMediaContent(potentialFinalAnswer)
+
+        if (hasDramaKeywords && !hasMedia) {
+          // 🔴 修复：如果包含短剧关键词但缺少媒体数据，说明 LLM 只是生成了文本，没有调用工具
+          console.log('[AgentService] 警告：生成了短剧文本，但没有调用工具，强制调用 produce_shortdrama...')
+
+          // 🔴 修复：重置 thought，强制调用 produce_shortdrama 工具
+          // 根据任务描述构建参数
+          const toolInput = this.extractShortdramaParams(context.taskDescription, potentialFinalAnswer)
+          thought = `Thought: 用户要求生成短剧，需要调用工具制作成品视频\nAction: produce_shortdrama\nAction Input: ${JSON.stringify(toolInput)}`
+          console.log('[AgentService] 强制调用 produce_shortdrama 工具:', toolInput)
+        } else if (hasMedia) {
+          // 如果包含媒体数据，说明工具已经执行完成，可以返回
+          finalAnswer = potentialFinalAnswer
+          // 完成思考，进度到 90%
+          this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
+          break
+        } else {
+          // 如果只是普通文本（不是短剧），可以返回
+          finalAnswer = potentialFinalAnswer
+          // 完成思考，进度到 90%
+          this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
+          break
+        }
       }
 
       // Step 2: 决定行动 (Action Selection)
@@ -1935,6 +1960,69 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   private extractFinalAnswer(thought: string): string {
     const match = thought.match(/Final Answer:\s*([\s\S]+)/i)
     return match ? match[1].trim() : thought
+  }
+
+  /**
+   * 🔴 修复：检查最终答案是否包含媒体数据（图片、视频等）
+   * 如果只是文本描述，则继续执行工具
+   */
+  private hasMediaContent(finalAnswer: string): boolean {
+    // 尝试解析 final_answer 是否是 JSON 格式
+    try {
+      const parsed = JSON.parse(finalAnswer)
+      // 检查是否包含 video_clips、image_urls、video_url、edited_video_url 等媒体字段
+      const mediaFields = ['video_clips', 'image_urls', 'video_url', 'edited_video_url', 'images', 'videos', 'characters', 'scenes']
+      return mediaFields.some(field => {
+        const value = parsed[field]
+        return Array.isArray(value) && value.length > 0
+      })
+    } catch (e) {
+      // 如果不是 JSON，检查文本中是否包含 URL（简单的启发式检查）
+      const urlPattern = /https?:\/\/[^\s]+\.(mp4|mov|avi|jpg|jpeg|png|gif)/gi
+      return urlPattern.test(finalAnswer)
+    }
+  }
+
+  /**
+   * 🔴 修复：从任务描述中提取短剧参数
+   */
+  private extractShortdramaParams(taskDescription: string, finalAnswer?: string): any {
+    const params: any = {
+      theme: taskDescription,
+      duration: 1,
+      include_video: true,
+      key_scenes_count: 6,
+      ratio: '16:9',
+      generate_audio: true
+    }
+
+    // 从任务描述中提取时长（分钟）
+    const durationMatch = taskDescription.match(/(\d+)\s*分钟/)
+    if (durationMatch) {
+      params.duration = parseInt(durationMatch[1])
+    }
+
+    // 从任务描述中提取宽高比
+    if (taskDescription.includes('横屏') || taskDescription.includes('16:9')) {
+      params.ratio = '16:9'
+    } else if (taskDescription.includes('竖屏') || taskDescription.includes('9:16')) {
+      params.ratio = '9:16'
+    }
+
+    // 从任务描述中提取镜头时长（秒）
+    const clipDurationMatch = taskDescription.match(/每镜头(\d+)\s*秒/)
+    if (clipDurationMatch) {
+      params.video_duration = parseInt(clipDurationMatch[1])
+    }
+
+    // 从任务描述中提取镜头数量
+    const clipCountMatch = taskDescription.match(/(\d+)\s*个?镜头/)
+    if (clipCountMatch) {
+      params.key_scenes_count = parseInt(clipCountMatch[1])
+    }
+
+    console.log('[AgentService] 提取短剧参数:', params)
+    return params
   }
 
   /**
