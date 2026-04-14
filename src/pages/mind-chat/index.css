@@ -864,12 +864,18 @@
   gap: 16rpx;
 }
 
-/* 富媒体容器 - 独立在消息气泡外层，不受 max-width 限制 */
+/* 富媒体容器 - 允许突破 message-bubble 的 max-width 限制 */
 .media-container {
+  margin-top: 16rpx;
   display: flex;
   flex-direction: column;
   gap: 16rpx;
   width: 100%;
+  /* 🔴 修复：让媒体容器能够突破父容器的 max-width 限制 */
+  max-width: none;
+  width: calc(100% + 120rpx); /* 抵消 message-bubble 的 max-width */
+  margin-left: -60rpx; /* 向左偏移，居中显示 */
+  margin-right: -60rpx; /* 向右偏移，居中显示 */
 }
 
 .media-item {

@@ -2116,148 +2116,119 @@ export default function MindChatPage() {
           console.log('[图片渲染] 最终 mediaList:', mediaList)
           console.log('[图片渲染] 准备渲染', mediaList.length, '个媒体项')
 
-          // 🔴 修复：如果有媒体内容，使用新的布局结构（媒体+文本）
-          // 如果没有媒体内容，保持原来的布局结构（只显示文本）
-          if (mediaList.length > 0) {
-            return (
-              <View className="message-content-wrapper">
-                {/* 富媒体内容（图片/视频）渲染在消息气泡外层，避免 max-width 限制 */}
-                <View className="media-container">
-                  {mediaList.map((media, idx) => {
-                    console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
-                    if (media.type === 'image') {
-                      console.log('[图片渲染] 渲染图片 URL:', media.url)
-                      return (
-                        <View key={`image-${idx}-${media.url}`} className="media-item image">
-                          <Image
-                            src={media.url || ''}
-                            className="media-image"
-                            mode="widthFix"
-                            onLoad={() => {
-                              console.log('[图片渲染] 图片加载成功:', media.url)
-                            }}
-                            onError={(e) => {
-                              console.error('[图片渲染] 图片加载失败:', media.url, e)
-                            }}
-                            onClick={() => {
-                              Taro.previewImage({
-                                current: media.url,
-                                urls: [media.url || '']
+          return (
+            <View className="media-container">
+              {mediaList.map((media, idx) => {
+                console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
+                if (media.type === 'image') {
+                  console.log('[图片渲染] 渲染图片 URL:', media.url)
+                  return (
+                    <View key={`image-${idx}-${media.url}`} className="media-item image">
+                      <Image
+                        src={media.url || ''}
+                        className="media-image"
+                        mode="widthFix"
+                        onLoad={() => {
+                          console.log('[图片渲染] 图片加载成功:', media.url)
+                        }}
+                        onError={(e) => {
+                          console.error('[图片渲染] 图片加载失败:', media.url, e)
+                        }}
+                        onClick={() => {
+                          Taro.previewImage({
+                            current: media.url,
+                            urls: [media.url || '']
+                          })
+                        }}
+                      />
+                      {/* 图片操作按钮 */}
+                      <View className="image-actions">
+                        <View
+                          className="image-action-btn"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            // 下载图片到相册
+                            Taro.showLoading({ title: '保存中...' })
+                            try {
+                              const res = await Network.downloadFile({
+                                url: media.url || ''
+                              }) as any
+                              await Taro.saveImageToPhotosAlbum({
+                                filePath: res.tempFilePath
                               })
-                            }}
-                          />
-                          {/* 图片操作按钮 */}
-                          <View className="image-actions">
-                            <View
-                              className="image-action-btn"
-                              onClick={async (e) => {
-                                e.stopPropagation()
-                                // 下载图片到相册
-                                Taro.showLoading({ title: '保存中...' })
-                                try {
-                                  const res = await Network.downloadFile({
-                                    url: media.url || ''
-                                  }) as any
-                                  await Taro.saveImageToPhotosAlbum({
-                                    filePath: res.tempFilePath
-                                  })
-                                  Taro.hideLoading()
-                                  Taro.showToast({ title: '已保存到相册', icon: 'success' })
-                                } catch (err) {
-                                  Taro.hideLoading()
-                                  console.error('保存失败:', err)
-                                  Taro.showToast({ title: '保存失败', icon: 'none' })
-                                }
-                              }}
-                            >
-                              <Download size={16} color="#fff" />
-                            </View>
-                          </View>
+                              Taro.hideLoading()
+                              Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                            } catch (err) {
+                              Taro.hideLoading()
+                              console.error('保存失败:', err)
+                              Taro.showToast({ title: '保存失败', icon: 'none' })
+                            }
+                          }}
+                        >
+                          <Download size={16} color="#fff" />
                         </View>
-                      )
-                    }
-
-                    if (media.type === 'video') {
-                      // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
-                      const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
-                      const videoUrl = media.url || ''
-
-                      return (
-                        <View key={idx} className="media-item video">
-                          {isH5 ? (
-                            <video
-                              src={videoUrl}
-                              className="media-video"
-                              controls
-                              playsInline
-                              webkit-playsinline="true"
-                              x5-playsinline="true"
-                              style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
-                            />
-                          ) : (
-                            <Video
-                              src={videoUrl}
-                              className="media-video"
-                              controls
-                              showFullscreenBtn
-                              showPlayBtn
-                              showCenterPlayBtn
-                              enableProgressGesture
-                              objectFit="contain"
-                              style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
-                              onError={(e) => {
-                                console.error('小程序视频播放错误:', e)
-                                Taro.showToast({ title: '视频加载失败', icon: 'none' })
-                              }}
-                              onPlay={() => console.log('视频开始播放')}
-                            />
-                          )}
-                        </View>
-                      )
-                    }
-
-                    if (media.type === 'article') {
-                      return (
-                        <View key={idx} className="media-item article">
-                          {media.coverImage && (
-                            <Image src={media.coverImage} className="article-cover" mode="widthFix" />
-                          )}
-                          <View className="article-content">
-                            <Text className="article-title">{media.title}</Text>
-                            <MarkdownRender content={media.content || ''} />
-                          </View>
-                        </View>
-                      )
-                    }
-
-                    return null
-                  })}
-                </View>
-
-                {/* 文本内容渲染在消息气泡内层 */}
-                <View className="message-bubble">
-                  {renderMessageContent(msg)}
-                  <View className="message-footer">
-                    <Text className="message-time">
-                      {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                    {msg.role === 'assistant' && (
-                      <View
-                        className="message-action"
-                        onClick={() => copyMessage(typeof msg.content === 'string' ? msg.content : '')}
-                      >
-                        <Copy size={14} color="rgba(255,255,255,0.4)" />
                       </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-            )
-          }
+                    </View>
+                  )
+                }
 
-          // 没有媒体内容，不渲染媒体内容，文本内容会在后面的 renderMessageContent 中显示
-          console.log('[图片渲染] 没有媒体内容，跳过媒体容器渲染')
-          return null
+                if (media.type === 'video') {
+                  // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
+                  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                  const videoUrl = media.url || ''
+
+                  return (
+                    <View key={idx} className="media-item video">
+                      {isH5 ? (
+                        <video
+                          src={videoUrl}
+                          className="media-video"
+                          controls
+                          playsInline
+                          webkit-playsinline="true"
+                          x5-playsinline="true"
+                          style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+                        />
+                      ) : (
+                        <Video
+                          src={videoUrl}
+                          className="media-video"
+                          controls
+                          showFullscreenBtn
+                          showPlayBtn
+                          showCenterPlayBtn
+                          enableProgressGesture
+                          objectFit="contain"
+                          style={{ width: '100%', height: '400rpx', borderRadius: '16rpx' }}
+                          onError={(e) => {
+                            console.error('小程序视频播放错误:', e)
+                            Taro.showToast({ title: '视频加载失败', icon: 'none' })
+                          }}
+                          onPlay={() => console.log('视频开始播放')}
+                        />
+                      )}
+                    </View>
+                  )
+                }
+
+                if (media.type === 'article') {
+                  return (
+                    <View key={idx} className="media-item article">
+                      {media.coverImage && (
+                        <Image src={media.coverImage} className="article-cover" mode="widthFix" />
+                      )}
+                      <View className="article-content">
+                        <Text className="article-title">{media.title}</Text>
+                        <MarkdownRender content={media.content || ''} />
+                      </View>
+                    </View>
+                  )
+                }
+
+                return null
+              })}
+            </View>
+          )
         })()}
 
         {/* 文本消息渲染 - 只在没有媒体内容且没有内嵌视频且没有文章时渲染 */}
@@ -3043,8 +3014,8 @@ export default function MindChatPage() {
           </View>
         ) : (
           messages.map((msg, index) => (
-            <View 
-              key={msg.id} 
+            <View
+              key={msg.id}
               id={`msg-${index}`}
               className={`message-item ${msg.role}`}
             >
@@ -3071,7 +3042,7 @@ export default function MindChatPage() {
                     {new Date(msg.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                   {msg.role === 'assistant' && (
-                    <View 
+                    <View
                       className="message-action"
                       onClick={() => copyMessage(typeof msg.content === 'string' ? msg.content : '')}
                     >
