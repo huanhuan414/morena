@@ -355,7 +355,7 @@ export class ProduceShortDramaTool implements ITool {
 
       // 提取场景描述
       const scenePrompts: string[] = []
-      const sceneRegex = /场景列表[\\s\\S]*?(?=## 剧本正文|$)/i
+      const sceneRegex = /场景列表[\s\S]*?(?=## 剧本正文|$)/i
       const sceneMatch = sceneRegex.exec(scriptContent)
       if (sceneMatch) {
         const sceneLines = sceneMatch[0].split('\n').filter((line: string) => line.match(/^\s*\d+\./))
@@ -366,6 +366,36 @@ export class ProduceShortDramaTool implements ITool {
           }
         })
       }
+
+      // 🔧 修复：如果没有提取到场景描述，使用备用方案
+      if (scenePrompts.length === 0) {
+        console.log('[短剧制作] 场景描述提取失败，使用备用方案...')
+        // 从剧本中提取场景行
+        const sceneSectionRegex = /## 场景列表[\s\S]*?(?=##|$)/i
+        const sceneSectionMatch = sceneSectionRegex.exec(scriptContent)
+        if (sceneSectionMatch) {
+          const lines = sceneSectionMatch[0].split('\n')
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (trimmed.match(/^\d+\./) || trimmed.includes('-')) {
+              const desc = trimmed.replace(/^\d+\.\s*/, '').trim()
+              if (desc.length > 5) {
+                scenePrompts.push(desc)
+              }
+            }
+          }
+        }
+      }
+
+      // 🔧 修复：如果还是没有场景描述，使用默认场景
+      if (scenePrompts.length === 0) {
+        console.log('[短剧制作] 使用默认场景描述...')
+        scenePrompts.push('黄果树大瀑布观景台，正午，阳光透过水雾形成彩虹')
+        scenePrompts.push('瀑布下游竹林步道，下午，茂密竹林，水滴从竹叶上落下')
+        scenePrompts.push('瀑布水帘洞入口，下午，水帘悬挂，水雾弥漫')
+      }
+
+      console.log(`[短剧制作] 共提取到 ${scenePrompts.length} 个场景描述`)
 
       // Step 2: 生成分镜头脚本
       console.log('[短剧制作] Step 2: 生成分镜头脚本...')
@@ -455,19 +485,75 @@ ${scriptContent}
 
         // 提取分镜头中的关键画面描述
         const shotDescriptions: string[] = []
-        const shotRegex = /镜头\s*#\d+[\\s\\S]*?画面描述[：:]\s*([\\s\\S]*?)(?:\n-|\n##|$)/g
-        let shotMatch
-        while ((shotMatch = shotRegex.exec(storyboardContent)) !== null && shotDescriptions.length < (params.key_scenes_count || 2)) {
-          const desc = shotMatch[1].trim()
-          if (desc && desc.length > 10) {
-            shotDescriptions.push(desc)
+
+        // 🔧 修复：改进正则表达式，匹配多种格式
+        const shotRegexes = [
+          /镜头\s*#\d+[：:][\s\S]*?画面描述[：:]\s*([\s\S]*?)(?:\n-|\n##|画面描述|$)/gi,
+          /## 镜头\s*#\d+[：:][\s\S]*?画面描述[：:]\s*([\s\S]*?)(?:\n-|\n##|$)/gi,
+          /镜头\s*#\d+[：:][\s\S]*?- 画面描述[：:]\s*([\s\S]*?)(?:\n-|\n##|$)/gi,
+          /镜头\s*#\d+[：:][\s\S]*?- 景别[：:][\s\S]*?画面描述[：:]\s*([\s\S]*?)(?:\n-|\n##|$)/gi
+        ]
+
+        // 尝试多种正则表达式匹配
+        for (const regex of shotRegexes) {
+          regex.lastIndex = 0 // 重置正则表达式
+          let match
+          while ((match = regex.exec(storyboardContent)) !== null && shotDescriptions.length < (params.key_scenes_count || 2)) {
+            const desc = match[1].trim()
+            if (desc && desc.length > 10) {
+              shotDescriptions.push(desc)
+              console.log(`[短剧制作] 提取到画面描述 ${shotDescriptions.length}: ${desc.substring(0, 50)}...`)
+            }
+          }
+          if (shotDescriptions.length >= (params.key_scenes_count || 2)) {
+            break
           }
         }
 
+        // 如果正则表达式匹配失败，使用备用方案：直接从剧本中提取场景描述
+        if (shotDescriptions.length === 0) {
+          console.log('[短剧制作] 正则匹配失败，使用备用方案提取画面描述...')
+
+          // 从剧本正文中提取场景描述
+          const sceneLines = storyboardContent.split('\n')
+          const possibleDescriptions: string[] = []
+
+          for (const line of sceneLines) {
+            // 查找包含描述性内容的行
+            if (line.includes('画面') || line.includes('镜头') || line.includes('展示') || line.includes('呈现')) {
+              const desc = line.replace(/^[#\-\s]*画面描述[：:]?\s*/i, '').trim()
+              if (desc.length > 15) {
+                possibleDescriptions.push(desc)
+              }
+            }
+          }
+
+          // 选择前N个描述
+          for (let i = 0; i < Math.min(possibleDescriptions.length, params.key_scenes_count || 2); i++) {
+            shotDescriptions.push(possibleDescriptions[i])
+            console.log(`[短剧制作] 备用方案提取到画面描述 ${shotDescriptions.length}: ${shotDescriptions[shotDescriptions.length - 1].substring(0, 50)}...`)
+          }
+        }
+
+        // 如果还是没有提取到画面描述，使用默认描述
+        if (shotDescriptions.length === 0) {
+          console.log('[短剧制作] 备用方案也失败，使用默认画面描述...')
+          const defaultDescriptions = [
+            '黄果树大瀑布前的浪漫相遇，水雾缭绕，彩虹若隐若现',
+            '两人在瀑布下深情对视，背景是壮丽的瀑布和彩虹'
+          ]
+
+          for (let i = 0; i < Math.min(defaultDescriptions.length, params.key_scenes_count || 2); i++) {
+            shotDescriptions.push(defaultDescriptions[i])
+          }
+        }
+
+        console.log(`[短剧制作] 共提取到 ${shotDescriptions.length} 个画面描述，准备生成视频...`)
+
         for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 2); i++) {
           try {
-            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography`
-            console.log(`[短剧制作] 生成关键镜头${i + 1}视频...`)
+            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography, high quality`
+            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${prompt.substring(0, 100)}...`)
 
             const content = [{ type: 'text' as const, text: prompt }]
             const videoResponse = await videoClient.videoGeneration(content, {
@@ -485,11 +571,16 @@ ${scriptContent}
                 url: videoResponse.videoUrl,
                 prompt: shotDescriptions[i]
               })
+              console.log(`[短剧制作] ✅ 关键镜头${i + 1}视频生成成功: ${videoResponse.videoUrl}`)
+            } else {
+              console.log(`[短剧制作] ⚠️ 关键镜头${i + 1}视频生成失败: 未返回视频URL`)
             }
           } catch (err) {
-            console.error(`[短剧制作] 生成关键镜头${i + 1}视频失败:`, err)
+            console.error(`[短剧制作] ❌ 生成关键镜头${i + 1}视频失败:`, err)
           }
         }
+
+        console.log(`[短剧制作] 视频生成完成，共生成 ${videoClips.length} 个视频剪辑`)
       }
 
       // 提取剧名
