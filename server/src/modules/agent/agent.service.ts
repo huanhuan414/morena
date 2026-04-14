@@ -1353,11 +1353,35 @@ export class AgentService {
           // 🔴 修复：如果包含短剧关键词但缺少媒体数据，说明 LLM 只是生成了文本，没有调用工具
           console.log('[AgentService] 警告：生成了短剧文本，但没有调用工具，强制调用 produce_shortdrama...')
 
-          // 🔴 修复：重置 thought，强制调用 produce_shortdrama 工具
+          // 🔴 修复：不重新赋值 thought，而是直接执行工具调用逻辑
           // 根据任务描述构建参数
           const toolInput = this.extractShortdramaParams(context.taskDescription, potentialFinalAnswer)
-          thought = `Thought: 用户要求生成短剧，需要调用工具制作成品视频\nAction: produce_shortdrama\nAction Input: ${JSON.stringify(toolInput)}`
           console.log('[AgentService] 强制调用 produce_shortdrama 工具:', toolInput)
+
+          // 🔴 修复：直接调用工具
+          const toolResult = await this.executeTool('produce_shortdrama', toolInput, context)
+
+          // 🔴 修复：将工具结果作为 observation
+          const observation = `Observation: ${JSON.stringify(toolResult)}`
+          steps.push({
+            step_index: steps.length,
+            thought,
+            action: 'produce_shortdrama',
+            action_input: toolInput,
+            observation
+          })
+
+          // 🔴 修复：检查工具结果，判断是否完成
+          if (toolResult.success && toolResult.data) {
+            // 🔴 修复：将工具结果转换为 final_answer
+            finalAnswer = JSON.stringify(toolResult.data)
+            // 完成思考，进度到 90%
+            this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
+            break
+          }
+
+          // 🔴 修复：如果工具执行失败，继续循环
+          continue
         } else if (hasMedia) {
           // 如果包含媒体数据，说明工具已经执行完成，可以返回
           finalAnswer = potentialFinalAnswer
