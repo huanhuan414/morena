@@ -10,6 +10,7 @@ export interface ToolContext {
   avatarId: string
   taskId?: string
   headers?: Record<string, string>
+  onProgress?: (message: string, step?: number, subStep?: string) => void
 }
 
 export interface ToolDefinition {

@@ -99,6 +99,32 @@ export class ProgressCacheService {
   }
 
   /**
+   * 更新最新进度
+   * 用于在工具执行过程中实时更新进度信息
+   */
+  updateProgress(userId: string, progress: TaskProgress) {
+    const key = `${userId}:${progress.taskId || 'default'}`
+
+    if (!this.progressMap.has(key)) {
+      this.progressMap.set(key, [])
+    }
+
+    const progressList = this.progressMap.get(key)!
+    progressList.push(progress)
+
+    // 限制最大条数
+    if (progressList.length > this.MAX_PROGRESS_ITEMS) {
+      progressList.shift()
+    }
+
+    console.log(`[ProgressCache] 更新进度: ${key}`, progress.type, progress.message)
+
+    // 通过 WebSocket 推送进度更新（如果有 gateway 引用）
+    // 注意：这里需要注入 AgentGateway，但由于循环依赖问题，暂时只更新缓存
+    // 前端可以通过轮询接口获取最新进度
+  }
+
+  /**
    * 添加进度
    */
   addProgress(userId: string, progress: TaskProgress) {

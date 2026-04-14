@@ -293,6 +293,9 @@ export class ProduceShortDramaTool implements ITool {
 
       // Step 1: 生成剧本
       console.log('[短剧制作] Step 1: 生成剧本...')
+      if (context.onProgress) {
+        context.onProgress('📝 正在生成剧本...', 1, '生成剧本')
+      }
       const scriptPrompt = `请为以下主题创作一个1分钟短剧剧本：
 
 主题：${params.theme}
@@ -428,6 +431,9 @@ export class ProduceShortDramaTool implements ITool {
 
       // Step 2: 生成分镜头脚本
       console.log('[短剧制作] Step 2: 生成分镜头脚本...')
+      if (context.onProgress) {
+        context.onProgress('🎬 正在生成分镜头脚本...', 2, '生成分镜头脚本')
+      }
       const storyboardPrompt = `请将以下剧本转换为分镜头脚本，共${(params.duration || 2) * 15}个镜头：
 
 ${scriptContent}
@@ -453,6 +459,9 @@ ${scriptContent}
 
       // Step 3: 生成角色形象
       console.log('[短剧制作] Step 3: 生成角色形象...')
+      if (context.onProgress) {
+        context.onProgress('👥 正在生成角色形象...', 3, '生成角色形象')
+      }
       const characterImages: any[] = []
 
       for (let i = 0; i < Math.min(characterPrompts.length, 2); i++) {
@@ -481,6 +490,9 @@ ${scriptContent}
 
       // Step 4: 生成场景设计图
       console.log('[短剧制作] Step 4: 生成场景设计图...')
+      if (context.onProgress) {
+        context.onProgress('🎨 正在生成场景设计图...', 4, '生成场景设计图')
+      }
       const sceneImages: any[] = []
 
       for (let i = 0; i < Math.min(scenePrompts.length, 3); i++) {
@@ -511,6 +523,9 @@ ${scriptContent}
       const videoClips: any[] = []
       if (params.include_video && params.key_scenes_count > 0) {
         console.log('[短剧制作] Step 5: 生成关键镜头视频...')
+        if (context.onProgress) {
+          context.onProgress(`🎥 正在生成${params.key_scenes_count}个关键镜头视频...`, 5, '生成关键镜头视频')
+        }
 
         // 提取分镜头中的关键画面描述
         const shotDescriptions: string[] = []
@@ -647,6 +662,9 @@ ${scriptContent}
       let editedVideoUrl: string | null = null
       if (videoClips.length > 1) {
         console.log('[短剧制作] Step 6: 视频剪辑合成...')
+        if (context.onProgress) {
+          context.onProgress('🎞️ 正在剪辑合成视频...', 6, '视频剪辑合成')
+        }
         try {
           const videoEditClient = new VideoEditClient(new Config())
           const videoUrls = videoClips.map((clip: any) => clip.url)
@@ -660,6 +678,9 @@ ${scriptContent}
 
       // 🔴 新增：Step 7: 推荐配乐
       console.log('[短剧制作] Step 7: 推荐配乐...')
+      if (context.onProgress) {
+        context.onProgress('🎵 正在推荐配乐...', 7, '推荐配乐')
+      }
       const bgmRecommendations: any[] = []
       try {
         const config = new Config()

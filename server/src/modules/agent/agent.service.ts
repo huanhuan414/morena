@@ -1819,7 +1819,37 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       userId: context.userId,
       avatarId: context.avatarId,
       taskId: context.taskId,
-      headers: undefined
+      headers: undefined,
+      onProgress: (message: string, step?: number, subStep?: string) => {
+        // 通过 progressCache 更新进度
+        if (!context.taskId) {
+          console.warn('[AgentService] taskId 为空，无法更新进度')
+          return
+        }
+
+        const progress = {
+          taskId: context.taskId,
+          userId: context.userId,
+          type: 'substep',
+          message,
+          step,
+          subStep,
+          timestamp: Date.now()
+        }
+        this.progressCache.updateProgress(context.userId, progress)
+
+        // 如果有 conversationId，同步更新 assistant 消息的 metadata
+        if (context.conversationId) {
+          this.updateAssistantMessageProgress(
+            context.conversationId,
+            context.userId,
+            context.taskId,
+            message
+          ).catch(err => {
+            console.error('[AgentService] 更新 assistant 消息进度失败:', err)
+          })
+        }
+      }
     }
 
     // 对于发布工具，自动从历史记录中提取内容
