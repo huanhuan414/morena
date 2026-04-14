@@ -602,15 +602,34 @@ ${scriptContent}
 
         console.log(`[短剧制作] 共提取到 ${shotDescriptions.length} 个画面描述，准备生成视频...`)
 
-        // 🔴 修复：视频生成 API 不支持参考图像，移除角色参考逻辑
-        // 🔴 修复：添加请求延迟，避免 429 限流错误
+        // 🔴 修复：构建角色参考图像映射，用于保持角色一致性
+        const characterReferenceMap = new Map<string, string>()
+        characterImages.forEach((char: any) => {
+          const characterName = char.character
+          characterReferenceMap.set(characterName, char.url)
+          console.log(`[短剧制作] 角色参考图像: ${characterName} -> ${char.url}`)
+        })
+
         for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 6); i++) {
           try {
             const shotDesc = shotDescriptions[i]
 
-            // 🔴 修复：不使用参考图像，直接用提示词生成视频
-            const prompt = `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
-            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${prompt.substring(0, 100)}...`)
+            // 🔴 修复：从画面描述中提取角色名称
+            let referencedCharacterImage: string | undefined
+            for (const [characterName, imageUrl] of characterReferenceMap) {
+              if (shotDesc.includes(characterName)) {
+                referencedCharacterImage = imageUrl
+                console.log(`[短剧制作] 检测到角色"${characterName}"，使用参考图像保持一致性`)
+                break
+              }
+            }
+
+            // 🔴 修复：构建视频生成提示词，强化角色一致性要求
+            const consistencyPrompt = referencedCharacterImage
+              ? `Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+              : `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+
+            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${consistencyPrompt.substring(0, 100)}...`)
 
             // 🔴 修复：添加延迟，避免请求过于频繁
             if (i > 0) {
@@ -619,9 +638,26 @@ ${scriptContent}
               await new Promise(resolve => setTimeout(resolve, delay))
             }
 
-            const content = [{ type: 'text' as const, text: prompt }]
+            // 🔴 修复：构建内容数组，包含参考图像
+            const content: any[] = []
+
+            // 如果有角色参考图像，添加到内容中
+            if (referencedCharacterImage) {
+              content.push({
+                type: 'image_url',
+                image_url: { url: referencedCharacterImage },
+                role: 'reference_image' // 🔴 修复：正确的 role 是 reference_image
+              })
+            }
+
+            // 添加文本描述
+            content.push({
+              type: 'text',
+              text: consistencyPrompt
+            })
+
             const videoResponse = await videoClient.videoGeneration(content, {
-              model: 'doubao-seedance-1-5-pro-251215',
+              model: 'doubao-seedance-2-0-260128', // 🔴 修复：使用支持参考图像的新版本模型
               duration: 5, // 🔴 修改：每个镜头5秒，6个镜头共30秒
               ratio: '16:9',
               resolution: '720p',
@@ -633,7 +669,9 @@ ${scriptContent}
               videoClips.push({
                 clip_number: i + 1,
                 url: videoResponse.videoUrl,
-                prompt: shotDesc
+                prompt: shotDesc,
+                // 🔴 新增：记录使用的参考图像
+                referenceImage: referencedCharacterImage
               })
               console.log(`[短剧制作] ✅ 关键镜头${i + 1}视频生成成功: ${videoResponse.videoUrl}`)
             } else {
