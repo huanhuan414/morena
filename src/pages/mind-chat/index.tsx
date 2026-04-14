@@ -1,25 +1,26 @@
-// eslint-disable-next-line no-restricted-syntax
-import { View, Text, ScrollView, Image, Video, Textarea } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from '@tarojs/taro'
-import { useState, useRef, useEffect } from 'react'
-import * as Network from '@/network'
-import { useUserStore } from '@/stores/user'
-import { formatTime } from '@/utils/time'
-import { PlatformConfigDialog, PlatformType } from '@/components/agent/PlatformConfigDialog'
-import { PublishGuideDialog, PLATFORM_CONFIGS } from '@/components/agent/PublishGuideDialog'
-import MarkdownRender from '@/components/markdown-render'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { LevelDetailDialog } from '@/components/level-detail-dialog'
-import '@/components/level-detail-dialog/index.css'
-import { ExpPopup, LevelUpEffect } from '@/components/exp-popup'
-import '@/components/exp-popup/index.css'
+import { View, Text, ScrollView, Image, Video } from "@tarojs/components"
+import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from "@tarojs/taro"
+import { useState, useRef, useEffect } from "react"
+import * as Network from "@/network"
+import { useUserStore } from "@/stores/user"
+import { formatTime } from "@/utils/time"
+import { PlatformConfigDialog, PlatformType } from "@/components/agent/PlatformConfigDialog"
+import { PublishGuideDialog, PLATFORM_CONFIGS } from "@/components/agent/PublishGuideDialog"
+import MarkdownRender from "@/components/markdown-render"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { LevelDetailDialog } from "@/components/level-detail-dialog"
+import "@/components/level-detail-dialog/index.css"
+import { ExpPopup, LevelUpEffect } from "@/components/exp-popup"
+import "@/components/exp-popup/index.css"
+import { toast } from "@/components/ui/toast"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench
-} from 'lucide-react-taro'
-import { getSafeArea } from '@/utils/safe-area'
-import './index.css'
+} from "lucide-react-taro"
+import { getSafeArea } from "@/utils/safe-area"
+import "./index.css"
 
 /**
  * 前端清理函数：移除消息内容中的图片链接等调试信息
@@ -1317,6 +1318,8 @@ export default function MindChatPage() {
   const pollAgentResult = async (taskId: string) => {
     const maxAttempts = 200 // 最多轮询 200 次（约 6.7 分钟，与后端视频生成时间匹配）
     const interval = 2000 // 每 2 秒轮询一次
+    const maxEmptyAttempts = 3 // 🔴 新增：最多连续 3 次进度为空，则认为任务已中断
+    let emptyAttemptCount = 0 // 🔴 新增：记录连续为空的次数
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -1332,13 +1335,34 @@ export default function MindChatPage() {
         if (progressRes.data?.code === 200) {
           const progress = progressRes.data.data.progress || []
 
-          // 🔴 修复：如果进度为空，说明任务可能已中断
+          // 🔴 修复：如果进度为空，记录次数
           if (progress.length === 0) {
-            console.warn('[MindChat] 进度为空，任务可能已中断')
-            // 继续轮询，可能是服务刚重启
+            emptyAttemptCount++
+            console.warn(`[MindChat] 进度为空（第 ${emptyAttemptCount}/${maxEmptyAttempts} 次），任务可能已中断`)
+
+            // 如果连续多次为空，说明任务已中断
+            if (emptyAttemptCount >= maxEmptyAttempts) {
+              console.error('[MindChat] 任务已中断，停止轮询')
+
+              // 清空进度显示
+              setCurrentStatus('')
+              setAgentSteps([])
+              setTaskProgress(0)
+
+              // 显示错误提示
+              toast.error('任务已中断，请重试')
+
+              // 停止轮询
+              return null
+            }
+
+            // 继续轮询
             await new Promise(resolve => setTimeout(resolve, interval))
             continue
           }
+
+          // 进度不为空，重置计数
+          emptyAttemptCount = 0
 
           // 更新进度百分比
           const latestProgress = progress[progress.length - 1]
