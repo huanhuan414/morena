@@ -602,53 +602,24 @@ ${scriptContent}
 
         console.log(`[短剧制作] 共提取到 ${shotDescriptions.length} 个画面描述，准备生成视频...`)
 
-        // 🔴 优化：构建角色参考图像映射，用于保持角色一致性
-        const characterReferenceMap = new Map<string, string>()
-        characterImages.forEach((char: any) => {
-          const characterName = char.character
-          characterReferenceMap.set(characterName, char.url)
-          console.log(`[短剧制作] 角色参考图像: ${characterName} -> ${char.url}`)
-        })
-
+        // 🔴 修复：视频生成 API 不支持参考图像，移除角色参考逻辑
+        // 🔴 修复：添加请求延迟，避免 429 限流错误
         for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 6); i++) {
           try {
             const shotDesc = shotDescriptions[i]
 
-            // 🔴 优化：从画面描述中提取角色名称
-            let referencedCharacterImage: string | undefined
-            for (const [characterName, imageUrl] of characterReferenceMap) {
-              if (shotDesc.includes(characterName)) {
-                referencedCharacterImage = imageUrl
-                console.log(`[短剧制作] 检测到角色"${characterName}"，使用参考图像保持一致性`)
-                break
-              }
+            // 🔴 修复：不使用参考图像，直接用提示词生成视频
+            const prompt = `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${prompt.substring(0, 100)}...`)
+
+            // 🔴 修复：添加延迟，避免请求过于频繁
+            if (i > 0) {
+              const delay = 2000 + Math.random() * 1000 // 2-3 秒随机延迟
+              console.log(`[短剧制作] 等待 ${Math.round(delay)}ms 避免限流...`)
+              await new Promise(resolve => setTimeout(resolve, delay))
             }
 
-            // 🔴 优化：构建视频生成提示词，强化角色一致性要求
-            const consistencyPrompt = referencedCharacterImage
-              ? `Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
-              : `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
-
-            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${consistencyPrompt.substring(0, 100)}...`)
-
-            // 🔴 优化：构建内容数组，包含参考图像
-            const content: any[] = []
-
-            // 如果有角色参考图像，添加到内容中
-            if (referencedCharacterImage) {
-              content.push({
-                type: 'image_url',
-                image_url: { url: referencedCharacterImage },
-                role: 'reference' // 🔴 新增：标记为参考图像
-              })
-            }
-
-            // 添加文本描述
-            content.push({
-              type: 'text',
-              text: consistencyPrompt
-            })
-
+            const content = [{ type: 'text' as const, text: prompt }]
             const videoResponse = await videoClient.videoGeneration(content, {
               model: 'doubao-seedance-1-5-pro-251215',
               duration: 5, // 🔴 修改：每个镜头5秒，6个镜头共30秒
@@ -662,16 +633,14 @@ ${scriptContent}
               videoClips.push({
                 clip_number: i + 1,
                 url: videoResponse.videoUrl,
-                prompt: shotDesc,
-                // 🔴 新增：记录使用的参考图像
-                referenceImage: referencedCharacterImage
+                prompt: shotDesc
               })
               console.log(`[短剧制作] ✅ 关键镜头${i + 1}视频生成成功: ${videoResponse.videoUrl}`)
             } else {
               console.log(`[短剧制作] ⚠️ 关键镜头${i + 1}视频生成失败: 未返回视频URL`)
             }
-          } catch (err) {
-            console.error(`[短剧制作] ❌ 生成关键镜头${i + 1}视频失败:`, err)
+          } catch (err: any) {
+            console.error(`[短剧制作] ❌ 生成关键镜头${i + 1}视频失败:`, err.message)
           }
         }
 
@@ -721,6 +690,12 @@ ${scriptContent}
         } catch (err) {
           console.error('[短剧制作] ❌ 视频剪辑合成失败:', err)
         }
+      } else {
+        // 🔴 修复：如果只有 1 个视频，将其作为成品视频
+        if (videoClips.length === 1) {
+          editedVideoUrl = videoClips[0].url
+          console.log(`[短剧制作] 只有 1 个视频，直接作为成品视频: ${editedVideoUrl}`)
+        }
       }
 
       // 🔴 新增：Step 7: 推荐配乐
@@ -765,15 +740,23 @@ ${scriptContent}
 
       console.log('[短剧制作] 短剧制作完成！')
 
-      // 🔴 新增：构建最终消息
-      let finalMessage = `短剧《${title}》制作完成！包含剧本、${characterImages.length}个角色形象、${sceneImages.length}个场景设计、${videoClips.length}个关键镜头视频`
-      if (editedVideoUrl) {
-        finalMessage += '、已合成完整视频成品'
-      }
-      if (bgmRecommendations.length > 0) {
-        finalMessage += '、配乐推荐'
-      }
-      finalMessage += '。您可以查看所有内容啦~'
+      // 🔴 优化：构建结构化消息，便于前端展示
+      let finalMessage = `✨ **《${title}》制作完成！**
+
+📊 **生成统计**：
+• 角色：${characterImages.length}个
+• 场景：${sceneImages.length}个
+• 镜头：${videoClips.length}个
+• 成品视频：${editedVideoUrl ? '已合成 ✅' : '未生成 ❌'}
+• 配乐推荐：${bgmRecommendations.length}首
+
+📝 **内容说明**：
+包含完整剧本、角色形象、场景设计、关键镜头视频、${editedVideoUrl ? '完整成品视频' : '单独镜头'}以及配乐推荐，您可以查看所有内容啦~
+
+💡 **提示**：
+• 如果角色不一致，这是视频生成模型的限制，后续会优化
+• 视频生成时间较长，请耐心等待
+• 成品视频可以直接观看分享`
 
       return {
         success: true,
@@ -786,9 +769,8 @@ ${scriptContent}
           characters: characterImages,
           scenes: sceneImages,
           video_clips: videoClips,
-          // 兼容前端提取逻辑
-          image_urls: allImageUrls,
-          video_url: allVideoUrls.length > 0 ? allVideoUrls[0] : undefined,
+          // 🔴 修复：不设置 video_url，避免重复添加（video_clips 已经包含了所有视频）
+          // video_url: allVideoUrls.length > 0 ? allVideoUrls[0] : undefined,
           // 🔴 新增：成品视频
           edited_video_url: editedVideoUrl,
           bgm_recommendations: bgmRecommendations,
