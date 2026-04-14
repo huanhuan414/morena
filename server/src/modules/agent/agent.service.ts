@@ -504,7 +504,33 @@ export class AgentService {
           finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
         }
       } else {
-        finalAnswer = await this.summarizeExecution(context, steps)
+        // 🔴 修复：保留原始媒体数据，不调用 LLM 总结
+        // 检查步骤中是否有媒体内容生成
+        const mediaStep = steps.find(s => {
+          const data = s.observation?.data
+          return data?.video_clips || data?.video_url || data?.image_urls || data?.characters || data?.scenes
+        })
+
+        if (mediaStep?.observation?.data) {
+          const data = mediaStep.observation.data
+          // 构建包含完整媒体数据的响应
+          finalAnswer = JSON.stringify({
+            message: data.message || '内容已生成',
+            title: data.title || null,
+            script: data.script || null,
+            storyboard: data.storyboard || null,
+            characters: data.characters || [],
+            scenes: data.scenes || [],
+            video_clips: data.video_clips || [],
+            video_url: data.video_url || null,
+            image_urls: data.image_urls || [],
+            production_stats: data.production_stats || null
+          })
+          console.log('[Agent] 检测到媒体内容生成，保留完整数据:', Object.keys(data))
+        } else {
+          // 没有媒体内容，调用 LLM 总结
+          finalAnswer = await this.summarizeExecution(context, steps)
+        }
       }
     }
 
@@ -846,6 +872,71 @@ export class AgentService {
       coverImage?: string
     }> = []
 
+    // 🔴 新增：尝试从 finalAnswer 中解析 JSON 格式的媒体数据
+    try {
+      if (aiMessage && typeof aiMessage === 'string' && aiMessage.trim().startsWith('{')) {
+        const finalAnswerJson = JSON.parse(aiMessage.trim())
+        if (finalAnswerJson.video_clips && Array.isArray(finalAnswerJson.video_clips)) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取视频剪辑:', finalAnswerJson.video_clips.length)
+          finalAnswerJson.video_clips.forEach((clip: any) => {
+            if (clip.url) {
+              media.push({
+                type: 'video',
+                url: clip.url,
+                key: clip.key || undefined,
+                title: `镜头 ${clip.clip_number || ''}`
+              })
+            }
+          })
+        }
+        if (finalAnswerJson.video_url) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取视频 URL:', finalAnswerJson.video_url)
+          media.push({
+            type: 'video',
+            url: finalAnswerJson.video_url,
+            key: finalAnswerJson.video_key || undefined
+          })
+        }
+        if (finalAnswerJson.characters && Array.isArray(finalAnswerJson.characters)) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取角色形象:', finalAnswerJson.characters.length)
+          finalAnswerJson.characters.forEach((char: any) => {
+            if (char.url) {
+              media.push({
+                type: 'image',
+                url: char.url,
+                key: char.key || undefined,
+                title: char.character || ''
+              })
+            }
+          })
+        }
+        if (finalAnswerJson.scenes && Array.isArray(finalAnswerJson.scenes)) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取场景设计:', finalAnswerJson.scenes.length)
+          finalAnswerJson.scenes.forEach((scene: any) => {
+            if (scene.url) {
+              media.push({
+                type: 'image',
+                url: scene.url,
+                key: scene.key || undefined,
+                title: scene.scene || ''
+              })
+            }
+          })
+        }
+        if (finalAnswerJson.image_urls && Array.isArray(finalAnswerJson.image_urls)) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取图片数组:', finalAnswerJson.image_urls.length)
+          finalAnswerJson.image_urls.forEach((url: string) => {
+            if (url) {
+              media.push({ type: 'image', url })
+            }
+          })
+        }
+      }
+    } catch (error) {
+      console.log('[媒体提取] finalAnswer 不是 JSON 格式，使用常规提取方式')
+    }
+
+    // 从 steps 中提取媒体内容（原有逻辑）
     agentResult.steps.forEach(step => {
       if (step.observation?.data) {
         const data = step.observation.data
