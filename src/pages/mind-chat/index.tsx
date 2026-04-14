@@ -777,8 +777,15 @@ export default function MindChatPage() {
 
           console.log('[MindChat] 检测到任务状态:', taskState.status, 'pageLoaded:', pageLoadedRef.current)
 
-          // 只对未完成的任务恢复状态，已完成的任务不恢复
-          if (taskState.status === 'running') {
+          // 🔴 修复：检查任务是否真的在运行
+          // 如果消息已经有完整内容（content 或 media 或 agent_result），说明任务已经完成
+          // 即使 task_state.status 还是 'running'，也认为是完成状态
+          const hasContent = !!lastAssistantMessage.content && lastAssistantMessage.content.trim().length > 0
+          const hasMedia = !!lastAssistantMessage.metadata?.media && lastAssistantMessage.metadata.media.length > 0
+          const hasAgentResult = !!lastAssistantMessage.metadata?.agent_result
+
+          // 只对未完成的任务恢复状态
+          if (taskState.status === 'running' && !hasContent && !hasMedia && !hasAgentResult) {
             console.log('[MindChat] 恢复任务状态显示:', taskState)
 
             // 恢复任务状态
@@ -923,7 +930,11 @@ export default function MindChatPage() {
             }
           } else {
             // 任务已完成，清空所有状态
-            console.log('[MindChat] 任务已完成，清空所有状态')
+            if (taskState.status === 'running' && (hasContent || hasMedia || hasAgentResult)) {
+              console.log('[MindChat] 检测到消息已有完整内容（content:', hasContent, ', media:', hasMedia, ', agent_result:', hasAgentResult, '），忽略 task_state.running，视为任务完成')
+            } else {
+              console.log('[MindChat] 任务已完成，清空所有状态')
+            }
             setLoading(false)
             loadingRef.current = false
             setCurrentStatus('')
