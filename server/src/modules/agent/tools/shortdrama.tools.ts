@@ -528,29 +528,25 @@ ${scriptContent}
 
       // Step 5: 生成关键镜头视频（可选）
       const videoClips: any[] = []
+
+      // 🔴 修复：在函数开始定义视频参数，确保在整个函数中都可以使用
+      const targetTotalDuration = params.duration || 1 // 目标总时长（分钟）
+      const targetTotalSeconds = targetTotalDuration * 60 // 转换为秒
+      const clipCount = params.key_scenes_count || 6
+      const defaultClipDuration = Math.floor(targetTotalSeconds / clipCount) // 平均每个视频的时长
+      const clipDuration = params.video_duration || Math.max(3, defaultClipDuration) // 最少3秒
+      const videoRatio = params.ratio || '16:9'
+      const shouldGenerateAudio = params.generate_audio !== false // 默认为 true
+
+      console.log(`[短剧制作] 每个视频时长: ${clipDuration}秒，总时长: ${clipCount * clipDuration}秒`)
+      console.log(`[短剧制作] 视频宽高比: ${videoRatio}`)
+      console.log(`[短剧制作] 是否生成音频: ${shouldGenerateAudio}`)
+
       if (params.include_video && params.key_scenes_count > 0) {
         console.log('[短剧制作] Step 5: 生成关键镜头视频...')
         if (context.onProgress) {
           context.onProgress(`🎥 正在生成${params.key_scenes_count}个关键镜头视频...`, 5, '生成关键镜头视频')
         }
-
-        // 🔴 修复：计算每个视频的时长
-        const targetTotalDuration = params.duration || 1 // 目标总时长（分钟）
-        const targetTotalSeconds = targetTotalDuration * 60 // 转换为秒
-        const clipCount = params.key_scenes_count || 6
-        const defaultClipDuration = Math.floor(targetTotalSeconds / clipCount) // 平均每个视频的时长
-
-        // 🔴 修复：使用用户指定的时长，或自动计算的时长
-        const clipDuration = params.video_duration || Math.max(3, defaultClipDuration) // 最少3秒
-        console.log(`[短剧制作] 每个视频时长: ${clipDuration}秒，总时长: ${clipCount * clipDuration}秒`)
-
-        // 🔴 修复：使用用户指定的宽高比，或默认16:9
-        const videoRatio = params.ratio || '16:9'
-        console.log(`[短剧制作] 视频宽高比: ${videoRatio}`)
-
-        // 🔴 修复：使用用户指定的音频生成设置，或默认true
-        const shouldGenerateAudio = params.generate_audio !== false // 默认为 true
-        console.log(`[短剧制作] 是否生成音频: ${shouldGenerateAudio}`)
 
         // 提取分镜头中的关键画面描述
         const shotDescriptions: string[] = []
