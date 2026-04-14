@@ -1963,6 +1963,95 @@ export default function MindChatPage() {
                 </View>
               )}
 
+              {/* 🔴 新增：成品视频 */}
+              {drama.edited_video_url && (() => {
+                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                return (
+                  <View
+                    className="drama-section"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 245, 255, 0.1))',
+                      border: '1px solid rgba(0, 255, 136, 0.2)'
+                    }}
+                  >
+                    <View className="section-header">
+                      <Text className="section-title" style={{ color: '#00ff88' }}>🎬 完整成品视频</Text>
+                    </View>
+                    <View className="final-video-container">
+                      {isH5 ? (
+                        <video
+                          src={drama.edited_video_url}
+                          className="final-video-player"
+                          controls
+                          playsInline
+                          webkit-playsinline="true"
+                          x5-playsinline="true"
+                          preload="metadata"
+                          muted={false}
+                          loop={false}
+                          poster={drama.image_urls && drama.image_urls[0] || undefined}
+                          style={{ width: '100%', height: '240px', borderRadius: '12px', backgroundColor: '#000' }}
+                          onError={() => {
+                            console.error('[成品视频] H5视频播放错误:', drama.edited_video_url)
+                            Taro.showToast({ title: '成品视频加载失败，请重试', icon: 'none' })
+                          }}
+                        />
+                      ) : (
+                        <Video
+                          src={drama.edited_video_url}
+                          className="final-video-player"
+                          controls
+                          showFullscreenBtn
+                          showPlayBtn
+                          showCenterPlayBtn
+                          poster={drama.image_urls && drama.image_urls[0] || undefined}
+                          objectFit="contain"
+                          style={{ width: '100%', height: '240px', borderRadius: '12px' }}
+                          onError={() => {
+                            console.error('[成品视频] 小程序视频播放错误:', drama.edited_video_url)
+                            Taro.showToast({ title: '成品视频加载失败，请重试', icon: 'none' })
+                          }}
+                        />
+                      )}
+                      <Text className="final-video-hint">✨ 这是合成的完整成品视频，可直接观看</Text>
+                    </View>
+                  </View>
+                )
+              })()}
+
+              {/* 🔴 新增：字幕展示 */}
+              {drama.subtitle_url && (
+                <View className="drama-section">
+                  <View className="section-header">
+                    <Text className="section-title">📝 字幕文件</Text>
+                  </View>
+                  <View className="subtitle-container">
+                    <Text className="subtitle-text">字幕已生成并添加到视频中</Text>
+                    <Text className="subtitle-url">{drama.subtitle_url.substring(0, 50)}...</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* 🔴 新增：配乐推荐 */}
+              {drama.bgm_recommendations && drama.bgm_recommendations.length > 0 && (
+                <View className="drama-section">
+                  <View className="section-header">
+                    <Text className="section-title">🎵 配乐推荐 ({drama.bgm_recommendations.length})</Text>
+                  </View>
+                  <View className="bgm-list">
+                    {drama.bgm_recommendations.map((bgm: any, idx: number) => (
+                      <View key={idx} className="bgm-item">
+                        <Text className="bgm-name">{bgm.name || `配乐 ${idx + 1}`}</Text>
+                        <Text className="bgm-info">{bgm.mood || ''} · {bgm.duration || '1分钟'}</Text>
+                        {bgm.description && (
+                          <Text className="bgm-desc">{bgm.description}</Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               {/* 统计信息 */}
               <View className="drama-stats">
                 <Text className="stats-text">

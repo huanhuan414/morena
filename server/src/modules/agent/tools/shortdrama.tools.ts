@@ -4,7 +4,7 @@
  */
 
 import { Injectable } from '@nestjs/common'
-import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, VideoEditClient } from 'coze-coding-dev-sdk'
 import { ITool, ToolContext, ToolDefinition } from './tool.interface'
 import { ToolResult } from '../agent.types'
 
@@ -271,14 +271,14 @@ export class ProduceShortDramaTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'produce_shortdrama',
     displayName: '制作短剧成品',
-    description: '【重要】这是直接生成短剧成品的工具！当用户要求"生成短剧"、"制作视频"、"给我成品"时，必须使用此工具。工具会自动完成：1）生成完整剧本 2）创建角色形象（2个）3）设计场景（3个）4）制作关键镜头视频（2个）。用户将看到可视化的角色、场景和视频内容，而不仅仅是剧本文字。',
+    description: '【重要】这是直接生成短剧成品的工具！当用户要求"生成短剧"、"制作视频"、"给我成品"时，必须使用此工具。工具会自动完成：1）生成完整剧本 2）创建角色形象（2个）3）设计场景（3个）4）制作关键镜头视频（6个）5）视频剪辑合成 6）生成字幕 7）推荐配乐。用户将看到完整的短剧成品视频，而不仅仅是剧本或单个镜头。',
     category: 'content_creation',
     paramsSchema: {
       theme: { type: 'string', description: '短剧主题/故事梗概（用户提供的完整想法）', required: true },
       genre: { type: 'string', enum: ['爱情', '悬疑', '喜剧', '剧情', '都市', '古装', '科幻', '青春'], default: '剧情' },
-      duration: { type: 'number', description: '目标时长（分钟）', default: 2 },
-      include_video: { type: 'boolean', description: '是否生成关键镜头视频（必须为 true 以提供成品）', default: true },
-      key_scenes_count: { type: 'number', description: '关键视频镜头数量（默认2个）', default: 2 }
+      duration: { type: 'number', description: '目标时长（分钟，默认1分钟）', default: 1 },
+      include_video: { type: 'boolean', description: '是否生成完整短剧成品（必须为 true 以提供成品）', default: true },
+      key_scenes_count: { type: 'number', description: '关键视频镜头数量（默认6个，确保剧情连贯）', default: 6 }
     }
   }
 
@@ -293,41 +293,70 @@ export class ProduceShortDramaTool implements ITool {
 
       // Step 1: 生成剧本
       console.log('[短剧制作] Step 1: 生成剧本...')
-      const scriptPrompt = `请为以下主题创作一个短剧剧本：
+      const scriptPrompt = `请为以下主题创作一个1分钟短剧剧本：
 
 主题：${params.theme}
 类型：${params.genre}
-时长：${params.duration || 2}分钟
+时长：1分钟
+
+【剧本要求】
+1. 剧情紧凑，节奏明快，开头3秒必须抓住眼球
+2. 共3-4场戏，每场15-20秒
+3. 每场戏都有明确的目标和冲突
+4. 对白精炼有力，符合人物性格
+5. 剧情连贯，每场戏之间有自然的过渡
+6. 结尾要有情感冲击或反转
 
 【剧本格式】
 ## 短剧信息
-剧名：
+剧名：（要有吸引力的名字）
 类型：
-时长：
+时长：1分钟
 一句话简介：
 
 ## 角色设定
 ### 主角1：姓名
 - 性别/年龄：
-- 性格特点：
-- 造型描述：（详细描述，用于生成角色形象）
+- 性格特点：（2-3个关键特征）
+- 造型描述：（详细描述，用于生成角色形象，包括发型、服装、配饰等）
 
 ### 主角2：姓名
 - 性别/年龄：
-- 性格特点：
-- 造型描述：（详细描述，用于生成角色形象）
+- 性格特点：（2-3个关键特征）
+- 造型描述：（详细描述，用于生成角色形象，包括发型、服装、配饰等）
 
 ## 场景列表
-1. 场景名 - 时段 - 场地描述
+1. 场景名 - 时段 - 场地描述（详细描述，用于生成场景图）
 2. 场景名 - 时段 - 场地描述
+3. 场景名 - 时段 - 场地描述
 
 ## 剧本正文
-（共3-5场戏，每场包含场景、人物、剧情、对白）
+
+### 第1场：【场景名】
+【画面】（详细描述画面内容、镜头运动）
+【时间】（如：上午，阳光明媚）
+【人物】
+【剧情】
+【对白】（人物名：台词）
+
+### 第2场：【场景名】
+【画面】（详细描述画面内容、镜头运动）
+【时间】
+【人物】
+【剧情】
+【对白】
+
+### 第3场：【场景名】
+【画面】（详细描述画面内容、镜头运动）
+【时间】
+【人物】
+【剧情】
+【对白】
 
 【创作要点】
-- 开头3秒必须抓住眼球
-- 每场戏都要有冲突
-- 对白精炼有力
+- 每场戏的"画面"描述要足够详细，包含镜头运动（推/拉/摇/移/跟）
+- 对白要简洁有力，每句不超过10个字
+- 剧情要有明确的起承转合
 
 请直接输出剧本内容：`
 
@@ -539,26 +568,30 @@ ${scriptContent}
         if (shotDescriptions.length === 0) {
           console.log('[短剧制作] 备用方案也失败，使用默认画面描述...')
           const defaultDescriptions = [
-            '黄果树大瀑布前的浪漫相遇，水雾缭绕，彩虹若隐若现',
-            '两人在瀑布下深情对视，背景是壮丽的瀑布和彩虹'
+            '开场：瀑布远景，阳光透过水雾形成彩虹，画面震撼',
+            '镜头1：主角林默手持单反相机，专注拍摄瀑布特写',
+            '镜头2：夏小棠从左侧入画，被林默的专注吸引，驻足观看',
+            '镜头3：两人目光相遇，水雾中形成彩虹桥，唯美浪漫',
+            '镜头4：林默调转相机，为夏小棠拍照，两人相视一笑',
+            '镜头5：黄昏时分，两人在瀑布下并肩而立，背影渐远'
           ]
 
-          for (let i = 0; i < Math.min(defaultDescriptions.length, params.key_scenes_count || 2); i++) {
+          for (let i = 0; i < Math.min(defaultDescriptions.length, params.key_scenes_count || 6); i++) {
             shotDescriptions.push(defaultDescriptions[i])
           }
         }
 
         console.log(`[短剧制作] 共提取到 ${shotDescriptions.length} 个画面描述，准备生成视频...`)
 
-        for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 2); i++) {
+        for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 6); i++) {
           try {
-            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography, high quality`
+            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
             console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${prompt.substring(0, 100)}...`)
 
             const content = [{ type: 'text' as const, text: prompt }]
             const videoResponse = await videoClient.videoGeneration(content, {
               model: 'doubao-seedance-1-5-pro-251215',
-              duration: 5,
+              duration: 5, // 🔴 修改：每个镜头5秒，6个镜头共30秒
               ratio: '16:9',
               resolution: '720p',
               watermark: false,
@@ -610,12 +643,76 @@ ${scriptContent}
         }
       })
 
+      // 🔴 新增：Step 6: 视频剪辑合成（如果有多个视频片段）
+      let editedVideoUrl: string | null = null
+      if (videoClips.length > 1) {
+        console.log('[短剧制作] Step 6: 视频剪辑合成...')
+        try {
+          const videoEditClient = new VideoEditClient()
+          const videoUrls = videoClips.map(clip => clip.url)
+          const editedResult = await videoEditClient.concatVideos(videoUrls, 'shortdrama_edited')
+          editedVideoUrl = editedResult.videoUrl
+          console.log(`[短剧制作] ✅ 视频剪辑合成成功: ${editedVideoUrl}`)
+        } catch (err) {
+          console.error('[短剧制作] ❌ 视频剪辑合成失败:', err)
+        }
+      }
+
+      // 🔴 新增：Step 7: 生成字幕（如果有完整视频）
+      let subtitleUrl: string | null = null
+      if (editedVideoUrl) {
+        console.log('[短剧制作] Step 7: 生成字幕...')
+        try {
+          const videoEditClient = new VideoEditClient()
+          const subtitleResult = await videoEditClient.addSubtitles(editedVideoUrl, {
+            style: '现代简约',
+            position: '底部居中',
+            fontSize: 24,
+            fontFamily: 'SimHei'
+          })
+          subtitleUrl = subtitleResult.subtitleUrl
+          console.log(`[短剧制作] ✅ 字幕生成成功: ${subtitleUrl}`)
+        } catch (err) {
+          console.error('[短剧制作] ❌ 字幕生成失败:', err)
+        }
+      }
+
+      // 🔴 新增：Step 8: 推荐配乐
+      console.log('[短剧制作] Step 8: 推荐配乐...')
+      const bgmRecommendations: any[] = []
+      try {
+        const videoEditClient = new VideoEditClient()
+        bgmRecommendations.push(...await videoEditClient.generateRecommendedBgm({
+          duration: 60, // 1分钟
+          mood: params.style || '轻松',
+          genre: params.genre || '剧情'
+        }))
+        console.log(`[短剧制作] ✅ 配乐推荐成功，推荐了 ${bgmRecommendations.length} 首配乐`)
+      } catch (err) {
+        console.error('[短剧制作] ❌ 配乐推荐失败:', err)
+      }
+
+      console.log('[短剧制作] 短剧制作完成！')
+
+      // 🔴 新增：构建最终消息
+      let finalMessage = `短剧《${title}》制作完成！包含剧本、${characterImages.length}个角色形象、${sceneImages.length}个场景设计、${videoClips.length}个关键镜头视频`
+      if (editedVideoUrl) {
+        finalMessage += '、已合成完整视频成品'
+      }
+      if (subtitleUrl) {
+        finalMessage += '及字幕'
+      }
+      if (bgmRecommendations.length > 0) {
+        finalMessage += '、配乐推荐'
+      }
+      finalMessage += '。您可以查看所有内容啦~'
+
       return {
         success: true,
         data: {
           title,
           genre: params.genre,
-          duration: params.duration || 2,
+          duration: params.duration || 1,
           script: scriptContent,
           storyboard: storyboardContent,
           characters: characterImages,
@@ -624,16 +721,15 @@ ${scriptContent}
           // 兼容前端提取逻辑
           image_urls: allImageUrls,
           video_url: allVideoUrls.length > 0 ? allVideoUrls[0] : undefined,
+          // 🔴 新增：成品视频
+          edited_video_url: editedVideoUrl,
+          subtitle_url: subtitleUrl,
+          bgm_recommendations: bgmRecommendations,
           production_stats: {
             characters_generated: characterImages.length,
             scenes_generated: sceneImages.length,
             videos_generated: videoClips.length
           },
-          message: `短剧《${title}》制作完成！包含剧本、${characterImages.length}个角色形象、${sceneImages.length}个场景设计、${videoClips.length}个关键镜头视频`
+          message: finalMessage
         }
       }
-    } catch (err: any) {
-      return { success: false, error: `制作短剧失败: ${err.message}` }
-    }
-  }
-}

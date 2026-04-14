@@ -2672,3 +2672,83 @@ del {
   text-align: center;
   display: block;
 }
+
+/* 成品视频样式 */
+.final-video-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.final-video-player {
+  width: 100%;
+  border-radius: 12rpx;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.final-video-hint {
+  font-size: 24rpx;
+  color: #00ff88;
+  text-align: center;
+  line-height: 1.5;
+  display: block;
+}
+
+/* 字幕样式 */
+.subtitle-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8rpx;
+}
+
+.subtitle-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+}
+
+.subtitle-url {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+  word-break: break-all;
+  display: block;
+}
+
+/* 配乐推荐样式 */
+.bgm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.bgm-item {
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.bgm-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.bgm-info {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.bgm-desc {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+  display: block;
+}
