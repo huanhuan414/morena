@@ -75,6 +75,12 @@ const getSkillIcon = (toolName?: string): string => {
   return iconMap[toolName || ''] || iconMap['default']
 }
 
+// 🔴 过滤掉短剧套件中的技能
+const filterSkills = (skills: Skill[]): Skill[] => {
+  const kitSkillToolNames = new Set(SHORT_DRAMA_KIT.skills)
+  return skills.filter(skill => !skill.tool_name || !kitSkillToolNames.has(skill.tool_name))
+}
+
 interface Skill {
   id: string
   name: string
@@ -628,6 +634,7 @@ export default function SkillsSquare() {
             <View className="special-content">
               <Text className="special-title">{SHORT_DRAMA_KIT.name}</Text>
               <Text className="special-desc">{SHORT_DRAMA_KIT.description}</Text>
+              <Text className="special-tip">📌 已包含8个短剧核心技能，无需单独添加</Text>
               <View className="special-skills">
                 {SHORT_DRAMA_KIT.skills.slice(0, 4).map((skill, idx) => (
                   <View key={idx} className="mini-skill-tag">
@@ -710,7 +717,7 @@ export default function SkillsSquare() {
           </View>
         ) : (
           <View className="skills-grid">
-            {skills.map((skill) => {
+            {(!searchKeyword ? filterSkills(skills) : skills).map((skill) => {
               const owned = isOwned(skill.id)
               console.log('[SkillSquare] 渲染技能卡片:', {
                 技能ID: skill.id,
