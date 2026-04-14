@@ -466,12 +466,13 @@ ${scriptContent}
 
       for (let i = 0; i < Math.min(characterPrompts.length, 2); i++) {
         try {
-          const prompt = `${characterPrompts[i]}, professional portrait, cinematic lighting, high quality, 8K`
+          // 🔴 优化：生成高质量的角色立绘，用于后续视频生成的一致性参考
+          const prompt = `${characterPrompts[i]}, professional portrait, cinematic lighting, high quality, 8K, detailed facial features, consistent character design, full body shot, neutral expression, clean background`
           console.log(`[短剧制作] 生成角色${i + 1}形象...`)
 
           const imageResponse = await imageClient.generate({
             prompt,
-            size: '1K',
+            size: '2K', // 🔴 优化：使用更高分辨率，提升角色细节
             watermark: false
           })
 
@@ -480,8 +481,11 @@ ${scriptContent}
             characterImages.push({
               character: characterPrompts[i].split(',')[0].trim(),
               url: helper.imageUrls[0],
-              prompt: characterPrompts[i]
+              prompt: characterPrompts[i],
+              // 🔴 新增：标记为参考图像，用于视频生成
+              isReference: true
             })
+            console.log(`[短剧制作] ✅ 角色${i + 1}形象生成成功: ${helper.imageUrls[0]}`)
           }
         } catch (err) {
           console.error(`[短剧制作] 生成角色${i + 1}形象失败:`, err)
@@ -598,12 +602,53 @@ ${scriptContent}
 
         console.log(`[短剧制作] 共提取到 ${shotDescriptions.length} 个画面描述，准备生成视频...`)
 
+        // 🔴 优化：构建角色参考图像映射，用于保持角色一致性
+        const characterReferenceMap = new Map<string, string>()
+        characterImages.forEach((char: any) => {
+          const characterName = char.character
+          characterReferenceMap.set(characterName, char.url)
+          console.log(`[短剧制作] 角色参考图像: ${characterName} -> ${char.url}`)
+        })
+
         for (let i = 0; i < Math.min(shotDescriptions.length, params.key_scenes_count || 6); i++) {
           try {
-            const prompt = `${shotDescriptions[i]}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
-            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${prompt.substring(0, 100)}...`)
+            const shotDesc = shotDescriptions[i]
 
-            const content = [{ type: 'text' as const, text: prompt }]
+            // 🔴 优化：从画面描述中提取角色名称
+            let referencedCharacterImage: string | undefined
+            for (const [characterName, imageUrl] of characterReferenceMap) {
+              if (shotDesc.includes(characterName)) {
+                referencedCharacterImage = imageUrl
+                console.log(`[短剧制作] 检测到角色"${characterName}"，使用参考图像保持一致性`)
+                break
+              }
+            }
+
+            // 🔴 优化：构建视频生成提示词，强化角色一致性要求
+            const consistencyPrompt = referencedCharacterImage
+              ? `Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+              : `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+
+            console.log(`[短剧制作] 生成关键镜头${i + 1}视频: ${consistencyPrompt.substring(0, 100)}...`)
+
+            // 🔴 优化：构建内容数组，包含参考图像
+            const content: any[] = []
+
+            // 如果有角色参考图像，添加到内容中
+            if (referencedCharacterImage) {
+              content.push({
+                type: 'image_url',
+                image_url: { url: referencedCharacterImage },
+                role: 'reference' // 🔴 新增：标记为参考图像
+              })
+            }
+
+            // 添加文本描述
+            content.push({
+              type: 'text',
+              text: consistencyPrompt
+            })
+
             const videoResponse = await videoClient.videoGeneration(content, {
               model: 'doubao-seedance-1-5-pro-251215',
               duration: 5, // 🔴 修改：每个镜头5秒，6个镜头共30秒
@@ -617,7 +662,9 @@ ${scriptContent}
               videoClips.push({
                 clip_number: i + 1,
                 url: videoResponse.videoUrl,
-                prompt: shotDescriptions[i]
+                prompt: shotDesc,
+                // 🔴 新增：记录使用的参考图像
+                referenceImage: referencedCharacterImage
               })
               console.log(`[短剧制作] ✅ 关键镜头${i + 1}视频生成成功: ${videoResponse.videoUrl}`)
             } else {
