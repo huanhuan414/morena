@@ -936,8 +936,16 @@ export class AgentService {
         const existingMetadata = (lastMessage as any).metadata || {}
         updateData.metadata = {
           ...existingMetadata,
+          // 🔴 修复：任务完成后，清除 task_state，避免前端一直显示"正在思考"
+          // 如果任务已完成，就不需要保留 task_state 了
+          ...(existingMetadata.task_state ? {} : {}), // 移除 task_state
           agent_result: hasValidAgentResult ? agentResult : existingMetadata.agent_result,
           media: hasValidMedia ? media : existingMetadata.media
+        }
+
+        // 如果 metadata 中还有 task_state，显式删除它
+        if (updateData.metadata.task_state) {
+          delete updateData.metadata.task_state
         }
 
         console.log('[AgentService updateAssistantMessage] 最终更新的 metadata:', updateData.metadata)

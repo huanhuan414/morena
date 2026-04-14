@@ -813,7 +813,12 @@ export default function MindChatPage() {
               taskTimeoutRef.current = timeoutId
 
               // 持续轮询直到任务完成
+              let pollCount = 0
+              const maxPollCount = 60 // 最多轮询 60 次（约 2 分钟）
               const pollInterval = setInterval(async () => {
+                pollCount++
+                console.log('[MindChat] 轮询次数:', pollCount, '/', maxPollCount)
+
                 try {
                   const progressRes = await Network.request({
                     url: '/api/agent/progress',
@@ -824,6 +829,9 @@ export default function MindChatPage() {
                   if (progressRes.data?.data?.latest) {
                     const latest = progressRes.data.data.latest
                     console.log('[MindChat] 任务进度更新:', latest)
+
+                    // 重置轮询计数器（因为有进度更新）
+                    pollCount = 0
 
                     // 更新进度提示
                     if (latest.message) {
@@ -869,9 +877,44 @@ export default function MindChatPage() {
                     loadingRef.current = false
                     setCurrentStatus('')
                     taskTimeoutRef.current = null
+                  } else {
+                    // 没有进度更新，检查是否超时
+                    if (pollCount >= maxPollCount) {
+                      console.log('[MindChat] 轮询超时，自动停止')
+                      clearInterval(pollInterval)
+                      clearTimeout(timeoutId)
+
+                      // 刷新消息列表，查看任务是否真的完成了
+                      if (conversation) {
+                        await fetchMessages(conversation.id)
+                      }
+
+                      // 清空状态
+                      setLoading(false)
+                      loadingRef.current = false
+                      setCurrentStatus('')
+                      taskTimeoutRef.current = null
+
+                      Taro.showToast({
+                        title: '任务状态已更新',
+                        icon: 'none'
+                      })
+                    }
                   }
                 } catch (error) {
                   console.error('[MindChat] 轮询任务进度失败:', error)
+                  // 如果轮询失败超过一定次数，停止轮询
+                  if (pollCount >= maxPollCount) {
+                    console.log('[MindChat] 轮询失败次数过多，停止轮询')
+                    clearInterval(pollInterval)
+                    clearTimeout(timeoutId)
+
+                    // 清空状态
+                    setLoading(false)
+                    loadingRef.current = false
+                    setCurrentStatus('')
+                    taskTimeoutRef.current = null
+                  }
                 }
               }, 2000)
 
