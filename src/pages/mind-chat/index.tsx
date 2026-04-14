@@ -204,6 +204,75 @@ interface LearningStats {
   }
 }
 
+// 🔴 新增：Agent 步骤名称映射（英文转中文）
+const mapStepDisplayName = (displayName: string, step: any): string => {
+  // 通用步骤映射
+  const commonMapping: Record<string, string> = {
+    'progress': '正在分析任务...',
+    'thinking': '正在思考...',
+    'action': '正在执行任务...',
+    'observation': '正在获取结果...',
+    'final_answer': '任务完成'
+  }
+
+  // 如果是短剧制作相关的步骤，使用更详细的映射
+  if (step.action === 'produce_shortdrama') {
+    return '🎬 正在制作短剧...'
+  }
+
+  // 如果是其他工具，使用工具名称映射
+  if (step.action && typeof step.action === 'string') {
+    const toolMapping: Record<string, string> = {
+      'generate_shortdrama_script': '📝 正在生成剧本...',
+      'generate_storyboard': '🎬 正在生成分镜头脚本...',
+      'generate_multi_episode_drama': '📺 正在生成多集短剧...',
+      'generate_drama_voiceover': '🎙️ 正在生成配音...',
+      'edit_shortdrama_video': '✂️ 正在剪辑视频...',
+      'generate_subtitle': '📝 正在生成字幕...',
+      'recommend_bgm': '🎵 正在推荐配乐...',
+      'produce_shortdrama': '🎬 正在制作短剧成品...',
+      'generate-image': '🖼️ 正在生成图片...',
+      'video_generation': '🎥 正在生成视频...',
+      'content-creation': '✍️ 正在创作内容...',
+      'app_update_avatar': '👤 正在更新分身信息...',
+      'app_create_task': '📋 正在创建任务...'
+    }
+
+    // 尝试完整匹配
+    if (toolMapping[step.action]) {
+      return toolMapping[step.action]
+    }
+
+    // 尝试模糊匹配
+    const fuzzyMatch = Object.keys(toolMapping).find(key =>
+      step.action.includes(key) || key.includes(step.action)
+    )
+    if (fuzzyMatch) {
+      return toolMapping[fuzzyMatch]
+    }
+
+    // 如果是工具调用，显示工具名称
+    if (step.action.startsWith('app_')) {
+      return `🔧 正在执行${step.action.replace('app_', '')}...`
+    }
+
+    return `⚡ 正在执行${step.action}...`
+  }
+
+  // 使用通用映射
+  if (commonMapping[displayName]) {
+    return commonMapping[displayName]
+  }
+
+  // 如果是数字步骤，显示为"步骤X"
+  if (/^\d+$/.test(displayName)) {
+    return `步骤 ${displayName}`
+  }
+
+  // 默认返回原名称
+  return displayName
+}
+
 // 工具名称映射（已废弃，移除轮询相关代码）
 
 // 解析 Markdown 为段落数组，用于分段渲染
@@ -1847,7 +1916,7 @@ export default function MindChatPage() {
                     <X size={14} color="#ff4444" />
                   )}
                 </View>
-                <Text className="step-name">{step.displayName}</Text>
+                <Text className="step-name">{mapStepDisplayName(step.displayName, step)}</Text>
               </View>
             ))}
           </View>
