@@ -95,6 +95,9 @@ interface Message {
     media?: MessageMedia[]
     agent_result?: AgentResult
     agent_steps?: AgentStepDisplay[]
+    task_state?: {
+      progressHistory?: any[]
+    }
   }
 }
 
@@ -1750,6 +1753,34 @@ export default function MindChatPage() {
 
   // 渲染消息内容（支持富媒体）
   const renderMessageContent = (msg: Message) => {
+    // 🔴 新增：检测短剧数据
+    const hasShortDrama = (() => {
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        return progressHistory.some((item: any) =>
+          item.action === 'action' &&
+          item.data?.action === 'produce_shortdrama' &&
+          item.data?.status === 'completed' &&
+          item.data?.data
+        )
+      }
+      return false
+    })()
+
+    // 🔴 新增：提取短剧数据
+    const shortDramaData = (() => {
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const dramaStep = progressHistory.find((item: any) =>
+          item.action === 'action' &&
+          item.data?.action === 'produce_shortdrama' &&
+          item.data?.status === 'completed'
+        )
+        return dramaStep?.data?.data || null
+      }
+      return null
+    })()
+
     // 检测分身列表数据
     const hasAvatarList = (() => {
       if (msg.metadata?.agent_result?.steps) {
@@ -1802,6 +1833,126 @@ export default function MindChatPage() {
             ))}
           </View>
         )}
+
+        {/* 🔴 新增：短剧内容展示 */}
+        {hasShortDrama && shortDramaData && (() => {
+          const drama = shortDramaData
+          const characters = drama.characters || []
+          const scenes = drama.scenes || []
+          const videoClips = drama.video_clips || []
+
+          return (
+            <View className="short-drama-display">
+              {/* 角色展示 */}
+              {characters.length > 0 && (
+                <View className="drama-section">
+                  <View className="section-header">
+                    <Text className="section-title">👤 角色形象 ({characters.length})</Text>
+                  </View>
+                  <View className="characters-grid">
+                    {characters.map((char: any, idx: number) => (
+                      <View key={idx} className="character-card">
+                        <Image
+                          src={char.url}
+                          className="character-image"
+                          mode="aspectFill"
+                          onError={() => {
+                            console.error('[角色图片] 加载失败:', char.url)
+                          }}
+                        />
+                        <Text className="character-name">{char.character || `角色 ${idx + 1}`}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* 场景展示 */}
+              {scenes.length > 0 && (
+                <View className="drama-section">
+                  <View className="section-header">
+                    <Text className="section-title">🎬 场景设计 ({scenes.length})</Text>
+                  </View>
+                  <View className="scenes-grid">
+                    {scenes.map((scene: any, idx: number) => (
+                      <View key={idx} className="scene-card">
+                        <Image
+                          src={scene.url}
+                          className="scene-image"
+                          mode="aspectFill"
+                          onError={() => {
+                            console.error('[场景图片] 加载失败:', scene.url)
+                          }}
+                        />
+                        <Text className="scene-name">{scene.scene || scene.prompt || `场景 ${idx + 1}`}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* 视频展示 */}
+              {videoClips.length > 0 && (
+                <View className="drama-section">
+                  <View className="section-header">
+                    <Text className="section-title">🎥 关键镜头视频 ({videoClips.length})</Text>
+                  </View>
+                  <View className="videos-grid">
+                    {videoClips.map((clip: any, idx: number) => (
+                      <View key={idx} className="video-card">
+                        {(() => {
+                          const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                          return isH5 ? (
+                            <video
+                              src={clip.url}
+                              className="video-player"
+                              controls
+                              playsInline
+                              webkit-playsinline="true"
+                              x5-playsinline="true"
+                              preload="metadata"
+                              muted={false}
+                              loop={false}
+                              style={{ width: '100%', height: '180px', borderRadius: '8px', backgroundColor: '#000' }}
+                              onError={(e) => {
+                                console.error('[视频渲染] H5视频播放错误:', e)
+                                Taro.showToast({ title: '视频加载失败，请重试', icon: 'none' })
+                              }}
+                            />
+                          ) : (
+                            <Video
+                              src={clip.url}
+                              className="video-player"
+                              controls
+                              showFullscreenBtn
+                              showPlayBtn
+                              showCenterPlayBtn
+                              poster={drama.image_urls && drama.image_urls[0] || undefined}
+                              objectFit="contain"
+                              style={{ width: '100%', height: '180px', borderRadius: '8px' }}
+                              onError={(e) => {
+                                console.error('[视频渲染] 小程序视频播放错误:', e)
+                                Taro.showToast({ title: '视频加载失败，请重试', icon: 'none' })
+                              }}
+                            />
+                          )
+                        })()}
+                        <Text className="video-title">{clip.clip_number ? `镜头 ${clip.clip_number}` : `视频 ${idx + 1}`}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* 统计信息 */}
+              <View className="drama-stats">
+                <Text className="stats-text">
+                  {drama.message || `包含剧本、${characters.length}个角色、${scenes.length}个场景、${videoClips.length}个视频`}
+                </Text>
+              </View>
+            </View>
+          )
+        })()}
 
         {/* 分身列表卡片展示 */}
         {hasAvatarList && (() => {
