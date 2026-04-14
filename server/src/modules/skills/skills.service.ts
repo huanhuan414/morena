@@ -650,10 +650,11 @@ ${prompt}
       })
 
       // 查询该 tool_name 对应的技能
+      // 注意：Supabase 返回 snake_case 字段名，所以只需要查询 tool_name
       const { data: skill, error: skillError } = await getSupabaseClient()
         .from('skills')
         .select('*')
-        .or(`tool_name.eq.${toolName},toolName.eq.${toolName}`)
+        .eq('tool_name', toolName)
         .maybeSingle()
 
       if (skillError) {
@@ -695,22 +696,15 @@ ${prompt}
         .from('avatar_skills')
         .insert({
           avatar_id: avatarId,
-          skill_id: skill.id,
           skill_type: toolName,
-          skill_name: skill.name,
-          skill_description: skill.description,
-          skill_category: skill.category,
-          tool_name: toolName,
-          tool_schema: skill.tool_schema,
-          enabled: true,
+          skill_level: 1,
+          usage_count: 0,
           metadata: {
             skill_id: skill.id,
             skill_name: skill.name,
             purchase_price: skill.price,
             purchased_at: new Date().toISOString()
-          } as any,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          } as any
         })
         .select()
         .single()
