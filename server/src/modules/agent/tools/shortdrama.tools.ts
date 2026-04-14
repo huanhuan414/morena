@@ -684,14 +684,13 @@ ${scriptContent}
               text: consistencyPrompt
             })
 
-            console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-2-0-260128'}, duration=${clipDuration}s, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
+            console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-1-5-pro-251215'}, duration=${clipDuration}s, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
 
             const videoResponse = await videoClient.videoGeneration(content, {
-              model: 'doubao-seedance-2-0-260128', // 🔴 修复：使用支持参考图像的新版本模型
+              model: 'doubao-seedance-1-5-pro-251215', // 🔴 修复：使用支持 duration 参数的旧模型
               duration: clipDuration, // 🔴 修复：使用计算或用户指定的时长
               ratio: videoRatio, // 🔴 修复：使用用户指定的宽高比
               resolution: '720p',
-              watermark: false,
               generateAudio: shouldGenerateAudio // 🔴 修复：使用用户指定的音频生成设置，或默认true
             })
 
