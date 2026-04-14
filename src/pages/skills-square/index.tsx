@@ -918,7 +918,7 @@ export default function SkillsSquare() {
           flexDirection: 'column'
         }}
         >
-          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}>
             <DialogTitle>添加技能</DialogTitle>
           </DialogHeader>
           <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
@@ -959,7 +959,7 @@ export default function SkillsSquare() {
           flexDirection: 'column'
         }}
         >
-          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}>
             <DialogTitle>短剧创作套件</DialogTitle>
           </DialogHeader>
           <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
@@ -1007,7 +1007,7 @@ export default function SkillsSquare() {
           flexDirection: 'column'
         }}
         >
-          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}>
             <DialogTitle>分身秩序</DialogTitle>
           </DialogHeader>
           <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
