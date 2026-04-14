@@ -1345,13 +1345,14 @@ export class AgentService {
       if (thought.includes('Final Answer:') || thought.includes('最终答案:')) {
         const potentialFinalAnswer = this.extractFinalAnswer(thought)
 
-        // 🔴 修复：检查是否包含短剧相关关键词（镜头、画面等）但没有媒体数据
+        // 🔴 修复：检查是否包含短剧相关关键词（镜头、画面等）但没有视频数据
         const hasDramaKeywords = /镜头|画面|场景|角色|视频|剧本|短剧/gi.test(potentialFinalAnswer)
         const hasMedia = this.hasMediaContent(potentialFinalAnswer)
+        const hasVideo = this.hasVideoContent(potentialFinalAnswer)  // 🔴 新增：专门检查视频
 
-        if (hasDramaKeywords && !hasMedia) {
-          // 🔴 修复：如果包含短剧关键词但缺少媒体数据，说明 LLM 只是生成了文本，没有调用工具
-          console.log('[AgentService] 警告：生成了短剧文本，但没有调用工具，强制调用 produce_shortdrama...')
+        if (hasDramaKeywords && !hasVideo) {
+          // 🔴 修复：如果包含短剧关键词但缺少视频数据，说明 LLM 只是生成了文本，没有调用工具
+          console.log('[AgentService] 警告：生成了短剧文本，但没有视频数据，强制调用 produce_shortdrama...')
 
           // 🔴 修复：不重新赋值 thought，而是直接执行工具调用逻辑
           // 根据任务描述构建参数
@@ -1382,8 +1383,8 @@ export class AgentService {
 
           // 🔴 修复：如果工具执行失败，继续循环
           continue
-        } else if (hasMedia) {
-          // 如果包含媒体数据，说明工具已经执行完成，可以返回
+        } else if (hasVideo) {
+          // 如果包含视频数据，说明工具已经执行完成，可以返回
           finalAnswer = potentialFinalAnswer
           // 完成思考，进度到 90%
           this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
@@ -2004,6 +2005,43 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       // 如果不是 JSON，检查文本中是否包含 URL（简单的启发式检查）
       const urlPattern = /https?:\/\/[^\s]+\.(mp4|mov|avi|jpg|jpeg|png|gif)/gi
       return urlPattern.test(finalAnswer)
+    }
+  }
+
+  /**
+   * 🔴 修复：检查最终答案是否包含视频数据
+   * 对于短剧相关的内容，必须检查是否有视频（不仅仅是图片）
+   */
+  private hasVideoContent(finalAnswer: string): boolean {
+    try {
+      const parsed = JSON.parse(finalAnswer)
+      // 检查视频相关字段
+      const videoFields = ['video_clips', 'videos', 'video_url', 'edited_video_url']
+
+      // 检查是否有视频数组（且不为空）
+      const hasVideoArray = videoFields.some(field => {
+        const value = parsed[field]
+        if (Array.isArray(value) && value.length > 0) {
+          // 对于 video_clips，确保至少有一个有效的视频 URL
+          if (field === 'video_clips') {
+            return value.some((clip: any) => clip.url && typeof clip.url === 'string' && clip.url.length > 0)
+          }
+          return true
+        }
+        return false
+      })
+
+      // 检查是否有视频 URL 字符串
+      const hasVideoString = videoFields.some(field => {
+        const value = parsed[field]
+        return typeof value === 'string' && value.length > 0
+      })
+
+      return hasVideoArray || hasVideoString
+    } catch (e) {
+      // 如果不是 JSON，检查文本中是否包含视频 URL
+      const videoUrlPattern = /https?:\/\/[^\s]+\.(mp4|mov|avi)/gi
+      return videoUrlPattern.test(finalAnswer)
     }
   }
 
