@@ -988,17 +988,16 @@ export class GenerateVideoTool implements ITool {
         has_reference_images: params.reference_images?.length || 0,
         has_reference_videos: params.reference_videos?.length || 0,
         has_reference_audios: params.reference_audios?.length || 0,
-        duration: params.duration || 5,
         ratio: params.ratio || '9:16'
+        // 🔴 修复：新模型不支持 duration 参数，已移除
       })
 
       const response = await axios.post(apiUrl, {
         model: 'doubao-seedance-2-0-260128',
         content: content,
         generate_audio: params.generate_audio !== false, // 默认生成音频
-        ratio: params.ratio || '9:16',
-        duration: params.duration || 5,
-        watermark: false
+        ratio: params.ratio || '9:16'
+        // 🔴 修复：新模型不支持 duration、watermark 等参数，已移除
       }, {
         headers: {
           'Content-Type': 'application/json',
