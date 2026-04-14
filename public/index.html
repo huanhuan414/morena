@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>莫瑞娜AI共生矩阵小程序 - 公网访问</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #333;
+      font-size: 26px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .qr-wrapper {
+      margin: 30px 0;
+      padding: 30px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 16px;
+      display: inline-block;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .qr-code {
+      width: 300px;
+      height: 300px;
+      display: block;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .url-box {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border: 2px dashed #667eea;
+      border-radius: 12px;
+    }
+    .url-label {
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .url {
+      color: #333;
+      font-size: 16px;
+      font-family: 'Courier New', monospace;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .features {
+      margin-top: 30px;
+      text-align: left;
+    }
+    .features h2 {
+      color: #667eea;
+      font-size: 18px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    .feature-item {
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .feature-title {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    .feature-desc {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.4;
+    }
+    .instructions {
+      margin-top: 30px;
+      padding: 20px;
+      background: #fff3cd;
+      border-radius: 12px;
+      text-align: left;
+    }
+    .instructions h2 {
+      color: #856404;
+      font-size: 16px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .instructions ol {
+      color: #856404;
+      font-size: 13px;
+      line-height: 1.8;
+      padding-left: 20px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 15px 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .footer {
+      margin-top: 30px;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🤖</div>
+    <h1>莫瑞娜AI共生矩阵小程序</h1>
+    <p class="subtitle">扫码体验 AI 分身对话、技能广场、短剧制作等功能</p>
+    
+    <div class="qr-wrapper">
+      <img src="/public-qrcode.png" alt="公网访问二维码" class="qr-code" />
+    </div>
+    
+    <a href="https://9e797e2d-4d85-434c-af9f-85a0aa436a51.dev.coze.site" target="_blank" class="btn">
+      🚀 立即打开应用
+    </a>
+    
+    <div class="url-box">
+      <div class="url-label">🌐 公网访问链接</div>
+      <div class="url">
+        https://9e797e2d-4d85-434c-af9f-85a0aa436a51.dev.coze.site
+      </div>
+    </div>
+    
+    <div class="features">
+      <h2>✨ 核心功能</h2>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-icon">💬</div>
+          <div class="feature-title">AI 分身对话</div>
+          <div class="feature-desc">与 AI 分身进行智能对话，获取专业建议</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎭</div>
+          <div class="feature-title">技能广场</div>
+          <div class="feature-desc">为分身添加各种技能，扩展能力</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎬</div>
+          <div class="feature-title">短剧制作</div>
+          <div class="feature-desc">一键生成短剧成品，包含视频、角色、剧本</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔧</div>
+          <div class="feature-title">分身管理</div>
+          <div class="feature-desc">创建和管理多个 AI 分身</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="instructions">
+      <h2>📱 使用说明</h2>
+      <ol>
+        <li>用手机微信扫描上方二维码</li>
+        <li>或直接点击"立即打开应用"按钮</li>
+        <li>在手机浏览器中打开链接</li>
+        <li>开始体验各项功能</li>
+      </ol>
+    </div>
+    
+    <div class="footer">
+      © 2024 莫瑞娜AI共生矩阵小程序 | Powered by Coze
+    </div>
+  </div>
+</body>
+</html>
