@@ -278,7 +278,10 @@ export class ProduceShortDramaTool implements ITool {
       genre: { type: 'string', enum: ['爱情', '悬疑', '喜剧', '剧情', '都市', '古装', '科幻', '青春'], default: '剧情' },
       duration: { type: 'number', description: '目标时长（分钟，默认1分钟）', default: 1 },
       include_video: { type: 'boolean', description: '是否生成完整短剧成品（必须为 true 以提供成品）', default: true },
-      key_scenes_count: { type: 'number', description: '关键视频镜头数量（默认6个，确保剧情连贯）', default: 6 }
+      key_scenes_count: { type: 'number', description: '关键视频镜头数量（默认6个，确保剧情连贯）', default: 6 },
+      ratio: { type: 'string', enum: ['16:9', '9:16', '4:3', '1:1'], description: '视频宽高比（默认16:9，即横屏）', default: '16:9' },
+      video_duration: { type: 'number', description: '每个镜头视频的时长（秒，默认自动计算）', default: null },
+      generate_audio: { type: 'boolean', description: '是否为视频生成音频（默认true）', default: true }
     }
   }
 
@@ -531,6 +534,24 @@ ${scriptContent}
           context.onProgress(`🎥 正在生成${params.key_scenes_count}个关键镜头视频...`, 5, '生成关键镜头视频')
         }
 
+        // 🔴 修复：计算每个视频的时长
+        const targetTotalDuration = params.duration || 1 // 目标总时长（分钟）
+        const targetTotalSeconds = targetTotalDuration * 60 // 转换为秒
+        const clipCount = params.key_scenes_count || 6
+        const defaultClipDuration = Math.floor(targetTotalSeconds / clipCount) // 平均每个视频的时长
+
+        // 🔴 修复：使用用户指定的时长，或自动计算的时长
+        const clipDuration = params.video_duration || Math.max(3, defaultClipDuration) // 最少3秒
+        console.log(`[短剧制作] 每个视频时长: ${clipDuration}秒，总时长: ${clipCount * clipDuration}秒`)
+
+        // 🔴 修复：使用用户指定的宽高比，或默认16:9
+        const videoRatio = params.ratio || '16:9'
+        console.log(`[短剧制作] 视频宽高比: ${videoRatio}`)
+
+        // 🔴 修复：使用用户指定的音频生成设置，或默认true
+        const shouldGenerateAudio = params.generate_audio !== false // 默认为 true
+        console.log(`[短剧制作] 是否生成音频: ${shouldGenerateAudio}`)
+
         // 提取分镜头中的关键画面描述
         const shotDescriptions: string[] = []
 
@@ -658,11 +679,11 @@ ${scriptContent}
 
             const videoResponse = await videoClient.videoGeneration(content, {
               model: 'doubao-seedance-2-0-260128', // 🔴 修复：使用支持参考图像的新版本模型
-              duration: 5, // 🔴 修改：每个镜头5秒，6个镜头共30秒
-              ratio: '16:9',
+              duration: clipDuration, // 🔴 修复：使用计算或用户指定的时长
+              ratio: videoRatio, // 🔴 修复：使用用户指定的宽高比
               resolution: '720p',
               watermark: false,
-              generateAudio: false
+              generateAudio: shouldGenerateAudio // 🔴 修复：使用用户指定的音频生成设置，或默认true
             })
 
             if (videoResponse.videoUrl) {
@@ -784,9 +805,11 @@ ${scriptContent}
 📊 **生成统计**：
 • 角色：${characterImages.length}个
 • 场景：${sceneImages.length}个
-• 镜头：${videoClips.length}个
+• 镜头：${videoClips.length}个（每个${clipDuration}秒）
+• 宽高比：${videoRatio}
 • 成品视频：${editedVideoUrl ? '已合成 ✅' : '未生成 ❌'}
 • 配乐推荐：${bgmRecommendations.length}首
+• 视频时长：约${Math.round((videoClips.length * clipDuration) / 60)}分钟
 
 📝 **内容说明**：
 包含完整剧本、角色形象、场景设计、关键镜头视频、${editedVideoUrl ? '完整成品视频' : '单独镜头'}以及配乐推荐，您可以查看所有内容啦~
