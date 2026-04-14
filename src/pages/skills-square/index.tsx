@@ -9,8 +9,112 @@ import Taro from '@tarojs/taro'
 import { Star, Check, ShoppingCart, Search } from 'lucide-react-taro'
 import './index.css'
 
+// 技能名称中文映射
+const SKILL_NAME_MAP: Record<string, string> = {
+  // 短剧套件中的技能
+  generate_shortdrama_script: '短剧剧本生成',
+  generate_storyboard: '分镜脚本生成',
+  produce_shortdrama: '短剧制作',
+  generate_multi_episode_drama: '多集短剧生成',
+  generate_drama_voiceover: '短剧配音生成',
+  edit_shortdrama_video: '短剧视频编辑',
+  generate_subtitle: '字幕生成',
+  recommend_bgm: '背景音乐推荐',
+  // 分身秩序
+  app_assign_order: '分身秩序',
+  // 视频相关
+  generate_video: '视频生成',
+  generate_image: '图片生成',
+  generate_text: '文本生成',
+  generate_audio: '音频生成',
+  generate_video_content: '视频内容生成',
+  generate_video_script: '视频脚本生成',
+  generate_video_shotlist: '视频分镜生成',
+  produce_video: '视频制作',
+  generate_video_clips: '视频片段生成',
+  generate_video_voiceover: '视频配音生成',
+  recommend_video_music: '视频音乐推荐',
+  edit_video: '视频编辑',
+  optimize_video: '视频优化',
+  // 社交媒体相关
+  social_media_publish: '社交媒体发布',
+  schedule_post: '定时发布',
+  analyze_performance: '性能分析',
+  generate_social_content: '社交内容生成',
+  create_custom_effect: '自定义特效创建',
+  generate_thumbnail: '缩略图生成',
+  optimize_for_tiktok: 'TikTok 优化',
+  create_video_series: '视频系列创建',
+  // 音频相关
+  generate_voiceover: '配音生成',
+  create_avatar_voice: '分身声音创建',
+  speech_to_text: '语音转文字',
+  text_to_speech: '文字转语音',
+  voice_cloning: '声音克隆',
+  accent_conversion: '口音转换',
+  voice_enhancement: '声音增强',
+  voice_style_transfer: '声音风格迁移',
+  // 分身相关
+  create_avatar: '创建分身',
+  customize_avatar: '自定义分身',
+  avatar_animation: '分身动画',
+  avatar_voice_binding: '分身声音绑定',
+  avatar_scene_interaction: '分身场景交互',
+  create_virtual_background: '虚拟背景创建',
+  // 内容规划
+  content_scheduling: '内容排期',
+  content_planning: '内容规划',
+  content_analysis: '内容分析',
+  trend_analysis: '趋势分析',
+  audience_analysis: '受众分析',
+  performance_optimization: '性能优化',
+  // 短视频相关
+  create_reel: '短视频制作',
+  edit_reel: '短视频编辑',
+  optimize_reel: '短视频优化',
+  generate_reel_ideas: '短视频创意生成',
+  create_shorts: 'Shorts 制作',
+  optimize_shorts: 'Shorts 优化',
+  generate_shorts_ideas: 'Shorts 创意生成',
+  create_tiktok_content: 'TikTok 内容制作',
+  optimize_tiktok_content: 'TikTok 内容优化',
+  generate_tiktok_ideas: 'TikTok 创意生成',
+  create_youtube_shorts: 'YouTube Shorts 制作',
+  optimize_youtube_shorts: 'YouTube Shorts 优化',
+  generate_youtube_ideas: 'YouTube 创意生成',
+  create_instagram_reels: 'Instagram Reels 制作',
+  optimize_instagram_reels: 'Instagram Reels 优化',
+  generate_instagram_ideas: 'Instagram 创意生成'
+}
+
+// 获取技能中文名称
+const getSkillDisplayName = (name: string, toolName: string): string => {
+  // 如果有映射，使用映射的中文名称
+  if (SKILL_NAME_MAP[toolName]) {
+    return SKILL_NAME_MAP[toolName]
+  }
+
+  // 如果是短剧套件中的技能，直接映射
+  if (SHORT_DRAMA_KIT.skills.includes(toolName as any)) {
+    return SKILL_NAME_MAP[toolName] || name
+  }
+
+  // 否则返回原始名称
+  return name
+}
+
 // 短剧创作套件配置
-const SHORT_DRAMA_KIT = {
+const SHORT_DRAMA_KIT: {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  skills: string[];
+  tags: string[];
+  rating: number;
+  purchase_count: number;
+} = {
   id: 'short_drama_kit',
   name: '短剧创作套件',
   description: '一键获取短剧创作全流程技能，从剧本到成品一站式解决',
@@ -719,9 +823,11 @@ export default function SkillsSquare() {
           <View className="skills-grid">
             {(!searchKeyword ? filterSkills(skills) : skills).map((skill) => {
               const owned = isOwned(skill.id)
+              const displayName = getSkillDisplayName(skill.name, skill.tool_name || '')
               console.log('[SkillSquare] 渲染技能卡片:', {
                 技能ID: skill.id,
                 技能名称: skill.name,
+                显示名称: displayName,
                 是否已添加: owned,
                 已添加技能列表: mySkills
               })
@@ -743,7 +849,7 @@ export default function SkillsSquare() {
                   {/* 内容 */}
                   <View className="card-content">
                     <Text className="category-tag">{skill.category}</Text>
-                    <Text className="skill-name">{skill.name}</Text>
+                    <Text className="skill-name">{displayName}</Text>
                     <Text className="skill-description">{skill.description}</Text>
 
                     {/* 标签 */}
@@ -867,10 +973,10 @@ export default function SkillsSquare() {
               </View>
               <View className="kit-skills-list">
                 <Text className="kit-skills-title">包含技能：</Text>
-                {SHORT_DRAMA_KIT.skills.map((skill, idx) => (
+                {SHORT_DRAMA_KIT.skills.map((skill: string, idx: number) => (
                   <View key={idx} className="kit-skill-item">
                     <Text className="kit-skill-icon">✓</Text>
-                    <Text className="kit-skill-text">{skill.replace(/_/g, ' ')}</Text>
+                    <Text className="kit-skill-text">{getSkillDisplayName('', skill)}</Text>
                   </View>
                 ))}
               </View>
