@@ -322,4 +322,33 @@ export class SkillsController {
       }
     }
   }
+
+  /**
+   * 通过 tool_name 购买技能（用于批量添加套件）
+   */
+  @Post('purchase-by-tool-name')
+  async purchaseSkillByToolName(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { toolName: string; avatarId: string }
+  ) {
+    try {
+      const result = await this.skillsService.purchaseSkillByToolName(
+        userId,
+        body.toolName,
+        body.avatarId
+      )
+
+      return {
+        code: 200,
+        data: result,
+        message: '添加成功'
+      }
+    } catch (error) {
+      return {
+        code: 400,
+        data: null,
+        message: error.message || '添加技能失败'
+      }
+    }
+  }
 }

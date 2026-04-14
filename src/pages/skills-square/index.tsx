@@ -9,6 +9,41 @@ import Taro from '@tarojs/taro'
 import { Star, Check, ShoppingCart, Search } from 'lucide-react-taro'
 import './index.css'
 
+// 短剧创作套件配置
+const SHORT_DRAMA_KIT = {
+  id: 'short_drama_kit',
+  name: '短剧创作套件',
+  description: '一键获取短剧创作全流程技能，从剧本到成品一站式解决',
+  icon: '🎬',
+  category: '短剧',
+  skills: [
+    'generate_shortdrama_script',      // 生成短剧剧本
+    'generate_storyboard',             // 生成分镜脚本
+    'produce_shortdrama',              // 制作短剧
+    'generate_multi_episode_drama',     // 生成多集短剧
+    'generate_drama_voiceover',         // 生成短剧配音
+    'edit_shortdrama_video',            // 编辑短剧视频
+    'generate_subtitle',                // 生成字幕
+    'recommend_bgm'                     // 推荐背景音乐
+  ],
+  tags: ['短剧', '视频', '全流程'],
+  rating: 5.0,
+  purchase_count: 999
+}
+
+// 分身秩序技能配置
+const AGENT_ORDER_SKILL = {
+  id: 'agent_order',
+  name: '分身秩序',
+  description: '智能编排分身协作流程，一键生成短剧成品。分身自动协作完成剧本创作、分镜设计、视频制作、配音、字幕等全流程',
+  icon: '🤖',
+  category: '短剧',
+  tool_name: 'app_assign_order',
+  tags: ['协作', '短剧', '自动化'],
+  rating: 4.9,
+  purchase_count: 500
+}
+
 // 根据 tool_name 获取图标
 const getSkillIcon = (toolName?: string): string => {
   const iconMap: Record<string, string> = {
@@ -72,6 +107,8 @@ export default function SkillsSquare() {
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
+  const [showKitDialog, setShowKitDialog] = useState(false)
+  const [showOrderDialog, setShowOrderDialog] = useState(false)
 
   // 打印环境信息
   useEffect(() => {
@@ -291,6 +328,109 @@ export default function SkillsSquare() {
     }
   }
 
+  // 一键添加短剧套件
+  const handleAddDramaKit = async () => {
+    if (!currentAvatar?.id) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    try {
+      setPurchasing(true)
+      console.log('[SkillSquare] 开始添加短剧套件:', {
+        skills: SHORT_DRAMA_KIT.skills,
+        avatarId: currentAvatar.id
+      })
+
+      // 批量添加技能
+      const results = await Promise.all(
+        SHORT_DRAMA_KIT.skills.map(toolName =>
+          Network.request({
+            url: '/api/skills/purchase-by-tool-name',
+            method: 'POST',
+            data: {
+              toolName,
+              avatarId: currentAvatar.id
+            }
+          })
+        )
+      )
+
+      console.log('[SkillSquare] 短剧套件添加结果:', results)
+
+      const successCount = results.filter(r => r.data?.code === 200).length
+      const totalCount = results.length
+
+      if (successCount === totalCount) {
+        Taro.showToast({
+          title: `短剧套件添加成功！已添加 ${totalCount} 个技能`,
+          icon: 'success'
+        })
+      } else if (successCount > 0) {
+        Taro.showToast({
+          title: `部分添加成功（${successCount}/${totalCount}）`,
+          icon: 'none'
+        })
+      } else {
+        Taro.showToast({ title: '添加失败，请重试', icon: 'none' })
+      }
+
+      setShowKitDialog(false)
+      fetchMySkills()
+    } catch (error: any) {
+      console.error('[SkillSquare] 添加短剧套件失败:', error)
+      Taro.showToast({ title: '添加失败: ' + (error.message || '未知错误'), icon: 'none' })
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
+  // 一键生成分身秩序
+  const handleGenerateAgentOrder = async () => {
+    if (!currentAvatar?.id) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    try {
+      setPurchasing(true)
+      console.log('[SkillSquare] 开始生成分身秩序:', {
+        avatarId: currentAvatar.id
+      })
+
+      const res = await Network.request({
+        url: '/api/skills/purchase-by-tool-name',
+        method: 'POST',
+        data: {
+          toolName: AGENT_ORDER_SKILL.tool_name,
+          avatarId: currentAvatar.id
+        }
+      })
+
+      console.log('[SkillSquare] 分身秩序添加结果:', res)
+
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '分身秩序添加成功！', icon: 'success' })
+        setShowOrderDialog(false)
+        fetchMySkills()
+
+        // 跳转到聊天页面
+        setTimeout(() => {
+          Taro.navigateTo({
+            url: '/pages/mind-chat/index'
+          })
+        }, 1500)
+      } else {
+        Taro.showToast({ title: res.data?.message || '添加失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      console.error('[SkillSquare] 添加分身秩序失败:', error)
+      Taro.showToast({ title: '添加失败: ' + (error.message || '未知错误'), icon: 'none' })
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
   // 移除技能
   const handleRemoveSkill = async (skillId: string, skillName: string) => {
     if (!currentAvatar?.id) return
@@ -476,6 +616,81 @@ export default function SkillsSquare() {
         </View>
       </View>
 
+      {/* 短剧创作套件和分身秩序（只在无搜索时显示） */}
+      {!searchKeyword && (
+        <View className="special-cards">
+          {/* 短剧创作套件 */}
+          <View className="special-card drama-kit" onClick={() => setShowKitDialog(true)}>
+            <View className="special-header">
+              <View className="special-icon-large">{SHORT_DRAMA_KIT.icon}</View>
+              <View className="special-badge">🔥 热门</View>
+            </View>
+            <View className="special-content">
+              <Text className="special-title">{SHORT_DRAMA_KIT.name}</Text>
+              <Text className="special-desc">{SHORT_DRAMA_KIT.description}</Text>
+              <View className="special-skills">
+                {SHORT_DRAMA_KIT.skills.slice(0, 4).map((skill, idx) => (
+                  <View key={idx} className="mini-skill-tag">
+                    <Text className="mini-skill-text">{skill.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+                {SHORT_DRAMA_KIT.skills.length > 4 && (
+                  <View className="mini-skill-tag more">
+                    <Text className="mini-skill-text">+{SHORT_DRAMA_KIT.skills.length - 4}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            <View className="special-footer">
+              <View className="special-stats">
+                <Star size={14} color="#ffb800" />
+                <Text className="special-stat-value">{SHORT_DRAMA_KIT.rating}</Text>
+                <Text className="special-stat-label">({SHORT_DRAMA_KIT.purchase_count}人使用)</Text>
+              </View>
+              <View className="special-action">
+                <Text className="special-action-text">一键添加</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 分身秩序 */}
+          <View className="special-card agent-order" onClick={() => setShowOrderDialog(true)}>
+            <View className="special-header">
+              <View className="special-icon-large">{AGENT_ORDER_SKILL.icon}</View>
+              <View className="special-badge ai">🤖 AI协作</View>
+            </View>
+            <View className="special-content">
+              <Text className="special-title">{AGENT_ORDER_SKILL.name}</Text>
+              <Text className="special-desc">{AGENT_ORDER_SKILL.description}</Text>
+              <View className="special-features">
+                <View className="feature-item">
+                  <Text className="feature-icon">⚡</Text>
+                  <Text className="feature-text">智能编排</Text>
+                </View>
+                <View className="feature-item">
+                  <Text className="feature-icon">🎬</Text>
+                  <Text className="feature-text">一键成品</Text>
+                </View>
+                <View className="feature-item">
+                  <Text className="feature-icon">🤝</Text>
+                  <Text className="feature-text">分身协作</Text>
+                </View>
+              </View>
+            </View>
+            <View className="special-footer">
+              <View className="special-stats">
+                <Star size={14} color="#ffb800" />
+                <Text className="special-stat-value">{AGENT_ORDER_SKILL.rating}</Text>
+                <Text className="special-stat-label">({AGENT_ORDER_SKILL.purchase_count}人使用)</Text>
+              </View>
+              <View className="special-action ai">
+                <Text className="special-action-text">立即体验</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* 技能列表 */}
       <ScrollView className="skills-scroll" scrollY>
         {loading ? (
@@ -607,6 +822,97 @@ export default function SkillsSquare() {
             </Button>
             <Button onClick={handlePurchase} disabled={purchasing}>
               <Text>{purchasing ? '添加中...' : '确认添加'}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 短剧套件弹窗 */}
+      <Dialog open={showKitDialog} onOpenChange={setShowKitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>短剧创作套件</DialogTitle>
+          </DialogHeader>
+          <View className="dialog-content">
+            <View className="kit-preview">
+              <Text className="kit-icon">{SHORT_DRAMA_KIT.icon}</Text>
+              <View className="kit-info">
+                <Text className="kit-name">{SHORT_DRAMA_KIT.name}</Text>
+                <Text className="kit-desc">{SHORT_DRAMA_KIT.description}</Text>
+              </View>
+            </View>
+            <View className="kit-skills-list">
+              <Text className="kit-skills-title">包含技能：</Text>
+              {SHORT_DRAMA_KIT.skills.map((skill, idx) => (
+                <View key={idx} className="kit-skill-item">
+                  <Text className="kit-skill-icon">✓</Text>
+                  <Text className="kit-skill-text">{skill.replace(/_/g, ' ')}</Text>
+                </View>
+              ))}
+            </View>
+            <View className="target-avatar">
+              <Text className="target-label">目标分身</Text>
+              <Text className="target-name">{currentAvatar?.name}</Text>
+            </View>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowKitDialog(false)}>
+              <Text>取消</Text>
+            </Button>
+            <Button onClick={handleAddDramaKit} disabled={purchasing}>
+              <Text>{purchasing ? '添加中...' : `一键添加 ${SHORT_DRAMA_KIT.skills.length} 个技能`}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 分身秩序弹窗 */}
+      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>分身秩序</DialogTitle>
+          </DialogHeader>
+          <View className="dialog-content">
+            <View className="order-preview">
+              <Text className="order-icon">{AGENT_ORDER_SKILL.icon}</Text>
+              <View className="order-info">
+                <Text className="order-name">{AGENT_ORDER_SKILL.name}</Text>
+                <Text className="order-desc">{AGENT_ORDER_SKILL.description}</Text>
+              </View>
+            </View>
+            <View className="order-features">
+              <Text className="order-features-title">核心功能：</Text>
+              <View className="order-feature-item">
+                <Text className="order-feature-icon">🎯</Text>
+                <Text className="order-feature-text">智能分析需求</Text>
+              </View>
+              <View className="order-feature-item">
+                <Text className="order-feature-icon">🎬</Text>
+                <Text className="order-feature-text">自动编排流程</Text>
+              </View>
+              <View className="order-feature-item">
+                <Text className="order-feature-icon">🤖</Text>
+                <Text className="order-feature-text">分身协作执行</Text>
+              </View>
+              <View className="order-feature-item">
+                <Text className="order-feature-icon">✨</Text>
+                <Text className="order-feature-text">一键生成成品</Text>
+              </View>
+            </View>
+            <View className="order-tip">
+              <Text className="order-tip-text">💡 添加后，在分身聊天中发送&quot;生成短剧&quot;即可一键完成短剧创作</Text>
+            </View>
+            <View className="target-avatar">
+              <Text className="target-label">目标分身</Text>
+              <Text className="target-name">{currentAvatar?.name}</Text>
+            </View>
+          </View>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrderDialog(false)}>
+              <Text>取消</Text>
+            </Button>
+            <Button onClick={handleGenerateAgentOrder} disabled={purchasing}>
+              <Text>{purchasing ? '添加中...' : '立即体验'}</Text>
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -639,6 +639,100 @@ ${prompt}
   }
 
   /**
+   * 通过 tool_name 购买技能（用于批量添加套件）
+   */
+  async purchaseSkillByToolName(userId: string, toolName: string, avatarId: string) {
+    try {
+      console.log('[SkillsService] purchaseSkillByToolName - 开始:', {
+        userId,
+        toolName,
+        avatarId
+      })
+
+      // 查询该 tool_name 对应的技能
+      const { data: skill, error: skillError } = await getSupabaseClient()
+        .from('skills')
+        .select('*')
+        .or(`tool_name.eq.${toolName},toolName.eq.${toolName}`)
+        .maybeSingle()
+
+      if (skillError) {
+        console.error('[SkillsService] purchaseSkillByToolName - 查询技能失败:', skillError)
+        throw new Error(`查询技能失败: ${skillError.message}`)
+      }
+
+      if (!skill) {
+        console.warn('[SkillsService] purchaseSkillByToolName - 未找到技能:', toolName)
+        throw new Error(`未找到技能: ${toolName}`)
+      }
+
+      console.log('[SkillsService] purchaseSkillByToolName - 查询到技能:', {
+        skillId: skill.id,
+        skillName: skill.name,
+        tool_name: skill.tool_name
+      })
+
+      // 检查是否已购买
+      const { data: existing, error: checkError } = await getSupabaseClient()
+        .from('avatar_skills')
+        .select('*')
+        .eq('avatar_id', avatarId)
+        .eq('skill_type', toolName)
+        .maybeSingle()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('[SkillsService] purchaseSkillByToolName - 检查技能失败:', checkError)
+        throw new Error(`检查技能失败: ${checkError.message}`)
+      }
+
+      if (existing) {
+        console.log('[SkillsService] purchaseSkillByToolName - 技能已存在，返回现有记录')
+        return existing
+      }
+
+      // 添加技能到分身
+      const { data: newAvatarSkill, error: insertError } = await getSupabaseClient()
+        .from('avatar_skills')
+        .insert({
+          avatar_id: avatarId,
+          skill_id: skill.id,
+          skill_type: toolName,
+          skill_name: skill.name,
+          skill_description: skill.description,
+          skill_category: skill.category,
+          tool_name: toolName,
+          tool_schema: skill.tool_schema,
+          enabled: true,
+          metadata: {
+            skill_id: skill.id,
+            skill_name: skill.name,
+            purchase_price: skill.price,
+            purchased_at: new Date().toISOString()
+          } as any,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('[SkillsService] purchaseSkillByToolName - 添加技能失败:', insertError)
+        throw new Error(`添加技能失败: ${insertError.message}`)
+      }
+
+      if (!newAvatarSkill) {
+        throw new Error('添加技能失败：未返回数据')
+      }
+
+      console.log('[SkillsService] purchaseSkillByToolName - 添加成功:', newAvatarSkill)
+      return newAvatarSkill
+    } catch (error) {
+      console.error('[SkillsService] purchaseSkillByToolName error:', error)
+      throw error
+    }
+  }
+
+  /**
    * 移除分身技能
    */
   async removeSkill(userId: string, dto: { skillId: string; avatarId: string }) {
