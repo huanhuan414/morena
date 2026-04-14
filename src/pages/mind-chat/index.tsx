@@ -1757,12 +1757,25 @@ export default function MindChatPage() {
     const hasShortDrama = (() => {
       if (msg.metadata?.task_state?.progressHistory) {
         const progressHistory = msg.metadata.task_state.progressHistory as any[]
-        return progressHistory.some((item: any) =>
-          item.action === 'action' &&
+        console.log('[短剧检测] 检查 progressHistory，长度:', progressHistory.length)
+
+        const dramaStep = progressHistory.find((item: any) =>
+          item.action === 'observation' &&
           item.data?.action === 'produce_shortdrama' &&
-          item.data?.status === 'completed' &&
-          item.data?.data
+          item.data?.status === 'completed'
         )
+
+        console.log('[短剧检测] 找到的 dramaStep:', dramaStep ? '有' : '无')
+
+        if (dramaStep) {
+          const dramaData = dramaStep.data?.data
+          const hasData = dramaData &&
+            (dramaData.characters?.length > 0 ||
+             dramaData.scenes?.length > 0 ||
+             dramaData.video_clips?.length > 0)
+          console.log('[短剧检测] dramaData 存在:', !!dramaData, '有数据:', hasData)
+          return hasData
+        }
       }
       return false
     })()
@@ -1772,11 +1785,17 @@ export default function MindChatPage() {
       if (msg.metadata?.task_state?.progressHistory) {
         const progressHistory = msg.metadata.task_state.progressHistory as any[]
         const dramaStep = progressHistory.find((item: any) =>
-          item.action === 'action' &&
+          item.action === 'observation' &&
           item.data?.action === 'produce_shortdrama' &&
           item.data?.status === 'completed'
         )
-        return dramaStep?.data?.data || null
+        const data = dramaStep?.data?.data
+        console.log('[短剧检测] 提取到的 dramaData:', data ? {
+          characters: data.characters?.length || 0,
+          scenes: data.scenes?.length || 0,
+          video_clips: data.video_clips?.length || 0
+        } : '无')
+        return data || null
       }
       return null
     })()
