@@ -808,21 +808,23 @@ export default function SkillsSquare() {
           <DialogHeader>
             <DialogTitle>添加技能</DialogTitle>
           </DialogHeader>
-          {selectedSkill && (
-            <View className="dialog-content">
-              <View className="skill-preview">
-                <Text className="preview-icon">{getSkillIcon(selectedSkill.tool_name)}</Text>
-                <View className="preview-info">
-                  <Text className="preview-name">{selectedSkill.name}</Text>
-                  <Text className="preview-desc">{selectedSkill.description}</Text>
+          <View className="dialog-content-scroll">
+            {selectedSkill && (
+              <View className="dialog-content">
+                <View className="skill-preview">
+                  <Text className="preview-icon">{getSkillIcon(selectedSkill.tool_name)}</Text>
+                  <View className="preview-info">
+                    <Text className="preview-name">{selectedSkill.name}</Text>
+                    <Text className="preview-desc">{selectedSkill.description}</Text>
+                  </View>
+                </View>
+                <View className="target-avatar">
+                  <Text className="target-label">目标分身</Text>
+                  <Text className="target-name">{currentAvatar?.name}</Text>
                 </View>
               </View>
-              <View className="target-avatar">
-                <Text className="target-label">目标分身</Text>
-                <Text className="target-name">{currentAvatar?.name}</Text>
-              </View>
-            </View>
-          )}
+            )}
+          </View>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPurchaseDialog(false)}>
               <Text>取消</Text>
@@ -840,26 +842,28 @@ export default function SkillsSquare() {
           <DialogHeader>
             <DialogTitle>短剧创作套件</DialogTitle>
           </DialogHeader>
-          <View className="dialog-content">
-            <View className="kit-preview">
-              <Text className="kit-icon">{SHORT_DRAMA_KIT.icon}</Text>
-              <View className="kit-info">
-                <Text className="kit-name">{SHORT_DRAMA_KIT.name}</Text>
-                <Text className="kit-desc">{SHORT_DRAMA_KIT.description}</Text>
-              </View>
-            </View>
-            <View className="kit-skills-list">
-              <Text className="kit-skills-title">包含技能：</Text>
-              {SHORT_DRAMA_KIT.skills.map((skill, idx) => (
-                <View key={idx} className="kit-skill-item">
-                  <Text className="kit-skill-icon">✓</Text>
-                  <Text className="kit-skill-text">{skill.replace(/_/g, ' ')}</Text>
+          <View className="dialog-content-scroll">
+            <View className="dialog-content">
+              <View className="kit-preview">
+                <Text className="kit-icon">{SHORT_DRAMA_KIT.icon}</Text>
+                <View className="kit-info">
+                  <Text className="kit-name">{SHORT_DRAMA_KIT.name}</Text>
+                  <Text className="kit-desc">{SHORT_DRAMA_KIT.description}</Text>
                 </View>
-              ))}
-            </View>
-            <View className="target-avatar">
-              <Text className="target-label">目标分身</Text>
-              <Text className="target-name">{currentAvatar?.name}</Text>
+              </View>
+              <View className="kit-skills-list">
+                <Text className="kit-skills-title">包含技能：</Text>
+                {SHORT_DRAMA_KIT.skills.map((skill, idx) => (
+                  <View key={idx} className="kit-skill-item">
+                    <Text className="kit-skill-icon">✓</Text>
+                    <Text className="kit-skill-text">{skill.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+              </View>
+              <View className="target-avatar">
+                <Text className="target-label">目标分身</Text>
+                <Text className="target-name">{currentAvatar?.name}</Text>
+              </View>
             </View>
           </View>
           <DialogFooter>
@@ -879,39 +883,41 @@ export default function SkillsSquare() {
           <DialogHeader>
             <DialogTitle>分身秩序</DialogTitle>
           </DialogHeader>
-          <View className="dialog-content">
-            <View className="order-preview">
-              <Text className="order-icon">{AGENT_ORDER_SKILL.icon}</Text>
-              <View className="order-info">
-                <Text className="order-name">{AGENT_ORDER_SKILL.name}</Text>
-                <Text className="order-desc">{AGENT_ORDER_SKILL.description}</Text>
+          <View className="dialog-content-scroll">
+            <View className="dialog-content">
+              <View className="order-preview">
+                <Text className="order-icon">{AGENT_ORDER_SKILL.icon}</Text>
+                <View className="order-info">
+                  <Text className="order-name">{AGENT_ORDER_SKILL.name}</Text>
+                  <Text className="order-desc">{AGENT_ORDER_SKILL.description}</Text>
+                </View>
               </View>
-            </View>
-            <View className="order-features">
-              <Text className="order-features-title">核心功能：</Text>
-              <View className="order-feature-item">
-                <Text className="order-feature-icon">🎯</Text>
-                <Text className="order-feature-text">智能分析需求</Text>
+              <View className="order-features">
+                <Text className="order-features-title">核心功能：</Text>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">🎯</Text>
+                  <Text className="order-feature-text">智能分析需求</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">🎬</Text>
+                  <Text className="order-feature-text">自动编排流程</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">🤖</Text>
+                  <Text className="order-feature-text">分身协作执行</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">✨</Text>
+                  <Text className="order-feature-text">一键生成成品</Text>
+                </View>
               </View>
-              <View className="order-feature-item">
-                <Text className="order-feature-icon">🎬</Text>
-                <Text className="order-feature-text">自动编排流程</Text>
+              <View className="order-tip">
+                <Text className="order-tip-text">💡 添加后，在分身聊天中发送&quot;生成短剧&quot;即可一键完成短剧创作</Text>
               </View>
-              <View className="order-feature-item">
-                <Text className="order-feature-icon">🤖</Text>
-                <Text className="order-feature-text">分身协作执行</Text>
+              <View className="target-avatar">
+                <Text className="target-label">目标分身</Text>
+                <Text className="target-name">{currentAvatar?.name}</Text>
               </View>
-              <View className="order-feature-item">
-                <Text className="order-feature-icon">✨</Text>
-                <Text className="order-feature-text">一键生成成品</Text>
-              </View>
-            </View>
-            <View className="order-tip">
-              <Text className="order-tip-text">💡 添加后，在分身聊天中发送&quot;生成短剧&quot;即可一键完成短剧创作</Text>
-            </View>
-            <View className="target-avatar">
-              <Text className="target-label">目标分身</Text>
-              <Text className="target-name">{currentAvatar?.name}</Text>
             </View>
           </View>
           <DialogFooter>
