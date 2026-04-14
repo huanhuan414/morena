@@ -859,11 +859,13 @@
 /* 消息内容包装器 */
 .message-content-wrapper {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
-/* 富媒体容器 */
+/* 富媒体容器 - 独立在消息气泡外层，不受 max-width 限制 */
 .media-container {
-  margin-top: 16rpx;
   display: flex;
   flex-direction: column;
   gap: 16rpx;
