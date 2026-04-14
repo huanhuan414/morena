@@ -687,12 +687,21 @@ ${scriptContent}
 
             console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-2-0-260128'}, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
 
-            const videoResponse = await videoClient.videoGeneration(content, {
-              model: 'doubao-seedance-2-0-260128', // 🔴 使用新模型
-              // 🔴 新模型不支持 duration 参数
+            // 🔴 修复：新模型 doubao-seedance-2-0-260128 不支持 duration 参数
+            // 改为在提示词中描述时长要求
+            const durationPrompt = `Create a ${clipDuration}-second video. ${consistencyPrompt}`
+
+            // 🔴 修复：构建请求参数，显式排除不支持的参数
+            const requestOptions: any = {
+              model: 'doubao-seedance-2-0-260128',
               ratio: videoRatio,
               generateAudio: shouldGenerateAudio
-            })
+            }
+
+            // 🔴 修复：不要传递 duration、resolution、watermark 等新模型不支持的参数
+            console.log(`[短剧制作] 实际发送的请求参数:`, JSON.stringify(requestOptions))
+
+            const videoResponse = await videoClient.videoGeneration(content, requestOptions)
 
             const loopEndTime = Date.now()
             const loopDuration = (loopEndTime - loopStartTime) / 1000
