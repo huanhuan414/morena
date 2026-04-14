@@ -1316,7 +1316,7 @@ export default function MindChatPage() {
 
   // 轮询获取 Agent 结果
   const pollAgentResult = async (taskId: string) => {
-    const maxAttempts = 200 // 最多轮询 200 次（约 6.7 分钟，与后端视频生成时间匹配）
+    const maxAttempts = 450 // 🔴 修复：最多轮询 450 次（约 15 分钟，确保6个视频生成完成）
     const interval = 2000 // 每 2 秒轮询一次
     const maxEmptyAttempts = 3 // 🔴 新增：最多连续 3 次进度为空，则认为任务已中断
     let emptyAttemptCount = 0 // 🔴 新增：记录连续为空的次数

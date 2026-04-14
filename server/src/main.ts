@@ -16,7 +16,17 @@ function parsePort(): number {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // 🔴 修复：增加 HTTP 超时时间到 15 分钟，避免视频生成超时
+    logger: ['error', 'warn', 'log'],
+    rawBody: true
+  });
+
+  // 🔴 修复：设置 HTTP 服务器超时时间为 15 分钟
+  const httpServer = app.getHttpServer();
+  httpServer.setTimeout(15 * 60 * 1000); // 15 分钟
+  httpServer.keepAliveTimeout = 15 * 60 * 1000; // 15 分钟
+  httpServer.headersTimeout = 16 * 60 * 1000; // 16 分钟（略大于 keepAliveTimeout）
 
   app.enableCors({
     origin: true,
@@ -38,7 +48,7 @@ async function bootstrap() {
     console.log(`Server running on http://localhost:${port}`);
   } catch (err) {
     if (err.code === 'EADDRINUSE') {
-      console.error(`❌ 端口 \({port} 被占用! 请运行 'npx kill-port \){port}' 然后重试。`);
+      console.error(`❌ 端口 ${port} 被占用! 请运行 'npx kill-port ${port}' 然后重试。`);
       process.exit(1);
     } else {
       throw err;
