@@ -648,46 +648,49 @@ ${scriptContent}
       if (videoClips.length > 1) {
         console.log('[短剧制作] Step 6: 视频剪辑合成...')
         try {
-          const videoEditClient = new VideoEditClient()
-          const videoUrls = videoClips.map(clip => clip.url)
-          const editedResult = await videoEditClient.concatVideos(videoUrls, 'shortdrama_edited')
-          editedVideoUrl = editedResult.videoUrl
+          const videoEditClient = new VideoEditClient(new Config())
+          const videoUrls = videoClips.map((clip: any) => clip.url)
+          const editedResult = await videoEditClient.concatVideos(videoUrls, {})
+          editedVideoUrl = editedResult.url
           console.log(`[短剧制作] ✅ 视频剪辑合成成功: ${editedVideoUrl}`)
         } catch (err) {
           console.error('[短剧制作] ❌ 视频剪辑合成失败:', err)
         }
       }
 
-      // 🔴 新增：Step 7: 生成字幕（如果有完整视频）
-      let subtitleUrl: string | null = null
-      if (editedVideoUrl) {
-        console.log('[短剧制作] Step 7: 生成字幕...')
-        try {
-          const videoEditClient = new VideoEditClient()
-          const subtitleResult = await videoEditClient.addSubtitles(editedVideoUrl, {
-            style: '现代简约',
-            position: '底部居中',
-            fontSize: 24,
-            fontFamily: 'SimHei'
-          })
-          subtitleUrl = subtitleResult.subtitleUrl
-          console.log(`[短剧制作] ✅ 字幕生成成功: ${subtitleUrl}`)
-        } catch (err) {
-          console.error('[短剧制作] ❌ 字幕生成失败:', err)
-        }
-      }
-
-      // 🔴 新增：Step 8: 推荐配乐
-      console.log('[短剧制作] Step 8: 推荐配乐...')
+      // 🔴 新增：Step 7: 推荐配乐
+      console.log('[短剧制作] Step 7: 推荐配乐...')
       const bgmRecommendations: any[] = []
       try {
-        const videoEditClient = new VideoEditClient()
-        bgmRecommendations.push(...await videoEditClient.generateRecommendedBgm({
-          duration: 60, // 1分钟
+        const config = new Config()
+        const llmClient = new LLMClient(config)
+        const bgmPrompt = `请为以下短剧推荐 3 首合适的背景音乐：
+
+剧名：${title}
+类型：${params.genre}
+风格：${params.style || '轻松'}
+
+请按照以下格式输出每首推荐的配乐：
+
+1. 配乐名称
+   - 音乐风格：（如：轻快流行、抒情钢琴等）
+   - 节奏速度：（如：中速 120BPM）
+   - 适用场景：（如：开场、高潮、结局等）
+   - 情感描述：（50字内）
+
+请直接输出推荐结果：`
+
+        const bgmResponse = await llmClient.invoke([{ role: 'user', content: bgmPrompt }])
+        console.log(`[短剧制作] ✅ 配乐推荐成功: ${bgmResponse.content?.substring(0, 50)}...`)
+
+        // 解析配乐推荐（简单提取）
+        const bgmMatches = bgmResponse.content?.match(/\d+\.\s*([^\n]+)/g) || []
+        bgmRecommendations.push(...bgmMatches.slice(0, 3).map((match, idx) => ({
+          name: match.replace(/^\d+\.\s*/, ''),
           mood: params.style || '轻松',
-          genre: params.genre || '剧情'
-        }))
-        console.log(`[短剧制作] ✅ 配乐推荐成功，推荐了 ${bgmRecommendations.length} 首配乐`)
+          duration: '1分钟',
+          description: `适合${params.genre}类型的短剧`
+        })))
       } catch (err) {
         console.error('[短剧制作] ❌ 配乐推荐失败:', err)
       }
@@ -698,9 +701,6 @@ ${scriptContent}
       let finalMessage = `短剧《${title}》制作完成！包含剧本、${characterImages.length}个角色形象、${sceneImages.length}个场景设计、${videoClips.length}个关键镜头视频`
       if (editedVideoUrl) {
         finalMessage += '、已合成完整视频成品'
-      }
-      if (subtitleUrl) {
-        finalMessage += '及字幕'
       }
       if (bgmRecommendations.length > 0) {
         finalMessage += '、配乐推荐'
@@ -723,7 +723,6 @@ ${scriptContent}
           video_url: allVideoUrls.length > 0 ? allVideoUrls[0] : undefined,
           // 🔴 新增：成品视频
           edited_video_url: editedVideoUrl,
-          subtitle_url: subtitleUrl,
           bgm_recommendations: bgmRecommendations,
           production_stats: {
             characters_generated: characterImages.length,
@@ -733,3 +732,8 @@ ${scriptContent}
           message: finalMessage
         }
       }
+    } catch (err: any) {
+      return { success: false, error: `制作短剧失败: ${err.message}` }
+    }
+  }
+}
