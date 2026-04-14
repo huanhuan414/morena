@@ -804,11 +804,18 @@ export default function SkillsSquare() {
 
       {/* 购买弹窗 */}
       <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent style={{
+          width: 'calc(100vw - 64px)',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        >
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <DialogTitle>添加技能</DialogTitle>
           </DialogHeader>
-          <View className="dialog-content-scroll">
+          <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
             {selectedSkill && (
               <View className="dialog-content">
                 <View className="skill-preview">
@@ -825,7 +832,7 @@ export default function SkillsSquare() {
               </View>
             )}
           </View>
-          <DialogFooter>
+          <DialogFooter style={{ flexShrink: 0, padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Button variant="outline" onClick={() => setShowPurchaseDialog(false)}>
               <Text>取消</Text>
             </Button>
@@ -838,11 +845,18 @@ export default function SkillsSquare() {
 
       {/* 短剧套件弹窗 */}
       <Dialog open={showKitDialog} onOpenChange={setShowKitDialog}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent style={{
+          width: 'calc(100vw - 64px)',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        >
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <DialogTitle>短剧创作套件</DialogTitle>
           </DialogHeader>
-          <View className="dialog-content-scroll">
+          <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
             <View className="dialog-content">
               <View className="kit-preview">
                 <Text className="kit-icon">{SHORT_DRAMA_KIT.icon}</Text>
@@ -866,7 +880,7 @@ export default function SkillsSquare() {
               </View>
             </View>
           </View>
-          <DialogFooter>
+          <DialogFooter style={{ flexShrink: 0, padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Button variant="outline" onClick={() => setShowKitDialog(false)}>
               <Text>取消</Text>
             </Button>
@@ -879,11 +893,18 @@ export default function SkillsSquare() {
 
       {/* 分身秩序弹窗 */}
       <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent style={{
+          width: 'calc(100vw - 64px)',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        >
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <DialogTitle>分身秩序</DialogTitle>
           </DialogHeader>
-          <View className="dialog-content-scroll">
+          <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
             <View className="dialog-content">
               <View className="order-preview">
                 <Text className="order-icon">{AGENT_ORDER_SKILL.icon}</Text>
@@ -920,7 +941,7 @@ export default function SkillsSquare() {
               </View>
             </View>
           </View>
-          <DialogFooter>
+          <DialogFooter style={{ flexShrink: 0, padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Button variant="outline" onClick={() => setShowOrderDialog(false)}>
               <Text>取消</Text>
             </Button>
