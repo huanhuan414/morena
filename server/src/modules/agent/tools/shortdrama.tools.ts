@@ -652,9 +652,10 @@ ${scriptContent}
             }
 
             // 🔴 修复：构建视频生成提示词，强化角色一致性要求
+            // 🔴 新模型不支持 duration 参数，改为在提示词中描述时长要求
             const consistencyPrompt = referencedCharacterImage
-              ? `Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
-              : `${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+              ? `Create a ${clipDuration}-second video. Keep the character's appearance exactly as shown in the reference image. Use the same facial features, hair style, clothing, and accessories. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
+              : `Create a ${clipDuration}-second video. ${shotDesc}, cinematic video, smooth motion, professional cinematography, high quality, 16:9 aspect ratio`
 
             console.log(`[短剧制作] 视频提示词: ${consistencyPrompt.substring(0, 100)}...`)
 
@@ -684,14 +685,13 @@ ${scriptContent}
               text: consistencyPrompt
             })
 
-            console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-1-5-pro-251215'}, duration=${clipDuration}s, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
+            console.log(`[短剧制作] 调用视频生成 API，参数: model=${'doubao-seedance-2-0-260128'}, ratio=${videoRatio}, generateAudio=${shouldGenerateAudio}`)
 
             const videoResponse = await videoClient.videoGeneration(content, {
-              model: 'doubao-seedance-1-5-pro-251215', // 🔴 修复：使用支持 duration 参数的旧模型
-              duration: clipDuration, // 🔴 修复：使用计算或用户指定的时长
-              ratio: videoRatio, // 🔴 修复：使用用户指定的宽高比
-              resolution: '720p',
-              generateAudio: shouldGenerateAudio // 🔴 修复：使用用户指定的音频生成设置，或默认true
+              model: 'doubao-seedance-2-0-260128', // 🔴 使用新模型
+              // 🔴 新模型不支持 duration 参数
+              ratio: videoRatio,
+              generateAudio: shouldGenerateAudio
             })
 
             const loopEndTime = Date.now()
