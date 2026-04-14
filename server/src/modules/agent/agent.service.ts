@@ -233,7 +233,16 @@ export class AgentService {
         'app_list_avatar_friends',
         'app_subscribe',
         'app_get_subscription',
-        'check_platform_config'
+        'check_platform_config',
+        // 核心创作工具（所有分身都能直接使用）
+        'produce_shortdrama',              // 制作短剧成品
+        'generate_shortdrama_script',      // 生成短剧剧本
+        'generate_storyboard',             // 生成分镜头脚本
+        'generate_multi_episode_drama',    // 生成多集短剧
+        'generate_drama_voiceover',        // 生成短剧配音
+        'edit_shortdrama_video',           // 剪辑短剧视频
+        'generate_subtitle',               // 生成字幕
+        'recommend_bgm'                    // 推荐配乐
       ]
 
       // 如果没有技能，只返回基础工具
