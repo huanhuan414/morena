@@ -2019,7 +2019,26 @@ export default function MindChatPage() {
                           playsInline
                           webkit-playsinline="true"
                           x5-playsinline="true"
+                          preload="metadata"
+                          muted={false}
+                          loop={false}
                           style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+                          onError={(e) => {
+                            console.error('[视频渲染] H5视频播放错误:', e)
+                            console.error('[视频渲染] 视频URL:', videoUrl)
+                            const video = e.target as HTMLVideoElement
+                            console.error('[视频渲染] 视频错误详情:', video.error)
+                            Taro.showToast({ title: '视频加载失败，请重试', icon: 'none' })
+                          }}
+                          onLoadStart={() => {
+                            console.log('[视频渲染] 视频开始加载:', videoUrl.substring(0, 60))
+                          }}
+                          onCanPlay={() => {
+                            console.log('[视频渲染] 视频可以播放了')
+                          }}
+                          onPlay={() => {
+                            console.log('[视频渲染] 视频开始播放')
+                          }}
                         />
                       ) : (
                         <Video
