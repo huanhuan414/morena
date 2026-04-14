@@ -821,7 +821,7 @@ export default function MindChatPage() {
 
               // 持续轮询直到任务完成
               let pollCount = 0
-              const maxPollCount = 60 // 最多轮询 60 次（约 2 分钟）
+              const maxPollCount = 200 // 最多轮询 200 次（约 6.7 分钟，与后端视频生成时间匹配）
               const pollInterval = setInterval(async () => {
                 pollCount++
                 console.log('[MindChat] 轮询次数:', pollCount, '/', maxPollCount)
@@ -1224,7 +1224,7 @@ export default function MindChatPage() {
 
   // 轮询获取 Agent 结果
   const pollAgentResult = async (taskId: string) => {
-    const maxAttempts = 60 // 最多轮询 60 次（约 2 分钟）
+    const maxAttempts = 200 // 最多轮询 200 次（约 6.7 分钟，与后端视频生成时间匹配）
     const interval = 2000 // 每 2 秒轮询一次
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {

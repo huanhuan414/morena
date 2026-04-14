@@ -1027,8 +1027,8 @@ export class GenerateVideoTool implements ITool {
       console.log('Agent工具 - 视频生成任务已提交，任务ID:', taskId)
       console.log('Agent工具 - 开始轮询任务状态...')
 
-      // 轮询任务状态，最多等待5分钟
-      const maxAttempts = 100 // 5分钟 * (60秒 / 3秒) = 100次
+      // 轮询任务状态，最多等待10分钟（视频生成通常需要5-8分钟）
+      const maxAttempts = 200 // 10分钟 * (60秒 / 3秒) = 200次
       let videoUrl: string | null = null
       let taskStatus = 'pending'
       let attempt = 0
