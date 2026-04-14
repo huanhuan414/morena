@@ -1832,9 +1832,9 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
           userId: context.userId,
           type: 'substep',
           message,
-          step,
-          subStep,
-          timestamp: Date.now()
+          data: { step, subStep },
+          timestamp: Date.now(),
+          status: 'running' as const  // 🔴 新增：默认为 running
         }
         this.progressCache.updateProgress(context.userId, progress)
 

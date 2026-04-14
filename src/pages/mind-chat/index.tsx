@@ -1332,32 +1332,38 @@ export default function MindChatPage() {
         if (progressRes.data?.code === 200) {
           const progress = progressRes.data.data.progress || []
 
-          // 更新进度百分比
-          if (progress.length > 0) {
-            const latestProgress = progress[progress.length - 1]
-
-            // 更新进度百分比（如果有百分比字段）
-            if (typeof latestProgress.percentage === 'number') {
-              setTaskProgress(latestProgress.percentage)
-            }
-
-            // 更新步骤显示
-            const stepDisplay: AgentStepDisplay = {
-              action: latestProgress.action || latestProgress.step || '执行中',
-              displayName: latestProgress.action || latestProgress.step || '执行中',
-              status: latestProgress.status === 'completed' ? 'success' : latestProgress.status === 'failed' ? 'failed' : 'running',
-              message: latestProgress.message || latestProgress.result || ''
-            }
-            setAgentSteps(prev => {
-              // 避免重复添加相同的步骤
-              const lastStep = prev[prev.length - 1]
-              if (lastStep && lastStep.action === stepDisplay.action) {
-                return prev
-              }
-              return [...prev, stepDisplay]
-            })
-            setCurrentStatus(latestProgress.message || latestProgress.step || '执行中...')
+          // 🔴 修复：如果进度为空，说明任务可能已中断
+          if (progress.length === 0) {
+            console.warn('[MindChat] 进度为空，任务可能已中断')
+            // 继续轮询，可能是服务刚重启
+            await new Promise(resolve => setTimeout(resolve, interval))
+            continue
           }
+
+          // 更新进度百分比
+          const latestProgress = progress[progress.length - 1]
+
+          // 更新进度百分比（如果有百分比字段）
+          if (typeof latestProgress.percentage === 'number') {
+            setTaskProgress(latestProgress.percentage)
+          }
+
+          // 更新步骤显示
+          const stepDisplay: AgentStepDisplay = {
+            action: latestProgress.action || latestProgress.step || '执行中',
+            displayName: latestProgress.action || latestProgress.step || '执行中',
+            status: latestProgress.status === 'completed' ? 'success' : latestProgress.status === 'failed' ? 'failed' : 'running',
+            message: latestProgress.message || latestProgress.result || ''
+          }
+          setAgentSteps(prev => {
+            // 避免重复添加相同的步骤
+            const lastStep = prev[prev.length - 1]
+            if (lastStep && lastStep.action === stepDisplay.action) {
+              return prev
+            }
+            return [...prev, stepDisplay]
+          })
+          setCurrentStatus(latestProgress.message || latestProgress.step || '执行中...')
         }
 
         // 获取结果

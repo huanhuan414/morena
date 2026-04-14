@@ -13,6 +13,7 @@ export interface TaskProgress {
   message: string
   data?: any
   timestamp: number
+  status?: 'pending' | 'running' | 'completed' | 'failed'
 }
 
 // 导出任务结果接口
