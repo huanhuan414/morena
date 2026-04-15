@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
+import { GeneratedContent } from './types'
 
 @Controller('content-generation')
 export class ContentGenerationController {

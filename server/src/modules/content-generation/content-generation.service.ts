@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { SupabaseService } from '../supabase/supabase.service'
+import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { AvatarToolRegistry } from '../avatar-agent/tools/tool-registry'
+import { ToolContext } from '../avatar-agent/tools/tool.interface'
+import { GeneratedContent } from './types'
 
 // 平台到工具的映射
 const PLATFORM_TOOL_MAPPING: Record<string, string> = {
@@ -35,29 +37,11 @@ interface GenerateContentInput {
   avatarPersonality?: string
 }
 
-interface GeneratedContent {
-  id?: string
-  order_id: string
-  request_id: string
-  avatar_id: string
-  platform: string
-  content: string
-  hashtags: string[]
-  image_suggestions: string[]
-  video_suggestions: string[]
-  title?: string
-  status: 'draft' | 'approved' | 'published'
-  created_at: string
-}
-
 @Injectable()
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
 
-  constructor(
-    private supabase: SupabaseService,
-    private toolRegistry: AvatarToolRegistry
-  ) {}
+  constructor(private toolRegistry: AvatarToolRegistry) {}
 
   /**
    * 为分身生成内容（使用分身的技能/工具）
@@ -110,8 +94,11 @@ export class ContentGenerationService {
         const context: ToolContext = {
           avatarId,
           userId: '', // 可以从订单中获取
-          sessionId: requestId,
-          timestamp: new Date().toISOString()
+          conversationId: requestId,
+          metadata: {
+            orderId,
+            requestId
+          }
         }
 
         // 执行工具
@@ -309,7 +296,9 @@ export class ContentGenerationService {
     avatar_id: string
     platform: string
   }): Promise<GeneratedContent> {
-    const { data, error } = await this.supabase.client
+    const client = getSupabaseClient()
+
+    const { data, error } = await client
       .from('generated_contents')
       .insert({
         order_id: contentData.order_id,
@@ -338,7 +327,9 @@ export class ContentGenerationService {
    * 获取分身生成的内容
    */
   async getGeneratedContent(requestId: string, avatarId: string): Promise<GeneratedContent[]> {
-    const { data, error } = await this.supabase.client
+    const client = getSupabaseClient()
+
+    const { data, error } = await client
       .from('generated_contents')
       .select('*')
       .eq('request_id', requestId)
@@ -360,7 +351,9 @@ export class ContentGenerationService {
     contentId: string,
     status: 'draft' | 'approved' | 'published'
   ): Promise<void> {
-    const { error } = await this.supabase.client
+    const client = getSupabaseClient()
+
+    const { error } = await client
       .from('generated_contents')
       .update({ status })
       .eq('id', contentId)
