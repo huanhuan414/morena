@@ -37,10 +37,11 @@ export class UploadService {
   async uploadOrderScreenshot(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `order-screenshots/${nanoid()}${path.extname(file.originalname)}`
 
-    await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
     // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
     return { url: signedUrl }
   }
@@ -51,10 +52,11 @@ export class UploadService {
   async uploadAvatarImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `avatar-images/${nanoid()}${path.extname(file.originalname)}`
 
-    await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
     // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
     return { url: signedUrl }
   }
@@ -65,16 +67,18 @@ export class UploadService {
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `general-images/${nanoid()}${path.extname(file.originalname)}`
 
-    await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
     // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
     return { url: signedUrl }
   }
 
   /**
    * 上传到 S3
+   * @returns 返回实际上传后的文件名（key）
    */
   private async uploadToS3(file: Express.Multer.File, fileName: string): Promise<string> {
     try {
@@ -91,23 +95,35 @@ export class UploadService {
 
       this.logger.log(`文件上传结果:`, JSON.stringify(uploadResult))
 
-      // 处理不同的返回格式
-      let url = ''
+      // 处理不同的返回格式，提取实际文件名
+      let actualFileName = fileName
       if (typeof uploadResult === 'string') {
-        url = uploadResult
+        // 如果返回的是字符串，可能包含完整URL，提取文件名
+        const urlMatch = uploadResult.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
+        if (urlMatch) {
+          actualFileName = urlMatch[0]
+        } else {
+          actualFileName = uploadResult
+        }
       } else if (uploadResult && uploadResult.url) {
-        url = uploadResult.url
+        const urlMatch = uploadResult.url.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
+        if (urlMatch) {
+          actualFileName = urlMatch[0]
+        }
       } else if (uploadResult && uploadResult.location) {
-        url = uploadResult.location
+        const urlMatch = uploadResult.location.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
+        if (urlMatch) {
+          actualFileName = urlMatch[0]
+        }
       } else if (uploadResult && uploadResult.data) {
-        url = uploadResult.data
-      } else {
-        // 如果返回的是对象，直接返回整个对象
-        url = JSON.stringify(uploadResult)
+        const urlMatch = uploadResult.data.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
+        if (urlMatch) {
+          actualFileName = urlMatch[0]
+        }
       }
 
-      this.logger.log(`提取到的URL: ${url}`)
-      return url
+      this.logger.log(`提取到的实际文件名: ${actualFileName}`)
+      return actualFileName
     } catch (error) {
       this.logger.error('S3上传失败:', error)
       this.logger.error('错误详情:', JSON.stringify(error))
