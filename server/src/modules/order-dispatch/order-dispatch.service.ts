@@ -113,7 +113,7 @@ export class OrderDispatchService {
     const requirements = order.requirements || {}
     const title = order.title || ''
     const description = order.description || ''
-    
+
     // 构建分析提示词
     const analysisPrompt = `你是一个专业的订单需求分析师。请深度分析以下订单信息，提取关键需求：
 
@@ -157,17 +157,25 @@ export class OrderDispatchService {
 }`
 
     try {
-      const response = await this.llmClient.invoke([
+      // 添加超时保护
+      const responsePromise = this.llmClient.invoke([
         { role: 'user', content: analysisPrompt }
-      ], { 
+      ], {
         model: 'doubao-seed-1-8-251228',
-        temperature: 0.3 
+        temperature: 0.3
       })
-      
+
+      // 设置30秒超时
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('LLM调用超时')), 30000)
+      })
+
+      const response = await Promise.race([responsePromise, timeoutPromise]) as any
+
       // 解析 LLM 返回的 JSON
       const content = response.content.trim()
       let analysis: Partial<OrderAnalysis> = {}
-      
+
       try {
         // 尝试提取 JSON
         const jsonMatch = content.match(/\{[\s\S]*\}/)
@@ -177,7 +185,7 @@ export class OrderDispatchService {
       } catch (parseError) {
         console.log('[订单分析] JSON解析失败，使用基础分析')
       }
-      
+
       // 如果解析失败，使用基础分析
       const expectedResultsText = requirements?.expectedResults || ''
       return {

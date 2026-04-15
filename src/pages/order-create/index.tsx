@@ -131,7 +131,10 @@ export default function OrderCreatePage() {
           title: form.title,
           description: form.description,
           budget: parseFloat(form.budget),
-          requirements: form.requirements,
+          content_type: form.requirements.contentType,
+          platforms: form.requirements.platforms,
+          target_audience: form.requirements.targetAudience,
+          deadline: form.requirements.deadline || null,
           ...locationData
         }
       })
@@ -285,14 +288,21 @@ export default function OrderCreatePage() {
 
           <View className="form-item">
             <Text className="form-label-text">截止日期</Text>
-            <Input 
+            <Input
               className="custom-input"
-              placeholder="例如：2024-12-31"
+              placeholder={form.requirements.deadline || '点击选择截止日期'}
               value={form.requirements.deadline}
               onInput={e => setForm(prev => ({
                 ...prev,
                 requirements: { ...prev.requirements, deadline: e.detail.value }
               }))}
+              onFocus={() => {
+                Taro.showModal({
+                  title: '提示',
+                  content: '请输入日期，格式：YYYY-MM-DD',
+                  showCancel: false
+                })
+              }}
             />
           </View>
         </View>

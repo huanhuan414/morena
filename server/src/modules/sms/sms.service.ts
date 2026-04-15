@@ -49,9 +49,8 @@ export class SmsService {
    * @param orderId 订单ID
    */
   async sendOrderDispatchNotification(phone: string, avatarName: string, orderId: string): Promise<boolean> {
-    return this.sendSms(phone, 'ORDER_DISPATCH', {
-      avatarName,
-      orderId: orderId.substring(0, 8)
+    return this.sendSms(phone, 'SMS_505555078', {
+      name: avatarName
     })
   }
 
@@ -85,9 +84,9 @@ export class SmsService {
   getTemplates(): SmsTemplate[] {
     return [
       {
-        code: 'ORDER_DISPATCH',
+        code: 'SMS_505555078',
         name: '订单调度通知',
-        content: '您的分身${avatarName}已接收到新订单${orderId}，请及时处理。'
+        content: '亲爱的，您的分身${name}的接到新的订单啦，快去确认一下！马上开始赚钱啦'
       },
       {
         code: 'ORDER_COMPLETION',
