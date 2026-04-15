@@ -282,4 +282,31 @@ export class OrderController {
       message: '删除成功'
     }
   }
+
+  @Get(':id/detailed-report')
+  async getDetailedReport(@Param('id') orderId: string) {
+    const report = await this.orderService.getOrderDetailedReport(orderId)
+    return {
+      code: 200,
+      data: report,
+      message: '获取成功'
+    }
+  }
+
+  @Get('avatar/:avatarId/statistics')
+  async getAvatarStatistics(
+    @Param('avatarId') avatarId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    const stats = await this.orderService.getAvatarOrderStatistics(avatarId, {
+      startDate,
+      endDate
+    })
+    return {
+      code: 200,
+      data: stats,
+      message: '获取成功'
+    }
+  }
 }

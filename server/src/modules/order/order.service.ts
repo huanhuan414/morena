@@ -39,8 +39,13 @@ export class OrderService {
         user_id: userId,
         title: orderData.title,
         description: orderData.description,
+        content_type: orderData.content_type || 'text',
+        platforms: orderData.platforms || [],
+        target_audience: orderData.target_audience || null,
         requirements: orderData.requirements || {},
-        budget: orderData.budget,
+        budget: orderData.budget || 0,
+        expected_quantity: orderData.expected_quantity || 1,
+        deadline: orderData.deadline || null,
         status: 'open',
         // 地理位置信息（包含逆地理编码结果）
         ...locationData
@@ -757,6 +762,227 @@ export class OrderService {
       averageRating: Math.round(averageRating * 10) / 10,
       totalRatings: ratings.length,
       ratingDistribution
+    }
+  }
+
+  /**
+   * 获取订单详细统计报表（分身维度）
+   */
+  async getOrderDetailedReport(orderId: string) {
+    const client = getSupabaseClient()
+
+    // 获取订单信息
+    const { data: order } = await client
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single()
+
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    // 获取订单结果数据
+    const { data: results } = await client
+      .from('order_results')
+      .select('*, avatars(*)')
+      .eq('order_id', orderId)
+
+    // 获取订单执行记录
+    const { data: executions } = await client
+      .from('order_executions')
+      .select('*')
+      .eq('order_id', orderId)
+      .order('step_number')
+
+    // 统计总数据
+    const totalStats = {
+      exposure: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      views: 0
+    }
+
+    // 分身维度统计
+    const avatarStats = (results || []).map(result => {
+      totalStats.exposure += result.actual_exposure || 0
+      totalStats.likes += result.actual_likes || 0
+      totalStats.comments += result.actual_comments || 0
+      totalStats.shares += result.actual_shares || 0
+      totalStats.views += result.actual_views || 0
+
+      return {
+        avatarId: result.avatar_id,
+        avatarName: result.avatars?.name || '未知分身',
+        platform: result.platform,
+        exposure: result.actual_exposure || 0,
+        likes: result.actual_likes || 0,
+        comments: result.actual_comments || 0,
+        shares: result.actual_shares || 0,
+        views: result.actual_views || 0,
+        engagementRate: result.actual_exposure > 0
+          ? ((result.actual_likes || 0) + (result.actual_comments || 0) + (result.actual_shares || 0)) / result.actual_exposure * 100
+          : 0,
+        qualityScore: result.quality_score || 0,
+        customerRating: result.customer_rating || 0,
+        publishTime: result.publish_time,
+        feedback: result.feedback || null
+      }
+    })
+
+    // 计算平均值
+    const avgStats = {
+      exposure: avatarStats.length > 0 ? Math.round(totalStats.exposure / avatarStats.length) : 0,
+      likes: avatarStats.length > 0 ? Math.round(totalStats.likes / avatarStats.length) : 0,
+      comments: avatarStats.length > 0 ? Math.round(totalStats.comments / avatarStats.length) : 0,
+      shares: avatarStats.length > 0 ? Math.round(totalStats.shares / avatarStats.length) : 0,
+      views: avatarStats.length > 0 ? Math.round(totalStats.views / avatarStats.length) : 0,
+      engagementRate: avatarStats.length > 0
+        ? avatarStats.reduce((sum, s) => sum + s.engagementRate, 0) / avatarStats.length
+        : 0,
+      qualityScore: avatarStats.length > 0
+        ? avatarStats.reduce((sum, s) => sum + s.qualityScore, 0) / avatarStats.length
+        : 0,
+      customerRating: avatarStats.length > 0
+        ? avatarStats.reduce((sum, s) => sum + s.customerRating, 0) / avatarStats.length
+        : 0
+    }
+
+    // 平台维度统计
+    const platformStats = avatarStats.reduce((acc, stat) => {
+      if (!acc[stat.platform]) {
+        acc[stat.platform] = {
+          platform: stat.platform,
+          count: 0,
+          exposure: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          views: 0
+        }
+      }
+      acc[stat.platform].count += 1
+      acc[stat.platform].exposure += stat.exposure
+      acc[stat.platform].likes += stat.likes
+      acc[stat.platform].comments += stat.comments
+      acc[stat.platform].shares += stat.shares
+      acc[stat.platform].views += stat.views
+      return acc
+    }, {} as Record<string, any>)
+
+    // 执行流程统计
+    const executionStats = (executions || []).reduce((acc, exec) => {
+      if (!acc[exec.status]) {
+        acc[exec.status] = 0
+      }
+      acc[exec.status] += 1
+      return acc
+    }, {} as Record<string, number>)
+
+    return {
+      order: {
+        id: order.id,
+        title: order.title,
+        content_type: order.content_type,
+        platforms: order.platforms,
+        status: order.status,
+        created_at: order.created_at,
+        completed_at: order.completed_at
+      },
+      totalStats,
+      avgStats,
+      avatarStats: avatarStats.sort((a, b) => b.exposure - a.exposure), // 按曝光量排序
+      platformStats: Object.values(platformStats).sort((a: any, b: any) => b.exposure - a.exposure),
+      executionStats,
+      summary: {
+        totalAvatars: avatarStats.length,
+        totalPlatforms: Object.keys(platformStats).length,
+        totalSteps: executions?.length || 0,
+        completedSteps: executionStats.completed || 0,
+        overallQuality: avgStats.qualityScore,
+        overallSatisfaction: avgStats.customerRating,
+        totalEngagement: totalStats.likes + totalStats.comments + totalStats.shares,
+        totalReach: totalStats.exposure
+      }
+    }
+  }
+
+  /**
+   * 获取分身订单统计
+   */
+  async getAvatarOrderStatistics(avatarId: string, params?: { startDate?: string; endDate?: string }) {
+    const client = getSupabaseClient()
+
+    let query = client
+      .from('orders')
+      .select('*')
+      .eq('avatar_id', avatarId)
+
+    if (params?.startDate) {
+      query = query.gte('created_at', params.startDate)
+    }
+
+    if (params?.endDate) {
+      query = query.lte('created_at', params.endDate)
+    }
+
+    const { data: orders } = await query
+
+    const stats = {
+      totalOrders: orders?.length || 0,
+      pendingOrders: orders?.filter(o => o.status === 'pending').length || 0,
+      inProgressOrders: orders?.filter(o => o.status === 'in_progress').length || 0,
+      completedOrders: orders?.filter(o => o.status === 'completed').length || 0,
+      cancelledOrders: orders?.filter(o => o.status === 'cancelled').length || 0
+    }
+
+    // 获取结果数据
+    const { data: results } = await client
+      .from('order_results')
+      .select('*')
+      .eq('avatar_id', avatarId)
+
+    if (params?.startDate) {
+      const startDate = new Date(params.startDate)
+      results?.forEach((r: any) => {
+        const publishTime = r.publish_time ? new Date(r.publish_time) : null
+        if (publishTime && publishTime < startDate) {
+          r._exclude = true
+        }
+      })
+    }
+
+    if (params?.endDate) {
+      const endDate = new Date(params.endDate)
+      results?.forEach((r: any) => {
+        const publishTime = r.publish_time ? new Date(r.publish_time) : null
+        if (publishTime && publishTime > endDate) {
+          r._exclude = true
+        }
+      })
+    }
+
+    const filteredResults = results?.filter((r: any) => !r._exclude) || []
+
+    const performanceStats = {
+      totalExposure: filteredResults.reduce((sum: number, r: any) => sum + (r.actual_exposure || 0), 0),
+      totalLikes: filteredResults.reduce((sum: number, r: any) => sum + (r.actual_likes || 0), 0),
+      totalComments: filteredResults.reduce((sum: number, r: any) => sum + (r.actual_comments || 0), 0),
+      totalShares: filteredResults.reduce((sum: number, r: any) => sum + (r.actual_shares || 0), 0),
+      totalViews: filteredResults.reduce((sum: number, r: any) => sum + (r.actual_views || 0), 0),
+      avgQualityScore: filteredResults.length > 0
+        ? filteredResults.reduce((sum: number, r: any) => sum + (r.quality_score || 0), 0) / filteredResults.length
+        : 0,
+      avgCustomerRating: filteredResults.length > 0
+        ? filteredResults.reduce((sum: number, r: any) => sum + (r.customer_rating || 0), 0) / filteredResults.length
+        : 0
+    }
+
+    return {
+      ...stats,
+      performanceStats,
+      completionRate: stats.totalOrders > 0 ? (stats.completedOrders / stats.totalOrders * 100) : 0
     }
   }
 }

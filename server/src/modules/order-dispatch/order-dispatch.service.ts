@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { NotificationService } from '../notification/notification.service'
 import { SubscriptionService } from '../subscription/subscription.service'
+import { SmsService } from '../sms/sms.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface OrderAnalysis {
@@ -97,7 +98,8 @@ export class OrderDispatchService {
 
   constructor(
     private readonly notificationService: NotificationService,
-    private readonly subscriptionService: SubscriptionService
+    private readonly subscriptionService: SubscriptionService,
+    private readonly smsService: SmsService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -1363,11 +1365,15 @@ export class OrderDispatchService {
       content: `有新的订单等待您确认：${order.title}`,
       data: { orderId, avatarId: avatar.id, type: 'dispatch_request' }
     })
-    
-    // 如果有手机号，发送短信
+
+    // 如果有手机号，发送短信通知
     if (user?.phone) {
-      // TODO: 集成短信服务
-      console.log(`[分身调度] 发送短信通知到 ${user.phone}`)
+      try {
+        await this.smsService.sendOrderDispatchNotification(user.phone, avatar.name, orderId)
+        console.log(`[分身调度] 已发送短信通知到 ${user.phone}`)
+      } catch (error) {
+        console.error(`[分身调度] 短信通知发送失败:`, error)
+      }
     }
   }
 
@@ -1402,7 +1408,16 @@ export class OrderDispatchService {
     
     // 分配订单
     await this.assignOrderToAvatar(request.order_id, avatarId)
-    
+
+    // 自动生成内容
+    try {
+      await this.autoGenerateContent(request.order_id, avatarId)
+      console.log(`[订单分配] 已为订单 ${request.order_id} 自动生成内容`)
+    } catch (error) {
+      console.error(`[订单分配] 自动内容生成失败:`, error)
+      // 不抛出错误，允许继续流程
+    }
+
     return true
   }
 
@@ -1801,7 +1816,169 @@ export class OrderDispatchService {
         })
         .eq('id', order.avatar_id)
     }
-    
+
     return true
+  }
+
+  /**
+   * 自动生成订单内容（分配给分身后自动调用）
+   * @param orderId 订单ID
+   * @param avatarId 分身ID
+   */
+  async autoGenerateContent(orderId: string, avatarId: string) {
+    console.log(`[自动内容生成] 开始生成订单 ${orderId} 的内容，分身 ${avatarId}`)
+
+    try {
+      const client = getSupabaseClient()
+
+      // 获取订单信息
+      const { data: order } = await client
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single()
+
+      if (!order) {
+        throw new Error('订单不存在')
+      }
+
+      // 获取分身信息
+      const { data: avatar } = await client
+        .from('avatars')
+        .select('*')
+        .eq('id', avatarId)
+        .single()
+
+      if (!avatar) {
+        throw new Error('分身不存在')
+      }
+
+      // 使用 LLM 生成内容
+      const generatePrompt = `你是一个专业的内容创作者。请根据以下订单需求，生成高质量的内容。
+
+订单标题：${order.title}
+订单描述：${order.description}
+目标平台：${order.platforms?.join(', ') || '未指定'}
+内容类型：${order.content_type}
+目标受众：${order.target_audience || '未指定'}
+内容要求：${order.requirements || '无特殊要求'}
+
+分身特点：
+- 名称：${avatar.name}
+- 专业领域：${avatar.professional_domain || '未指定'}
+- 风格：${avatar.style || '未指定'}
+
+请生成符合分身风格和订单需求的内容，包括：
+1. 标题
+2. 正文内容
+3. 发布建议（发布时间、标签等）
+
+请以 JSON 格式返回，格式如下：
+{
+  "title": "内容标题",
+  "content": "正文内容",
+  "publish_suggestions": {
+    "best_time": "建议发布时间",
+    "tags": ["标签1", "标签2", "标签3"],
+    "description": "其他建议"
+  }
+}`
+
+      const response = await this.llmClient.invoke(
+        [
+          {
+            role: 'system',
+            content: '你是一个专业的内容创作者，擅长根据订单需求生成高质量的内容。'
+          },
+          {
+            role: 'user',
+            content: generatePrompt
+          }
+        ],
+        {
+          model: 'doubao-seed-2-0-pro-260215',
+          temperature: 0.7
+        }
+      )
+
+      let generatedContent
+      try {
+        generatedContent = JSON.parse(response.content)
+      } catch (error) {
+        console.error('[自动内容生成] 解析 LLM 响应失败:', error)
+        throw new Error('内容生成失败')
+      }
+
+      // 创建订单执行记录
+      const { data: execution } = await client
+        .from('order_executions')
+        .insert({
+          order_id: orderId,
+          avatar_id: avatarId,
+          step_number: 1,
+          step_name: '内容生成',
+          status: 'completed',
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          result: {
+            type: 'content_generation',
+            generated: true,
+            data: generatedContent
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      // 更新订单状态为"进行中"
+      await client
+        .from('orders')
+        .update({
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+
+      // 创建通知
+      await this.notificationService.createNotification(avatar.user_id, {
+        type: 'system',
+        title: '内容生成完成',
+        content: `您的分身 ${avatar.name} 已自动生成订单 "${order.title}" 的内容`,
+        data: {
+          orderId,
+          avatarId,
+          executionId: execution?.id,
+          type: 'content_generated'
+        }
+      })
+
+      // 如果有手机号，发送短信通知
+      const { data: user } = await client
+        .from('users')
+        .select('phone')
+        .eq('id', avatar.user_id)
+        .single()
+
+      if (user?.phone) {
+        try {
+          await this.smsService.sendContentGeneratedNotification(user.phone, avatar.name, orderId)
+          console.log(`[自动内容生成] 已发送短信通知到 ${user.phone}`)
+        } catch (error) {
+          console.error(`[自动内容生成] 短信通知发送失败:`, error)
+        }
+      }
+
+      console.log('[自动内容生成] 内容生成完成:', generatedContent)
+
+      return {
+        success: true,
+        executionId: execution?.id,
+        content: generatedContent
+      }
+    } catch (error) {
+      console.error('[自动内容生成] 失败:', error)
+      throw error
+    }
   }
 }
