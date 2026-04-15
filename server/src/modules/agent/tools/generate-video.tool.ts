@@ -117,7 +117,7 @@ export class GenerateVideoTool implements ITool {
         .eq('id', taskId)
 
       const response = await videoClient.videoGeneration(content, {
-        model: 'doubao-seedance-1-5-pro-251215',
+        model: 'doubao-seedance-2-0-260128', // 🔴 更新到最新模型
         duration,
         ratio: ratio as any,
         resolution: resolution as any,

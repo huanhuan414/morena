@@ -1630,8 +1630,13 @@ export class AgentService {
 - 描述：${context.avatarInfo.description || '无'}
 - 性格：${context.avatarInfo.personality || '无'}
 - 等级：${context.avatarInfo.level || 1}
+- 头像URL：${context.avatarInfo.avatar_url || '无'}
 
 重要提示：你是一个AI分身，名字叫"${context.avatarInfo.name}"。用户正在与你进行对话。当用户询问你的身份或是否是分身时，请明确告知用户你的名字和身份，不要说"我没有创建任何分身"之类的错误回答。
+
+【个人IP打造功能】
+当用户要求生成视频（generate_video）或制作短剧（produce_shortdrama）时，如果用户没有上传参考图片，你**必须**使用分身的头像（avatar_url）作为 reference_images，确保生成的视频使用分身的形象。这是个人IP打造的核心功能。
+分身头像 URL：${context.avatarInfo.avatar_url || '未设置'}
 `
       console.log('[AgentService] 分身身份信息已生成:', avatarInfoText)
     } else {
@@ -1686,6 +1691,16 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
        3. 如何发布到公众号：需要绑定微信公众号授权后，可以使用"发布到公众号"功能
      - **示例回复**："✅ 公众号文章已生成！你可以在上方查看完整内容（包含标题、正文和封面图）。如需发布到微信公众号，请先绑定公众号授权，然后发送'发布到公众号'即可。"
    - **如果用户明确要求"发布到公众号"**：才使用 publish_wechat_mp 工具将文章发布到公众号
+
+8. 【视频生成规则（CRITICAL）】
+   - 当使用 generate_video 工具生成视频时：
+     - **如果用户上传了图片**：优先使用用户上传的图片作为 reference_images
+     - **如果用户没有上传图片**：必须使用分身的头像（avatar_url）作为 reference_images
+     - 分身头像 URL 会在 context.avatarInfo.avatar_url 中提供
+     - 这是"个人IP打造"的核心功能，确保生成的视频使用分身的形象
+   - 当使用 produce_shortdrama 工具制作短剧时：
+     - 如果用户上传了参考图片，优先使用用户上传的图片
+     - 如果没有上传参考图片，可以使用分身的头像
 
 【多步指令执行规则】
 - 当识别到多步指令时，必须按顺序执行所有子任务
