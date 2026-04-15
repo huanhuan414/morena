@@ -1661,17 +1661,17 @@ export class OrderDispatchService {
    */
   async getDispatchStatus(orderId: string) {
     const client = getSupabaseClient()
-    
+
     const { data: order } = await client
       .from('orders')
       .select('*, avatars(name, avatar_url, level)')
       .eq('id', orderId)
       .single()
-    
+
     if (!order) {
       throw new Error('订单不存在')
     }
-    
+
     // 获取待确认的分配请求
     const { data: pendingRequest } = await client
       .from('order_dispatch_requests')
@@ -1679,13 +1679,22 @@ export class OrderDispatchService {
       .eq('order_id', orderId)
       .eq('status', 'pending')
       .single()
-    
+
+    // 获取已接受的分身信息
+    const { data: acceptedRequest } = await client
+      .from('order_dispatch_requests')
+      .select('*, avatars(name, avatar_url, level)')
+      .eq('order_id', orderId)
+      .eq('status', 'accepted')
+      .single()
+
     // 获取执行进度
     const executions = await this.getExecutionProgress(orderId)
-    
+
     return {
       order,
       pendingRequest,
+      acceptedAvatar: acceptedRequest?.avatars || null,
       executions,
       currentStep: executions.find(e => e.status === 'in_progress') || null
     }

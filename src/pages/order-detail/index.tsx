@@ -142,9 +142,17 @@ export default function OrderDetailPage() {
   
   // 执行进度
   const [executions, setExecutions] = useState<ExecutionStep[]>([])
-  
+
   // 数据反馈
   const [feedback, setFeedback] = useState<any>(null)
+
+  // 分配状态
+  const [dispatchStatus, setDispatchStatus] = useState<{
+    acceptedAvatar?: any
+    pendingRequest?: any
+    executions: ExecutionStep[]
+    currentStep?: ExecutionStep | null
+  } | null>(null)
   
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -179,11 +187,9 @@ export default function OrderDetailPage() {
           description: orderData.description,
           budget: orderData.budget
         })
-        
-        // 获取执行进度
-        if (orderData.status === 'in_progress' || orderData.status === 'reviewing') {
-          fetchExecutionProgress()
-        }
+
+        // 获取分配状态
+        fetchDispatchStatus()
       }
     } catch (error) {
       console.error('获取订单详情失败:', error)
@@ -193,14 +199,15 @@ export default function OrderDetailPage() {
     }
   }
 
-  const fetchExecutionProgress = async () => {
+  const fetchDispatchStatus = async () => {
     try {
-      const res = await Network.request({ url: `/api/order-dispatch/${id}/progress` })
+      const res = await Network.request({ url: `/api/order-dispatch/${id}/status` })
       if (res.data?.code === 200) {
-        setExecutions(res.data.data || [])
+        setDispatchStatus(res.data.data)
+        setExecutions(res.data.data.executions || [])
       }
     } catch (error) {
-      console.error('获取执行进度失败:', error)
+      console.error('获取分配状态失败:', error)
     }
   }
 
@@ -510,8 +517,68 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 执行进度 */}
-            {executions.length > 0 && (
+            {/* 接单分身信息 */}
+            {(dispatchStatus?.acceptedAvatar || order.avatars) && (
+              <View className="info-section">
+                <Text className="section-title">接单分身</Text>
+                <View className="avatar-card">
+                  <View className="avatar-avatar">
+                    {(dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url) ? (
+                      <Image
+                        src={dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url}
+                        className="avatar-img"
+                      />
+                    ) : (
+                      <Sparkles size={24} color="#00f5ff" />
+                    )}
+                  </View>
+                  <View className="avatar-info">
+                    <Text className="avatar-name">
+                      {dispatchStatus?.acceptedAvatar?.name || order.avatars?.name || '未知分身'}
+                    </Text>
+                    <View className="avatar-meta">
+                      <Text className="avatar-level">
+                        Lv.{dispatchStatus?.acceptedAvatar?.level || order.avatars?.level || 1}
+                      </Text>
+                      {dispatchStatus?.currentStep && (
+                        <View className="avatar-status">
+                          <Loader size={12} color="#3b82f6" className="animate-spin" />
+                          <Text className="status-text-mini">正在执行: {dispatchStatus.currentStep.step_name}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {/* 执行进度 */}
+                {executions.length > 0 && (
+                  <View className="exec-progress-wrapper">
+                    <Text className="progress-title">执行进度</Text>
+                    <View className="exec-steps">
+                      {executions.map((step, idx) => (
+                        <View key={step.id} className="exec-step">
+                          <View className="step-indicator">
+                            {getStepIcon(step.status)}
+                            {idx < executions.length - 1 && (
+                              <View className={`step-line ${step.status === 'completed' ? 'completed' : ''}`} />
+                            )}
+                          </View>
+                          <View className="step-content">
+                            <Text className="step-name">{step.step_name}</Text>
+                            {step.description && (
+                              <Text className="step-desc">{step.description}</Text>
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 执行进度（独立显示，当没有接单分身信息时） */}
+            {executions.length > 0 && !dispatchStatus?.acceptedAvatar && !order.avatars && (
               <View className="info-section">
                 <Text className="section-title">执行进度</Text>
                 <View className="exec-steps">
