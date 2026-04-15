@@ -3,10 +3,10 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { 
-  Sparkles, ChevronRight, Bot, Star, Zap, Check, 
-  TrendingUp, Award, Cpu, Users,
-  ArrowRight, Loader, X as CloseIcon,
+import {
+  Sparkles, ChevronRight, Bot, Star, Zap, Check,
+  TrendingUp, Cpu, Users,
+  ArrowRight, Loader,
   Brain, Layers, Gauge, Crown, Shield, Zap as Lightning
 } from 'lucide-react-taro'
 import './index.css'
@@ -109,24 +109,6 @@ const ALGORITHM_STEPS = [
   }
 ]
 
-// 平台名称映射
-const PLATFORM_NAMES: Record<string, string> = {
-  'wechat_mp': '微信公众号',
-  'xiaohongshu': '小红书',
-  'bilibili': 'B站',
-  'weibo': '微博',
-  'douyin': '抖音',
-  'wechat_video': '视频号',
-  'zhihu': '知乎',
-  'toutiao': '今日头条',
-  'baidu': '百度',
-  'kuaishou': '快手'
-}
-
-const getPlatformName = (platform: string): string => {
-  return PLATFORM_NAMES[platform] || platform
-}
-
 export default function OrderMatchingPage() {
   const router = useRouter()
   const { orderId } = router.params
@@ -136,19 +118,9 @@ export default function OrderMatchingPage() {
     ALGORITHM_STEPS.map(s => ({ ...s, status: 'pending', details: s.details }))
   )
   const [matchedAvatars, setMatchedAvatars] = useState<MatchedAvatar[]>([])
-  const [selectedAvatar, setSelectedAvatar] = useState<MatchedAvatar | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showDetail, setShowDetail] = useState(false)
-  const [avatarHistory, setAvatarHistory] = useState<any[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
   const [dispatching, setDispatching] = useState(false)
 
-  // 订单信息
-  const [orderInfo, setOrderInfo] = useState<{
-    title: string
-    budget: number
-    platforms?: string[]
-  } | null>(null)
   const [recommendedCount, setRecommendedCount] = useState(0)  // 推荐分身数量
 
   // 状态栏和胶囊按钮适配
@@ -206,16 +178,6 @@ export default function OrderMatchingPage() {
         Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
       ])
 
-      // 获取订单信息
-      if (orderRes.data?.code === 200) {
-        const order = orderRes.data.data
-        setOrderInfo({
-          title: order.title,
-          budget: parseFloat(order.budget || 0),
-          platforms: order.requirements?.platforms || []
-        })
-      }
-
       // 获取推荐分身
       if (recommendRes.data?.code === 200) {
         const avatars = recommendRes.data.data || []
@@ -255,62 +217,6 @@ export default function OrderMatchingPage() {
       console.error('获取匹配结果失败:', error)
       showToast({ title: '匹配失败', icon: 'none' })
       setLoading(false)
-    }
-  }
-
-  const handleSelectAvatar = async (avatar: MatchedAvatar) => {
-    setSelectedAvatar(avatar)
-    setShowDetail(true)
-    setLoadingHistory(true)
-    
-    try {
-      // 获取分身历史订单
-      const res = await Network.request({
-        url: `/api/order?avatar_id=${avatar.id}&status=completed`
-      })
-      
-      if (res.data?.code === 200) {
-        const orders = res.data.data || []
-        const history = orders.slice(0, 5).map((o: any) => ({
-          id: o.id,
-          title: o.title,
-          rating: o.rating?.score || 0,
-          completed_at: o.completed_at,
-          platform: getPlatformName(o.requirements?.platforms?.[0] || '未知')
-        }))
-        setAvatarHistory(history)
-      }
-    } catch (error) {
-      console.error('获取历史失败:', error)
-    } finally {
-      setLoadingHistory(false)
-    }
-  }
-
-  const handleConfirmDispatch = async () => {
-    if (!selectedAvatar) return
-    
-    setDispatching(true)
-    try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/dispatch`,
-        method: 'POST',
-        data: { avatarId: selectedAvatar.id }
-      })
-      
-      if (res.data?.code === 200) {
-        showToast({ title: '分配成功', icon: 'success' })
-        setTimeout(() => {
-          navigateBack()
-        }, 1500)
-      } else {
-        showToast({ title: res.data?.message || '分配失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
-    } finally {
-      setDispatching(false)
     }
   }
 
@@ -379,19 +285,6 @@ export default function OrderMatchingPage() {
     if (score >= 80) return '#3b82f6'
     if (score >= 70) return '#f59e0b'
     return '#6b7280'
-  }
-
-  const getScoreLabel = (score: number) => {
-    if (score >= 90) return '完美'
-    if (score >= 80) return '优秀'
-    if (score >= 70) return '良好'
-    return '一般'
-  }
-
-  const getEffectColor = (effect: string) => {
-    if (effect === '卓越' || effect === '优秀') return '#22c55e'
-    if (effect === '良好') return '#3b82f6'
-    return '#f59e0b'
   }
 
   return (
@@ -593,7 +486,7 @@ export default function OrderMatchingPage() {
                         <Text className="level-text">Lv.{Math.min(avatar.level, 10)}</Text>
                       </View>
                     </View>
-                    
+
                     <View className="avatar-metrics">
                       <View className="metric-item">
                         <TrendingUp size={12} color="#22c55e" />
@@ -604,103 +497,34 @@ export default function OrderMatchingPage() {
                         <Star size={12} color="#fbbf24" />
                         <Text className="metric-value">{avatar.avgRating?.toFixed(1) || '4.5'}</Text>
                       </View>
-                      <View className="metric-sep" />
-                      <View className="metric-item">
-                        <Check size={12} color="#3b82f6" />
-                        <Text className="metric-value">{avatar.completedOrders}单</Text>
-                      </View>
                     </View>
                   </View>
 
                   {/* 匹配分 */}
                   <View className="match-score-wrap">
-                    <View 
+                    <View
                       className="match-score-ring"
                       style={{ borderColor: getScoreColor(avatar.score) }}
                     >
-                      <Text 
+                      <Text
                         className="score-num"
                         style={{ color: getScoreColor(avatar.score) }}
                       >
                         {avatar.score}
                       </Text>
                     </View>
-                    <Text 
+                    <Text
                       className="score-label"
                       style={{ color: getScoreColor(avatar.score) }}
                     >
-                      {getScoreLabel(avatar.score)}
+                      匹配度
                     </Text>
                   </View>
                 </View>
 
-                {/* 预估效果 */}
-                {avatar.estimatedEffect && (
-                  <View className="estimated-effect">
-                    <View className="effect-header">
-                      <Sparkles size={12} color="#8b5cf6" />
-                      <Text className="effect-title">预估效果</Text>
-                    </View>
-                    <View className="effect-grid">
-                      <View className="effect-item">
-                        <Text className="effect-label">预估曝光</Text>
-                        <Text className="effect-value">{avatar.estimatedEffect.reach}</Text>
-                      </View>
-                      <View className="effect-item">
-                        <Text className="effect-label">互动率</Text>
-                        <Text className="effect-value">{avatar.estimatedEffect.engagement}</Text>
-                      </View>
-                      <View className="effect-item">
-                        <Text className="effect-label">质量</Text>
-                        <Text
-                          className="effect-value quality"
-                          style={{ color: getEffectColor(avatar.estimatedEffect.quality) }}
-                        >
-                          {avatar.estimatedEffect.quality}
-                        </Text>
-                      </View>
-                      <View className="effect-item">
-                        <Text className="effect-label">完成时间</Text>
-                        <Text className="effect-value">{avatar.estimatedEffect.time}</Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* 预估收益和任务分配 */}
-                {avatar.estimatedIncome !== undefined && avatar.estimatedTaskRatio && (
-                  <View className="task-allocation">
-                    <View className="allocation-header">
-                      <Award size={12} color="#fbbf24" />
-                      <Text className="allocation-title">任务分配</Text>
-                    </View>
-                    <View className="allocation-grid">
-                      <View className="allocation-item">
-                        <Text className="allocation-label">预估收益</Text>
-                        <Text className="allocation-value income">
-                          ¥{avatar.estimatedIncome.toFixed(0)}
-                        </Text>
-                      </View>
-                      <View className="allocation-item">
-                        <Text className="allocation-label">任务占比</Text>
-                        <Text className="allocation-value ratio">
-                          {avatar.estimatedTaskRatio}
-                        </Text>
-                      </View>
-                    </View>
-                    {orderInfo && recommendedCount > 1 && (
-                      <View className="allocation-hint">
-                        <Text className="hint-text">
-                          共{recommendedCount}个分身协同，总金额 ¥{orderInfo.budget.toFixed(0)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
                 {/* 匹配理由 */}
                 <View className="match-reasons">
-                  {avatar.matchReasons.slice(0, 3).map((reason, i) => (
+                  {avatar.matchReasons.slice(0, 2).map((reason, i) => (
                     <View key={i} className="reason-tag">
                       <Zap size={10} color="#00f5ff" />
                       <Text className="reason-text">{reason}</Text>
@@ -710,18 +534,13 @@ export default function OrderMatchingPage() {
 
                 {/* 操作区域 */}
                 <View className="card-actions">
-                  <View 
+                  <View
                     className="view-detail-btn"
-                    onClick={() => handleSelectAvatar(avatar)}
-                  >
-                    <Text className="view-detail-text">查看详情</Text>
-                    <ArrowRight size={14} color="#00f5ff" />
-                  </View>
-                  <View 
-                    className="quick-dispatch-btn"
+                    style={{ flex: 1 }}
                     onClick={() => handleQuickDispatch(avatar)}
                   >
-                    <Text className="quick-dispatch-text">快速分配</Text>
+                    <Text className="view-detail-text">分配给此分身</Text>
+                    <ArrowRight size={14} color="#00f5ff" />
                   </View>
                 </View>
               </View>
@@ -741,7 +560,7 @@ export default function OrderMatchingPage() {
                     <Users size={20} color="#fff" />
                   )}
                   <Text className="batch-dispatch-text">
-                    {dispatching ? '分配中...' : `统一匹配给所有分身（{matchedAvatars.length}个）`}
+                    {dispatching ? '分配中...' : `统一匹配给所有分身（${recommendedCount}个）`}
                   </Text>
                 </Button>
                 <Text className="batch-dispatch-tip">
@@ -753,194 +572,6 @@ export default function OrderMatchingPage() {
         )}
       </View>
 
-      {/* 分身详情弹窗 */}
-      {showDetail && selectedAvatar && (
-        <View className="detail-overlay" onClick={() => setShowDetail(false)}>
-          <View className="detail-modal" onClick={(e: any) => e.stopPropagation()}>
-            {/* 头部 */}
-            <View className="detail-header">
-              <View className="detail-avatar-section">
-                <View className="detail-avatar">
-                  {selectedAvatar.avatar_url ? (
-                    <Image src={selectedAvatar.avatar_url} className="detail-avatar-img" />
-                  ) : (
-                    <View className="detail-avatar-placeholder">
-                      <Bot size={48} color="#00f5ff" />
-                    </View>
-                  )}
-                </View>
-                <View className="detail-info">
-                  <Text className="detail-name">{selectedAvatar.name}</Text>
-                  <View className="detail-badges">
-                    <View className="detail-level">
-                      <Text className="detail-level-text">Lv.{Math.min(selectedAvatar.level, 10)}</Text>
-                    </View>
-                    {selectedAvatar.isHosted && (
-                      <View className="detail-hosted">
-                        <Lightning size={12} color="#fff" />
-                        <Text className="detail-hosted-text">已托管</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <View className="detail-score" style={{ borderColor: getScoreColor(selectedAvatar.score) }}>
-                  <Text className="detail-score-num" style={{ color: getScoreColor(selectedAvatar.score) }}>
-                    {selectedAvatar.score}
-                  </Text>
-                  <Text className="detail-score-label">{getScoreLabel(selectedAvatar.score)}</Text>
-                </View>
-              </View>
-              <View className="close-btn" onClick={() => setShowDetail(false)}>
-                <CloseIcon size={20} color="rgba(255,255,255,0.5)" />
-              </View>
-            </View>
-
-            {/* 统计数据 */}
-            <View className="detail-stats">
-              <View className="detail-stat">
-                <TrendingUp size={20} color="#22c55e" />
-                <Text className="detail-stat-value">{selectedAvatar.completionRate}%</Text>
-                <Text className="detail-stat-label">完成率</Text>
-              </View>
-              <View className="detail-stat">
-                <Star size={20} color="#fbbf24" />
-                <Text className="detail-stat-value">{selectedAvatar.avgRating || 4.5}</Text>
-                <Text className="detail-stat-label">平均评分</Text>
-              </View>
-              <View className="detail-stat">
-                <Check size={20} color="#3b82f6" />
-                <Text className="detail-stat-value">{selectedAvatar.completedOrders}</Text>
-                <Text className="detail-stat-label">已完成</Text>
-              </View>
-              <View className="detail-stat">
-                <Award size={20} color="#8b5cf6" />
-                <Text className="detail-stat-value">¥{selectedAvatar.totalEarnings || 0}</Text>
-                <Text className="detail-stat-label">累计收益</Text>
-              </View>
-            </View>
-
-            {/* 预估效果 */}
-            {selectedAvatar.estimatedEffect && (
-              <View className="detail-section">
-                <Text className="section-title">预估完成效果</Text>
-                <View className="effect-cards">
-                  <View className="effect-card">
-                    <Text className="effect-card-label">预估曝光</Text>
-                    <Text className="effect-card-value">{selectedAvatar.estimatedEffect.reach}</Text>
-                  </View>
-                  <View className="effect-card">
-                    <Text className="effect-card-label">互动率</Text>
-                    <Text className="effect-card-value">{selectedAvatar.estimatedEffect.engagement}</Text>
-                  </View>
-                  <View className="effect-card">
-                    <Text className="effect-card-label">质量评级</Text>
-                    <Text 
-                      className="effect-card-value"
-                      style={{ color: getEffectColor(selectedAvatar.estimatedEffect.quality) }}
-                    >
-                      {selectedAvatar.estimatedEffect.quality}
-                    </Text>
-                  </View>
-                  <View className="effect-card">
-                    <Text className="effect-card-label">预计工期</Text>
-                    <Text className="effect-card-value">{selectedAvatar.estimatedEffect.time}</Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* 技能标签 */}
-            <View className="detail-section">
-              <Text className="section-title">擅长技能</Text>
-              <View className="skill-tags">
-                {(selectedAvatar.avatarProfile?.expertise || ['文案创作', '图片设计', '内容策划']).map((skill, i) => (
-                  <View key={i} className="skill-tag">
-                    <Text className="skill-text">{skill}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* 平台配置 */}
-            <View className="detail-section">
-              <Text className="section-title">已配置平台</Text>
-              <View className="platform-tags">
-                {(selectedAvatar.avatarProfile?.platforms || ['小红书', '微博']).map((platform, i) => (
-                  <View key={i} className="platform-tag">
-                    <Text className="platform-text">{platform}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* 匹配理由 */}
-            <View className="detail-section">
-              <Text className="section-title">匹配理由</Text>
-              <View className="reason-list">
-                {selectedAvatar.matchReasons.map((reason, i) => (
-                  <View key={i} className="reason-item">
-                    <Check size={14} color="#22c55e" />
-                    <Text className="reason-item-text">{reason}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* 历史案例 */}
-            <View className="detail-section">
-              <Text className="section-title">完成案例</Text>
-              {loadingHistory ? (
-                <View className="history-loading">
-                  <Loader size={20} color="#00f5ff" className="spin" />
-                  <Text className="loading-text">加载中...</Text>
-                </View>
-              ) : avatarHistory.length > 0 ? (
-                <View className="history-list">
-                  {avatarHistory.map((item) => (
-                    <View key={item.id} className="history-item">
-                      <View className="history-info">
-                        <Text className="history-title">{item.title}</Text>
-                        <Text className="history-meta">{item.platform} · {new Date(item.completed_at).toLocaleDateString()}</Text>
-                      </View>
-                      <View className="history-rating">
-                        {[1, 2, 3, 4, 5].map(star => (
-                          <Star 
-                            key={star}
-                            size={12}
-                            color={star <= item.rating ? '#fbbf24' : 'rgba(255,255,255,0.2)'}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View className="history-empty">
-                  <Text className="empty-text">暂无完成案例</Text>
-                </View>
-              )}
-            </View>
-
-            {/* 确认分配按钮 */}
-            <View className="detail-actions">
-              <Button 
-                className="confirm-btn"
-                onClick={handleConfirmDispatch}
-                disabled={dispatching}
-              >
-                {dispatching ? (
-                  <Loader size={18} color="#fff" className="spin" />
-                ) : (
-                  <Check size={18} color="#fff" />
-                )}
-                <Text className="confirm-btn-text">
-                  {dispatching ? '分配中...' : `确认分配给 ${selectedAvatar.name}`}
-                </Text>
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   )
 }
