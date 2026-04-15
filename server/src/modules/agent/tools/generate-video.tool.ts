@@ -116,17 +116,14 @@ export class GenerateVideoTool implements ITool {
         .update({ progress: 20 })
         .eq('id', taskId)
 
-      // 🔴 修复：新模型只支持 model、ratio、generateAudio 三个参数
-      // duration 和 resolution 参数不支持，需要在提示词中描述
-      const requestOptions: any = {
-        model: 'doubao-seedance-2-0-260128',
+      const response = await videoClient.videoGeneration(content, {
+        model: 'doubao-seedance-2-0-260128', // 🔴 最新模型，支持 duration、ratio、watermark、generate_audio
+        duration,
         ratio: ratio as any,
-        generateAudio: generateAudio as boolean
-      }
-
-      console.log('[GenerateVideoTool] 实际发送的请求参数:', JSON.stringify(requestOptions))
-
-      const response = await videoClient.videoGeneration(content, requestOptions)
+        resolution: resolution as any,
+        generateAudio,
+        watermark: false // 默认不加水印
+      })
 
       const originalUrl = response.videoUrl
 
