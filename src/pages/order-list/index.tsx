@@ -1,10 +1,10 @@
 import { useLoad, useDidShow, useRouter, navigateTo, showToast } from '@tarojs/taro'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { 
-  Clock, ChevronRight, Sparkles, Plus, 
+import {
+  Clock, ChevronRight, Sparkles, Plus,
   Check, RefreshCw, DollarSign,
   Package, Loader, Circle, SlidersHorizontal
 } from 'lucide-react-taro'
@@ -116,24 +116,38 @@ export default function OrderListPage() {
     fetchStats()
   })
 
+  // 监听 activeTab 变化，重新获取订单
+  useEffect(() => {
+    if (mode === 'avatar') return // 分身模式不需要筛选
+    fetchOrders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
   const fetchOrders = async () => {
     setLoading(true)
     try {
       let url = '/api/order'
+      let queryParams: Record<string, any> = {}
+
       if (mode === 'avatar') {
+        // 分身模式：只显示待接单的订单
         url = '/api/order/open'
+      } else {
+        // 商家模式：根据 activeTab 筛选
+        if (activeTab !== 'all') {
+          queryParams.status = activeTab
+        }
       }
-      
-      const queryParams = activeTab === 'all' ? {} : { status: activeTab }
+
       const res = await Network.request({
         url,
         data: queryParams
       })
-      
+
       if (res.data?.code === 200) {
         const ordersData = res.data.data?.orders || res.data.data || []
         setOrders(ordersData)
-        
+
         // 获取每个订单的执行进度
         if (mode !== 'avatar') {
           fetchOrdersProgress(ordersData)

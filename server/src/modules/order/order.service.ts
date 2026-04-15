@@ -272,34 +272,41 @@ export class OrderService {
 
   async getOrderStats(userId: string) {
     const client = getSupabaseClient()
-    
+
     const { count: total } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-    
+
     const { count: open } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'open')
-    
+
     const { count: inProgress } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'in_progress')
-    
+
+    const { count: reviewing } = await client
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'reviewing')
+
     const { count: completed } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'completed')
-    
+
     return {
       total: total || 0,
       open: open || 0,
       inProgress: inProgress || 0,
+      reviewing: reviewing || 0,
       completed: completed || 0
     }
   }
