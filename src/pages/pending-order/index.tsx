@@ -324,7 +324,11 @@ export default function PendingOrderPage() {
             <View className="meta-item">
               <TrendingUp size={16} color="#f59e0b" />
               <Text className="meta-label">预估收益</Text>
-              <Text className="meta-value">¥{(orderData.orders.budget * 0.8).toFixed(0)}</Text>
+              <Text className="meta-value">
+                ¥{(orderData.orders as any).expected_quantity
+                  ? Math.floor(orderData.orders.budget / (orderData.orders as any).expected_quantity)
+                  : Math.floor(orderData.orders.budget * 0.8)}
+              </Text>
             </View>
             <View className="meta-item">
               <Smartphone size={16} color="#3b82f6" />
@@ -405,45 +409,38 @@ export default function PendingOrderPage() {
       </ScrollView>
 
       {/* 底部操作按钮 */}
-      <View className="bottom-actions">
-        <Button
-          className="reject-btn"
-          onClick={handleReject}
-          disabled={rejecting || accepting}
-        >
-          <X size={18} color="rgba(255,255,255,0.6)" />
-          <Text className="btn-text">拒绝订单</Text>
-        </Button>
-        <Button
-          className="accept-btn"
-          onClick={handleAccept}
-          disabled={rejecting || accepting}
-        >
-          {accepting ? (
-            <Text className="btn-text">处理中...</Text>
-          ) : (
-            <>
-              <Check size={18} color="#fff" />
-              <Text className="btn-text">接受订单</Text>
-            </>
-          )}
-        </Button>
-
-        <Button
-          className="action-btn reject"
-          onClick={handleReject}
-          disabled={rejecting}
-        >
-          {rejecting ? (
-            <Text className="btn-text">处理中...</Text>
-          ) : (
-            <>
-              <X size={18} color="#fff" />
-              <Text className="btn-text">拒绝订单</Text>
-            </>
-          )}
-        </Button>
-      </View>
+      {orderData.status === 'pending' && (
+        <View className="bottom-actions">
+          <Button
+            className="action-btn reject"
+            onClick={handleReject}
+            disabled={rejecting}
+          >
+            {rejecting ? (
+              <Text className="btn-text">处理中...</Text>
+            ) : (
+              <>
+                <X size={18} color="#fff" />
+                <Text className="btn-text">拒绝订单</Text>
+              </>
+            )}
+          </Button>
+          <Button
+            className="action-btn accept"
+            onClick={handleAccept}
+            disabled={accepting}
+          >
+            {accepting ? (
+              <Text className="btn-text">处理中...</Text>
+            ) : (
+              <>
+                <Check size={18} color="#fff" />
+                <Text className="btn-text">接受订单</Text>
+              </>
+            )}
+          </Button>
+        </View>
+      )}
 
       {/* 进行中订单 - 执行反馈表单 */}
       {orderData.status === 'accepted' && (

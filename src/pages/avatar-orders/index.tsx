@@ -169,6 +169,15 @@ export default function AvatarOrdersPage() {
                     <Text className="budget-value">¥{request.orders?.budget || 0}</Text>
                   </View>
 
+                  <View className="request-budget">
+                    <Text className="budget-label">预估收益</Text>
+                    <Text className="budget-value">
+                      ¥{(request.orders as any)?.expected_quantity
+                        ? Math.floor(request.orders.budget / (request.orders as any).expected_quantity)
+                        : Math.floor((request.orders?.budget || 0) * 0.8)}
+                    </Text>
+                  </View>
+
                   <View className="request-meta">
                     <Text className="meta-item">📱 {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}</Text>
                     <Text className="meta-item">📅 {request.orders?.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
