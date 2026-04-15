@@ -1419,13 +1419,18 @@ export class AgentService {
         const potentialFinalAnswer = this.extractFinalAnswer(thought)
 
         // 🔴 修复：检查是否包含短剧相关关键词（镜头、画面等）但没有视频数据
+        // 🔴 修复：添加更严格的判断条件，避免将普通文本误判为短剧
         const hasDramaKeywords = /镜头|画面|场景|角色|视频|剧本|短剧/gi.test(potentialFinalAnswer)
         const hasMedia = this.hasMediaContent(potentialFinalAnswer)
         const hasVideo = this.hasVideoContent(potentialFinalAnswer)  // 🔴 新增：专门检查视频
 
-        if (hasDramaKeywords && !hasVideo) {
-          // 🔴 修复：如果包含短剧关键词但缺少视频数据，说明 LLM 只是生成了文本，没有调用工具
-          console.log('[AgentService] 警告：生成了短剧文本，但没有视频数据，强制调用 produce_shortdrama...')
+        // 🔴 修复：只有当明确是短剧任务（任务描述包含"短剧"、"制作视频"等）时，才强制调用工具
+        // 如果只是普通文本包含"镜头"等关键词，不强制调用
+        const isDramaTask = /短剧|制作视频|生成视频|视频成品|真人短剧/i.test(context.taskDescription)
+
+        if (hasDramaKeywords && !hasVideo && isDramaTask) {
+          // 🔴 修复：如果包含短剧关键词但缺少视频数据，且明确是短剧任务，说明 LLM 只是生成了文本，没有调用工具
+          console.log('[AgentService] 警告：检测到短剧任务，但生成的内容没有视频数据，强制调用 produce_shortdrama...')
 
           // 🔴 修复：不重新赋值 thought，而是直接执行工具调用逻辑
           // 根据任务描述构建参数
@@ -1467,7 +1472,7 @@ export class AgentService {
           this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
           break
         } else {
-          // 如果只是普通文本（不是短剧），可以返回
+          // 如果只是普通文本（不是短剧任务），可以返回
           finalAnswer = potentialFinalAnswer
           // 完成思考，进度到 90%
           this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
