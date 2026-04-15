@@ -905,15 +905,15 @@ export class GenerateVideoTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'generate_video',
     displayName: '生成视频',
-    description: '使用AI生成视频，支持文字描述生成视频，支持参考图片、视频、音频。当用户需要"生成视频"、"做一个视频"、"创作视频"时使用此工具。注意：视频生成需要1-5分钟，请耐心等待。',
+    description: '【个人IP打造】使用AI生成高质量视频，支持文字描述生成视频，支持用户上传的图片/视频/音频作为参考（如果用户上传了这些素材，优先使用用户上传的素材；如果没有上传，可以使用分身头像作为参考图片）。适用于个人IP打造、口播视频、产品展示等场景。当用户需要"生成视频"、"做一个视频"、"创作视频"时使用此工具。注意：视频生成需要1-5分钟，请耐心等待。',
     category: 'content_creation',
     paramsSchema: {
       prompt: { type: 'string', description: '视频内容描述，详细描述想要生成的视频画面、动作、风格等', required: true },
       duration: { type: 'number', description: '视频时长（秒），支持4-12秒，默认5秒', default: 5 },
       ratio: { type: 'string', enum: ['16:9', '9:16', '1:1', 'adaptive'], default: '9:16', description: '视频比例，9:16适合手机竖屏，16:9适合横屏，adaptive自动选择' },
-      reference_images: { type: 'array', items: { type: 'string' }, description: '参考图片URL列表（可选）' },
-      reference_videos: { type: 'array', items: { type: 'string' }, description: '参考视频URL列表（可选）' },
-      reference_audios: { type: 'array', items: { type: 'string' }, description: '参考音频URL列表（可选）' },
+      reference_images: { type: 'array', items: { type: 'string' }, description: '参考图片URL列表（可选）。如果用户上传了图片，优先使用用户上传的图片；如果没有上传图片，可以使用分身头像作为参考图片' },
+      reference_videos: { type: 'array', items: { type: 'string' }, description: '参考视频URL列表（可选），如果用户上传了视频，优先使用用户上传的视频' },
+      reference_audios: { type: 'array', items: { type: 'string' }, description: '参考音频URL列表（可选），如果用户上传了音频，优先使用用户上传的音频' },
       generate_audio: { type: 'boolean', description: '是否自动生成音频', default: true }
     }
   }

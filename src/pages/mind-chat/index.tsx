@@ -17,7 +17,8 @@ import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench
+  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
+  Play, Image as ImageIcon, Video as VideoIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -110,6 +111,9 @@ interface Message {
     task_state?: {
       progressHistory?: any[]
     }
+    // 🔴 新增：上传的图片和视频
+    uploaded_images?: string[]
+    uploaded_videos?: string[]
   }
 }
 
@@ -387,6 +391,10 @@ export default function MindChatPage() {
     }
   } | null>(null)
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
+
+  // 🔴 新增：上传的图片和视频
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploadedVideos, setUploadedVideos] = useState<string[]>([])
   
   // 发布引导弹窗（用于无 API 的平台）
   const [showPublishGuide, setShowPublishGuide] = useState(false)
@@ -1180,6 +1188,82 @@ export default function MindChatPage() {
     }
   }
 
+  // 🔴 新增：上传图片
+  const handleUploadImage = () => {
+    Taro.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: async (res) => {
+        const tempFilePath = res.tempFilePaths[0]
+        try {
+          // 上传图片到 TOS
+          const uploadRes = await Network.uploadFile({
+            url: '/api/upload',
+            filePath: tempFilePath,
+            name: 'file'
+          })
+
+          console.log('[上传图片] 上传结果:', uploadRes)
+
+          const uploadData = JSON.parse(uploadRes.data)
+          if (uploadData.code === 200 && uploadData.data.url) {
+            setUploadedImages([...uploadedImages, uploadData.data.url])
+            showToast({ title: '图片上传成功', icon: 'success' })
+          } else {
+            showToast({ title: '上传失败', icon: 'none' })
+          }
+        } catch (error) {
+          console.error('[上传图片] 错误:', error)
+          showToast({ title: '上传失败', icon: 'none' })
+        }
+      }
+    })
+  }
+
+  // 🔴 新增：上传视频
+  const handleUploadVideo = () => {
+    Taro.chooseVideo({
+      sourceType: ['album', 'camera'],
+      maxDuration: 60,
+      camera: 'back',
+      success: async (res) => {
+        const tempFilePath = res.tempFilePath
+        try {
+          // 上传视频到 TOS
+          const uploadRes = await Network.uploadFile({
+            url: '/api/upload',
+            filePath: tempFilePath,
+            name: 'file'
+          })
+
+          console.log('[上传视频] 上传结果:', uploadRes)
+
+          const uploadData = JSON.parse(uploadRes.data)
+          if (uploadData.code === 200 && uploadData.data.url) {
+            setUploadedVideos([...uploadedVideos, uploadData.data.url])
+            showToast({ title: '视频上传成功', icon: 'success' })
+          } else {
+            showToast({ title: '上传失败', icon: 'none' })
+          }
+        } catch (error) {
+          console.error('[上传视频] 错误:', error)
+          showToast({ title: '上传失败', icon: 'none' })
+        }
+      }
+    })
+  }
+
+  // 🔴 新增：删除上传的图片
+  const handleRemoveImage = (index: number) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index))
+  }
+
+  // 🔴 新增：删除上传的视频
+  const handleRemoveVideo = (index: number) => {
+    setUploadedVideos(uploadedVideos.filter((_, i) => i !== index))
+  }
+
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
   const sendMessage = async (text?: string) => {
     const messageText = text || inputText
@@ -1191,15 +1275,18 @@ export default function MindChatPage() {
       trimmedMessageText: messageText.trim(),
       hasConversation: !!conversation,
       isLoading: loading,
-      loadingRef: loadingRef.current
+      loadingRef: loadingRef.current,
+      uploadedImages,
+      uploadedVideos
     })
 
-    if (!messageText.trim() || !conversation) {
-      if (!messageText.trim()) {
-        showToast({ title: '请输入消息', icon: 'none' })
-      } else if (!conversation) {
-        showToast({ title: '对话不存在', icon: 'none' })
-      }
+    if (!messageText.trim() && uploadedImages.length === 0 && uploadedVideos.length === 0) {
+      showToast({ title: '请输入消息或上传图片/视频', icon: 'none' })
+      return
+    }
+
+    if (!conversation) {
+      showToast({ title: '对话不存在', icon: 'none' })
       return
     }
 
@@ -1230,25 +1317,42 @@ export default function MindChatPage() {
       id: Date.now().toString(),
       role: 'user',
       content: messageText,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      // 🔴 新增：添加上传的图片和视频
+      metadata: {
+        uploaded_images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        uploaded_videos: uploadedVideos.length > 0 ? uploadedVideos : undefined
+      }
     }
 
     setMessages(prev => [...prev, userMessage])
     setInputText('')
+    // 🔴 新增：清空上传的图片和视频
+    setUploadedImages([])
+    setUploadedVideos([])
     setLoading(true)
     loadingRef.current = true
     setAgentSteps([])  // 清空之前的步骤
     setTaskProgress(0) // 重置进度百分比
     setCurrentStatus('思考中...')
-    
+
     // 立即滚动到底部，显示新消息
     setTimeout(() => {
       scrollToBottom()
     }, 50)
 
     try {
+      // 🔴 新增：构建任务描述，包含上传的图片和视频
+      let enhancedTaskDescription = messageText
+      if (uploadedImages.length > 0) {
+        enhancedTaskDescription += `\n[用户上传了 ${uploadedImages.length} 张图片: ${uploadedImages.join(', ')}]`
+      }
+      if (uploadedVideos.length > 0) {
+        enhancedTaskDescription += `\n[用户上传了 ${uploadedVideos.length} 个视频: ${uploadedVideos.join(', ')}]`
+      }
+
       // 所有消息都通过新的 Avatar Agent 处理（独立智能体模式）
-      await executeAsAgent(messageText)
+      await executeAsAgent(enhancedTaskDescription, uploadedImages, uploadedVideos)
       scrollToBottom()
     } catch (error) {
       console.error('[MindChat] Avatar Agent 执行失败:', error)
@@ -1262,7 +1366,7 @@ export default function MindChatPage() {
   }
 
   // 使用旧的 Agent 系统（ReAct 模式）
-  const executeAsAgent = async (content: string) => {
+  const executeAsAgent = async (content: string, images?: string[], videos?: string[]) => {
     try {
       console.log('[MindChat] 使用旧的 Agent 系统，ReAct 模式')
       console.log('[MindChat] 分身信息:', avatar)
@@ -1281,6 +1385,15 @@ export default function MindChatPage() {
 
       setCurrentStatus('思考中...')
 
+      // 🔴 新增：构建附件信息
+      const attachments: any = {}
+      if (images && images.length > 0) {
+        attachments.images = images
+      }
+      if (videos && videos.length > 0) {
+        attachments.videos = videos
+      }
+
       // 调用旧的 Agent API（异步模式）
       const res = await Network.request({
         url: `/api/agent/execute`,
@@ -1292,7 +1405,9 @@ export default function MindChatPage() {
           conversation_history: messages.slice(-5).map(msg => ({
             role: msg.role,
             content: msg.content
-          }))
+          })),
+          // 🔴 新增：传递附件信息
+          ...(Object.keys(attachments).length > 0 ? { attachments } : {})
         }
       })
 
@@ -3711,6 +3826,38 @@ export default function MindChatPage() {
 
       {/* 底部输入栏 */}
       <View className="input-bar">
+        {/* 🔴 新增：上传的图片和视频预览 */}
+        {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
+          <View className="media-preview-bar">
+            <ScrollView scrollX className="media-preview-scroll">
+              {uploadedImages.map((imageUrl, idx) => (
+                <View key={`img-${idx}`} className="media-preview-item">
+                  <Image src={imageUrl} className="media-preview-image" mode="aspectFill" />
+                  <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
+                    <X size={16} color="#ffffff" />
+                  </View>
+                </View>
+              ))}
+              {uploadedVideos.map((videoUrl, idx) => (
+                <View key={`video-${idx}`} className="media-preview-item">
+                  <Video
+                    src={videoUrl}
+                    className="media-preview-video"
+                    controls={false}
+                    objectFit="cover"
+                  />
+                  <View className="media-preview-video-icon">
+                    <Play size={20} color="#ffffff" />
+                  </View>
+                  <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
+                    <X size={16} color="#ffffff" />
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <View className="input-left">
           <View className="quick-action" onClick={toggleVoiceMode}>
             {isVoiceMode ? (
@@ -3718,6 +3865,12 @@ export default function MindChatPage() {
             ) : (
               <Mic size={24} color="#00f5ff" />
             )}
+          </View>
+          <View className="quick-action" onClick={handleUploadImage}>
+            <ImageIcon size={24} color="#00f5ff" />
+          </View>
+          <View className="quick-action" onClick={handleUploadVideo}>
+            <VideoIcon size={24} color="#00f5ff" />
           </View>
           <View className="quick-action skills-action" onClick={navigateToSkillsSquare}>
             <Wrench size={24} color="#00f5ff" />

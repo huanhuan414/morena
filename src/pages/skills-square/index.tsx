@@ -163,15 +163,15 @@ const PERSONAL_IP_KIT: {
 } = {
   id: 'personal_ip_kit',
   name: '个人IP打造',
-  description: '一键打造个人IP，使用分身头像生成爆款口播视频，自动添加字幕和背景音乐',
+  description: '一键打造个人IP，支持上传自定义图片或使用分身头像生成爆款口播视频，自动添加字幕和背景音乐',
   icon: '🌟',
   category: '个人IP',
   skills: [
-    'generate_video',         // 生成视频（使用分身头像）
+    'generate_video',         // 生成视频（支持上传图片或使用分身头像）
     'generate_subtitle',      // 生成字幕
     'recommend_bgm'           // 推荐背景音乐
   ],
-  tags: ['个人IP', '口播', '爆款视频'],
+  tags: ['个人IP', '口播', '爆款视频', '自定义图片'],
   rating: 5.0,
   purchase_count: 666
 }
