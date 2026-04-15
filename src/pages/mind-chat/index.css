@@ -1424,7 +1424,7 @@ del {
   min-height: 72rpx;
   max-height: 200rpx;
   font-size: 28rpx;
-  color: #fff;
+  color: #fff !important;
   line-height: 40rpx;
   background: transparent !important;
   border: none !important;
@@ -1433,16 +1433,20 @@ del {
   border-radius: 0;
 }
 
-/* 强制设置Taro Textarea组件背景为透明 */
+/* 强制设置Taro Textarea组件背景为透明，文字颜色为白色 */
 .input-textarea textarea,
 .input-textarea .taro-textarea,
 textarea.input-textarea {
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
+  color: #fff !important;
+  caret-color: #00f5ff !important;
 }
 
-.input-textarea::placeholder {
+.input-textarea textarea::placeholder,
+.input-textarea .taro-textarea::placeholder,
+textarea.input-textarea::placeholder {
   color: rgba(255, 255, 255, 0.4) !important;
 }
 
