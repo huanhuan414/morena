@@ -864,12 +864,23 @@ export class AgentService {
 
     // 提取媒体内容
     const media: Array<{
-      type: 'image' | 'video' | 'article'
+      type: 'image' | 'video' | 'article' | 'shortdrama_info'
       url?: string
       key?: string  // 添加 key 字段，用于重新生成签名链接
       title?: string
       content?: string
       coverImage?: string
+      // 🔴 新增：短剧相关字段
+      duration?: number
+      script?: string
+      storyboard?: string
+      characters?: any[]
+      scenes?: any[]
+      video_clips?: any[]
+      edited_video_url?: string
+      bgm_recommendations?: any[]
+      production_stats?: any
+      message?: string
     }> = []
 
     // 🔴 新增：尝试从 finalAnswer 中解析 JSON 格式的媒体数据
@@ -940,12 +951,12 @@ export class AgentService {
             }
           })
         }
-        // 🔴 新增：保存完整的 shortdrama 数据到 metadata 中
-        // 🔴 临时注释：TypeScript 编译错误，先让服务启动
-        /* if (finalAnswerJson.title || finalAnswerJson.script || finalAnswerJson.bgm_recommendations) {
-          console.log('[媒体提取] 保存短剧完整数据到 metadata')
-          // 🔴 修复：使用类型断言，将 media 数组转换为 any 类型，允许添加自定义属性
-          (media as any)._shortdrama_data = {
+
+        // 🔴 修复：将短剧数据作为一个特殊的媒体项插入（避免 TypeScript 编译错误）
+        if (finalAnswerJson.title || finalAnswerJson.script || finalAnswerJson.bgm_recommendations) {
+          console.log('[媒体提取] 插入短剧信息媒体项')
+          media.unshift({
+            type: 'shortdrama_info',
             title: finalAnswerJson.title,
             duration: finalAnswerJson.duration,
             script: finalAnswerJson.script,
@@ -957,8 +968,8 @@ export class AgentService {
             bgm_recommendations: finalAnswerJson.bgm_recommendations,
             production_stats: finalAnswerJson.production_stats,
             message: finalAnswerJson.message
-          }
-        } */
+          })
+        }
       }
     } catch (error) {
       console.log('[媒体提取] finalAnswer 不是 JSON 格式，使用常规提取方式')
