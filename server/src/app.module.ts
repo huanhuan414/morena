@@ -20,6 +20,7 @@ import { ReferralModule } from './modules/referral/referral.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { MediaModule } from './modules/media/media.module';
+import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { MediaModule } from './modules/media/media.module';
     ReferralModule,
     SubscriptionModule,
     SkillsModule,
-    MediaModule
+    MediaModule,
+    ContentGenerationModule
   ],
   controllers: [AppController],
   providers: [AppService],

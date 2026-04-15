@@ -172,12 +172,12 @@ export default function PendingOrderPage() {
 
             if (result.data?.code === 200) {
               showToast({ title: '接受成功，正在生成内容', icon: 'success' })
-              // 延迟后跳转到效果反馈页面
+              // 跳转到生成内容页面
               setTimeout(() => {
                 navigateTo({
-                  url: `/pages/order-feedback/index?orderId=${orderData.orders.id}&avatarId=${orderData.avatars.id}`
+                  url: `/pages/generated-content/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
                 })
-              }, 2000)
+              }, 1500)
             } else {
               showToast({ title: result.data?.message || '接受失败', icon: 'none' })
             }
