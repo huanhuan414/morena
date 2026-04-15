@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Config, S3Storage } from 'coze-coding-dev-sdk'
 import { nanoid } from 'nanoid'
 import * as path from 'path'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class UploadService {
@@ -9,7 +10,7 @@ export class UploadService {
   private s3Client: S3Storage
   private readonly bucketName = process.env.COZE_BUCKET_NAME || 'morina-ai'
 
-  constructor() {
+  constructor(private readonly storageService: StorageService) {
     // 初始化 S3 客户端
     this.logger.log('初始化 S3 客户端...')
     this.logger.log(`TOS Endpoint: ${process.env.COZE_BUCKET_ENDPOINT_URL}`)
@@ -36,9 +37,12 @@ export class UploadService {
   async uploadOrderScreenshot(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `order-screenshots/${nanoid()}${path.extname(file.originalname)}`
 
-    const url = await this.uploadToS3(file, fileName)
+    await this.uploadToS3(file, fileName)
 
-    return { url }
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+
+    return { url: signedUrl }
   }
 
   /**
@@ -47,9 +51,12 @@ export class UploadService {
   async uploadAvatarImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `avatar-images/${nanoid()}${path.extname(file.originalname)}`
 
-    const url = await this.uploadToS3(file, fileName)
+    await this.uploadToS3(file, fileName)
 
-    return { url }
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+
+    return { url: signedUrl }
   }
 
   /**
@@ -58,9 +65,12 @@ export class UploadService {
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `general-images/${nanoid()}${path.extname(file.originalname)}`
 
-    const url = await this.uploadToS3(file, fileName)
+    await this.uploadToS3(file, fileName)
 
-    return { url }
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(fileName, 86400 * 30) // 30天有效期
+
+    return { url: signedUrl }
   }
 
   /**

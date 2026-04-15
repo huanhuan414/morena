@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common'
 import { MulterModule } from '@nestjs/platform-express'
 import { UploadController } from './upload.controller'
 import { UploadService } from './upload.service'
+import { StorageModule } from '../storage/storage.module'
 import * as multer from 'multer'
 
 @Module({
   imports: [
+    StorageModule,
     MulterModule.register({
       storage: multer.memoryStorage(),
       limits: {
