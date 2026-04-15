@@ -3768,80 +3768,72 @@ export default function MindChatPage() {
           </View>
         )}
 
-        {/* 🔴 重新设计：主输入区域 - 两行布局 */}
-        <View className="input-main">
-          {/* 第一行：输入框 */}
-          <View className="input-row">
-            <View className="input-wrapper">
-              <Textarea
-                ref={textareaRef}
-                className="text-input"
-                placeholder="发消息..."
-                placeholderClass="text-input-placeholder"
-                value={inputText}
-                maxlength={1000}
-                onInput={(e: any) => {
-                  let newValue = ''
-                  if (e.detail && e.detail.value !== undefined) {
-                    newValue = e.detail.value
-                  } else if (e.target && e.target.value !== undefined) {
-                    newValue = e.target.value
-                  } else if (typeof e === 'string') {
-                    newValue = e
-                  }
-                  setInputText(newValue)
-                }}
-                onConfirm={() => sendMessage()}
-                confirmType="send"
-                adjustPosition
-                autoHeight
-                cursorSpacing={80}
-                onBlur={(e: any) => {
-                  let newValue = inputText
-                  if (e.detail && e.detail.value !== undefined) {
-                    newValue = e.detail.value
-                  } else if (e.target && e.target.value !== undefined) {
-                    newValue = e.target.value
-                  }
-                  setInputText(newValue)
-                }}
-                style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
-              />
+        {/* 🔴 重新设计：高端输入框容器 */}
+        <View className="input-container">
+          {/* 左侧功能区 */}
+          <View className="input-left-section">
+            <View className="icon-btn" onClick={handleUploadImage}>
+              <Paperclip size={18} color="rgba(255,255,255,0.6)" />
             </View>
+            <View className="icon-btn" onClick={handleUploadVideo}>
+              <VideoIcon size={18} color="rgba(255,255,255,0.6)" />
+            </View>
+            <View className="icon-btn" onClick={navigateToSkillsSquare}>
+              <Wrench size={18} color="rgba(255,255,255,0.6)" />
+            </View>
+          </View>
 
-            {/* 发送按钮 */}
+          {/* 中间输入区 */}
+          <View className="input-center-section">
+            <Textarea
+              ref={textareaRef}
+              className="input-textarea"
+              placeholder="说点什么..."
+              placeholderClass="input-placeholder"
+              value={inputText}
+              maxlength={1000}
+              onInput={(e: any) => {
+                let newValue = ''
+                if (e.detail && e.detail.value !== undefined) {
+                  newValue = e.detail.value
+                } else if (e.target && e.target.value !== undefined) {
+                  newValue = e.target.value
+                } else if (typeof e === 'string') {
+                  newValue = e
+                }
+                setInputText(newValue)
+              }}
+              onConfirm={() => sendMessage()}
+              confirmType="send"
+              adjustPosition
+              autoHeight
+              cursorSpacing={80}
+              onBlur={(e: any) => {
+                let newValue = inputText
+                if (e.detail && e.detail.value !== undefined) {
+                  newValue = e.detail.value
+                } else if (e.target && e.target.value !== undefined) {
+                  newValue = e.target.value
+                }
+                setInputText(newValue)
+              }}
+              style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
+            />
+          </View>
+
+          {/* 右侧功能区 */}
+          <View className="input-right-section">
+            <View
+              className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
+              onClick={toggleVoiceMode}
+            >
+              <Mic size={18} color={isVoiceMode ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+            </View>
             <View
               className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
               onClick={() => sendMessage()}
             >
-              <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
-            </View>
-          </View>
-
-          {/* 第二行：功能按钮 + 语音按钮 */}
-          <View className="button-row">
-            {/* 左侧功能按钮 */}
-            <View className="function-buttons">
-              <View className="function-btn" onClick={handleUploadImage}>
-                <Paperclip size={16} color="rgba(255,255,255,0.8)" />
-                <Text className="function-text">图片</Text>
-              </View>
-              <View className="function-btn" onClick={handleUploadVideo}>
-                <VideoIcon size={16} color="rgba(255,255,255,0.8)" />
-                <Text className="function-text">视频</Text>
-              </View>
-              <View className="function-btn" onClick={navigateToSkillsSquare}>
-                <Wrench size={16} color="rgba(255,255,255,0.8)" />
-                <Text className="function-text">技能</Text>
-              </View>
-            </View>
-
-            {/* 右侧语音按钮 */}
-            <View
-              className={`voice-btn ${isVoiceMode ? 'active' : ''}`}
-              onClick={toggleVoiceMode}
-            >
-              <Mic size={20} color={isVoiceMode ? '#0a0a0f' : 'rgba(255,255,255,0.7)'} />
+              <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
             </View>
           </View>
         </View>
