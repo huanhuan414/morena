@@ -1318,7 +1318,7 @@ del {
   box-sizing: border-box;
 }
 
-/* 🔴 重新设计：输入框主容器 - 两行布局 */
+/* 🔴 重新设计：输入框主容器 - 同一个卡片，统一背景色 */
 .input-container {
   display: flex;
   flex-direction: column;
@@ -1340,19 +1340,13 @@ del {
               0 0 24rpx rgba(0, 245, 255, 0.1);
 }
 
-/* 第一行：输入框区域 */
+/* 第一行：输入框区域 - 无背景，直接放在卡片内 */
 .input-textarea-wrapper {
   width: 100%;
-  background: rgba(30, 30, 45, 0.4);
-  border-radius: 20rpx;
-  padding: 12rpx 20rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
-}
-
-.input-container:focus-within .input-textarea-wrapper {
-  background: rgba(30, 30, 45, 0.6);
-  border-color: rgba(0, 245, 255, 0.15);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .input-textarea {
