@@ -49,9 +49,15 @@ export default function OrderFeedbackPage() {
 
   useLoad(() => {
     if (orderId && avatarId) {
-      fetchOrderData()
-      fetchAvatarData()
-      fetchGeneratedContent()
+      Promise.all([
+        fetchOrderData(),
+        fetchAvatarData()
+      ]).then(() => {
+        // 获取订单和分身数据后，再获取生成内容
+        fetchGeneratedContent()
+      }).finally(() => {
+        setLoading(false)
+      })
     } else {
       showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => navigateBack(), 1500)
@@ -84,6 +90,8 @@ export default function OrderFeedbackPage() {
 
   const fetchGeneratedContent = async () => {
     try {
+      console.log('开始获取生成内容, requestId:', requestId, 'avatarId:', avatarId)
+
       // 直接使用传入的 requestId
       if (requestId) {
         // 获取生成内容
@@ -91,15 +99,28 @@ export default function OrderFeedbackPage() {
           url: `/api/content-generation/request/${requestId}/avatar/${avatarId}`
         })
 
+        console.log('生成内容接口响应:', contentRes)
+
         if (contentRes.data?.code === 200) {
-          setGeneratedContents(contentRes.data.data || [])
-          if (contentRes.data.data && contentRes.data.data.length > 0) {
-            setSelectedContent(contentRes.data.data[0])
+          const contents = contentRes.data.data || []
+          console.log('获取到的内容数量:', contents.length)
+          setGeneratedContents(contents)
+
+          if (contents.length > 0) {
+            console.log('设置第一个内容为选中:', contents[0])
+            setSelectedContent(contents[0])
+          } else {
+            console.log('没有找到生成内容')
           }
+        } else {
+          console.log('接口返回非200状态码:', contentRes.data)
         }
+      } else {
+        console.log('requestId 为空，无法获取生成内容')
       }
     } catch (error) {
       console.error('获取生成内容失败:', error)
+      showToast({ title: '获取生成内容失败', icon: 'none' })
     }
   }
 
@@ -277,7 +298,7 @@ export default function OrderFeedbackPage() {
         )}
 
         {/* AI生成内容 */}
-        {generatedContents.length > 0 && (
+        {generatedContents.length > 0 ? (
           <View className="generated-content-card">
             <View className="card-header">
               <Text className="card-title">AI生成内容</Text>
@@ -398,6 +419,11 @@ export default function OrderFeedbackPage() {
                 </View>
               )
             })()}
+          </View>
+        ) : (
+          <View className="no-content-card">
+            <Text className="no-content-text">暂无生成内容</Text>
+            <Text className="no-content-tip">请先接受订单，系统将自动生成内容</Text>
           </View>
         )}
 

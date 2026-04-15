@@ -23,15 +23,32 @@
   padding: 24rpx;
 }
 
-.info-card,
-.form-card,
-.generated-content-card {
+/* 生成内容卡片 */
+.generated-content-card,
+.no-content-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
 }
+
+.no-content-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.no-content-tip {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin-top: 12rpx;
+}
+
+.info-card,
+.form-card {
 
 .card-header {
   display: flex;

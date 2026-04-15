@@ -72,18 +72,35 @@ export class UploadService {
       this.logger.log(`文件类型: ${file.mimetype}`)
 
       // 使用 S3Storage 上传
-      const uploadedFileUrl = await this.s3Client.uploadFile({
+      const uploadResult = await this.s3Client.uploadFile({
         fileContent: file.buffer,
         fileName: fileName,
         contentType: file.mimetype,
         bucket: this.bucketName
       })
 
-      this.logger.log(`文件上传成功: ${fileName}`)
-      this.logger.log(`上传URL: ${uploadedFileUrl}`)
-      return uploadedFileUrl
+      this.logger.log(`文件上传结果:`, JSON.stringify(uploadResult))
+
+      // 处理不同的返回格式
+      let url = ''
+      if (typeof uploadResult === 'string') {
+        url = uploadResult
+      } else if (uploadResult && uploadResult.url) {
+        url = uploadResult.url
+      } else if (uploadResult && uploadResult.location) {
+        url = uploadResult.location
+      } else if (uploadResult && uploadResult.data) {
+        url = uploadResult.data
+      } else {
+        // 如果返回的是对象，直接返回整个对象
+        url = JSON.stringify(uploadResult)
+      }
+
+      this.logger.log(`提取到的URL: ${url}`)
+      return url
     } catch (error) {
       this.logger.error('S3上传失败:', error)
+      this.logger.error('错误详情:', JSON.stringify(error))
       throw new Error(`文件上传失败: ${error.message}`)
     }
   }
