@@ -1,11 +1,11 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal, chooseImage } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check } from 'lucide-react-taro'
+import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X } from 'lucide-react-taro'
 import './index.css'
 
 // 平台名称映射
@@ -32,6 +32,8 @@ export default function OrderFeedbackPage() {
   const [submitting, setSubmitting] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [avatarData, setAvatarData] = useState<any>(null)
+  const [generatedContents, setGeneratedContents] = useState<any[]>([])
+  const [selectedContent, setSelectedContent] = useState<any>(null)
 
   // 效果数据
   const [exposure, setExposure] = useState('')
@@ -41,10 +43,15 @@ export default function OrderFeedbackPage() {
   const [linkUrl, setLinkUrl] = useState('')
   const [description, setDescription] = useState('')
 
+  // 图片上传
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
+
   useLoad(() => {
     if (orderId && avatarId) {
       fetchOrderData()
       fetchAvatarData()
+      fetchGeneratedContent()
     } else {
       showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => navigateBack(), 1500)
@@ -75,6 +82,84 @@ export default function OrderFeedbackPage() {
     }
   }
 
+  const fetchGeneratedContent = async () => {
+    try {
+      // 先获取分配请求ID
+      const dispatchRes = await Network.request({
+        url: `/api/order-dispatch/order/${orderId}/avatar/${avatarId}`
+      })
+
+      if (dispatchRes.data?.code === 200 && dispatchRes.data.data?.request_id) {
+        const requestId = dispatchRes.data.data.request_id
+
+        // 获取生成内容
+        const contentRes = await Network.request({
+          url: `/api/content-generation/request/${requestId}/avatar/${avatarId}`
+        })
+
+        if (contentRes.data?.code === 200) {
+          setGeneratedContents(contentRes.data.data || [])
+          if (contentRes.data.data && contentRes.data.data.length > 0) {
+            setSelectedContent(contentRes.data.data[0])
+          }
+        }
+      }
+    } catch (error) {
+      console.error('获取生成内容失败:', error)
+    }
+  }
+
+  const handleChooseImage = () => {
+    chooseImage({
+      count: 9 - uploadedImages.length,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: async (res) => {
+        const tempFilePaths = res.tempFilePaths
+        setUploading(true)
+
+        try {
+          for (const filePath of tempFilePaths) {
+            await uploadImage(filePath)
+          }
+          showToast({ title: '上传成功', icon: 'success' })
+        } catch (error) {
+          console.error('上传失败:', error)
+          showToast({ title: '上传失败', icon: 'none' })
+        } finally {
+          setUploading(false)
+        }
+      }
+    })
+  }
+
+  const uploadImage = async (filePath: string) => {
+    const res: any = await Network.uploadFile({
+      url: '/api/upload/order-screenshot',
+      filePath,
+      name: 'file'
+    })
+
+    const data = typeof res === 'string' ? JSON.parse(res) : res
+    if (data?.code === 200) {
+      setUploadedImages(prev => [...prev, data.data.url])
+    } else {
+      throw new Error(data?.message || '上传失败')
+    }
+  }
+
+  const handleDeleteImage = (index: number) => {
+    showModal({
+      title: '删除图片',
+      content: '确定删除这张图片吗？',
+      success: (res) => {
+        if (res.confirm) {
+          setUploadedImages(prev => prev.filter((_, i) => i !== index))
+        }
+      }
+    })
+  }
+
   const handleSubmit = async () => {
     // 验证必填字段
     if (!exposure || !likes) {
@@ -100,7 +185,8 @@ export default function OrderFeedbackPage() {
                 comments: parseInt(comments || '0'),
                 shares: parseInt(shares || '0'),
                 link_url: linkUrl,
-                description: description
+                description: description,
+                screenshots: uploadedImages // 添加上传的图片URL
               }
             })
 
@@ -166,6 +252,66 @@ export default function OrderFeedbackPage() {
           </View>
         )}
 
+        {/* AI生成内容 */}
+        {generatedContents.length > 0 && (
+          <View className="generated-content-card">
+            <View className="card-header">
+              <Text className="card-title">AI生成内容</Text>
+              <Sparkles size={18} color="#f59e0b" />
+            </View>
+
+            {/* 平台标签 */}
+            <View className="platform-tabs">
+              {generatedContents.map((content) => (
+                <View
+                  key={content.id}
+                  className={`platform-tab ${selectedContent?.id === content.id ? 'active' : ''}`}
+                  onClick={() => setSelectedContent(content)}
+                >
+                  <Text className="platform-tab-text">
+                    {PLATFORM_NAMES[content.platform] || content.platform}
+                  </Text>
+                  {content.status === 'approved' && (
+                    <Check size={12} color="#22c55e" />
+                  )}
+                </View>
+              ))}
+            </View>
+
+            {/* 内容详情 */}
+            {selectedContent && (
+              <View className="content-detail">
+                {selectedContent.title && (
+                  <View className="content-title">
+                    <Text className="title-text">{selectedContent.title}</Text>
+                  </View>
+                )}
+
+                <View className="content-body">
+                  <Text className="body-text">{selectedContent.content}</Text>
+                </View>
+
+                {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
+                  <View className="content-hashtags">
+                    {selectedContent.hashtags.map((tag: string, idx: number) => (
+                      <Text key={idx} className="hashtag-text">{tag}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
+                  <View className="content-suggestions">
+                    <Text className="suggestions-label">图片建议：</Text>
+                    {selectedContent.image_suggestions.map((suggestion: string, idx: number) => (
+                      <Text key={idx} className="suggestion-text">• {suggestion}</Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* 分身信息 */}
         {avatarData && (
           <View className="info-card">
@@ -193,6 +339,41 @@ export default function OrderFeedbackPage() {
           <View className="card-header">
             <Text className="card-title">效果数据</Text>
             <TrendingUp size={18} color="#22c55e" />
+          </View>
+
+          {/* 图片上传 */}
+          <View className="form-group">
+            <Text className="form-label">
+              <ImageIcon size={16} color="#22c55e" />
+              发布截图（选填）
+            </Text>
+            <View className="image-upload-container">
+              {uploadedImages.map((imageUrl, index) => (
+                <View key={index} className="uploaded-image">
+                  <Image
+                    src={imageUrl}
+                    className="upload-image"
+                    mode="aspectFill"
+                  />
+                  <View className="delete-image" onClick={() => handleDeleteImage(index)}>
+                    <X size={14} color="#fff" />
+                  </View>
+                </View>
+              ))}
+              {uploadedImages.length < 9 && (
+                <View className="upload-placeholder" onClick={handleChooseImage}>
+                  {uploading ? (
+                    <Text className="upload-placeholder-text">上传中...</Text>
+                  ) : (
+                    <>
+                      <Upload size={32} color="rgba(255,255,255,0.4)" />
+                      <Text className="upload-placeholder-text">上传截图</Text>
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
+            <Text className="upload-tip">最多上传9张图片，支持jpg/png格式</Text>
           </View>
 
           <View className="form-group">

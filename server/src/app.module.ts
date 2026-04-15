@@ -21,6 +21,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { MediaModule } from './modules/media/media.module';
 import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { ContentGenerationModule } from './modules/content-generation/content-ge
     SubscriptionModule,
     SkillsModule,
     MediaModule,
-    ContentGenerationModule
+    ContentGenerationModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [AppService],
