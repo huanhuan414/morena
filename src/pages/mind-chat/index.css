@@ -1221,7 +1221,7 @@ del {
 /* 🔴 重新设计：媒体预览样式 - 悬浮式卡片 */
 .media-preview-bar {
   position: fixed;
-  bottom: calc(200rpx + 50px + env(safe-area-inset-bottom));
+  bottom: calc(240rpx + 50px + env(safe-area-inset-bottom));
   left: 24rpx;
   right: 24rpx;
   height: 180rpx;
@@ -1306,7 +1306,7 @@ del {
   border: 2rpx solid rgba(255, 255, 255, 0.2);
 }
 
-/* 🔴 重新设计：高端输入栏容器 */
+/* 🔴 重新设计：高端输入栏容器 - 两行布局 */
 .input-bar {
   position: fixed;
   bottom: calc(50px + env(safe-area-inset-bottom));
@@ -1318,12 +1318,12 @@ del {
   box-sizing: border-box;
 }
 
-/* 🔴 重新设计：输入框主容器 - 整个卡片就是输入框 */
+/* 🔴 重新设计：输入框主容器 - 两行布局 */
 .input-container {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 12rpx;
-  padding: 16rpx 20rpx 16rpx;
+  padding: 16rpx 20rpx 20rpx;
   background: rgba(15, 15, 25, 0.9);
   backdrop-filter: blur(20px);
   border: 1rpx solid rgba(0, 245, 255, 0.15);
@@ -1340,28 +1340,59 @@ del {
               0 0 24rpx rgba(0, 245, 255, 0.1);
 }
 
-/* 左侧功能区 */
-.input-left-section {
-  display: flex;
-  gap: 8rpx;
-  align-items: center;
-  padding-bottom: 4rpx;
-  flex-shrink: 0;
+/* 第一行：输入框区域 */
+.input-textarea-wrapper {
+  width: 100%;
+  background: rgba(30, 30, 45, 0.4);
+  border-radius: 20rpx;
+  padding: 12rpx 20rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
 }
 
-/* 右侧功能区 */
-.input-right-section {
+.input-container:focus-within .input-textarea-wrapper {
+  background: rgba(30, 30, 45, 0.6);
+  border-color: rgba(0, 245, 255, 0.15);
+}
+
+.input-textarea {
+  width: 100%;
+  font-size: 28rpx;
+  color: #fff;
+  line-height: 40rpx;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.input-placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* 第二行：按钮区域 */
+.button-row {
   display: flex;
-  gap: 8rpx;
+  justify-content: space-between;
   align-items: center;
-  padding-bottom: 4rpx;
-  flex-shrink: 0;
+  gap: 12rpx;
+}
+
+.button-row-left {
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
+}
+
+.button-row-right {
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
 }
 
 /* 通用图标按钮 */
 .icon-btn {
-  width: 60rpx;
-  height: 60rpx;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   background: rgba(30, 30, 45, 0.6);
   border: 1rpx solid rgba(255, 255, 255, 0.1);
@@ -1369,7 +1400,7 @@ del {
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  position: relative;
+  flex-shrink: 0;
 }
 
 .icon-btn:active {
@@ -1384,22 +1415,6 @@ del {
   box-shadow: 0 0 12rpx rgba(0, 245, 255, 0.3);
 }
 
-/* 中间输入区 - 直接使用Textarea */
-.input-textarea {
-  flex: 1;
-  min-width: 0;
-  font-size: 28rpx;
-  color: #fff;
-  line-height: 40rpx;
-  background: transparent;
-  border: none;
-  outline: none;
-}
-
-.input-placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
 /* 发送按钮 */
 .send-btn {
   width: 64rpx;
@@ -1411,6 +1426,7 @@ del {
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .send-btn.active {

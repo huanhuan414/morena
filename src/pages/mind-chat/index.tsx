@@ -3768,70 +3768,73 @@ export default function MindChatPage() {
           </View>
         )}
 
-        {/* 🔴 重新设计：高端输入框容器 */}
+        {/* 🔴 重新设计：两行布局 - 输入框在上方，按钮在下方 */}
         <View className="input-container">
-          {/* 左侧功能区 */}
-          <View className="input-left-section">
-            <View className="icon-btn" onClick={handleUploadImage}>
-              <Paperclip size={18} color="rgba(255,255,255,0.6)" />
-            </View>
-            <View className="icon-btn" onClick={handleUploadVideo}>
-              <VideoIcon size={18} color="rgba(255,255,255,0.6)" />
-            </View>
-            <View className="icon-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={18} color="rgba(255,255,255,0.6)" />
-            </View>
+          {/* 第一行：输入框 */}
+          <View className="input-textarea-wrapper">
+            <Textarea
+              ref={textareaRef}
+              className="input-textarea"
+              placeholder="说点什么..."
+              placeholderClass="input-placeholder"
+              value={inputText}
+              maxlength={1000}
+              onInput={(e: any) => {
+                let newValue = ''
+                if (e.detail && e.detail.value !== undefined) {
+                  newValue = e.detail.value
+                } else if (e.target && e.target.value !== undefined) {
+                  newValue = e.target.value
+                } else if (typeof e === 'string') {
+                  newValue = e
+                }
+                setInputText(newValue)
+              }}
+              onConfirm={() => sendMessage()}
+              confirmType="send"
+              adjustPosition
+              autoHeight
+              cursorSpacing={80}
+              onBlur={(e: any) => {
+                let newValue = inputText
+                if (e.detail && e.detail.value !== undefined) {
+                  newValue = e.detail.value
+                } else if (e.target && e.target.value !== undefined) {
+                  newValue = e.target.value
+                }
+                setInputText(newValue)
+              }}
+              style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
+            />
           </View>
 
-          {/* 中间输入区 - 整个卡片就是输入框 */}
-          <Textarea
-            ref={textareaRef}
-            className="input-textarea"
-            placeholder="说点什么..."
-            placeholderClass="input-placeholder"
-            value={inputText}
-            maxlength={1000}
-            onInput={(e: any) => {
-              let newValue = ''
-              if (e.detail && e.detail.value !== undefined) {
-                newValue = e.detail.value
-              } else if (e.target && e.target.value !== undefined) {
-                newValue = e.target.value
-              } else if (typeof e === 'string') {
-                newValue = e
-              }
-              setInputText(newValue)
-            }}
-            onConfirm={() => sendMessage()}
-            confirmType="send"
-            adjustPosition
-            autoHeight
-            cursorSpacing={80}
-            onBlur={(e: any) => {
-              let newValue = inputText
-              if (e.detail && e.detail.value !== undefined) {
-                newValue = e.detail.value
-              } else if (e.target && e.target.value !== undefined) {
-                newValue = e.target.value
-              }
-              setInputText(newValue)
-            }}
-            style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
-          />
-
-          {/* 右侧功能区 */}
-          <View className="input-right-section">
-            <View
-              className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
-              onClick={toggleVoiceMode}
-            >
-              <Mic size={18} color={isVoiceMode ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+          {/* 第二行：按钮区域 */}
+          <View className="button-row">
+            <View className="button-row-left">
+              <View className="icon-btn" onClick={handleUploadImage}>
+                <Paperclip size={18} color="rgba(255,255,255,0.6)" />
+              </View>
+              <View className="icon-btn" onClick={handleUploadVideo}>
+                <VideoIcon size={18} color="rgba(255,255,255,0.6)" />
+              </View>
+              <View className="icon-btn" onClick={navigateToSkillsSquare}>
+                <Wrench size={18} color="rgba(255,255,255,0.6)" />
+              </View>
+              <View
+                className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
+                onClick={toggleVoiceMode}
+              >
+                <Mic size={18} color={isVoiceMode ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+              </View>
             </View>
-            <View
-              className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
-              onClick={() => sendMessage()}
-            >
-              <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+
+            <View className="button-row-right">
+              <View
+                className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
+                onClick={() => sendMessage()}
+              >
+                <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+              </View>
             </View>
           </View>
         </View>
