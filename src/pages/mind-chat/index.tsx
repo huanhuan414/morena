@@ -324,7 +324,7 @@ export default function MindChatPage() {
     newCount: number
     expGained: number
   } | null>(null)
-  const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(false)
+  const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(true) // 默认折叠
   const [learnPanelExpanded, setLearnPanelExpanded] = useState(false) // 控制详细内容的展开/折叠
   
   // 经验值飘字特效状态
