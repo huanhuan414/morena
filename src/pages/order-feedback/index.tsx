@@ -26,7 +26,7 @@ const getPlatformNames = (platforms?: string[]): string => {
 
 export default function OrderFeedbackPage() {
   const router = useRouter()
-  const { orderId, avatarId } = router.params
+  const { orderId, avatarId, requestId } = router.params
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -84,14 +84,8 @@ export default function OrderFeedbackPage() {
 
   const fetchGeneratedContent = async () => {
     try {
-      // 先获取分配请求ID
-      const dispatchRes = await Network.request({
-        url: `/api/order-dispatch/order/${orderId}/avatar/${avatarId}`
-      })
-
-      if (dispatchRes.data?.code === 200 && dispatchRes.data.data?.request_id) {
-        const requestId = dispatchRes.data.data.request_id
-
+      // 直接使用传入的 requestId
+      if (requestId) {
         // 获取生成内容
         const contentRes = await Network.request({
           url: `/api/content-generation/request/${requestId}/avatar/${avatarId}`

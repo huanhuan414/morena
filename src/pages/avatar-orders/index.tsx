@@ -217,7 +217,9 @@ export default function AvatarOrdersPage() {
                 <View
                   key={item.order_id}
                   className="order-item"
-                  onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}
+                  onClick={() => navigateTo({
+                    url: `/pages/order-feedback/index?orderId=${item.order_id}&avatarId=${avatarId}&requestId=${item.id}`
+                  })}
                 >
                   <View className="order-main">
                     <Text className="order-title">{item.orders?.title || '未知订单'}</Text>
