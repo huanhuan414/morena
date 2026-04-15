@@ -1675,18 +1675,29 @@ export class OrderDispatchService {
     // 获取待确认的分配请求
     const { data: pendingRequest } = await client
       .from('order_dispatch_requests')
-      .select('*, avatars(name)')
+      .select('*')
       .eq('order_id', orderId)
       .eq('status', 'pending')
       .single()
 
-    // 获取已接受的分身信息
+    // 获取已接受的分配请求
     const { data: acceptedRequest } = await client
       .from('order_dispatch_requests')
-      .select('*, avatars(name, avatar_url, level)')
+      .select('*')
       .eq('order_id', orderId)
       .eq('status', 'accepted')
       .single()
+
+    // 获取已接受的分身信息（如果存在）
+    let acceptedAvatar: any = null
+    if (acceptedRequest?.avatar_id) {
+      const { data: avatar } = await client
+        .from('avatars')
+        .select('name, avatar_url, level')
+        .eq('id', acceptedRequest.avatar_id)
+        .single()
+      acceptedAvatar = avatar
+    }
 
     // 获取执行进度
     const executions = await this.getExecutionProgress(orderId)
@@ -1694,9 +1705,9 @@ export class OrderDispatchService {
     return {
       order,
       pendingRequest,
-      acceptedAvatar: acceptedRequest?.avatars || null,
+      acceptedAvatar,
       executions,
-      currentStep: executions.find(e => e.status === 'in_progress') || null
+      currentStep: executions.find((e: any) => e.status === 'in_progress') || null
     }
   }
 
