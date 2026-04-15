@@ -222,9 +222,11 @@ export default function OrderMatchingPage() {
         const totalAvatars = avatars.length
         setRecommendedCount(totalAvatars)
 
+        // 获取订单预算（从订单响应中直接获取，避免状态未更新问题）
+        const orderBudget = orderRes.data?.data?.budget || 0
+
         // 计算每个分身的预估收益（平台抽成20%后）
-        const budget = parseFloat(orderInfo?.budget?.toString() || '0') || 0
-        const distributableAmount = budget * 0.8
+        const distributableAmount = orderBudget * 0.8
         const incomePerAvatar = totalAvatars > 0 ? distributableAmount / totalAvatars : 0
 
         // 为每个分身添加预估收益

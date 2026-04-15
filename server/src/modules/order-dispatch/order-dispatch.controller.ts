@@ -53,8 +53,8 @@ export class OrderDispatchController {
     @Query('limit') limit?: string
   ) {
     const avatars = await this.dispatchService.getRecommendedAvatars(
-      orderId, 
-      limit ? parseInt(limit) : 5
+      orderId,
+      limit ? parseInt(limit) : 0  // 默认为0，表示不限制，让服务层自动计算推荐数量
     )
     return {
       code: 200,
