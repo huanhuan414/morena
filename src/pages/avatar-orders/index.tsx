@@ -1,8 +1,9 @@
 import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Bell, Check, Clock, ChevronRight, ArrowLeft, Loader } from 'lucide-react-taro'
+import { Bell, Check, Clock, ChevronRight, ArrowLeft, Loader, Sparkles } from 'lucide-react-taro'
 import './index.css'
 
 // 订单状态配置
@@ -14,12 +15,22 @@ const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: '已取消', color: '#ef4444' }
 }
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  wechat_mp: '微信小程序',
+  xiaohongshu: '小红书',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  kuaishou: '快手'
+}
+
 export default function AvatarOrdersPage() {
   const router = useRouter()
   const avatarId = router.params.avatarId
 
   const [avatarInfo, setAvatarInfo] = useState<any>(null)
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [pendingOrders, setPendingOrders] = useState<any[]>([])
   const [ordersInProgress, setOrdersInProgress] = useState<any[]>([])
   const [ordersCompleted, setOrdersCompleted] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,19 +47,14 @@ export default function AvatarOrdersPage() {
   const fetchAvatarData = async () => {
     setLoading(true)
     try {
-      // 并行获取分身信息、通知和订单
-      const [avatarRes, notificationsRes, ordersRes] = await Promise.all([
+      // 并行获取分身信息和订单
+      const [avatarRes, ordersRes] = await Promise.all([
         Network.request({ url: `/api/avatar/${avatarId}` }),
-        Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/notifications` }),
         Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
       ])
 
       if (avatarRes.data?.code === 200) {
         setAvatarInfo(avatarRes.data.data)
-      }
-
-      if (notificationsRes.data?.code === 200) {
-        setNotifications(notificationsRes.data.data || [])
       }
 
       if (ordersRes.data?.code === 200) {
@@ -58,12 +64,31 @@ export default function AvatarOrdersPage() {
         setOrdersInProgress(inProgress)
         setOrdersCompleted(completed)
       }
+
+      // 获取待接单订单
+      const pendingRes = await Network.request({
+        url: '/api/order-dispatch/pending-requests'
+      })
+
+      if (pendingRes.data?.code === 200) {
+        // 过滤出当前分身的待接单订单
+        const currentAvatarPending = (pendingRes.data.data || []).filter((req: any) =>
+          req.avatars?.id === avatarId
+        )
+        setPendingOrders(currentAvatarPending)
+      }
     } catch (error) {
       console.error('获取分身数据失败:', error)
       showToast({ title: '获取数据失败', icon: 'none' })
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleViewPendingOrder = (request: any) => {
+    navigateTo({
+      url: `/pages/pending-order/index?requestId=${request.id}`
+    })
   }
 
   if (loading) {
@@ -109,31 +134,60 @@ export default function AvatarOrdersPage() {
       </View>
 
       <ScrollView scrollY className="scroll-container">
-        {/* 通知区块 */}
+        {/* 待接单订单区块（通知） */}
         <View className="section-block">
           <View className="section-header">
             <Bell size={18} color="#00f5ff" />
-            <Text className="section-title">通知</Text>
+            <Text className="section-title">待接单</Text>
             <View className="section-badge">
-              <Text className="section-badge-text">{notifications.length}</Text>
+              <Text className="section-badge-text">{pendingOrders.length}</Text>
             </View>
           </View>
 
-          {notifications.length > 0 ? (
-            <View className="notifications-list">
-              {notifications.map((notification) => (
-                <View key={notification.id} className="notification-item">
-                  <Text className="notification-content">{notification.content}</Text>
-                  <Text className="notification-time">
-                    {new Date(notification.created_at).toLocaleString()}
-                  </Text>
+          {pendingOrders.length > 0 ? (
+            <View className="pending-orders-list">
+              {pendingOrders.map((request) => (
+                <View key={request.id} className="pending-order-card">
+                  <View className="request-avatar-section">
+                    <View className="request-avatar">
+                      {request.avatars?.avatar_url ? (
+                        <Image src={request.avatars.avatar_url} className="request-avatar-img" mode="aspectFill" />
+                      ) : (
+                        <View className="request-avatar-placeholder">
+                          <Sparkles size={24} color="#00f5ff" />
+                        </View>
+                      )}
+                    </View>
+                    <View className="request-info">
+                      <Text className="request-avatar-name">{request.avatars?.name || '未知分身'}</Text>
+                      <Text className="request-order-title">{request.orders?.title || '未知订单'}</Text>
+                    </View>
+                  </View>
+
+                  <View className="request-budget">
+                    <Text className="budget-label">预算</Text>
+                    <Text className="budget-value">¥{request.orders?.budget || 0}</Text>
+                  </View>
+
+                  <View className="request-meta">
+                    <Text className="meta-item">📱 {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}</Text>
+                    <Text className="meta-item">📅 {request.orders?.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
+                  </View>
+
+                  <Button
+                    className="view-request-btn"
+                    onClick={() => handleViewPendingOrder(request)}
+                  >
+                    <Text className="view-request-text">查看详情并确认</Text>
+                    <ChevronRight size={16} color="#00f5ff" />
+                  </Button>
                 </View>
               ))}
             </View>
           ) : (
             <View className="empty-state">
               <Bell size={32} color="rgba(255,255,255,0.2)" />
-              <Text className="empty-text">暂无通知</Text>
+              <Text className="empty-text">暂无待接单订单</Text>
             </View>
           )}
         </View>

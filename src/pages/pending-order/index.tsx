@@ -2,8 +2,10 @@ import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } fr
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock } from 'lucide-react-taro'
+import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock, TrendingUp } from 'lucide-react-taro'
 import './index.css'
 
 // 平台名称映射
@@ -24,6 +26,7 @@ const getPlatformNames = (platforms?: string[]): string => {
 
 interface PendingOrderData {
   id: string
+  status?: string
   orders: {
     id: string
     title: string
@@ -57,6 +60,16 @@ export default function PendingOrderPage() {
   const [accepting, setAccepting] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [remainingTime, setRemainingTime] = useState('')
+
+  // 执行反馈表单
+  const [feedback, setFeedback] = useState({
+    content: '',
+    impressions: '',
+    likes: '',
+    comments: '',
+    shares: ''
+  })
+  const [submitting, setSubmitting] = useState(false)
 
   useLoad(() => {
     if (requestId) {
@@ -103,17 +116,36 @@ export default function PendingOrderPage() {
   const fetchOrderDetail = async () => {
     try {
       setLoading(true)
+
+      // 先查询待接单订单
       const res = await Network.request({ url: `/api/order-dispatch/pending-requests` })
       if (res.data?.code === 200) {
         const requests = res.data.data
         const request = requests.find((r: PendingOrderData) => r.id === requestId)
         if (request) {
           setOrderData(request)
-        } else {
-          showToast({ title: '订单不存在', icon: 'none' })
-          setTimeout(() => navigateBack(), 1500)
+          setLoading(false)
+          return
         }
       }
+
+      // 如果待接单订单中没有找到，查询已接受的订单
+      const avatarId = orderData?.avatars?.id || null
+      if (avatarId) {
+        const acceptedRes = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
+        if (acceptedRes.data?.code === 200) {
+          const orders = acceptedRes.data.data || []
+          const request = orders.find((r: any) => r.id === requestId)
+          if (request) {
+            setOrderData(request)
+            setLoading(false)
+            return
+          }
+        }
+      }
+
+      showToast({ title: '订单不存在', icon: 'none' })
+      setTimeout(() => navigateBack(), 1500)
     } catch (error) {
       console.error('获取订单详情失败:', error)
       showToast({ title: '获取失败', icon: 'none' })
@@ -193,6 +225,52 @@ export default function PendingOrderPage() {
     })
   }
 
+  const handleSubmitFeedback = async () => {
+    if (!feedback.content) {
+      showToast({ title: '请填写执行内容', icon: 'none' })
+      return
+    }
+
+    showModal({
+      title: '确认提交反馈',
+      content: '确定提交执行反馈并完成订单吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          setSubmitting(true)
+          try {
+            const result = await Network.request({
+              url: `/api/order-feedback/submit`,
+              method: 'POST',
+              data: {
+                requestId,
+                avatarId: orderData?.avatars?.id,
+                content: feedback.content,
+                metrics: {
+                  impressions: parseInt(feedback.impressions) || 0,
+                  likes: parseInt(feedback.likes) || 0,
+                  comments: parseInt(feedback.comments) || 0,
+                  shares: parseInt(feedback.shares) || 0
+                }
+              }
+            })
+
+            if (result.data?.code === 200) {
+              showToast({ title: '提交成功', icon: 'success' })
+              setTimeout(() => navigateBack(), 1500)
+            } else {
+              showToast({ title: result.data?.message || '提交失败', icon: 'none' })
+            }
+          } catch (error) {
+            console.error('提交反馈失败:', error)
+            showToast({ title: '提交失败', icon: 'none' })
+          } finally {
+            setSubmitting(false)
+          }
+        }
+      }
+    })
+  }
+
   if (loading) {
     return (
       <View className="pending-order-page">
@@ -242,6 +320,11 @@ export default function PendingOrderPage() {
               <Wallet size={16} color="#22c55e" />
               <Text className="meta-label">预算</Text>
               <Text className="meta-value">¥{orderData.orders.budget}</Text>
+            </View>
+            <View className="meta-item">
+              <TrendingUp size={16} color="#f59e0b" />
+              <Text className="meta-label">预估收益</Text>
+              <Text className="meta-value">¥{(orderData.orders.budget * 0.8).toFixed(0)}</Text>
             </View>
             <View className="meta-item">
               <Smartphone size={16} color="#3b82f6" />
@@ -345,7 +428,108 @@ export default function PendingOrderPage() {
             </>
           )}
         </Button>
+
+        <Button
+          className="action-btn reject"
+          onClick={handleReject}
+          disabled={rejecting}
+        >
+          {rejecting ? (
+            <Text className="btn-text">处理中...</Text>
+          ) : (
+            <>
+              <X size={18} color="#fff" />
+              <Text className="btn-text">拒绝订单</Text>
+            </>
+          )}
+        </Button>
       </View>
+
+      {/* 进行中订单 - 执行反馈表单 */}
+      {orderData.status === 'accepted' && (
+        <View className="feedback-section">
+          <View className="feedback-header">
+            <Check size={20} color="#22c55e" />
+            <Text className="feedback-title">执行反馈</Text>
+          </View>
+
+          <View className="feedback-form">
+            <View className="form-item">
+              <Text className="form-label">执行内容 *</Text>
+              <View className="form-textarea">
+                <Textarea
+                  className="feedback-textarea"
+                  placeholder="请详细描述执行过程和结果"
+                  value={feedback.content}
+                  onInput={(e) => setFeedback({ ...feedback, content: e.detail.value })}
+                  maxlength={500}
+                />
+              </View>
+            </View>
+
+            <View className="form-row">
+              <View className="form-item half">
+                <Text className="form-label">曝光量</Text>
+                <Input
+                  className="form-input"
+                  type="number"
+                  placeholder="0"
+                  value={feedback.impressions}
+                  onInput={(e) => setFeedback({ ...feedback, impressions: e.detail.value })}
+                />
+              </View>
+              <View className="form-item half">
+                <Text className="form-label">点赞数</Text>
+                <Input
+                  className="form-input"
+                  type="number"
+                  placeholder="0"
+                  value={feedback.likes}
+                  onInput={(e) => setFeedback({ ...feedback, likes: e.detail.value })}
+                />
+              </View>
+            </View>
+
+            <View className="form-row">
+              <View className="form-item half">
+                <Text className="form-label">评论数</Text>
+                <Input
+                  className="form-input"
+                  type="number"
+                  placeholder="0"
+                  value={feedback.comments}
+                  onInput={(e) => setFeedback({ ...feedback, comments: e.detail.value })}
+                />
+              </View>
+              <View className="form-item half">
+                <Text className="form-label">分享数</Text>
+                <Input
+                  className="form-input"
+                  type="number"
+                  placeholder="0"
+                  value={feedback.shares}
+                  onInput={(e) => setFeedback({ ...feedback, shares: e.detail.value })}
+                />
+              </View>
+            </View>
+
+            <Button
+              className="submit-feedback-btn"
+              onClick={handleSubmitFeedback}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <Text className="btn-text">提交中...</Text>
+              ) : (
+                <>
+                  <Check size={18} color="#fff" />
+                  <Text className="btn-text">提交反馈并完成订单</Text>
+                </>
+              )}
+            </Button>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
