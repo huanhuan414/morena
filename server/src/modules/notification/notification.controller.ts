@@ -83,4 +83,14 @@ export class NotificationController {
       message: '创建成功'
     }
   }
+
+  @Get('order/:orderId')
+  async getNotificationsByOrder(@Param('orderId') orderId: string) {
+    const notifications = await this.notificationService.getNotificationsByOrder(orderId)
+    return {
+      code: 200,
+      data: notifications,
+      message: '获取成功'
+    }
+  }
 }

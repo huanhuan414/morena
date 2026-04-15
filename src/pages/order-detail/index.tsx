@@ -153,7 +153,10 @@ export default function OrderDetailPage() {
     executions: ExecutionStep[]
     currentStep?: ExecutionStep | null
   } | null>(null)
-  
+
+  // 通知记录
+  const [notifications, setNotifications] = useState<any[]>([])
+
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
@@ -190,6 +193,9 @@ export default function OrderDetailPage() {
 
         // 获取分配状态
         fetchDispatchStatus()
+
+        // 获取通知记录
+        fetchNotifications()
       }
     } catch (error) {
       console.error('获取订单详情失败:', error)
@@ -208,6 +214,17 @@ export default function OrderDetailPage() {
       }
     } catch (error) {
       console.error('获取分配状态失败:', error)
+    }
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await Network.request({ url: `/api/notifications/order/${id}` })
+      if (res.data?.code === 200) {
+        setNotifications(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取通知记录失败:', error)
     }
   }
 
@@ -596,6 +613,31 @@ export default function OrderDetailPage() {
                           <Text className="step-desc">{step.description}</Text>
                         )}
                       </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* 通知记录 */}
+            {notifications.length > 0 && (
+              <View className="info-section">
+                <Text className="section-title">通知记录</Text>
+                <View className="notification-list">
+                  {notifications.map((notification) => (
+                    <View key={notification.id} className="notification-item">
+                      <View className="notification-header">
+                        <Text className="notification-title">{notification.title}</Text>
+                        <Text className="notification-time">
+                          {new Date(notification.created_at).toLocaleString()}
+                        </Text>
+                      </View>
+                      <Text className="notification-content">{notification.content}</Text>
+                      {!notification.is_read && (
+                        <View className="notification-badge">
+                          <Text className="badge-text">未读</Text>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>

@@ -147,17 +147,67 @@ export class NotificationService {
 
   async getUnreadCount(userId: string) {
     const client = getSupabaseClient()
-    
+
     const { count, error } = await client
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('is_read', false)
-    
+
     if (error) {
       return 0
     }
-    
+
     return count || 0
+  }
+
+  async getNotificationsByOrder(orderId: string) {
+    const client = getSupabaseClient()
+
+    const { data, error } = await client
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('获取订单通知失败:', error)
+      return []
+    }
+
+    // 过滤出包含该订单ID的通知
+    const filteredNotifications = (data || []).filter((notification: any) => {
+      try {
+        // 检查 data 字段中是否包含 order_id
+        if (notification.data && typeof notification.data === 'object') {
+          if (notification.data.order_id === orderId) {
+            return true
+          }
+        }
+
+        // 检查 content 字段中是否包含订单ID
+        if (notification.content && typeof notification.content === 'string') {
+          if (notification.content.includes(orderId)) {
+            return true
+          }
+          // 尝试解析 content 为 JSON
+          try {
+            const contentData = JSON.parse(notification.content)
+            if (contentData.order_id === orderId) {
+              return true
+            }
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+
+        return false
+      } catch (e) {
+        console.warn('解析通知数据失败:', e)
+        return false
+      }
+    })
+
+    return filteredNotifications
   }
 }
