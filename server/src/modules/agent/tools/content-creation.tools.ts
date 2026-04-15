@@ -629,16 +629,22 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
           cover_prompt: coverPrompt,
           tags,
           word_count: mainContent.length,
-          message: `${titles[0] || params.topic}`,
-          // 提供完整的发布参数，Agent 可以直接使用
-          next_action_hint: `内容已生成，如需发布到公众号，请使用 publish_wechat_mp 工具，参数如下：
+          // 🔴 修改：添加用户友好的提示信息（给用户看）
+          message: `✅ 公众号文章已生成！你可以在上方查看完整内容（包含标题、正文和封面图）。
+
+文章标题：《${titles[0] || params.topic}》
+文章字数：${mainContent.length} 字
+
+如需发布到微信公众号，请先绑定公众号授权，然后发送"发布到公众号"即可。
+
+📝 提示：文章内容显示在当前对话中，你可以直接查看、复制或编辑。`,
+          // 🔴 修改：next_action_hint 改为更简洁的 Agent 提示（给 Agent 看）
+          next_action_hint: `文章已生成。如果用户要求发布到公众号，请使用 publish_wechat_mp 工具，参数如下：
 {
   "title": "${publishParams.title}",
   "content": "请使用上方完整的 content 内容",
   "cover_url": "${publishParams.cover_url || '自动生成'}"
-}
-
-注意：请直接使用上方返回的完整 content 内容，不要截断。`
+}`
         }
       }
     } catch (err: any) {
