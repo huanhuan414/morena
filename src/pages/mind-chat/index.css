@@ -1340,23 +1340,19 @@ del {
               0 0 24rpx rgba(0, 245, 255, 0.1);
 }
 
-/* 第一行：输入框区域 - 无背景，直接放在卡片内 */
-.input-textarea-wrapper {
-  width: 100%;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-}
-
+/* 第一行：输入框 - 填满整个卡片，背景色与卡片一致 */
 .input-textarea {
   width: 100%;
+  min-height: 72rpx;
+  max-height: 200rpx;
   font-size: 28rpx;
   color: #fff;
   line-height: 40rpx;
-  background: transparent;
+  background: rgba(15, 15, 25, 0.9);
   border: none;
   outline: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 .input-placeholder {
