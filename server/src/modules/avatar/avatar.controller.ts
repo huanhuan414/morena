@@ -640,4 +640,196 @@ export class AvatarController {
       }
     }
   }
+
+  /**
+   * 获取交友统计
+   */
+  @Get(':id/friendship-stats')
+  async getFriendshipStats(@Param('id') avatarId: string) {
+    const { FriendshipService } = await import('./friendship.service')
+    const friendshipService = new FriendshipService()
+
+    const result = await friendshipService.getFriendshipStats(avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取交友时间线
+   */
+  @Get(':id/friend-timeline/:targetAvatarId')
+  async getFriendTimeline(
+    @Param('id') avatarId: string,
+    @Param('targetAvatarId') targetAvatarId: string
+  ) {
+    const { FriendshipService } = await import('./friendship.service')
+    const friendshipService = new FriendshipService()
+
+    const result = await friendshipService.getFriendTimeline(avatarId, targetAvatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取通知列表
+   */
+  @Get('notifications')
+  async getNotifications(@Query('user_id') userId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    const { data, error } = await client
+      .from('avatar_notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    if (error) {
+      return {
+        code: 400,
+        message: error.message,
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      data: data,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 标记通知为已读
+   */
+  @Post('notifications/:id/read')
+  async markNotificationAsRead(@Param('id') notificationId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    const { error } = await client
+      .from('avatar_notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+
+    if (error) {
+      return {
+        code: 400,
+        message: error.message,
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      message: '标记成功',
+      data: null
+    }
+  }
+
+  /**
+   * 获取好友请求列表
+   */
+  @Get('friend-requests')
+  async getFriendRequests(@Query('user_id') userId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    // 先获取用户的所有分身
+    const { data: userAvatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (!userAvatars || userAvatars.length === 0) {
+      return {
+        code: 200,
+        data: [],
+        message: '获取成功'
+      }
+    }
+
+    const avatarIds = userAvatars.map(a => a.id)
+
+    // 获取这些分身收到的好友请求
+    const { data: requests, error } = await client
+      .from('avatar_friends')
+      .select(`
+        *,
+        from_avatar:avatars!avatar_friends_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        )
+      `)
+      .in('friend_avatar_id', avatarIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      return {
+        code: 400,
+        message: error.message,
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      data: requests,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 接受好友请求
+   */
+  @Post('friend-requests/:id/accept')
+  async acceptFriendRequest(@Param('id') requestId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    // 获取请求详情
+    const { data: request } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('id', requestId)
+      .single()
+
+    if (!request) {
+      return {
+        code: 404,
+        message: '请求不存在',
+        data: null
+      }
+    }
+
+    const { FriendshipService } = await import('./friendship.service')
+    const friendshipService = new FriendshipService()
+
+    // 注入 LLM 客户端
+    const { HostingService } = await import('./hosting.service')
+    const hostingService = new HostingService(null)
+    friendshipService.setLlmClient((hostingService as any).llmClient)
+
+    // 接受好友请求
+    const success = await friendshipService.acceptFriendRequest(request.friend_avatar_id, request.avatar_id)
+
+    if (!success) {
+      return {
+        code: 400,
+        message: '接受失败',
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      message: '已接受好友请求',
+      data: null
+    }
+  }
 }

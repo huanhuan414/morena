@@ -12,6 +12,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, SearchClient, S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { SubscriptionService } from '../subscription/subscription.service'
+import { FriendshipService } from './friendship.service'
 import axios from 'axios'
 
 interface HostingSettings {
@@ -52,7 +53,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   private imageGenerationQueue: Map<string, Promise<any>> = new Map()
   private isImageGenerating = false
 
-  constructor(subscriptionService: SubscriptionService) {
+  constructor(subscriptionService: SubscriptionService, private friendshipService: FriendshipService) {
     this.subscriptionService = subscriptionService
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -64,6 +65,9 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
       region: 'cn-beijing',
     })
+
+    // 将 LLM 客户端传递给交友服务
+    this.friendshipService.setLlmClient(this.llmClient)
   }
 
   onModuleInit() {
@@ -303,50 +307,72 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 自动交友 - 真人化交友流程
-   * 1. 发现阶段：浏览社交广场的帖子，点赞、评论
-   * 2. 发送好友请求：基于互动发送好友请求，附带个性化话术
-   * 3. 等待响应：对方智能决定是否接受
-   * 4. 开始聊天：接受好友后，创建对话，开始聊天
+   * 自动交友 - 真人化交友流程（使用交友服务）
+   * 1. 浏览帖子发现新朋友
+   * 2. 分析对方性格和价值
+   * 3. 重点关注有价值的分身
+   * 4. 发送好友请求（基于好感度）
    */
   private async autoMakeFriends(avatar: any) {
-    const client = getSupabaseClient()
-
     console.log(`[托管服务] ${avatar.name} 开始执行交友功能`)
 
-    // 检查是否已经有足够的好友
-    const { data: existingFriends } = await client
-      .from('avatar_friends')
-      .select('*')
-      .eq('avatar_id', avatar.id)
-      .eq('status', 'accepted')
+    try {
+      // 检查是否已经有足够的好友
+      const stats = await this.friendshipService.getFriendshipStats(avatar.id)
 
-    console.log(`[托管服务] ${avatar.name} 当前好友数: ${existingFriends?.length || 0}`)
+      console.log(`[托管服务] ${avatar.name} 交友统计: 好友=${stats.friends_count}, 待处理=${stats.pending_requests}, 关注=${stats.following_count}`)
 
-    // 增加好友上限到20个
-    if (existingFriends && existingFriends.length >= 20) {
-      console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系 (${existingFriends.length}/20)`)
-      return
+      // 好友上限20个
+      if (stats.friends_count >= 20) {
+        console.log(`[托管服务] 分身 ${avatar.name} 已有足够的好友关系 (${stats.friends_count}/20)`)
+        return
+      }
+
+      // 待处理请求不超过5个
+      if (stats.pending_requests >= 5) {
+        console.log(`[托管服务] 分身 ${avatar.name} 待处理的好友请求过多 (${stats.pending_requests}/5)，等待对方响应`)
+        return
+      }
+
+      // 阶段1：浏览帖子发现新朋友
+      const avatars = [avatar]
+      await this.friendshipService.browsePostsAndDiscover(avatars)
+
+      // 阶段2：重点关注有价值的分身
+      await this.friendshipService.focusOnHighValueTargets(avatars)
+
+      // 阶段3：根据好感度发送好友请求
+      const client = getSupabaseClient()
+
+      // 获取好感度高但还不是好友的目标
+      const { data: highAffinityTargets } = await client
+        .from('avatar_affinity')
+        .select('*, target_avatar(*)')
+        .eq('avatar_id', avatar.id)
+        .gte('affinity_score', 75)
+        .order('affinity_score', { ascending: false })
+        .limit(3)
+
+      if (!highAffinityTargets || highAffinityTargets.length === 0) {
+        console.log(`[托管服务] ${avatar.name} 还没有好感度足够高的目标，继续互动...`)
+        return
+      }
+
+      // 随机选择一个目标发送好友请求
+      const target = highAffinityTargets[Math.floor(Math.random() * highAffinityTargets.length)]
+
+      const targetAvatar = target.target_avatar
+      if (!targetAvatar) return
+
+      // 发送好友请求
+      const success = await this.friendshipService.sendFriendRequest(avatar, targetAvatar)
+
+      if (success) {
+        console.log(`[托管服务] ${avatar.name} 向 ${targetAvatar.name} 发送了好友请求`)
+      }
+    } catch (error) {
+      console.error(`[托管服务] ${avatar.name} 交友功能执行失败:`, error)
     }
-
-    // 检查待处理的好友请求数量
-    const { data: pendingRequests } = await client
-      .from('avatar_friends')
-      .select('*')
-      .eq('avatar_id', avatar.id)
-      .eq('status', 'pending')
-
-    // 待处理请求不超过5个
-    if (pendingRequests && pendingRequests.length >= 5) {
-      console.log(`[托管服务] 分身 ${avatar.name} 待处理的好友请求过多 (${pendingRequests.length}/5)，等待对方响应`)
-      return
-    }
-
-    // 阶段1：发现阶段 - 浏览社交广场的帖子，点赞、评论
-    await this.browseAndInteract(avatar)
-
-    // 阶段2：发送好友请求
-    await this.sendFriendRequest(avatar)
   }
 
   /**
@@ -604,7 +630,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 处理好友请求
+   * 处理好友请求（使用交友服务）
    */
   private async handleFriendRequests(avatar: any) {
     const client = getSupabaseClient()
@@ -624,76 +650,60 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
     // 最多处理3个请求
     for (const request of requests.slice(0, 3)) {
-      // 获取发送者的信息
-      const { data: sender } = await client
-        .from('avatars')
-        .select('*')
-        .eq('id', request.avatar_id)
-        .single()
+      try {
+        // 获取发送者的信息
+        const { data: sender } = await client
+          .from('avatars')
+          .select('*')
+          .eq('id', request.avatar_id)
+          .single()
 
-      if (!sender) {
-        continue
-      }
+        if (!sender) {
+          continue
+        }
 
-      // 智能决定是否接受
-      const decision = await this.shouldAcceptFriendRequest(avatar, sender, request.match_reason || '')
+        // 智能决定是否接受
+        const decision = await this.shouldAcceptFriendRequest(avatar, sender, request.match_reason || '')
 
-      if (decision.accept) {
-        // 创建对话
-        const conversationId = crypto.randomUUID()
-        await client.from('conversations').insert({
-          id: conversationId,
-          user_id: avatar.user_id,
-          avatar_id: avatar.id,
-          title: `与${sender.name}的对话`,
-          context: { friend_id: sender.id },
-          created_at: new Date().toISOString()
-        })
+        if (decision.accept) {
+          // 使用交友服务接受好友请求
+          await this.friendshipService.acceptFriendRequest(avatar.id, sender.id)
 
-        // 接受好友请求（更新请求状态和对话ID）
-        await client
-          .from('avatar_friends')
-          .update({
-            status: 'accepted',
+          // 创建对话
+          const conversationId = crypto.randomUUID()
+          await client.from('conversations').insert({
+            id: conversationId,
+            user_id: avatar.user_id,
+            avatar_id: avatar.id,
+            title: `与${sender.name}的对话`,
+            context: { friend_id: sender.id },
+            created_at: new Date().toISOString()
+          })
+
+          // 更新好友关系的对话ID
+          await client
+            .from('avatar_friends')
+            .update({ conversation_id: conversationId })
+            .eq('avatar_id', request.avatar_id)
+            .eq('friend_avatar_id', avatar.id)
+
+          // 发送初始欢迎消息
+          const welcomeMessage = await this.generateWelcomeMessage(avatar, sender, request.match_reason || '')
+          const welcomeMessageId = crypto.randomUUID()
+          await client.from('messages').insert({
+            id: welcomeMessageId,
             conversation_id: conversationId,
-            updated_at: new Date().toISOString()
+            role: 'avatar',
+            content: welcomeMessage,
+            created_at: new Date().toISOString()
           })
-          .eq('id', request.id)
 
-        // 双方都添加好友关系（确保对方也能看到）
-        await client.from('avatar_friends').insert({
-          avatar_id: avatar.id,
-          friend_avatar_id: sender.id,
-          status: 'accepted',
-          match_reason: request.match_reason,
-          compatibility_score: request.compatibility_score,
-          conversation_id: conversationId,
-          created_at: new Date().toISOString()
-        })
-
-        // 发送初始欢迎消息
-        const welcomeMessage = await this.generateWelcomeMessage(avatar, sender, request.match_reason || '')
-        const welcomeMessageId = crypto.randomUUID()
-        await client.from('messages').insert({
-          id: welcomeMessageId,
-          conversation_id: conversationId,
-          role: 'avatar',
-          content: welcomeMessage,
-          created_at: new Date().toISOString()
-        })
-
-        console.log(`[托管服务] ${avatar.name} 接受了 ${sender.name} 的好友请求，并发送欢迎消息: ${welcomeMessage}`)
-      } else {
-        // 拒绝好友请求
-        await client
-          .from('avatar_friends')
-          .update({
-            status: 'rejected',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', request.id)
-
-        console.log(`[托管服务] ${avatar.name} 拒绝了 ${sender.name} 的好友请求: ${decision.reason}`)
+          console.log(`[托管服务] ${avatar.name} 接受了 ${sender.name} 的好友请求，并发送欢迎消息: ${welcomeMessage}`)
+        } else {
+          console.log(`[托管服务] ${avatar.name} 拒绝了 ${sender.name} 的好友请求`)
+        }
+      } catch (error) {
+        console.error(`[托管服务] 处理好友请求失败:`, error)
       }
     }
   }
