@@ -84,6 +84,16 @@ interface MessageMedia {
   content?: string
   title?: string
   coverImage?: string  // 文章封面图
+  // 短剧相关字段
+  message?: string  // 发布成功提示信息
+  production_stats?: {  // 生产统计数据
+    total_clips?: number
+    success_rate?: number
+    average_duration?: number
+    audio_coverage?: number
+  }
+  bgm_recommendations?: any[]  // 背景音乐推荐
+  edited_video_url?: string  // 剪辑后的视频URL
 }
 
 interface Message {
@@ -2611,47 +2621,6 @@ export default function MindChatPage() {
           return (
             <View className="media-container">
               {mediaList.map((media, idx) => {
-                // 🔴 修复：检查是否是短剧信息媒体项
-                if (media.type === 'shortdrama_info') {
-                  console.log('[短剧展示] 检测到短剧信息媒体项')
-                  return (
-                    <View key={`shortdrama-${idx}`} className="shortdrama-info">
-                      {media.title && (
-                        <View className="shortdrama-title">
-                          <Text className="shortdrama-title-text">{media.title}</Text>
-                        </View>
-                      )}
-                      {media.message && (
-                        <View className="shortdrama-message">
-                          <Text className="shortdrama-message-text">{media.message}</Text>
-                        </View>
-                      )}
-                      {media.production_stats && (
-                        <View className="shortdrama-stats">
-                          <Text className="shortdrama-stats-text">
-                            角色: {media.production_stats.characters_generated}个 | 场景: {media.production_stats.scenes_generated}个 | 镜头: {media.production_stats.videos_generated}个
-                          </Text>
-                        </View>
-                      )}
-                      {media.bgm_recommendations && media.bgm_recommendations.length > 0 && (
-                        <View className="shortdrama-bgm">
-                          <Text className="shortdrama-bgm-title">🎵 推荐配乐：</Text>
-                          {media.bgm_recommendations.map((bgm: any, bgmIdx: number) => (
-                            <View key={`bgm-${bgmIdx}`} className="shortdrama-bgm-item">
-                              <Text className="shortdrama-bgm-text">• {bgm.name} ({bgm.duration}) - {bgm.description}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                      {media.edited_video_url && (
-                        <View className="shortdrama-edited-video">
-                          <Text className="shortdrama-edited-video-text">✅ 成品视频已生成</Text>
-                        </View>
-                      )}
-                    </View>
-                  )
-                }
-
                 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
                 console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
                 if (media.type === 'image') {

@@ -22,8 +22,9 @@ const SKILL_NAME_MAP: Record<string, string> = {
   recommend_bgm: '背景音乐推荐',
   // 分身秩序
   app_assign_order: '分身秩序',
-  // 视频相关
+  // 个人IP打造套件中的技能
   generate_video: '视频生成',
+  // 视频相关
   generate_image: '图片生成',
   generate_text: '文本生成',
   generate_audio: '音频生成',
@@ -148,6 +149,33 @@ const AGENT_ORDER_SKILL = {
   purchase_count: 500
 }
 
+// 个人IP打造技能配置
+const PERSONAL_IP_KIT: {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  skills: string[];
+  tags: string[];
+  rating: number;
+  purchase_count: number;
+} = {
+  id: 'personal_ip_kit',
+  name: '个人IP打造',
+  description: '一键打造个人IP，使用分身头像生成爆款口播视频，自动添加字幕和背景音乐',
+  icon: '🌟',
+  category: '个人IP',
+  skills: [
+    'generate_video',         // 生成视频（使用分身头像）
+    'generate_subtitle',      // 生成字幕
+    'recommend_bgm'           // 推荐背景音乐
+  ],
+  tags: ['个人IP', '口播', '爆款视频'],
+  rating: 5.0,
+  purchase_count: 666
+}
+
 // 根据 tool_name 获取图标
 const getSkillIcon = (toolName?: string): string => {
   const iconMap: Record<string, string> = {
@@ -179,9 +207,12 @@ const getSkillIcon = (toolName?: string): string => {
   return iconMap[toolName || ''] || iconMap['default']
 }
 
-// 🔴 过滤掉短剧套件中的技能
+// 🔴 过滤掉短剧套件和个人IP套件中的技能
 const filterSkills = (skills: Skill[]): Skill[] => {
-  const kitSkillToolNames = new Set(SHORT_DRAMA_KIT.skills)
+  const kitSkillToolNames = new Set([
+    ...SHORT_DRAMA_KIT.skills,
+    ...PERSONAL_IP_KIT.skills
+  ])
   return skills.filter(skill => !skill.tool_name || !kitSkillToolNames.has(skill.tool_name))
 }
 
@@ -495,6 +526,62 @@ export default function SkillsSquare() {
     }
   }
 
+  // 一键添加个人IP打造套件
+  const handlePurchasePersonalIpKit = async () => {
+    if (!currentAvatar?.id) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    try {
+      setPurchasing(true)
+      console.log('[SkillSquare] 开始添加个人IP打造套件:', {
+        skills: PERSONAL_IP_KIT.skills,
+        avatarId: currentAvatar.id
+      })
+
+      // 批量添加技能
+      const results = await Promise.all(
+        PERSONAL_IP_KIT.skills.map(toolName =>
+          Network.request({
+            url: '/api/skills/purchase-by-tool-name',
+            method: 'POST',
+            data: {
+              toolName,
+              avatarId: currentAvatar.id
+            }
+          })
+        )
+      )
+
+      console.log('[SkillSquare] 个人IP打造套件添加结果:', results)
+
+      const successCount = results.filter(r => r.data?.code === 200).length
+      const totalCount = results.length
+
+      if (successCount === totalCount) {
+        Taro.showToast({
+          title: `个人IP打造套件添加成功！已添加 ${totalCount} 个技能`,
+          icon: 'success'
+        })
+      } else if (successCount > 0) {
+        Taro.showToast({
+          title: `部分添加成功（${successCount}/${totalCount}）`,
+          icon: 'none'
+        })
+      } else {
+        Taro.showToast({ title: '添加失败，请重试', icon: 'none' })
+      }
+
+      fetchMySkills()
+    } catch (error: any) {
+      console.error('[SkillSquare] 添加个人IP打造套件失败:', error)
+      Taro.showToast({ title: '添加失败: ' + (error.message || '未知错误'), icon: 'none' })
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
   // 一键生成分身秩序
   const handleGenerateAgentOrder = async () => {
     if (!currentAvatar?.id) {
@@ -796,6 +883,36 @@ export default function SkillsSquare() {
               </View>
               <View className="special-action ai">
                 <Text className="special-action-text">立即体验</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 个人IP打造 */}
+          <View className="special-card personal-ip" onClick={() => handlePurchasePersonalIpKit()}>
+            <View className="special-header">
+              <View className="special-icon-large">{PERSONAL_IP_KIT.icon}</View>
+              <View className="special-badge ip">🌟 个人IP</View>
+            </View>
+            <View className="special-content">
+              <Text className="special-title">{PERSONAL_IP_KIT.name}</Text>
+              <Text className="special-desc">{PERSONAL_IP_KIT.description}</Text>
+              <Text className="special-tip">📌 已包含3个核心技能：视频生成、字幕、背景音乐</Text>
+              <View className="special-skills">
+                {PERSONAL_IP_KIT.skills.map((skill, idx) => (
+                  <View key={idx} className="mini-skill-tag">
+                    <Text className="mini-skill-text">{skill.replace(/_/g, ' ')}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <View className="special-footer">
+              <View className="special-stats">
+                <Star size={14} color="#ffb800" />
+                <Text className="special-stat-value">{PERSONAL_IP_KIT.rating}</Text>
+                <Text className="special-stat-label">({PERSONAL_IP_KIT.purchase_count}人使用)</Text>
+              </View>
+              <View className="special-action ip">
+                <Text className="special-action-text">一键添加</Text>
               </View>
             </View>
           </View>
