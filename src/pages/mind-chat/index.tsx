@@ -3783,43 +3783,41 @@ export default function MindChatPage() {
             </View>
           </View>
 
-          {/* 中间输入区 */}
-          <View className="input-center-section">
-            <Textarea
-              ref={textareaRef}
-              className="input-textarea"
-              placeholder="说点什么..."
-              placeholderClass="input-placeholder"
-              value={inputText}
-              maxlength={1000}
-              onInput={(e: any) => {
-                let newValue = ''
-                if (e.detail && e.detail.value !== undefined) {
-                  newValue = e.detail.value
-                } else if (e.target && e.target.value !== undefined) {
-                  newValue = e.target.value
-                } else if (typeof e === 'string') {
-                  newValue = e
-                }
-                setInputText(newValue)
-              }}
-              onConfirm={() => sendMessage()}
-              confirmType="send"
-              adjustPosition
-              autoHeight
-              cursorSpacing={80}
-              onBlur={(e: any) => {
-                let newValue = inputText
-                if (e.detail && e.detail.value !== undefined) {
-                  newValue = e.detail.value
-                } else if (e.target && e.target.value !== undefined) {
-                  newValue = e.target.value
-                }
-                setInputText(newValue)
-              }}
-              style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
-            />
-          </View>
+          {/* 中间输入区 - 整个卡片就是输入框 */}
+          <Textarea
+            ref={textareaRef}
+            className="input-textarea"
+            placeholder="说点什么..."
+            placeholderClass="input-placeholder"
+            value={inputText}
+            maxlength={1000}
+            onInput={(e: any) => {
+              let newValue = ''
+              if (e.detail && e.detail.value !== undefined) {
+                newValue = e.detail.value
+              } else if (e.target && e.target.value !== undefined) {
+                newValue = e.target.value
+              } else if (typeof e === 'string') {
+                newValue = e
+              }
+              setInputText(newValue)
+            }}
+            onConfirm={() => sendMessage()}
+            confirmType="send"
+            adjustPosition
+            autoHeight
+            cursorSpacing={80}
+            onBlur={(e: any) => {
+              let newValue = inputText
+              if (e.detail && e.detail.value !== undefined) {
+                newValue = e.detail.value
+              } else if (e.target && e.target.value !== undefined) {
+                newValue = e.target.value
+              }
+              setInputText(newValue)
+            }}
+            style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
+          />
 
           {/* 右侧功能区 */}
           <View className="input-right-section">
