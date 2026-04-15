@@ -72,7 +72,7 @@ export class UploadService {
       this.logger.log(`文件类型: ${file.mimetype}`)
 
       // 使用 S3Storage 上传
-      const uploadResult = await this.s3Client.uploadFile({
+      const uploadResult: any = await this.s3Client.uploadFile({
         fileContent: file.buffer,
         fileName: fileName,
         contentType: file.mimetype,
