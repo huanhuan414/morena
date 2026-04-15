@@ -8,6 +8,7 @@ export default defineAppConfig({
     'pages/avatar-settings/index',
     'pages/avatar-account-config/index',
     'pages/avatar-friends/index',
+    'pages/avatar-orders/index',
     'pages/voice-call/index',
     'pages/mind-chat/index',
     'pages/publish-redirect/index',
