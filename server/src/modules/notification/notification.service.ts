@@ -218,6 +218,56 @@ export class NotificationService {
       }
     })
 
-    return filteredNotifications
+    // 为每个通知关联分身信息
+    const notificationsWithAvatar = await Promise.all(
+      filteredNotifications.map(async (notification: any) => {
+        let avatarInfo: any = null
+
+        // 尝试从通知的 data 字段中提取 avatarId
+        if (notification.data && typeof notification.data === 'object') {
+          const avatarId = notification.data.avatarId || notification.data.avatar_id
+
+          if (avatarId) {
+            try {
+              // 查询分身信息
+              const { data: avatar } = await client
+                .from('avatars')
+                .select('id, name, avatar_url')
+                .eq('id', avatarId)
+                .single()
+
+              if (avatar) {
+                avatarInfo = {
+                  id: avatar.id,
+                  name: avatar.name,
+                  avatar_url: avatar.avatar_url
+                }
+              }
+            } catch (error) {
+              console.warn(`获取分身信息失败:`, error)
+            }
+          }
+        }
+
+        // 如果没有找到分身信息，尝试从 content 中解析分身名称
+        if (!avatarInfo && notification.content) {
+          const match = notification.content.match(/分身["\s]+([^"\s]+)/)
+          if (match && match[1]) {
+            avatarInfo = {
+              id: null,
+              name: match[1],
+              avatar_url: null
+            }
+          }
+        }
+
+        return {
+          ...notification,
+          avatar: avatarInfo
+        }
+      })
+    )
+
+    return notificationsWithAvatar
   }
 }

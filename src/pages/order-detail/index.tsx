@@ -9,7 +9,7 @@ import {
   Sparkles, ChevronRight,
   Pencil, Save, Check, X, ExternalLink, Star, ThumbsUp,
   TrendingUp, MessageCircle, Share2, Eye, Loader, Circle,
-  Sparkle, ArrowRight, Bell
+  Sparkle, ArrowRight, Bell, User
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -736,17 +736,28 @@ export default function OrderDetailPage() {
                   {notifications.map((notification) => (
                     <View key={notification.id} className="notification-item">
                       <View className="notification-header">
-                        <Text className="notification-title">{notification.title}</Text>
-                        <Text className="notification-time">
-                          {new Date(notification.created_at).toLocaleString()}
-                        </Text>
+                        <View className="notification-avatar">
+                          {notification.avatar?.avatar_url ? (
+                            <Image
+                              src={notification.avatar.avatar_url}
+                              className="avatar-image"
+                            />
+                          ) : (
+                            <View className="avatar-placeholder">
+                              <User size={20} color="rgba(255, 255, 255, 0.5)" />
+                            </View>
+                          )}
+                        </View>
+                        <View className="notification-info">
+                          <Text className="notification-avatar-name">
+                            {notification.avatar?.name || '未知分身'}
+                          </Text>
+                          <Text className="notification-time">
+                            {new Date(notification.created_at).toLocaleString()}
+                          </Text>
+                        </View>
                       </View>
                       <Text className="notification-content">{notification.content}</Text>
-                      {!notification.is_read && (
-                        <View className="notification-badge">
-                          <Text className="badge-text">未读</Text>
-                        </View>
-                      )}
                     </View>
                   ))}
                 </View>
