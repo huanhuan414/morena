@@ -176,11 +176,17 @@ export class NotificationService {
     }
 
     // 过滤出包含该订单ID的通知
+    // 支持 data.orderId 和 data.order_id 两种格式
     const filteredNotifications = (data || []).filter((notification: any) => {
       try {
         // 检查 data 字段中是否包含 order_id
         if (notification.data && typeof notification.data === 'object') {
+          // 优先检查 order_id（下划线命名）
           if (notification.data.order_id === orderId) {
+            return true
+          }
+          // 其次检查 orderId（驼峰命名）
+          if (notification.data.orderId === orderId) {
             return true
           }
         }
@@ -193,13 +199,17 @@ export class NotificationService {
           // 尝试解析 content 为 JSON
           try {
             const contentData = JSON.parse(notification.content)
-            if (contentData.order_id === orderId) {
+            if (contentData.order_id === orderId || contentData.orderId === orderId) {
               return true
             }
           } catch (e) {
             // 忽略解析错误
           }
         }
+
+        // 检查 content 字段中是否包含订单标题（备用方案）
+        // 注意：这个方案需要先获取订单标题，效率较低，仅作为最后的备用方案
+        // 这里暂时不实现，因为上面的逻辑应该已经足够了
 
         return false
       } catch (e) {
