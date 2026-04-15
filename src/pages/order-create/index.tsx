@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import { Briefcase, DollarSign, Target, Sparkles } from 'lucide-react-taro'
+import { Briefcase, DollarSign, Target, Sparkles, Users } from 'lucide-react-taro'
 import './index.css'
 
 interface OrderForm {
   title: string
   description: string
   budget: string
+  avatarCount: number
   requirements: {
     contentType: string
     platforms: string[]
@@ -27,6 +28,7 @@ export default function OrderCreatePage() {
     title: '',
     description: '',
     budget: '',
+    avatarCount: 1,
     requirements: {
       contentType: 'article',
       platforms: [],
@@ -135,6 +137,7 @@ export default function OrderCreatePage() {
           platforms: form.requirements.platforms,
           target_audience: form.requirements.targetAudience,
           deadline: form.requirements.deadline || null,
+          expected_quantity: form.avatarCount,
           ...locationData
         }
       })
@@ -261,7 +264,7 @@ export default function OrderCreatePage() {
 
           <View className="form-item">
             <Text className="form-label-text">目标受众</Text>
-            <Input 
+            <Input
               className="custom-input"
               placeholder="例如：18-35岁都市白领女性"
               value={form.requirements.targetAudience}
@@ -270,6 +273,37 @@ export default function OrderCreatePage() {
                 requirements: { ...prev.requirements, targetAudience: e.detail.value }
               }))}
             />
+          </View>
+
+          <View className="form-item">
+            <View className="form-label">
+              <Users size={18} color="#ff6b6b" />
+              <Text className="label-text">需求分身数量</Text>
+            </View>
+            <View className="avatar-count-input-wrap">
+              <View
+                className={`count-btn ${form.avatarCount <= 1 ? 'disabled' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.max(1, prev.avatarCount - 1) }))}
+              >
+                <Text className="count-icon">−</Text>
+              </View>
+              <Input
+                className="count-input"
+                type="number"
+                value={form.avatarCount.toString()}
+                onInput={e => {
+                  const value = parseInt(e.detail.value) || 1
+                  setForm(prev => ({ ...prev, avatarCount: Math.max(1, Math.min(10, value)) }))
+                }}
+              />
+              <View
+                className={`count-btn ${form.avatarCount >= 10 ? 'disabled' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.min(10, prev.avatarCount + 1) }))}
+              >
+                <Text className="count-icon">+</Text>
+              </View>
+            </View>
+            <Text className="count-hint">每个分身将独立创作内容，建议 1-5 个分身</Text>
           </View>
 
           <View className="form-item">
