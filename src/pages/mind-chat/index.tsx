@@ -3683,6 +3683,7 @@ export default function MindChatPage() {
                 placeholder="告诉我要做什么..."
                 placeholderClass="text-input-placeholder"
                 value={inputText}
+                maxlength={1000}
                 onInput={(e: any) => {
                   // 兼容多种事件格式
                   let newValue = ''
