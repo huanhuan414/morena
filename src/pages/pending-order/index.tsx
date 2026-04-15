@@ -227,7 +227,14 @@ export default function PendingOrderPage() {
 
           <View className="order-main">
             <Text className="order-title">{orderData.orders.title}</Text>
-            <Text className="order-desc">{orderData.orders.description}</Text>
+          </View>
+
+          {/* 需求描述 */}
+          <View className="order-desc-section">
+            <View className="desc-label">需求描述</View>
+            <Text className="order-desc">
+              {orderData.orders.description || '暂无详细需求描述'}
+            </Text>
           </View>
 
           <View className="order-meta-grid">
