@@ -883,14 +883,20 @@ export class AgentService {
       message?: string
     }> = []
 
-    // 🔴 新增：尝试从 finalAnswer 中解析 JSON 格式的媒体数据
+    // 🔴 修复：避免重复提取，先从 finalAnswer JSON 中提取所有媒体（包括短剧特有信息）
+    // 这样可以一次性提取所有数据，避免后续从 steps 中重复提取
+    const extractedFromFinalAnswer = new Set<string>() // 用于记录已提取的 URL，避免重复
+
     try {
       if (aiMessage && typeof aiMessage === 'string' && aiMessage.trim().startsWith('{')) {
         const finalAnswerJson = JSON.parse(aiMessage.trim())
+
+        // 提取 video_clips 并添加到 media
         if (finalAnswerJson.video_clips && Array.isArray(finalAnswerJson.video_clips)) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取视频剪辑:', finalAnswerJson.video_clips.length)
           finalAnswerJson.video_clips.forEach((clip: any) => {
             if (clip.url) {
+              extractedFromFinalAnswer.add(clip.url) // 记录已提取的 URL
               media.push({
                 type: 'video',
                 url: clip.url,
@@ -900,8 +906,11 @@ export class AgentService {
             }
           })
         }
+
+        // 🔴 提取成品视频 URL
         if (finalAnswerJson.edited_video_url) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取成品视频 URL:', finalAnswerJson.edited_video_url)
+          extractedFromFinalAnswer.add(finalAnswerJson.edited_video_url)
           media.push({
             type: 'video',
             url: finalAnswerJson.edited_video_url,
@@ -909,18 +918,24 @@ export class AgentService {
             title: '成品视频'
           })
         }
+
+        // 提取单视频 URL
         if (finalAnswerJson.video_url) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取视频 URL:', finalAnswerJson.video_url)
+          extractedFromFinalAnswer.add(finalAnswerJson.video_url)
           media.push({
             type: 'video',
             url: finalAnswerJson.video_url,
             key: finalAnswerJson.video_key || undefined
           })
         }
+
+        // 提取角色形象
         if (finalAnswerJson.characters && Array.isArray(finalAnswerJson.characters)) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取角色形象:', finalAnswerJson.characters.length)
           finalAnswerJson.characters.forEach((char: any) => {
             if (char.url) {
+              extractedFromFinalAnswer.add(char.url)
               media.push({
                 type: 'image',
                 url: char.url,
@@ -930,10 +945,13 @@ export class AgentService {
             }
           })
         }
+
+        // 提取场景设计
         if (finalAnswerJson.scenes && Array.isArray(finalAnswerJson.scenes)) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取场景设计:', finalAnswerJson.scenes.length)
           finalAnswerJson.scenes.forEach((scene: any) => {
             if (scene.url) {
+              extractedFromFinalAnswer.add(scene.url)
               media.push({
                 type: 'image',
                 url: scene.url,
@@ -943,10 +961,13 @@ export class AgentService {
             }
           })
         }
+
+        // 提取图片数组
         if (finalAnswerJson.image_urls && Array.isArray(finalAnswerJson.image_urls)) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取图片数组:', finalAnswerJson.image_urls.length)
           finalAnswerJson.image_urls.forEach((url: string) => {
             if (url) {
+              extractedFromFinalAnswer.add(url)
               media.push({ type: 'image', url })
             }
           })
@@ -975,28 +996,32 @@ export class AgentService {
       console.log('[媒体提取] finalAnswer 不是 JSON 格式，使用常规提取方式')
     }
 
-    // 从 steps 中提取媒体内容（原有逻辑）
+    // 🔴 修复：从 steps 中提取媒体内容时，避免重复提取已经在 finalAnswer 中提取过的内容
     agentResult.steps.forEach(step => {
       if (step.observation?.data) {
         const data = step.observation.data
 
         // 图片 - 支持单个 url 和 image_urls 数组两种格式
         if (data.url && typeof data.url === 'string') {
-          // 单个URL（generate-image.tool.ts 返回的格式）
-          console.log('[媒体提取] 提取单个图片 URL:', data.url, 'key:', data.key)
-          const mediaItem: any = { type: 'image', url: data.url }
-          if (data.key) {
-            mediaItem.key = data.key
+          // 🔴 修复：检查是否已经提取过
+          if (!extractedFromFinalAnswer.has(data.url)) {
+            console.log('[媒体提取] 提取单个图片 URL:', data.url, 'key:', data.key)
+            const mediaItem: any = { type: 'image', url: data.url }
+            if (data.key) {
+              mediaItem.key = data.key
+            }
+            console.log('[媒体提取] 准备添加的 mediaItem:', mediaItem)
+            media.push(mediaItem)
+            extractedFromFinalAnswer.add(data.url) // 记录已提取
           }
-          console.log('[媒体提取] 准备添加的 mediaItem:', mediaItem)
-          media.push(mediaItem)
         }
         if (data.image_urls && Array.isArray(data.image_urls)) {
           // URL数组
           console.log('[媒体提取] 提取图片数组:', data.image_urls)
           data.image_urls.forEach((url: string) => {
-            if (url && typeof url === 'string') {
+            if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
               media.push({ type: 'image', url })
+              extractedFromFinalAnswer.add(url)
             }
           })
         }
@@ -1011,37 +1036,40 @@ export class AgentService {
           })
         }
 
-        // 视频剪辑数组（如短剧制作返回的多个视频）
+        // 🔴 修复：视频剪辑数组 - 检查是否已经提取过
         if (data.video_clips && Array.isArray(data.video_clips)) {
-          console.log('[媒体提取] 提取视频剪辑数组:', data.video_clips.length)
+          console.log('[媒体提取] 检查视频剪辑数组，已从 finalAnswer 提取:', extractedFromFinalAnswer.size)
           data.video_clips.forEach((clip: any) => {
-            if (clip.url) {
+            if (clip.url && !extractedFromFinalAnswer.has(clip.url)) {
+              console.log('[媒体提取] 从 steps 中提取视频剪辑:', clip.url)
               media.push({
                 type: 'video',
                 url: clip.url,
                 key: clip.key || undefined,
                 title: clip.clip_number ? `镜头 ${clip.clip_number}` : undefined
               })
-              console.log(`[媒体提取] 已添加视频剪辑 ${clip.clip_number || ''} 到 media 列表`)
+              extractedFromFinalAnswer.add(clip.url) // 记录已提取
             }
           })
         }
 
-        // 单个视频（兼容旧逻辑）
-        if (data.video_url) {
-          console.log('[媒体提取] 提取视频 URL:', data.video_url, 'key:', data.video_key || data.key)
+        // 🔴 修复：单个视频 - 检查是否已经提取过
+        if (data.video_url && !extractedFromFinalAnswer.has(data.video_url)) {
+          console.log('[媒体提取] 从 steps 中提取视频 URL:', data.video_url, 'key:', data.video_key || data.key)
           media.push({
             type: 'video',
             url: data.video_url,
             key: data.video_key || data.key  // 保存 key 用于重新生成签名链接
           })
+          extractedFromFinalAnswer.add(data.video_url) // 记录已提取
           console.log('[媒体提取] 已添加视频到 media 列表，当前 media 数量:', media.length)
         }
 
         // 封面图（单独展示）
-        if (data.cover_image_url && !data.content) {
+        if (data.cover_image_url && !data.content && !extractedFromFinalAnswer.has(data.cover_image_url)) {
           console.log('[媒体提取] 提取封面图 URL:', data.cover_image_url)
           media.push({ type: 'image', url: data.cover_image_url })
+          extractedFromFinalAnswer.add(data.cover_image_url)
         }
       }
     })
