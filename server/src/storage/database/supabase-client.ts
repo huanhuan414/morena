@@ -110,6 +110,11 @@ function getSupabaseClient(token?: string): SupabaseClient {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    }
   });
 }
 

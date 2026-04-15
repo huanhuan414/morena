@@ -47,8 +47,23 @@
   margin-top: 12rpx;
 }
 
-.info-card,
+/* 订单信息卡片 */
+.info-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+/* 表单卡片 */
 .form-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
 
 .card-header {
   display: flex;

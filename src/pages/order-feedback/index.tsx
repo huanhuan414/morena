@@ -170,9 +170,12 @@ export default function OrderFeedbackPage() {
 
       let data
       try {
-        data = typeof res === 'string' ? JSON.parse(res) : res
+        // Taro uploadFile 返回的 data 字段可能是 JSON 字符串
+        const responseText = res.data
+        data = typeof responseText === 'string' ? JSON.parse(responseText) : responseText
       } catch (parseError) {
         console.error('解析响应失败:', parseError)
+        console.error('原始响应:', res)
         throw new Error('响应解析失败')
       }
 
@@ -183,7 +186,7 @@ export default function OrderFeedbackPage() {
         console.log('图片URL已添加:', data.data.url)
       } else {
         const errorMsg = data?.message || '上传失败，未返回URL'
-        console.error('上传失败:', errorMsg)
+        console.error('上传失败:', errorMsg, data)
         throw new Error(errorMsg)
       }
     } catch (error) {

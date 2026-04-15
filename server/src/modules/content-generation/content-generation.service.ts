@@ -299,7 +299,7 @@ export class ContentGenerationService {
     const client = getSupabaseClient()
 
     const { data, error } = await client
-      .from('generated_contents')
+      .from('generated_content')
       .insert({
         order_id: contentData.order_id,
         request_id: contentData.request_id,
@@ -329,12 +329,12 @@ export class ContentGenerationService {
   async getGeneratedContent(requestId: string, avatarId: string): Promise<GeneratedContent[]> {
     const client = getSupabaseClient()
 
+    // 使用 RPC 函数绕过 schema cache 问题
     const { data, error } = await client
-      .from('generated_contents')
-      .select('*')
-      .eq('request_id', requestId)
-      .eq('avatar_id', avatarId)
-      .order('created_at', { ascending: false })
+      .rpc('get_generated_content', {
+        p_request_id: requestId,
+        p_avatar_id: avatarId
+      })
 
     if (error) {
       this.logger.error('获取内容失败:', error)
@@ -354,7 +354,7 @@ export class ContentGenerationService {
     const client = getSupabaseClient()
 
     const { error } = await client
-      .from('generated_contents')
+      .from('generated_content')
       .update({ status })
       .eq('id', contentId)
 
