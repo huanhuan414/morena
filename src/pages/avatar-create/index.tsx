@@ -45,13 +45,6 @@ interface PersonalityOption {
   traits: string[]
 }
 
-interface AbilityOption {
-  id: string
-  name: string
-  desc: string
-  icon: any
-}
-
 interface AppearanceStyle {
   id: string
   name: string
@@ -86,16 +79,51 @@ export default function AvatarCreatePage() {
   const [avatarCount, setAvatarCount] = useState(0)
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
+  const [skillsFromSquare, setSkillsFromSquare] = useState<any[]>([])
 
   useEffect(() => {
     if (!isLoggedIn) {
       switchTab({ url: '/pages/social/index' })
       return
     }
-    
-    // 加载订阅信息
+
+    // 加载订阅信息和技能列表
     loadSubscriptionInfo()
+    loadSkillsFromSquare()
   }, [isLoggedIn])
+
+  // 从技能广场获取技能列表
+  const loadSkillsFromSquare = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/skills'
+      })
+
+      if (res.data?.code === 200 && res.data?.data?.skills) {
+        // 过滤掉套件技能（短剧套件、个人IP套件等）
+        const filteredSkills = res.data.data.skills.filter((skill: any) => {
+          // 排除套件技能
+          const kitSkillToolNames = new Set([
+            'generate_shortdrama_script',
+            'generate_storyboard',
+            'produce_shortdrama',
+            'generate_multi_episode_drama',
+            'generate_drama_voiceover',
+            'edit_shortdrama_video',
+            'generate_subtitle',
+            'recommend_bgm',
+            'generate_video',
+            'app_assign_order'
+          ])
+          return !skill.tool_name || !kitSkillToolNames.has(skill.tool_name)
+        })
+
+        setSkillsFromSquare(filteredSkills)
+      }
+    } catch (error) {
+      console.error('加载技能列表失败:', error)
+    }
+  }
 
   const loadSubscriptionInfo = async () => {
     try {
@@ -171,16 +199,59 @@ export default function AvatarCreatePage() {
     }
   ]
 
-  const abilities: AbilityOption[] = [
-    { id: 'writing', name: '写作助手', desc: '文案、文章、创意写作', icon: Sparkles },
-    { id: 'coding', name: '编程专家', desc: '代码开发、技术解答', icon: Zap },
-    { id: 'analysis', name: '数据分析', desc: '数据洞察、报告生成', icon: Brain },
-    { id: 'planning', name: '任务规划', desc: '日程管理、目标追踪', icon: Target },
-    { id: 'learning', name: '学习伙伴', desc: '知识问答、技能提升', icon: Star },
-    { id: 'creative', name: '创意设计', desc: '视觉创意、头脑风暴', icon: Palette },
-    { id: 'emotional', name: '情感陪伴', desc: '心理支持、情绪疏导', icon: Heart },
-    { id: 'protection', name: '安全守护', desc: '隐私保护、风险评估', icon: Shield }
-  ]
+  // 从技能广场获取的技能数据
+  const getAbilitiesFromSkills = () => {
+    if (skillsFromSquare.length === 0) {
+      // 如果技能广场数据未加载，返回默认列表
+      return [
+        { id: 'writing', name: '写作助手', desc: '文案、文章、创意写作', icon: Sparkles },
+        { id: 'coding', name: '编程专家', desc: '代码开发、技术解答', icon: Zap },
+        { id: 'analysis', name: '数据分析', desc: '数据洞察、报告生成', icon: Brain },
+        { id: 'planning', name: '任务规划', desc: '日程管理、目标追踪', icon: Target },
+        { id: 'learning', name: '学习伙伴', desc: '知识问答、技能提升', icon: Star },
+        { id: 'creative', name: '创意设计', desc: '视觉创意、头脑风暴', icon: Palette },
+        { id: 'emotional', name: '情感陪伴', desc: '心理支持、情绪疏导', icon: Heart },
+        { id: 'protection', name: '安全守护', desc: '隐私保护、风险评估', icon: Shield }
+      ]
+    }
+
+    // 映射技能数据到能力选项
+    const iconMap: Record<string, any> = {
+      'generate_image': Sparkles,
+      'generate_video': Bot,
+      'write_article': Star,
+      'write_wechat_mp_article': MessageCircle,
+      'write_xiaohongshu_note': Heart,
+      'social_media_publish': TrendingUp,
+      'generate_text': Brain,
+      'generate_audio': Zap,
+      'text_to_speech': Sparkles,
+      'default': Star
+    }
+
+    return skillsFromSquare.slice(0, 12).map((skill: any) => ({
+      id: skill.id || skill.tool_name,
+      name: skill.name,
+      desc: skill.description,
+      icon: iconMap[skill.tool_name] || iconMap['default'],
+      toolName: skill.tool_name,
+      category: skill.category,
+      tags: skill.tags
+    }))
+  }
+
+  const abilities = getAbilitiesFromSkills()
+
+  // 获取选中的能力项（包含toolName）
+  const getSelectedAbilitiesWithToolName = () => {
+    return selectedAbilities.map(abilityId => {
+      const ability = abilities.find((a: any) => a.id === abilityId)
+      return {
+        id: abilityId,
+        tool_name: (ability as any)?.toolName || null
+      }
+    })
+  }
 
   const appearanceStyles: AppearanceStyle[] = [
     { id: 'tech', name: '科技感', desc: '未来·理性', color: '#00f5ff', icon: Bot },
@@ -391,13 +462,16 @@ export default function AvatarCreatePage() {
         // 获取地理位置失败不影响分身创建，继续执行
       }
 
+      // 构建技能数据（包含技能ID和tool_name）
+      const skillsData = getSelectedAbilitiesWithToolName()
+
       const res = await Network.request({
         url: '/api/avatar',
         method: 'POST',
         data: {
           name: avatarName,
           personality: selectedPersonality,
-          abilities: selectedAbilities,
+          abilities: skillsData, // 传递完整的技能数据（包含tool_name）
           appearance_style: appearanceStyle,
           speaking_style: speakingStyle,
           photo_url: photoUrl,
@@ -501,33 +575,49 @@ export default function AvatarCreatePage() {
   const renderStep1 = () => (
     <View className="step-content">
       <View className="step-header">
-        <Text className="step-title">AI分析报告</Text>
+        <Text className="step-title">AI深度分析报告</Text>
         <Text className="step-desc">基于照片深度分析生成的人格画像</Text>
       </View>
 
       {photoAnalysis && (
         <View className="analysis-report">
-          {/* 照片预览 */}
-          <View className="report-photo">
-            {photoPath && (
-              <Image src={photoPath} className="report-photo-img" mode="aspectFill" />
-            )}
+          {/* 照片预览 - 增强版 */}
+          <View className="report-photo-container">
+            <View className="report-photo-glow" />
+            <View className="report-photo">
+              {photoPath && (
+                <Image src={photoPath} className="report-photo-img" mode="aspectFill" />
+              )}
+              <View className="report-photo-overlay">
+                <View className="scan-line" />
+              </View>
+              <View className="report-photo-border" />
+            </View>
+            <View className="report-photo-badge">
+              <Sparkles size={16} color="#00f5ff" />
+              <Text className="badge-text">AI分析完成</Text>
+            </View>
           </View>
 
-          {/* 气质类型 */}
+          {/* 气质类型 - 高级卡片 */}
           {photoAnalysis.temperament && (
-            <View className="report-section">
-              <View className="section-title-row">
-                <Sparkles size={20} color="#00f5ff" />
+            <View className="report-section premium-section">
+              <View className="section-title-row premium-title">
+                <View className="title-icon-wrap">
+                  <Sparkles size={20} color="#00f5ff" />
+                </View>
                 <Text className="section-title">气质类型</Text>
+                <View className="section-tag">核心特征</View>
               </View>
-              <View className="temperament-card">
+              <View className="temperament-card premium-card">
+                <View className="temperament-glow" />
                 <Text className="temperament-type">{photoAnalysis.temperament.type}</Text>
                 <Text className="temperament-desc">{photoAnalysis.temperament.description}</Text>
                 <View className="temperament-keywords">
                   {photoAnalysis.temperament.keywords?.map((kw, idx) => (
-                    <View key={idx} className="keyword-tag">
+                    <View key={idx} className="keyword-tag premium-tag">
                       <Text className="keyword-text">{kw}</Text>
+                      <View className="tag-glow" />
                     </View>
                   ))}
                 </View>
@@ -535,23 +625,34 @@ export default function AvatarCreatePage() {
             </View>
           )}
 
-          {/* 面部特征 */}
+          {/* 面部特征 - 增强网格 */}
           {photoAnalysis.facialFeatures && (
             <View className="report-section">
               <View className="section-title-row">
-                <Eye size={20} color="#bf00ff" />
+                <View className="title-icon-wrap purple">
+                  <Eye size={20} color="#bf00ff" />
+                </View>
                 <Text className="section-title">面部特征</Text>
               </View>
-              <View className="features-grid">
-                <View className="feature-item">
+              <View className="features-grid premium-grid">
+                <View className="feature-item premium-item">
+                  <View className="feature-icon">
+                    <Zap size={16} color="#bf00ff" />
+                  </View>
                   <Text className="feature-label">表情特点</Text>
                   <Text className="feature-value">{photoAnalysis.facialFeatures.expression}</Text>
                 </View>
-                <View className="feature-item">
+                <View className="feature-item premium-item">
+                  <View className="feature-icon">
+                    <Star size={16} color="#bf00ff" />
+                  </View>
                   <Text className="feature-label">眼神特点</Text>
                   <Text className="feature-value">{photoAnalysis.facialFeatures.eyes}</Text>
                 </View>
-                <View className="feature-item full">
+                <View className="feature-item full premium-item">
+                  <View className="feature-icon large">
+                    <Heart size={20} color="#bf00ff" />
+                  </View>
                   <Text className="feature-label">整体印象</Text>
                   <Text className="feature-value">{photoAnalysis.facialFeatures.impression}</Text>
                 </View>
@@ -559,79 +660,98 @@ export default function AvatarCreatePage() {
             </View>
           )}
 
-          {/* 性格特质 */}
+          {/* 性格特质 - 标签云 */}
           {photoAnalysis.personality && (
             <View className="report-section">
               <View className="section-title-row">
-                <Heart size={20} color="#ff6b6b" />
+                <View className="title-icon-wrap red">
+                  <Heart size={20} color="#ff6b6b" />
+                </View>
                 <Text className="section-title">性格特质</Text>
               </View>
               <View className="personality-tags">
                 {photoAnalysis.personality.core?.map((trait, idx) => (
-                  <View key={idx} className="personality-tag">
+                  <View key={idx} className="personality-tag premium-personality-tag">
                     <Text className="tag-text">{trait}</Text>
+                    <View className="tag-shine" />
                   </View>
                 ))}
               </View>
               {photoAnalysis.personality.strengths && (
-                <View className="strengths-row">
-                  <Text className="strengths-label">优势：</Text>
+                <View className="strengths-row premium-strengths">
+                  <View className="strengths-icon">
+                    <TrendingUp size={16} color="#ff6b6b" />
+                  </View>
+                  <Text className="strengths-label">核心优势</Text>
                   <Text className="strengths-value">{photoAnalysis.personality.strengths.join(' · ')}</Text>
                 </View>
               )}
             </View>
           )}
 
-          {/* 沟通风格 */}
+          {/* 沟通风格 - 引用样式 */}
           {photoAnalysis.communicationStyle && (
-            <View className="report-section">
-              <View className="section-title-row">
-                <MessageCircle size={20} color="#00ff88" />
-                <Text className="section-title">沟通风格</Text>
+            <View className="report-section quote-section">
+              <View className="quote-icon">
+                <MessageCircle size={24} color="#00ff88" />
               </View>
-              <Text className="communication-text">{photoAnalysis.communicationStyle}</Text>
+              <Text className="communication-text premium-text">&ldquo;{photoAnalysis.communicationStyle}&rdquo;</Text>
             </View>
           )}
 
-          {/* 擅长领域 */}
+          {/* 擅长领域 - 炫彩卡片 */}
           {photoAnalysis.strengths && (
             <View className="report-section">
               <View className="section-title-row">
-                <TrendingUp size={20} color="#ffaa00" />
+                <View className="title-icon-wrap orange">
+                  <TrendingUp size={20} color="#ffaa00" />
+                </View>
                 <Text className="section-title">擅长领域</Text>
               </View>
               <View className="strengths-grid">
                 {photoAnalysis.strengths.map((s, idx) => (
-                  <View key={idx} className="strength-item">
+                  <View key={idx} className="strength-item premium-strength">
+                    <View className="strength-bg" />
                     <Text className="strength-text">{s}</Text>
+                    <View className="strength-shine" />
                   </View>
                 ))}
               </View>
             </View>
           )}
 
-          {/* 名字建议 */}
+          {/* 名字建议 - 列表样式 */}
           {photoAnalysis.nameSuggestions && (
-            <View className="report-section">
+            <View className="report-section suggestions-section">
               <View className="section-title-row">
-                <Star size={20} color="#00f5ff" />
-                <Text className="section-title">名字建议</Text>
+                <View className="title-icon-wrap cyan">
+                  <Star size={20} color="#00f5ff" />
+                </View>
+                <Text className="section-title">AI推荐名字</Text>
               </View>
               <View className="name-suggestions">
                 {photoAnalysis.nameSuggestions.map((suggestion, idx) => (
-                  <View key={idx} className="name-suggestion-item">
-                    <Text className="suggested-name">{suggestion.name}</Text>
-                    <Text className="suggestion-reason">{suggestion.reason}</Text>
+                  <View key={idx} className="name-suggestion-item premium-suggestion">
+                    <View className="suggestion-number">{idx + 1}</View>
+                    <View className="suggestion-content">
+                      <Text className="suggested-name">{suggestion.name}</Text>
+                      <Text className="suggestion-reason">{suggestion.reason}</Text>
+                    </View>
+                    <Check size={18} color="#00f5ff" className="suggestion-check" />
                   </View>
                 ))}
               </View>
             </View>
           )}
 
-          {/* 总结 */}
+          {/* 总结 - 高亮框 */}
           {photoAnalysis.summary && (
-            <View className="report-summary">
+            <View className="report-summary premium-summary">
+              <View className="summary-icon">
+                <Brain size={24} color="#00f5ff" />
+              </View>
               <Text className="summary-text">{photoAnalysis.summary}</Text>
+              <View className="summary-glow" />
             </View>
           )}
         </View>
@@ -682,7 +802,7 @@ export default function AvatarCreatePage() {
     <View className="step-content">
       <View className="step-header">
         <Text className="step-title">选择核心能力</Text>
-        <Text className="step-desc">最多选择3个能力，打造专属助手</Text>
+        <Text className="step-desc">从技能广场选择最多3个能力，打造专属助手</Text>
       </View>
 
       <View className="ability-grid">
@@ -690,7 +810,7 @@ export default function AvatarCreatePage() {
           const Icon = a.icon
           const isSelected = selectedAbilities.includes(a.id)
           return (
-            <View 
+            <View
               key={a.id}
               className={`ability-card ${isSelected ? 'selected' : ''}`}
               onClick={() => toggleAbility(a.id)}
@@ -700,6 +820,11 @@ export default function AvatarCreatePage() {
               </View>
               <Text className="ability-name">{a.name}</Text>
               <Text className="ability-desc">{a.desc}</Text>
+              {a.category && (
+                <View className="ability-category">
+                  <Text className="category-text">{a.category}</Text>
+                </View>
+              )}
               {isSelected && (
                 <View className="ability-check">
                   <Check size={14} color="#00f5ff" />

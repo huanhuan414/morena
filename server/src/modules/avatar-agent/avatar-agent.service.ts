@@ -206,15 +206,22 @@ export class AvatarAgentService {
         .eq('avatar_id', avatarId)
         .single()
 
+      // 从avatar表查询分身属性
+      const { data: avatarData, error: avatarError } = await getSupabaseClient()
+        .from('avatar')
+        .select('name, personality, appearance_style, speaking_style, photo_analysis')
+        .eq('id', avatarId)
+        .single()
+
       if (error || !data) {
         // 使用默认配置
-        return this.getDefaultConfig(avatarId)
+        return this.getDefaultConfig(avatarId, avatarData)
       }
 
       return {
         id: data.id,
         avatarId: data.avatar_id,
-        systemPrompt: data.system_prompt,
+        systemPrompt: this.buildSystemPrompt(data.system_prompt, avatarData),
         rolePrompt: data.role_prompt,
         temperature: parseFloat(data.temperature),
         maxTokens: data.max_tokens,
@@ -233,13 +240,108 @@ export class AvatarAgentService {
   }
 
   /**
+   * 构建个性化的系统提示词
+   */
+  private buildSystemPrompt(basePrompt: string, avatarData: any): string {
+    if (!avatarData) {
+      return basePrompt
+    }
+
+    const parts: string[] = [basePrompt || '你是一个智能分身助手。']
+
+    // 添加分身名称
+    if (avatarData.name) {
+      parts.push(`\n## 你的名称\n你叫"${avatarData.name}"。`)
+    }
+
+    // 添加性格类型
+    if (avatarData.personality) {
+      const personalityMap: Record<string, string> = {
+        'sunny': '阳光开朗',
+        'gentle': '温柔体贴',
+        'cool': '冷静理智',
+        'humorous': '幽默风趣',
+        'mature': '成熟稳重',
+        'active': '活泼开朗'
+      }
+      const personalityName = personalityMap[avatarData.personality] || avatarData.personality
+      parts.push(`\n## 你的性格\n你的性格类型是：${personalityName}。请始终保持这种性格特征进行对话。`)
+    }
+
+    // 添加形象风格
+    if (avatarData.appearance_style) {
+      parts.push(`\n## 你的形象风格\n${avatarData.appearance_style}`)
+    }
+
+    // 添加说话方式
+    if (avatarData.speaking_style) {
+      parts.push(`\n## 你的说话方式\n${avatarData.speaking_style}`)
+    }
+
+    // 添加AI分析结果（如果有的话）
+    if (avatarData.photo_analysis) {
+      const analysis = avatarData.photo_analysis
+
+      // 气质类型
+      if (analysis.temperament) {
+        parts.push(`\n## 气质特征\n- 气质类型：${analysis.temperament.type}\n- 描述：${analysis.temperament.description}`)
+      }
+
+      // 面部特征
+      if (analysis.facialFeatures) {
+        parts.push(`\n## 面部特征\n- 表情特点：${analysis.facialFeatures.expression}\n- 眼神特点：${analysis.facialFeatures.eyes}\n- 整体印象：${analysis.facialFeatures.impression}`)
+      }
+
+      // 性格特质
+      if (analysis.personality) {
+        const coreTraits = analysis.personality.core?.join('、') || ''
+        const strengths = analysis.personality.strengths?.join('、') || ''
+        parts.push(`\n## 核心特质\n${coreTraits ? `- 核心特质：${coreTraits}` : ''}\n${strengths ? `- 优势：${strengths}` : ''}`)
+      }
+
+      // 沟通风格
+      if (analysis.communicationStyle) {
+        parts.push(`\n## 沟通风格\n${analysis.communicationStyle}`)
+      }
+
+      // 擅长领域
+      if (analysis.strengths && analysis.strengths.length > 0) {
+        parts.push(`\n## 擅长领域\n${analysis.strengths.join('、')}`)
+      }
+
+      // 总结
+      if (analysis.summary) {
+        parts.push(`\n## 综合画像\n${analysis.summary}`)
+      }
+    }
+
+    return parts.join('\n')
+  }
+
+  /**
    * 获取默认配置
    */
-  private getDefaultConfig(avatarId: string): AvatarAgentConfig {
+  async getDefaultConfig(avatarId: string, avatarData?: any): Promise<AvatarAgentConfig> {
+    // 如果没有传入avatarData，尝试查询
+    if (!avatarData) {
+      try {
+        const { data: data, error } = await getSupabaseClient()
+          .from('avatar')
+          .select('name, personality, appearance_style, speaking_style, photo_analysis')
+          .eq('id', avatarId)
+          .single()
+        if (!error) {
+          avatarData = data
+        }
+      } catch (err) {
+        this.logger.warn('Failed to load avatar data:', err)
+      }
+    }
+
     return {
       id: 'default',
       avatarId,
-      systemPrompt: `你是一个智能分身助手，负责回答用户问题。
+      systemPrompt: this.buildSystemPrompt(undefined, avatarData) || `你是一个智能分身助手，负责回答用户问题。
 - 使用友好和专业的语气
 - 优先理解用户意图
 - 根据用户需求提供帮助
