@@ -3,6 +3,7 @@ import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { NotificationService } from '../notification/notification.service'
 import { SubscriptionService } from '../subscription/subscription.service'
 import { SmsService } from '../sms/sms.service'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface OrderAnalysis {
@@ -99,7 +100,8 @@ export class OrderDispatchService {
   constructor(
     private readonly notificationService: NotificationService,
     private readonly subscriptionService: SubscriptionService,
-    private readonly smsService: SmsService
+    private readonly smsService: SmsService,
+    private readonly contentGenerationService: ContentGenerationService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -1693,7 +1695,7 @@ export class OrderDispatchService {
 
     // 自动生成内容
     try {
-      await this.autoGenerateContent(request.order_id, avatarId)
+      await this.autoGenerateContent(request.order_id, avatarId, request.id)
       console.log(`[订单分配] 已为订单 ${request.order_id} 自动生成内容`)
     } catch (error) {
       console.error(`[订单分配] 自动内容生成失败:`, error)
@@ -2123,12 +2125,13 @@ export class OrderDispatchService {
   }
 
   /**
-   * 自动生成订单内容（分配给分身后自动调用）
+   * 自动生成订单内容（分配给分身后自动调用，使用分身技能）
    * @param orderId 订单ID
    * @param avatarId 分身ID
+   * @param requestId 分配请求ID
    */
-  async autoGenerateContent(orderId: string, avatarId: string) {
-    console.log(`[自动内容生成] 开始生成订单 ${orderId} 的内容，分身 ${avatarId}`)
+  async autoGenerateContent(orderId: string, avatarId: string, requestId: string) {
+    console.log(`[自动内容生成] 开始生成订单 ${orderId} 的内容，分身 ${avatarId}，使用分身技能`)
 
     try {
       const client = getSupabaseClient()
@@ -2155,60 +2158,25 @@ export class OrderDispatchService {
         throw new Error('分身不存在')
       }
 
-      // 使用 LLM 生成内容
-      const generatePrompt = `你是一个专业的内容创作者。请根据以下订单需求，生成高质量的内容。
+      // 使用分身技能生成内容
+      const generatedContents = await this.contentGenerationService.generateContent({
+        orderId,
+        requestId,
+        avatarId,
+        orderTitle: order.title,
+        orderDescription: order.description,
+        platforms: order.platforms || ['wechat_mp'],
+        contentType: order.content_type || '文章',
+        targetAudience: order.target_audience || '普通用户',
+        avatarName: avatar.name,
+        avatarPersonality: avatar.style
+      })
 
-订单标题：${order.title}
-订单描述：${order.description}
-目标平台：${order.platforms?.join(', ') || '未指定'}
-内容类型：${order.content_type}
-目标受众：${order.target_audience || '未指定'}
-内容要求：${order.requirements || '无特殊要求'}
+      console.log(`[自动内容生成] 成功生成 ${generatedContents.length} 个平台的内容`)
 
-分身特点：
-- 名称：${avatar.name}
-- 专业领域：${avatar.professional_domain || '未指定'}
-- 风格：${avatar.style || '未指定'}
-
-请生成符合分身风格和订单需求的内容，包括：
-1. 标题
-2. 正文内容
-3. 发布建议（发布时间、标签等）
-
-请以 JSON 格式返回，格式如下：
-{
-  "title": "内容标题",
-  "content": "正文内容",
-  "publish_suggestions": {
-    "best_time": "建议发布时间",
-    "tags": ["标签1", "标签2", "标签3"],
-    "description": "其他建议"
-  }
-}`
-
-      const response = await this.llmClient.invoke(
-        [
-          {
-            role: 'system',
-            content: '你是一个专业的内容创作者，擅长根据订单需求生成高质量的内容。'
-          },
-          {
-            role: 'user',
-            content: generatePrompt
-          }
-        ],
-        {
-          model: 'doubao-seed-2-0-pro-260215',
-          temperature: 0.7
-        }
-      )
-
-      let generatedContent
-      try {
-        generatedContent = JSON.parse(response.content)
-      } catch (error) {
-        console.error('[自动内容生成] 解析 LLM 响应失败:', error)
-        throw new Error('内容生成失败')
+      let generatedContent = {
+        platform_count: generatedContents.length,
+        contents: generatedContents
       }
 
       // 创建订单执行记录

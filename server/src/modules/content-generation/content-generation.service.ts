@@ -1,7 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Config } from 'coze-coding-dev-sdk'
-import { LLMClient } from 'coze-coding-dev-sdk'
 import { SupabaseService } from '../supabase/supabase.service'
+import { AvatarToolRegistry } from '../avatar-agent/tools/tool-registry'
+
+// 平台到工具的映射
+const PLATFORM_TOOL_MAPPING: Record<string, string> = {
+  wechat_mp: 'write_wechat_mp_article',
+  xiaohongshu: 'write_xiaohongshu_note',
+  douyin: 'generate_video',
+  weibo: 'write_wechat_mp_article', // 微博使用文章工具，后续可以优化
+  bilibili: 'generate_video', // B站使用视频工具
+  kuaishou: 'generate_video' // 快手使用视频工具
+}
 
 // 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {
@@ -11,51 +20,6 @@ const PLATFORM_NAMES: Record<string, string> = {
   weibo: '微博',
   bilibili: 'B站',
   kuaishou: '快手'
-}
-
-// 平台特性
-const PLATFORM_FEATURES: Record<string, {
-  characterLimit: number
-  supportsImages: boolean
-  supportsVideo: boolean
-  tone: string
-}> = {
-  wechat_mp: {
-    characterLimit: 1000,
-    supportsImages: true,
-    supportsVideo: true,
-    tone: '专业、亲切'
-  },
-  xiaohongshu: {
-    characterLimit: 1000,
-    supportsImages: true,
-    supportsVideo: true,
-    tone: '时尚、生活化、emoji丰富'
-  },
-  douyin: {
-    characterLimit: 200,
-    supportsImages: false,
-    supportsVideo: true,
-    tone: '轻松、有趣、互动性强'
-  },
-  weibo: {
-    characterLimit: 140,
-    supportsImages: true,
-    supportsVideo: true,
-    tone: '简练、有力、话题感强'
-  },
-  bilibili: {
-    characterLimit: 500,
-    supportsImages: true,
-    supportsVideo: true,
-    tone: '专业、二次元、年轻化'
-  },
-  kuaishou: {
-    characterLimit: 200,
-    supportsImages: false,
-    supportsVideo: true,
-    tone: '接地气、真实、互动性强'
-  }
 }
 
 interface GenerateContentInput {
@@ -89,15 +53,14 @@ interface GeneratedContent {
 @Injectable()
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
-  private llmClient: LLMClient
 
-  constructor(private supabase: SupabaseService) {
-    const config = new Config()
-    this.llmClient = new LLMClient(config)
-  }
+  constructor(
+    private supabase: SupabaseService,
+    private toolRegistry: AvatarToolRegistry
+  ) {}
 
   /**
-   * 为分身生成内容
+   * 为分身生成内容（使用分身的技能/工具）
    */
   async generateContent(input: GenerateContentInput): Promise<GeneratedContent[]> {
     const {
@@ -118,38 +81,49 @@ export class ContentGenerationService {
     // 为每个平台生成内容
     for (const platform of platforms) {
       try {
-        this.logger.log(`为平台 ${platform} 生成内容...`)
+        this.logger.log(`为平台 ${platform} 生成内容，使用分身技能...`)
 
-        // 构建系统提示词
-        const systemPrompt = this.buildSystemPrompt(
+        // 获取对应的工具
+        const toolName = PLATFORM_TOOL_MAPPING[platform]
+        if (!toolName) {
+          this.logger.warn(`平台 ${platform} 没有对应的工具`)
+          continue
+        }
+
+        // 检查工具是否存在
+        if (!this.toolRegistry.hasTool(toolName)) {
+          this.logger.warn(`工具 ${toolName} 不存在，跳过平台 ${platform}`)
+          continue
+        }
+
+        // 构建工具参数
+        const toolParams = this.buildToolParams(
           platform,
+          orderTitle,
+          orderDescription,
           contentType,
           targetAudience,
-          avatarName,
           avatarPersonality
         )
 
-        // 构建用户提示词
-        const userPrompt = this.buildUserPrompt(
-          orderTitle,
-          orderDescription,
-          platform
-        )
+        // 构建工具上下文
+        const context: ToolContext = {
+          avatarId,
+          userId: '', // 可以从订单中获取
+          sessionId: requestId,
+          timestamp: new Date().toISOString()
+        }
 
-        // 调用LLM生成内容
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
+        // 执行工具
+        const result = await this.toolRegistry.executeTool(toolName, toolParams, context)
 
-        const response = await this.llmClient.invoke(messages, {
-          model: 'doubao-seed-2-0-lite-260215',
-          temperature: 0.8,
-          thinking: 'disabled'
-        })
+        if (!result.success) {
+          this.logger.error(`工具 ${toolName} 执行失败:`, result.error)
+          continue
+        }
 
-        // 解析生成的内容
-        const parsedContent = this.parseGeneratedContent(response.content, platform)
+        // 解析工具输出
+        const parsedContent = this.parseToolResult(result.data, platform)
 
         // 保存到数据库
         const contentRecord = await this.saveContent({
@@ -173,109 +147,151 @@ export class ContentGenerationService {
   }
 
   /**
-   * 构建系统提示词
+   * 构建工具参数
    */
-  private buildSystemPrompt(
+  private buildToolParams(
     platform: string,
-    contentType: string,
-    targetAudience: string,
-    avatarName: string,
-    avatarPersonality?: string
-  ): string {
-    const platformInfo = PLATFORM_FEATURES[platform] || PLATFORM_FEATURES.wechat_mp
-    const platformName = PLATFORM_NAMES[platform] || platform
-
-    let prompt = `你是一个专业的内容创作助手，帮助分身 "${avatarName}" 为 ${platformName} 平台创作内容。
-
-平台特性：
-- 平台名称：${platformName}
-- 字符限制：${platformInfo.characterLimit}字
-- 支持图片：${platformInfo.supportsImages ? '是' : '否'}
-- 支持视频：${platformInfo.supportsVideo ? '是' : '否'}
-- 语调风格：${platformInfo.tone}
-
-创作要求：
-1. 内容类型：${contentType}
-2. 目标受众：${targetAudience}`
-
-    if (avatarPersonality) {
-      prompt += `\n3. 分身个性：${avatarPersonality}`
-    }
-
-    prompt += `
-
-输出格式要求（严格按照JSON格式）：
-{
-  "title": "内容标题（如果需要）",
-  "content": "正文内容",
-  "hashtags": ["#话题1", "#话题2"],
-  "image_suggestions": ["图片建议1", "图片建议2"],
-  "video_suggestions": ["视频建议1", "视频建议2"]
-}
-
-注意事项：
-- 内容要符合平台调性
-- 使用emoji增加亲和力
-- 标签要相关且有热度
-- 图片/视频建议要具体可行
-- 保持原创性和吸引力`
-
-    return prompt
-  }
-
-  /**
-   * 构建用户提示词
-   */
-  private buildUserPrompt(
     orderTitle: string,
     orderDescription: string,
-    platform: string
-  ): string {
-    const platformInfo = PLATFORM_FEATURES[platform] || PLATFORM_FEATURES.wechat_mp
+    contentType: string,
+    targetAudience: string,
+    avatarPersonality?: string
+  ): Record<string, any> {
+    const baseParams = {
+      topic: orderTitle,
+      description: orderDescription,
+      target_audience: targetAudience
+    }
 
-    return `请为以下订单需求生成适合 ${PLATFORM_NAMES[platform]} 平台的内容：
+    // 根据平台添加特定参数
+    if (platform === 'wechat_mp' || platform === 'weibo') {
+      return {
+        ...baseParams,
+        emotion: this.mapContentTypeToEmotion(contentType),
+        keywords: this.extractKeywords(orderDescription),
+        include_cover: true
+      }
+    } else if (platform === 'xiaohongshu') {
+      return {
+        ...baseParams,
+        style: this.mapContentTypeToStyle(contentType),
+        keywords: this.extractKeywords(orderDescription),
+        include_images: true
+      }
+    } else if (platform === 'douyin' || platform === 'bilibibili' || platform === 'kuaishou') {
+      return {
+        ...baseParams,
+        video_style: this.mapContentTypeToVideoStyle(contentType),
+        duration: 'short', // 默认短视频
+        include_background_music: true
+      }
+    }
 
-订单标题：${orderTitle}
-需求描述：${orderDescription}
-
-要求：
-- 正文内容控制在 ${platformInfo.characterLimit} 字以内
-- 内容要贴近用户需求
-- 引导用户互动
-- 增加转化引导
-
-请按照系统提示词中指定的JSON格式输出。`
+    return baseParams
   }
 
   /**
-   * 解析生成的内容
+   * 将内容类型映射为情感基调
    */
-  private parseGeneratedContent(rawContent: string, platform: string): Partial<GeneratedContent> {
-    try {
-      // 尝试提取JSON部分（可能包含在markdown代码块中）
-      let jsonStr = rawContent
+  private mapContentTypeToEmotion(contentType: string): string {
+    const emotionMap: Record<string, string> = {
+      '文章': '干货',
+      '图文': '情感',
+      '短视频': '热点',
+      '营销文案': '励志',
+      '产品推广': '治愈',
+      '品牌故事': '情感',
+      '知识科普': '干货',
+      '生活分享': '治愈',
+      '娱乐八卦': '热点'
+    }
+    return emotionMap[contentType] || '干货'
+  }
 
-      // 如果内容包含代码块，提取JSON部分
-      const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1]
+  /**
+   * 将内容类型映射为风格
+   */
+  private mapContentTypeToStyle(contentType: string): string {
+    const styleMap: Record<string, string> = {
+      '文章': '干货',
+      '图文': '种草',
+      '短视频': 'vlog',
+      '营销文案': '广告',
+      '产品推广': '测评',
+      '品牌故事': '故事',
+      '知识科普': '科普',
+      '生活分享': '生活',
+      '娱乐八卦': '娱乐'
+    }
+    return styleMap[contentType] || '种草'
+  }
+
+  /**
+   * 将内容类型映射为视频风格
+   */
+  private mapContentTypeToVideoStyle(contentType: string): string {
+    const styleMap: Record<string, string> = {
+      '文章': '口播',
+      '图文': '展示',
+      '短视频': '快剪',
+      '营销文案': '广告',
+      '产品推广': '测评',
+      '品牌故事': '叙事',
+      '知识科普': '科普',
+      '生活分享': 'vlog',
+      '娱乐八卦': '搞笑'
+    }
+    return styleMap[contentType] || '快剪'
+  }
+
+  /**
+   * 提取关键词
+   */
+  private extractKeywords(description: string): string[] {
+    // 简单的关键词提取逻辑
+    const keywords: string[] = []
+    const commonKeywords = ['技巧', '方法', '攻略', '推荐', '分享', '教程', '指南', '秘籍', '心得', '经验']
+
+    commonKeywords.forEach(keyword => {
+      if (description.includes(keyword)) {
+        keywords.push(keyword)
       }
+    })
 
-      const parsed = JSON.parse(jsonStr)
+    return keywords.length > 0 ? keywords : ['干货', '分享']
+  }
+
+  /**
+   * 解析工具输出
+   */
+  private parseToolResult(toolData: any, platform: string): Partial<GeneratedContent> {
+    try {
+      // 工具返回的数据结构可能不同，根据实际情况解析
+      // 假设工具返回的结构是：
+      // {
+      //   title: "标题",
+      //   content: "正文内容",
+      //   hashtags: ["#标签1", "#标签2"],
+      //   cover_image: "封面图URL",
+      //   images: ["图片URL1", "图片URL2"],
+      //   video_url: "视频URL"
+      // }
 
       return {
-        content: parsed.content || rawContent,
-        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
-        image_suggestions: Array.isArray(parsed.image_suggestions) ? parsed.image_suggestions : [],
-        video_suggestions: Array.isArray(parsed.video_suggestions) ? parsed.video_suggestions : [],
-        title: parsed.title,
+        title: toolData.title || toolData.topic || '',
+        content: toolData.content || toolData.body || '',
+        hashtags: Array.isArray(toolData.hashtags) ? toolData.hashtags : [],
+        image_suggestions: [
+          ...(Array.isArray(toolData.images) ? toolData.images : []),
+          ...(toolData.cover_image ? [toolData.cover_image] : [])
+        ],
+        video_suggestions: toolData.video_url ? [toolData.video_url] : [],
         status: 'draft'
       }
     } catch (error) {
-      this.logger.warn('解析生成内容失败，使用原始内容', error)
-      // 如果解析失败，使用原始内容
+      this.logger.warn('解析工具输出失败，使用原始数据', error)
       return {
-        content: rawContent,
+        content: typeof toolData === 'string' ? toolData : JSON.stringify(toolData),
         hashtags: [],
         image_suggestions: [],
         video_suggestions: [],
