@@ -300,7 +300,6 @@ export default function MindChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
-  const [inputHeight, setInputHeight] = useState(88) // 输入框高度，rpx
   const [loading, setLoading] = useState(false)
   const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
   const [showHistory, setShowHistory] = useState(false)
@@ -3826,15 +3825,17 @@ export default function MindChatPage() {
 
       {/* 底部输入栏 */}
       <View className="input-bar">
-        {/* 🔴 新增：上传的图片和视频预览 */}
+        {/* 🔴 重新设计：媒体预览栏 - 悬浮式设计 */}
         {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
           <View className="media-preview-bar">
-            <ScrollView scrollX className="media-preview-scroll">
+            <ScrollView scrollX className="media-preview-scroll" scrollWithAnimation>
               {uploadedImages.map((imageUrl, idx) => (
                 <View key={`img-${idx}`} className="media-preview-item">
                   <Image src={imageUrl} className="media-preview-image" mode="aspectFill" />
-                  <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
-                    <X size={16} color="#ffffff" />
+                  <View className="media-preview-overlay">
+                    <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
+                      <X size={14} color="#ffffff" />
+                    </View>
                   </View>
                 </View>
               ))}
@@ -3846,11 +3847,13 @@ export default function MindChatPage() {
                     controls={false}
                     objectFit="cover"
                   />
-                  <View className="media-preview-video-icon">
-                    <Play size={20} color="#ffffff" />
-                  </View>
-                  <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
-                    <X size={16} color="#ffffff" />
+                  <View className="media-preview-overlay">
+                    <View className="media-preview-play-icon">
+                      <Play size={18} color="#ffffff" />
+                    </View>
+                    <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
+                      <X size={14} color="#ffffff" />
+                    </View>
                   </View>
                 </View>
               ))}
@@ -3858,123 +3861,120 @@ export default function MindChatPage() {
           </View>
         )}
 
-        <View className="input-left">
-          <View className="quick-action" onClick={toggleVoiceMode}>
-            {isVoiceMode ? (
-              <Keyboard size={24} color="rgba(255,255,255,0.6)" />
-            ) : (
-              <Mic size={24} color="#00f5ff" />
-            )}
+        {/* 🔴 重新设计：附件栏 - 悬浮在输入框上方 */}
+        {!isVoiceMode && (
+          <View className="attachment-bar">
+            <View className="attachment-item" onClick={handleUploadImage}>
+              <View className="attachment-icon">
+                <ImageIcon size={20} color="#00f5ff" />
+              </View>
+              <Text className="attachment-label">图片</Text>
+            </View>
+            <View className="attachment-item" onClick={handleUploadVideo}>
+              <View className="attachment-icon">
+                <VideoIcon size={20} color="#00f5ff" />
+              </View>
+              <Text className="attachment-label">视频</Text>
+            </View>
+            <View className="attachment-item" onClick={navigateToSkillsSquare}>
+              <View className="attachment-icon">
+                <Wrench size={20} color="#00f5ff" />
+              </View>
+              <Text className="attachment-label">技能</Text>
+            </View>
           </View>
-          <View className="quick-action" onClick={handleUploadImage}>
-            <ImageIcon size={24} color="#00f5ff" />
-          </View>
-          <View className="quick-action" onClick={handleUploadVideo}>
-            <VideoIcon size={24} color="#00f5ff" />
-          </View>
-          <View className="quick-action skills-action" onClick={navigateToSkillsSquare}>
-            <Wrench size={24} color="#00f5ff" />
-          </View>
-        </View>
+        )}
 
-        <View className="input-center">
-          {isVoiceMode ? (
-            <View 
-              className={`voice-input-area ${isRecording ? 'recording' : ''}`}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
-              onTouchCancel={stopRecording}
-            >
-              {isRecording ? (
-                <View className="recording-indicator">
-                  <View className="recording-wave">
-                    <View className="wave-bar" />
-                    <View className="wave-bar" />
-                    <View className="wave-bar" />
-                    <View className="wave-bar" />
-                    <View className="wave-bar" />
-                  </View>
-                  <Text className="recording-time">{formatRecordingTime(recordingTime)}</Text>
-                  <Text className="recording-hint">松开发送</Text>
-                </View>
+        {/* 🔴 重新设计：主输入区域 */}
+        <View className="input-main">
+          {/* 🔴 重新设计：左侧圆形按钮 */}
+          <View className="input-left">
+            <View className="icon-button voice-button" onClick={toggleVoiceMode}>
+              {isVoiceMode ? (
+                <Keyboard size={20} color="#00f5ff" />
               ) : (
-                <View className="voice-prompt">
-                  <Mic size={28} color="rgba(255,255,255,0.8)" />
-                  <Text className="voice-prompt-text">按住说话</Text>
-                </View>
+                <Mic size={20} color="#00f5ff" />
               )}
             </View>
-          ) : (
-            <View className="text-input-box" style={{ minHeight: `${inputHeight}rpx`, height: 'auto' }}>
-              <Textarea
-                ref={textareaRef}
-                className="text-input-control"
-                placeholder="告诉我要做什么..."
-                placeholderClass="text-input-placeholder"
-                value={inputText}
-                maxlength={1000}
-                onInput={(e: any) => {
-                  // 兼容多种事件格式
-                  let newValue = ''
-                  if (e.detail && e.detail.value !== undefined) {
-                    newValue = e.detail.value
-                  } else if (e.detail && e.detail.value !== undefined) {
-                    newValue = e.detail.value
-                  } else if (e.target && e.target.value !== undefined) {
-                    newValue = e.target.value
-                  } else if (typeof e === 'string') {
-                    newValue = e
-                  }
-                  console.log('[MindChat] 输入框值变化:', { newValue, e })
-                  setInputText(newValue)
-                  // 自动调整高度
-                  const lineHeight = 40 // 每行高度，rpx
-                  const lines = Math.ceil(newValue.length / 20) // 估算行数
-                  const minLines = 1
-                  const maxLines = 6
-                  const newLines = Math.max(minLines, Math.min(lines, maxLines))
-                  setInputHeight(88 + (newLines - 1) * lineHeight)
-                }}
-                onConfirm={() => {
-                  console.log('[MindChat] 点击确认键，发送消息')
-                  sendMessage()
-                }}
-                confirmType="send"
-                adjustPosition
-                autoHeight
-                cursorSpacing={80}
-                onBlur={(e: any) => {
-                  // 在失去焦点时也更新值（兼容性处理）
-                  let newValue = inputText
-                  if (e.detail && e.detail.value !== undefined) {
-                    newValue = e.detail.value
-                  } else if (e.target && e.target.value !== undefined) {
-                    newValue = e.target.value
-                  }
-                  console.log('[MindChat] 输入框失去焦点，值:', newValue)
-                  setInputText(newValue)
-                }}
-                style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
-              />
-              <View className="agent-mode-indicator">
-                <Text className="agent-mode-text">Agent</Text>
-              </View>
-            </View>
-          )}
-        </View>
+          </View>
 
-        <View className="input-right">
-          {!isVoiceMode && (
-            <View
-              className={`send-action ${inputText && inputText.trim() ? 'active' : ''}`}
-              onClick={() => {
-                console.log('[MindChat] 点击发送按钮，输入值:', inputText)
-                sendMessage()
-              }}
-            >
-              <Send size={22} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.3)'} />
-            </View>
-          )}
+          {/* 🔴 重新设计：中间输入框 */}
+          <View className="input-center">
+            {isVoiceMode ? (
+              <View
+                className={`voice-input-wrapper ${isRecording ? 'recording' : ''}`}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
+                onTouchCancel={stopRecording}
+              >
+                {isRecording ? (
+                  <View className="recording-content">
+                    <View className="recording-animation">
+                      <View className="recording-dot" />
+                      <View className="recording-dot" />
+                      <View className="recording-dot" />
+                    </View>
+                    <Text className="recording-time">{formatRecordingTime(recordingTime)}</Text>
+                    <Text className="recording-hint">松开发送</Text>
+                  </View>
+                ) : (
+                  <View className="voice-idle">
+                    <Mic size={24} color="rgba(255,255,255,0.6)" />
+                    <Text className="voice-idle-text">按住说话</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View className="text-input-wrapper">
+                <Textarea
+                  ref={textareaRef}
+                  className="text-input"
+                  placeholder="说点什么..."
+                  placeholderClass="text-input-placeholder"
+                  value={inputText}
+                  maxlength={1000}
+                  onInput={(e: any) => {
+                    let newValue = ''
+                    if (e.detail && e.detail.value !== undefined) {
+                      newValue = e.detail.value
+                    } else if (e.target && e.target.value !== undefined) {
+                      newValue = e.target.value
+                    } else if (typeof e === 'string') {
+                      newValue = e
+                    }
+                    setInputText(newValue)
+                  }}
+                  onConfirm={() => sendMessage()}
+                  confirmType="send"
+                  adjustPosition
+                  autoHeight
+                  cursorSpacing={80}
+                  onBlur={(e: any) => {
+                    let newValue = inputText
+                    if (e.detail && e.detail.value !== undefined) {
+                      newValue = e.detail.value
+                    } else if (e.target && e.target.value !== undefined) {
+                      newValue = e.target.value
+                    }
+                    setInputText(newValue)
+                  }}
+                  style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
+                />
+              </View>
+            )}
+          </View>
+
+          {/* 🔴 重新设计：右侧圆形发送按钮 */}
+          <View className="input-right">
+            {!isVoiceMode && (
+              <View
+                className={`send-button ${inputText && inputText.trim() ? 'active' : ''}`}
+                onClick={() => sendMessage()}
+              >
+                <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+              </View>
+            )}
+          </View>
         </View>
       </View>
       
