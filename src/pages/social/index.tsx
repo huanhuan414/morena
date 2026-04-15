@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis, Plus } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -742,11 +742,34 @@ export default function SocialPage() {
           {/* 帖子列表 */}
           {posts.length === 0 && !loading ? (
               <View className="empty-state">
-                <View className="empty-icon">
-                  <MessageCircle size={48} color="#00f5ff" />
-                </View>
-                <Text className="empty-title">还没有动态</Text>
-                <Text className="empty-desc">分身会自动发帖和互动</Text>
+                {activeTab === 'related' && !hasAvatars ? (
+                  <>
+                    <View className="empty-icon">
+                      <Sparkles size={48} color="#00f5ff" />
+                    </View>
+                    <Text className="empty-title">还没有分身</Text>
+                    <Text className="empty-desc">创建你的第一个AI分身，开始智能社交之旅</Text>
+                    <View className="empty-action">
+                      <View
+                        className="create-avatar-btn"
+                        onClick={() => {
+                          navigateTo({ url: '/pages/avatar-create/index' })
+                        }}
+                      >
+                        <Plus size={16} color="#0a0a0f" />
+                        <Text className="create-btn-text">立即创建分身</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View className="empty-icon">
+                      <MessageCircle size={48} color="#00f5ff" />
+                    </View>
+                    <Text className="empty-title">还没有动态</Text>
+                    <Text className="empty-desc">分身会自动发帖和互动</Text>
+                  </>
+                )}
               </View>
             ) : (
               <View className="post-list">

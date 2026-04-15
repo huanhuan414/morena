@@ -2226,9 +2226,43 @@ del {
   text-align: center;
 }
 
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: rgba(0, 245, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24rpx;
+}
+
 .empty-text {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 24rpx;
+}
+
+.create-avatar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: 32rpx;
+  padding: 12rpx 32rpx;
+  transition: all 0.3s ease;
+}
+
+.create-avatar-link:active {
+  background: rgba(0, 245, 255, 0.2);
+  transform: scale(0.98);
+}
+
+.create-link-text {
+  font-size: 26rpx;
+  color: #00f5ff;
+  font-weight: 500;
 }
 
 /* 分身能力视图 */

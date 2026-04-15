@@ -811,6 +811,34 @@
 .empty-desc {
   font-size: 28rpx;
   color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.empty-action {
+  margin-top: 32rpx;
+}
+
+.create-avatar-btn {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: linear-gradient(135deg, #00f5ff 0%, #00c3ff 100%);
+  border-radius: 48rpx;
+  padding: 20rpx 48rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 245, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.create-avatar-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(0, 245, 255, 0.2);
+}
+
+.create-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #0a0a0f;
 }
 
 .empty-text {

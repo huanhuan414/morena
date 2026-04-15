@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from "@tarojs/components"
-import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast } from "@tarojs/taro"
+import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, navigateTo } from "@tarojs/taro"
 import { useState, useRef, useEffect } from "react"
 import * as Network from "@/network"
 import { useUserStore } from "@/stores/user"
@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Video as VideoIcon, Paperclip
+  Play, Video as VideoIcon, Paperclip, Plus
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -1197,19 +1197,26 @@ export default function MindChatPage() {
         try {
           // 上传图片到 TOS
           const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
+            url: '/api/upload/image',
             filePath: tempFilePath,
             name: 'file'
           })
 
           console.log('[上传图片] 上传结果:', uploadRes)
 
-          const uploadData = JSON.parse(uploadRes.data)
-          if (uploadData.code === 200 && uploadData.data.url) {
+          // 处理响应数据
+          let uploadData
+          if (typeof uploadRes.data === 'string') {
+            uploadData = JSON.parse(uploadRes.data)
+          } else {
+            uploadData = uploadRes.data
+          }
+
+          if (uploadData.code === 200 && uploadData.data?.url) {
             setUploadedImages([...uploadedImages, uploadData.data.url])
             showToast({ title: '图片上传成功', icon: 'success' })
           } else {
-            showToast({ title: '上传失败', icon: 'none' })
+            showToast({ title: uploadData.message || '上传失败', icon: 'none' })
           }
         } catch (error) {
           console.error('[上传图片] 错误:', error)
@@ -1230,19 +1237,26 @@ export default function MindChatPage() {
         try {
           // 上传视频到 TOS
           const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
+            url: '/api/upload/image',
             filePath: tempFilePath,
             name: 'file'
           })
 
           console.log('[上传视频] 上传结果:', uploadRes)
 
-          const uploadData = JSON.parse(uploadRes.data)
-          if (uploadData.code === 200 && uploadData.data.url) {
+          // 处理响应数据
+          let uploadData
+          if (typeof uploadRes.data === 'string') {
+            uploadData = JSON.parse(uploadRes.data)
+          } else {
+            uploadData = uploadRes.data
+          }
+
+          if (uploadData.code === 200 && uploadData.data?.url) {
             setUploadedVideos([...uploadedVideos, uploadData.data.url])
             showToast({ title: '视频上传成功', icon: 'success' })
           } else {
-            showToast({ title: '上传失败', icon: 'none' })
+            showToast({ title: uploadData.message || '上传失败', icon: 'none' })
           }
         } catch (error) {
           console.error('[上传视频] 错误:', error)
@@ -2204,7 +2218,19 @@ export default function MindChatPage() {
           if (avatarList.length === 0) {
             return (
               <View className="avatar-list-empty">
+                <View className="empty-icon">
+                  <Sparkles size={40} color="#00f5ff" />
+                </View>
                 <Text className="empty-text">暂无分身，快去创建一个吧！</Text>
+                <View
+                  className="create-avatar-link"
+                  onClick={() => {
+                    navigateTo({ url: '/pages/avatar-create/index' })
+                  }}
+                >
+                  <Plus size={14} color="#00f5ff" />
+                  <Text className="create-link-text">立即创建分身</Text>
+                </View>
               </View>
             )
           }
