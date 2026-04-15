@@ -302,6 +302,7 @@ export default function MindChatPage() {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
+  const [hasNoAvatar, setHasNoAvatar] = useState(false) // 是否没有分身
   const [showHistory, setShowHistory] = useState(false)
   const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -762,6 +763,9 @@ export default function MindChatPage() {
         setAvatar(defaultAvatar)
         setAvatarId?.(defaultAvatar.id)  // 更新 store 中的 avatarId
         fetchOrCreateConversation(defaultAvatar.id)
+      } else {
+        console.log('[MindChat] 没有分身')
+        setHasNoAvatar(true) // 设置没有分身的状态
       }
     } catch (error) {
       console.error('[MindChat] 获取分身失败:', error)
@@ -3616,31 +3620,51 @@ export default function MindChatPage() {
           </View>
         )}
         {messages.length === 0 ? (
-          <View className="empty-chat">
-            <View className="empty-icon">
-              <View className="empty-avatar-glow">
-                {avatar?.avatar_url ? (
-                  <Image
-                    src={avatar.avatar_url}
-                    className="empty-avatar-img"
-                    mode="aspectFill"
-                    onError={() => {
-                      // 图片加载失败时不做处理
-                    }}
-                  />
-                ) : (
-                  <Sparkles size={64} color="#00f5ff" />
-                )}
+          hasNoAvatar ? (
+            <View className="no-avatar-empty">
+              <View className="empty-icon-large">
+                <Sparkles size={64} color="#00f5ff" />
+                <View className="empty-icon-glow" />
+              </View>
+              <Text className="empty-title-large">还没有分身</Text>
+              <Text className="empty-desc">创建你的第一个AI分身，开始智能对话体验</Text>
+              <View
+                className="create-avatar-button"
+                onClick={() => {
+                  navigateTo({ url: '/pages/avatar-create/index' })
+                }}
+              >
+                <Plus size={18} color="#0a0a0f" />
+                <Text className="create-button-text">立即创建分身</Text>
               </View>
             </View>
-            <Text className="empty-title">我是{avatar?.name || 'AI分身'}</Text>
-            <Text className="empty-desc">我可以帮你写文章、生成图片、发布内容</Text>
-            <View className="empty-hints">
-              <Text className="hint-item">「帮我写一篇公众号文章」</Text>
-              <Text className="hint-item">「生成一张风景图片」</Text>
-              <Text className="hint-item">「发布到小红书」</Text>
+          ) : (
+            <View className="empty-chat">
+              <View className="empty-icon">
+                <View className="empty-avatar-glow">
+                  {avatar?.avatar_url ? (
+                    <Image
+                      src={avatar.avatar_url}
+                      className="empty-avatar-img"
+                      mode="aspectFill"
+                      onError={() => {
+                        // 图片加载失败时不做处理
+                      }}
+                    />
+                  ) : (
+                    <Sparkles size={64} color="#00f5ff" />
+                  )}
+                </View>
+              </View>
+              <Text className="empty-title">我是{avatar?.name || 'AI分身'}</Text>
+              <Text className="empty-desc">我可以帮你写文章、生成图片、发布内容</Text>
+              <View className="empty-hints">
+                <Text className="hint-item">「帮我写一篇公众号文章」</Text>
+                <Text className="hint-item">「生成一张风景图片」</Text>
+                <Text className="hint-item">「发布到小红书」</Text>
+              </View>
             </View>
-          </View>
+          )
         ) : (
           messages.map((msg, index) => (
             <View
