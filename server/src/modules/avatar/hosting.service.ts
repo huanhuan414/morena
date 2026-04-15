@@ -156,9 +156,11 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
     console.log(`[托管服务] 执行分身 ${avatar.name}(${avatarId}) 的托管任务`)
     console.log(`[托管服务] 子功能开关: auto_post=${settings.auto_post}, auto_comment=${settings.auto_comment}, auto_like=${settings.auto_like}, auto_friend=${settings.auto_friend}`)
+    console.log(`[托管服务] Config:`, JSON.stringify(avatar.config))
 
     // 检查夜间模式
     const nightMode = avatar.config?.night_mode ?? true
+    console.log(`[托管服务] Night Mode: ${nightMode}, Current Hour: ${new Date().getHours()}`)
     if (nightMode && this.isNightTime()) {
       console.log(`[托管服务] 分身 ${avatar.name} 处于夜间模式，降低活跃度`)
       // 夜间模式：只执行必要的任务，降低频率
@@ -1127,6 +1129,7 @@ ${friendMessageContents}
     }
 
     // 创建帖子
+    console.log(`[托管服务] 准备创建帖子: user_id=${avatar.user_id}, avatar_id=${avatar.id}`)
     const { data: newPost, error } = await client
       .from('posts')
       .insert({
