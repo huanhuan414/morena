@@ -878,6 +878,85 @@
   margin-right: -60rpx; /* 向右偏移，居中显示 */
 }
 
+/* 🔴 新增：短剧信息展示 */
+.shortdrama-info {
+  background: rgba(0, 245, 255, 0.1);
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.shortdrama-title {
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid rgba(0, 245, 255, 0.2);
+}
+
+.shortdrama-title-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #00f5ff;
+}
+
+.shortdrama-message {
+  margin-bottom: 16rpx;
+  line-height: 1.6;
+}
+
+.shortdrama-message-text {
+  font-size: 28rpx;
+  color: #e0e0e0;
+}
+
+.shortdrama-stats {
+  margin-bottom: 16rpx;
+  padding: 12rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8rpx;
+}
+
+.shortdrama-stats-text {
+  font-size: 26rpx;
+  color: #b0b0b0;
+}
+
+.shortdrama-bgm {
+  margin-bottom: 16rpx;
+}
+
+.shortdrama-bgm-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #00f5ff;
+  margin-bottom: 12rpx;
+}
+
+.shortdrama-bgm-item {
+  margin-bottom: 8rpx;
+  padding-left: 16rpx;
+}
+
+.shortdrama-bgm-text {
+  font-size: 26rpx;
+  color: #e0e0e0;
+  line-height: 1.5;
+}
+
+.shortdrama-edited-video {
+  margin-top: 8rpx;
+  padding: 12rpx;
+  background: rgba(0, 255, 128, 0.1);
+  border: 1rpx solid rgba(0, 255, 128, 0.3);
+  border-radius: 8rpx;
+}
+
+.shortdrama-edited-video-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #00ff80;
+}
+
 .media-item {
   width: 100%;
   border-radius: 16rpx;

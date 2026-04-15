@@ -889,6 +889,15 @@ export class AgentService {
             }
           })
         }
+        if (finalAnswerJson.edited_video_url) {
+          console.log('[媒体提取] 从 finalAnswer JSON 中提取成品视频 URL:', finalAnswerJson.edited_video_url)
+          media.push({
+            type: 'video',
+            url: finalAnswerJson.edited_video_url,
+            key: 'edited_video',
+            title: '成品视频'
+          })
+        }
         if (finalAnswerJson.video_url) {
           console.log('[媒体提取] 从 finalAnswer JSON 中提取视频 URL:', finalAnswerJson.video_url)
           media.push({
@@ -930,6 +939,23 @@ export class AgentService {
               media.push({ type: 'image', url })
             }
           })
+        }
+        // 🔴 新增：保存完整的 shortdrama 数据到 metadata 中
+        if (finalAnswerJson.title || finalAnswerJson.script || finalAnswerJson.bgm_recommendations) {
+          console.log('[媒体提取] 保存短剧完整数据到 metadata')
+          media._shortdrama_data = {
+            title: finalAnswerJson.title,
+            duration: finalAnswerJson.duration,
+            script: finalAnswerJson.script,
+            storyboard: finalAnswerJson.storyboard,
+            characters: finalAnswerJson.characters,
+            scenes: finalAnswerJson.scenes,
+            video_clips: finalAnswerJson.video_clips,
+            edited_video_url: finalAnswerJson.edited_video_url,
+            bgm_recommendations: finalAnswerJson.bgm_recommendations,
+            production_stats: finalAnswerJson.production_stats,
+            message: finalAnswerJson.message
+          }
         }
       }
     } catch (error) {

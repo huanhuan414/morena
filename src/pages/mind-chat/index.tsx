@@ -2525,8 +2525,48 @@ export default function MindChatPage() {
           console.log('[图片渲染] 最终 mediaList:', mediaList)
           console.log('[图片渲染] 准备渲染', mediaList.length, '个媒体项')
 
+          // 🔴 新增：检查是否是短剧数据
+          const shortdramaData = (mediaList as any)._shortdrama_data
+          console.log('[短剧展示] 检测到短剧数据:', !!shortdramaData)
+
           return (
             <View className="media-container">
+              {/* 🔴 新增：短剧信息展示 */}
+              {shortdramaData && (
+                <View className="shortdrama-info">
+                  <View className="shortdrama-title">
+                    <Text className="shortdrama-title-text">{shortdramaData.title || '未命名短剧'}</Text>
+                  </View>
+                  {shortdramaData.message && (
+                    <View className="shortdrama-message">
+                      <Text className="shortdrama-message-text">{shortdramaData.message}</Text>
+                    </View>
+                  )}
+                  {shortdramaData.production_stats && (
+                    <View className="shortdrama-stats">
+                      <Text className="shortdrama-stats-text">
+                        角色: {shortdramaData.production_stats.characters_generated}个 | 场景: {shortdramaData.production_stats.scenes_generated}个 | 镜头: {shortdramaData.production_stats.videos_generated}个
+                      </Text>
+                    </View>
+                  )}
+                  {shortdramaData.bgm_recommendations && shortdramaData.bgm_recommendations.length > 0 && (
+                    <View className="shortdrama-bgm">
+                      <Text className="shortdrama-bgm-title">🎵 推荐配乐：</Text>
+                      {shortdramaData.bgm_recommendations.map((bgm: any, idx: number) => (
+                        <View key={`bgm-${idx}`} className="shortdrama-bgm-item">
+                          <Text className="shortdrama-bgm-text">• {bgm.name} ({bgm.duration}) - {bgm.description}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {shortdramaData.edited_video_url && (
+                    <View className="shortdrama-edited-video">
+                      <Text className="shortdrama-edited-video-text">✅ 成品视频已生成</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
               {mediaList.map((media, idx) => {
                 console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
                 if (media.type === 'image') {
