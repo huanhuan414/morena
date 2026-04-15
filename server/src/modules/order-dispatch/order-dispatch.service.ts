@@ -1621,6 +1621,45 @@ export class OrderDispatchService {
   }
 
   /**
+   * 获取分身通知列表
+   */
+  async getAvatarNotifications(avatarId: string): Promise<any[]> {
+    const client = getSupabaseClient()
+
+    try {
+      // 查询该分身的通知
+      const { data: notifications, error } = await client
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.error('[getAvatarNotifications] 查询失败:', error)
+        return []
+      }
+
+      // 过滤出包含该分身ID的通知
+      const filteredNotifications = (notifications || []).filter((notification: any) => {
+        try {
+          if (notification.data && typeof notification.data === 'object') {
+            const avatarIdField = notification.data.avatarId || notification.data.avatar_id
+            return avatarIdField === avatarId
+          }
+          return false
+        } catch (e) {
+          return false
+        }
+      })
+
+      return filteredNotifications
+    } catch (error) {
+      console.error('[getAvatarNotifications] 处理失败:', error)
+      return []
+    }
+  }
+
+  /**
    * 确认订单分配
    */
   async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {

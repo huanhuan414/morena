@@ -4,9 +4,18 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database, Crown } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Database, Crown, Bell, Loader } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
+
+// 订单状态配置
+const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  open: { label: '待接单', color: '#f59e0b' },
+  in_progress: { label: '进行中', color: '#3b82f6' },
+  pending_review: { label: '待验收', color: '#8b5cf6' },
+  completed: { label: '已完成', color: '#22c55e' },
+  cancelled: { label: '已取消', color: '#ef4444' }
+}
 
 interface Avatar {
   id: string
@@ -36,6 +45,12 @@ interface Avatar {
     post_frequency?: 'low' | 'medium' | 'high'
     active_hours?: string[]
   }
+  // 订单和通知数据
+  notifications?: any[]
+  orders_in_progress?: any[]
+  orders_completed?: any[]
+  loadingOrders?: boolean
+  expandedOrders?: boolean
 }
 
 // 预设时段选项
@@ -135,13 +150,89 @@ export default function AvatarManagePage() {
             auto_friend: true,
             post_frequency: 'medium',
             active_hours: ['09:00-12:00', '14:00-18:00', '20:00-22:00']
-          }
+          },
+          notifications: [],
+          orders_in_progress: [],
+          orders_completed: [],
+          loadingOrders: false,
+          expandedOrders: false
         })))
       }
     } catch (error) {
       console.error('获取分身失败:', error)
       showToast({ title: '获取分身失败', icon: 'none' })
     }
+  }
+
+  // 获取分身通知
+  const fetchAvatarNotifications = async (avatarId: string) => {
+    try {
+      const res = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/notifications` })
+      if (res.data?.code === 200) {
+        return res.data.data || []
+      }
+      return []
+    } catch (error) {
+      console.error('获取分身通知失败:', error)
+      return []
+    }
+  }
+
+  // 获取分身订单（进行中和已完成）
+  const fetchAvatarOrders = async (avatarId: string) => {
+    try {
+      const res = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
+      if (res.data?.code === 200) {
+        const orders = res.data.data || []
+        // 分类订单
+        const inProgress = orders.filter((o: any) => o.orders?.status === 'in_progress' || o.orders?.status === 'pending_review')
+        const completed = orders.filter((o: any) => o.orders?.status === 'completed')
+        return { inProgress, completed }
+      }
+      return { inProgress: [], completed: [] }
+    } catch (error) {
+      console.error('获取分身订单失败:', error)
+      return { inProgress: [], completed: [] }
+    }
+  }
+
+  // 展开收起订单区块
+  const toggleOrdersExpanded = async (avatarId: string) => {
+    setAvatars(prev => prev.map(avatar => {
+      if (avatar.id === avatarId) {
+        const newExpanded = !avatar.expandedOrders
+
+        // 如果展开且数据未加载，加载数据
+        if (newExpanded && (!avatar.notifications || avatar.notifications.length === 0)) {
+          avatar.loadingOrders = true
+          // 异步加载数据
+          Promise.all([
+            fetchAvatarNotifications(avatarId),
+            fetchAvatarOrders(avatarId)
+          ]).then(([notifications, orders]) => {
+            setAvatars(prev2 => prev2.map(a => {
+              if (a.id === avatarId) {
+                return {
+                  ...a,
+                  notifications,
+                  orders_in_progress: orders.inProgress,
+                  orders_completed: orders.completed,
+                  loadingOrders: false
+                }
+              }
+              return a
+            }))
+          })
+        }
+
+        return {
+          ...avatar,
+          expandedOrders: newExpanded,
+          loadingOrders: avatar.loadingOrders
+        }
+      }
+      return avatar
+    }))
   }
 
   const toggleHosting = async (avatarId: string, enabled: boolean) => {
@@ -515,6 +606,136 @@ export default function AvatarManagePage() {
                       </View>
                     </View>
                   )}
+
+                  {/* 通知和订单区块 */}
+                  <View className="orders-section">
+                    <View className="orders-header" onClick={() => toggleOrdersExpanded(avatar.id)}>
+                      <View className="orders-title-wrap">
+                        <Bell size={18} color="#00f5ff" />
+                        <Text className="orders-title">通知与订单</Text>
+                        <View className="orders-badge">
+                          <Text className="orders-badge-text">
+                            {avatar.notifications?.length || 0}
+                          </Text>
+                        </View>
+                      </View>
+                      <ChevronRight
+                        size={20}
+                        color="rgba(255,255,255,0.4)"
+                        style={{
+                          transform: avatar.expandedOrders ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s ease'
+                        }}
+                      />
+                    </View>
+
+                    {avatar.expandedOrders && (
+                      <View className="orders-content">
+                        {avatar.loadingOrders ? (
+                          <View className="orders-loading">
+                            <Loader size={24} color="#00f5ff" />
+                            <Text className="loading-text">加载中...</Text>
+                          </View>
+                        ) : (
+                          <>
+                            {/* 通知分身 */}
+                            {(avatar.notifications && avatar.notifications.length > 0) && (
+                              <View className="orders-block">
+                                <View className="orders-block-title">
+                                  <Text className="block-label">通知分身</Text>
+                                  <View className="block-count">
+                                    <Text className="block-count-text">{avatar.notifications.length}</Text>
+                                  </View>
+                                </View>
+                                <View className="notifications-list">
+                                  {avatar.notifications.map((notification: any) => (
+                                    <View key={notification.id} className="notification-item-small">
+                                      <Text className="notification-content-text">{notification.content}</Text>
+                                      <Text className="notification-time-text">
+                                        {new Date(notification.created_at).toLocaleString()}
+                                      </Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* 进行中订单 */}
+                            {(avatar.orders_in_progress && avatar.orders_in_progress.length > 0) && (
+                              <View className="orders-block">
+                                <View className="orders-block-title">
+                                  <Text className="block-label">进行中</Text>
+                                  <View className="block-count in-progress">
+                                    <Text className="block-count-text">{avatar.orders_in_progress.length}</Text>
+                                  </View>
+                                </View>
+                                <View className="orders-list">
+                                  {avatar.orders_in_progress.map((item: any) => (
+                                    <View
+                                      key={item.order_id}
+                                      className="order-item-small"
+                                      onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}
+                                    >
+                                      <View className="order-item-left">
+                                        <Text className="order-item-title">{item.orders?.title || '未知订单'}</Text>
+                                        <Text className="order-item-budget">¥{item.orders?.budget || 0}</Text>
+                                      </View>
+                                      <View className="order-item-status" style={{ color: ORDER_STATUS_CONFIG[item.orders?.status]?.color || '#666' }}>
+                                        <Text className="order-status-text">
+                                          {ORDER_STATUS_CONFIG[item.orders?.status]?.label || '未知状态'}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  ))}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* 已完成订单 */}
+                            {(avatar.orders_completed && avatar.orders_completed.length > 0) && (
+                              <View className="orders-block">
+                                <View className="orders-block-title">
+                                  <Text className="block-label">已完成</Text>
+                                  <View className="block-count completed">
+                                    <Text className="block-count-text">{avatar.orders_completed.length}</Text>
+                                  </View>
+                                </View>
+                                <View className="orders-list">
+                                  {avatar.orders_completed.map((item: any) => (
+                                    <View
+                                      key={item.order_id}
+                                      className="order-item-small"
+                                      onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}
+                                    >
+                                      <View className="order-item-left">
+                                        <Text className="order-item-title">{item.orders?.title || '未知订单'}</Text>
+                                        <Text className="order-item-budget">¥{item.orders?.budget || 0}</Text>
+                                      </View>
+                                      <View className="order-item-status" style={{ color: ORDER_STATUS_CONFIG[item.orders?.status]?.color || '#666' }}>
+                                        <Text className="order-status-text">
+                                          {ORDER_STATUS_CONFIG[item.orders?.status]?.label || '已完成'}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  ))}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* 空状态 */}
+                            {(!avatar.notifications || avatar.notifications.length === 0) &&
+                             (!avatar.orders_in_progress || avatar.orders_in_progress.length === 0) &&
+                             (!avatar.orders_completed || avatar.orders_completed.length === 0) && (
+                              <View className="orders-empty">
+                                <Bell size={32} color="rgba(255,255,255,0.2)" />
+                                <Text className="orders-empty-text">暂无通知和订单</Text>
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
             ))}

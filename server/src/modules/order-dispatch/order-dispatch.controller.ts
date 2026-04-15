@@ -158,6 +158,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 获取分身通知列表
+   */
+  @Get('avatar/:avatarId/notifications')
+  async getAvatarNotifications(@Param('avatarId') avatarId: string) {
+    const notifications = await this.dispatchService.getAvatarNotifications(avatarId)
+    return {
+      code: 200,
+      data: notifications,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 更新执行步骤状态
    */
   @Put('execution/:executionId/status')
