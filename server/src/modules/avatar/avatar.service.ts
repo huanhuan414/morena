@@ -78,6 +78,16 @@ export class AvatarService {
           temperament: photoAnalysis.temperament,
           communicationStyle: photoAnalysis.communicationStyle,
           strengths: photoAnalysis.strengths,
+          // 默认托管设置
+          hosting_settings: {
+            auto_post: true,
+            auto_comment: true,
+            auto_like: true,
+            auto_friend: true,
+            post_frequency: 'medium',
+            active_hours: ['00:00-24:00']
+          },
+          night_mode: true
         },
         level: 1,
         exp: 0,
