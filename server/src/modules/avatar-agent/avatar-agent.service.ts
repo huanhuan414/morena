@@ -242,9 +242,9 @@ export class AvatarAgentService {
   /**
    * 构建个性化的系统提示词
    */
-  private buildSystemPrompt(basePrompt: string, avatarData: any): string {
+  private buildSystemPrompt(basePrompt: string | undefined, avatarData: any): string {
     if (!avatarData) {
-      return basePrompt
+      return basePrompt || '你是一个智能分身助手。'
     }
 
     const parts: string[] = [basePrompt || '你是一个智能分身助手。']
@@ -682,7 +682,7 @@ Confidence: [置信度 0-1]`
       personality?: string
     }
   ): Promise<void> {
-    const defaultConfig = this.getDefaultConfig(avatarId)
+    const defaultConfig = await this.getDefaultConfig(avatarId)
 
     const config = {
       ...defaultConfig,
