@@ -423,7 +423,7 @@ export class WriteArticleTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'write_article',
     displayName: '撰写文章',
-    description: '使用AI生成文章内容，支持指定主题、风格和长度',
+    description: '【通用文章写作】当用户要求"写文章"、"写文案"、"写内容"、"撰写文本"时使用此工具。适用于一般的文章、文案、内容生成，不限于特定平台。如果用户明确要求"公众号图文"或"小红书笔记"，请使用相应的专用工具（write_wechat_mp_article 或 write_xiaohongshu_note）。',
     category: 'content_creation',
     paramsSchema: {
       topic: { type: 'string', description: '文章主题', required: true },
@@ -494,7 +494,7 @@ export class WriteWechatMpArticleTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'write_wechat_mp_article',
     displayName: '撰写公众号爆款图文',
-    description: '生成适合微信公众号传播的爆款图文，包含吸睛标题、短段落、金句、引导关注等元素。此工具仅生成内容，发布需要配合 publish_wechat_mp 工具。',
+    description: '【专门用于微信公众号】生成适合微信公众号传播的爆款图文，包含吸睛标题、短段落、金句、引导关注等元素。当用户要求"写公众号图文"、"写文章"、"写公众号爆款"时使用此工具。此工具仅生成内容，发布需要配合 publish_wechat_mp 工具。',
     category: 'content_creation',
     paramsSchema: {
       topic: { type: 'string', description: '文章主题/话题', required: true },
@@ -655,7 +655,7 @@ export class WriteXiaohongshuNoteTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'write_xiaohongshu_note',
     displayName: '撰写小红书笔记',
-    description: '生成适合小红书传播的爆款笔记，包含emoji标题、分段式正文、话题标签、多张配图。此工具仅生成内容，发布需要配合 publish_xiaohongshu 工具。',
+    description: '【专门用于小红书】生成适合小红书传播的爆款笔记，包含emoji标题、分段式正文、话题标签、多张配图。当用户要求"写小红书笔记"、"小红书文案"、"小红书内容"时使用此工具。此工具仅生成内容，发布需要配合 publish_xiaohongshu 工具。',
     category: 'content_creation',
     paramsSchema: {
       topic: { type: 'string', description: '笔记主题', required: true },

@@ -271,7 +271,7 @@ export class ProduceShortDramaTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'produce_shortdrama',
     displayName: '制作短剧成品',
-    description: '【重要】这是直接生成短剧成品的工具！当用户要求"生成短剧"、"制作视频"、"给我成品"时，必须使用此工具。工具会自动完成：1）生成完整剧本 2）创建角色形象（2个）3）设计场景（3个）4）制作关键镜头视频（6个）5）视频剪辑合成 6）生成字幕 7）推荐配乐。用户将看到完整的短剧成品视频，而不仅仅是剧本或单个镜头。',
+    description: '【短剧制作专用】当用户明确要求"制作短剧"、"生成视频"、"短剧成品"、"视频内容"时使用。此工具生成包含视频的短剧成品（剧本+角色形象+场景设计+视频镜头+剪辑合成+配乐）。⚠️ 警告：如果用户要求"写文章"、"写公众号图文"、"写文案"，请使用 write_wechat_mp_article 或 write_article 工具，不要使用此工具。',
     category: 'content_creation',
     paramsSchema: {
       theme: { type: 'string', description: '短剧主题/故事梗概（用户提供的完整想法）', required: true },

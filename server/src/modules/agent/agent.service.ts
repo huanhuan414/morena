@@ -234,6 +234,12 @@ export class AgentService {
         'app_subscribe',
         'app_get_subscription',
         'check_platform_config',
+        // 内容创作工具（所有分身都能直接使用）
+        'write_article',                  // 撰写文章
+        'write_wechat_mp_article',        // 撰写公众号爆款图文
+        'write_xiaohongshu_note',         // 撰写小红书笔记
+        'generate_image',                 // 生成图片
+        'generate_video',                 // 生成视频
         // 核心创作工具（所有分身都能直接使用）
         'produce_shortdrama',              // 制作短剧成品
         'generate_shortdrama_script',      // 生成短剧剧本
