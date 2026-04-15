@@ -771,26 +771,32 @@ export default function AvatarCreatePage() {
           const Icon = p.icon
           const isSelected = selectedPersonality === p.id
           return (
-            <View 
+            <View
               key={p.id}
               className={`personality-card ${isSelected ? 'selected' : ''}`}
               onClick={() => setSelectedPersonality(p.id)}
             >
               <View className={`personality-icon ${isSelected ? 'glow' : ''}`}>
+                <View className={`personality-icon-bg ${isSelected ? 'animated' : ''}`} />
                 <Icon size={28} color={isSelected ? '#00f5ff' : '#fff'} />
               </View>
               <Text className="personality-name">{p.name}</Text>
               <Text className="personality-desc">{p.desc}</Text>
               <View className="traits-list">
                 {p.traits.map((trait, idx) => (
-                  <Text key={idx} className="trait-tag">{trait}</Text>
+                  <View key={idx} className="trait-tag-wrap">
+                    <Text key={idx} className="trait-tag">{trait}</Text>
+                    {isSelected && <View className="trait-shine" />}
+                  </View>
                 ))}
               </View>
               {isSelected && (
-                <View className="selected-badge">
+                <View className="selected-badge animated-badge">
                   <Check size={16} color="#00f5ff" />
                 </View>
               )}
+              {isSelected && <View className="card-glow" />}
+              {isSelected && <View className="card-pulse" />}
             </View>
           )
         })}
@@ -854,27 +860,31 @@ export default function AvatarCreatePage() {
           const Icon = s.icon
           const isSelected = appearanceStyle === s.id
           return (
-            <View 
+            <View
               key={s.id}
               className={`appearance-card ${isSelected ? 'selected' : ''}`}
               onClick={() => setAppearanceStyle(s.id)}
             >
-              <View 
-                className="appearance-preview"
-                style={{ 
+              <View
+                className={`appearance-preview ${isSelected ? 'animated' : ''}`}
+                style={{
                   background: `linear-gradient(135deg, ${s.color}30 0%, ${s.color}10 100%)`,
                   borderColor: isSelected ? s.color : 'rgba(255,255,255,0.1)'
                 }}
               >
+                <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
                 <Icon size={40} color={s.color} />
+                {isSelected && <View className="preview-pulse" style={{ background: s.color }} />}
               </View>
               <Text className="appearance-name">{s.name}</Text>
               <Text className="appearance-desc">{s.desc}</Text>
               {isSelected && (
-                <View className="appearance-check" style={{ backgroundColor: s.color }}>
+                <View className="appearance-check animated-check" style={{ backgroundColor: s.color }}>
                   <Check size={14} color="#0a0a0f" />
+                  <View className="check-shine" style={{ background: s.color }} />
                 </View>
               )}
+              {isSelected && <View className="appearance-card-glow" style={{ borderColor: s.color }} />}
             </View>
           )
         })}
@@ -895,13 +905,14 @@ export default function AvatarCreatePage() {
           const Icon = s.icon
           const isSelected = speakingStyle === s.id
           return (
-            <View 
+            <View
               key={s.id}
               className={`speaking-card ${isSelected ? 'selected' : ''}`}
               onClick={() => setSpeakingStyle(s.id)}
             >
-              <View className="speaking-header">
+              <View className={`speaking-header ${isSelected ? 'animated' : ''}`}>
                 <View className="speaking-icon-wrap">
+                  <View className={`icon-glow ${isSelected ? 'active' : ''}`} />
                   <Icon size={24} color={isSelected ? '#00f5ff' : 'rgba(255,255,255,0.5)'} />
                 </View>
                 <View className="speaking-info">
@@ -909,14 +920,17 @@ export default function AvatarCreatePage() {
                   <Text className="speaking-desc">{s.desc}</Text>
                 </View>
                 {isSelected && (
-                  <View className="speaking-check">
+                  <View className="speaking-check animated-check">
                     <Check size={16} color="#00f5ff" />
                   </View>
                 )}
               </View>
               <View className="speaking-example">
-                <Text className="example-text">{s.example}</Text>
+                <View className="example-bg" />
+                <Text className="example-text">&ldquo;{s.example}&rdquo;</Text>
               </View>
+              {isSelected && <View className="speaking-glow" />}
+              {isSelected && <View className="speaking-pulse" />}
             </View>
           )
         })}
