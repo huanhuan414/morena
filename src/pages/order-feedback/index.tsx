@@ -5,23 +5,23 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X } from 'lucide-react-taro'
+import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X, Video, Play } from 'lucide-react-taro'
 import './index.css'
 
-// 平台名称映射
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信小程序',
-  xiaohongshu: '小红书',
-  douyin: '抖音',
-  weibo: '微博',
-  bilibili: 'B站',
-  kuaishou: '快手'
+// 平台名称和类型映射
+const PLATFORM_INFO: Record<string, { name: string; type: 'article' | 'image' | 'video' }> = {
+  wechat_mp: { name: '微信小程序', type: 'article' },
+  xiaohongshu: { name: '小红书', type: 'image' },
+  douyin: { name: '抖音', type: 'video' },
+  weibo: { name: '微博', type: 'article' },
+  bilibili: { name: 'B站', type: 'video' },
+  kuaishou: { name: '快手', type: 'video' }
 }
 
 // 获取平台中文名称
 const getPlatformNames = (platforms?: string[]): string => {
   if (!platforms || platforms.length === 0) return '全平台'
-  return platforms.map(p => PLATFORM_NAMES[p] || p).join('、')
+  return platforms.map(p => PLATFORM_INFO[p]?.name || p).join('、')
 }
 
 export default function OrderFeedbackPage() {
@@ -104,41 +104,71 @@ export default function OrderFeedbackPage() {
   }
 
   const handleChooseImage = () => {
+    console.log('选择图片...')
+
     chooseImage({
       count: 9 - uploadedImages.length,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
+        console.log('图片选择成功:', res)
         const tempFilePaths = res.tempFilePaths
         setUploading(true)
 
         try {
           for (const filePath of tempFilePaths) {
+            console.log('上传图片:', filePath)
             await uploadImage(filePath)
           }
           showToast({ title: '上传成功', icon: 'success' })
         } catch (error) {
           console.error('上传失败:', error)
-          showToast({ title: '上传失败', icon: 'none' })
+          showToast({ title: `上传失败: ${error.message || '未知错误'}`, icon: 'none' })
         } finally {
           setUploading(false)
         }
+      },
+      fail: (error) => {
+        console.error('选择图片失败:', error)
+        showToast({ title: '选择图片失败', icon: 'none' })
       }
     })
   }
 
   const uploadImage = async (filePath: string) => {
-    const res: any = await Network.uploadFile({
-      url: '/api/upload/order-screenshot',
-      filePath,
-      name: 'file'
-    })
+    console.log('开始上传图片:', filePath)
 
-    const data = typeof res === 'string' ? JSON.parse(res) : res
-    if (data?.code === 200) {
-      setUploadedImages(prev => [...prev, data.data.url])
-    } else {
-      throw new Error(data?.message || '上传失败')
+    try {
+      const res: any = await Network.uploadFile({
+        url: '/api/upload/order-screenshot',
+        filePath,
+        name: 'file'
+      })
+
+      console.log('上传响应:', res)
+
+      let data
+      try {
+        data = typeof res === 'string' ? JSON.parse(res) : res
+      } catch (parseError) {
+        console.error('解析响应失败:', parseError)
+        throw new Error('响应解析失败')
+      }
+
+      console.log('解析后的数据:', data)
+
+      if (data?.code === 200 && data?.data?.url) {
+        setUploadedImages(prev => [...prev, data.data.url])
+        console.log('图片URL已添加:', data.data.url)
+      } else {
+        const errorMsg = data?.message || '上传失败，未返回URL'
+        console.error('上传失败:', errorMsg)
+        throw new Error(errorMsg)
+      }
+    } catch (error) {
+      console.error('上传过程出错:', error)
+      showToast({ title: `上传失败: ${error.message || '未知错误'}`, icon: 'none', duration: 3000 })
+      throw error
     }
   }
 
@@ -263,7 +293,7 @@ export default function OrderFeedbackPage() {
                   onClick={() => setSelectedContent(content)}
                 >
                   <Text className="platform-tab-text">
-                    {PLATFORM_NAMES[content.platform] || content.platform}
+                    {PLATFORM_INFO[content.platform]?.name || content.platform}
                   </Text>
                   {content.status === 'approved' && (
                     <Check size={12} color="#22c55e" />
@@ -273,36 +303,101 @@ export default function OrderFeedbackPage() {
             </View>
 
             {/* 内容详情 */}
-            {selectedContent && (
-              <View className="content-detail">
-                {selectedContent.title && (
-                  <View className="content-title">
-                    <Text className="title-text">{selectedContent.title}</Text>
-                  </View>
-                )}
+            {selectedContent && (() => {
+              const platformType = PLATFORM_INFO[selectedContent.platform]?.type || 'article'
 
-                <View className="content-body">
-                  <Text className="body-text">{selectedContent.content}</Text>
+              return (
+                <View className="content-detail">
+                  {/* 文章类展示 */}
+                  {platformType === 'article' && (
+                    <>
+                      {selectedContent.title && (
+                        <View className="content-title">
+                          <FileText size={20} color="#22c55e" />
+                          <Text className="title-text">{selectedContent.title}</Text>
+                        </View>
+                      )}
+
+                      <View className="content-body article">
+                        <Text className="body-text">{selectedContent.content}</Text>
+                      </View>
+                    </>
+                  )}
+
+                  {/* 图文类展示 */}
+                  {platformType === 'image' && (
+                    <>
+                      {selectedContent.title && (
+                        <View className="content-title">
+                          <ImageIcon size={20} color="#22c55e" />
+                          <Text className="title-text">{selectedContent.title}</Text>
+                        </View>
+                      )}
+
+                      {/* 图片建议 */}
+                      {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
+                        <View className="image-suggestions-grid">
+                          {selectedContent.image_suggestions.map((suggestion: string, idx: number) => (
+                            <View key={idx} className="image-suggestion-item">
+                              <View className="suggestion-icon">
+                                <ImageIcon size={24} color="#f59e0b" />
+                              </View>
+                              <Text className="suggestion-text">{suggestion}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      <View className="content-body">
+                        <Text className="body-text">{selectedContent.content}</Text>
+                      </View>
+                    </>
+                  )}
+
+                  {/* 视频类展示 */}
+                  {platformType === 'video' && (
+                    <>
+                      {selectedContent.title && (
+                        <View className="content-title">
+                          <Video size={20} color="#f59e0b" />
+                          <Text className="title-text">{selectedContent.title}</Text>
+                        </View>
+                      )}
+
+                      {/* 视频建议 */}
+                      {selectedContent.video_suggestions && selectedContent.video_suggestions.length > 0 && (
+                        <View className="video-suggestions">
+                          <View className="video-icon">
+                            <Play size={32} color="#f59e0b" />
+                          </View>
+                          <View className="video-content">
+                            <Text className="video-label">视频内容建议：</Text>
+                            {selectedContent.video_suggestions.map((suggestion: string, idx: number) => (
+                              <View key={idx} className="video-suggestion-item">
+                                <Text className="suggestion-text">• {suggestion}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      <View className="content-body video">
+                        <Text className="body-text">{selectedContent.content}</Text>
+                      </View>
+                    </>
+                  )}
+
+                  {/* 标签 */}
+                  {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
+                    <View className="content-hashtags">
+                      {selectedContent.hashtags.map((tag: string, idx: number) => (
+                        <Text key={idx} className="hashtag-text">{tag}</Text>
+                      ))}
+                    </View>
+                  )}
                 </View>
-
-                {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
-                  <View className="content-hashtags">
-                    {selectedContent.hashtags.map((tag: string, idx: number) => (
-                      <Text key={idx} className="hashtag-text">{tag}</Text>
-                    ))}
-                  </View>
-                )}
-
-                {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
-                  <View className="content-suggestions">
-                    <Text className="suggestions-label">图片建议：</Text>
-                    {selectedContent.image_suggestions.map((suggestion: string, idx: number) => (
-                      <Text key={idx} className="suggestion-text">• {suggestion}</Text>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
+              )
+            })()}
           </View>
         )}
 
