@@ -7,7 +7,7 @@ import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
   Camera, Sparkles, Brain, Palette, Zap, Heart, Target,
-  Lightbulb, Shield, Star, ArrowRight, Check, Loader, User,
+  Lightbulb, Shield, Star, ArrowRight, Check, User,
   Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
   Moon, Sun, Smile, Bot, ChevronRight
 } from 'lucide-react-taro'
@@ -67,6 +67,7 @@ export default function AvatarCreatePage() {
   const [photoPath, setPhotoPath] = useState<string>('')
   const [photoUrl, setPhotoUrl] = useState<string>('')
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzingProgress, setAnalyzingProgress] = useState(0)
   const [photoAnalysis, setPhotoAnalysis] = useState<PhotoAnalysis | null>(null)
   const [selectedPersonality, setSelectedPersonality] = useState<string | null>(null)
   const [selectedAbilities, setSelectedAbilities] = useState<string[]>([])
@@ -329,7 +330,18 @@ export default function AvatarCreatePage() {
   // 分析照片
   const analyzePhoto = async (filePath: string) => {
     setAnalyzing(true)
-    
+    setAnalyzingProgress(1)
+
+    // 模拟进度更新
+    const progressInterval = setInterval(() => {
+      setAnalyzingProgress(prev => {
+        if (prev < 3) {
+          return prev + 1
+        }
+        return prev
+      })
+    }, 800)
+
     try {
       // 上传照片进行分析
       const uploadRes = await Network.uploadFile({
@@ -339,11 +351,14 @@ export default function AvatarCreatePage() {
       })
 
       console.log('上传响应:', uploadRes)
-      
+
       // 解析响应数据
-      const responseData = typeof uploadRes.data === 'string' 
-        ? JSON.parse(uploadRes.data) 
+      const responseData = typeof uploadRes.data === 'string'
+        ? JSON.parse(uploadRes.data)
         : uploadRes.data
+
+      clearInterval(progressInterval)
+      setAnalyzingProgress(3)
       
       if (responseData?.code === 200) {
         const { analysis, photoUrl: url } = responseData.data
@@ -399,7 +414,9 @@ export default function AvatarCreatePage() {
       showToast({ title: '分析完成', icon: 'success' })
       setStep(1)
     } finally {
+      clearInterval(progressInterval)
       setAnalyzing(false)
+      setAnalyzingProgress(0)
     }
   }
 
@@ -555,9 +572,35 @@ export default function AvatarCreatePage() {
 
         {analyzing && (
           <View className="analyzing-overlay">
-            <Loader size={48} color="#00f5ff" className="analyzing-spinner" />
+            {/* 高级Loading动画容器 */}
+            <View className="analyzing-loader-container">
+              {/* 外圈脉冲 */}
+              <View className="loader-ring loader-ring-outer" />
+              {/* 中圈旋转 */}
+              <View className="loader-ring loader-ring-middle" />
+              {/* 内圈快速旋转 */}
+              <View className="loader-ring loader-ring-inner" />
+              {/* 核心发光 */}
+              <View className="loader-core">
+                <Brain size={32} color="#00f5ff" className="loader-icon" />
+                <View className="loader-core-glow" />
+              </View>
+              {/* 粒子装饰 */}
+              <View className="loader-particle particle-1" />
+              <View className="loader-particle particle-2" />
+              <View className="loader-particle particle-3" />
+              <View className="loader-particle particle-4" />
+            </View>
+
             <Text className="analyzing-text">AI正在深度分析中...</Text>
             <Text className="analyzing-subtext">识别面部特征 · 分析气质类型 · 生成分身形象</Text>
+
+            {/* 进度指示器 */}
+            <View className="progress-dots">
+              <View className={`progress-dot ${analyzingProgress >= 1 ? 'active' : ''}`} />
+              <View className={`progress-dot ${analyzingProgress >= 2 ? 'active' : ''}`} />
+              <View className={`progress-dot ${analyzingProgress >= 3 ? 'active' : ''}`} />
+            </View>
           </View>
         )}
       </View>
