@@ -1386,6 +1386,110 @@ export class OrderDispatchService {
   }
 
   /**
+   * 手动分配订单给指定分身
+   */
+  async dispatchToAvatar(orderId: string, avatarId: string): Promise<any> {
+    const client = getSupabaseClient()
+
+    // 获取订单信息
+    const { data: order } = await client
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single()
+
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    // 获取分身信息
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('*, user_id, name')
+      .eq('id', avatarId)
+      .single()
+
+    if (!avatar) {
+      throw new Error('分身不存在')
+    }
+
+    // 检查是否已经分配给该分身
+    const { data: existingRequest } = await client
+      .from('order_dispatch_requests')
+      .select('*')
+      .eq('order_id', orderId)
+      .eq('avatar_id', avatarId)
+      .single()
+
+    if (existingRequest) {
+      throw new Error('该分身已经收到此订单')
+    }
+
+    // 获取用户信息
+    const { data: user } = await client
+      .from('users')
+      .select('phone')
+      .eq('id', avatar.user_id)
+      .single()
+
+    // 创建待确认的分配记录
+    console.log(`[dispatchToAvatar] 开始创建分配记录，order_id=${orderId}, avatar_id=${avatarId}`)
+    const { data: request, error } = await client.rpc('create_dispatch_request', {
+      p_order_id: orderId,
+      p_avatar_id: avatarId,
+      p_user_id: avatar.user_id,
+      p_score: 85,
+      p_match_reasons: ['手动分配'],
+      p_expires_hours: 24
+    })
+
+    if (error) {
+      console.error(`[dispatchToAvatar] 创建分配记录失败:`, error)
+      throw new Error('创建分配记录失败: ' + error.message)
+    }
+
+    console.log(`[dispatchToAvatar] 分配记录创建成功:`, request)
+
+    // 发送应用内通知
+    await this.notificationService.createNotification(avatar.user_id, {
+      type: 'system',
+      title: '订单分配请求',
+      content: `有新的订单等待您确认：${order.title}`,
+      data: { orderId, avatarId, type: 'dispatch_request' }
+    })
+
+    // 发送短信通知
+    if (user?.phone) {
+      try {
+        await this.smsService.sendOrderDispatchNotification(user.phone, avatar.name, orderId)
+        console.log(`[分身调度] 已发送短信通知到 ${user.phone}`)
+      } catch (error) {
+        console.error(`[分身调度] 短信通知发送失败:`, error)
+      }
+    }
+
+    return request
+  }
+
+  /**
+   * 获取用户待确认订单列表
+   */
+  async getUserPendingRequests(userId: string): Promise<any[]> {
+    const client = getSupabaseClient()
+
+    const { data: requests, error } = await client.rpc('get_pending_requests_with_details', {
+      p_user_id: userId
+    })
+
+    if (error) {
+      console.error('[getUserPendingRequests] 查询失败:', error)
+      throw new Error('获取待确认订单失败: ' + error.message)
+    }
+
+    return requests || []
+  }
+
+  /**
    * 确认订单分配
    */
   async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {

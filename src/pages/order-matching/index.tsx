@@ -223,16 +223,18 @@ export default function OrderMatchingPage() {
   const handleQuickDispatch = async (avatar: MatchedAvatar) => {
     try {
       const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/dispatch`,
+        url: `/api/order-dispatch/${orderId}/dispatch-avatar`,
         method: 'POST',
         data: { avatarId: avatar.id }
       })
-      
+
       if (res.data?.code === 200) {
-        showToast({ title: `已分配给 ${avatar.name}`, icon: 'success' })
+        showToast({ title: `已分配给 ${avatar.name}，已发送短信通知`, icon: 'success' })
         setTimeout(() => {
           navigateBack()
         }, 1500)
+      } else {
+        showToast({ title: res.data?.message || '分配失败', icon: 'none' })
       }
     } catch (error) {
       console.error('分配失败:', error)
@@ -243,19 +245,19 @@ export default function OrderMatchingPage() {
   // 统一匹配给所有推荐分身
   const handleBatchDispatch = async () => {
     if (matchedAvatars.length === 0) return
-    
+
     setDispatching(true)
     let successCount = 0
-    
+
     try {
       for (const avatar of matchedAvatars) {
         try {
           const res = await Network.request({
-            url: `/api/order-dispatch/${orderId}/dispatch`,
+            url: `/api/order-dispatch/${orderId}/dispatch-avatar`,
             method: 'POST',
             data: { avatarId: avatar.id }
           })
-          
+
           if (res.data?.code === 200) {
             successCount++
           }
@@ -263,9 +265,9 @@ export default function OrderMatchingPage() {
           // 忽略单个失败，继续分配其他分身
         }
       }
-      
+
       if (successCount > 0) {
-        showToast({ title: `成功分配给 ${successCount} 个分身`, icon: 'success' })
+        showToast({ title: `成功分配给 ${successCount} 个分身，已发送短信通知`, icon: 'success' })
         setTimeout(() => {
           navigateBack()
         }, 1500)

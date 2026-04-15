@@ -14,6 +14,7 @@ import { AudioModule } from './modules/audio/audio.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { OrderDispatchModule } from './modules/order-dispatch/order-dispatch.module';
+import { OrderResultsModule } from './modules/order-results/order-results.module';
 import { EarningModule } from './modules/earning/earning.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
@@ -35,6 +36,7 @@ import { MediaModule } from './modules/media/media.module';
     AudioModule,
     NotificationModule,
     OrderDispatchModule,
+    OrderResultsModule,
     EarningModule,
     ReferralModule,
     SubscriptionModule,

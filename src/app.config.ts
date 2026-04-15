@@ -24,6 +24,8 @@ export default defineAppConfig({
     'pages/order-list/index',
     'pages/order-detail/index',
     'pages/order-matching/index',
+    'pages/pending-order/index',
+    'pages/order-feedback/index',
     'pages/earning-center/index',
     'pages/referral-center/index',
     'pages/skills-square/index',

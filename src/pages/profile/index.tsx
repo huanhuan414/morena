@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap, Crown, Box } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap, Crown, Box, X } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -16,6 +16,32 @@ interface UserStats {
   friendCount: number    // 好友数量
   totalXp: number
   level: number
+}
+
+interface PendingRequest {
+  id: string
+  orders: {
+    id: string
+    title: string
+    description: string
+    budget: number
+    content_type: string
+    platforms: string[]
+    target_audience: string
+    deadline: string
+    created_at: string
+  }
+  avatars: {
+    id: string
+    name: string
+    avatar_url: string
+    level: number
+    completion_rate: number
+    avg_rating: number
+    is_hosted: boolean
+  }
+  created_at: string
+  expires_at: string
 }
 
 export default function ProfilePage() {
@@ -30,6 +56,8 @@ export default function ProfilePage() {
   })
   const [showLevelDialog, setShowLevelDialog] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
+  const [showPendingDialog, setShowPendingDialog] = useState(false)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -43,6 +71,7 @@ export default function ProfilePage() {
   useDidShow(() => {
     if (isLoggedIn) {
       fetchStats()
+      fetchPendingRequests()
     }
   })
 
@@ -55,6 +84,29 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('获取统计失败:', error)
     }
+  }
+
+  const fetchPendingRequests = async () => {
+    try {
+      const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
+      if (res.data?.code === 200 && res.data.data.length > 0) {
+        setPendingRequests(res.data.data)
+        setShowPendingDialog(true)
+      }
+    } catch (error) {
+      console.error('获取待确认订单失败:', error)
+    }
+  }
+
+  const handleViewRequest = (request: PendingRequest) => {
+    setShowPendingDialog(false)
+    navigateTo({
+      url: `/pages/pending-order/index?requestId=${request.id}`
+    })
+  }
+
+  const handleCloseDialog = () => {
+    setShowPendingDialog(false)
   }
 
   const handleLogout = () => {
@@ -157,12 +209,69 @@ export default function ProfilePage() {
       </View>
 
       {/* 等级详情弹窗 */}
-      <LevelDetailDialog 
+      <LevelDetailDialog
         open={showLevelDialog}
         onClose={() => setShowLevelDialog(false)}
         currentLevel={stats.level}
         currentExp={stats.totalXp}
       />
+
+      {/* 待确认订单弹窗 */}
+      {showPendingDialog && pendingRequests.length > 0 && (
+        <View className="pending-dialog-overlay" onClick={handleCloseDialog}>
+          <View className="pending-dialog" onClick={(e: any) => e.stopPropagation()}>
+            <View className="pending-dialog-header">
+              <View className="pending-dialog-title-row">
+                <Bell size={20} color="#00f5ff" />
+                <Text className="pending-dialog-title">新订单分配</Text>
+              </View>
+              <View className="pending-dialog-close" onClick={handleCloseDialog}>
+                <X size={20} color="rgba(255,255,255,0.5)" />
+              </View>
+            </View>
+
+            <ScrollView className="pending-dialog-content" scrollY>
+              {pendingRequests.map((request) => (
+                <View key={request.id} className="pending-request-card">
+                  <View className="request-avatar-section">
+                    <View className="request-avatar">
+                      {request.avatars.avatar_url ? (
+                        <Image src={request.avatars.avatar_url} className="request-avatar-img" mode="aspectFill" />
+                      ) : (
+                        <View className="request-avatar-placeholder">
+                          <Sparkles size={24} color="#00f5ff" />
+                        </View>
+                      )}
+                    </View>
+                    <View className="request-info">
+                      <Text className="request-avatar-name">{request.avatars.name}</Text>
+                      <Text className="request-order-title">{request.orders.title}</Text>
+                    </View>
+                  </View>
+
+                  <View className="request-budget">
+                    <Text className="budget-label">预算</Text>
+                    <Text className="budget-value">¥{request.orders.budget}</Text>
+                  </View>
+
+                  <View className="request-meta">
+                    <Text className="meta-item">📱 {request.orders.platforms?.join('、') || '全平台'}</Text>
+                    <Text className="meta-item">📅 {request.orders.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
+                  </View>
+
+                  <Button
+                    className="view-request-btn"
+                    onClick={() => handleViewRequest(request)}
+                  >
+                    <Text className="view-request-text">查看详情并确认</Text>
+                    <ChevronRight size={16} color="#00f5ff" />
+                  </Button>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
 
       <ScrollView className="menu-scroll" scrollY>
         {/* 功能菜单 */}

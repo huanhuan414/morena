@@ -64,6 +64,37 @@ export class OrderDispatchController {
   }
 
   /**
+   * 手动分配订单给指定分身
+   */
+  @Post(':orderId/dispatch-avatar')
+  async dispatchToAvatar(
+    @Param('orderId') orderId: string,
+    @Body('avatarId') avatarId: string
+  ) {
+    const result = await this.dispatchService.dispatchToAvatar(orderId, avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '分配成功，已发送通知'
+    }
+  }
+
+  /**
+   * 获取用户待确认订单列表
+   */
+  @Get('pending-requests')
+  async getPendingRequests(
+    @Headers('x-user-id') userId: string
+  ) {
+    const requests = await this.dispatchService.getUserPendingRequests(userId)
+    return {
+      code: 200,
+      data: requests,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 确认订单分配
    */
   @Put('request/:requestId/confirm')
