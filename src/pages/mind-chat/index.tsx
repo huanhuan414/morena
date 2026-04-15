@@ -3861,41 +3861,30 @@ export default function MindChatPage() {
           </View>
         )}
 
-        {/* 🔴 重新设计：附件栏 - 悬浮在输入框上方 */}
-        {!isVoiceMode && (
-          <View className="attachment-bar">
-            <View className="attachment-item" onClick={handleUploadImage}>
-              <View className="attachment-icon">
-                <ImageIcon size={20} color="#00f5ff" />
-              </View>
-              <Text className="attachment-label">图片</Text>
-            </View>
-            <View className="attachment-item" onClick={handleUploadVideo}>
-              <View className="attachment-icon">
-                <VideoIcon size={20} color="#00f5ff" />
-              </View>
-              <Text className="attachment-label">视频</Text>
-            </View>
-            <View className="attachment-item" onClick={navigateToSkillsSquare}>
-              <View className="attachment-icon">
-                <Wrench size={20} color="#00f5ff" />
-              </View>
-              <Text className="attachment-label">技能</Text>
-            </View>
-          </View>
-        )}
-
         {/* 🔴 重新设计：主输入区域 */}
         <View className="input-main">
-          {/* 🔴 重新设计：左侧圆形按钮 */}
+          {/* 🔴 重新设计：左侧按钮组 - 语音 + 附件 */}
           <View className="input-left">
             <View className="icon-button voice-button" onClick={toggleVoiceMode}>
               {isVoiceMode ? (
-                <Keyboard size={20} color="#00f5ff" />
+                <Keyboard size={18} color="#00f5ff" />
               ) : (
-                <Mic size={20} color="#00f5ff" />
+                <Mic size={18} color="#00f5ff" />
               )}
             </View>
+            {!isVoiceMode && (
+              <>
+                <View className="icon-button attachment-button" onClick={handleUploadImage}>
+                  <ImageIcon size={18} color="rgba(255,255,255,0.7)" />
+                </View>
+                <View className="icon-button attachment-button" onClick={handleUploadVideo}>
+                  <VideoIcon size={18} color="rgba(255,255,255,0.7)" />
+                </View>
+                <View className="icon-button attachment-button" onClick={navigateToSkillsSquare}>
+                  <Wrench size={18} color="rgba(255,255,255,0.7)" />
+                </View>
+              </>
+            )}
           </View>
 
           {/* 🔴 重新设计：中间输入框 */}
@@ -3971,7 +3960,7 @@ export default function MindChatPage() {
                 className={`send-button ${inputText && inputText.trim() ? 'active' : ''}`}
                 onClick={() => sendMessage()}
               >
-                <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+                <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
               </View>
             )}
           </View>
