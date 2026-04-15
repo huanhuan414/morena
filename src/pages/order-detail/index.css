@@ -356,6 +356,49 @@
 }
 
 /* 通知列表 */
+.notification-section {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.notification-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12rpx;
+  border-left: 4rpx solid rgba(0, 245, 255, 0.5);
+}
+
+.block-title {
+  flex: 1;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.block-count {
+  padding: 4rpx 12rpx;
+  background: rgba(0, 245, 255, 0.2);
+  border: 1rpx solid rgba(0, 245, 255, 0.4);
+  border-radius: 16rpx;
+}
+
+.count-text {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #00f5ff;
+}
+
 .notification-list {
   display: flex;
   flex-direction: column;
@@ -424,6 +467,94 @@
   font-size: 24rpx;
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
+}
+
+/* 分身已接受订单列表 */
+.avatar-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.avatar-order-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s;
+}
+
+.avatar-order-item:active {
+  background: rgba(0, 245, 255, 0.1);
+  border-color: rgba(0, 245, 255, 0.3);
+}
+
+.order-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.order-title-small {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.order-status-badge {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1rpx solid rgba(34, 197, 94, 0.4);
+  border-radius: 12rpx;
+  font-size: 20rpx;
+  color: #22c55e;
+  align-self: flex-start;
+}
+
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  align-items: flex-end;
+}
+
+.order-budget {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.order-time {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 40rpx;
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state.mini {
+  padding: 32rpx;
+}
+
+.empty-state.mini Bell,
+.empty-state.mini Check {
+  width: 32rpx;
+  height: 32rpx;
 }
 
 /* 操作按钮 */

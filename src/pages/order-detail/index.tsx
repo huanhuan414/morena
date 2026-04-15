@@ -157,6 +157,10 @@ export default function OrderDetailPage() {
   // 通知记录
   const [notifications, setNotifications] = useState<any[]>([])
 
+  // 分身已接受的订单列表
+  const [avatarAcceptedOrders, setAvatarAcceptedOrders] = useState<any[]>([])
+  const [loadingAvatarOrders, setLoadingAvatarOrders] = useState(false)
+
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
@@ -211,6 +215,11 @@ export default function OrderDetailPage() {
       if (res.data?.code === 200) {
         setDispatchStatus(res.data.data)
         setExecutions(res.data.data.executions || [])
+
+        // 获取分身已接受的订单列表
+        if (res.data.data.acceptedAvatar) {
+          fetchAvatarAcceptedOrders()
+        }
       }
     } catch (error) {
       console.error('获取分配状态失败:', error)
@@ -225,6 +234,30 @@ export default function OrderDetailPage() {
       }
     } catch (error) {
       console.error('获取通知记录失败:', error)
+    }
+  }
+
+  // 获取分身已接受的订单
+  const fetchAvatarAcceptedOrders = async () => {
+    setLoadingAvatarOrders(true)
+    try {
+      // 获取当前订单的分身ID
+      const avatarId = dispatchStatus?.acceptedAvatar?.id || order?.avatars?.id
+
+      if (!avatarId) {
+        return
+      }
+
+      // 调用后端接口获取该分身已接受的订单
+      const res = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
+
+      if (res.data?.code === 200) {
+        setAvatarAcceptedOrders(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取分身已接受订单失败:', error)
+    } finally {
+      setLoadingAvatarOrders(false)
     }
   }
 
@@ -731,42 +764,92 @@ export default function OrderDetailPage() {
         {activeTab === 'notifications' && (
           <View className="tab-panel">
             <View className="notification-section">
-              {notifications.length > 0 ? (
-                <View className="notification-list">
-                  {notifications.map((notification) => (
-                    <View key={notification.id} className="notification-item">
-                      <View className="notification-header">
-                        <View className="notification-avatar">
-                          {notification.avatar?.avatar_url ? (
-                            <Image
-                              src={notification.avatar.avatar_url}
-                              className="avatar-image"
-                            />
-                          ) : (
-                            <View className="avatar-placeholder">
-                              <User size={20} color="rgba(255, 255, 255, 0.5)" />
-                            </View>
-                          )}
+              {/* 通知我的 */}
+              <View className="notification-block">
+                <View className="block-header">
+                  <Bell size={16} color="#00f5ff" />
+                  <Text className="block-title">通知我的</Text>
+                  <View className="block-count">
+                    <Text className="count-text">{notifications.length}</Text>
+                  </View>
+                </View>
+                {notifications.length > 0 ? (
+                  <View className="notification-list">
+                    {notifications.map((notification) => (
+                      <View key={notification.id} className="notification-item">
+                        <View className="notification-header">
+                          <View className="notification-avatar">
+                            {notification.avatar?.avatar_url ? (
+                              <Image
+                                src={notification.avatar.avatar_url}
+                                className="avatar-image"
+                              />
+                            ) : (
+                              <View className="avatar-placeholder">
+                                <User size={20} color="rgba(255, 255, 255, 0.5)" />
+                              </View>
+                            )}
+                          </View>
+                          <View className="notification-info">
+                            <Text className="notification-avatar-name">
+                              {notification.avatar?.name || '未知分身'}
+                            </Text>
+                            <Text className="notification-time">
+                              {new Date(notification.created_at).toLocaleString()}
+                            </Text>
+                          </View>
                         </View>
-                        <View className="notification-info">
-                          <Text className="notification-avatar-name">
-                            {notification.avatar?.name || '未知分身'}
-                          </Text>
-                          <Text className="notification-time">
-                            {new Date(notification.created_at).toLocaleString()}
-                          </Text>
-                        </View>
+                        <Text className="notification-content">{notification.content}</Text>
                       </View>
-                      <Text className="notification-content">{notification.content}</Text>
-                    </View>
-                  ))}
+                    ))}
+                  </View>
+                ) : (
+                  <View className="empty-state mini">
+                    <Bell size={32} color="rgba(255, 255, 255, 0.2)" />
+                    <Text className="empty-text">暂无通知记录</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* 分身已接受的订单 */}
+              <View className="notification-block">
+                <View className="block-header">
+                  <Check size={16} color="#22c55e" />
+                  <Text className="block-title">分身已接受的订单</Text>
+                  <View className="block-count">
+                    <Text className="count-text">{avatarAcceptedOrders.length}</Text>
+                  </View>
                 </View>
-              ) : (
-                <View className="empty-state">
-                  <Bell size={48} color="rgba(255, 255, 255, 0.2)" />
-                  <Text className="empty-text">暂无通知记录</Text>
-                </View>
-              )}
+                {loadingAvatarOrders ? (
+                  <View className="loading-state">
+                    <Loader size={24} color="#00f5ff" />
+                    <Text className="loading-text">加载中...</Text>
+                  </View>
+                ) : avatarAcceptedOrders.length > 0 ? (
+                  <View className="avatar-orders-list">
+                    {avatarAcceptedOrders.map((item) => (
+                      <View key={item.order_id} className="avatar-order-item" onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}>
+                        <View className="order-info">
+                          <Text className="order-title-small">{item.orders?.title || '未知订单'}</Text>
+                          <Text className="order-status-badge">{STATUS_CONFIG[item.orders?.status || 'open']?.label || '未知状态'}</Text>
+                        </View>
+                        <View className="order-meta">
+                          <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
+                          <Text className="order-time">
+                            {item.accepted_at ? new Date(item.accepted_at).toLocaleDateString() : ''}
+                          </Text>
+                        </View>
+                        <ChevronRight size={16} color="rgba(255, 255, 255, 0.4)" />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View className="empty-state mini">
+                    <Check size={32} color="rgba(255, 255, 255, 0.2)" />
+                    <Text className="empty-text">暂无已接受订单</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         )}

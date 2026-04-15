@@ -145,6 +145,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 获取分身已接受的订单列表
+   */
+  @Get('avatar/:avatarId/accepted-orders')
+  async getAvatarAcceptedOrders(@Param('avatarId') avatarId: string) {
+    const orders = await this.dispatchService.getAvatarAcceptedOrders(avatarId)
+    return {
+      code: 200,
+      data: orders,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 更新执行步骤状态
    */
   @Put('execution/:executionId/status')

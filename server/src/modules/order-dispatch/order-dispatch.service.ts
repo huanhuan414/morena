@@ -1564,6 +1564,63 @@ export class OrderDispatchService {
   }
 
   /**
+   * 获取分身已接受的订单列表
+   */
+  async getAvatarAcceptedOrders(avatarId: string): Promise<any[]> {
+    const client = getSupabaseClient()
+
+    try {
+      // 查询该分身已接受的订单（状态为 accepted）
+      const { data: requests, error } = await client
+        .from('order_dispatch_requests')
+        .select('*')
+        .eq('avatar_id', avatarId)
+        .eq('status', 'accepted')
+        .order('updated_at', { ascending: false })
+        .limit(20)
+
+      if (error) {
+        console.error('[getAvatarAcceptedOrders] 查询失败:', error)
+        return []
+      }
+
+      if (!requests || requests.length === 0) {
+        return []
+      }
+
+      // 关联订单信息
+      const ordersWithDetails = await Promise.all(
+        requests.map(async (request: any) => {
+          // 查询订单信息
+          const { data: order, error: orderError } = await client
+            .from('orders')
+            .select('id, title, description, budget, status, created_at')
+            .eq('id', request.order_id)
+            .single()
+
+          return {
+            ...request,
+            accepted_at: request.updated_at,  // 使用 updated_at 作为接受时间
+            orders: order || {
+              id: request.order_id,
+              title: '未知订单',
+              description: '',
+              budget: 0,
+              status: 'unknown',
+              created_at: request.created_at
+            }
+          }
+        })
+      )
+
+      return ordersWithDetails
+    } catch (error) {
+      console.error('[getAvatarAcceptedOrders] 处理失败:', error)
+      return []
+    }
+  }
+
+  /**
    * 确认订单分配
    */
   async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {
