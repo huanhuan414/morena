@@ -1446,10 +1446,14 @@ export class AgentService {
             // 完成思考，进度到 90%
             this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
             break
+          } else {
+            // 🔴 修复：如果工具执行失败，立即返回错误信息
+            console.error('[AgentService] 工具执行失败:', toolResult.error)
+            finalAnswer = `抱歉，${toolResult.error || '短剧制作失败'}`
+            // 标记为失败状态
+            this.emitProgress(userId, 'failed', '任务执行失败', {}, 100)
+            break
           }
-
-          // 🔴 修复：如果工具执行失败，继续循环
-          continue
         } else if (hasVideo) {
           // 如果包含视频数据，说明工具已经执行完成，可以返回
           finalAnswer = potentialFinalAnswer

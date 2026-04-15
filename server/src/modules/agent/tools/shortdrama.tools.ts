@@ -489,9 +489,18 @@ ${scriptContent}
               isReference: true
             })
             console.log(`[短剧制作] ✅ 角色${i + 1}形象生成成功: ${helper.imageUrls[0]}`)
+          } else {
+            // 🔴 修复：如果角色生成失败，抛出异常
+            const errorDetail = `角色${i + 1}（${characterPrompts[i].split(',')[0].trim()}）形象生成失败`
+            console.error(`[短剧制作] ❌ ${errorDetail}`)
+            throw new Error(`❌ 短剧制作失败：${errorDetail}。请稍后重试。`)
           }
         } catch (err) {
-          console.error(`[短剧制作] 生成角色${i + 1}形象失败:`, err)
+          // 🔴 修复：角色生成失败，抛出异常
+          const errorMessage = err.message || '未知错误'
+          const errorDetail = `角色${i + 1}（${characterPrompts[i].split(',')[0].trim()}）形象生成失败: ${errorMessage}`
+          console.error(`[短剧制作] ❌ ${errorDetail}`)
+          throw new Error(`❌ 短剧制作失败：${errorDetail}。请稍后重试。`)
         }
       }
 
@@ -520,9 +529,18 @@ ${scriptContent}
               url: helper.imageUrls[0],
               prompt: scenePrompts[i]
             })
+          } else {
+            // 🔴 修复：如果场景生成失败，抛出异常
+            const errorDetail = `场景${i + 1}（${scenePrompts[i]}）设计生成失败`
+            console.error(`[短剧制作] ❌ ${errorDetail}`)
+            throw new Error(`❌ 短剧制作失败：${errorDetail}。请稍后重试。`)
           }
         } catch (err) {
-          console.error(`[短剧制作] 生成场景${i + 1}设计失败:`, err)
+          // 🔴 修复：场景生成失败，抛出异常
+          const errorMessage = err.message || '未知错误'
+          const errorDetail = `场景${i + 1}（${scenePrompts[i]}）设计生成失败: ${errorMessage}`
+          console.error(`[短剧制作] ❌ ${errorDetail}`)
+          throw new Error(`❌ 短剧制作失败：${errorDetail}。请稍后重试。`)
         }
       }
 
@@ -730,7 +748,24 @@ ${scriptContent}
               console.error(`[短剧制作] ❌ API响应状态: ${err.response.status}`)
               console.error(`[短剧制作] ❌ API响应数据: ${JSON.stringify(err.response.data)}`)
             }
+
+            // 🔴 修复：如果视频生成失败，立即抛出异常，终止整个流程
+            const errorMessage = err.response?.data?.message || err.message || '未知错误'
+            const errorDetail = `镜头${i + 1}视频生成失败: ${errorMessage}`
+            console.error(`[短剧制作] ❌ ${errorDetail}`)
+
+            // 🔴 修复：抛出异常，告知用户哪个环节失败了
+            throw new Error(`❌ 短剧制作失败：${errorDetail}。请检查提示词是否包含敏感内容，或稍后重试。`)
           }
+        }
+
+        // 🔴 修复：检查是否成功生成了所有要求的视频
+        const targetVideoCount = Math.min(shotDescriptions.length, params.key_scenes_count || 6)
+        if (videoClips.length < targetVideoCount) {
+          const errorMessage = `视频生成不完整：预期生成 ${targetVideoCount} 个视频，实际只生成了 ${videoClips.length} 个`
+          console.error(`[短剧制作] ❌ ${errorMessage}`)
+          // 🔴 修复：如果没有生成所有要求的视频，抛出异常
+          throw new Error(`❌ 短剧制作失败：${errorMessage}。请检查提示词是否包含敏感内容，或稍后重试。`)
         }
 
         // 🔴 新增：记录视频生成结束时间
@@ -786,7 +821,11 @@ ${scriptContent}
           editedVideoUrl = editedResult.url
           console.log(`[短剧制作] ✅ 视频剪辑合成成功: ${editedVideoUrl}`)
         } catch (err) {
-          console.error('[短剧制作] ❌ 视频剪辑合成失败:', err)
+          // 🔴 修复：视频剪辑合成失败，抛出异常
+          const errorMessage = err.message || '未知错误'
+          const errorDetail = `视频剪辑合成失败: ${errorMessage}`
+          console.error(`[短剧制作] ❌ ${errorDetail}`)
+          throw new Error(`❌ 短剧制作失败：${errorDetail}。请稍后重试。`)
         }
       } else {
         // 🔴 修复：如果只有 1 个视频，将其作为成品视频
