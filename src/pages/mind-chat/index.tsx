@@ -2537,14 +2537,17 @@ export default function MindChatPage() {
 
             progressHistory.forEach((progress: any, idx: number) => {
               if (progress.action === 'observation' && progress.data?.data) {
-                const data = progress.data.data
-                console.log(`[图片渲染] Progress ${idx} data:`, data.action, data.data)
+                const observationData = progress.data
+                const toolAction = observationData.action // 🔴 修复：工具名称
+                const toolData = observationData.data // 🔴 修复：工具返回的数据
+
+                console.log(`[图片渲染] Progress ${idx}: action=${toolAction}`, toolData)
 
                 // 文章 - 从 write_wechat_mp_article 工具的返回数据中提取
-                if (data.action === 'write_wechat_mp_article' && data.data?.content && data.data?.title) {
-                  const articleTitle = data.data.title
-                  const articleContent = data.data.content
-                  const articleCover = data.data.cover_image_url
+                if (toolAction === 'write_wechat_mp_article' && toolData?.content && toolData?.title) {
+                  const articleTitle = toolData.title
+                  const articleContent = toolData.content
+                  const articleCover = toolData.cover_image_url
 
                   console.log('[图片渲染] 提取公众号文章:', articleTitle)
 
@@ -2561,16 +2564,16 @@ export default function MindChatPage() {
                 }
 
                 // 图片 - 封面图和配图
-                if (data.data?.cover_image_url && !existingUrls.has(data.data.cover_image_url)) {
-                  mediaList.push({ type: 'image', url: data.data.cover_image_url })
-                  existingUrls.add(data.data.cover_image_url)
+                if (toolData?.cover_image_url && !existingUrls.has(toolData.cover_image_url)) {
+                  mediaList.push({ type: 'image', url: toolData.cover_image_url })
+                  existingUrls.add(toolData.cover_image_url)
                 }
 
                 // 文章 - 从 publish_wechat_mp 工具的返回数据中提取
-                if (data.action === 'publish_wechat_mp' && data.data?.published_content && data.data?.published_title) {
-                  const articleTitle = data.data.published_title
-                  const articleContent = data.data.published_content
-                  const articleCover = data.data.cover_url
+                if (toolAction === 'publish_wechat_mp' && toolData?.published_content && toolData?.published_title) {
+                  const articleTitle = toolData.published_title
+                  const articleContent = toolData.published_content
+                  const articleCover = toolData.cover_url
 
                   console.log('[图片渲染] 提取已发布的公众号文章:', articleTitle)
 
@@ -2583,6 +2586,14 @@ export default function MindChatPage() {
                       coverImage: articleCover
                     })
                     existingArticles.add(articleTitle)
+                  }
+                }
+
+                // 🔴 新增：提取发布成功的提示信息（草稿箱提示）
+                if (toolData?.message && (toolData.message.includes('草稿箱') || toolData.message.includes('微信公众平台'))) {
+                  if (!publishSuccessMessage) {
+                    publishSuccessMessage = toolData.message
+                    console.log('[图片渲染] 提取发布成功提示:', publishSuccessMessage)
                   }
                 }
               }
