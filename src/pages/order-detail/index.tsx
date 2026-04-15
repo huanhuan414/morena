@@ -4,12 +4,13 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import * as Network from '@/network'
-import { 
-  Sparkles, ChevronRight, 
+import {
+  Sparkles, ChevronRight,
   Pencil, Save, Check, X, ExternalLink, Star, ThumbsUp,
   TrendingUp, MessageCircle, Share2, Eye, Loader, Circle,
-  Sparkle, ArrowRight
+  Sparkle, ArrowRight, Bell, User
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -156,6 +157,9 @@ export default function OrderDetailPage() {
 
   // 通知记录
   const [notifications, setNotifications] = useState<any[]>([])
+
+  // 分身记录 Tab
+  const [activeRecordTab, setActiveRecordTab] = useState<'notifications' | 'avatar'>('notifications')
 
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -534,63 +538,117 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 接单分身信息 */}
-            {(dispatchStatus?.acceptedAvatar || order.avatars) && (
+            {/* 分身记录 Tab */}
+            {(dispatchStatus?.acceptedAvatar || order.avatars || notifications.length > 0) && (
               <View className="info-section">
-                <Text className="section-title">接单分身</Text>
-                <View className="avatar-card">
-                  <View className="avatar-avatar">
-                    {(dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url) ? (
-                      <Image
-                        src={dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url}
-                        className="avatar-img"
-                      />
-                    ) : (
-                      <Sparkles size={24} color="#00f5ff" />
-                    )}
-                  </View>
-                  <View className="avatar-info">
-                    <Text className="avatar-name">
-                      {dispatchStatus?.acceptedAvatar?.name || order.avatars?.name || '未知分身'}
-                    </Text>
-                    <View className="avatar-meta">
-                      <Text className="avatar-level">
-                        Lv.{dispatchStatus?.acceptedAvatar?.level || order.avatars?.level || 1}
-                      </Text>
-                      {dispatchStatus?.currentStep && (
-                        <View className="avatar-status">
-                          <Loader size={12} color="#3b82f6" className="animate-spin" />
-                          <Text className="status-text-mini">正在执行: {dispatchStatus.currentStep.step_name}</Text>
+                <Text className="section-title">分身记录</Text>
+                <Tabs value={activeRecordTab} onValueChange={(v) => setActiveRecordTab(v as any)}>
+                  <TabsList className="tabs-list">
+                    <TabsTrigger value="notifications" className="tabs-trigger">
+                      <Bell size={16} color="rgba(255, 255, 255, 0.6)" className="mr-2" />
+                      <Text>通知记录</Text>
+                      {notifications.length > 0 && (
+                        <View className="badge">
+                          <Text className="badge-count">{notifications.length}</Text>
                         </View>
                       )}
-                    </View>
-                  </View>
-                </View>
+                    </TabsTrigger>
+                    {(dispatchStatus?.acceptedAvatar || order.avatars) && (
+                      <TabsTrigger value="avatar" className="tabs-trigger">
+                        <User size={16} color="rgba(255, 255, 255, 0.6)" className="mr-2" />
+                        <Text>接单分身</Text>
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
 
-                {/* 执行进度 */}
-                {executions.length > 0 && (
-                  <View className="exec-progress-wrapper">
-                    <Text className="progress-title">执行进度</Text>
-                    <View className="exec-steps">
-                      {executions.map((step, idx) => (
-                        <View key={step.id} className="exec-step">
-                          <View className="step-indicator">
-                            {getStepIcon(step.status)}
-                            {idx < executions.length - 1 && (
-                              <View className={`step-line ${step.status === 'completed' ? 'completed' : ''}`} />
+                  {/* 通知记录 Tab Content */}
+                  <TabsContent value="notifications" className="tabs-content">
+                    {notifications.length > 0 ? (
+                      <View className="notification-list">
+                        {notifications.map((notification) => (
+                          <View key={notification.id} className="notification-item">
+                            <View className="notification-header">
+                              <Text className="notification-title">{notification.title}</Text>
+                              <Text className="notification-time">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </Text>
+                            </View>
+                            <Text className="notification-content">{notification.content}</Text>
+                            {!notification.is_read && (
+                              <View className="notification-badge">
+                                <Text className="badge-text">未读</Text>
+                              </View>
                             )}
                           </View>
-                          <View className="step-content">
-                            <Text className="step-name">{step.step_name}</Text>
-                            {step.description && (
-                              <Text className="step-desc">{step.description}</Text>
+                        ))}
+                      </View>
+                    ) : (
+                      <View className="empty-state">
+                        <Bell size={48} color="rgba(255, 255, 255, 0.2)" />
+                        <Text className="empty-text">暂无通知记录</Text>
+                      </View>
+                    )}
+                  </TabsContent>
+
+                  {/* 接单分身 Tab Content */}
+                  {(dispatchStatus?.acceptedAvatar || order.avatars) && (
+                    <TabsContent value="avatar" className="tabs-content">
+                      <View className="avatar-card">
+                        <View className="avatar-avatar">
+                          {(dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url) ? (
+                            <Image
+                              src={dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url}
+                              className="avatar-img"
+                            />
+                          ) : (
+                            <Sparkles size={24} color="#00f5ff" />
+                          )}
+                        </View>
+                        <View className="avatar-info">
+                          <Text className="avatar-name">
+                            {dispatchStatus?.acceptedAvatar?.name || order.avatars?.name || '未知分身'}
+                          </Text>
+                          <View className="avatar-meta">
+                            <Text className="avatar-level">
+                              Lv.{dispatchStatus?.acceptedAvatar?.level || order.avatars?.level || 1}
+                            </Text>
+                            {dispatchStatus?.currentStep && (
+                              <View className="avatar-status">
+                                <Loader size={12} color="#3b82f6" className="animate-spin" />
+                                <Text className="status-text-mini">正在执行: {dispatchStatus.currentStep.step_name}</Text>
+                              </View>
                             )}
                           </View>
                         </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+                      </View>
+
+                      {/* 执行进度 */}
+                      {executions.length > 0 && (
+                        <View className="exec-progress-wrapper">
+                          <Text className="progress-title">执行进度</Text>
+                          <View className="exec-steps">
+                            {executions.map((step, idx) => (
+                              <View key={step.id} className="exec-step">
+                                <View className="step-indicator">
+                                  {getStepIcon(step.status)}
+                                  {idx < executions.length - 1 && (
+                                    <View className={`step-line ${step.status === 'completed' ? 'completed' : ''}`} />
+                                  )}
+                                </View>
+                                <View className="step-content">
+                                  <Text className="step-name">{step.step_name}</Text>
+                                  {step.description && (
+                                    <Text className="step-desc">{step.description}</Text>
+                                  )}
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </TabsContent>
+                  )}
+                </Tabs>
               </View>
             )}
 
@@ -613,31 +671,6 @@ export default function OrderDetailPage() {
                           <Text className="step-desc">{step.description}</Text>
                         )}
                       </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* 通知记录 */}
-            {notifications.length > 0 && (
-              <View className="info-section">
-                <Text className="section-title">通知记录</Text>
-                <View className="notification-list">
-                  {notifications.map((notification) => (
-                    <View key={notification.id} className="notification-item">
-                      <View className="notification-header">
-                        <Text className="notification-title">{notification.title}</Text>
-                        <Text className="notification-time">
-                          {new Date(notification.created_at).toLocaleString()}
-                        </Text>
-                      </View>
-                      <Text className="notification-content">{notification.content}</Text>
-                      {!notification.is_read && (
-                        <View className="notification-badge">
-                          <Text className="badge-text">未读</Text>
-                        </View>
-                      )}
                     </View>
                   ))}
                 </View>
