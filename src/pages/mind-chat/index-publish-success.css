@@ -1,0 +1,20 @@
+/* 公众号发布成功提示样式 */
+.publish-success-message {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 245, 255, 0.15));
+  border: 2rpx solid rgba(0, 255, 136, 0.3);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.publish-success-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #00ff88;
+  line-height: 1.6;
+  word-wrap: break-word;
+  word-break: break-all;
+}

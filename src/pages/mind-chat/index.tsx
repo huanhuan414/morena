@@ -21,6 +21,7 @@ import {
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
+import "./index-publish-success.css"
 
 /**
  * 前端清理函数：移除消息内容中的图片链接等调试信息
@@ -2444,6 +2445,7 @@ export default function MindChatPage() {
 
           // 优先使用 metadata.media，但如果 metadata.media 不完整，从 agent_result 中补充
           let mediaList = [...(msg.metadata?.media || [])]
+          let publishSuccessMessage = '' // 🔴 新增：保存发布成功的提示信息
 
           // 调试日志：打印初始 mediaList
           if (msg.metadata?.media) {
@@ -2462,6 +2464,14 @@ export default function MindChatPage() {
               if (step.observation?.data) {
                 const data = step.observation.data
                 console.log(`[图片渲染] Step ${stepIdx} data:`, data)
+
+                // 🔴 新增：提取发布成功的提示信息（草稿箱提示）
+                if (data.message && (data.message.includes('草稿箱') || data.message.includes('微信公众平台'))) {
+                  if (!publishSuccessMessage) {
+                    publishSuccessMessage = data.message
+                    console.log('[图片渲染] 提取发布成功提示:', publishSuccessMessage)
+                  }
+                }
 
                 // 图片 - 支持单个 url 和 image_urls 数组两种格式
                 if (data.url && typeof data.url === 'string') {
@@ -2792,19 +2802,19 @@ export default function MindChatPage() {
 
                 return null
               })}
+
+              {/* 🔴 新增：显示发布成功的提示信息（草稿箱提示） */}
+              {publishSuccessMessage && (
+                <View className="publish-success-message">
+                  <Text className="publish-success-text">{publishSuccessMessage}</Text>
+                </View>
+              )}
             </View>
           )
         })()}
 
         {/* 文本消息渲染 - 只在没有媒体内容且没有内嵌视频且没有文章时渲染 */}
         {(() => {
-          // 🔴 新增：检查是否有媒体内容（图片/视频/文章）
-          // 包括 metadata.media 和从 task_state.progressHistory/agent_result.steps 中提取的 mediaList
-          const hasMediaContent = msg.metadata?.media && msg.metadata.media.length > 0
-
-          // 如果有媒体内容，文本已经在媒体容器中渲染过了，不再重复渲染
-          if (hasMediaContent) return null
-
           // 检查是否有内嵌视频链接
           const { videoUrl } = extractVideoUrlFromText(msg.content)
 
@@ -2813,6 +2823,25 @@ export default function MindChatPage() {
 
           // 如果没有视频链接，渲染文本
           if (msg.content && typeof msg.content === 'string') {
+            // 🔴 检查是否有媒体内容（图片/视频/文章）
+            const hasMediaContent = msg.metadata?.media && msg.metadata.media.length > 0
+
+            // 🔴 新增：显示草稿箱提示信息
+            // 如果 content 包含"草稿箱"或"微信公众平台"，说明是发布成功的提示，需要显示
+            const isPublishSuccessHint = msg.content.includes('草稿箱') || msg.content.includes('微信公众平台')
+
+            // 如果是发布成功的提示，显示它（即使有 mediaContent）
+            if (isPublishSuccessHint) {
+              return (
+                <View className="text-message">
+                  <MarkdownRender content={msg.content} />
+                </View>
+              )
+            }
+
+            // 如果有媒体内容（但不是发布成功提示），文本已经在媒体容器中渲染过了，不再重复渲染
+            if (hasMediaContent) return null
+
             // 🔴 检查是否是公众号文章的 summary（避免重复渲染）
             // 如果 content 是类似 "✅ 已完成公众号爆款图文的创作..." 的 summary，则不渲染
             const isArticleSummary = msg.content.includes('已完成公众号') &&
