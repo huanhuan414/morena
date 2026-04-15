@@ -17,8 +17,8 @@ import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Keyboard, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Image as ImageIcon, Video as VideoIcon
+  MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
+  Play, Video as VideoIcon, Paperclip
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -305,7 +305,6 @@ export default function MindChatPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -1770,107 +1769,21 @@ export default function MindChatPage() {
     }
   }
 
-  const startRecording = () => {
-    const env = Taro.getEnv()
-    
-    if (env !== Taro.ENV_TYPE.WEAPP) {
-      // H5 端不支持录音，提示用户使用文字输入
-      showToast({ title: 'H5端暂不支持语音输入，请使用文字输入', icon: 'none', duration: 2000 })
-      setIsVoiceMode(false)  // 自动切换回文字模式
-      return
-    }
-    
-    const recorderManager = Taro.getRecorderManager()
-    
-    recorderManager.onStart(() => {
-      setIsRecording(true)
-      setRecordingTime(0)
-      showToast({ title: '开始录音...', icon: 'none', duration: 60000 })
-    })
-    
-    recorderManager.onStop((res) => {
-      setIsRecording(false)
-      const { tempFilePath } = res
-      
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current)
-        recordingTimerRef.current = null
-      }
-      
-      recognizeSpeech(tempFilePath)
-    })
-    
-    recorderManager.onError((err) => {
-      console.error('录音失败:', err)
-      showToast({ title: '录音失败', icon: 'none' })
-      setIsRecording(false)
-    })
-    
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1)
-    }, 1000)
-    
-    try {
-      recorderManager.start({
-        format: 'mp3',
-        duration: 60000
-      })
-    } catch (error) {
-      console.error('启动录音失败:', error)
-      showToast({ title: '启动录音失败', icon: 'none' })
-    }
-  }
-
   const stopRecording = () => {
     if (!isRecording) return
-    
+
     setIsRecording(false)
-    
+
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null
     }
-    
+
     const env = Taro.getEnv()
-    
+
     if (env === Taro.ENV_TYPE.WEAPP) {
       const recorderManager = Taro.getRecorderManager()
       recorderManager.stop()
-    }
-    
-    setRecordingTime(0)
-  }
-
-  const recognizeSpeech = async (filePath: string) => {
-    try {
-      showToast({ title: '识别中...', icon: 'loading', duration: 10000 })
-      
-      const res = await Network.uploadFile({
-        url: '/api/audio/asr',
-        filePath: filePath,
-        name: 'audio'
-      })
-      
-      const responseData = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
-      
-      if (responseData?.code === 200) {
-        const text = responseData.data?.text || ''
-        setInputText(text)
-        showToast({ title: '识别完成', icon: 'success', duration: 1000 })
-        
-        if (text.trim()) {
-          setTimeout(() => {
-            sendMessage(text)
-          }, 500)
-        }
-      } else {
-        showToast({ title: '识别失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('语音识别失败:', error)
-      const fallbackText = '我发了一条语音消息'
-      setInputText(fallbackText)
-      showToast({ title: '语音功能暂不可用', icon: 'none' })
     }
   }
 
@@ -1917,12 +1830,6 @@ export default function MindChatPage() {
       console.error('[MindChat] 获取语音失败:', error)
       // 静默失败，不影响用户体验
     }
-  }
-
-  const formatRecordingTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
   // 从文本中提取视频链接
@@ -3861,108 +3768,81 @@ export default function MindChatPage() {
           </View>
         )}
 
-        {/* 🔴 重新设计：主输入区域 */}
+        {/* 🔴 重新设计：主输入区域 - 两行布局 */}
         <View className="input-main">
-          {/* 🔴 重新设计：左侧按钮组 - 语音 + 附件 */}
-          <View className="input-left">
-            <View className="icon-button voice-button" onClick={toggleVoiceMode}>
-              {isVoiceMode ? (
-                <Keyboard size={18} color="#00f5ff" />
-              ) : (
-                <Mic size={18} color="#00f5ff" />
-              )}
+          {/* 第一行：输入框 */}
+          <View className="input-row">
+            <View className="input-wrapper">
+              <Textarea
+                ref={textareaRef}
+                className="text-input"
+                placeholder="发消息..."
+                placeholderClass="text-input-placeholder"
+                value={inputText}
+                maxlength={1000}
+                onInput={(e: any) => {
+                  let newValue = ''
+                  if (e.detail && e.detail.value !== undefined) {
+                    newValue = e.detail.value
+                  } else if (e.target && e.target.value !== undefined) {
+                    newValue = e.target.value
+                  } else if (typeof e === 'string') {
+                    newValue = e
+                  }
+                  setInputText(newValue)
+                }}
+                onConfirm={() => sendMessage()}
+                confirmType="send"
+                adjustPosition
+                autoHeight
+                cursorSpacing={80}
+                onBlur={(e: any) => {
+                  let newValue = inputText
+                  if (e.detail && e.detail.value !== undefined) {
+                    newValue = e.detail.value
+                  } else if (e.target && e.target.value !== undefined) {
+                    newValue = e.target.value
+                  }
+                  setInputText(newValue)
+                }}
+                style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
+              />
             </View>
-            {!isVoiceMode && (
-              <>
-                <View className="icon-button attachment-button" onClick={handleUploadImage}>
-                  <ImageIcon size={18} color="rgba(255,255,255,0.7)" />
-                </View>
-                <View className="icon-button attachment-button" onClick={handleUploadVideo}>
-                  <VideoIcon size={18} color="rgba(255,255,255,0.7)" />
-                </View>
-                <View className="icon-button attachment-button" onClick={navigateToSkillsSquare}>
-                  <Wrench size={18} color="rgba(255,255,255,0.7)" />
-                </View>
-              </>
-            )}
+
+            {/* 发送按钮 */}
+            <View
+              className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
+              onClick={() => sendMessage()}
+            >
+              <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+            </View>
           </View>
 
-          {/* 🔴 重新设计：中间输入框 */}
-          <View className="input-center">
-            {isVoiceMode ? (
-              <View
-                className={`voice-input-wrapper ${isRecording ? 'recording' : ''}`}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
-                onTouchCancel={stopRecording}
-              >
-                {isRecording ? (
-                  <View className="recording-content">
-                    <View className="recording-animation">
-                      <View className="recording-dot" />
-                      <View className="recording-dot" />
-                      <View className="recording-dot" />
-                    </View>
-                    <Text className="recording-time">{formatRecordingTime(recordingTime)}</Text>
-                    <Text className="recording-hint">松开发送</Text>
-                  </View>
-                ) : (
-                  <View className="voice-idle">
-                    <Mic size={24} color="rgba(255,255,255,0.6)" />
-                    <Text className="voice-idle-text">按住说话</Text>
-                  </View>
-                )}
+          {/* 第二行：功能按钮 + 语音按钮 */}
+          <View className="button-row">
+            {/* 左侧功能按钮 */}
+            <View className="function-buttons">
+              <View className="function-btn" onClick={handleUploadImage}>
+                <Paperclip size={16} color="rgba(255,255,255,0.8)" />
+                <Text className="function-text">图片</Text>
               </View>
-            ) : (
-              <View className="text-input-wrapper">
-                <Textarea
-                  ref={textareaRef}
-                  className="text-input"
-                  placeholder="说点什么..."
-                  placeholderClass="text-input-placeholder"
-                  value={inputText}
-                  maxlength={1000}
-                  onInput={(e: any) => {
-                    let newValue = ''
-                    if (e.detail && e.detail.value !== undefined) {
-                      newValue = e.detail.value
-                    } else if (e.target && e.target.value !== undefined) {
-                      newValue = e.target.value
-                    } else if (typeof e === 'string') {
-                      newValue = e
-                    }
-                    setInputText(newValue)
-                  }}
-                  onConfirm={() => sendMessage()}
-                  confirmType="send"
-                  adjustPosition
-                  autoHeight
-                  cursorSpacing={80}
-                  onBlur={(e: any) => {
-                    let newValue = inputText
-                    if (e.detail && e.detail.value !== undefined) {
-                      newValue = e.detail.value
-                    } else if (e.target && e.target.value !== undefined) {
-                      newValue = e.target.value
-                    }
-                    setInputText(newValue)
-                  }}
-                  style={{ minHeight: '64rpx', maxHeight: '280rpx' }}
-                />
+              <View className="function-btn" onClick={handleUploadVideo}>
+                <VideoIcon size={16} color="rgba(255,255,255,0.8)" />
+                <Text className="function-text">视频</Text>
               </View>
-            )}
-          </View>
+              <View className="function-btn" onClick={navigateToSkillsSquare}>
+                <Wrench size={16} color="rgba(255,255,255,0.8)" />
+                <Text className="function-text">技能</Text>
+              </View>
+            </View>
 
-          {/* 🔴 重新设计：右侧圆形发送按钮 */}
-          <View className="input-right">
-            {!isVoiceMode && (
-              <View
-                className={`send-button ${inputText && inputText.trim() ? 'active' : ''}`}
-                onClick={() => sendMessage()}
-              >
-                <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
-              </View>
-            )}
+            {/* 右侧语音按钮 */}
+            <View
+              className={`voice-btn ${isVoiceMode ? 'active' : ''}`}
+              onClick={toggleVoiceMode}
+            >
+              <Mic size={20} color={isVoiceMode ? '#0a0a0f' : 'rgba(255,255,255,0.7)'} />
+            </View>
           </View>
         </View>
       </View>
