@@ -133,7 +133,7 @@ export default function PendingOrderPage() {
           setAccepting(true)
           try {
             const result = await Network.request({
-              url: `/api/order-dispatch/request/${requestId}/accept`,
+              url: `/api/order-dispatch/request/${requestId}/confirm`,
               method: 'PUT',
               data: { avatarId: orderData.avatars.id }
             })
