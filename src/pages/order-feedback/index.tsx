@@ -8,6 +8,22 @@ import * as Network from '@/network'
 import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check } from 'lucide-react-taro'
 import './index.css'
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  wechat_mp: '微信小程序',
+  xiaohongshu: '小红书',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  kuaishou: '快手'
+}
+
+// 获取平台中文名称
+const getPlatformNames = (platforms?: string[]): string => {
+  if (!platforms || platforms.length === 0) return '全平台'
+  return platforms.map(p => PLATFORM_NAMES[p] || p).join('、')
+}
+
 export default function OrderFeedbackPage() {
   const router = useRouter()
   const { orderId, avatarId } = router.params
@@ -144,7 +160,7 @@ export default function OrderFeedbackPage() {
             <View className="order-info">
               <Text className="order-title">{orderData.title}</Text>
               <Text className="order-platform">
-                平台：{orderData.platforms?.join('、') || '全平台'}
+                平台：{getPlatformNames(orderData.platforms)}
               </Text>
             </View>
           </View>

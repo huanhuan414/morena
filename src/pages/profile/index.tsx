@@ -9,6 +9,22 @@ import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  wechat_mp: '微信小程序',
+  xiaohongshu: '小红书',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  kuaishou: '快手'
+}
+
+// 获取平台中文名称
+const getPlatformNames = (platforms?: string[]): string => {
+  if (!platforms || platforms.length === 0) return '全平台'
+  return platforms.map(p => PLATFORM_NAMES[p] || p).join('、')
+}
+
 interface UserStats {
   avatarCount: number
   taskCount: number      // B端订单数量
@@ -255,7 +271,7 @@ export default function ProfilePage() {
                   </View>
 
                   <View className="request-meta">
-                    <Text className="meta-item">📱 {request.orders.platforms?.join('、') || '全平台'}</Text>
+                    <Text className="meta-item">📱 {getPlatformNames(request.orders.platforms)}</Text>
                     <Text className="meta-item">📅 {request.orders.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
                   </View>
 

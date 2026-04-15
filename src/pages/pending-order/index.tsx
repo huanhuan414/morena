@@ -1,10 +1,26 @@
 import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock } from 'lucide-react-taro'
 import './index.css'
+
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  wechat_mp: '微信小程序',
+  xiaohongshu: '小红书',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  kuaishou: '快手'
+}
+
+// 获取平台中文名称
+const getPlatformNames = (platforms?: string[]): string => {
+  if (!platforms || platforms.length === 0) return '全平台'
+  return platforms.map(p => PLATFORM_NAMES[p] || p).join('、')
+}
 
 interface PendingOrderData {
   id: string
@@ -40,6 +56,7 @@ export default function PendingOrderPage() {
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [rejecting, setRejecting] = useState(false)
+  const [remainingTime, setRemainingTime] = useState('')
 
   useLoad(() => {
     if (requestId) {
@@ -49,6 +66,39 @@ export default function PendingOrderPage() {
       setTimeout(() => navigateBack(), 1500)
     }
   })
+
+  // 倒计时实时更新
+  useEffect(() => {
+    if (!orderData) return
+
+    const updateRemainingTime = () => {
+      const now = new Date()
+      const expires = new Date(orderData.expires_at)
+      const diff = expires.getTime() - now.getTime()
+
+      if (diff <= 0) {
+        setRemainingTime('已过期')
+        return
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      if (hours > 0) {
+        setRemainingTime(`${hours}小时${minutes}分${seconds}秒`)
+      } else if (minutes > 0) {
+        setRemainingTime(`${minutes}分${seconds}秒`)
+      } else {
+        setRemainingTime(`${seconds}秒`)
+      }
+    }
+
+    updateRemainingTime()
+    const timer = setInterval(updateRemainingTime, 1000)
+
+    return () => clearInterval(timer)
+  }, [orderData])
 
   const fetchOrderDetail = async () => {
     try {
@@ -143,18 +193,6 @@ export default function PendingOrderPage() {
     })
   }
 
-  const getRemainingTime = (expiresAt: string) => {
-    const now = new Date()
-    const expires = new Date(expiresAt)
-    const diff = expires.getTime() - now.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    if (hours > 0) {
-      return `${hours}小时${minutes}分钟`
-    }
-    return `${minutes}分钟`
-  }
-
   if (loading) {
     return (
       <View className="pending-order-page">
@@ -176,7 +214,7 @@ export default function PendingOrderPage() {
         <View className="countdown-section">
           <Clock size={16} color="#f59e0b" />
           <Text className="countdown-text">
-            剩余时间：{getRemainingTime(orderData.expires_at)}
+            剩余时间：{remainingTime}
           </Text>
         </View>
 
@@ -201,7 +239,7 @@ export default function PendingOrderPage() {
             <View className="meta-item">
               <Smartphone size={16} color="#3b82f6" />
               <Text className="meta-label">平台</Text>
-              <Text className="meta-value">{orderData.orders.platforms?.join('、') || '全平台'}</Text>
+              <Text className="meta-value">{getPlatformNames(orderData.orders.platforms)}</Text>
             </View>
             <View className="meta-item">
               <Target size={16} color="#8b5cf6" />
