@@ -2450,7 +2450,7 @@ export default function MindChatPage() {
             console.log('[图片渲染] metadata.media:', msg.metadata.media)
           }
 
-          // 从 agent_result.steps 中提取媒体内容（补充提取，确保不遗漏）
+          // 从 agent_result.steps 和 task_state.progressHistory 中提取媒体内容（补充提取，确保不遗漏）
           if (msg.metadata?.agent_result?.steps) {
             const steps = msg.metadata.agent_result.steps || []
             const existingUrls = new Set(mediaList.map((m: MessageMedia) => m.url).filter(Boolean))
@@ -2516,6 +2516,69 @@ export default function MindChatPage() {
             })
           }
 
+          // 🔴 新增：从 task_state.progressHistory 中提取媒体内容（特别是公众号文章）
+          if (msg.metadata?.task_state?.progressHistory) {
+            const progressHistory = msg.metadata.task_state.progressHistory as any[]
+            const existingUrls = new Set(mediaList.map((m: MessageMedia) => m.url).filter(Boolean))
+            const existingArticles = new Set(mediaList.filter((m: MessageMedia) => m.type === 'article').map((m: MessageMedia) => m.title))
+
+            console.log('[图片渲染] 从 task_state.progressHistory 提取媒体，现有 URLs:', existingUrls)
+            console.log('[图片渲染] task_state.progressHistory 数量:', progressHistory.length)
+
+            progressHistory.forEach((progress: any, idx: number) => {
+              if (progress.action === 'observation' && progress.data?.data) {
+                const data = progress.data.data
+                console.log(`[图片渲染] Progress ${idx} data:`, data.action, data.data)
+
+                // 文章 - 从 write_wechat_mp_article 工具的返回数据中提取
+                if (data.action === 'write_wechat_mp_article' && data.data?.content && data.data?.title) {
+                  const articleTitle = data.data.title
+                  const articleContent = data.data.content
+                  const articleCover = data.data.cover_image_url
+
+                  console.log('[图片渲染] 提取公众号文章:', articleTitle)
+
+                  // 检查是否已经添加了相同标题的文章
+                  if (!existingArticles.has(articleTitle)) {
+                    mediaList.push({
+                      type: 'article',
+                      title: articleTitle,
+                      content: articleContent,
+                      coverImage: articleCover
+                    })
+                    existingArticles.add(articleTitle)
+                  }
+                }
+
+                // 图片 - 封面图和配图
+                if (data.data?.cover_image_url && !existingUrls.has(data.data.cover_image_url)) {
+                  mediaList.push({ type: 'image', url: data.data.cover_image_url })
+                  existingUrls.add(data.data.cover_image_url)
+                }
+
+                // 文章 - 从 publish_wechat_mp 工具的返回数据中提取
+                if (data.action === 'publish_wechat_mp' && data.data?.published_content && data.data?.published_title) {
+                  const articleTitle = data.data.published_title
+                  const articleContent = data.data.published_content
+                  const articleCover = data.data.cover_url
+
+                  console.log('[图片渲染] 提取已发布的公众号文章:', articleTitle)
+
+                  // 检查是否已经添加了相同标题的文章
+                  if (!existingArticles.has(articleTitle)) {
+                    mediaList.push({
+                      type: 'article',
+                      title: articleTitle,
+                      content: articleContent,
+                      coverImage: articleCover
+                    })
+                    existingArticles.add(articleTitle)
+                  }
+                }
+              }
+            })
+          }
+
           if (mediaList.length === 0) {
             console.log('[图片渲染] mediaList 为空，不渲染媒体内容')
             return null
@@ -2568,7 +2631,7 @@ export default function MindChatPage() {
                   )
                 }
 
-                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.H5
+                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
                 console.log(`[图片渲染] 渲染第 ${idx} 个媒体项，类型: ${media.type}, URL:`, media.url)
                 if (media.type === 'image') {
                   console.log('[图片渲染] 渲染图片 URL:', media.url)
@@ -2623,8 +2686,6 @@ export default function MindChatPage() {
                 }
 
                 if (media.type === 'video') {
-                  // H5 环境使用原生 video 标签，小程序使用 Taro Video 组件
-                  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
                   const videoUrl = media.url || ''
 
                   console.log('[视频渲染] 渲染视频:', {
@@ -2738,6 +2799,7 @@ export default function MindChatPage() {
         {/* 文本消息渲染 - 只在没有媒体内容且没有内嵌视频且没有文章时渲染 */}
         {(() => {
           // 🔴 新增：检查是否有媒体内容（图片/视频/文章）
+          // 包括 metadata.media 和从 task_state.progressHistory/agent_result.steps 中提取的 mediaList
           const hasMediaContent = msg.metadata?.media && msg.metadata.media.length > 0
 
           // 如果有媒体内容，文本已经在媒体容器中渲染过了，不再重复渲染
@@ -2746,17 +2808,22 @@ export default function MindChatPage() {
           // 检查是否有内嵌视频链接
           const { videoUrl } = extractVideoUrlFromText(msg.content)
 
-          // 检查是否有文章内容（避免重复渲染）
-          const hasArticle = msg.metadata?.media?.some((m: MessageMedia) => m.type === 'article')
-
           // 如果有视频链接，文本已经在视频处理中渲染过了，不再重复渲染
           if (videoUrl) return null
 
-          // 如果有文章内容，文本会在文章渲染中显示，不再重复渲染
-          if (hasArticle) return null
-
-          // 如果没有视频链接和文章内容，才渲染文本
+          // 如果没有视频链接，渲染文本
           if (msg.content && typeof msg.content === 'string') {
+            // 🔴 检查是否是公众号文章的 summary（避免重复渲染）
+            // 如果 content 是类似 "✅ 已完成公众号爆款图文的创作..." 的 summary，则不渲染
+            const isArticleSummary = msg.content.includes('已完成公众号') &&
+                                   msg.content.includes('创作') &&
+                                   msg.content.includes('你可以前往')
+
+            if (isArticleSummary) {
+              console.log('[文章渲染] 检测到文章 summary，不渲染文本（文章已在 mediaList 中渲染）')
+              return null
+            }
+
             // 清理消息内容，移除图片链接等调试信息
             const cleanedContent = cleanMessageContent(msg.content)
             return (
