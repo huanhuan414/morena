@@ -1477,16 +1477,90 @@ export class OrderDispatchService {
   async getUserPendingRequests(userId: string): Promise<any[]> {
     const client = getSupabaseClient()
 
-    const { data: requests, error } = await client.rpc('get_pending_requests_with_details', {
-      p_user_id: userId
-    })
+    try {
+      // 1. 先查询该用户的所有分身
+      const { data: avatars, error: avatarsError } = await client
+        .from('avatars')
+        .select('id')
+        .eq('user_id', userId)
 
-    if (error) {
-      console.error('[getUserPendingRequests] 查询失败:', error)
-      throw new Error('获取待确认订单失败: ' + error.message)
+      if (avatarsError) {
+        console.error('[getUserPendingRequests] 查询分身失败:', avatarsError)
+        return []
+      }
+
+      if (!avatars || avatars.length === 0) {
+        return []
+      }
+
+      const avatarIds = avatars.map(a => a.id)
+
+      // 2. 查询这些分身的待确认订单请求（不关联 orders）
+      const { data: requests, error: requestsError } = await client
+        .from('order_dispatch_requests')
+        .select('*')
+        .in('avatar_id', avatarIds)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+      if (requestsError) {
+        console.error('[getUserPendingRequests] 查询订单请求失败:', requestsError)
+        return []
+      }
+
+      if (!requests || requests.length === 0) {
+        return []
+      }
+
+      // 3. 关联分身信息和订单信息
+      const requestsWithDetails = await Promise.all(
+        requests.map(async (request: any) => {
+          // 查询分身信息
+          const { data: avatar, error: avatarError } = await client
+            .from('avatars')
+            .select('id, name, avatar_url, level, completion_rate, avg_rating, is_hosted')
+            .eq('id', request.avatar_id)
+            .single()
+
+          // 查询订单信息
+          const { data: order, error: orderError } = await client
+            .from('orders')
+            .select('id, title, description, budget, content_type, platforms, target_audience, deadline, created_at')
+            .eq('id', request.order_id)
+            .single()
+
+          return {
+            ...request,
+            avatars: avatar || {
+              id: request.avatar_id,
+              name: '未知分身',
+              avatar_url: null,
+              level: 1,
+              completion_rate: 0,
+              avg_rating: 0,
+              is_hosted: false
+            },
+            orders: order || {
+              id: request.order_id,
+              title: '未知订单',
+              description: '',
+              budget: 0,
+              content_type: '',
+              platforms: [],
+              target_audience: '',
+              deadline: '',
+              created_at: request.created_at
+            }
+          }
+        })
+      )
+
+      return requestsWithDetails
+    } catch (error) {
+      console.error('[getUserPendingRequests] 处理失败:', error)
+      return []
     }
-
-    return requests || []
   }
 
   /**
