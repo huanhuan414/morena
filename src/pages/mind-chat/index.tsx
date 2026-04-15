@@ -3803,7 +3803,15 @@ export default function MindChatPage() {
               }
               setInputText(newValue)
             }}
-            style={{ minHeight: '72rpx', maxHeight: '200rpx' }}
+            style={{
+              minHeight: '72rpx',
+              maxHeight: '200rpx',
+              backgroundColor: 'rgba(15, 15, 25, 0.9)',
+              border: 'none',
+              outline: 'none',
+              padding: 0,
+              borderRadius: 0
+            }}
           />
 
           {/* 第二行：按钮区域 */}
