@@ -172,11 +172,24 @@ export default function OrderMatchingPage() {
 
   const fetchMatchingResults = async () => {
     try {
-      // 并行获取订单信息和推荐分身
-      const [orderRes, recommendRes] = await Promise.all([
-        Network.request({ url: `/api/order/${orderId}` }),
-        Network.request({ url: `/api/order-dispatch/recommend/${orderId}` })
-      ])
+      // 先获取订单信息
+      const orderRes = await Network.request({ url: `/api/order/${orderId}` })
+
+      if (orderRes.data?.code !== 200) {
+        showToast({ title: '获取订单信息失败', icon: 'none' })
+        return
+      }
+
+      const orderData = orderRes.data.data
+
+      // 使用订单的 expected_quantity 作为 limit 参数
+      const expectedQuantity = orderData.expected_quantity || 1
+
+      // 获取推荐分身，传入数量限制
+      const recommendRes = await Network.request({
+        url: `/api/order-dispatch/recommend/${orderId}`,
+        data: { limit: expectedQuantity }
+      })
 
       // 获取推荐分身
       if (recommendRes.data?.code === 200) {
@@ -184,10 +197,8 @@ export default function OrderMatchingPage() {
         const totalAvatars = avatars.length
         setRecommendedCount(totalAvatars)
 
-        // 获取订单预算（从订单响应中直接获取，避免状态未更新问题）
-        const orderBudget = orderRes.data?.data?.budget || 0
-
         // 计算每个分身的预估收益（平台抽成20%后）
+        const orderBudget = orderData.budget || 0
         const distributableAmount = orderBudget * 0.8
         const incomePerAvatar = totalAvatars > 0 ? distributableAmount / totalAvatars : 0
 
