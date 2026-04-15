@@ -66,7 +66,14 @@ export class NotificationService {
     data?: Record<string, any>
   }) {
     const client = getSupabaseClient()
-    
+
+    // 验证 userId 是否为有效的 UUID 格式
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
+      console.warn(`[NotificationService] 无效的 userId 格式: ${userId}，跳过创建通知`)
+      return null
+    }
+
     const { data, error } = await client
       .from('notifications')
       .insert({
