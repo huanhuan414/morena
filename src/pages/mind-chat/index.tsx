@@ -2218,18 +2218,20 @@ export default function MindChatPage() {
           if (avatarList.length === 0) {
             return (
               <View className="avatar-list-empty">
-                <View className="empty-icon">
-                  <Sparkles size={40} color="#00f5ff" />
+                <View className="empty-icon-large">
+                  <Sparkles size={56} color="#00f5ff" />
+                  <View className="empty-icon-glow" />
                 </View>
-                <Text className="empty-text">暂无分身，快去创建一个吧！</Text>
+                <Text className="empty-title-large">还没有分身</Text>
+                <Text className="empty-desc">创建你的第一个AI分身，开始智能对话体验</Text>
                 <View
-                  className="create-avatar-link"
+                  className="create-avatar-button"
                   onClick={() => {
                     navigateTo({ url: '/pages/avatar-create/index' })
                   }}
                 >
-                  <Plus size={14} color="#00f5ff" />
-                  <Text className="create-link-text">立即创建分身</Text>
+                  <Plus size={18} color="#0a0a0f" />
+                  <Text className="create-button-text">立即创建分身</Text>
                 </View>
               </View>
             )
