@@ -67,6 +67,9 @@ export class AvatarService {
         description: this.generateDescription(photoAnalysis, avatarData),
         avatar_url: avatarData.photo_url || avatarData.avatar_url || '',
         personality: avatarData.personality || photoAnalysis.recommendedType || 'friendly',
+        appearance_style: avatarData.appearance_style || 'tech',
+        speaking_style: avatarData.speaking_style || 'friendly',
+        photo_analysis: photoAnalysis,
         skills: avatarData.abilities || avatarData.skills || [],
         config: {
           style: avatarData.style || 'tech',

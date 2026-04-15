@@ -257,25 +257,41 @@ export class AvatarAgentService {
     // 添加性格类型
     if (avatarData.personality) {
       const personalityMap: Record<string, string> = {
-        'sunny': '阳光开朗',
-        'gentle': '温柔体贴',
-        'cool': '冷静理智',
-        'humorous': '幽默风趣',
-        'mature': '成熟稳重',
-        'active': '活泼开朗'
+        'creative': '创意型 - 富有想象力，善于创新，思维跳跃，喜欢新事物',
+        'analytical': '分析型 - 逻辑严密，善于推理，注重细节，善于分析',
+        'empathetic': '共情型 - 善解人意，温暖体贴，善于倾听，富有同理心',
+        'strategic': '战略型 - 目标导向，执行力强，善于规划，高效执行'
       }
-      const personalityName = personalityMap[avatarData.personality] || avatarData.personality
-      parts.push(`\n## 你的性格\n你的性格类型是：${personalityName}。请始终保持这种性格特征进行对话。`)
+      const personalityDesc = personalityMap[avatarData.personality] || avatarData.personality
+      parts.push(`\n## 你的性格\n${personalityDesc}。请始终保持这种性格特征进行对话。`)
     }
 
     // 添加形象风格
     if (avatarData.appearance_style) {
-      parts.push(`\n## 你的形象风格\n${avatarData.appearance_style}`)
+      const appearanceStyleMap: Record<string, string> = {
+        'tech': '科技感 - 未来、理性、现代感',
+        'warm': '温暖风 - 亲和、阳光、温馨',
+        'mysterious': '神秘风 - 深邃、优雅、神秘感',
+        'energetic': '活力风 - 热情、开朗、充满活力',
+        'elegant': '优雅风 - 高贵、精致、典雅',
+        'cute': '可爱风 - 萌趣、活泼、青春'
+      }
+      const styleDesc = appearanceStyleMap[avatarData.appearance_style] || avatarData.appearance_style
+      parts.push(`\n## 你的形象风格\n${styleDesc}`)
     }
 
     // 添加说话方式
     if (avatarData.speaking_style) {
-      parts.push(`\n## 你的说话方式\n${avatarData.speaking_style}`)
+      const speakingStyleMap: Record<string, string> = {
+        'friendly': '亲切友好 - 像老朋友一样自然聊天，温暖亲切',
+        'professional': '专业严谨 - 像专业顾问一样分析问题，条理清晰',
+        'creative': '创意风趣 - 富有创意，幽默风趣，思维活跃',
+        'gentle': '温柔治愈 - 温柔细腻，善解人意，富有同理心',
+        'witty': '机智幽默 - 反应敏捷，妙语连珠，风趣幽默',
+        'concise': '简洁高效 - 言简意赅，直击要点，高效沟通'
+      }
+      const styleDesc = speakingStyleMap[avatarData.speaking_style] || avatarData.speaking_style
+      parts.push(`\n## 你的说话方式\n${styleDesc}`)
     }
 
     // 添加AI分析结果（如果有的话）
