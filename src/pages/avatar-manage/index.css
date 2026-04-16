@@ -82,6 +82,10 @@
 
 .header-left-wrap {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 
 .header-right-wrap {
@@ -93,6 +97,23 @@
   font-size: 36rpx;
   font-weight: 600;
   color: #fff;
+}
+
+.create-btn-small {
+  padding: 8rpx 16rpx;
+  background: rgba(0, 245, 255, 0.1);
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  flex-shrink: 0;
+}
+
+.create-text-small {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #00f5ff;
 }
 
 .create-btn {

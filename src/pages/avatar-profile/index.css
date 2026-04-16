@@ -1,10 +1,44 @@
 /* ==================== 基础样式 ==================== */
+
+/* 顶部导航栏 */
+.nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 24rpx 32rpx;
+  display: flex;
+  align-items: center;
+  background: transparent;
+}
+
+.nav-back {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+}
+
+.nav-back:active {
+  background: rgba(0, 0, 0, 0.5);
+  transform: scale(0.95);
+}
+
 .profile-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
   padding-bottom: 2rem;
   position: relative;
   overflow: hidden;
+  padding-top: 120rpx;
 }
 
 /* ==================== 动态背景 ==================== */

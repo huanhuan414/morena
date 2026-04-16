@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useRouter, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, showToast, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp, MapPin } from 'lucide-react-taro'
+import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp, MapPin, ArrowLeft } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'
 
@@ -341,6 +341,13 @@ export default function AvatarProfilePage() {
 
   return (
     <ScrollView className="profile-container" scrollY>
+      {/* 顶部导航栏 */}
+      <View className="nav-bar">
+        <View className="nav-back" onClick={() => navigateBack()}>
+          <ArrowLeft size={24} color="#fff" />
+        </View>
+      </View>
+
       {/* 动态背景 */}
       <View className="bg-gradient-1"></View>
       <View className="bg-gradient-2"></View>

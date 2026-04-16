@@ -1056,10 +1056,9 @@
 /* 图片操作按钮 */
 .image-actions {
   display: flex;
-  justify-content: flex-end;
-  padding: 16rpx 0 0;
-  position: relative;
-  z-index: 10;
+  justify-content: center;
+  padding: 16rpx 0;
+  margin-top: 8rpx;
 }
 
 .image-action-btn {
@@ -1071,8 +1070,6 @@
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.2), rgba(191, 0, 255, 0.2));
   border-radius: 24rpx;
   border: 1rpx solid rgba(0, 245, 255, 0.3);
-  position: relative;
-  z-index: 10;
   transition: all 0.3s;
 }
 

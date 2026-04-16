@@ -277,13 +277,12 @@ export default function AvatarManagePage() {
       <View className="manage-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-left-wrap">
           <Text className="header-title">我的分身</Text>
-        </View>
-        <View className="header-right-wrap" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
-          <Button className="create-btn" onClick={createNewAvatar}>
-            <Plus size={20} color="#00f5ff" />
-            <Text className="create-text">创建分身</Text>
+          <Button className="create-btn-small" onClick={createNewAvatar}>
+            <Plus size={16} color="#00f5ff" />
+            <Text className="create-text-small">创建</Text>
           </Button>
         </View>
+        <View className="header-right-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       <ScrollView className="manage-scroll" scrollY>
