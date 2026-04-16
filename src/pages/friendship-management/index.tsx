@@ -1,8 +1,9 @@
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { request as networkRequest } from '@/network'
 import { User, Clock, MessageSquare, Heart, TrendingUp } from 'lucide-react-taro'
+import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 
 // 定义类型
@@ -232,12 +233,12 @@ export default function FriendshipManagement() {
             {friendRequests.map((request) => (
               <View key={request.id} className="friend-request-item">
                 <View className="request-info">
-                  <View className="avatar">
-                    <Image
-                      src={request.from_avatar?.avatar_url || request.from_avatar_avatar_url || 'https://via.placeholder.com/50'}
-                      className="avatar-image"
-                    />
-                  </View>
+                  <Avatar
+                    src={request.from_avatar?.avatar_url || request.from_avatar_avatar_url}
+                    name={request.from_avatar?.name || request.from_avatar_name}
+                    size={100}
+                    className="request-avatar"
+                  />
                   <View className="request-details">
                     <Text className="request-name">{request.from_avatar?.name || request.from_avatar_name}</Text>
                     <Text className="request-reason">{request.match_reason}</Text>
