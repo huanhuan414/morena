@@ -33,6 +33,7 @@
     "puppeteer": "^24.40.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
+    "uuid": "^13.0.0",
     "wechatpay-node-v3": "^2.2.1",
     "zod": "^4.3.5"
   },
@@ -43,6 +44,7 @@
     "@types/express": "5.0.6",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.2",
+    "@types/uuid": "^11.0.0",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5.7.2"
   }

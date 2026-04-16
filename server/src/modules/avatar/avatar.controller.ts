@@ -808,12 +808,12 @@ export class AvatarController {
     }
 
     const { FriendshipService } = await import('./friendship.service')
-    const friendshipService = new FriendshipService()
-
-    // 注入 LLM 客户端
     const { HostingService } = await import('./hosting.service')
-    const hostingService = new HostingService(null)
-    friendshipService.setLlmClient((hostingService as any).llmClient)
+    const { SubscriptionService } = await import('../subscription/subscription.service')
+
+    const friendshipService = new FriendshipService()
+    const subscriptionService = new SubscriptionService()
+    const hostingService = new HostingService(subscriptionService, friendshipService)
 
     // 接受好友请求
     const success = await friendshipService.acceptFriendRequest(request.friend_avatar_id, request.avatar_id)

@@ -344,12 +344,12 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
       // 阶段3：根据好感度发送好友请求
       const client = getSupabaseClient()
 
-      // 获取好感度高但还不是好友的目标
+      // 获取好感度高但还不是好友的目标（降低阈值）
       const { data: highAffinityTargets } = await client
         .from('avatar_affinity')
         .select('*, target_avatar(*)')
         .eq('avatar_id', avatar.id)
-        .gte('affinity_score', 75)
+        .gte('affinity_score', 65)
         .order('affinity_score', { ascending: false })
         .limit(3)
 

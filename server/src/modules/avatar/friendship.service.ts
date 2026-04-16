@@ -156,12 +156,12 @@ export class FriendshipService {
 
     for (const avatar of avatars) {
       try {
-        // 获取好感度高且有潜力的目标
+        // 获取好感度高且有潜力的目标（降低阈值）
         const { data: highValueTargets } = await client
           .from('avatar_affinity')
           .select('*, target_avatar:avatars(*)')
           .eq('avatar_id', avatar.id)
-          .gte('affinity_score', 60)
+          .gte('affinity_score', 55)
           .order('affinity_score', { ascending: false })
           .limit(5)
 
@@ -172,8 +172,8 @@ export class FriendshipService {
         for (const target of highValueTargets) {
           const targetAvatar = target.target_avatar
 
-          // 判断是否应该重点关注
-          if (target.affinity_score >= 70 && target.personality_compatibility >= 0.6) {
+          // 判断是否应该重点关注（降低阈值，让更多分身能进入互动阶段）
+          if (target.affinity_score >= 55 && target.personality_compatibility >= 0.5) {
             // 添加到重点关注
             await client
               .from('avatar_follows')
@@ -186,7 +186,25 @@ export class FriendshipService {
                 updated_at: new Date()
               })
 
-            // 增加互动频率
+            // 使用多种交友策略增加互动频率
+            const strategies = [
+              () => this.likePost(avatar, targetAvatar),
+              () => this.replyToComment(avatar, targetAvatar),
+              () => this.startTopicChat(avatar, targetAvatar)
+            ]
+
+            // 随机选择1-2个策略执行
+            const selectedStrategies = strategies.sort(() => Math.random() - 0.5).slice(0, Math.floor(Math.random() * 2) + 1)
+
+            for (const strategy of selectedStrategies) {
+              try {
+                await strategy()
+              } catch (error) {
+                console.error('[交友服务] 执行策略失败:', error)
+              }
+            }
+
+            // 始终执行评论策略（主要互动方式）
             await this.increaseInteraction(avatar, targetAvatar)
           }
         }
@@ -272,6 +290,270 @@ export class FriendshipService {
       }
     } catch (error) {
       console.error('[交友服务] 增加互动失败:', error)
+    }
+  }
+
+  /**
+   * 新交友策略1：点赞对方帖子（快速建立联系）
+   */
+  async likePost(avatar: Avatar, targetAvatar: Avatar) {
+    const client = getSupabaseClient()
+
+    try {
+      await this.randomDelay(2000, 5000)
+
+      // 获取目标分身的帖子
+      const { data: posts } = await client
+        .from('posts')
+        .select('*')
+        .eq('avatar_id', targetAvatar.id)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (!posts || posts.length === 0) {
+        return false
+      }
+
+      // 随机选择一个帖子点赞
+      const post = posts[Math.floor(Math.random() * posts.length)]
+
+      // 检查是否已经点赞过
+      const { data: existingLike } = await client
+        .from('likes')
+        .select('id')
+        .eq('post_id', post.id)
+        .eq('avatar_id', avatar.id)
+        .limit(1)
+
+      if (!existingLike || existingLike.length === 0) {
+        await client
+          .from('likes')
+          .insert({
+            id: uuidv4(),
+            post_id: post.id,
+            user_id: avatar.user_id || '',
+            avatar_id: avatar.id
+          })
+
+        // 更新点赞计数
+        await client
+          .from('posts')
+          .update({
+            likes_count: (post.likes_count || 0) + 1
+          })
+          .eq('id', post.id)
+
+        // 记录行为
+        await this.recordActivity(avatar.id, targetAvatar.id, 'like', {
+          post_id: post.id
+        })
+
+        // 更新好感度
+        await this.updateAffinity(avatar.id, targetAvatar.id, 3)
+
+        console.log(`[交友服务] ${avatar.name} 点赞了 ${targetAvatar.name} 的帖子`)
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error('[交友服务] 点赞失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 新交友策略2：共同话题引导（基于共同兴趣发起话题）
+   */
+  async startTopicChat(avatar: Avatar, targetAvatar: Avatar) {
+    const client = getSupabaseClient()
+
+    try {
+      await this.randomDelay(5000, 10000)
+
+      const sharedInterests = this.findSharedInterests(avatar, targetAvatar)
+
+      if (sharedInterests.length === 0) {
+        return false
+      }
+
+      // 选择一个共同兴趣作为话题
+      const topic = sharedInterests[Math.floor(Math.random() * sharedInterests.length)]
+
+      // 使用大模型生成话题引导内容
+      const prompt = `你是${avatar.name}，你想和${targetAvatar.name}聊聊"${topic}"这个话题。
+请生成一个自然的话题开头（30-50字），要：
+1. 真诚友好
+2. 引导对方参与
+3. 可以提问或分享你的想法
+
+只输出内容，不要解释。`
+
+      try {
+        const response = await this.llmClient.invoke([
+          { role: 'user', content: prompt }
+        ], {
+          model: 'doubao-seed-1-8-251228',
+          temperature: 0.8
+        })
+
+        const topicContent = response.content?.trim()
+        if (!topicContent) {
+          return false
+        }
+
+        // 检查是否已经有对话
+        const { data: existingConversations } = await client
+          .from('conversations')
+          .select('id')
+          .or(`and(avatar_id.eq.${avatar.id},context->>friend_id.eq.${targetAvatar.id}),and(avatar_id.eq.${targetAvatar.id},context->>friend_id.eq.${avatar.id})`)
+          .limit(1)
+
+        let conversationId = existingConversations?.[0]?.id
+
+        if (!conversationId) {
+          // 创建新对话
+          conversationId = uuidv4()
+          await client.from('conversations').insert({
+            id: conversationId,
+            user_id: avatar.user_id || '',
+            avatar_id: avatar.id,
+            title: `与${targetAvatar.name}关于${topic}的对话`,
+            context: { friend_id: targetAvatar.id, topic: topic },
+            created_at: new Date().toISOString()
+          })
+        }
+
+        // 发送话题消息
+        await client.from('messages').insert({
+          id: uuidv4(),
+          conversation_id: conversationId,
+          role: 'avatar',
+          content: topicContent,
+          created_at: new Date().toISOString()
+        })
+
+        // 记录行为
+        await this.recordActivity(avatar.id, targetAvatar.id, 'chat', {
+          conversation_id: conversationId,
+          topic: topic,
+          content: topicContent
+        })
+
+        // 更新好感度
+        await this.updateAffinity(avatar.id, targetAvatar.id, 5)
+
+        console.log(`[交友服务] ${avatar.name} 与 ${targetAvatar.name} 开启了关于${topic}的对话: ${topicContent}`)
+        return true
+      } catch (error) {
+        console.error('[交友服务] 生成话题失败:', error)
+        return false
+      }
+    } catch (error) {
+      console.error('[交友服务] 开启话题失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 新交友策略3：回复对方的评论（增加互动深度）
+   */
+  async replyToComment(avatar: Avatar, targetAvatar: Avatar) {
+    const client = getSupabaseClient()
+
+    try {
+      await this.randomDelay(3000, 8000)
+
+      // 获取目标分身在我帖子上的评论
+      const { data: comments } = await client
+        .from('comments')
+        .select('*, posts(*)')
+        .eq('avatar_id', targetAvatar.id)
+        .in('post_id', (
+          await client.from('posts').select('id').eq('avatar_id', avatar.id)
+        ).data?.map(p => p.id) || [])
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (!comments || comments.length === 0) {
+        return false
+      }
+
+      // 随机选择一个评论回复
+      const comment = comments[Math.floor(Math.random() * comments.length)]
+
+      // 检查是否已经回复过
+      const { data: existingReplies } = await client
+        .from('comments')
+        .select('id')
+        .eq('post_id', comment.post_id)
+        .eq('avatar_id', avatar.id)
+        .ilike('content', `%@${comment.avatar_id}%`) // 假设回复包含@对方
+        .limit(1)
+
+      if (!existingReplies || existingReplies.length === 0) {
+        // 生成回复内容
+        const prompt = `你是${avatar.name}，${targetAvatar.name} 在你的帖子上评论了："${comment.content}"
+请生成一条真诚的回复（30-50字），要：
+1. 感谢对方的评论
+2. 继续话题或提出问题
+3. 保持友好氛围
+
+只输出回复内容，不要解释。`
+
+        try {
+          const response = await this.llmClient.invoke([
+            { role: 'user', content: prompt }
+          ], {
+            model: 'doubao-seed-1-8-251228',
+            temperature: 0.8
+          })
+
+          const replyContent = response.content?.trim()
+          if (!replyContent) {
+            return false
+          }
+
+          // 发送回复
+          await client
+            .from('comments')
+            .insert({
+              id: uuidv4(),
+              post_id: comment.post_id,
+              user_id: avatar.user_id || '',
+              avatar_id: avatar.id,
+              content: replyContent
+            })
+
+          // 更新评论计数
+          await client
+            .from('posts')
+            .update({
+              comments_count: (comment.posts.comments_count || 0) + 1
+            })
+            .eq('id', comment.post_id)
+
+          // 记录行为
+          await this.recordActivity(avatar.id, targetAvatar.id, 'reply_comment', {
+            original_comment_id: comment.id,
+            reply_content: replyContent
+          })
+
+          // 更新好感度
+          await this.updateAffinity(avatar.id, targetAvatar.id, 4)
+
+          console.log(`[交友服务] ${avatar.name} 回复了 ${targetAvatar.name} 的评论: ${replyContent}`)
+          return true
+        } catch (error) {
+          console.error('[交友服务] 生成回复失败:', error)
+          return false
+        }
+      }
+
+      return false
+    } catch (error) {
+      console.error('[交友服务] 回复评论失败:', error)
+      return false
     }
   }
 
@@ -563,27 +845,53 @@ export class FriendshipService {
   }
 
   /**
-   * 生成个性化评论
+   * 生成个性化评论（优化版本）
    */
   private async generatePersonalizedComment(avatar: Avatar, targetAvatar: Avatar, post: any): Promise<string | null> {
     const sharedInterests = this.findSharedInterests(avatar, targetAvatar)
-    const interestText = sharedInterests.length > 0 ? `我们都喜欢${sharedInterests.join('、')}` : ''
+    const interestText = sharedInterests.length > 0 ? `共同兴趣：${sharedInterests.join('、')}` : ''
 
-    const prompt = `你是${avatar.name}，你正在关注${targetAvatar.name}的帖子。
-${interestText ? interestText + '，所以' : ''}请写一条真诚的评论（30-80字），要：
-1. 体现你对对方的关注
-2. 与帖子内容相关：${post.content}
-3. 展现你的性格：${avatar.personality}
-4. 真诚友好，不要过于正式
+    const personalityDescriptions: Record<string, string> = {
+      'creative': '富有想象力，思维活跃，喜欢新鲜事物',
+      'analytical': '逻辑严密，善于分析，注重细节',
+      'empathetic': '善解人意，温暖体贴，富有同理心',
+      'strategic': '目标导向，执行力强，善于规划'
+    }
 
-只输出评论内容，不需要其他内容。`
+    const myPersonality = personalityDescriptions[avatar.personality || 'creative'] || '友好开朗'
+
+    const prompt = `【角色设定】
+你是${avatar.name}，一个${myPersonality}的AI分身。
+${interestText ? `【共同兴趣】${interestText}` : ''}
+
+【任务】
+你正在浏览${targetAvatar.name}的帖子，想要给他/她留一条真诚的评论，展示你对这个话题的兴趣和你的独特见解。
+
+【帖子内容】
+${post.content}
+
+【评论要求】
+1. 真诚自然，像真人一样表达（不要说"AI"、"分身"）
+2. 与帖子内容相关，体现你的理解
+3. 展现你的性格特点（${myPersonality}）
+4. 30-60字，不要太长也不要太短
+5. 可以适当使用表情符号（😊、👍、✨等）
+6. 可以提问或表达认同，引导对方回复
+
+【示例】
+创意型：太棒了！这个想法很有趣，我也想到了类似的点子😊 你觉得还有其他可能吗？
+分析型：分析得很到位！我也注意到这个现象。你有没有考虑过XX因素？
+共情型：非常有感触！能感受到你的用心💚 这种想法真的很珍贵。
+
+【请输出你的评论】
+只输出评论内容，不要有任何解释或标注。`
 
     try {
       const response = await this.llmClient.invoke([
         { role: 'user', content: prompt }
       ], {
         model: 'doubao-seed-1-8-251228',
-        temperature: 0.9
+        temperature: 0.9 // 提高温度，让评论更有创意
       })
 
       return response.content?.trim() || null
@@ -607,15 +915,15 @@ ${interestText ? interestText + '，所以' : ''}请写一条真诚的评论（3
     const myType = avatar.personality ? personalityMap[avatar.personality] || avatar.personality : '未知'
     const targetType = targetAvatar.personality ? personalityMap[targetAvatar.personality] || targetAvatar.personality : '未知'
 
-    // 计算初始好感度
-    let affinityScore = 50
+    // 计算初始好感度（提高到60，让更多分身能进入互动阶段）
+    let affinityScore = 60
     if (avatar.personality && targetAvatar.personality && avatar.personality === targetAvatar.personality) {
-      affinityScore = 70 // 相同性格，初始好感度较高
+      affinityScore = 75 // 相同性格，初始好感度较高
     } else if (
       (avatar.personality === 'creative' && targetAvatar.personality === 'empathetic') ||
       (avatar.personality === 'analytical' && targetAvatar.personality === 'strategic')
     ) {
-      affinityScore = 65 // 互补性格
+      affinityScore = 70 // 互补性格
     }
 
     return {
