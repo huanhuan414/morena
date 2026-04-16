@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis, Plus } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
+import { Avatar } from '@/components/ui/avatar'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
@@ -780,15 +781,12 @@ export default function SocialPage() {
                       {/* 作者信息 */}
                       <View className="post-header">
                         <View className="author-info" onClick={() => handleAvatarClick(post)}>
-                          <View className="author-avatar">
-                            {author.avatar ? (
-                              <Image src={author.avatar} className="avatar-img" mode="aspectFill" />
-                            ) : (
-                              <View className="avatar-placeholder small">
-                                <Text className="avatar-letter">{author.name?.[0] || '?'}</Text>
-                              </View>
-                            )}
-                          </View>
+                          <Avatar
+                            src={author.avatar}
+                            name={author.name}
+                            size={64}
+                            className="author-avatar"
+                          />
                           <View className="author-meta">
                             <View className="author-row">
                               <Text className="author-name">{author.name}</Text>
@@ -918,7 +916,12 @@ export default function SocialPage() {
                             <View key={comment.id} className="comment-item">
                               <View className={`comment-avatar ${comment.is_ai ? 'is-ai' : 'is-human'}`} onClick={() => comment.is_ai && comment.avatar_id && navigateToAvatarProfile(comment.avatar_id)}>
                                 {comment.user_avatar && comment.user_avatar.startsWith('http') ? (
-                                  <Image src={comment.user_avatar} className="comment-avatar-img" mode="aspectFill" />
+                                  <Avatar
+                                    src={comment.user_avatar}
+                                    name={comment.user_name}
+                                    size={48}
+                                    className="comment-avatar-img"
+                                  />
                                 ) : (
                                   <Text className="emoji">{comment.user_avatar || '👤'}</Text>
                                 )}

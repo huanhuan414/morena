@@ -1,84 +1,71 @@
-import * as React from "react"
-import { View, Image } from "@tarojs/components"
-import { cn } from "@/lib/utils"
+import React from 'react'
+import { View, Text, Image } from '@tarojs/components'
 
-const AvatarContext = React.createContext<{
-  status: "loading" | "error" | "loaded"
-  setStatus: (status: "loading" | "error" | "loaded") => void
-} | null>(null)
+interface AvatarProps {
+  src?: string
+  name?: string
+  size?: number
+  className?: string
+  style?: React.CSSProperties
+  onClick?: () => void
+}
 
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => {
-  const [status, setStatus] = React.useState<"loading" | "error" | "loaded">("loading")
-  return (
-    <AvatarContext.Provider value={{ status, setStatus }}>
-      <View
-        ref={ref}
-        className={cn(
-          "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
-          className
-        )}
-        {...props}
-      />
-    </AvatarContext.Provider>
-  )
-})
-Avatar.displayName = "Avatar"
+/**
+ * 通用头像组件
+ * - 自动处理图片加载失败
+ * - 图片加载失败时显示渐变背景和首字母
+ * - 支持自定义大小和样式
+ */
+export const Avatar: React.FC<AvatarProps> = ({
+  src,
+  name = '用户',
+  size = 72,
+  className = '',
+  style,
+  onClick
+}) => {
+  const [imageError, setImageError] = React.useState(false)
+  const defaultAvatar = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
 
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof Image>,
-  React.ComponentPropsWithoutRef<typeof Image>
->(({ className, src, ...props }, ref) => {
-  const context = React.useContext(AvatarContext)
-  
-  const handleLoad = (e) => {
-      context?.setStatus("loaded")
-      props.onLoad?.(e)
+  const handleImageError = () => {
+    console.error('头像加载失败:', src)
+    setImageError(true)
   }
 
-  const handleError = (e) => {
-      context?.setStatus("error")
-      props.onError?.(e)
+  // 重置错误状态，当 src 改变时重新尝试加载
+  React.useEffect(() => {
+    setImageError(false)
+  }, [src])
+
+  const avatarStyle: React.CSSProperties = {
+    width: `${size}rpx`,
+    height: `${size}rpx`,
+    borderRadius: '50%',
+    background: imageError || !src ? defaultAvatar : 'transparent',
+    overflow: 'hidden',
+    ...style
   }
 
-  return (
-    <Image
-      ref={ref}
-      src={src}
-      className={cn(
-        "aspect-square h-full w-full", 
-        className, 
-        context?.status !== "loaded" && "w-0 h-0 opacity-0 absolute"
-      )}
-      onLoad={handleLoad}
-      onError={handleError}
-      {...props}
-    />
-  )
-})
-AvatarImage.displayName = "AvatarImage"
-
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof View>,
-  React.ComponentPropsWithoutRef<typeof View>
->(({ className, ...props }, ref) => {
-  const context = React.useContext(AvatarContext)
-  
-  if (context?.status === "loaded") return null
+  const initial = name ? name.charAt(0).toUpperCase() : 'U'
 
   return (
     <View
-      ref={ref}
-      className={cn(
-        "flex h-full w-full items-center justify-center rounded-full bg-muted",
-        className
+      className={`avatar-component ${className}`}
+      style={avatarStyle}
+      onClick={onClick}
+    >
+      {!imageError && src ? (
+        <Image
+          src={src}
+          className="avatar-img"
+          mode="aspectFill"
+          onError={handleImageError}
+        />
+      ) : (
+        <View className="avatar-fallback">
+          <Text className="avatar-initial">{initial}</Text>
+        </View>
       )}
-      {...props}
-    />
+    </View>
   )
-})
-AvatarFallback.displayName = "AvatarFallback"
-
-export { Avatar, AvatarImage, AvatarFallback }
+}

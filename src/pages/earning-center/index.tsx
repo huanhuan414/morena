@@ -1,9 +1,10 @@
 import Taro, { useDidShow, showToast, navigateTo, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign } from 'lucide-react-taro'
+import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 
 interface EarningOverview {
@@ -234,22 +235,12 @@ export default function EarningCenterPage() {
               <View key={avatar.avatarId} className="avatar-stat-card">
                 <View className="avatar-header">
                   <View className="avatar-info">
-                    <View className="avatar-avatar">
-                      {avatar.avatarUrl ? (
-                        <Image
-                          src={avatar.avatarUrl}
-                          className="avatar-avatar-img"
-                          mode="aspectFill"
-                          onError={() => {
-                            console.error('头像加载失败:', avatar.avatarUrl)
-                          }}
-                        />
-                      ) : (
-                        <View className="avatar-avatar-fallback">
-                          <Text className="avatar-initial">{avatar.avatarName.charAt(0)}</Text>
-                        </View>
-                      )}
-                    </View>
+                    <Avatar
+                      src={avatar.avatarUrl}
+                      name={avatar.avatarName}
+                      size={72}
+                      className="avatar-avatar"
+                    />
                     <View className="avatar-name-wrap">
                       <Text className="avatar-name">{avatar.avatarName}</Text>
                       <Text className="avatar-meta">共接 {avatar.totalOrders} 单</Text>
