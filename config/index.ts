@@ -15,13 +15,13 @@ dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 const generateTTProjectConfig = (outputRoot: string) => {
   const config = {
     miniprogramRoot: './',
-    projectname: 'coze-mini-program',
+    projectname: 'morina-ai-miniprogram',
     appid: process.env.TARO_APP_TT_APPID || '',
     setting: {
       urlCheck: false,
       es6: false,
       postcss: false,
-      minified: false,
+      minified: true,
     },
   };
   const outputDir = path.resolve(__dirname, '..', outputRoot);
@@ -40,7 +40,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
     miniprogramRoot: './',
     projectname: 'coze-mini-program',
     description: 'Morina AI Platform - AI Native Human-Machine Symbiosis Ecosystem',
-    appid: process.env.TARO_APP_WEAPP_APPID || 'wxa300e3c1f0adc655',
+    appid: process.env.TARO_APP_WEAPP_APPID || 'wxfcd0d7ba0294417d',
     setting: {
       urlCheck: false,
       es6: false,
@@ -57,7 +57,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       uglifyFileName: false,
       checkInvalidKey: true,
       checkSiteMap: true,
-      uploadWithSourceMap: true,
+      uploadWithSourceMap: false,
       lazyloadPlaceholderEnable: false,
       useMultiFrameRuntime: true,
       useApiHook: true,
