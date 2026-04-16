@@ -1,6 +1,6 @@
 import Taro, { useDidShow, showToast, navigateTo, useLoad } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign } from 'lucide-react-taro'
@@ -49,7 +49,7 @@ export default function EarningCenterPage() {
   const [records, setRecords] = useState<EarningRecord[]>([])
   const [avatarStats, setAvatarStats] = useState<AvatarEarningStats[]>([])
   const [loading, setLoading] = useState(false)
-  
+
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
@@ -58,7 +58,7 @@ export default function EarningCenterPage() {
     // 初始化状态栏和胶囊按钮信息
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
+
     const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
     if (menuButtonBoundingClientRect) {
       const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
@@ -66,7 +66,7 @@ export default function EarningCenterPage() {
       setCapsuleWidth(capsuleWidthWithMargins)
     }
   })
-  
+
   useDidShow(() => {
     fetchOverview()
     fetchRecords()
@@ -123,7 +123,7 @@ export default function EarningCenterPage() {
       const res = await Network.request({
         url: '/api/earnings/withdraw',
         method: 'POST',
-        data: { 
+        data: {
           amount: overview.balance,
           method: 'wechat',
           accountInfo: {}
@@ -181,7 +181,7 @@ export default function EarningCenterPage() {
               <Text className="balance-amount">{overview.balance.toFixed(2)}</Text>
             </View>
           </View>
-          
+
           <View className="overview-stats">
             <View className="stat-col">
               <Text className="stat-value">¥{overview.totalEarnings.toFixed(2)}</Text>
@@ -234,14 +234,20 @@ export default function EarningCenterPage() {
               <View key={avatar.avatarId} className="avatar-stat-card">
                 <View className="avatar-header">
                   <View className="avatar-info">
-                    <View className="avatar-avatar" style={{
-                      backgroundImage: avatar.avatarUrl ? `url(${avatar.avatarUrl})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                    >
-                      {!avatar.avatarUrl && (
-                        <Text className="avatar-initial">{avatar.avatarName.charAt(0)}</Text>
+                    <View className="avatar-avatar">
+                      {avatar.avatarUrl ? (
+                        <Image
+                          src={avatar.avatarUrl}
+                          className="avatar-avatar-img"
+                          mode="aspectFill"
+                          onError={() => {
+                            console.error('头像加载失败:', avatar.avatarUrl)
+                          }}
+                        />
+                      ) : (
+                        <View className="avatar-avatar-fallback">
+                          <Text className="avatar-initial">{avatar.avatarName.charAt(0)}</Text>
+                        </View>
                       )}
                     </View>
                     <View className="avatar-name-wrap">
