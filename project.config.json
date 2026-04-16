@@ -2,7 +2,7 @@
   "miniprogramRoot": "./dist-weapp",
   "projectname": "coze-mini-program",
   "description": "Morina AI Platform - AI Native Human-Machine Symbiosis Ecosystem",
-  "appid": "wxa300e3c1f0adc655",
+  "appid": "wxfcd0d7ba0294417d",
   "setting": {
     "urlCheck": false,
     "es6": false,
