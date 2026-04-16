@@ -76,9 +76,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
     compileType: 'miniprogram',
     libVersion: '3.3.4',
     packOptions: {
-      ignore: [
-        { type: 'folder', value: './assets' }
-      ]
+      ignore: []
     },
     condition: {}
   };
