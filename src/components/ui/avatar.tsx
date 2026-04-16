@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image } from '@tarojs/components'
+import './avatar.css'
 
 interface AvatarProps {
   src?: string
