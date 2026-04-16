@@ -308,6 +308,78 @@ export class EarningService {
   }
 
   /**
+   * 获取分身收益统计
+   */
+  async getAvatarEarningsStats(userId: string) {
+    const client = getSupabaseClient()
+
+    // 获取用户的所有分身
+    const { data: avatars } = await client
+      .from('avatars')
+      .select('id, name, avatar_url')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (!avatars || avatars.length === 0) {
+      return []
+    }
+
+    // 为每个分身获取商单和收益统计
+    const avatarStats = await Promise.all(
+      avatars.map(async (avatar) => {
+        // 获取该分身的所有订单
+        const { data: orders } = await client
+          .from('orders')
+          .select('id, status, budget, created_at, completed_at')
+          .eq('avatar_id', avatar.id)
+
+        const allOrders = orders || []
+
+        // 统计订单状态
+        const totalOrders = allOrders.length
+        const completedOrders = allOrders.filter(o => o.status === 'completed').length
+        const pendingOrders = allOrders.filter(o => o.status === 'in_progress' || o.status === 'accepted').length
+        const openOrders = allOrders.filter(o => o.status === 'open').length
+
+        // 计算收益（从earnings表获取）
+        const { data: earnings } = await client
+          .from('earnings')
+          .select('amount, status, created_at')
+          .eq('user_id', userId)
+          .eq('avatar_id', avatar.id)
+
+        const allEarnings = earnings || []
+        const settledEarnings = allEarnings.filter(e => e.status === 'settled')
+        const pendingEarnings = allEarnings.filter(e => e.status === 'pending')
+
+        const totalEarnings = settledEarnings.reduce((sum, e) => sum + Number(e.amount), 0)
+        const pendingAmount = pendingEarnings.reduce((sum, e) => sum + Number(e.amount), 0)
+
+        // 获取本月收益
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+        const monthlyEarnings = settledEarnings.filter(e => e.created_at >= monthStart)
+        const monthlyAmount = monthlyEarnings.reduce((sum, e) => sum + Number(e.amount), 0)
+
+        return {
+          avatarId: avatar.id,
+          avatarName: avatar.name,
+          avatarUrl: avatar.avatar_url,
+          totalOrders,
+          completedOrders,
+          pendingOrders,
+          openOrders,
+          totalEarnings,
+          pendingAmount,
+          monthlyAmount
+        }
+      })
+    )
+
+    return avatarStats
+  }
+
+  /**
    * 处理提现（管理员操作）
    */
   async processWithdrawal(withdrawalId: string, status: string, transactionId?: string) {

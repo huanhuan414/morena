@@ -66,4 +66,14 @@ export class EarningController {
       message: '获取成功'
     }
   }
+
+  @Get('avatars-stats')
+  async getAvatarEarningsStats(@Headers('x-user-id') userId: string) {
+    const stats = await this.earningService.getAvatarEarningsStats(userId)
+    return {
+      code: 200,
+      data: stats,
+      message: '获取成功'
+    }
+  }
 }

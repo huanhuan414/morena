@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles } from 'lucide-react-taro'
+import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign } from 'lucide-react-taro'
 import './index.css'
 
 interface EarningOverview {
@@ -24,6 +24,19 @@ interface EarningRecord {
   description: string
 }
 
+interface AvatarEarningStats {
+  avatarId: string
+  avatarName: string
+  avatarUrl: string
+  totalOrders: number
+  completedOrders: number
+  pendingOrders: number
+  openOrders: number
+  totalEarnings: number
+  pendingAmount: number
+  monthlyAmount: number
+}
+
 export default function EarningCenterPage() {
   const [overview, setOverview] = useState<EarningOverview>({
     balance: 0,
@@ -34,6 +47,7 @@ export default function EarningCenterPage() {
     totalReferrals: 0
   })
   const [records, setRecords] = useState<EarningRecord[]>([])
+  const [avatarStats, setAvatarStats] = useState<AvatarEarningStats[]>([])
   const [loading, setLoading] = useState(false)
   
   // 状态栏和胶囊按钮适配
@@ -56,6 +70,7 @@ export default function EarningCenterPage() {
   useDidShow(() => {
     fetchOverview()
     fetchRecords()
+    fetchAvatarStats()
   })
 
   const fetchOverview = async () => {
@@ -84,6 +99,18 @@ export default function EarningCenterPage() {
       console.error('获取收益记录失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAvatarStats = async () => {
+    try {
+      const res = await Network.request({ url: '/api/earnings/avatars-stats' })
+      console.log('分身收益统计返回:', res.data)
+      if (res.data?.code === 200) {
+        setAvatarStats(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取分身收益统计失败:', error)
     }
   }
 
@@ -194,6 +221,75 @@ export default function EarningCenterPage() {
           <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
         </View>
       </View>
+
+      {/* 分身收益统计 */}
+      {avatarStats.length > 0 && (
+        <View className="avatar-stats-section">
+          <View className="section-header">
+            <Text className="section-title">分身收益统计</Text>
+          </View>
+
+          <View className="avatar-stats-list">
+            {avatarStats.map(avatar => (
+              <View key={avatar.avatarId} className="avatar-stat-card">
+                <View className="avatar-header">
+                  <View className="avatar-info">
+                    <View className="avatar-avatar" style={{
+                      backgroundImage: avatar.avatarUrl ? `url(${avatar.avatarUrl})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                    >
+                      {!avatar.avatarUrl && (
+                        <Text className="avatar-initial">{avatar.avatarName.charAt(0)}</Text>
+                      )}
+                    </View>
+                    <View className="avatar-name-wrap">
+                      <Text className="avatar-name">{avatar.avatarName}</Text>
+                      <Text className="avatar-meta">共接 {avatar.totalOrders} 单</Text>
+                    </View>
+                  </View>
+                  <View className="avatar-total-earnings">
+                    <DollarSign size={16} color="#00ff88" />
+                    <Text className="earnings-text">¥{avatar.totalEarnings.toFixed(2)}</Text>
+                  </View>
+                </View>
+
+                <View className="avatar-stats-grid">
+                  <View className="avatar-stat-item">
+                    <CircleCheck size={18} color="#00ff88" />
+                    <View className="avatar-stat-info">
+                      <Text className="avatar-stat-value">{avatar.completedOrders}</Text>
+                      <Text className="avatar-stat-label">已完成</Text>
+                    </View>
+                  </View>
+                  <View className="avatar-stat-item">
+                    <Clock size={18} color="#ffaa00" />
+                    <View className="avatar-stat-info">
+                      <Text className="avatar-stat-value">{avatar.pendingOrders}</Text>
+                      <Text className="avatar-stat-label">进行中</Text>
+                    </View>
+                  </View>
+                  <View className="avatar-stat-item">
+                    <Briefcase size={18} color="#00f5ff" />
+                    <View className="avatar-stat-info">
+                      <Text className="avatar-stat-value">{avatar.openOrders}</Text>
+                      <Text className="avatar-stat-label">可接单</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {avatar.pendingAmount > 0 && (
+                  <View className="avatar-pending-info">
+                    <Text className="pending-label">待结算：</Text>
+                    <Text className="pending-amount">¥{avatar.pendingAmount.toFixed(2)}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* 收益明细 */}
       <View className="records-section">

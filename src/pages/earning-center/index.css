@@ -157,6 +157,143 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.avatar-stats-section {
+  padding: 0 24rpx 24rpx;
+}
+
+.avatar-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.avatar-stat-card {
+  background: rgba(30, 30, 45, 0.8);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
+  border-radius: 20rpx;
+  padding: 24rpx;
+}
+
+.avatar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.avatar-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.avatar-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.avatar-initial {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.avatar-name-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4rpx;
+}
+
+.avatar-meta {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.avatar-total-earnings {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(0, 255, 136, 0.1);
+  border-radius: 20rpx;
+}
+
+.earnings-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #00ff88;
+}
+
+.avatar-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.avatar-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.avatar-stat-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8rpx;
+}
+
+.avatar-stat-value {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.avatar-stat-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.avatar-pending-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20rpx;
+  padding: 12rpx;
+  background: rgba(255, 170, 0, 0.1);
+  border-radius: 12rpx;
+}
+
+.pending-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-right: 8rpx;
+}
+
+.pending-amount {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #ffaa00;
+}
+
 .records-section {
   flex: 1;
   display: flex;
