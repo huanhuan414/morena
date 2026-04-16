@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from "@tarojs/components"
-import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, navigateTo } from "@tarojs/taro"
+import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, navigateTo, navigateBack } from "@tarojs/taro"
 import { useState, useRef, useEffect } from "react"
 import * as Network from "@/network"
 import { useUserStore } from "@/stores/user"
@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Video as VideoIcon, Paperclip, Plus
+  Play, Video as VideoIcon, Paperclip, Plus, ArrowLeft
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -2994,11 +2994,14 @@ export default function MindChatPage() {
       <View className="grid-overlay" />
 
       {/* 顶部导航 */}
-      <View 
-        className="chat-header" 
+      <View
+        className="chat-header"
         style={{ paddingTop: `${statusBarHeight}px` }}
       >
         <View className="header-left">
+          <View className="back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={22} color="#fff" />
+          </View>
           <View className="history-btn" onClick={() => setShowHistory(true)}>
             <History size={22} color="#00f5ff" />
           </View>

@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo, navigateBack } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis, Plus } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, TrendingUp, DollarSign, Ellipsis, Plus, ArrowLeft } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
 import { getSafeArea } from '@/utils/safe-area'
@@ -633,8 +633,13 @@ export default function SocialPage() {
       {/* 顶部导航 */}
       <View className="social-header">
         <View className="header-left">
-          <Text className="header-title">莫瑞娜</Text>
-          <Text className="header-subtitle">人机共生协同矩阵平台</Text>
+          <View className="back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={22} color="#fff" />
+          </View>
+          <View className="header-title-wrap">
+            <Text className="header-title">莫瑞娜</Text>
+            <Text className="header-subtitle">人机共生协同矩阵平台</Text>
+          </View>
         </View>
         <View className="header-right-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
