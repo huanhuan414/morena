@@ -1551,6 +1551,63 @@ export default function MindChatPage() {
 
             console.log('[MindChat] 任务完成，执行结果:', executionResult)
 
+            // 🔴 新增：从 steps 中提取媒体信息（图片、视频、文章）
+            const mediaList: MessageMedia[] = []
+            const steps = executionResult?.steps || result.result?.steps || result.steps || []
+            const existingUrls = new Set<string>()
+            const existingArticles = new Set<string>()
+
+            steps.forEach((step: any) => {
+              if (step.observation?.data) {
+                const data = step.observation.data
+
+                // 提取图片 - url 字段
+                if (data.url && typeof data.url === 'string' && !existingUrls.has(data.url)) {
+                  mediaList.push({ type: 'image', url: data.url, key: data.key })
+                  existingUrls.add(data.url)
+                }
+
+                // 提取图片 - image_urls 数组
+                if (data.image_urls && Array.isArray(data.image_urls)) {
+                  data.image_urls.forEach((url: string) => {
+                    if (url && typeof url === 'string' && !existingUrls.has(url)) {
+                      mediaList.push({ type: 'image', url })
+                      existingUrls.add(url)
+                    }
+                  })
+                }
+
+                // 提取封面图
+                if (data.cover_image_url && !existingUrls.has(data.cover_image_url)) {
+                  mediaList.push({ type: 'image', url: data.cover_image_url })
+                  existingUrls.add(data.cover_image_url)
+                }
+
+                // 提取视频
+                if (data.video_url && !existingUrls.has(data.video_url)) {
+                  mediaList.push({
+                    type: 'video',
+                    url: data.video_url,
+                    key: data.video_key || data.key
+                  })
+                  existingUrls.add(data.video_url)
+                }
+
+                // 提取文章
+                if (data.content && data.title && !existingArticles.has(data.title)) {
+                  mediaList.push({
+                    type: 'article',
+                    title: data.title,
+                    content: data.content,
+                    coverImage: data.cover_image_url
+                  })
+                  existingArticles.add(data.title)
+                }
+              }
+            })
+
+            console.log('[MindChat] 从 steps 中提取的 media:', mediaList)
+
             // 创建助手消息
             const assistantMessage: Message = {
               id: Date.now().toString(),
@@ -1569,7 +1626,20 @@ export default function MindChatPage() {
                   displayName: step.action || step.step || '',
                   status: step.status === 'completed' ? 'success' : step.status === 'failed' ? 'failed' : 'running',
                   message: step.message || step.result || step.observation || ''
-                }))
+                })),
+                // 🔴 新增：保存媒体信息
+                media: mediaList.length > 0 ? mediaList : undefined,
+                media_urls: mediaList.length > 0 ? mediaList.reduce((acc, m) => {
+                  if (m.type === 'image' && m.url) {
+                    acc.image_urls = acc.image_urls || []
+                    acc.image_urls.push(m.url)
+                  }
+                  if (m.type === 'video' && m.url) {
+                    acc.video_urls = acc.video_urls || []
+                    acc.video_urls.push(m.url)
+                  }
+                  return acc
+                }, {} as any) : undefined
               }
             }
 
@@ -2692,7 +2762,7 @@ export default function MindChatPage() {
             })
           }
 
-          // 🔴 新增：从 task_state.progressHistory 中提取媒体内容（特别是公众号文章）
+          // 🔴 新增：从 task_state.progressHistory 中提取媒体内容（特别是公众号文章和图片）
           if (msg.metadata?.task_state?.progressHistory) {
             const progressHistory = msg.metadata.task_state.progressHistory as any[]
             const existingUrls = new Set(mediaList.map((m: MessageMedia) => m.url).filter(Boolean))
@@ -2702,9 +2772,35 @@ export default function MindChatPage() {
             console.log('[图片渲染] task_state.progressHistory 数量:', progressHistory.length)
 
             progressHistory.forEach((progress: any, idx: number) => {
-              if (progress.action === 'observation' && progress.data?.data) {
-                const observationData = progress.data
-                const toolAction = observationData.action // 🔴 修复：工具名称
+              // 🔴 修复：支持多种数据结构
+              const progressData = progress.data || progress
+              const toolAction = progressData.action || progress.action
+
+              // 🔴 新增：直接从 progress 顶层提取工具数据
+              if (progress.action === 'generate_image' && progress.image_urls && Array.isArray(progress.image_urls)) {
+                progress.image_urls.forEach((url: string) => {
+                  if (url && typeof url === 'string' && !existingUrls.has(url)) {
+                    console.log(`[图片渲染] Progress ${idx}: 从 generate_image 提取图片:`, url)
+                    mediaList.push({ type: 'image', url })
+                    existingUrls.add(url)
+                  }
+                })
+              }
+
+              // 🔴 新增：从 progress.cdn_urls 提取图片
+              if (progress.action === 'generate_image' && progress.cdn_urls && Array.isArray(progress.cdn_urls)) {
+                progress.cdn_urls.forEach((url: string) => {
+                  if (url && typeof url === 'string' && !existingUrls.has(url)) {
+                    console.log(`[图片渲染] Progress ${idx}: 从 cdn_urls 提取图片:`, url)
+                    mediaList.push({ type: 'image', url })
+                    existingUrls.add(url)
+                  }
+                })
+              }
+
+              // 🔴 原有逻辑：从 observation 中提取
+              if (progress.action === 'observation' && progressData?.data) {
+                const observationData = progressData
                 const toolData = observationData.data // 🔴 修复：工具返回的数据
 
                 console.log(`[图片渲染] Progress ${idx}: action=${toolAction}`, toolData)
