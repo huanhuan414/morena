@@ -60,13 +60,14 @@
 .create-btn-small {
   background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
   border-radius: var(--radius-lg);
-  padding: 14rpx 24rpx;
+  padding: 8rpx 20rpx;
   display: flex;
   align-items: center;
   gap: 8rpx;
   box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
+  height: auto;
 }
 
 .create-btn-small:active {
@@ -75,10 +76,11 @@
 }
 
 .create-text-small {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.5rpx;
+  line-height: 1.2;
 }
 
 .header-right-placeholder {
@@ -502,12 +504,13 @@
 }
 
 .freq-option {
-  padding: 12rpx 24rpx;
+  padding: 8rpx 20rpx;
   background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   border: 1.5rpx solid rgba(255, 255, 255, 0.08);
   transition: all 0.3s ease;
   min-width: 72rpx;
+  height: auto;
 }
 
 .freq-option:active {
@@ -521,10 +524,11 @@
 }
 
 .freq-text {
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 700;
   color: var(--text-secondary);
   letter-spacing: 0.5rpx;
+  line-height: 1.2;
 }
 
 .freq-option.active .freq-text {
