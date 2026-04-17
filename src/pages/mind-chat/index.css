@@ -1055,10 +1055,12 @@
 
 .media-image {
   width: 100%;
-  max-height: 600rpx;
+  max-width: 100%;
   border-radius: var(--radius-lg);
   object-fit: contain;
   display: block;
+  /* 自动高度，确保图片完整显示 */
+  height: auto;
 }
 
 /* 图片操作按钮容器 - 绝对定位覆盖在图片上 */
