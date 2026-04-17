@@ -528,7 +528,7 @@
   font-size: 26rpx;
   font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.5;
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -541,7 +541,7 @@
   font-size: 18rpx;
   font-weight: 500;
   color: var(--text-tertiary);
-  margin-top: 6rpx;
+  margin-top: 2rpx;
   opacity: 0.7;
 }
 
@@ -549,7 +549,7 @@
   display: flex;
   align-items: center;
   gap: 10rpx;
-  margin-top: 6rpx;
+  margin-top: 4rpx;
 }
 
 .message-action {
@@ -565,6 +565,33 @@
 
 .message-action:active {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* 减少Markdown渲染内容的底部间距 */
+.message-bubble .markdown-render > Text:last-child {
+  margin-bottom: 0 !important;
+}
+
+.message-bubble .markdown-render .mb-3 {
+  margin-bottom: 8rpx !important;
+}
+
+.message-bubble .markdown-render .mb-4 {
+  margin-bottom: 12rpx !important;
+}
+
+.message-bubble .markdown-render .mb-2 {
+  margin-bottom: 6rpx !important;
+}
+
+.message-bubble .markdown-render .my-3 {
+  margin-top: 8rpx !important;
+  margin-bottom: 8rpx !important;
+}
+
+.message-bubble .markdown-render .my-6 {
+  margin-top: 12rpx !important;
+  margin-bottom: 12rpx !important;
 }
 
 .message-user-avatar {
