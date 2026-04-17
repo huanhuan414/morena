@@ -1,216 +1,222 @@
-/* ============================================================
-   登录页面 - 统一设计风格
-   ============================================================ */
-
+/* Login Page - High Level Design */
 .login-page {
   min-height: 100vh;
   background: var(--background);
-  display: flex;
-  flex-direction: column;
-  padding: 48rpx 32rpx;
+  position: relative;
+  overflow: hidden;
 }
 
+.login-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 100%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 100%, rgba(236, 72, 153, 0.08) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 20s ease-in-out infinite;
+}
+
+@keyframes bgBreath {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Logo Section */
 .logo-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60rpx 0 40rpx;
+  padding: 100rpx 0 60rpx;
+  gap: 24rpx;
+  animation: logoSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes logoSlideIn {
+  from { opacity: 0; transform: translateY(-60rpx) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .app-logo {
-  width: 144rpx;
-  height: 144rpx;
-  border-radius: 40rpx;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 48rpx;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.15) 100%);
+  border: 3rpx solid rgba(99, 102, 241, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24rpx;
-  box-shadow: var(--card-shadow-lg);
+  box-shadow: 0 12rpx 48rpx rgba(99, 102, 241, 0.35);
+  animation: logoPulse 3s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% { box-shadow: 0 12rpx 48rpx rgba(99, 102, 241, 0.35); }
+  50% { box-shadow: 0 12rpx 64rpx rgba(99, 102, 241, 0.5); }
 }
 
 .app-name {
-  font-size: 42rpx;
-  font-weight: 700;
+  font-size: 52rpx;
+  font-weight: 900;
   color: var(--text-primary);
-  margin-bottom: 12rpx;
+  letter-spacing: -1rpx;
+  text-shadow: 0 0 24rpx rgba(99, 102, 241, 0.4);
 }
 
 .app-slogan {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
 }
 
+/* Form Section */
 .form-section {
-  margin-top: 48rpx;
+  padding: 0 48rpx;
+  position: relative;
+  z-index: 1;
+  animation: formFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes formFadeIn {
+  from { opacity: 0; transform: translateY(30rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-title {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 48rpx;
+  letter-spacing: -1rpx;
 }
 
 .form-group {
-  margin-bottom: 24rpx;
+  margin-bottom: 28rpx;
 }
 
-.form-label {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.form-input-wrap {
-  display: flex;
-  align-items: center;
-  padding: 18rpx 20rpx;
+.input-wrapper {
   background: var(--card);
-  border: 2rpx solid var(--border);
-  border-radius: var(--radius-xl);
-  transition: all 0.3s ease;
-  box-shadow: var(--card-shadow-sm);
+  border-radius: var(--radius-lg);
+  border: 1.5rpx solid rgba(99, 102, 241, 0.15);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.form-input-wrap:focus-within {
-  border-color: var(--primary);
-  background: var(--primary-light);
-  box-shadow: var(--card-shadow);
+.input-wrapper:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4rpx rgba(99, 102, 241, 0.15);
 }
 
-.form-input-icon {
-  width: 44rpx;
-  height: 44rpx;
-  color: var(--text-muted);
-  margin-right: 12rpx;
-  flex-shrink: 0;
+.input-icon {
+  padding: 0 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.form-input {
+.input-field {
   flex: 1;
-  font-size: 30rpx;
+  padding: 26rpx;
+  font-size: 28rpx;
+  font-weight: 500;
   color: var(--text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
 }
 
-.form-input::placeholder {
-  color: var(--text-muted);
-}
-
-.form-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 32rpx;
-}
-
-.checkbox-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.checkbox {
-  width: 40rpx;
-  height: 40rpx;
-  border: 2rpx solid var(--border);
-  border-radius: 10rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.checkbox.checked {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.checkbox-icon {
-  width: 28rpx;
-  height: 28rpx;
-  color: var(--primary-foreground);
-}
-
-.checkbox-label {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
-}
-
-.forgot-btn {
-  font-size: 24rpx;
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.submit-btn {
+/* Button */
+.login-btn {
   width: 100%;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  padding: 22rpx 32rpx;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  border: none;
-  border-radius: var(--radius-xl);
-  color: var(--primary-foreground);
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.login-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 4rpx 16rpx rgba(99, 102, 241, 0.5);
+}
+
+.login-text {
   font-size: 32rpx;
   font-weight: 700;
-  box-shadow: var(--card-shadow-lg);
-  margin-bottom: 24rpx;
+  color: #ffffff;
 }
 
-.submit-btn:active {
-  transform: scale(0.98);
-}
-
+/* Divider */
 .divider {
   display: flex;
   align-items: center;
-  gap: 24rpx;
-  margin: 32rpx 0;
+  margin: 40rpx 0;
 }
 
 .divider-line {
   flex: 1;
   height: 1rpx;
-  background: var(--border);
+  background: rgba(99, 102, 241, 0.15);
 }
 
 .divider-text {
+  padding: 0 24rpx;
   font-size: 24rpx;
+  font-weight: 600;
   color: var(--text-tertiary);
 }
 
+/* Social Login */
 .social-login {
   display: flex;
   justify-content: center;
-  gap: 48rpx;
-  margin-bottom: 48rpx;
+  gap: 32rpx;
+  margin-bottom: 40rpx;
 }
 
 .social-btn {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 24rpx;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
   background: var(--card);
-  border: 2rpx solid var(--border);
+  border: 1.5rpx solid rgba(99, 102, 241, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: var(--card-shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .social-btn:active {
   transform: scale(0.95);
+  background: rgba(99, 102, 241, 0.08);
 }
 
-.register-link {
+/* Footer */
+.footer {
   text-align: center;
+  padding: 24rpx;
   font-size: 24rpx;
+  font-weight: 500;
   color: var(--text-tertiary);
+  line-height: 1.6;
 }
 
-.register-link-text {
-  color: var(--primary);
-  font-weight: 600;
+.footer text {
+  color: #6366f1;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .login-page {
+  /* 使用 CSS 变量自动适配 */
+}
+
+[data-theme="dark"] .input-wrapper {
+  border-color: rgba(99, 102, 241, 0.18);
 }

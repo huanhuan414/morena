@@ -1,231 +1,288 @@
-/* ============================================================
-   分身设置页面 - 统一设计风格
-   ============================================================ */
-
-.avatar-settings-page {
+/* Avatar Settings / Friends / Orders / Account Config Pages */
+.avatar-settings-page,
+.avatar-friends-page,
+.avatar-orders-page,
+.avatar-account-config-page {
   min-height: 100vh;
   background: var(--background);
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-settings-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 22s ease-in-out infinite;
+}
+
+.avatar-friends-page::before,
+.avatar-orders-page::before,
+.avatar-account-config-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(6, 182, 212, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(59, 130, 246, 0.07) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 20s ease-in-out infinite;
+}
+
+@keyframes bgBreath {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .status-bar-placeholder {
+  background: var(--background);
   width: 100%;
-  height: var(--status-bar-height, 20px);
+  position: relative;
+  z-index: 1;
 }
 
-.page-header {
+.header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 24rpx 32rpx;
-  background: var(--card);
-  border-bottom: 1rpx solid var(--border);
-  position: sticky;
-  top: 0;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+  border-bottom: 1.5rpx solid rgba(139, 92, 246, 0.12);
+  position: relative;
   z-index: 10;
+  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.header-back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: var(--radius-md);
-  background: var(--secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16rpx;
+.avatar-friends-page .header,
+.avatar-orders-page .header,
+.avatar-account-config-page .header {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.1) 0%, transparent 100%);
+  border-color: rgba(6, 182, 212, 0.12);
+}
+
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .header-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5rpx;
+}
+
+.scroll-container {
   flex: 1;
-  font-size: 36rpx;
+  padding: 24rpx 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+/* Section */
+.section {
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 12rpx;
+  padding-left: 8rpx;
+}
+
+/* Menu List */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.menu-item {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 26rpx;
+  border: 1.5rpx solid rgba(139, 92, 246, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  animation: menuFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-item:nth-child(1) { animation-delay: 0.1s; }
+.menu-item:nth-child(2) { animation-delay: 0.15s; }
+.menu-item:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: translateX(-12rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.avatar-friends-page .menu-item,
+.avatar-orders-page .menu-item,
+.avatar-account-config-page .menu-item {
+  border-color: rgba(6, 182, 212, 0.1);
+}
+
+.menu-item:active {
+  transform: scale(0.98);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.avatar-friends-page .menu-item:active,
+.avatar-orders-page .menu-item:active,
+.avatar-account-config-page .menu-item:active {
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.menu-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 14rpx;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-friends-page .menu-icon,
+.avatar-orders-page .menu-icon,
+.avatar-account-config-page .menu-icon {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
+}
+
+.menu-text {
+  flex: 1;
+}
+
+.menu-title {
+  font-size: 28rpx;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.scroll-content {
-  flex: 1;
-  padding: 24rpx;
-  padding-bottom: 160rpx;
-}
-
-.avatar-section {
-  padding: 32rpx 24rpx;
-  background: var(--card);
-  border: 1rpx solid var(--border);
-  border-radius: var(--radius-xl);
-  margin-bottom: 24rpx;
-  box-shadow: var(--card-shadow);
-}
-
-.avatar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24rpx;
-}
-
-.avatar-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.avatar-change-btn {
-  padding: 12rpx 20rpx;
-  background: var(--secondary);
-  border-radius: var(--radius-md);
-  font-size: 24rpx;
-  color: var(--text-tertiary);
+.menu-desc {
+  font-size: 20rpx;
   font-weight: 500;
-}
-
-.avatar-preview {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.avatar-img-wrap {
-  width: 128rpx;
-  height: 128rpx;
-  border-radius: 40rpx;
-  background: var(--secondary);
-  border: 3rpx solid var(--border);
-  overflow: hidden;
-  flex-shrink: 0;
-  box-shadow: var(--card-shadow);
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-info {
-  flex: 1;
-}
-
-.avatar-label {
-  font-size: 22rpx;
   color: var(--text-tertiary);
-  margin-bottom: 8rpx;
+  margin-top: 4rpx;
 }
 
-.avatar-value {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--text-primary);
+.menu-arrow {
+  opacity: 0.4;
+  flex-shrink: 0;
 }
 
-.form-section {
-  padding: 24rpx;
+/* List Item (for friends/orders) */
+.list-item {
   background: var(--card);
-  border: 1rpx solid var(--border);
-  border-radius: var(--radius-xl);
-  margin-bottom: 24rpx;
-  box-shadow: var(--card-shadow);
-}
-
-.form-group {
-  margin-bottom: 24rpx;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.form-input-wrap {
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  border: 1.5rpx solid rgba(139, 92, 246, 0.1);
   display: flex;
   align-items: center;
-  padding: 16rpx 20rpx;
-  background: var(--secondary);
-  border: 2rpx solid var(--border);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s ease;
-}
-
-.form-input-wrap:focus-within {
-  border-color: var(--primary);
-  background: var(--primary-light);
-}
-
-.form-input {
-  flex: 1;
-  font-size: 28rpx;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
-}
-
-.form-input::placeholder {
-  color: var(--text-muted);
-}
-
-.form-textarea-wrap {
-  padding: 16rpx 20rpx;
-  background: var(--secondary);
-  border: 2rpx solid var(--border);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s ease;
-}
-
-.form-textarea-wrap:focus-within {
-  border-color: var(--primary);
-  background: var(--primary-light);
-}
-
-.form-textarea {
-  width: 100%;
-  min-height: 160rpx;
-  font-size: 28rpx;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  outline: none;
-  line-height: 1.6;
-}
-
-.form-actions {
-  display: flex;
   gap: 16rpx;
-  margin-top: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  animation: listFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.form-btn {
-  flex: 1;
-  padding: 20rpx 32rpx;
-  border-radius: var(--radius-xl);
-  font-size: 28rpx;
-  font-weight: 600;
-  border: none;
+.list-item:nth-child(1) { animation-delay: 0.1s; }
+.list-item:nth-child(2) { animation-delay: 0.15s; }
+.list-item:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes listFadeIn {
+  from { opacity: 0; transform: translateX(-12rpx); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.form-btn.primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: var(--card-shadow);
+.avatar-friends-page .list-item,
+.avatar-orders-page .list-item,
+.avatar-account-config-page .list-item {
+  border-color: rgba(6, 182, 212, 0.1);
 }
 
-.form-btn.danger {
-  background: var(--destructive-light);
-  color: var(--destructive);
-  border: 1rpx solid var(--destructive);
-}
-
-.form-btn:active {
+.list-item:active {
   transform: scale(0.98);
 }
 
+.item-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%);
+  border: 2rpx solid rgba(139, 92, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-friends-page .item-avatar,
+.avatar-orders-page .item-avatar,
+.avatar-account-config-page .item-avatar {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-color: rgba(6, 182, 212, 0.2);
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4rpx;
+}
+
+.item-desc {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.item-status {
+  padding: 6rpx 12rpx;
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 12rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #8b5cf6;
+  flex-shrink: 0;
+}
+
+.avatar-friends-page .item-status,
+.avatar-orders-page .item-status,
+.avatar-account-config-page .item-status {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+}
+
+/* Bottom Space */
 .bottom-space {
-  height: 80rpx;
+  height: 32rpx;
+}
+
+[data-theme="dark"] .avatar-settings-page,
+[data-theme="dark"] .avatar-friends-page,
+[data-theme="dark"] .avatar-orders-page,
+[data-theme="dark"] .avatar-account-config-page {
+  /* 使用 CSS 变量自动适配 */
 }
