@@ -2882,11 +2882,14 @@ export default function MindChatPage() {
                       <Image
                         src={media.url || ''}
                         className="media-image"
-                        mode="aspectFit"
-                        style={{ height: '800rpx', width: '100%' }}
+                        mode="widthFix"
                         lazyLoad
-                        onLoad={() => {
-                          console.log('[图片渲染] 图片加载成功:', media.url)
+                        onLoad={(e) => {
+                          console.log('[图片渲染] 图片加载成功:', media.url, e)
+                          // 获取图片实际尺寸
+                          const { width, height } = e.detail
+                          const aspectRatio = height / width
+                          console.log('[图片渲染] 图片尺寸:', width, height, '比例:', aspectRatio)
                         }}
                         onError={(e) => {
                           console.error('[图片渲染] 图片加载失败:', media.url, e)

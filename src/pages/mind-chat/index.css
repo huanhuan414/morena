@@ -1047,7 +1047,6 @@
   background: transparent;
   max-width: 100%;
   width: 100%;
-  height: 800rpx;  /* 设置固定高度 */
 }
 
 .media-item.image {
@@ -1056,10 +1055,12 @@
 
 .media-image {
   width: 100%;
-  height: 100%;  /* 填满容器 */
+  max-width: 100%;
   border-radius: var(--radius-lg);
-  object-fit: contain;
   display: block;
+  height: auto;  /* 高度自动 */
+  /* 限制最大高度，防止图片太大 */
+  max-height: 1200rpx;
 }
 
 /* 图片操作按钮容器 - 绝对定位覆盖在图片上 */
