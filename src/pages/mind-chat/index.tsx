@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Video as VideoIcon, Paperclip, Plus
+  Play, Video as VideoIcon, Paperclip, Plus, Image
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -395,6 +395,9 @@ export default function MindChatPage() {
   // 🔴 新增：上传的图片和视频
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploadedVideos, setUploadedVideos] = useState<string[]>([])
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   
   // 发布引导弹窗（用于无 API 的平台）
   const [showPublishGuide, setShowPublishGuide] = useState(false)
@@ -1191,14 +1194,20 @@ export default function MindChatPage() {
     }
   }
 
-  // 🔴 新增：上传图片
+  // 🔴 修复：上传图片
   const handleUploadImage = () => {
+    console.log('[上传图片] 开始选择图片')
     Taro.chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
+        console.log('[上传图片] 已选择图片:', tempFilePath)
+
+        setIsUploadingImage(true)
+        setUploadProgress(0)
+
         try {
           // 上传图片到 TOS
           const uploadRes = await Network.uploadFile({
@@ -1217,6 +1226,8 @@ export default function MindChatPage() {
             uploadData = uploadRes.data
           }
 
+          setUploadProgress(100)
+
           if (uploadData.code === 200 && uploadData.data?.url) {
             setUploadedImages([...uploadedImages, uploadData.data.url])
             showToast({ title: '图片上传成功', icon: 'success' })
@@ -1225,20 +1236,29 @@ export default function MindChatPage() {
           }
         } catch (error) {
           console.error('[上传图片] 错误:', error)
-          showToast({ title: '上传失败', icon: 'none' })
+          showToast({ title: '上传失败，请重试', icon: 'none' })
+        } finally {
+          setIsUploadingImage(false)
+          setTimeout(() => setUploadProgress(0), 1000)
         }
       }
     })
   }
 
-  // 🔴 新增：上传视频
+  // 🔴 修复：上传视频
   const handleUploadVideo = () => {
+    console.log('[上传视频] 开始选择视频')
     Taro.chooseVideo({
       sourceType: ['album', 'camera'],
       maxDuration: 60,
       camera: 'back',
       success: async (res) => {
         const tempFilePath = res.tempFilePath
+        console.log('[上传视频] 已选择视频:', tempFilePath)
+
+        setIsUploadingVideo(true)
+        setUploadProgress(0)
+
         try {
           // 上传视频到 TOS
           const uploadRes = await Network.uploadFile({
@@ -1257,6 +1277,8 @@ export default function MindChatPage() {
             uploadData = uploadRes.data
           }
 
+          setUploadProgress(100)
+
           if (uploadData.code === 200 && uploadData.data?.url) {
             setUploadedVideos([...uploadedVideos, uploadData.data.url])
             showToast({ title: '视频上传成功', icon: 'success' })
@@ -1265,7 +1287,10 @@ export default function MindChatPage() {
           }
         } catch (error) {
           console.error('[上传视频] 错误:', error)
-          showToast({ title: '上传失败', icon: 'none' })
+          showToast({ title: '上传失败，请重试', icon: 'none' })
+        } finally {
+          setIsUploadingVideo(false)
+          setTimeout(() => setUploadProgress(0), 1000)
         }
       }
     })
@@ -1908,48 +1933,41 @@ export default function MindChatPage() {
 
   const handleVoiceFile = async (tempFilePath: string) => {
     try {
-      showToast({ title: '正在识别语音...', icon: 'loading' })
+      showToast({ title: '正在上传语音...', icon: 'loading' })
 
-      // 上传录音文件到对象存储
+      // 上传录音文件到对象存储（使用统一的图片上传接口）
       const uploadRes = await Network.uploadFile({
-        url: '/api/storage/upload',
+        url: '/api/upload/image',
         filePath: tempFilePath,
-        name: 'file',
-        header: {
-          'content-type': 'multipart/form-data'
-        }
+        name: 'file'
       })
 
       console.log('[MindChat] 语音文件上传成功:', uploadRes)
 
-      const uploadData = uploadRes.data as any
-      if (!uploadData || !uploadData.url) {
+      // 处理响应数据
+      let uploadData
+      if (typeof uploadRes.data === 'string') {
+        uploadData = JSON.parse(uploadRes.data)
+      } else {
+        uploadData = uploadRes.data
+      }
+
+      if (!uploadData || uploadData.code !== 200 || !uploadData.data?.url) {
         throw new Error('上传失败')
       }
 
-      // 调用语音识别接口
-      const asrRes = await Network.request({
-        url: '/api/asr/recognize',
-        method: 'POST',
-        data: {
-          audioUrl: uploadData.url
-        }
-      })
+      showToast({ title: '语音上传成功', icon: 'success' })
 
-      console.log('[MindChat] 语音识别成功:', asrRes)
+      // TODO: 语音识别功能需要后端支持，暂时只上传语音文件
+      // 可以考虑使用第三方语音识别服务（如百度、腾讯云等）
+      console.log('[MindChat] 语音文件URL:', uploadData.data.url)
 
-      if (asrRes.data?.code === 200 && asrRes.data?.data?.text) {
-        const recognizedText = asrRes.data.data.text
+      // 将语音文件添加到附件列表（发送时一起发送）
+      // 这里暂时不做处理，等待用户手动输入
 
-        // 将识别的文字设置到输入框
-        setInputText(recognizedText)
-        showToast({ title: '识别成功', icon: 'success' })
-      } else {
-        showToast({ title: '语音识别失败', icon: 'none' })
-      }
     } catch (error) {
       console.error('[MindChat] 处理语音文件失败:', error)
-      showToast({ title: '语音处理失败', icon: 'none' })
+      showToast({ title: '语音处理失败，请重试', icon: 'none' })
     }
   }
 
@@ -4159,14 +4177,37 @@ export default function MindChatPage() {
             }}
           />
 
+          {/* 上传进度条 */}
+          {(isUploadingImage || isUploadingVideo) && (
+            <View className="upload-progress-container">
+              <View className="upload-progress-bar">
+                <View
+                  className="upload-progress-fill"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </View>
+              <Text className="upload-progress-text">
+                {isUploadingImage ? '上传图片中...' : '上传视频中...'} {uploadProgress}%
+              </Text>
+            </View>
+          )}
+
           {/* 第二行：按钮区域 */}
           <View className="button-row">
             <View className="button-row-left">
               <View className="icon-btn image-btn" onClick={handleUploadImage}>
-                <Paperclip size={18} color="#10b981" />
+                {isUploadingImage ? (
+                  <Loader size={18} color="#10b981" />
+                ) : (
+                  <Image size={18} color="#10b981" />
+                )}
               </View>
               <View className="icon-btn video-btn" onClick={handleUploadVideo}>
-                <VideoIcon size={18} color="#f59e0b" />
+                {isUploadingVideo ? (
+                  <Loader size={18} color="#f59e0b" />
+                ) : (
+                  <VideoIcon size={18} color="#f59e0b" />
+                )}
               </View>
               <View className="icon-btn skill-btn" onClick={navigateToSkillsSquare}>
                 <Wrench size={18} color="#8b5cf6" />
