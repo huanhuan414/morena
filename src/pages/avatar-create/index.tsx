@@ -362,24 +362,38 @@ export default function AvatarCreatePage() {
       
       if (responseData?.code === 200) {
         const { analysis, photoUrl: url } = responseData.data
+
+        // 检查是否检测到人脸
+        if (responseData.data?.hasFace === false) {
+          clearInterval(progressInterval)
+          setAnalyzing(false)
+          showToast({ title: '未检测到人脸，请上传清晰正面照片', icon: 'none', duration: 3000 })
+          return
+        }
+
         setPhotoUrl(url)
         setPhotoAnalysis(analysis)
-        
+
         // 如果AI建议了名字，自动填充
         if (analysis.suggestedName) {
           setAvatarName(analysis.suggestedName)
         }
-        
+
         // 如果有推荐的性格类型，自动选择
         if (analysis.recommendedType) {
           setSelectedPersonality(analysis.recommendedType)
         }
-        
+
         showToast({ title: '分析完成', icon: 'success' })
         setStep(1) // 进入分析结果展示页面
+      } else {
+        throw new Error('分析失败')
       }
     } catch (error) {
       console.error('分析照片失败:', error)
+      clearInterval(progressInterval)
+      setAnalyzing(false)
+      showToast({ title: '分析失败，请重试', icon: 'none' })
       // 模拟分析结果（开发调试用）
       const mockAnalysis: PhotoAnalysis = {
         facialFeatures: {
@@ -865,18 +879,13 @@ export default function AvatarCreatePage() {
               onClick={() => toggleAbility(a.id)}
             >
               <View className="ability-icon-wrap">
-                <Icon size={24} color={isSelected ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+                <Icon size={32} color={isSelected ? '#ffffff' : '#06b6d4'} />
               </View>
               <Text className="ability-name">{a.name}</Text>
               <Text className="ability-desc">{a.desc}</Text>
-              {a.category && (
-                <View className="ability-category">
-                  <Text className="category-text">{a.category}</Text>
-                </View>
-              )}
               {isSelected && (
                 <View className="ability-check">
-                  <Check size={14} color="#00f5ff" />
+                  <Check size={16} color="#ffffff" />
                 </View>
               )}
             </View>
@@ -911,19 +920,19 @@ export default function AvatarCreatePage() {
               <View
                 className={`appearance-preview ${isSelected ? 'animated' : ''}`}
                 style={{
-                  background: `linear-gradient(135deg, ${s.color}30 0%, ${s.color}10 100%)`,
-                  borderColor: isSelected ? s.color : 'rgba(255,255,255,0.1)'
+                  background: `linear-gradient(135deg, ${s.color}20 0%, ${s.color}08 100%)`,
+                  borderColor: isSelected ? s.color : 'rgba(6, 182, 212, 0.15)'
                 }}
               >
                 <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
-                <Icon size={40} color={s.color} />
+                <Icon size={48} color={s.color} />
                 {isSelected && <View className="preview-pulse" style={{ background: s.color }} />}
               </View>
               <Text className="appearance-name">{s.name}</Text>
               <Text className="appearance-desc">{s.desc}</Text>
               {isSelected && (
                 <View className="appearance-check animated-check" style={{ backgroundColor: s.color }}>
-                  <Check size={14} color="#0a0a0f" />
+                  <Check size={18} color="#ffffff" />
                   <View className="check-shine" style={{ background: s.color }} />
                 </View>
               )}
@@ -956,7 +965,7 @@ export default function AvatarCreatePage() {
               <View className={`speaking-header ${isSelected ? 'animated' : ''}`}>
                 <View className="speaking-icon-wrap">
                   <View className={`icon-glow ${isSelected ? 'active' : ''}`} />
-                  <Icon size={24} color={isSelected ? '#00f5ff' : 'rgba(255,255,255,0.5)'} />
+                  <Icon size={28} color={isSelected ? '#06b6d4' : '#94a3b8'} />
                 </View>
                 <View className="speaking-info">
                   <Text className="speaking-name">{s.name}</Text>
@@ -964,7 +973,7 @@ export default function AvatarCreatePage() {
                 </View>
                 {isSelected && (
                   <View className="speaking-check animated-check">
-                    <Check size={16} color="#00f5ff" />
+                    <Check size={18} color="#06b6d4" />
                   </View>
                 )}
               </View>
