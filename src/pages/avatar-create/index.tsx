@@ -361,7 +361,10 @@ export default function AvatarCreatePage() {
       setAnalyzingProgress(3)
 
       if (responseData?.code === 200) {
-        const { analysis, photoUrl: url, hasFace } = responseData.data
+        const { photoUrl: url, analysis } = responseData.data
+        const { hasFace } = analysis || {}
+
+        console.log('人脸检测结果:', hasFace)
 
         // 检查是否检测到人脸
         if (hasFace === false) {

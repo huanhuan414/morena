@@ -383,6 +383,8 @@ export class AvatarService {
    */
   private getDefaultAnalysis() {
     return {
+      hasFace: true,
+      faceConfidence: 1.0,
       facialFeatures: {
         expression: '自然温和',
         eyes: '明亮有神',
