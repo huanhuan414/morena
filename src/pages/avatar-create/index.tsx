@@ -102,8 +102,11 @@ export default function AvatarCreatePage() {
       })
 
       console.log('[技能广场] API响应:', res)
+      console.log('[技能广场] res.statusCode:', res.statusCode)
+      console.log('[技能广场] res.data:', res.data)
 
-      if (res.data?.code === 200 && res.data?.data?.skills) {
+      // ✅ 正确判断：检查 statusCode 和 data.skills
+      if (res.statusCode === 200 && res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
         const allSkills = res.data.data.skills
         console.log('[技能广场] 获取到技能总数:', allSkills.length)
 
@@ -137,7 +140,7 @@ export default function AvatarCreatePage() {
           duration: 1500
         })
       } else {
-        console.error('[技能广场] API返回异常:', res.data)
+        console.error('[技能广场] API返回异常:', res)
         showToast({ title: '加载技能失败', icon: 'none' })
       }
     } catch (error) {
@@ -955,8 +958,8 @@ export default function AvatarCreatePage() {
                 }}
               >
                 <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
-                <Icon size={48} color={isSelected ? '#ffffff' : s.color} />
-                {isSelected && <View className="preview-pulse" style={{ background: s.color }} />}
+                <Icon size={48} color={isSelected ? '#ffffff' : s.color} style={{ zIndex: 2 }} />
+                {isSelected && <View className="preview-pulse" style={{ borderColor: s.color }} />}
               </View>
               <Text className="appearance-name">{s.name}</Text>
               <Text className="appearance-desc">{s.desc}</Text>

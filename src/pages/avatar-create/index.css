@@ -1309,6 +1309,7 @@
   border: 3rpx solid;
   position: relative;
   transition: all 0.3s ease;
+  z-index: 1;
 }
 
 .preview-icon-glow {
@@ -1323,6 +1324,7 @@
   filter: blur(30rpx);
   transition: all 0.3s ease;
   pointer-events: none;
+  z-index: 0;
 }
 
 .preview-icon-glow.active {
@@ -1334,8 +1336,9 @@
   position: absolute;
   inset: 0;
   border-radius: 24rpx;
-  opacity: 0.4;
+  border: 3rpx solid;
   animation: pulseSoft 2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .appearance-preview.animated {
