@@ -498,7 +498,7 @@
 
 .message-bubble {
   max-width: 75%;
-  padding: 0 16rpx;
+  padding: 8rpx 16rpx;
   background: var(--card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
@@ -530,8 +530,7 @@
   color: var(--text-primary);
   line-height: 1.4;
   word-break: break-word;
-  margin-top: 8rpx;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .message-item.user .message-content {
@@ -543,7 +542,7 @@
   font-size: 18rpx;
   font-weight: 500;
   color: var(--text-tertiary);
-  margin-top: 2rpx;
+  margin-top: 4rpx;
   margin-bottom: 0;
   opacity: 0.7;
 }
@@ -553,7 +552,7 @@
   align-items: center;
   gap: 10rpx;
   margin-top: 4rpx;
-  margin-bottom: 8rpx;
+  margin-bottom: 0;
 }
 
 .message-action {
