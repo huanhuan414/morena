@@ -2910,9 +2910,11 @@ export default function MindChatPage() {
                             // 下载图片到相册
                             Taro.showLoading({ title: '保存中...' })
                             try {
-                              const res = await Network.downloadFile({
+                              // 直接使用 Taro.downloadFile，避免跨域问题
+                              const res = await Taro.downloadFile({
                                 url: media.url || ''
-                              }) as any
+                              })
+                              console.log('[图片下载] 下载成功，临时文件:', res.tempFilePath)
                               await Taro.saveImageToPhotosAlbum({
                                 filePath: res.tempFilePath
                               })
@@ -2921,7 +2923,12 @@ export default function MindChatPage() {
                             } catch (err) {
                               Taro.hideLoading()
                               console.error('保存失败:', err)
-                              Taro.showToast({ title: '保存失败', icon: 'none' })
+                              // 检查是否是权限问题
+                              if (err.errMsg && err.errMsg.includes('auth')) {
+                                Taro.showToast({ title: '请先授权访问相册', icon: 'none' })
+                              } else {
+                                Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+                              }
                             }
                           }}
                         >
@@ -3799,7 +3806,7 @@ export default function MindChatPage() {
       )}
 
       {/* 消息区域 */}
-      <ScrollView 
+      <ScrollView
         className="messages-scroll"
         scrollY
         scrollTop={scrollTop}
@@ -3811,6 +3818,12 @@ export default function MindChatPage() {
           setRefreshing(true)
           loadMoreMessages()
         }}
+        onScrollToUpper={() => {
+          // 滚动到顶部时加载更多历史消息
+          console.log('[滚动检测] 滚动到顶部，加载更多消息')
+          loadMoreMessages()
+        }}
+        upperThreshold={50}
       >
         {/* 加载更多提示 */}
         {isLoadingMore && (
