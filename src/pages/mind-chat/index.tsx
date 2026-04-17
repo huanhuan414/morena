@@ -4171,15 +4171,6 @@ export default function MindChatPage() {
             adjustPosition
             autoHeight
             cursorSpacing={80}
-            onBlur={(e: any) => {
-              let newValue = inputText
-              if (e.detail && e.detail.value !== undefined) {
-                newValue = e.detail.value
-              } else if (e.target && e.target.value !== undefined) {
-                newValue = e.target.value
-              }
-              setInputText(newValue)
-            }}
             style={{
               minHeight: '72rpx',
               maxHeight: '200rpx',
