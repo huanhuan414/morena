@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -116,7 +116,7 @@ export default function AvatarCreatePage() {
             'generate_video',
             'app_assign_order'
           ])
-          return !skill.tool_name || !kitSkillToolNames.has(skill.tool_name)
+          return skill.tool_name && !kitSkillToolNames.has(skill.tool_name)
         })
 
         setSkillsFromSquare(filteredSkills)
@@ -200,8 +200,7 @@ export default function AvatarCreatePage() {
     }
   ]
 
-  // 从技能广场获取的技能数据
-  const getAbilitiesFromSkills = () => {
+  const abilities = useMemo(() => {
     if (skillsFromSquare.length === 0) {
       // 如果技能广场数据未加载，返回默认列表
       return [
@@ -239,9 +238,7 @@ export default function AvatarCreatePage() {
       category: skill.category,
       tags: skill.tags
     }))
-  }
-
-  const abilities = getAbilitiesFromSkills()
+  }, [skillsFromSquare])
 
   // 获取选中的能力项（包含toolName）
   const getSelectedAbilitiesWithToolName = () => {
