@@ -353,14 +353,38 @@ export class AvatarService {
       ]
       
       console.log('开始调用视觉模型进行深度分析...')
-      
+
       const response = await client.invoke(messages, {
         model: 'doubao-seed-1-6-vision-250815',
         temperature: 0.7,
       })
-      
+
       console.log('视觉模型响应长度:', response.content.length)
       console.log('视觉模型原始响应:', response.content)
+
+      // 前置检查：如果响应中明确包含"没有人脸"、"无脸"、"not a face"等关键词，直接拒绝
+      const responseLower = response.content.toLowerCase()
+      if (responseLower.includes('没有人脸') || 
+          responseLower.includes('无脸') || 
+          responseLower.includes('not a face') ||
+          responseLower.includes('no face') ||
+          responseLower.includes('无法识别人脸') ||
+          responseLower.includes('检测不到人脸')) {
+        console.log('响应中包含无人脸关键词，返回拒绝结果')
+        return {
+          hasFace: false,
+          faceConfidence: 0.0,
+          facialFeatures: { expression: '无法识别', eyes: '无法识别', impression: '照片中无人脸' },
+          temperament: { type: '未知', description: '照片中无人脸，无法分析', keywords: [] },
+          personality: { core: [], strengths: [], workStyle: '无法分析' },
+          communicationStyle: '无法分析',
+          strengths: [],
+          recommendedType: 'empathetic',
+          nameSuggestions: [],
+          summary: '照片中无人脸，请上传包含清晰正面人脸的照片',
+          suggestedName: ''
+        }
+      }
 
       // 解析JSON响应
       try {
@@ -371,10 +395,16 @@ export class AvatarService {
           console.log('解析成功，faceConfidence:', analysis.faceConfidence)
           console.log('解析成功，气质类型:', analysis.temperament?.type)
 
-          // 强制检查：如果没有 hasFace 字段，尝试判断
+          // 强制检查：如果没有 hasFace 字段，默认设为 false（安全策略）
           if (!hasOwnProperty.call(analysis, 'hasFace')) {
-            console.log('警告：响应中没有 hasFace 字段，默认设为 true')
-            analysis.hasFace = true
+            console.log('警告：响应中没有 hasFace 字段，默认设为 false（安全策略）')
+            analysis.hasFace = false
+          }
+
+          // 二次检查：如果 hasFace 为 false，直接返回
+          if (analysis.hasFace === false) {
+            console.log('二次检测：hasFace 为 false，返回拒绝结果')
+            return analysis
           }
 
           return analysis
