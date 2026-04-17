@@ -96,14 +96,19 @@ export default function AvatarCreatePage() {
   // 从技能广场获取技能列表
   const loadSkillsFromSquare = async () => {
     try {
+      console.log('[技能广场] 开始加载技能...')
       const res = await Network.request({
         url: '/api/skills'
       })
 
+      console.log('[技能广场] API响应:', res)
+
       if (res.data?.code === 200 && res.data?.data?.skills) {
+        const allSkills = res.data.data.skills
+        console.log('[技能广场] 获取到技能总数:', allSkills.length)
+
         // 过滤掉套件技能（短剧套件、个人IP套件等）
         const filteredSkills = res.data.data.skills.filter((skill: any) => {
-          // 排除套件技能
           const kitSkillToolNames = new Set([
             'generate_shortdrama_script',
             'generate_storyboard',
@@ -119,10 +124,25 @@ export default function AvatarCreatePage() {
           return skill.tool_name && !kitSkillToolNames.has(skill.tool_name)
         })
 
+        console.log('[技能广场] 过滤后技能数量:', filteredSkills.length)
+        console.log('[技能广场] 前3个技能:', filteredSkills.slice(0, 3).map(s => ({
+          name: s.name,
+          tool_name: s.tool_name
+        })))
+
         setSkillsFromSquare(filteredSkills)
+        showToast({
+          title: `加载${filteredSkills.length}个技能`,
+          icon: 'none',
+          duration: 1500
+        })
+      } else {
+        console.error('[技能广场] API返回异常:', res.data)
+        showToast({ title: '加载技能失败', icon: 'none' })
       }
     } catch (error) {
-      console.error('加载技能列表失败:', error)
+      console.error('[技能广场] 加载失败:', error)
+      showToast({ title: '加载技能失败', icon: 'none' })
     }
   }
 
@@ -201,7 +221,10 @@ export default function AvatarCreatePage() {
   ]
 
   const abilities = useMemo(() => {
+    console.log('[abilities] useMemo 被调用，skillsFromSquare.length =', skillsFromSquare.length)
+
     if (skillsFromSquare.length === 0) {
+      console.log('[abilities] 使用默认技能列表')
       // 如果技能广场数据未加载，返回默认列表
       return [
         { id: 'writing', name: '写作助手', desc: '文案、文章、创意写作', icon: Sparkles },
@@ -214,6 +237,8 @@ export default function AvatarCreatePage() {
         { id: 'protection', name: '安全守护', desc: '隐私保护、风险评估', icon: Shield }
       ]
     }
+
+    console.log('[abilities] 使用技能广场数据，前3个技能:', skillsFromSquare.slice(0, 3).map(s => s.name))
 
     // 映射技能数据到能力选项
     const iconMap: Record<string, any> = {
@@ -229,7 +254,7 @@ export default function AvatarCreatePage() {
       'default': Star
     }
 
-    return skillsFromSquare.slice(0, 12).map((skill: any) => ({
+    const mappedAbilities = skillsFromSquare.slice(0, 12).map((skill: any) => ({
       id: skill.id || skill.tool_name,
       name: skill.name,
       desc: skill.description,
@@ -238,6 +263,10 @@ export default function AvatarCreatePage() {
       category: skill.category,
       tags: skill.tags
     }))
+
+    console.log('[abilities] 映射后的能力数量:', mappedAbilities.length)
+
+    return mappedAbilities
   }, [skillsFromSquare])
 
   // 获取选中的能力项（包含toolName）
