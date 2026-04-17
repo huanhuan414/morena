@@ -1002,7 +1002,7 @@ export default function AvatarCreatePage() {
       </View>
 
       <View className="name-section">
-        <View className="avatar-preview">
+        <View className={`avatar-preview style-${appearanceStyle}`}>
           <View className="preview-glow" />
           {photoPath ? (
             <Image src={photoPath} className="preview-avatar-img" mode="aspectFill" />
