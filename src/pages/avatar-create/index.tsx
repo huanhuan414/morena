@@ -1070,26 +1070,60 @@ export default function AvatarCreatePage() {
   if (!isLoggedIn) return null
 
   return (
-    <View className="create-page">
-      {/* 进度条 */}
-      <View className="progress-bar">
-        <View className="progress-track">
-          <View 
-            className="progress-fill" 
-            style={{ width: `${(step / 6) * 100}%` }}
-          />
+    <View className="page-container">
+      {/* 漂浮粒子效果 */}
+      <View className="floating-particle particle-1" />
+      <View className="floating-particle particle-2" />
+      <View className="floating-particle particle-3" />
+      <View className="floating-particle particle-4" />
+
+      {/* 头部 */}
+      <View className="page-header">
+        <View className="header-top">
+          <View className="header-info">
+            <Text className="header-title">创建AI分身</Text>
+            <Text className="header-subtitle">上传照片，AI为你生成分身</Text>
+          </View>
         </View>
-        <View className="progress-dots">
-          {[0, 1, 2, 3, 4, 5, 6].map(s => (
-            <View key={s} className={`progress-dot ${step >= s ? 'active' : ''}`}>
-              {step > s ? <Check size={10} color="#0a0a0f" /> : <Text className="dot-number">{s + 1}</Text>}
-            </View>
-          ))}
+
+        {/* 进度条 */}
+        <View className="progress-bar">
+          <View className="progress-fill" style={{ width: `${(step / 6) * 100}%` }} />
+        </View>
+        <View className="progress-steps">
+          <View className={`step-indicator ${step >= 0 ? 'active' : ''} ${step > 0 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>上传</Text>
+          </View>
+          <View className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>分析</Text>
+          </View>
+          <View className={`step-indicator ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>性格</Text>
+          </View>
+          <View className={`step-indicator ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>能力</Text>
+          </View>
+          <View className={`step-indicator ${step >= 4 ? 'active' : ''} ${step > 4 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>形象</Text>
+          </View>
+          <View className={`step-indicator ${step >= 5 ? 'active' : ''} ${step > 5 ? 'completed' : ''}`}>
+            <View className="step-dot" />
+            <Text>说话</Text>
+          </View>
+          <View className={`step-indicator ${step >= 6 ? 'active' : ''}`}>
+            <View className="step-dot" />
+            <Text>命名</Text>
+          </View>
         </View>
       </View>
 
       {/* 步骤内容 */}
-      <ScrollView className="step-scroll" scrollY>
+      <ScrollView className="content-scroll" scrollY>
         {step === 0 && renderStep0()}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
@@ -1100,31 +1134,33 @@ export default function AvatarCreatePage() {
       </ScrollView>
 
       {/* 底部按钮 */}
-      <View className="bottom-actions">
-        {step > 0 && (
-          <Button className="back-btn" onClick={() => setStep(step - 1)}>
-            <Text className="back-btn-text">上一步</Text>
-          </Button>
-        )}
-        {step < 6 ? (
-          <Button 
-            className={`next-btn ${!canNext() ? 'disabled' : ''}`}
-            onClick={() => canNext() && setStep(step + 1)}
-            disabled={!canNext()}
-          >
-            <Text className="next-btn-text">下一步</Text>
-            <ArrowRight size={18} color={canNext() ? '#0a0a0f' : '#666'} />
-          </Button>
-        ) : (
-          <Button 
-            className={`create-btn ${!canNext() ? 'disabled' : ''}`}
-            onClick={handleCreate}
-            disabled={!canNext() || loading}
-          >
-            <Sparkles size={18} color={canNext() ? '#0a0a0f' : '#666'} />
-            <Text className="create-btn-text">{loading ? '创建中...' : '创建分身'}</Text>
-          </Button>
-        )}
+      <View className="bottom-bar">
+        <View className="action-buttons">
+          {step > 0 && (
+            <Button className="action-btn btn-secondary" onClick={() => setStep(step - 1)}>
+              <Text>上一步</Text>
+            </Button>
+          )}
+          {step < 6 ? (
+            <Button
+              className={`action-btn ${canNext() ? 'btn-primary' : 'btn-disabled'}`}
+              onClick={() => canNext() && setStep(step + 1)}
+              disabled={!canNext()}
+            >
+              <Text>下一步</Text>
+              {canNext() && <ArrowRight size={18} color="#fff" />}
+            </Button>
+          ) : (
+            <Button
+              className={`action-btn ${canNext() ? 'btn-primary' : 'btn-disabled'}`}
+              onClick={handleCreate}
+              disabled={!canNext() || loading}
+            >
+              {canNext() && <Sparkles size={18} color="#fff" />}
+              <Text>{loading ? '创建中...' : '创建分身'}</Text>
+            </Button>
+          )}
+        </View>
       </View>
     </View>
   )
