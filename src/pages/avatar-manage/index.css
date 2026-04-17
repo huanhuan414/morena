@@ -259,14 +259,20 @@
 .avatar-card {
   background: var(--card);
   border-radius: var(--radius-xl);
-  border: 1.5rpx solid rgba(6, 182, 212, 0.15);
+  border: 2rpx solid rgba(6, 182, 212, 0.15);
   padding: 28rpx;
   padding-top: 36rpx;  /* 为设置按钮留出空间 */
-  padding-right: 84rpx;  /* 为设置按钮留出空间 */
+  padding-right: 90rpx;  /* 为设置按钮留出空间 */
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.avatar-card:active {
+  transform: translateY(-2rpx);
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.12);
+  border-color: rgba(6, 182, 212, 0.3);
 }
 
 .avatar-card::before {
@@ -372,17 +378,17 @@
 }
 
 .settings-btn {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%);
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  border: none;
   transition: all 0.3s ease;
-  box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(6, 182, 212, 0.25);
   position: absolute;
   top: 20rpx;
   right: 20rpx;
@@ -390,9 +396,8 @@
 }
 
 .settings-btn:active {
-  transform: scale(0.9);
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%);
-  box-shadow: 0 2rpx 8rpx rgba(6, 182, 212, 0.2);
+  transform: scale(0.92);
+  box-shadow: 0 2rpx 6rpx rgba(6, 182, 212, 0.2);
 }
 
 /* Hosting Section */
