@@ -614,20 +614,6 @@
   margin-bottom: 4rpx !important;
 }
 
-/* 减少所有文本元素的间距 */
-.message-bubble .markdown-render Text {
-  margin-top: 4rpx !important;
-  margin-bottom: 4rpx !important;
-}
-
-.message-bubble .markdown-render Text:first-child {
-  margin-top: 0 !important;
-}
-
-.message-bubble .markdown-render Text:last-child {
-  margin-bottom: 0 !important;
-}
-
 .message-user-avatar {
   width: 60rpx;
   height: 60rpx;
