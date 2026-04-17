@@ -1088,6 +1088,67 @@ export class AgentService {
     // 获取进度缓存的所有进度历史（用于恢复任务进度）
     const progressHistory = this.progressCache.getProgress(userId, taskId)
 
+    // 🔴 新增：从 progressHistory 中提取图片（特别是 generate_image 工具返回的图片）
+    if (progressHistory && Array.isArray(progressHistory)) {
+      console.log('[媒体提取] 从 progressHistory 中提取媒体，进度历史数量:', progressHistory.length)
+
+      progressHistory.forEach((progress: any, idx: number) => {
+        // 处理 generate_image 工具返回的数据
+        if (progress.action === 'generate_image') {
+          // 从 image_urls 中提取
+          if (progress.image_urls && Array.isArray(progress.image_urls)) {
+            console.log(`[媒体提取] Progress ${idx}: 从 generate_image.image_urls 提取图片:`, progress.image_urls.length)
+            progress.image_urls.forEach((url: string) => {
+              if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
+                media.push({ type: 'image', url })
+                extractedFromFinalAnswer.add(url)
+              }
+            })
+          }
+
+          // 从 cdn_urls 中提取
+          if (progress.cdn_urls && Array.isArray(progress.cdn_urls)) {
+            console.log(`[媒体提取] Progress ${idx}: 从 generate_image.cdn_urls 提取图片:`, progress.cdn_urls.length)
+            progress.cdn_urls.forEach((url: string) => {
+              if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
+                media.push({ type: 'image', url })
+                extractedFromFinalAnswer.add(url)
+              }
+            })
+          }
+        }
+
+        // 处理 observation 类型（兼容其他工具）
+        if (progress.action === 'observation' && progress.data?.data) {
+          const toolData = progress.data.data
+
+          // 提取图片
+          if (toolData.image_urls && Array.isArray(toolData.image_urls)) {
+            toolData.image_urls.forEach((url: string) => {
+              if (url && typeof url === 'string' && !extractedFromFinalAnswer.has(url)) {
+                media.push({ type: 'image', url })
+                extractedFromFinalAnswer.add(url)
+              }
+            })
+          }
+
+          if (toolData.url && typeof toolData.url === 'string' && !extractedFromFinalAnswer.has(toolData.url)) {
+            const mediaItem: any = { type: 'image', url: toolData.url }
+            if (toolData.key) {
+              mediaItem.key = toolData.key
+            }
+            media.push(mediaItem)
+            extractedFromFinalAnswer.add(toolData.url)
+          }
+
+          if (toolData.cover_image_url && !extractedFromFinalAnswer.has(toolData.cover_image_url)) {
+            media.push({ type: 'image', url: toolData.cover_image_url })
+            extractedFromFinalAnswer.add(toolData.cover_image_url)
+          }
+        }
+      })
+    }
+
     // 获取最新的 assistant 消息（包含 metadata）
     const { data: messages } = await client
       .from('messages')
