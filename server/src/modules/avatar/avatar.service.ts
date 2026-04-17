@@ -298,6 +298,8 @@ export class AvatarService {
 
 请以JSON格式返回，格式如下：
 {
+  "hasFace": true/false,
+  "faceConfidence": 0.0-1.0,
   "facialFeatures": {
     "expression": "表情描述",
     "eyes": "眼神描述",
@@ -327,8 +329,9 @@ export class AvatarService {
 
 注意：
 1. 请只返回JSON，不要有其他文字
-2. 分析要基于照片特征，客观且积极正面
-3. 如果无法识别面部（如非人物照片），请返回合理的默认值`
+2. 首先检查照片中是否有人脸，如果有，hasFace设为true，并提供人脸置信度faceConfidence（0.0-1.0）
+3. 如果照片中没有人脸（如风景、物品、动漫等），hasFace设为false，faceConfidence为0，其他字段返回合理的默认值
+4. 分析要基于照片特征，客观且积极正面
 
       const messages = [
         {

@@ -359,13 +359,12 @@ export default function AvatarCreatePage() {
 
       clearInterval(progressInterval)
       setAnalyzingProgress(3)
-      
+
       if (responseData?.code === 200) {
-        const { analysis, photoUrl: url } = responseData.data
+        const { analysis, photoUrl: url, hasFace } = responseData.data
 
         // 检查是否检测到人脸
-        if (responseData.data?.hasFace === false) {
-          clearInterval(progressInterval)
+        if (hasFace === false) {
           setAnalyzing(false)
           showToast({ title: '未检测到人脸，请上传清晰正面照片', icon: 'none', duration: 3000 })
           return
@@ -391,7 +390,6 @@ export default function AvatarCreatePage() {
       }
     } catch (error) {
       console.error('分析照片失败:', error)
-      clearInterval(progressInterval)
       setAnalyzing(false)
       showToast({ title: '分析失败，请重试', icon: 'none' })
       // 模拟分析结果（开发调试用）
