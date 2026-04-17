@@ -1,5 +1,5 @@
 /* ========================================
-   Social Page - 极简主义高级设计
+   Social Page - 极简主义高级设计 + 高级特效
    ======================================== */
 
 /* 页面容器 */
@@ -7,16 +7,43 @@
   min-height: 100vh;
   background: var(--background);
   overflow: hidden;
+  position: relative;
+}
+
+/* 背景粒子效果 */
+.social-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(0, 145, 255, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgPulse 8s ease-in-out infinite;
+}
+
+@keyframes bgPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* 状态栏占位 */
 .status-bar-placeholder {
   background: var(--background);
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================
-   头部导航 - 极简设计
+   头部导航 - 极简设计 + 高级特效
    ======================================== */
 .social-header {
   display: flex;
@@ -24,6 +51,20 @@
   justify-content: space-between;
   padding: 32rpx 32rpx 24rpx;
   background: var(--background);
+  position: relative;
+  z-index: 1;
+  animation: headerSlideDown 0.6s ease-out;
+}
+
+@keyframes headerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-left {
@@ -38,6 +79,24 @@
   color: var(--text-primary);
   line-height: 1.2;
   letter-spacing: -0.5rpx;
+  position: relative;
+  display: inline-block;
+}
+
+.header-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2rpx;
+  left: 0;
+  width: 0;
+  height: 3rpx;
+  background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+  transition: width 0.6s ease;
+  border-radius: 2rpx;
+}
+
+.social-header:hover .header-title::after {
+  width: 100%;
 }
 
 .header-subtitle {
@@ -52,7 +111,7 @@
 }
 
 /* ========================================
-   Tab 切换器 - 极简线条设计
+   Tab 切换器 - 极简线条设计 + 弹性动画
    ======================================== */
 .tab-container {
   display: flex;
@@ -60,24 +119,55 @@
   padding: 0 32rpx 24rpx;
   border-bottom: 1rpx solid var(--border);
   background: var(--background);
+  position: relative;
+  z-index: 1;
+  animation: tabFadeIn 0.5s ease-out 0.2s both;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .tab-item {
   position: relative;
   padding: 12rpx 0;
-  transition: opacity 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.tab-item:active {
+  transform: scale(0.95);
 }
 
 .tab-text {
   font-size: 32rpx;
   font-weight: 600;
   color: var(--text-secondary);
-  transition: color 0.2s ease;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .tab-item.active .tab-text {
   color: var(--primary);
   font-weight: 700;
+  animation: textScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes textScale {
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .tab-item.active::after {
@@ -88,13 +178,24 @@
   transform: translateX(-50%);
   width: 48rpx;
   height: 4rpx;
-  background: var(--primary);
+  background: linear-gradient(90deg, transparent 0%, var(--primary) 50%, transparent 100%);
   border-radius: 2rpx;
-  transition: all 0.3s ease;
+  animation: indicatorExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes indicatorExpand {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 48rpx;
+    opacity: 1;
+  }
 }
 
 /* ========================================
-   刷新成功动画 - 极简设计
+   刷新成功动画 - 极简设计 + 高级动画
    ======================================== */
 .refresh-success-overlay {
   position: fixed;
@@ -103,6 +204,7 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10rpx);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,16 +229,17 @@
   flex-direction: column;
   align-items: center;
   gap: 16rpx;
-  animation: scaleIn 0.3s ease;
+  animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.3);
 }
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.9);
+    transform: scale(0.9) translateY(20rpx);
     opacity: 0;
   }
   to {
-    transform: scale(1);
+    transform: scale(1) translateY(0);
     opacity: 1;
   }
 }
@@ -150,6 +253,17 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 8rpx;
+  position: relative;
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 20rpx rgba(0, 245, 255, 0);
+  }
 }
 
 .refresh-success-check {
@@ -157,12 +271,36 @@
   font-weight: 700;
   color: #0a0a0f;
   line-height: 1;
+  animation: checkDraw 0.4s ease-out 0.2s both;
+}
+
+@keyframes checkDraw {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
 }
 
 .refresh-success-text {
   font-size: 28rpx;
   font-weight: 600;
   color: var(--text-primary);
+  animation: textSlideUp 0.4s ease-out 0.3s both;
+}
+
+@keyframes textSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ========================================
@@ -171,10 +309,12 @@
 .social-scroll {
   height: calc(100vh - 180rpx);
   background: var(--background);
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================
-   统计卡片 - 极简渐变设计
+   统计卡片 - 极简渐变设计 + 悬浮动画
    ======================================== */
 .stats-card {
   margin: 24rpx 32rpx;
@@ -182,11 +322,67 @@
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.08) 0%, rgba(0, 145, 255, 0.08) 100%);
   border-radius: var(--radius-xl);
   border: 1rpx solid rgba(0, 245, 255, 0.15);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  animation: cardSlideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+@keyframes cardSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg);
+  animation: shimmer 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+.stats-card:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 8rpx 24rpx rgba(0, 245, 255, 0.15);
 }
 
 .stats-card.updating {
   opacity: 0.5;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 /* 收益区域 */
@@ -196,6 +392,7 @@
   gap: 20rpx;
   padding-bottom: 24rpx;
   border-bottom: 1rpx solid rgba(255, 255, 255, 0.08);
+  position: relative;
 }
 
 .earnings-title {
@@ -221,6 +418,22 @@
   color: var(--primary);
   line-height: 1;
   letter-spacing: -0.5rpx;
+  background: linear-gradient(135deg, #00f5ff 0%, #0091ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: numberPop 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes numberPop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .earning-label {
@@ -243,6 +456,11 @@
   align-items: center;
   gap: 6rpx;
   flex: 1;
+  transition: transform 0.2s ease;
+}
+
+.stat-item:active {
+  transform: scale(1.1);
 }
 
 .stat-value {
@@ -264,7 +482,7 @@
 }
 
 /* ========================================
-   分割线 - 极简设计
+   分割线 - 极简设计 + 动画
    ======================================== */
 .divider {
   display: flex;
@@ -272,12 +490,48 @@
   gap: 24rpx;
   padding: 0 32rpx;
   margin: 32rpx 0;
+  animation: dividerFade 0.5s ease-out 0.4s both;
+}
+
+@keyframes dividerFade {
+  from {
+    opacity: 0;
+    width: 0;
+    margin: 16rpx 0;
+  }
+  to {
+    opacity: 1;
+    width: 100%;
+    margin: 32rpx 0;
+  }
 }
 
 .divider-line {
   flex: 1;
   height: 1rpx;
   background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.divider-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  animation: lineFlow 2s linear infinite;
+}
+
+@keyframes lineFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .divider-text {
@@ -288,7 +542,7 @@
 }
 
 /* ========================================
-   空状态 - 极简设计
+   空状态 - 极简设计 + 动画
    ======================================== */
 .empty-state {
   display: flex;
@@ -297,11 +551,33 @@
   justify-content: center;
   padding: 120rpx 48rpx;
   gap: 24rpx;
+  animation: emptyFade 0.5s ease-out both;
+}
+
+@keyframes emptyFade {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .empty-icon {
   opacity: 0.4;
   margin-bottom: 8rpx;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10rpx);
+  }
 }
 
 .empty-title {
@@ -330,24 +606,45 @@
   justify-content: center;
   gap: 8rpx;
   padding: 20rpx 48rpx;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #0091ff 100%);
   border-radius: var(--radius-lg);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.create-avatar-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
 }
 
 .create-avatar-btn:active {
   transform: scale(0.96);
-  opacity: 0.9;
+}
+
+.create-avatar-btn:active::before {
+  width: 300rpx;
+  height: 300rpx;
 }
 
 .create-btn-text {
   font-size: 28rpx;
   font-weight: 600;
   color: #0a0a0f;
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================
-   帖子列表 - 极简卡片设计
+   帖子列表 - 极简卡片设计 + 滚动动画
    ======================================== */
 .post-list {
   display: flex;
@@ -361,11 +658,30 @@
   border-radius: var(--radius-xl);
   padding: 32rpx;
   box-shadow: var(--card-shadow-sm);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  animation: postFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes postFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(40rpx) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.post-card:active {
+  transform: translateY(2rpx) scale(0.99);
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.15);
 }
 
 /* ========================================
-   帖子头部 - 极简设计
+   帖子头部 - 极简设计 + 头像动画
    ======================================== */
 .post-header {
   display: flex;
@@ -382,6 +698,33 @@
 
 .author-avatar {
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.author-avatar::after {
+  content: '';
+  position: absolute;
+  top: -3rpx;
+  left: -3rpx;
+  right: -3rpx;
+  bottom: -3rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, #0091ff 100%);
+  border-radius: 50%;
+  opacity: 0;
+  z-index: -1;
+  animation: avatarPulse 2s ease-in-out infinite;
+}
+
+@keyframes avatarPulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.1);
+  }
 }
 
 .author-meta {
@@ -411,6 +754,16 @@
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(0, 145, 255, 0.15) 100%);
   border-radius: 6rpx;
   border: 1rpx solid rgba(0, 245, 255, 0.2);
+  animation: aiGlow 2s ease-in-out infinite;
+}
+
+@keyframes aiGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6rpx rgba(0, 245, 255, 0);
+  }
 }
 
 .ai-tag-text {
@@ -429,6 +782,11 @@
 .more-btn {
   flex-shrink: 0;
   opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.more-btn:active {
+  opacity: 0.8;
 }
 
 /* ========================================
@@ -444,7 +802,7 @@
 }
 
 /* ========================================
-   图片区域 - 极简网格
+   图片区域 - 极简网格 + 缩放动画
    ======================================== */
 .post-images {
   display: grid;
@@ -469,11 +827,12 @@
 .post-image {
   width: 100%;
   background: var(--border);
-  transition: opacity 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .post-image:active {
   opacity: 0.8;
+  transform: scale(1.02);
 }
 
 /* ========================================
@@ -494,7 +853,7 @@
 }
 
 /* ========================================
-   互动按钮 - 极简胶囊设计
+   互动按钮 - 极简胶囊设计 + 爆发动画
    ======================================== */
 .post-actions {
   display: flex;
@@ -510,7 +869,9 @@
   padding: 8rpx 16rpx;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 24rpx;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .action-btn:active {
@@ -518,19 +879,47 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.action-btn.liked {
+  background: rgba(255, 107, 157, 0.1);
+  animation: likeBurst 0.5s ease-out;
+}
+
+@keyframes likeBurst {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .action-count {
   font-size: 24rpx;
   font-weight: 500;
   color: var(--text-tertiary);
+  transition: color 0.2s ease;
 }
 
 .action-count.liked {
   color: #ff6b9d;
   font-weight: 600;
+  animation: numberBounce 0.3s ease-out;
+}
+
+@keyframes numberBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
 }
 
 /* ========================================
-   点赞者 - 极简头像堆叠
+   点赞者 - 极简头像堆叠 + 动画
    ======================================== */
 .likers-section {
   display: flex;
@@ -539,6 +928,18 @@
   padding-top: 20rpx;
   margin-top: 20rpx;
   border-top: 1rpx solid var(--border);
+  animation: likersFadeIn 0.4s ease-out;
+}
+
+@keyframes likersFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .likers-avatars {
@@ -555,6 +956,24 @@
   border-radius: 50%;
   overflow: hidden;
   background: var(--border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: avatarPop 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes avatarPop {
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateY(10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.liker-avatar-wrap:active {
+  transform: scale(1.15);
+  z-index: 10;
 }
 
 .liker-avatar {
@@ -598,7 +1017,7 @@
 }
 
 /* ========================================
-   评论区 - 极简列表
+   评论区 - 极简列表 + 滑入动画
    ======================================== */
 .comments-section {
   display: flex;
@@ -612,6 +1031,18 @@
 .comment-item {
   display: flex;
   gap: 16rpx;
+  animation: commentSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes commentSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .comment-avatar {
@@ -707,10 +1138,15 @@
   font-size: 24rpx;
   font-weight: 500;
   color: var(--primary);
+  transition: opacity 0.2s ease;
+}
+
+.more-comments-text:active {
+  opacity: 0.7;
 }
 
 /* ========================================
-   评论输入框 - 极简设计
+   评论输入框 - 极简设计 + 焦点动画
    ======================================== */
 .comment-input-wrap {
   display: flex;
@@ -719,6 +1155,18 @@
   padding-top: 20rpx;
   margin-top: 20rpx;
   border-top: 1rpx solid var(--border);
+  animation: inputFadeIn 0.3s ease-out;
+}
+
+@keyframes inputFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .comment-input {
@@ -726,7 +1174,14 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 24rpx;
   padding: 12rpx 20rpx;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1rpx solid transparent;
+}
+
+.comment-input:focus-within {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: 0 0 0 6rpx rgba(0, 245, 255, 0.1);
 }
 
 .comment-input-field {
@@ -741,17 +1196,18 @@
   flex-shrink: 0;
   width: 56rpx;
   height: 56rpx;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #0091ff 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4rpx 12rpx rgba(0, 245, 255, 0.3);
 }
 
 .send-btn:active {
   transform: scale(0.9);
-  opacity: 0.9;
+  box-shadow: 0 2rpx 6rpx rgba(0, 245, 255, 0.2);
 }
 
 /* ========================================
@@ -772,12 +1228,25 @@
   color: var(--text-tertiary);
 }
 
+.loading-text {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .bottom-space {
   height: 32rpx;
 }
 
 /* ========================================
-   分享弹窗 - 极简设计
+   分享弹窗 - 极简设计 + 弹出动画
    ======================================== */
 .share-modal {
   position: fixed;
@@ -786,9 +1255,20 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10rpx);
   display: flex;
   align-items: flex-end;
   z-index: 9999;
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .share-content {
@@ -796,7 +1276,8 @@
   background: var(--card);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: 40rpx 32rpx 48rpx;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 -20rpx 60rpx rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideUp {
@@ -831,6 +1312,11 @@
   align-items: center;
   gap: 12rpx;
   flex: 1;
+  transition: transform 0.2s ease;
+}
+
+.share-option:active {
+  transform: scale(0.95);
 }
 
 .share-icon-wrap {
@@ -842,6 +1328,12 @@
   align-items: center;
   justify-content: center;
   border: 1rpx solid rgba(0, 245, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.share-option:active .share-icon-wrap {
+  background: rgba(0, 245, 255, 0.15);
+  box-shadow: 0 8rpx 24rpx rgba(0, 245, 255, 0.2);
 }
 
 .share-option-text {
@@ -890,4 +1382,13 @@
 
 [data-theme="dark"] .comment-input {
   background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .stats-card::before {
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 70%
+  );
 }
