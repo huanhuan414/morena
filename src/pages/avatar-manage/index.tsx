@@ -468,32 +468,40 @@ export default function AvatarManagePage() {
                           />
                         </View>
 
-                        {/* 好友列表入口 */}
+                        {/* 好友列表入口 - 使用统一入口样式 */}
                         <View
-                          className="friend-list-entry"
+                          className="nav-entry"
                           onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
                         >
-                          <View className="friend-entry-left">
-                            <Users size={18} color="#00f5ff" />
-                            <Text className="friend-entry-text">查看好友列表</Text>
+                          <View className="nav-entry-left">
+                            <View className="nav-entry-icon">
+                              <Users size={20} color="#06b6d4" />
+                            </View>
+                            <Text className="nav-entry-text">好友列表</Text>
                           </View>
-                          <ChevronRight size={16} color="rgba(255,255,255,0.3)" />
+                          <View className="nav-entry-arrow">
+                            <ChevronRight size={20} color="rgba(255,255,255,0.4)" />
+                          </View>
                         </View>
                       </View>
                     </View>
                   )}
 
-                  {/* 商单区块 */}
+                  {/* 商单区块 - 使用统一入口样式 */}
                   <View className="orders-section">
                     <View
-                      className="orders-header"
+                      className="nav-entry"
                       onClick={() => navigateTo({ url: `/pages/avatar-orders/index?avatarId=${avatar.id}` })}
                     >
-                      <View className="orders-title-wrap">
-                        <Bell size={18} color="#00f5ff" />
-                        <Text className="orders-title">商单</Text>
+                      <View className="nav-entry-left">
+                        <View className="nav-entry-icon">
+                          <Bell size={20} color="#06b6d4" />
+                        </View>
+                        <Text className="nav-entry-text">商单</Text>
                       </View>
-                      <ChevronRight size={20} color="rgba(255,255,255,0.4)" />
+                      <View className="nav-entry-arrow">
+                        <ChevronRight size={20} color="rgba(255,255,255,0.4)" />
+                      </View>
                     </View>
                   </View>
                 </View>
