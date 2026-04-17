@@ -1,8 +1,8 @@
 /* ============================================================
-   生成内容页面 - 统一设计风格
+   消息列表页面 - 统一设计风格
    ============================================================ */
 
-.generated-content-page {
+.messages-page {
   min-height: 100vh;
   background: var(--background);
   display: flex;
@@ -17,6 +17,7 @@
 .page-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 24rpx 32rpx;
   background: var(--card);
   border-bottom: 1rpx solid var(--border);
@@ -25,7 +26,18 @@
   z-index: 10;
 }
 
-.header-back-btn {
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.header-action-btn {
   width: 64rpx;
   height: 64rpx;
   border-radius: var(--radius-md);
@@ -33,40 +45,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16rpx;
-}
-
-.header-title {
-  flex: 1;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.filter-bar {
-  display: flex;
-  gap: 12rpx;
-  padding: 16rpx 24rpx;
-  background: var(--card);
-  border-bottom: 1rpx solid var(--border);
-  overflow-x: auto;
-}
-
-.filter-chip {
-  padding: 10rpx 20rpx;
-  background: var(--secondary);
-  border-radius: var(--radius-lg);
-  font-size: 24rpx;
-  color: var(--text-tertiary);
-  font-weight: 500;
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-}
-
-.filter-chip.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 600;
 }
 
 .scroll-content {
@@ -75,87 +53,106 @@
   padding-bottom: 160rpx;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16rpx;
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
 }
 
-.content-card {
+.message-item {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
   background: var(--card);
   border: 1rpx solid var(--border);
   border-radius: var(--radius-xl);
-  overflow: hidden;
   box-shadow: var(--card-shadow);
   transition: all 0.2s ease;
 }
 
-.content-card:active {
-  transform: scale(0.98);
+.message-item:active {
+  transform: scale(0.99);
 }
 
-.content-preview {
-  width: 100%;
-  aspect-ratio: 1;
+.message-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 32rpx;
   background: var(--secondary);
+  border: 2rpx solid var(--border);
   overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: var(--card-shadow-sm);
 }
 
-.content-preview-img,
-.content-preview-video {
+.message-avatar-img {
   width: 100%;
   height: 100%;
 }
 
-.content-body {
-  padding: 16rpx;
+.message-content {
+  flex: 1;
+  min-width: 0;
 }
 
-.content-title {
-  font-size: 26rpx;
+.message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.message-name {
+  font-size: 30rpx;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8rpx;
+}
+
+.message-time {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.message-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 12rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.content-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 22rpx;
-  color: var(--text-tertiary);
-}
-
-.content-avatar {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.content-avatar-img {
-  width: 32rpx;
-  height: 32rpx;
-  border-radius: 50%;
-  background: var(--secondary);
-}
-
-.content-stats {
+.message-meta {
   display: flex;
   align-items: center;
   gap: 12rpx;
 }
 
-.content-stat {
-  display: flex;
+.message-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 4rpx;
+  gap: 6rpx;
+  padding: 6rpx 12rpx;
+  background: var(--primary-light);
+  border-radius: var(--radius-sm);
+  font-size: 20rpx;
+  color: var(--primary);
+  font-weight: 600;
 }
 
-.bottom-space {
-  height: 80rpx;
+.message-unread {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+  font-size: 20rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .loading-state,
@@ -181,4 +178,8 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.bottom-space {
+  height: 80rpx;
 }

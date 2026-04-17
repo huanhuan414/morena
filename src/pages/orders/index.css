@@ -1,8 +1,8 @@
 /* ============================================================
-   任务页面 - 统一设计风格
+   订单管理页面 - 统一设计风格
    ============================================================ */
 
-.task-page {
+.orders-page {
   min-height: 100vh;
   background: var(--background);
   display: flex;
@@ -74,48 +74,118 @@
   padding-bottom: 160rpx;
 }
 
-.task-card {
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.order-card {
   padding: 24rpx;
   background: var(--card);
   border: 1rpx solid var(--border);
   border-radius: var(--radius-xl);
-  margin-bottom: 16rpx;
   box-shadow: var(--card-shadow);
 }
 
-.task-header {
+.order-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid var(--border-light);
 }
 
-.task-title {
+.order-id {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+}
+
+.order-status {
+  padding: 6rpx 14rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-sm);
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.order-status.pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.order-status.completed {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.order-status.cancelled {
+  background: var(--destructive-light);
+  color: var(--destructive);
+}
+
+.order-body {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.order-product {
+  flex: 1;
+  display: flex;
+  gap: 16rpx;
+}
+
+.order-product-img {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: var(--radius-lg);
+  background: var(--secondary);
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1rpx solid var(--border);
+}
+
+.order-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-product-name {
   font-size: 28rpx;
   font-weight: 600;
   color: var(--text-primary);
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.task-reward {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 12rpx;
-  background: var(--success-light);
-  border-radius: var(--radius-sm);
+.order-product-desc {
   font-size: 22rpx;
-  color: var(--success);
+  color: var(--text-tertiary);
+  margin-bottom: 12rpx;
+}
+
+.order-amount {
+  text-align: right;
+}
+
+.order-price {
+  font-size: 32rpx;
   font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6rpx;
 }
 
-.task-desc {
-  font-size: 26rpx;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-bottom: 16rpx;
+.order-quantity {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
 }
 
-.task-footer {
+.order-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -123,46 +193,32 @@
   border-top: 1rpx solid var(--border-light);
 }
 
-.task-progress {
-  flex: 1;
-}
-
-.progress-label {
+.order-time {
   font-size: 22rpx;
   color: var(--text-tertiary);
-  margin-bottom: 8rpx;
 }
 
-.progress-bar {
-  height: 12rpx;
+.order-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.order-action-btn {
+  padding: 12rpx 24rpx;
   background: var(--secondary);
   border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: var(--radius-md);
-  transition: width 0.3s ease;
-}
-
-.task-btn {
-  padding: 12rpx 24rpx;
-  background: var(--primary);
-  border-radius: var(--radius-md);
   font-size: 24rpx;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.order-action-btn.primary {
+  background: var(--primary);
   color: var(--primary-foreground);
   font-weight: 600;
-  box-shadow: var(--card-shadow-sm);
 }
 
-.task-btn.completed {
-  background: var(--success);
-  opacity: 0.8;
-}
-
-.task-btn:active {
+.order-action-btn:active {
   transform: scale(0.95);
 }
 

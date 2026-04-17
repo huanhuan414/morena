@@ -1,0 +1,220 @@
+/* ============================================================
+   关于我们页面 - 统一设计风格
+   ============================================================ */
+
+.about-page {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.status-bar-placeholder {
+  width: 100%;
+  height: var(--status-bar-height, 20px);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.header-title {
+  flex: 1;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.scroll-content {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.app-logo {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow-lg);
+}
+
+.app-name {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12rpx;
+}
+
+.app-version {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+  margin-bottom: 20rpx;
+}
+
+.app-slogan {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.about-section {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20rpx;
+  padding: 0 4rpx;
+}
+
+.about-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.links-list {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.link-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  background: var(--card);
+  transition: all 0.2s ease;
+}
+
+.link-item:active {
+  background: var(--secondary);
+}
+
+.link-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 18rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.link-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.link-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.link-arrow {
+  color: var(--text-muted);
+}
+
+.contact-section {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+}
+
+.contact-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 18rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.contact-label {
+  font-size: 26rpx;
+  color: var(--text-tertiary);
+  width: 140rpx;
+  flex-shrink: 0;
+}
+
+.contact-value {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.contact-copy {
+  padding: 8rpx 16rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+
+.bottom-space {
+  height: 80rpx;
+}

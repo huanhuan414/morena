@@ -1,0 +1,132 @@
+/* ============================================================
+   通知设置页面 - 统一设计风格
+   ============================================================ */
+
+.notification-settings-page {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.status-bar-placeholder {
+  width: 100%;
+  height: var(--status-bar-height, 20px);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.header-title {
+  flex: 1;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.scroll-content {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.notification-section {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24rpx;
+  padding: 0 4rpx;
+}
+
+.notification-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+}
+
+.notification-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 18rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6rpx;
+}
+
+.notification-desc {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.notification-switch {
+  width: 100rpx;
+  height: 56rpx;
+  background: var(--border);
+  border-radius: 28rpx;
+  padding: 4rpx;
+  transition: all 0.3s ease;
+}
+
+.notification-switch.active {
+  background: var(--primary);
+}
+
+.switch-handle {
+  width: 48rpx;
+  height: 48rpx;
+  background: var(--card);
+  border-radius: 50%;
+  box-shadow: var(--card-shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.notification-switch.active .switch-handle {
+  transform: translateX(44rpx);
+}
+
+.bottom-space {
+  height: 80rpx;
+}

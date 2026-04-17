@@ -1,548 +1,319 @@
-.sub-page {
+/* ============================================================
+   订阅管理页面 - 统一设计风格
+   ============================================================ */
+
+.subscription-page {
   min-height: 100vh;
-  background: radial-gradient(ellipse at top, #1a1a2e 0%, #0a0a0a 100%);
-  padding-bottom: env(safe-area-inset-bottom);
-  position: relative;
-  overflow: hidden;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
 }
 
-/* 动态背景 */
-.sub-page::before {
-  content: '';
-  position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 20% 50%, rgba(0, 245, 255, 0.03) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.03) 0%, transparent 50%),
-              radial-gradient(circle at 40% 80%, rgba(0, 255, 136, 0.02) 0%, transparent 50%);
-  animation: bgRotate 30s linear infinite;
-  pointer-events: none;
+.status-bar-placeholder {
+  width: 100%;
+  height: var(--status-bar-height, 20px);
 }
 
-/* 动态背景光点 */
-.sub-bg-glow {
-  position: fixed;
+.page-header {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
+  z-index: 10;
 }
 
-.sub-bg-glow::before {
-  content: '';
-  position: absolute;
-  top: 20%;
-  left: 10%;
-  width: 300rpx;
-  height: 300rpx;
-  background: radial-gradient(circle, rgba(0, 245, 255, 0.15) 0%, transparent 70%);
-  animation: glowPulse 4s ease-in-out infinite;
+.header-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
 }
 
-.sub-bg-glow::after {
-  content: '';
-  position: absolute;
-  bottom: 30%;
-  right: 10%;
-  width: 400rpx;
-  height: 400rpx;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
-  animation: glowPulse 5s ease-in-out infinite 1s;
+.header-title {
+  flex: 1;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-@keyframes bgRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.scroll-content {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
 }
 
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.2); }
+.current-plan {
+  padding: 32rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow-lg);
 }
 
-/* 顶部导航 */
-.sub-header {
+.plan-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 32rpx;
-  padding-top: calc(20rpx + env(safe-area-inset-top));
-  background: rgba(10, 10, 10, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  margin-bottom: 24rpx;
 }
 
-.sub-header-left,
-.sub-header-right {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
+.plan-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
+  gap: 8rpx;
+  padding: 10rpx 18rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--primary-foreground);
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
-.sub-header-left:active {
-  background: rgba(255, 255, 255, 0.1);
-  transform: scale(0.95);
+.plan-expire {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.sub-header-title {
+.plan-name {
   font-size: 36rpx;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 0 40rpx rgba(0, 245, 255, 0.3);
+  color: var(--primary-foreground);
+  margin-bottom: 16rpx;
 }
 
-/* 渐变文字动画 */
-.gradient-text {
-  background: linear-gradient(135deg, #00f5ff 0%, #00a8ff 50%, #00f5ff 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientMove 3s linear infinite;
-}
-
-@keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-/* 滚动区域 */
-.sub-scroll {
-  height: calc(100vh - 120rpx);
-  position: relative;
-  z-index: 1;
-}
-
-/* 当前订阅状态 */
-.sub-current {
-  margin: 32rpx;
-  padding: 40rpx;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.05) 0%, rgba(0, 245, 255, 0.02) 100%);
-  border-radius: 32rpx;
-  border: 2rpx solid rgba(0, 245, 255, 0.2);
-  position: relative;
-  overflow: hidden;
-  animation: slideUp 0.6s ease-out;
-}
-
-.sub-current::before {
-  content: '';
-  position: absolute;
-  top: -100%;
-  left: -100%;
-  width: 300%;
-  height: 300%;
-  background: conic-gradient(from 0deg at 50% 50%,
-    transparent 0deg,
-    rgba(0, 245, 255, 0.1) 90deg,
-    transparent 180deg,
-    rgba(0, 245, 255, 0.1) 270deg,
-    transparent 360deg);
-  animation: rotateBorder 8s linear infinite;
-}
-
-.sub-current::after {
-  content: '';
-  position: absolute;
-  inset: 2rpx;
-  background: radial-gradient(ellipse at top, #1a1a2e 0%, #0a0a0a 100%);
-  border-radius: 30rpx;
-  z-index: 0;
-}
-
-@keyframes rotateBorder {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.sub-current > * {
-  position: relative;
-  z-index: 1;
-}
-
-.sub-current-header {
+.plan-features {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
+  flex-wrap: wrap;
+  gap: 12rpx;
   margin-bottom: 24rpx;
 }
 
-.sub-current-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.feature-tag {
+  padding: 8rpx 16rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 22rpx;
+  color: var(--primary-foreground);
 }
 
-.sub-current-info {
-  margin-bottom: 24rpx;
-}
-
-.sub-current-plan {
-  font-size: 48rpx;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #00f5ff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 12rpx;
-  animation: textShine 3s ease-in-out infinite;
-}
-
-@keyframes textShine {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.3); }
-}
-
-.sub-current-date {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 500;
-}
-
-/* 订阅计划列表 */
-.sub-plans {
-  padding: 0 32rpx;
-}
-
-.sub-section-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 48rpx 0 32rpx;
-  text-align: center;
-  position: relative;
+.plan-stats {
   display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 24rpx;
 }
 
-.sub-section-title::before,
-.sub-section-title::after {
-  content: '';
+.stat-box {
   flex: 1;
-  max-width: 200rpx;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.3), transparent);
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
 }
 
-.sub-plans-list {
+.stat-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8rpx;
+}
+
+.stat-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--primary-foreground);
+}
+
+.plans-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20rpx;
+  padding: 0 4rpx;
+}
+
+.plans-list {
   display: flex;
   flex-direction: column;
-  gap: 32rpx;
+  gap: 16rpx;
 }
 
-/* 订阅卡片 */
-.sub-card {
-  position: relative;
-  padding: 48rpx 32rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.02);
-  border: 2rpx solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+.plan-card {
+  padding: 28rpx;
+  background: var(--card);
+  border: 2rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s ease;
 }
 
-.sub-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.05) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+.plan-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 8rpx 24rpx rgba(0, 245, 255, 0.2);
 }
 
-.sub-card:active {
-  transform: scale(0.98);
+.plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
 }
 
-.sub-card-free {
-  background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(255, 255, 255, 0.08);
+.plan-card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.sub-card-basic {
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.08) 0%, rgba(0, 245, 255, 0.02) 100%);
-  border-color: rgba(0, 245, 255, 0.3);
-  box-shadow: 0 8rpx 32rpx rgba(0, 245, 255, 0.1);
+.plan-card-badge {
+  padding: 6rpx 14rpx;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 20rpx;
+  color: var(--primary-foreground);
+  font-weight: 600;
 }
 
-.sub-card-premium {
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 255, 136, 0.02) 100%);
-  border-color: rgba(0, 255, 136, 0.3);
-  box-shadow: 0 8rpx 32rpx rgba(0, 255, 136, 0.1);
+.plan-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+  margin-bottom: 12rpx;
 }
 
-.sub-card-vip {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.05) 100%);
-  border-color: rgba(255, 215, 0, 0.4);
-  box-shadow: 0 16rpx 64rpx rgba(255, 215, 0, 0.2),
-              inset 0 1rpx 0 rgba(255, 255, 255, 0.2);
+.plan-card-symbol {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
 }
 
-/* 卡片名称行 */
-.sub-card-name-row {
+.plan-card-amount {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plan-card-unit {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.plan-card-discount {
+  font-size: 22rpx;
+  color: var(--success);
+  font-weight: 600;
+  margin-left: 12rpx;
+  padding: 4rpx 10rpx;
+  background: var(--success-light);
+  border-radius: var(--radius-sm);
+}
+
+.plan-card-desc {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+.plan-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.plan-feature {
   display: flex;
   align-items: center;
   gap: 12rpx;
 }
 
-/* 徽章 */
-.sub-badge {
-  position: absolute;
-  top: 24rpx;
-  right: 32rpx;
-  padding: 8rpx 28rpx;
-  border-radius: 32rpx;
-  font-size: 20rpx;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2rpx;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  animation: badgeFloat 3s ease-in-out infinite;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.3);
+.plan-feature-icon {
+  width: 28rpx;
+  height: 28rpx;
+  color: var(--success);
 }
 
-@keyframes badgeFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4rpx); }
+.plan-feature-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
 }
 
-.sub-badge-vip {
-  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-  border: 1px solid rgba(255, 215, 0, 0.5);
-  color: #000000;
-  box-shadow: 0 8rpx 24rpx rgba(255, 215, 0, 0.4);
-}
-
-.sub-badge-premium {
-  background: linear-gradient(135deg, #00ff88 0%, #00f5ff 100%);
-  border: 1px solid rgba(0, 255, 136, 0.5);
-  color: #000000;
-  box-shadow: 0 8rpx 24rpx rgba(0, 255, 136, 0.4);
-}
-
-.sub-badge-text {
-  color: inherit;
-}
-
-/* 卡片头部 */
-.sub-card-header {
+.plan-card-btn {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 18rpx 32rpx;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-lg);
+  color: var(--primary-foreground);
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-top: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.plan-card-btn:active {
+  transform: scale(0.98);
+}
+
+.plan-card-btn.active {
+  background: var(--secondary);
+  color: var(--text-tertiary);
+}
+
+.rules-section {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-top: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.rules-header {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
   margin-bottom: 20rpx;
 }
 
-.sub-card-name {
-  font-size: 40rpx;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.sub-card-price {
-  display: flex;
-  align-items: baseline;
-  gap: 4rpx;
-}
-
-.sub-card-amount {
-  font-size: 64rpx;
-  font-weight: 900;
-  background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 10rpx rgba(255, 215, 0, 0.5));
-}
-
-.sub-card-period {
+.rules-text {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.8;
 }
 
-/* 卡片描述 */
-.sub-card-description {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 32rpx;
-  line-height: 1.6;
-  font-weight: 400;
+.bottom-space {
+  height: 80rpx;
 }
 
-/* 功能列表 */
-.sub-features {
+.loading-state,
+.empty-state {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  margin-bottom: 32rpx;
-}
-
-.sub-feature-item {
-  display: flex;
   align-items: center;
-  gap: 20rpx;
-  padding: 20rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16rpx;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
+  justify-content: center;
+  padding: 120rpx 48rpx;
+  gap: 24rpx;
 }
 
-.sub-feature-item:active {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateX(4rpx);
+.loading-spinner {
+  width: 56rpx;
+  height: 56rpx;
+  border: 4rpx solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.sub-feature-text {
-  flex: 1;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
-}
-
-/* 订阅按钮 */
-.sub-card-button {
-  width: 100%;
-  margin-top: 24rpx;
-  padding: 32rpx 32rpx;
-  border-radius: 20rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-  background: linear-gradient(135deg, #00f5ff 0%, #00a8ff 100%);
-  color: #000000;
-  border: none;
-  box-shadow: 0 8rpx 32rpx rgba(0, 245, 255, 0.4);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.sub-card-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
-}
-
-.sub-card-button:active {
-  transform: scale(0.98);
-  box-shadow: 0 4rpx 16rpx rgba(0, 245, 255, 0.3);
-}
-
-.sub-card-button:active::before {
-  left: 100%;
-}
-
-.sub-card-button-disabled {
-  opacity: 0.5;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
-  box-shadow: none;
-}
-
-/* 加载状态 */
-.sub-loading {
-  padding: 120rpx 0;
-  text-align: center;
-}
-
-.sub-loading-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 500;
-}
-
-/* 订阅须知 */
-.sub-notice {
-  margin: 64rpx 32rpx;
-  padding: 32rpx;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 24rpx;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.sub-notice-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 24rpx;
-  text-align: center;
-}
-
-.sub-notice-item {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 2.2;
-  margin-bottom: 8rpx;
-  font-weight: 400;
-}
-
-/* 底部间距 */
-.sub-bottom-space {
-  height: 120rpx;
-}
-
-/* 特殊效果 */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20rpx);
-  }
+@keyframes spin {
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: rotate(360deg);
   }
-}
-
-.sub-card {
-  animation: slideUp 0.6s ease-out forwards;
-  animation-delay: calc(var(--card-index, 0) * 0.1s);
-  opacity: 0;
-}
-
-/* 缺失的class样式 */
-.sub-current-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-top: 8rpx;
 }

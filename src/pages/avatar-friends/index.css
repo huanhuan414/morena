@@ -1,435 +1,202 @@
-.af-page {
+/* ============================================================
+   分身好友页面 - 统一设计风格
+   ============================================================ */
+
+.avatar-friends-page {
   min-height: 100vh;
   background: var(--background);
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
-.af-header {
+.status-bar-placeholder {
+  width: 100%;
+  height: var(--status-bar-height, 20px);
+}
+
+.page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 24rpx 24rpx;
-  background: rgba(15, 15, 25, 0.8);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
-  width: 100%;
-  box-sizing: border-box;
+  padding: 24rpx 32rpx;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.af-header-back {
+.header-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  width: 120rpx;
+  justify-content: center;
+  margin-right: 16rpx;
 }
 
-.af-back-text {
-  font-size: 28rpx;
-  color: var(--primary);
-}
-
-.af-header-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
-.af-header-right {
-  width: 120rpx;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.af-scroll {
+.header-title {
   flex: 1;
-  padding: 24rpx;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.af-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 0;
-}
-
-.af-loading-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.af-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 0;
-}
-
-.af-empty-icon {
-  margin-bottom: 32rpx;
-}
-
-.af-empty-title {
   font-size: 36rpx;
-  font-weight: 600;
-  color: var(--foreground);
-  margin-bottom: 16rpx;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.af-empty-desc {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.5);
-  text-align: center;
-  padding: 0 48rpx;
-  line-height: 1.6;
-}
-
-.af-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  width: 100%;
-}
-
-.af-count-section {
-  padding: 8rpx 0;
-  width: 100%;
-}
-
-.af-count-text {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.af-friend-card {
-  background: rgba(20, 20, 30, 0.6);
-  border: 1rpx solid rgba(255, 255, 255, 0.05);
-  border-radius: 24rpx;
-  padding: 24rpx;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* 好友头部 */
-.af-friend-header {
+.search-bar {
+  padding: 16rpx 20rpx;
+  background: var(--card);
+  border: 2rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin: 24rpx 24rpx 0;
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  margin-bottom: 20rpx;
-  width: 100%;
+  gap: 12rpx;
+  box-shadow: var(--card-shadow-sm);
 }
 
-.af-friend-avatar {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 20rpx;
-  overflow: hidden;
-  background: rgba(0, 245, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.search-bar:focus-within {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.search-icon {
+  width: 40rpx;
+  height: 40rpx;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.af-friend-img {
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.scroll-content {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.friend-card {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 16rpx;
+  box-shadow: var(--card-shadow);
+  transition: all 0.2s ease;
+}
+
+.friend-card:active {
+  transform: scale(0.99);
+}
+
+.friend-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 32rpx;
+  background: var(--secondary);
+  border: 2rpx solid var(--border);
+  overflow: hidden;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+  box-shadow: var(--card-shadow-sm);
+}
+
+.friend-avatar-img {
   width: 100%;
   height: 100%;
 }
 
-.af-friend-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.af-friend-info {
+.friend-info {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
-.af-friend-name-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 8rpx;
-  max-width: 100%;
-}
-
-.af-friend-name {
-  font-size: 32rpx;
+.friend-name {
+  font-size: 30rpx;
   font-weight: 600;
-  color: var(--foreground);
+  color: var(--text-primary);
+  margin-bottom: 8rpx;
+}
+
+.friend-desc {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  margin-bottom: 12rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.af-compatibility-badge {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 12rpx;
-  border: 1rpx solid;
-  flex-shrink: 0;
-}
-
-.af-compatibility-text {
-  font-size: 20rpx;
-  font-weight: 500;
-}
-
-.af-friend-meta {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.af-friend-level {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.af-friend-divider {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.af-friend-date {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-/* 交友原因 */
-.af-reason-section {
-  background: rgba(0, 245, 255, 0.05);
-  border-radius: 16rpx;
-  padding: 16rpx;
-  margin-bottom: 16rpx;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.af-reason-header {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-bottom: 8rpx;
-}
-
-.af-reason-title {
-  font-size: 24rpx;
-  color: var(--primary);
-  font-weight: 500;
-}
-
-.af-reason-text {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.6;
-}
-
-/* 好友收益 */
-.af-benefits-section {
-  background: rgba(255, 215, 0, 0.05);
-  border: 1rpx solid rgba(255, 215, 0, 0.2);
-  border-radius: 16rpx;
-  padding: 16rpx;
-  margin-bottom: 20rpx;
-}
-
-.af-benefits-header {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-bottom: 12rpx;
-}
-
-.af-benefits-title {
-  font-size: 24rpx;
-  color: #ffd700;
-  font-weight: 500;
-}
-
-.af-benefits-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.af-benefit-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.af-benefit-icon {
-  font-size: 24rpx;
-}
-
-.af-benefit-text {
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* 操作按钮 */
-.af-action-buttons {
+.friend-stats {
   display: flex;
   gap: 16rpx;
 }
 
-.af-action-btn {
-  flex: 1;
+.friend-stat {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  padding: 16rpx;
-  border-radius: 16rpx;
+  gap: 6rpx;
 }
 
-.af-chat-btn {
-  background: rgba(0, 245, 255, 0.1);
-  border: 1rpx solid rgba(0, 245, 255, 0.3);
+.friend-stat-icon {
+  width: 24rpx;
+  height: 24rpx;
+  color: var(--text-muted);
 }
 
-.af-call-btn {
-  background: rgba(0, 255, 136, 0.1);
-  border: 1rpx solid rgba(0, 255, 136, 0.3);
+.friend-stat-text {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
 }
 
-.af-call-btn.disabled {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-}
-
-.af-action-btn-text {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* 聊天记录弹窗 */
-.af-chat-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 40rpx;
-}
-
-.af-chat-content {
-  width: 100%;
-  max-height: 80vh;
-  background: rgba(20, 20, 30, 0.95);
-  border-radius: 24rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.af-chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
-}
-
-.af-chat-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
-.af-chat-close {
-  font-size: 26rpx;
-  color: var(--primary);
-}
-
-.af-chat-messages {
-  flex: 1;
-  padding: 24rpx;
-  max-height: 60vh;
-}
-
-.af-chat-msg {
-  margin-bottom: 20rpx;
-  max-width: 80%;
-}
-
-.af-chat-msg.user {
-  margin-left: auto;
-}
-
-.af-chat-msg.user .af-chat-msg-content {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: var(--background);
-}
-
-.af-chat-msg.assistant .af-chat-msg-content {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.af-chat-msg-content {
-  padding: 16rpx 20rpx;
-  border-radius: 16rpx;
-  font-size: 26rpx;
-  color: var(--foreground);
-  line-height: 1.5;
-}
-
-.af-chat-msg-time {
-  display: block;
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.3);
-  margin-top: 4rpx;
-  text-align: right;
-}
-
-.af-chat-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80rpx;
-}
-
-.af-chat-loading-text {
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.af-chat-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80rpx;
-}
-
-.af-chat-empty-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 12rpx;
-}
-
-.af-chat-empty-hint {
+.friend-btn {
+  padding: 12rpx 20rpx;
+  background: var(--primary);
+  border-radius: var(--radius-md);
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  box-shadow: var(--card-shadow-sm);
 }
 
-.af-bottom-space {
-  height: 60rpx;
+.friend-btn:active {
+  transform: scale(0.95);
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 48rpx;
+  gap: 24rpx;
+}
+
+.loading-spinner {
+  width: 56rpx;
+  height: 56rpx;
+  border: 4rpx solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bottom-space {
+  height: 80rpx;
 }

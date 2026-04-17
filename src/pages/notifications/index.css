@@ -1,8 +1,8 @@
 /* ============================================================
-   任务页面 - 统一设计风格
+   消息通知页面 - 统一设计风格
    ============================================================ */
 
-.task-page {
+.notifications-page {
   min-height: 100vh;
   background: var(--background);
   display: flex;
@@ -17,6 +17,7 @@
 .page-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 24rpx 32rpx;
   background: var(--card);
   border-bottom: 1rpx solid var(--border);
@@ -25,7 +26,18 @@
   z-index: 10;
 }
 
-.header-back-btn {
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.header-action-btn {
   width: 64rpx;
   height: 64rpx;
   border-radius: var(--radius-md);
@@ -33,14 +45,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16rpx;
-}
-
-.header-title {
-  flex: 1;
-  font-size: 36rpx;
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 .tabs-container {
@@ -74,96 +78,97 @@
   padding-bottom: 160rpx;
 }
 
-.task-card {
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.notification-item {
+  display: flex;
+  gap: 20rpx;
   padding: 24rpx;
   background: var(--card);
   border: 1rpx solid var(--border);
   border-radius: var(--radius-xl);
-  margin-bottom: 16rpx;
   box-shadow: var(--card-shadow);
+  transition: all 0.2s ease;
 }
 
-.task-header {
+.notification-item.unread {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.notification-item:active {
+  transform: scale(0.99);
+}
+
+.notification-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 22rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notification-icon-wrap.system {
+  background: var(--primary-light);
+}
+
+.notification-icon-wrap.order {
+  background: var(--warning-light);
+}
+
+.notification-icon-wrap.social {
+  background: var(--success-light);
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
-.task-title {
+.notification-title {
   font-size: 28rpx;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.task-reward {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 12rpx;
-  background: var(--success-light);
-  border-radius: var(--radius-sm);
+.notification-time {
   font-size: 22rpx;
-  color: var(--success);
-  font-weight: 700;
+  color: var(--text-tertiary);
 }
 
-.task-desc {
+.notification-text {
   font-size: 26rpx;
   color: var(--text-secondary);
   line-height: 1.6;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
-.task-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16rpx;
-  border-top: 1rpx solid var(--border-light);
-}
-
-.task-progress {
-  flex: 1;
-}
-
-.progress-label {
-  font-size: 22rpx;
-  color: var(--text-tertiary);
-  margin-bottom: 8rpx;
-}
-
-.progress-bar {
-  height: 12rpx;
-  background: var(--secondary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: var(--radius-md);
-  transition: width 0.3s ease;
-}
-
-.task-btn {
-  padding: 12rpx 24rpx;
-  background: var(--primary);
-  border-radius: var(--radius-md);
+.notification-action {
   font-size: 24rpx;
-  color: var(--primary-foreground);
+  color: var(--primary);
   font-weight: 600;
-  box-shadow: var(--card-shadow-sm);
 }
 
-.task-btn.completed {
-  background: var(--success);
-  opacity: 0.8;
-}
-
-.task-btn:active {
-  transform: scale(0.95);
+.unread-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--destructive);
+  flex-shrink: 0;
 }
 
 .loading-state,

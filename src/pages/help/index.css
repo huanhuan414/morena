@@ -1,0 +1,244 @@
+/* ============================================================
+   帮助中心页面 - 统一设计风格
+   ============================================================ */
+
+.help-page {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.status-bar-placeholder {
+  width: 100%;
+  height: var(--status-bar-height, 20px);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: var(--card);
+  border-bottom: 1rpx solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.header-title {
+  flex: 1;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.scroll-content {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.search-box {
+  padding: 16rpx 20rpx;
+  background: var(--card);
+  border: 2rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.search-box:focus-within {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.search-icon {
+  width: 40rpx;
+  height: 40rpx;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.quick-questions {
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20rpx;
+  padding: 0 4rpx;
+}
+
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.question-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+}
+
+.question-item:active {
+  transform: scale(0.98);
+  background: var(--border);
+}
+
+.question-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 16rpx;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.question-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--text-primary);
+}
+
+.question-arrow {
+  color: var(--text-muted);
+}
+
+.help-categories {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.category-card {
+  padding: 28rpx 20rpx;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--card-shadow);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.category-card:active {
+  transform: scale(0.98);
+}
+
+.category-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  background: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16rpx;
+}
+
+.category-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.contact-us {
+  padding: 28rpx;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15), rgba(191, 0, 255, 0.08));
+  border: 1rpx solid rgba(0, 245, 255, 0.3);
+  border-radius: var(--radius-xl);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow);
+}
+
+.contact-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.contact-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6rpx;
+}
+
+.contact-desc {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.contact-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 14rpx 28rpx;
+  background: var(--primary);
+  border-radius: var(--radius-lg);
+  color: var(--primary-foreground);
+  font-size: 26rpx;
+  font-weight: 600;
+  box-shadow: var(--card-shadow);
+}
+
+.bottom-space {
+  height: 80rpx;
+}

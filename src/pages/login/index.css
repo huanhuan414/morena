@@ -1,405 +1,216 @@
-/* ========================================
-   登录页面 - 霓虹赛博朋克风格
-   ======================================== */
+/* ============================================================
+   登录页面 - 统一设计风格
+   ============================================================ */
 
 .login-page {
   min-height: 100vh;
-  background: #050508;
-  position: relative;
+  background: var(--background);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  padding: 48rpx 32rpx;
 }
 
-/* 背景效果 */
-.login-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.bg-gradient {
-  position: absolute;
-  inset: 0;
-  background: 
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0, 245, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(191, 0, 255, 0.06) 0%, transparent 50%);
-}
-
-.bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-}
-
-.bg-glow-1 {
-  position: absolute;
-  top: -200px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(0, 245, 255, 0.12) 0%, transparent 60%);
-  animation: floatGlow 15s ease-in-out infinite;
-}
-
-.bg-glow-2 {
-  position: absolute;
-  bottom: -150px;
-  right: -100px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(191, 0, 255, 0.08) 0%, transparent 60%);
-  animation: floatGlow 20s ease-in-out infinite reverse;
-}
-
-/* 品牌区域 */
-.brand-section {
-  position: relative;
-  z-index: 1;
+.logo-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 140px;
-  margin-bottom: 48px;
+  padding: 60rpx 0 40rpx;
 }
 
-.brand-logo {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  margin-bottom: 32px;
-}
-
-.logo-inner {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(191, 0, 255, 0.1) 100%);
-  border: 2px solid rgba(0, 245, 255, 0.3);
-  border-radius: 40px;
+.app-logo {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 
-    0 0 40px rgba(0, 245, 255, 0.15),
-    inset 0 0 30px rgba(0, 245, 255, 0.05);
+  margin-bottom: 24rpx;
+  box-shadow: var(--card-shadow-lg);
 }
 
-.logo-ring {
-  position: absolute;
-  inset: -8px;
-  border: 1px solid rgba(0, 245, 255, 0.15);
-  border-radius: 48px;
-  animation: pulse-ring 3s ease-in-out infinite;
-}
-
-.logo-pulse {
-  position: absolute;
-  inset: -20px;
-  background: radial-gradient(circle, rgba(0, 245, 255, 0.1) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: pulse 3s ease-in-out infinite;
-}
-
-.brand-name {
-  font-size: 56px;
-  font-weight: 800;
-  letter-spacing: 8px;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #fff 0%, #00f5ff 50%, #bf00ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 40px rgba(0, 245, 255, 0.3);
-}
-
-.brand-slogan {
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 2px;
-}
-
-/* 登录卡片 */
-.login-card {
-  position: relative;
-  z-index: 1;
-  margin: 0 32px;
-  padding: 40px 32px;
-  background: rgba(15, 15, 25, 0.7);
-  backdrop-filter: blur(40px);
-  border: 1px solid rgba(0, 245, 255, 0.1);
-  border-radius: 32px;
-  box-shadow: 
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.login-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.02) 0%, transparent 50%);
-  border-radius: 32px;
-  pointer-events: none;
-}
-
-.card-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.card-title {
-  display: block;
-  font-size: 36px;
+.app-name {
+  font-size: 42rpx;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 12px;
+  color: var(--text-primary);
+  margin-bottom: 12rpx;
 }
 
-.card-subtitle {
-  font-size: 22px;
-  color: rgba(255, 255, 255, 0.35);
-  line-height: 1.5;
+.app-slogan {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
 }
 
-/* 表单区域 */
-.form-area {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
+.form-section {
+  margin-top: 48rpx;
 }
 
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.form-group {
+  margin-bottom: 24rpx;
 }
 
-.input-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.form-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16rpx;
+  display: block;
 }
 
-.label-text {
-  font-size: 26px;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
-}
-
-.input-box {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 0 24px;
-  height: 100px;
+.form-input-wrap {
   display: flex;
   align-items: center;
+  padding: 18rpx 20rpx;
+  background: var(--card);
+  border: 2rpx solid var(--border);
+  border-radius: var(--radius-xl);
   transition: all 0.3s ease;
+  box-shadow: var(--card-shadow-sm);
 }
 
-.input-box:focus-within {
-  border-color: rgba(0, 245, 255, 0.3);
-  background: rgba(0, 245, 255, 0.03);
-  box-shadow: 0 0 20px rgba(0, 245, 255, 0.08);
+.form-input-wrap:focus-within {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: var(--card-shadow);
 }
 
-.flex-1 {
+.form-input-icon {
+  width: 44rpx;
+  height: 44rpx;
+  color: var(--text-muted);
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.form-input {
   flex: 1;
-}
-
-.input-row {
-  display: flex;
-  gap: 16px;
-}
-
-.input-control {
-  width: 100%;
-  height: 100%;
+  font-size: 30rpx;
+  color: var(--text-primary);
   background: transparent;
-  color: #fff;
-  font-size: 30px;
+  border: none;
+  outline: none;
 }
 
-.input-placeholder {
-  color: rgba(255, 255, 255, 0.25);
+.form-input::placeholder {
+  color: var(--text-muted);
 }
 
-/* 验证码按钮 */
-.code-btn {
-  padding: 0 28px;
-  height: 100px;
-  background: rgba(0, 245, 255, 0.1);
-  border: 1px solid rgba(0, 245, 255, 0.25);
-  border-radius: 20px;
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+}
+
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid var(--border);
+  border-radius: 10rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-.code-btn:active {
-  background: rgba(0, 245, 255, 0.2);
+.checkbox.checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox-icon {
+  width: 28rpx;
+  height: 28rpx;
+  color: var(--primary-foreground);
+}
+
+.checkbox-label {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+}
+
+.forgot-btn {
+  font-size: 24rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.submit-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 22rpx 32rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border: none;
+  border-radius: var(--radius-xl);
+  color: var(--primary-foreground);
+  font-size: 32rpx;
+  font-weight: 700;
+  box-shadow: var(--card-shadow-lg);
+  margin-bottom: 24rpx;
+}
+
+.submit-btn:active {
   transform: scale(0.98);
 }
 
-.code-btn.disabled {
-  opacity: 0.5;
-  pointer-events: none;
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin: 32rpx 0;
 }
 
-.code-btn-text {
-  font-size: 26px;
-  color: #00f5ff;
-  font-weight: 500;
-  white-space: nowrap;
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: var(--border);
 }
 
-/* 提交按钮 */
-.submit-btn {
-  position: relative;
-  width: 100%;
-  height: 100px;
-  border-radius: 24px;
-  border: none;
-  overflow: hidden;
+.divider-text {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+}
+
+.social-login {
+  display: flex;
+  justify-content: center;
+  gap: 48rpx;
+  margin-bottom: 48rpx;
+}
+
+.social-btn {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  background: var(--card);
+  border: 2rpx solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0;
-  margin-top: 12px;
+  transition: all 0.2s ease;
+  box-shadow: var(--card-shadow-sm);
 }
 
-.btn-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #00f5ff 0%, #00d4ff 50%, #bf00ff 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 3s ease infinite;
+.social-btn:active {
+  transform: scale(0.95);
 }
 
-.submit-btn[disabled] {
-  opacity: 0.6;
-}
-
-.btn-text {
-  position: relative;
-  font-size: 32px;
-  font-weight: 700;
-  color: #0a0a0f;
-}
-
-/* 邀请码样式 */
-.referral-badge {
-  margin-left: 8px;
-  padding: 2px 8px;
-  background: rgba(0, 245, 255, 0.15);
-  border-radius: 8px;
-  border: 1px solid rgba(0, 245, 255, 0.3);
-}
-
-.referral-badge-text {
-  font-size: 18px;
-  color: #00f5ff;
-}
-
-.referral-hint {
-  font-size: 22px;
-  color: rgba(0, 245, 255, 0.6);
-  margin-top: 8px;
-}
-
-/* 卡片底部 */
-.card-footer {
+.register-link {
   text-align: center;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 24rpx;
+  color: var(--text-tertiary);
 }
 
-.skip-text {
-  font-size: 26px;
-  color: rgba(255, 255, 255, 0.4);
+.register-link-text {
+  color: var(--primary);
+  font-weight: 600;
 }
-
-/* 底部装饰 */
-.footer-decoration {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-top: auto;
-  padding: 40px 0;
-}
-
-.decoration-line {
-  width: 40px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.3), transparent);
-}
-
-.decoration-text {
-  font-size: 20px;
-  color: rgba(255, 255, 255, 0.2);
-  letter-spacing: 2px;
-}
-
-/* ========================================
-   动画
-   ======================================== */
-@keyframes floatGlow {
-  0%, 100% { transform: translateX(-50%) scale(1); }
-  50% { transform: translateX(-50%) scale(1.1); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.05); }
-}
-
-@keyframes pulse-ring {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.02); }
-}
-
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* ========================================
-   小程序适配
-   ======================================== */
-/* #ifdef WEAPP */
-.brand-section {
-  padding-top: 160px;
-}
-
-.brand-name {
-  font-size: 48px;
-}
-
-.input-box {
-  height: 96px;
-}
-
-.code-btn {
-  height: 96px;
-}
-
-.submit-btn {
-  height: 96px;
-}
-
-/* #endif */
