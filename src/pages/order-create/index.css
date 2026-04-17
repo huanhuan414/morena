@@ -1,6 +1,6 @@
 .order-create-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -20,13 +20,13 @@
 
 .back-text {
   font-size: 28rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .header-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-placeholder {
@@ -45,7 +45,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
   padding-left: 8rpx;
   display: block;
@@ -116,7 +116,7 @@
 .currency {
   font-size: 36rpx;
   font-weight: 700;
-  color: #00ff88;
+  color: var(--success);
   margin-right: 12rpx;
 }
 
@@ -166,7 +166,7 @@
 .count-icon {
   font-size: 40rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .count-input {
@@ -177,7 +177,7 @@
   text-align: center;
   font-size: 36rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .count-input .w-full {
@@ -225,7 +225,7 @@
 }
 
 .type-option.active .type-label {
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 500;
 }
 
@@ -255,7 +255,7 @@
 }
 
 .platform-option.active .platform-label {
-  color: #bf00ff;
+  color: var(--accent);
   font-weight: 500;
 }
 
@@ -284,7 +284,7 @@
 .submit-btn {
   width: 100%;
   height: 104rpx;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff) !important;
+  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
   border-radius: 52rpx !important;
   display: flex;
   align-items: center;
@@ -299,7 +299,7 @@
 .submit-text {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .bottom-space {

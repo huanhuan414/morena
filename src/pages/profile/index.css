@@ -1,6 +1,6 @@
 .profile-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -61,7 +61,7 @@
   width: 80rpx;
   height: 80rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,7 +70,7 @@
 .avatar-text {
   font-size: 32rpx;
   font-weight: 700;
-  color: #0a0a0f;
+  color: var(--background);
 }
 
 .level-badge {
@@ -78,7 +78,7 @@
   bottom: -8rpx;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   padding: 2rpx 12rpx;
   border-radius: 12rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 245, 255, 0.3);
@@ -87,7 +87,7 @@
 .level-text {
   font-size: 18rpx;
   font-weight: 600;
-  color: #0a0a0f;
+  color: var(--background);
 }
 
 .user-info {
@@ -100,7 +100,7 @@
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 4rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -149,7 +149,7 @@
   display: block;
   font-size: 28rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
   margin-bottom: 2rpx;
 }
 
@@ -188,7 +188,7 @@
 .xp-level {
   font-size: 22rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .xp-title {
@@ -212,7 +212,7 @@
 
 .xp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00f5ff 0%, #bf00ff 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
   border-radius: 3rpx;
 }
 
@@ -237,7 +237,7 @@
 }
 
 .level-modal-content {
-  background: #0a0a0f;
+  background: var(--background);
   border: 4rpx solid rgba(255, 255, 255, 0.1);
   border-radius: 48rpx;
   max-height: 80vh;
@@ -272,7 +272,7 @@
 .level-modal-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .level-modal-close {
@@ -302,7 +302,7 @@
 .level-modal-badge-text {
   font-size: 24rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .level-modal-info {
@@ -315,7 +315,7 @@
 .level-modal-title-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .level-modal-exp {
@@ -364,7 +364,7 @@
   transform: translateX(-50%);
   width: 60rpx;
   height: 6rpx;
-  background: linear-gradient(90deg, #00f5ff, #bf00ff);
+  background: linear-gradient(90deg, var(--primary), var(--accent));
   border-radius: 3rpx;
 }
 
@@ -374,7 +374,7 @@
 }
 
 .level-modal-tab-text-active {
-  color: #fff;
+  color: var(--foreground);
   font-weight: 600;
 }
 
@@ -420,7 +420,7 @@
 .level-modal-item-badge-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .level-modal-item-info {
@@ -430,7 +430,7 @@
 .level-modal-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   display: block;
 }
 
@@ -486,7 +486,7 @@
 .guide-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
   display: block;
 }
@@ -522,7 +522,7 @@
 .guide-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   display: block;
   margin-bottom: 8rpx;
 }
@@ -561,13 +561,13 @@
 .guide-level-badge-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .guide-level-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .guide-level-sources {
@@ -670,7 +670,7 @@
   display: block;
   font-size: 26rpx;
   font-weight: 500;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 2rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -775,7 +775,7 @@
 .pending-dialog-title {
   font-size: 28rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .pending-dialog-close {
@@ -841,7 +841,7 @@
   display: block;
   font-size: 26rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
   margin-bottom: 8rpx;
 }
 
@@ -872,7 +872,7 @@
 .budget-value {
   font-size: 26rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .request-meta {
@@ -902,6 +902,6 @@
 .view-request-text {
   font-size: 26rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 

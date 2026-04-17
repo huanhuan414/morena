@@ -1,6 +1,6 @@
 .referral-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -23,7 +23,7 @@
 .header-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .code-section {
@@ -58,7 +58,7 @@
 .code-text {
   font-size: 40rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   letter-spacing: 8rpx;
 }
 
@@ -81,13 +81,13 @@
 
 .action-text {
   font-size: 26rpx;
-  color: #bf00ff;
+  color: var(--accent);
 }
 
 .share-btn {
   flex: 1;
   height: 80rpx;
-  background: linear-gradient(135deg, #bf00ff, #00f5ff);
+  background: linear-gradient(135deg, var(--accent), var(--primary));
   border-radius: 40rpx;
   display: flex;
   align-items: center;
@@ -97,7 +97,7 @@
 
 .share-text {
   font-size: 26rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .rules-section {
@@ -114,7 +114,7 @@
 .rules-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
   display: block;
 }
@@ -163,7 +163,7 @@
 .stat-value {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .stat-label {
@@ -192,7 +192,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .records-scroll {
@@ -256,7 +256,7 @@
 
 .user-name {
   font-size: 26rpx;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 8rpx;
 }
 
@@ -277,7 +277,7 @@
 }
 
 .reward-amount.completed {
-  color: #00ff88;
+  color: var(--success);
 }
 
 .reward-amount.pending {
@@ -289,7 +289,7 @@
 }
 
 .reward-status.completed {
-  color: #00ff88;
+  color: var(--success);
 }
 
 .reward-status.pending {

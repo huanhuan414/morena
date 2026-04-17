@@ -1,6 +1,6 @@
 .about-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -20,13 +20,13 @@
 
 .back-text {
   font-size: 28rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .header-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-placeholder {
@@ -60,7 +60,7 @@
 .app-name {
   font-size: 48rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 12rpx;
 }
 
@@ -97,7 +97,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
   padding-left: 8rpx;
   display: block;
@@ -130,7 +130,7 @@
 .feature-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   display: block;
   margin-bottom: 8rpx;
 }
@@ -160,7 +160,7 @@
 .stat-value {
   font-size: 40rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
   display: block;
 }
 
@@ -216,7 +216,7 @@
 
 .link-text {
   font-size: 24rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .link-divider {

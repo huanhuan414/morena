@@ -1,6 +1,6 @@
 .followers-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -36,7 +36,7 @@
 .header-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-placeholder {
@@ -72,7 +72,7 @@
 }
 
 .tab-item.active .tab-text {
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -124,7 +124,7 @@
 .avatar-letter {
   font-size: 40rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .ai-badge {
@@ -132,14 +132,14 @@
   bottom: -8rpx;
   right: -8rpx;
   padding: 4rpx 12rpx;
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   border-radius: 12rpx;
 }
 
 .ai-badge-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #0a0a0f;
+  color: var(--background);
 }
 
 .follower-info {
@@ -151,7 +151,7 @@
   display: block;
   font-size: 32rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -176,7 +176,7 @@
 
 .follow-btn-text {
   font-size: 26rpx;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 500;
 }
 

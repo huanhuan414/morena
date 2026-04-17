@@ -1,7 +1,7 @@
 /* 订单详情页面 */
 .order-detail-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -55,7 +55,7 @@
 .page-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-right {
@@ -106,7 +106,7 @@
   transform: translateX(-50%);
   width: 40rpx;
   height: 4rpx;
-  background: #00f5ff;
+  background: var(--primary);
   border-radius: 2rpx;
 }
 
@@ -116,7 +116,7 @@
 }
 
 .detail-tab.active .tab-text {
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -143,7 +143,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
 }
 
@@ -167,7 +167,7 @@
 
 .info-value {
   font-size: 26rpx;
-  color: #fff;
+  color: var(--foreground);
   text-align: right;
   flex: 1;
   margin-left: 16rpx;
@@ -196,7 +196,7 @@
 
 .tag-text {
   font-size: 22rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 执行步骤 */
@@ -236,7 +236,7 @@
 .step-name {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .step-desc {
@@ -315,7 +315,7 @@
 .avatar-name {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .avatar-level {
@@ -383,7 +383,7 @@
   flex: 1;
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .block-count {
@@ -396,7 +396,7 @@
 .count-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .notification-list {
@@ -455,7 +455,7 @@
 .notification-avatar-name {
   font-size: 28rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .notification-time {
@@ -502,7 +502,7 @@
 .order-title-small {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .order-status-badge {
@@ -585,7 +585,7 @@
 .content-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 16rpx;
 }
 
@@ -631,7 +631,7 @@
 .platform-name {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .publish-status {
@@ -670,7 +670,7 @@
 
 .link-text {
   font-size: 24rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .manual-publish {
@@ -711,7 +711,7 @@
 .summary-num {
   font-size: 36rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .summary-label {
@@ -742,7 +742,7 @@
 .stat-platform {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .stat-details {
@@ -765,7 +765,7 @@
 .stat-value {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .empty-feedback {
@@ -804,7 +804,7 @@
 .modal-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   text-align: center;
   margin-bottom: 32rpx;
 }
@@ -831,7 +831,7 @@
   width: 100%;
   min-height: 160rpx;
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .modal-actions {
@@ -870,7 +870,7 @@
 .form-input input {
   width: 100%;
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .form-textarea {
@@ -883,7 +883,7 @@
   width: 100%;
   min-height: 120rpx;
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .form-actions {
@@ -956,7 +956,7 @@
 
 .avatar-title {
   font-size: 26rpx;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 500;
 }
 
@@ -978,7 +978,7 @@
 
 .avatar-name {
   font-size: 30rpx;
-  color: #fff;
+  color: var(--foreground);
   font-weight: 600;
   display: block;
   margin-bottom: 8rpx;
@@ -1000,7 +1000,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 20rpx;
   display: block;
 }
@@ -1037,11 +1037,11 @@
 
 .info-value {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .info-value.budget {
-  color: #00ff88;
+  color: var(--success);
   font-weight: 600;
   font-size: 32rpx;
 }
@@ -1093,13 +1093,13 @@
 .save-btn {
   flex: 1;
   height: 80rpx;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 40rpx;
 }
 
 .save-text {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
   font-weight: 500;
 }
 
@@ -1121,7 +1121,7 @@
 
 .require-value {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .platform-tags {
@@ -1139,7 +1139,7 @@
 
 .platform-tag-text {
   font-size: 24rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .action-section {
@@ -1150,7 +1150,7 @@
 .dispatch-btn {
   width: 100%;
   height: 100rpx !important;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff) !important;
+  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
   border: none !important;
   border-radius: 24rpx !important;
   display: flex;
@@ -1183,7 +1183,7 @@
 .dispatch-btn-text {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   letter-spacing: 1rpx;
 }
 
@@ -1231,7 +1231,7 @@
 .tab-badge-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 /* 分身信息 */
@@ -1243,7 +1243,7 @@
 .content-title-section {
   font-size: 32rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 16rpx;
 }
 

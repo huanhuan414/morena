@@ -1,6 +1,6 @@
 .help-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -20,13 +20,13 @@
 
 .back-text {
   font-size: 28rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .header-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-placeholder {
@@ -49,7 +49,7 @@
 .tip-text {
   font-size: 32rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-top: 16rpx;
 }
 
@@ -77,7 +77,7 @@
 .category-name {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .faq-item {
@@ -101,7 +101,7 @@
 
 .question-text {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
   flex: 1;
   padding-right: 16rpx;
 }
@@ -140,7 +140,7 @@
 
 .contact-text {
   font-size: 28rpx;
-  color: #00f5ff;
+  color: var(--primary);
   display: block;
 }
 

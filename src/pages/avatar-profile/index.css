@@ -34,7 +34,7 @@
 
 .profile-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, var(--background) 0%, #1a1a2e 50%, #16213e 100%);
   padding-bottom: 2rem;
   position: relative;
   overflow: hidden;
@@ -57,7 +57,7 @@
 }
 
 .bg-gradient-1 {
-  background: radial-gradient(circle, #00f5ff 0%, transparent 70%);
+  background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
   top: -20%;
   right: -20%;
   animation-delay: 0s;
@@ -172,7 +172,7 @@
   height: 100%;
   border-radius: 50%;
   padding: 0.25rem;
-  background: linear-gradient(135deg, #00f5ff 0%, #0ea5e9 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
   animation: rotate 10s linear infinite;
 }
 
@@ -189,7 +189,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 0.25rem solid #0a0a0f;
+  border: 0.25rem solid var(--background);
   object-fit: cover;
 }
 
@@ -219,7 +219,7 @@
 
 .level-text {
   font-size: 0.75rem;
-  color: #0a0a0f;
+  color: var(--background);
   font-weight: 700;
 }
 
@@ -232,7 +232,7 @@
 .profile-name {
   font-size: 2rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #00f5ff 100%);
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -253,13 +253,13 @@
 
 .profile-tag Text {
   font-size: 0.875rem;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 600;
 }
 
 .profile-desc {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
   line-height: 1.6;
   max-width: 31.25rem;
   align-self: center;
@@ -292,7 +292,7 @@
 }
 
 .gradient-blue {
-  background: linear-gradient(135deg, #00f5ff 0%, #0ea5e9 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
 }
 
 .gradient-pink {
@@ -316,12 +316,12 @@
 .stat-value {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--foreground);
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: #ffffff;
+  color: var(--foreground);
   text-transform: uppercase;
   letter-spacing: 0.0625rem;
   font-weight: 600;
@@ -346,7 +346,7 @@
 .today-stats-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #00f5ff;
+  color: var(--primary);
   letter-spacing: 0.03125rem;
 }
 
@@ -376,7 +376,7 @@
 .today-stat-value {
   font-size: 1.375rem;
   font-weight: 800;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .today-stat-label {
@@ -413,21 +413,21 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #00f5ff 0%, #0ea5e9 100%);
-  color: #0a0a0f;
+  background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
+  color: var(--background);
   box-shadow: 0 0.25rem 1.25rem rgba(0, 245, 255, 0.5);
 }
 
 .btn-danger {
   background: linear-gradient(135deg, #ff6b9d 0%, #f472b6 100%);
-  color: #ffffff;
+  color: var(--foreground);
   box-shadow: 0 0.25rem 1.25rem rgba(255, 107, 157, 0.5);
 }
 
 .btn-normal {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  color: var(--foreground);
 }
 
 /* ==================== 分区样式 ==================== */
@@ -445,7 +445,7 @@
 .section-title {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--foreground);
   letter-spacing: 0.03125rem;
 }
 
@@ -472,7 +472,7 @@
 
 .skill-pill Text {
   font-size: 0.9375rem;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -486,7 +486,7 @@
 
 .personality-text {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
   line-height: 1.8;
   letter-spacing: 0.01875rem;
 }
@@ -508,7 +508,7 @@
 
 .location-text {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
   line-height: 1.8;
   letter-spacing: 0.01875rem;
   font-weight: 500;
@@ -555,7 +555,7 @@
   border: 1px solid rgba(0, 245, 255, 0.5);
   border-radius: 0.75rem;
   font-size: 0.875rem;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 700;
 }
 
@@ -597,7 +597,7 @@
 
 .post-content {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
   line-height: 1.8;
   margin-bottom: 1rem;
   letter-spacing: 0.01875rem;
@@ -644,7 +644,7 @@
 
 .stat-badge Text {
   font-size: 0.875rem;
-  color: #ffffff;
+  color: var(--foreground);
   font-weight: 600;
 }
 
@@ -678,7 +678,7 @@
 
 .loading-text {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
 }
 
 .empty-state {
@@ -690,7 +690,7 @@
 
 .empty-text {
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--foreground);
 }
 
 /* ==================== 底部占位 ==================== */

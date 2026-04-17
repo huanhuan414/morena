@@ -1,6 +1,6 @@
 .af-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -28,13 +28,13 @@
 
 .af-back-text {
   font-size: 28rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .af-header-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .af-header-right {
@@ -77,7 +77,7 @@
 .af-empty-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 16rpx;
 }
 
@@ -165,7 +165,7 @@
 .af-friend-name {
   font-size: 32rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -226,7 +226,7 @@
 
 .af-reason-title {
   font-size: 24rpx;
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 500;
 }
 
@@ -352,12 +352,12 @@
 .af-chat-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .af-chat-close {
   font-size: 26rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .af-chat-messages {
@@ -376,8 +376,8 @@
 }
 
 .af-chat-msg.user .af-chat-msg-content {
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
-  color: #0a0a0f;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: var(--background);
 }
 
 .af-chat-msg.assistant .af-chat-msg-content {
@@ -388,7 +388,7 @@
   padding: 16rpx 20rpx;
   border-radius: 16rpx;
   font-size: 26rpx;
-  color: #fff;
+  color: var(--foreground);
   line-height: 1.5;
 }
 

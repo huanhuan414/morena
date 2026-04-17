@@ -1,6 +1,6 @@
 .avatar-manage-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -96,7 +96,7 @@
 .header-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .create-btn-small {
@@ -113,7 +113,7 @@
 .create-text-small {
   font-size: 24rpx;
   font-weight: 500;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .create-btn {
@@ -129,7 +129,7 @@
 
 .create-text {
   font-size: 26rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 滚动区域 */
@@ -156,7 +156,7 @@
 .empty-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 12rpx;
 }
 
@@ -168,13 +168,13 @@
 
 .empty-btn {
   padding: 16rpx 32rpx;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 24rpx;
 }
 
 .empty-btn-text {
   font-size: 28rpx;
-  color: #0a0a0f;
+  color: var(--background);
   font-weight: 600;
 }
 
@@ -239,7 +239,7 @@
   display: block;
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 6rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -304,7 +304,7 @@
 
 .hosting-title {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
   font-weight: 500;
 }
 
@@ -318,7 +318,7 @@
 
 .hosting-badge-text {
   font-size: 22px;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .hosting-settings {
@@ -385,7 +385,7 @@
 }
 
 .freq-option.active .freq-text {
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .auto-features {
@@ -429,7 +429,7 @@
 
 .friend-entry-text {
   font-size: 26px;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 底部空间 */
@@ -472,7 +472,7 @@
 .time-modal-title {
   font-size: 32px;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .time-modal-close {
@@ -527,7 +527,7 @@
 .preset-label {
   display: block;
   font-size: 28px;
-  color: #fff;
+  color: var(--foreground);
   font-weight: 500;
   margin-bottom: 4px;
 }
@@ -539,7 +539,7 @@
 }
 
 .preset-item.active .preset-label {
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 自定义部分 */
@@ -567,7 +567,7 @@
 }
 
 .custom-header.active .custom-title {
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .custom-time-picker {
@@ -603,7 +603,7 @@
 
 .time-value {
   font-size: 28px;
-  color: #fff;
+  color: var(--foreground);
   font-family: monospace;
 }
 
@@ -633,13 +633,13 @@
 .time-confirm-btn {
   flex: 1;
   padding: 16px;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 16px;
 }
 
 .time-confirm-text {
   font-size: 28px;
-  color: #0a0a0f;
+  color: var(--background);
   font-weight: 600;
 }
 
@@ -674,7 +674,7 @@
 .orders-title {
   font-size: 26rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .orders-badge {
@@ -692,7 +692,7 @@
 .orders-badge-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .orders-content {

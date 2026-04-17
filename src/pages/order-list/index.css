@@ -1,7 +1,7 @@
 /* 订单列表页面 */
 .order-list-page {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -23,7 +23,7 @@
 .page-title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .header-actions {
@@ -53,7 +53,7 @@
 
 .add-btn-text {
   font-size: 26rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 统计行 */
@@ -74,7 +74,7 @@
 .stat-num {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .stat-label {
@@ -120,14 +120,14 @@
 }
 
 .tab-item.active .tab-text {
-  color: #00f5ff;
+  color: var(--primary);
   font-weight: 600;
 }
 
 .tab-badge {
   min-width: 32rpx;
   height: 32rpx;
-  background: #bf00ff;
+  background: var(--accent);
   border-radius: 16rpx;
   display: flex;
   align-items: center;
@@ -137,7 +137,7 @@
 
 .tab-badge-text {
   font-size: 20rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 /* 列表区域 */
@@ -215,7 +215,7 @@
 .order-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-bottom: 12rpx;
 }
 
@@ -243,7 +243,7 @@
 
 .platform-tag-text {
   font-size: 22rpx;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 /* 执行进度 */
@@ -269,7 +269,7 @@
 .progress-percent {
   font-size: 24rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .progress-bar {
@@ -371,7 +371,7 @@
 }
 
 .tab-item.active .tab-label {
-  color: #00f5ff;
+  color: var(--primary);
 }
 
 .tab-badge {
@@ -380,7 +380,7 @@
   right: -8rpx;
   min-width: 32rpx;
   height: 32rpx;
-  background: #bf00ff;
+  background: var(--accent);
   border-radius: 16rpx;
   display: flex;
   align-items: center;
@@ -390,7 +390,7 @@
 
 .tab-badge-text {
   font-size: 20rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .order-scroll {
@@ -417,13 +417,13 @@
 .empty-btn {
   margin-top: 32rpx;
   padding: 20rpx 40rpx;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 32rpx;
 }
 
 .empty-btn-text {
   font-size: 28rpx;
-  color: #fff;
+  color: var(--foreground);
 }
 
 .orders-container {
@@ -450,7 +450,7 @@
   flex: 1;
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--foreground);
   margin-right: 16rpx;
 }
 
@@ -489,7 +489,7 @@
 .budget-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #00ff88;
+  color: var(--success);
 }
 
 .order-avatar {
@@ -533,14 +533,14 @@
   align-items: center;
   gap: 8rpx;
   padding: 12rpx 24rpx;
-  background: linear-gradient(135deg, #00f5ff, #bf00ff);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 32rpx;
   margin-left: auto;
 }
 
 .accept-text {
   font-size: 26rpx;
-  color: #fff;
+  color: var(--foreground);
   font-weight: 500;
 }
 
