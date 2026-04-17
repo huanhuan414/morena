@@ -55,6 +55,26 @@ export default function AvatarManagePage() {
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
   const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
   
+  // 人格类型中文映射
+  const PERSONALITY_LABELS: Record<string, string> = {
+    'analytical': '分析型',
+    'creative': '创意型',
+    'empathetic': '共情型',
+    'humorous': '幽默型',
+    'professional': '专业型',
+    'friendly': '友好型',
+    'confident': '自信型',
+    'patient': '耐心型',
+    'cheerful': '开朗型',
+    'wise': '智慧型'
+  }
+  
+  // 获取人格中文名称
+  const getPersonalityName = (personality?: string): string => {
+    if (!personality) return '友好助手'
+    return PERSONALITY_LABELS[personality.toLowerCase()] || personality
+  }
+  
   // 订阅权益状态
   const [canCreateAvatar, setCanCreateAvatar] = useState(true)
   const [avatarCount, setAvatarCount] = useState(0)
@@ -349,7 +369,7 @@ export default function AvatarManagePage() {
                       <Text className="meta-divider">·</Text>
                       <Text className="meta-item">{avatar.exp || 0} EXP</Text>
                     </View>
-                    <Text className="avatar-personality">{avatar.personality || '友好助手'}</Text>
+                    <Text className="avatar-personality">{getPersonalityName(avatar.personality)}</Text>
                   </View>
                   <Button className="settings-btn" onClick={() => goToSettings(avatar.id)}>
                     <Settings size={20} color="rgba(255,255,255,0.6)" />
