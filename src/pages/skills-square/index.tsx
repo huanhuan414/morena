@@ -208,12 +208,14 @@ const getSkillIcon = (toolName?: string): string => {
 }
 
 // 🔴 过滤掉短剧套件和个人IP套件中的技能
+// 注意：只保留有tool_name且不在套件列表中的技能
 const filterSkills = (skills: Skill[]): Skill[] => {
   const kitSkillToolNames = new Set([
     ...SHORT_DRAMA_KIT.skills,
     ...PERSONAL_IP_KIT.skills
   ])
-  return skills.filter(skill => !skill.tool_name || !kitSkillToolNames.has(skill.tool_name))
+  // ✅ 正确逻辑：只保留有tool_name且不在套件列表中的技能
+  return skills.filter(skill => skill.tool_name && !kitSkillToolNames.has(skill.tool_name))
 }
 
 interface Skill {
