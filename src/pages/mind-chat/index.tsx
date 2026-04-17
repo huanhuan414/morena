@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Video as VideoIcon, Paperclip, Plus, Image
+  Play, Video as VideoIcon, Paperclip, Plus, Image as ImageIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -1956,15 +1956,29 @@ export default function MindChatPage() {
         throw new Error('上传失败')
       }
 
-      showToast({ title: '语音上传成功', icon: 'success' })
+      showToast({ title: '正在识别语音...', icon: 'loading' })
 
-      // TODO: 语音识别功能需要后端支持，暂时只上传语音文件
-      // 可以考虑使用第三方语音识别服务（如百度、腾讯云等）
-      console.log('[MindChat] 语音文件URL:', uploadData.data.url)
+      // 调用语音识别接口（豆包语音识别）
+      const asrRes = await Network.request({
+        url: '/api/asr/recognize',
+        method: 'POST',
+        data: {
+          audioUrl: uploadData.data.url,
+          uid: userStore.userInfo?.userId || 'guest'
+        }
+      })
 
-      // 将语音文件添加到附件列表（发送时一起发送）
-      // 这里暂时不做处理，等待用户手动输入
+      console.log('[MindChat] 语音识别结果:', asrRes)
 
+      if (asrRes.data?.code === 200 && asrRes.data?.data?.text) {
+        const recognizedText = asrRes.data.data.text
+
+        // 将识别的文字设置到输入框
+        setInputText(recognizedText)
+        showToast({ title: '识别成功', icon: 'success' })
+      } else {
+        throw new Error(asrRes.data?.msg || '语音识别失败')
+      }
     } catch (error) {
       console.error('[MindChat] 处理语音文件失败:', error)
       showToast({ title: '语音处理失败，请重试', icon: 'none' })
@@ -4199,7 +4213,7 @@ export default function MindChatPage() {
                 {isUploadingImage ? (
                   <Loader size={18} color="#10b981" />
                 ) : (
-                  <Image size={18} color="#10b981" />
+                  <ImageIcon size={18} color="#10b981" />
                 )}
               </View>
               <View className="icon-btn video-btn" onClick={handleUploadVideo}>

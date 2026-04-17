@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AsrController } from './asr.controller';
-import { AsrService } from './asr.service';
 
 @Module({
   controllers: [AsrController],
-  providers: [AsrService],
-  exports: [AsrService],
+  providers: [],
+  exports: [],
 })
 export class AsrModule {}

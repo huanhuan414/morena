@@ -1,34 +1,63 @@
-import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
-import { AsrService } from './asr.service';
+import { Controller, Post, Body, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import { ASRClient, Config } from 'coze-coding-dev-sdk';
+import { HeaderUtils } from 'coze-coding-dev-sdk';
+import { Request } from 'express';
+
+class AsrRequestDto {
+  audioUrl: string;
+  uid?: string;
+}
+
+class AsrResponseDto {
+  code: number;
+  msg: string;
+  data?: {
+    text: string;
+    duration?: number;
+  };
+}
 
 @Controller('asr')
 export class AsrController {
-  constructor(private readonly asrService: AsrService) {}
-
   @Post('recognize')
-  async recognize(@Body() body: { audioUrl: string }) {
+  @HttpCode(HttpStatus.OK)
+  async recognize(@Body() body: AsrRequestDto, @Req() req: Request): Promise<AsrResponseDto> {
     try {
-      console.log('[ASR] 收到语音识别请求:', { audioUrl: body.audioUrl });
+      console.log('[ASR] 语音识别请求:', { audioUrl: body.audioUrl, uid: body.uid });
 
-      if (!body.audioUrl) {
-        throw new HttpException('缺少音频URL参数', HttpStatus.BAD_REQUEST);
-      }
+      // 提取并转发请求头（用于追踪和认证）
+      const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
 
-      const result = await this.asrService.recognizeAudio(body.audioUrl);
+      // 创建 ASR 客户端（带自定义请求头）
+      const config = new Config();
+      const asrClient = new ASRClient(config, customHeaders);
 
-      console.log('[ASR] 语音识别成功:', { text: result.text });
+      // 调用语音识别
+      const result = await asrClient.recognize({
+        uid: body.uid || 'guest',
+        url: body.audioUrl,
+      });
+
+      console.log('[ASR] 语音识别成功:', {
+        text: result.text,
+        duration: result.duration,
+      });
 
       return {
         code: 200,
-        message: '识别成功',
-        data: result
+        msg: '识别成功',
+        data: {
+          text: result.text,
+          duration: result.duration,
+        },
       };
     } catch (error) {
       console.error('[ASR] 语音识别失败:', error);
-      throw new HttpException(
-        error.message || '语音识别失败',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+
+      return {
+        code: 500,
+        msg: error instanceof Error ? error.message : '识别失败',
+      };
     }
   }
 }
