@@ -23,6 +23,7 @@ import { MediaModule } from './modules/media/media.module';
 import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { AsrModule } from './modules/asr/asr.module';
+import { RecommendationModule } from './modules/recommendation/recommendation.module';
 
 @Module({
   imports: [
@@ -47,7 +48,8 @@ import { AsrModule } from './modules/asr/asr.module';
     MediaModule,
     ContentGenerationModule,
     UploadModule,
-    AsrModule
+    AsrModule,
+    RecommendationModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -31,7 +31,8 @@ export default defineAppConfig({
     'pages/earning-center/index',
     'pages/referral-center/index',
     'pages/skills-square/index',
-    'pages/skill-create/index'
+    'pages/skill-create/index',
+    'pages/avatar-recommend/index'
   ],
   window: {
     backgroundTextStyle: 'light',

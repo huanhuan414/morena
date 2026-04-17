@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, chooseImage, getLocation, navigateTo } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -515,7 +515,10 @@ export default function AvatarCreatePage() {
       if (res.data?.code === 200) {
         showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
-          switchTab({ url: '/pages/mind-chat/index' })
+          // 跳转到推荐分身页面
+          redirectTo({
+            url: '/pages/avatar-recommend/index'
+          })
         }, 800)
       }
     } catch (error) {
@@ -926,7 +929,7 @@ export default function AvatarCreatePage() {
                 }}
               >
                 <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
-                <Icon size={48} color={s.color} />
+                <Icon size={48} color={isSelected ? '#ffffff' : s.color} />
                 {isSelected && <View className="preview-pulse" style={{ background: s.color }} />}
               </View>
               <Text className="appearance-name">{s.name}</Text>
