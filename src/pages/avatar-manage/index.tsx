@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Bell } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
@@ -352,7 +352,7 @@ export default function AvatarManagePage() {
                     <Text className="avatar-personality">{avatar.personality || '友好助手'}</Text>
                   </View>
                   <Button className="settings-btn" onClick={() => goToSettings(avatar.id)}>
-                    <Settings size={20} color="rgba(255,255,255,0.4)" />
+                    <Settings size={20} color="rgba(255,255,255,0.6)" />
                   </Button>
                 </View>
 
@@ -484,7 +484,7 @@ export default function AvatarManagePage() {
                             onClick={() => navigateTo({ url: `/pages/avatar-orders/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
-                              <Bell size={24} color="#06b6d4" />
+                              <Package size={24} color="#06b6d4" />
                             </View>
                             <Text className="quick-entry-label">商单</Text>
                           </View>
