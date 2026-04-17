@@ -1,0 +1,189 @@
+/* Message Page */
+.message-page {
+  min-height: 100vh;
+  background: var(--background);
+  position: relative;
+  overflow: hidden;
+}
+
+.message-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(245, 158, 11, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 80%, rgba(249, 115, 22, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 20s ease-in-out infinite;
+}
+
+@keyframes bgBreath {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.status-bar-placeholder {
+  background: var(--background);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+  border-bottom: 1.5rpx solid rgba(245, 158, 11, 0.12);
+  position: relative;
+  z-index: 10;
+  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5rpx;
+}
+
+.scroll-container {
+  flex: 1;
+  padding: 24rpx 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+/* Message List */
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.message-item {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  border: 1.5rpx solid rgba(245, 158, 11, 0.1);
+  display: flex;
+  gap: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  animation: msgFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.message-item:nth-child(1) { animation-delay: 0.1s; }
+.message-item:nth-child(2) { animation-delay: 0.15s; }
+.message-item:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes msgFadeIn {
+  from { opacity: 0; transform: translateX(-12rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.message-item:active {
+  transform: scale(0.98);
+}
+
+.message-item.unread {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(249, 115, 22, 0.05) 100%);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.message-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(249, 115, 22, 0.1) 100%);
+  border: 2rpx solid rgba(245, 158, 11, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.message-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8rpx;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.message-time {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.message-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.message-badge {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  background: #f59e0b;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rpx;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 0 12rpx rgba(245, 158, 11, 0.5);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Bottom Space */
+.bottom-space {
+  height: 32rpx;
+}
+
+[data-theme="dark"] .message-page {
+  /* 使用 CSS 变量自动适配 */
+}
+
+[data-theme="dark"] .message-item {
+  border-color: rgba(245, 158, 11, 0.12);
+}
+
+[data-theme="dark"] .message-item.unread {
+  border-color: rgba(245, 158, 11, 0.25);
+}
