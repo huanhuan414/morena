@@ -498,7 +498,7 @@
 
 .message-bubble {
   max-width: 75%;
-  padding: 6rpx 16rpx;
+  padding: 4rpx 14rpx;
   background: var(--card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
@@ -528,9 +528,10 @@
   font-size: 24rpx;
   font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.35;
+  line-height: 1.3;
   word-break: break-word;
   margin: 0;
+  padding-top: 2rpx;
 }
 
 .message-item.user .message-content {
@@ -543,23 +544,35 @@
   align-items: center;
   justify-content: space-between;
   gap: 12rpx;
-  margin-top: 2rpx;
+  margin-top: 0;
   margin-bottom: 0;
+  padding-top: 2rpx;
+  padding-bottom: 2rpx;
 }
 
 .message-time {
-  font-size: 16rpx;
+  font-size: 14rpx;
   font-weight: 500;
   color: var(--text-tertiary);
   margin: 0;
   opacity: 0.7;
 }
 
+/* 用户消息时间 - 白色 */
+.message-item.user .message-time {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* 分身消息时间 - 使用text-tertiary */
+.message-item.assistant .message-time {
+  color: var(--text-tertiary);
+}
+
 .message-actions {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  margin-top: 4rpx;
+  margin-top: 0;
   margin-bottom: 0;
 }
 
@@ -574,8 +587,26 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* 用户消息的复制按钮背景 */
+.message-item.user .message-action {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 分身消息的复制按钮背景 */
+.message-item.assistant .message-action {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 .message-action:active {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.message-item.user .message-action:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.message-item.assistant .message-action:active {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .message-user-avatar {
