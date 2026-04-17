@@ -498,7 +498,7 @@
 
 .message-bubble {
   max-width: 75%;
-  padding: 8rpx 16rpx;
+  padding: 6rpx 16rpx;
   background: var(--card);
   border-radius: 16rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
@@ -525,10 +525,10 @@
 }
 
 .message-content {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.35;
   word-break: break-word;
   margin: 0;
 }
@@ -538,12 +538,20 @@
   text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.1);
 }
 
+.message-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 2rpx;
+  margin-bottom: 0;
+}
+
 .message-time {
-  font-size: 18rpx;
+  font-size: 16rpx;
   font-weight: 500;
   color: var(--text-tertiary);
-  margin-top: 4rpx;
-  margin-bottom: 0;
+  margin: 0;
   opacity: 0.7;
 }
 
@@ -556,12 +564,12 @@
 }
 
 .message-action {
-  width: 44rpx;
-  height: 44rpx;
+  width: 36rpx;
+  height: 36rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10rpx;
+  border-radius: 8rpx;
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.05);
 }

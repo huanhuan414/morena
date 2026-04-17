@@ -3801,7 +3801,7 @@ export default function MindChatPage() {
                     className="message-action"
                     onClick={() => copyMessage(typeof msg.content === 'string' ? msg.content : '')}
                   >
-                    <Copy size={14} color="rgba(255,255,255,0.4)" />
+                    <Copy size={12} color="rgba(255,255,255,0.4)" />
                   </View>
                 </View>
               </View>
