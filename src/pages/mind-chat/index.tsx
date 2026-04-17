@@ -306,6 +306,7 @@ export default function MindChatPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [isVoiceMode, setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)  // 录音时间（秒）
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -1777,6 +1778,108 @@ export default function MindChatPage() {
       setLoading(false)
       loadingRef.current = false
       setCurrentStatus('')
+    }
+  }
+
+  const startRecording = () => {
+    const env = Taro.getEnv()
+
+    // 检查是否在小程序环境中
+    if (env !== Taro.ENV_TYPE.WEAPP && env !== Taro.ENV_TYPE.TT) {
+      showToast({ title: '语音输入仅在小程序中可用', icon: 'none' })
+      return
+    }
+
+    // 初始化录音管理器
+    const recorderManager = Taro.getRecorderManager()
+
+    // 监听录音开始
+    recorderManager.onStart(() => {
+      console.log('[MindChat] 录音开始')
+      setIsRecording(true)
+      setRecordingTime(0)
+    })
+
+    // 监听录音结束
+    recorderManager.onStop((res) => {
+      console.log('[MindChat] 录音结束:', res)
+      setIsRecording(false)
+
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+        recordingTimerRef.current = null
+      }
+
+      // 上传录音文件并进行语音识别
+      handleVoiceFile(res.tempFilePath)
+    })
+
+    // 监听录音错误
+    recorderManager.onError((err) => {
+      console.error('[MindChat] 录音错误:', err)
+      setIsRecording(false)
+      showToast({ title: '录音失败', icon: 'none' })
+    })
+
+    // 开始录音
+    recorderManager.start({
+      format: 'mp3',
+      duration: 60000,  // 最长60秒
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000
+    })
+
+    // 开始计时
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1)
+    }, 1000)
+  }
+
+  const handleVoiceFile = async (tempFilePath: string) => {
+    try {
+      showToast({ title: '正在识别语音...', icon: 'loading' })
+
+      // 上传录音文件到对象存储
+      const uploadRes = await Network.uploadFile({
+        url: '/api/storage/upload',
+        filePath: tempFilePath,
+        name: 'file',
+        header: {
+          'content-type': 'multipart/form-data'
+        }
+      })
+
+      console.log('[MindChat] 语音文件上传成功:', uploadRes)
+
+      const uploadData = uploadRes.data as any
+      if (!uploadData || !uploadData.url) {
+        throw new Error('上传失败')
+      }
+
+      // 调用语音识别接口
+      const asrRes = await Network.request({
+        url: '/api/asr/recognize',
+        method: 'POST',
+        data: {
+          audioUrl: uploadData.url
+        }
+      })
+
+      console.log('[MindChat] 语音识别成功:', asrRes)
+
+      if (asrRes.data?.code === 200 && asrRes.data?.data?.text) {
+        const recognizedText = asrRes.data.data.text
+
+        // 将识别的文字设置到输入框
+        setInputText(recognizedText)
+        showToast({ title: '识别成功', icon: 'success' })
+      } else {
+        showToast({ title: '语音识别失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[MindChat] 处理语音文件失败:', error)
+      showToast({ title: '语音处理失败', icon: 'none' })
     }
   }
 
@@ -3887,9 +3990,35 @@ export default function MindChatPage() {
             <View className="button-row-right">
               <View
                 className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
-                onClick={() => sendMessage()}
+                onClick={() => {
+                  if (isVoiceMode) {
+                    // 语音模式下，切换录音状态
+                    if (isRecording) {
+                      stopRecording()
+                    } else {
+                      startRecording()
+                    }
+                  } else {
+                    // 普通模式下，发送消息
+                    sendMessage()
+                  }
+                }}
               >
-                <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+                {isVoiceMode ? (
+                  // 语音模式下显示录音状态
+                  <View className="recording-indicator">
+                    {isRecording ? (
+                      <>
+                        <View className="recording-pulse" />
+                        <Text className="recording-text">{recordingTime}s</Text>
+                      </>
+                    ) : (
+                      <Mic size={18} color="rgba(255,255,255,0.6)" />
+                    )}
+                  </View>
+                ) : (
+                  <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+                )}
               </View>
             </View>
           </View>

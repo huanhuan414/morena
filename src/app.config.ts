@@ -34,18 +34,18 @@ export default defineAppConfig({
     'pages/skill-create/index'
   ],
   window: {
-    backgroundTextStyle: 'dark',
-    navigationBarBackgroundColor: '#0a0a0f',
+    backgroundTextStyle: 'light',
+    navigationBarBackgroundColor: '#ffffff',
     navigationBarTitleText: '莫瑞娜',
-    navigationBarTextStyle: 'white',
-    backgroundColor: '#0a0a0f',
+    navigationBarTextStyle: 'black',
+    backgroundColor: '#f8fafc',
     navigationStyle: 'custom'
   },
   tabBar: {
     color: '#64748b',
-    selectedColor: '#00f5ff',
-    backgroundColor: '#0a0a0f',
-    borderStyle: 'black',
+    selectedColor: '#2563eb',
+    backgroundColor: '#ffffff',
+    borderStyle: 'white',
     list: [
       {
         pagePath: 'pages/social/index',

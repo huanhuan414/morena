@@ -22,6 +22,7 @@ import { SkillsModule } from './modules/skills/skills.module';
 import { MediaModule } from './modules/media/media.module';
 import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { AsrModule } from './modules/asr/asr.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { UploadModule } from './modules/upload/upload.module';
     SkillsModule,
     MediaModule,
     ContentGenerationModule,
-    UploadModule
+    UploadModule,
+    AsrModule
   ],
   controllers: [AppController],
   providers: [AppService],

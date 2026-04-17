@@ -1,287 +1,389 @@
-# 莫瑞娜（Morina）设计指南 V2.0
+# 莫瑞娜小程序设计指南 - 明亮高级大气版
 
 ## 品牌定位
 
-**应用名称**：莫瑞娜（Morina）AI原生人机共生自动协同矩阵生态平台  
-**设计风格**：霓虹赛博朋克 / 未来科技感 / 沉浸式体验  
-**目标用户**：追求AI效率工具的创作者、企业用户、科技爱好者  
-**核心理念**：AI分身全自动协同，解放人力，提升创造力
-
----
+**应用定位**：AI 分身智能助手平台
+**设计风格**：明亮、高级、大气、现代
+**目标用户**：追求高品质数字体验的年轻用户
 
 ## 配色方案
 
-### 主色板（霓虹渐变）
-
-| 用途 | 色值 | Tailwind类名 | 说明 |
-|------|------|--------------|------|
-| 霓虹青 | #00f5ff | `text-cyan-400` | 科技感、未来感 |
-| 霓虹紫 | #bf00ff | `text-purple-500` | AI智能、创造力 |
-| 霓虹粉 | #ff00aa | `text-pink-500` | 能量、活力 |
-| 电光蓝 | #0088ff | `text-blue-500` | 信息、链接 |
-| 主渐变 | cyan-400 → purple-500 | `from-cyan-400 to-purple-500` | 核心渐变 |
-
-### 背景色系
-
-| 用途 | 色值 | Tailwind类名 |
-|------|------|--------------|
-| 主背景 | #0a0a0f | `bg-[#0a0a0f]` |
-| 卡片背景 | rgba(20, 20, 30, 0.8) | `bg-[#14141e]/80` |
-| 表面层 | rgba(30, 30, 50, 0.6) | `bg-[#1e1e32]/60` |
-| 边框发光 | rgba(0, 245, 255, 0.3) | `border-cyan-400/30` |
-
-### 语义色
-
-| 用途 | 色值 | Tailwind类名 |
-|------|------|--------------|
-| 成功 | #00ff88 | `text-emerald-400` |
-| 警告 | #ffaa00 | `text-amber-400` |
-| 错误 | #ff4466 | `text-red-400` |
-| 信息 | #00aaff | `text-blue-400` |
-
----
-
-## 视觉效果
-
-### 霓虹发光效果
+### 主色板
 
 ```css
-/* 霓虹发光边框 */
-.neon-border {
-  border: 1px solid rgba(0, 245, 255, 0.3);
-  box-shadow: 0 0 20px rgba(0, 245, 255, 0.1),
-              inset 0 0 20px rgba(0, 245, 255, 0.05);
-}
+/* 主色调 - 典雅蓝 */
+--primary: #2563eb; /* Royal Blue - 权威与信任 */
+--primary-foreground: #ffffff;
 
-/* 霓虹发光文字 */
-.neon-text {
-  text-shadow: 0 0 10px currentColor,
-               0 0 20px currentColor,
-               0 0 40px currentColor;
-}
+/* 辅助色 */
+--primary-light: #3b82f6; /* Light Blue */
+--primary-dark: #1d4ed8; /* Dark Blue */
 
-/* 霓虹按钮 */
-.neon-button {
-  background: linear-gradient(135deg, #00f5ff 0%, #bf00ff 100%);
-  box-shadow: 0 0 30px rgba(0, 245, 255, 0.4),
-              0 0 60px rgba(191, 0, 255, 0.2);
-}
+/* 强调色 - 温暖金 */
+--accent: #f59e0b; /* Amber - 温暖与活力 */
+--accent-foreground: #ffffff;
+
+/* 中性色 */
+--background: #f8fafc; /* Slate 50 - 柔和的浅灰背景 */
+--foreground: #1e293b; /* Slate 800 - 深灰文字 */
+
+/* 卡片色 */
+--card: #ffffff; /* 纯白卡片 */
+--card-foreground: #1e293b;
+
+/* 次要色 */
+--secondary: #f1f5f9; /* Slate 100 */
+--secondary-foreground: #475569;
+
+/* 静音色 */
+--muted: #e2e8f0; /* Slate 200 */
+--muted-foreground: #64748b;
+
+/* 边框 */
+--border: #e2e8f0;
+--input: #cbd5e1;
+
+/* 环形焦点 */
+--ring: #2563eb;
+
+/* 语义色 */
+--success: #10b981; /* Emerald 500 */
+--warning: #f59e0b; /* Amber 500 */
+--destructive: #ef4444; /* Red 500 */
+--info: #06b6d4; /* Cyan 500 */
+
+/* 特殊强调色（用于高级感点缀） */
+--neon-cyan: #06b6d4;
+--neon-purple: #8b5cf6;
+--neon-pink: #ec4899;
+
+/* 选择 */
+--selection: #dbeafe;
+--selection-foreground: #1e293b;
 ```
 
-### 玻璃拟态
+### Tailwind 类名映射
 
-```css
-.glass-card {
-  backdrop-filter: blur(20px);
-  background: rgba(20, 20, 30, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-}
+```tsx
+// 主色
+bg-blue-600 text-white
+hover:bg-blue-700
+
+// 辅助色
+bg-amber-500 text-white
+
+// 背景
+bg-slate-50
+bg-white
+
+// 文字
+text-slate-800
+text-slate-600
+text-slate-400
+
+// 边框
+border-slate-200
+
+// 卡片
+bg-white shadow-sm border border-slate-200 rounded-xl
+
+// 语义色
+text-emerald-500 bg-emerald-50
+text-amber-500 bg-amber-50
+text-red-500 bg-red-50
 ```
-
-### 渐变背景
-
-```css
-/* 页面背景 */
-.page-bg {
-  background: radial-gradient(ellipse at top, #1a0a2e 0%, #0a0a0f 50%),
-              radial-gradient(ellipse at bottom, #0a1a2e 0%, #0a0a0f 50%);
-}
-
-/* 动态网格背景 */
-.grid-bg {
-  background-image: 
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-```
-
----
 
 ## 字体规范
 
-| 层级 | Tailwind类名 | 字号 | 字重 | 场景 |
-|------|--------------|------|------|------|
-| 超大标题 | `text-5xl font-bold` | 48px | 700 | 登录页品牌 |
-| 大标题 | `text-3xl font-bold` | 30px | 700 | 页面标题 |
-| 中标题 | `text-xl font-semibold` | 20px | 600 | 卡片标题 |
-| 正文 | `text-base` | 16px | 400 | 普通文本 |
-| 小字 | `text-sm` | 14px | 400 | 辅助信息 |
-| 微型 | `text-xs` | 12px | 400 | 标签、时间 |
+```css
+/* H1 - 页面大标题 */
+font-size: 28px;
+font-weight: 700;
+color: #1e293b;
+line-height: 1.3;
 
----
+/* H2 - 区块标题 */
+font-size: 20px;
+font-weight: 600;
+color: #1e293b;
+line-height: 1.4;
 
-## 组件规范
+/* H3 - 卡片标题 */
+font-size: 16px;
+font-weight: 600;
+color: #1e293b;
+line-height: 1.5;
 
-### 按钮样式
+/* Body - 正文 */
+font-size: 14px;
+font-weight: 400;
+color: #475569;
+line-height: 1.6;
 
-```tsx
-// 主要按钮 - 霓虹渐变
-<Button className="bg-gradient-to-r from-cyan-400 to-purple-500 text-white font-semibold rounded-full px-8 py-3 shadow-lg shadow-cyan-500/30">
-  开始体验
-</Button>
-
-// 次要按钮 - 玻璃拟态
-<Button className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-full px-8 py-3">
-  了解更多
-</Button>
-
-// 图标按钮 - 发光
-<Button className="bg-cyan-400/20 border border-cyan-400/40 rounded-full p-3 shadow-lg shadow-cyan-400/20">
-  <Icon size={20} color="#00f5ff" />
-</Button>
+/* Caption - 辅助文字 */
+font-size: 12px;
+font-weight: 400;
+color: #64748b;
+line-height: 1.5;
 ```
 
-### 卡片样式
+## 间距系统
 
-```tsx
-// 玻璃拟态卡片
-<View className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-5 shadow-xl">
-  ...
-</View>
+```css
+/* 页面边距 */
+page-padding: 16px;
 
-// 发光卡片
-<View className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-400/30 rounded-2xl p-4 shadow-lg shadow-cyan-500/10">
-  ...
-</View>
+/* 组件内边距 */
+padding-xs: 8px;
+padding-sm: 12px;
+padding-md: 16px;
+padding-lg: 20px;
+padding-xl: 24px;
+
+/* 组件间距 */
+gap-xs: 4px;
+gap-sm: 8px;
+gap-md: 12px;
+gap-lg: 16px;
+gap-xl: 20px;
+gap-2xl: 24px;
 ```
 
-### 输入框样式
+## 组件使用原则
+
+### 优先使用组件库
+
+所有通用 UI 组件必须优先使用 `@/components/ui/*`：
+
+- 按钮：`@/components/ui/button`
+- 输入框：`@/components/ui/input`
+- 弹窗：`@/components/ui/dialog`
+- 卡片：`@/components/ui/card`
+- Tabs：`@/components/ui/tabs`
+- Toast：`@/components/ui/toast`
+- 选择器：`@/components/ui/select`
+- ... 等等
+
+**禁止**：使用 `View/Text` 手搓通用组件
+
+### 容器样式
 
 ```tsx
-// 玻璃输入框
-<View className="backdrop-blur-xl bg-white/5 border border-white/20 rounded-2xl px-4 py-3">
-  <Input className="w-full bg-transparent text-white placeholder:text-white/40" />
-</View>
+// 页面容器
+<View className="bg-slate-50 min-h-screen pb-20">
+
+// 卡片容器
+<Card className="bg-white shadow-sm border border-slate-200 rounded-xl">
+
+// 分组容器
+<View className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
 ```
 
----
+### 按钮规范
+
+```tsx
+// 主要按钮
+<Button className="bg-blue-600 text-white hover:bg-blue-700">
+  <Text>确定</Text>
+</Button>
+
+// 次要按钮
+<Button className="bg-slate-100 text-slate-700 hover:bg-slate-200">
+  <Text>取消</Text>
+</Button>
+
+// 强调按钮
+<Button className="bg-amber-500 text-white hover:bg-amber-600">
+  <Text>立即行动</Text>
+</Button>
+```
 
 ## 导航结构
 
-### TabBar 页面（5个主Tab）
+### TabBar 配置
 
-| Tab | 页面路径 | 图标 | 说明 |
-|-----|----------|------|------|
-| 首页 | `pages/home/index` | Sparkles | 分身入口、快捷操作 |
-| 对话 | `pages/chat/index` | MessageCircle | AI对话、语音交互 |
-| 学习 | `pages/learn/index` | GraduationCap | 学习路径、进度追踪 |
-| 广场 | `pages/social/index` | Users | 社交广场、动态流 |
-| 我的 | `pages/profile/index` | User | 个人中心、设置 |
-
-### 页面流程
-
-```
-启动 → 登录/注册 → 首页 → 创建分身 → 对话/学习
-```
-
----
-
-## 核心页面设计
-
-### 1. 登录注册页
-
-- 全屏渐变背景 + 动态网格
-- 品牌Logo + 霓虹标题
-- 玻璃拟态登录卡片
-- 微信一键登录 + 手机号登录
-
-### 2. 首页
-
-- 顶部：用户欢迎 + 学习进度环
-- 中部：AI分身卡片（左右滑动）
-- 底部：快捷操作入口（对话/学习/任务）
-
-### 3. 创建分身页
-
-- 分步引导：选择性格 → 选择能力 → 设置外观 → 命名
-- 每步卡片选择器 + 进度指示
-- 最终预览 + 创建按钮
-
-### 4. 对话页
-
-- 顶部：分身信息 + 切换按钮
-- 中部：消息流（气泡式）
-- 底部：输入框 + 语音按钮 + 快捷指令
-
-### 5. 学习中心
-
-- 学习路径可视化
-- 课程卡片列表
-- 学习进度统计
-- 成就徽章展示
-
----
-
-## 动画规范
-
-```css
-/* 淡入上移 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 霓虹脉冲 */
-@keyframes neonPulse {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(0, 245, 255, 0.6),
-                0 0 60px rgba(191, 0, 255, 0.3);
-  }
-}
-
-/* 渐变流动 */
-@keyframes gradientFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* 打字指示 */
-@keyframes typing {
-  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-4px); }
+```typescript
+tabBar: {
+  color: '#64748b',        // 未选中 - 灰色
+  selectedColor: '#2563eb', // 选中 - 蓝色
+  backgroundColor: '#ffffff', // 背景 - 白色
+  borderStyle: 'white',
+  list: [...]
 }
 ```
 
----
+### 页面导航
 
-## 图标规范
+- **TabBar 页面**：使用 `switchTab()` 跳转
+- **普通页面**：使用 `navigateTo()` 跳转
+- **返回按钮**：仅二级页面显示，一级页面不显示
 
-使用 `lucide-react-taro` 图标库：
+## 空状态与加载态
 
-- **尺寸**：默认 24px，小图标 18px，大图标 32px
-- **颜色**：霓虹色系（cyan-400 / purple-400 / pink-400）
-- **风格**：线性图标，统一描边 2px
+### 空状态
 
-常用图标：
-- AI分身：`Sparkles` / `Bot` / `Brain`
-- 对话：`MessageCircle` / `Send` / `Mic`
-- 学习：`GraduationCap` / `BookOpen` / `Trophy`
-- 社交：`Users` / `Heart` / `Share2`
-- 设置：`Settings` / `Bell` / `Shield`
+```tsx
+<View className="flex flex-col items-center justify-center py-12">
+  <View className="w-16 h-16 mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+    <Icon size={32} color="#94a3b8" />
+  </View>
+  <Text className="text-slate-400 text-sm">暂无数据</Text>
+</View>
+```
 
----
+### 加载态
+
+```tsx
+<View className="flex items-center justify-center py-8">
+  <Loader className="text-blue-600" size={24} />
+  <Text className="ml-2 text-slate-400 text-sm">加载中...</Text>
+</View>
+```
 
 ## 小程序约束
 
-- **主包体积**：≤ 2MB
-- **图片优化**：使用CDN，懒加载
-- **性能优化**：虚拟列表、防抖节流
-- **动画优化**：CSS动画优先，避免频繁重排
+### 包体积限制
+- 主包：≤ 2MB
+- 单个分包：≤ 2MB
+- 所有分包：≤ 20MB
+
+### 图片策略
+- 所有图片使用 TOS 对象存储
+- TabBar 图标必须使用本地 PNG
+- 推荐格式：WebP（质量优先）、PNG（兼容性优先）
+
+### 性能优化
+- 使用分包加载
+- 按需引入组件
+- 避免深层嵌套
+- 使用虚拟列表（长列表）
+
+### 阴影使用
+
+```tsx
+// 轻微阴影
+shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05)
+
+// 中等阴影
+shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)
+
+// 大阴影
+shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)
+
+// 浮动卡片阴影
+shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)
+```
+
+## 设计亮点
+
+### 高级感设计
+
+1. **白色卡片 + 柔和阴影**：使用纯白卡片配合柔和阴影，营造层次感
+2. **优雅的间距**：使用 16px/20px/24px 的间距系统，保持视觉舒适
+3. **精致的边框**：使用 1px 的浅色边框，增加细节精致度
+4. **柔和的渐变**：仅在关键操作处使用渐变，如按钮、高亮区域
+
+### 大气感设计
+
+1. **充足的留白**：页面、卡片、组件之间保持充足的留白
+2. **清晰的层级**：通过颜色、大小、间距建立清晰的视觉层级
+3. **统一的圆角**：统一使用 12px/16px 的圆角，保持一致性
+
+### 明亮感设计
+
+1. **浅色背景**：使用 Slate-50 作为页面背景
+2. **高对比度文字**：使用深灰/黑色文字，确保可读性
+3. **清爽的色彩**：使用蓝色系作为主色调，传递专业与信任
+
+## 页面示例
+
+### 首页（广场）
+
+```tsx
+<View className="bg-slate-50 min-h-screen">
+  {/* 顶部导航 */}
+  <View className="bg-white px-4 py-3 border-b border-slate-200">
+    <Text className="text-lg font-bold text-slate-800">广场</Text>
+  </View>
+
+  {/* 内容区域 */}
+  <ScrollView className="flex-1">
+    <View className="p-4">
+      <Card className="bg-white shadow-sm border border-slate-200 rounded-xl p-4">
+        {/* 内容 */}
+      </Card>
+    </View>
+  </ScrollView>
+</View>
+```
+
+### 对话页面（心智对话）
+
+```tsx
+<View className="bg-slate-50 min-h-screen flex flex-col">
+  {/* 消息列表 */}
+  <ScrollView className="flex-1 px-4 py-4">
+    {/* 消息 */}
+  </ScrollView>
+
+  {/* 输入区域 */}
+  <View className="bg-white px-4 py-3 border-t border-slate-200">
+    <View className="flex items-center gap-2">
+      <Input className="flex-1 bg-slate-100 rounded-lg" />
+      <Button className="bg-blue-600 text-white">
+        <Send />
+      </Button>
+    </View>
+  </View>
+</View>
+```
+
+## 快速参考
+
+### 常用 Tailwind 类
+
+```tsx
+// 背景
+bg-slate-50 bg-white bg-slate-100
+
+// 文字
+text-slate-800 text-slate-600 text-slate-400 text-white
+
+// 边框
+border border-slate-200 border-slate-300
+
+// 圆角
+rounded-lg rounded-xl rounded-2xl
+
+// 间距
+p-4 px-4 py-3 gap-2 gap-4
+
+// 阴影
+shadow-sm shadow shadow-lg
+
+// Flex 布局
+flex items-center justify-between
+flex-col gap-4
+```
+
+### 主题色速查
+
+```tsx
+// 主色
+bg-blue-600 text-blue-600
+
+// 强调色
+bg-amber-500 text-amber-500
+
+// 成功
+bg-emerald-500 text-emerald-500
+
+// 警告
+bg-amber-500 text-amber-500
+
+// 错误
+bg-red-500 text-red-500
+
+// 信息
+bg-cyan-500 text-cyan-500
+```
