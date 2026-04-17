@@ -264,16 +264,21 @@ export class AvatarService {
       const config = new Config()
       const client = new LLMClient(config)
       
-      const analysisPrompt = `你是一位专业的AI分身形象设计师和人格分析师。请仔细分析这张照片中人物的特征，用于创建一个高度个性化的AI分身。
+      const analysisPrompt = `你是一位专业的AI分身形象设计师和人格分析师。请仔细分析这张照片。
 
-请从以下维度进行深度分析：
+【重要】第一步：首先判断照片中是否有人脸
+- 如果照片是风景、物品、建筑、卡通、动漫、文字图片（如营业执照）等，不包含真实人脸，hasFace 必须设为 false，faceConfidence 设为 0
+- 如果照片中包含真实的人脸（真人照片），hasFace 设为 true，并给出人脸置信度 faceConfidence（0.7-1.0）
+- 如果人脸模糊、侧脸、遮挡严重，hasFace 设为 false，faceConfidence 设为 0-0.5
 
-## 1. 面部特征分析
+只有当 hasFace = true 时，才进行后续分析。如果 hasFace = false，其他字段返回默认值即可。
+
+## 2. 面部特征分析（仅当 hasFace = true）
 - 表情特点（自然/微笑/严肃等）
 - 眼神特点（温和/锐利/深邃等）
 - 整体面部印象
 
-## 2. 气质类型判断
+## 3. 气质类型判断（仅当 hasFace = true）
 根据面部特征和表情，判断气质类型（从以下选项中选择）：
 - 阳光活力型：开朗外向，充满正能量
 - 沉稳内敛型：深思熟虑，稳重可靠
@@ -281,20 +286,17 @@ export class AvatarService {
 - 专业精英型：干练高效，目标明确
 - 温暖治愈型：善解人意，富有同理心
 
-## 3. 性格特征推断
+## 4. 性格特征推断（仅当 hasFace = true）
 基于面部表情和神态，推断3-5个核心性格特质
 
-## 4. 沟通风格预测
-预测这个人在沟通时可能的特点：
-- 语言风格（简洁/详尽/幽默/严肃）
-- 表达方式（直接/委婉/理性/感性）
-- 倾听习惯（耐心/主动/互动型）
+## 5. 沟通风格预测（仅当 hasFace = true）
+预测这个人在沟通时可能的特点
 
-## 5. 擅长领域建议
+## 6. 擅长领域建议（仅当 hasFace = true）
 根据气质和特征，推荐分身可能擅长的能力领域
 
-## 6. 分身命名建议
-根据整体分析，建议3个合适的分身名字，并说明理由
+## 7. 分身命名建议（仅当 hasFace = true）
+根据整体分析，建议3个合适的分身名字
 
 请以JSON格式返回，格式如下：
 {
@@ -327,11 +329,12 @@ export class AvatarService {
   "suggestedName": "最推荐的名字"
 }
 
-注意：
+【严格执行】：
 1. 请只返回JSON，不要有其他文字
-2. 首先检查照片中是否有人脸，如果有，hasFace设为true，并提供人脸置信度faceConfidence（0.0-1.0）
-3. 如果照片中没有人脸（如风景、物品、动漫等），hasFace设为false，faceConfidence为0，其他字段返回合理的默认值
-4. 分析要基于照片特征，客观且积极正面
+2. hasFace 字段必须准确判断：有人脸 true，无人脸 false
+3. 如果照片中没有真实人脸（如营业执照、风景、物品、卡通等），hasFace 必须设为 false
+4. faceConfidence：有人脸时 0.7-1.0，无人脸时 0
+
 
       const messages = [
         {
@@ -357,13 +360,23 @@ export class AvatarService {
       })
       
       console.log('视觉模型响应长度:', response.content.length)
-      
+      console.log('视觉模型原始响应:', response.content)
+
       // 解析JSON响应
       try {
         const jsonMatch = response.content.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           const analysis = JSON.parse(jsonMatch[0])
+          console.log('解析成功，hasFace:', analysis.hasFace)
+          console.log('解析成功，faceConfidence:', analysis.faceConfidence)
           console.log('解析成功，气质类型:', analysis.temperament?.type)
+
+          // 强制检查：如果没有 hasFace 字段，尝试判断
+          if (!hasOwnProperty.call(analysis, 'hasFace')) {
+            console.log('警告：响应中没有 hasFace 字段，默认设为 true')
+            analysis.hasFace = true
+          }
+
           return analysis
         }
       } catch (parseError) {
@@ -379,37 +392,34 @@ export class AvatarService {
   }
 
   /**
-   * 获取默认分析结果
+   * 获取默认分析结果（当模型分析失败时使用）
+   * 默认返回 hasFace: false，因为如果无法分析，就不应该继续
    */
   private getDefaultAnalysis() {
     return {
-      hasFace: true,
-      faceConfidence: 1.0,
+      hasFace: false,
+      faceConfidence: 0.0,
       facialFeatures: {
-        expression: '自然温和',
-        eyes: '明亮有神',
-        impression: '给人一种亲切可靠的感觉'
+        expression: '无法识别',
+        eyes: '无法识别',
+        impression: '照片分析失败'
       },
       temperament: {
-        type: '阳光活力型',
-        description: '开朗外向，充满正能量，善于与人沟通',
-        keywords: ['活力', '热情', '积极']
+        type: '未知',
+        description: '无法分析',
+        keywords: []
       },
       personality: {
-        core: ['开朗', '细心', '有责任心'],
-        strengths: ['善于沟通', '执行力强'],
-        workStyle: '高效务实，注重细节'
+        core: [],
+        strengths: [],
+        workStyle: '无法分析'
       },
-      communicationStyle: '直接明了，善于倾听，能够准确理解他人需求',
-      strengths: ['对话交流', '信息整理', '任务执行'],
+      communicationStyle: '无法分析',
+      strengths: [],
       recommendedType: 'empathetic',
-      nameSuggestions: [
-        { name: '小墨', reason: '简洁有亲和力，适合日常互动' },
-        { name: '星云', reason: '富有想象力，适合创意任务' },
-        { name: '智慧星', reason: '突出智能特性，适合知识问答' }
-      ],
-      summary: '一位温暖而专业的伙伴，能够高效完成各种任务',
-      suggestedName: '小墨'
+      nameSuggestions: [],
+      summary: '无法分析照片',
+      suggestedName: ''
     }
   }
 
