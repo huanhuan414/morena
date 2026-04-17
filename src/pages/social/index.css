@@ -802,7 +802,7 @@
 }
 
 /* ========================================
-   图片区域 - 极简网格 + 缩放动画
+   图片区域 - 极简网格 + 等比缩放
    ======================================== */
 .post-images {
   display: grid;
@@ -810,10 +810,14 @@
   margin-bottom: 20rpx;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8rpx;
 }
 
 .images-1 {
   grid-template-columns: 1fr;
+  max-width: 500rpx;
+  margin: 0 auto 20rpx;
 }
 
 .images-2 {
@@ -826,8 +830,12 @@
 
 .post-image {
   width: 100%;
-  background: var(--border);
+  aspect-ratio: 4/3;
+  object-fit: contain;
+  background: var(--card);
+  border-radius: var(--radius-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: block;
 }
 
 .post-image:active {
@@ -865,22 +873,25 @@
 .action-btn {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 8rpx 16rpx;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 24rpx;
+  gap: 12rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28rpx;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
 }
 
 .action-btn:active {
   transform: scale(0.96);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .action-btn.liked {
-  background: rgba(255, 107, 157, 0.1);
+  background: rgba(255, 107, 157, 0.15);
+  border-color: rgba(255, 107, 157, 0.3);
   animation: likeBurst 0.5s ease-out;
 }
 
@@ -897,15 +908,15 @@
 }
 
 .action-count {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: var(--text-tertiary);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
   transition: color 0.2s ease;
 }
 
 .action-count.liked {
   color: #ff6b9d;
-  font-weight: 600;
+  font-weight: 700;
   animation: numberBounce 0.3s ease-out;
 }
 
@@ -1374,10 +1385,16 @@
 
 [data-theme="dark"] .action-btn {
   background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] .action-btn:active {
   background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .action-count {
+  color: var(--text-secondary);
 }
 
 [data-theme="dark"] .comment-input {
@@ -1391,4 +1408,8 @@
     rgba(255, 255, 255, 0.03) 50%,
     transparent 70%
   );
+}
+
+[data-theme="dark"] .post-image {
+  background: rgba(255, 255, 255, 0.03);
 }
