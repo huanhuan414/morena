@@ -442,3 +442,16 @@
   color: rgba(255, 255, 255, 0.5);
   margin-top: 8rpx;
 }
+
+/* 缺失的class样式 */
+.article {
+  padding: 12rpx 16rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+}
+
+.video {
+  padding: 12rpx 16rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+}

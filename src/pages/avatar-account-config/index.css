@@ -411,3 +411,31 @@
   }
 }
 
+
+/* 缺失的class样式 */
+.cancel {
+  padding: 12rpx 24rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.confirm {
+  padding: 12rpx 24rpx;
+  background: var(--primary);
+  border-radius: var(--radius-md);
+  color: var(--primary-foreground);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.danger {
+  color: var(--destructive);
+}
+
+.required {
+  color: var(--destructive);
+  font-weight: 600;
+}

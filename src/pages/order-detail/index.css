@@ -1263,3 +1263,50 @@
 }
 
 /* Tabs 组件样式（不再使用，但保留以备将来需要） */
+
+/* 缺失的class样式 */
+.avatar-image {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.budget {
+  padding: 12rpx 16rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+}
+
+.empty-text {
+  font-size: 26rpx;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.error-state {
+  padding: 24rpx;
+  background: var(--destructive-light);
+  border-radius: var(--radius-md);
+}
+
+.error-text {
+  font-size: 26rpx;
+  color: var(--destructive);
+}
+
+.mini {
+  font-size: 22rpx;
+}
+
+.mt-2 {
+  margin-top: 8rpx;
+}
+
+.reject-input {
+  width: 100%;
+  padding: 12rpx 16rpx;
+  background: var(--secondary);
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-md);
+}

@@ -963,3 +963,39 @@
 .target-name {
   display: block;
 }
+
+/* 缺失的class样式 */
+.ai {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 242, 254, 0.08) 100%);
+}
+
+.ip {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 193, 7, 0.08) 100%);
+}
+
+.personal-ip {
+  background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+}
+
+
+/* 补充独立类定义 */
+.agent-order {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.12) 0%, rgba(0, 242, 254, 0.08) 100%);
+  border-color: rgba(79, 172, 254, 0.2);
+}
+
+.drama-kit {
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.12) 0%, rgba(245, 87, 108, 0.08) 100%);
+  border-color: rgba(240, 147, 251, 0.2);
+}
+
+.more {
+  background: rgba(102, 126, 234, 0.12);
+  border-color: rgba(102, 126, 234, 0.18);
+}
+
+.remove {
+  background: linear-gradient(135deg, rgba(255, 99, 132, 0.12) 0%, rgba(255, 71, 87, 0.06) 100%);
+  border-color: rgba(255, 99, 132, 0.25);
+  color: #ff6384;
+}

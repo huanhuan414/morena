@@ -385,3 +385,12 @@
 .bottom-space {
   height: 24rpx;
 }
+
+/* 缺失的class样式 */
+.blue {
+  color: #3b82f6;
+}
+
+.green {
+  color: #22c55e;
+}

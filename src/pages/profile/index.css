@@ -1,3 +1,7 @@
+.status-bar-placeholder {
+  width: 100%;
+}
+
 .profile-page {
   min-height: 100vh;
   background: var(--background);

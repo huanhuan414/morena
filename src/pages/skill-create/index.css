@@ -603,3 +603,8 @@
 .spinning {
   animation: spin 1s linear infinite;
 }
+
+/* 缺失的class样式 */
+.scroll {
+  overflow-y: auto;
+}

@@ -309,3 +309,22 @@
   font-size: 12px;
   color: #999;
 }
+
+/* 缺失的class样式 */
+.accept {
+  padding: 12rpx 24rpx;
+  background: var(--success);
+  border-radius: var(--radius-md);
+  color: var(--success-foreground);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.reject {
+  padding: 12rpx 24rpx;
+  background: var(--destructive);
+  border-radius: var(--radius-md);
+  color: var(--destructive-foreground);
+  font-size: 26rpx;
+  font-weight: 600;
+}

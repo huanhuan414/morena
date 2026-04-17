@@ -1278,3 +1278,15 @@
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+/* 缺失的class样式 */
+.header-spacer {
+  height: 40rpx;
+}
+
+.step-content {
+  padding: 16rpx;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  margin-bottom: 12rpx;
+}

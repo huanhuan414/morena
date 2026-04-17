@@ -538,3 +538,11 @@
   animation-delay: calc(var(--card-index, 0) * 0.1s);
   opacity: 0;
 }
+
+/* 缺失的class样式 */
+.sub-current-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}

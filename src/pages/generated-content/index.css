@@ -347,3 +347,37 @@
 .action-btn.secondary .action-btn-text {
   color: #00f5ff;
 }
+
+/* 缺失的class样式 */
+.cancel {
+  padding: 12rpx 24rpx;
+  background: var(--secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.save {
+  padding: 12rpx 24rpx;
+  background: var(--primary);
+  border-radius: var(--radius-md);
+  color: var(--primary-foreground);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.secondary {
+  background: var(--secondary);
+  color: var(--text-primary);
+}
+
+.success {
+  background: var(--success);
+  color: var(--success-foreground);
+}
