@@ -3970,20 +3970,20 @@ export default function MindChatPage() {
           {/* 第二行：按钮区域 */}
           <View className="button-row">
             <View className="button-row-left">
-              <View className="icon-btn" onClick={handleUploadImage}>
-                <Paperclip size={18} color="rgba(255,255,255,0.6)" />
+              <View className="icon-btn image-btn" onClick={handleUploadImage}>
+                <Paperclip size={18} color="#10b981" />
               </View>
-              <View className="icon-btn" onClick={handleUploadVideo}>
-                <VideoIcon size={18} color="rgba(255,255,255,0.6)" />
+              <View className="icon-btn video-btn" onClick={handleUploadVideo}>
+                <VideoIcon size={18} color="#f59e0b" />
               </View>
-              <View className="icon-btn" onClick={navigateToSkillsSquare}>
-                <Wrench size={18} color="rgba(255,255,255,0.6)" />
+              <View className="icon-btn skill-btn" onClick={navigateToSkillsSquare}>
+                <Wrench size={18} color="#8b5cf6" />
               </View>
               <View
                 className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
                 onClick={toggleVoiceMode}
               >
-                <Mic size={18} color={isVoiceMode ? '#00f5ff' : 'rgba(255,255,255,0.6)'} />
+                <Mic size={18} color={isVoiceMode ? '#ef4444' : '#06b6d4'} />
               </View>
             </View>
 
