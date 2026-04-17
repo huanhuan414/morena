@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { ChevronRight, Bell, Shield, Moon, Globe, Database, Trash2 } from 'lucide-react-taro'
+import { ChevronRight, Bell, Shield, Moon, Globe, Database, Trash2, Sparkles } from 'lucide-react-taro'
 import './settings.css'
 
 interface UserSettings {
@@ -15,10 +15,10 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const { userInfo } = useUserStore()
+  const { userInfo, isDarkMode, setDarkMode } = useUserStore()
   const [settings, setSettings] = useState<UserSettings>({
     notification_enabled: true,
-    dark_mode: true,
+    dark_mode: isDarkMode,
     auto_backup: true,
     language: 'zh-CN'
   })
@@ -50,7 +50,7 @@ export default function SettingsPage() {
       if (res.data?.code === 200 && res.data.data?.settings) {
         setSettings({
           notification_enabled: res.data.data.settings.notification_enabled ?? true,
-          dark_mode: res.data.data.settings.dark_mode ?? true,
+          dark_mode: res.data.data.settings.dark_mode ?? isDarkMode,
           auto_backup: res.data.data.settings.auto_backup ?? true,
           language: res.data.data.settings.language || 'zh-CN'
         })
@@ -63,7 +63,12 @@ export default function SettingsPage() {
   const updateSettings = async (key: keyof UserSettings, value: any) => {
     const newSettings = { ...settings, [key]: value }
     setSettings(newSettings)
-    
+
+    // 如果是深色模式切换，同步到全局状态
+    if (key === 'dark_mode') {
+      setDarkMode(value)
+    }
+
     try {
       const res = await Network.request({
         url: '/api/user/profile',
@@ -78,6 +83,9 @@ export default function SettingsPage() {
       showToast({ title: '保存失败', icon: 'none' })
       // 回滚
       setSettings(settings)
+      if (key === 'dark_mode') {
+        setDarkMode(settings.dark_mode)
+      }
     }
   }
 
@@ -138,18 +146,33 @@ export default function SettingsPage() {
 
           <View className="setting-item">
             <View className="setting-left">
-              <Moon size={20} color="#bf00ff" />
+              <Moon size={20} color={isDarkMode ? '#00f5ff' : '#bf00ff'} />
               <Text className="setting-text">深色模式</Text>
             </View>
-            <Switch 
+            <Switch
               checked={settings.dark_mode}
               onCheckedChange={(checked) => updateSettings('dark_mode', checked)}
             />
           </View>
 
+          {/* 主题预览卡片 */}
+          <View className="theme-preview-card">
+            <View className="theme-preview-header">
+              <Sparkles size={16} color={isDarkMode ? '#00f5ff' : '#2563eb'} />
+              <Text className="theme-preview-title">
+                {isDarkMode ? '霓虹科技风格' : '明亮高级风格'}
+              </Text>
+            </View>
+            <View className="theme-preview-content">
+              <View className="theme-color-dot" style={{ background: isDarkMode ? '#00f5ff' : '#2563eb' }} />
+              <View className="theme-color-dot" style={{ background: isDarkMode ? '#bf00ff' : '#f59e0b' }} />
+              <View className="theme-color-dot" style={{ background: isDarkMode ? '#00ff88' : '#10b981' }} />
+            </View>
+          </View>
+
           <View className="setting-item">
             <View className="setting-left">
-              <Database size={20} color="#00ff88" />
+              <Database size={20} color="#10b981" />
               <Text className="setting-text">自动备份</Text>
             </View>
             <Switch 

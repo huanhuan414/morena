@@ -6,9 +6,75 @@
 **设计风格**：明亮、高级、大气、现代
 **目标用户**：追求高品质数字体验的年轻用户
 
+## 主题系统
+
+### 双主题设计
+
+应用支持两种主题模式：
+
+#### 明亮模式（默认）
+- 背景色：#f8fafc（浅灰）
+- 主色调：#2563eb（典雅蓝）
+- 强调色：#f59e0b（温暖金）
+- 风格：明亮、高级、大气
+
+#### 深色模式（霓虹科技风格）
+- 背景色：#0a0e27（深蓝黑）
+- 主色调：#00f5ff（霓虹青）
+- 强调色：#bf00ff（霓虹紫）
+- 风格：科技感、未来感、高级感
+
+### 主题切换
+
+- 用户可以在个人设置页面切换主题
+- 主题设置会持久化到本地存储
+- 切换主题时会有平滑过渡动画（0.3s）
+
+### 主题预览
+
+在设置页面可以看到当前主题的预览：
+- 显示主题名称（霓虹科技风格 / 明亮高级风格）
+- 显示主题的主要颜色点（3个）
+
+### CSS 变量系统
+
+所有颜色都使用 CSS 变量定义：
+```css
+:root {
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --primary: #2563eb;
+  --accent: #f59e0b;
+  /* ... */
+}
+
+.dark {
+  --background: #0a0e27;
+  --foreground: #f1f5f9;
+  --primary: #00f5ff;
+  --accent: #bf00ff;
+  /* ... */
+}
+```
+
+使用时：
+```tsx
+<View className="bg-background text-primary">
+```
+
+### Tailwind 类名映射
+
+```tsx
+// 明亮模式
+bg-slate-50 text-blue-600
+
+// 深色模式（通过 CSS 变量自动切换）
+bg-background text-primary
+```
+
 ## 配色方案
 
-### 主色板
+### 明亮模式（默认）
 
 ```css
 /* 主色调 - 典雅蓝 */
@@ -56,11 +122,61 @@
 --neon-cyan: #06b6d4;
 --neon-purple: #8b5cf6;
 --neon-pink: #ec4899;
-
-/* 选择 */
---selection: #dbeafe;
---selection-foreground: #1e293b;
 ```
+
+### 深色模式（霓虹科技风格）
+
+```css
+/* 主色调 - 霓虹青 */
+--primary: #00f5ff; /* Neon Cyan - 科技感 */
+--primary-foreground: #0a0e27;
+
+/* 辅助色 */
+--primary-light: #33faff;
+--primary-dark: #00b8c4;
+
+/* 强调色 - 霓虹紫 */
+--accent: #bf00ff; /* Neon Purple - 高级感 */
+--accent-foreground: #ffffff;
+
+/* 中性色 */
+--background: #0a0e27; /* Deep Blue-Black */
+--foreground: #f1f5f9; /* Light Slate */
+
+/* 卡片色 */
+--card: rgba(22, 33, 62, 0.85); /* 半透明深蓝 */
+--card-foreground: #f1f5f9;
+
+/* 次要色 */
+--secondary: #16213e; /* Dark Blue */
+--secondary-foreground: #94a3b8;
+
+/* 静音色 */
+--muted: #1e293b; /* Dark Gray */
+--muted-foreground: #64748b;
+
+/* 边框 */
+--border: rgba(0, 245, 255, 0.15); /* 青色边框 */
+--input: rgba(0, 245, 255, 0.2);
+
+/* 环形焦点 */
+--ring: #00f5ff;
+
+/* 语义色 - 霓虹色系 */
+--success: #00ff88; /* Neon Green */
+--warning: #ffaa00; /* Neon Orange */
+--destructive: #ff4757; /* Neon Red */
+--info: #00f5ff; /* Neon Cyan */
+
+/* 特殊强调色 */
+--neon-cyan: #00f5ff;
+--neon-purple: #bf00ff;
+--neon-pink: #ff00aa;
+```
+
+## 配色方案
+
+（已整合到"主题系统"章节）
 
 ### Tailwind 类名映射
 
