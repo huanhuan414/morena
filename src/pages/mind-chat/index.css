@@ -551,7 +551,7 @@
 }
 
 .message-time {
-  font-size: 12rpx;
+  font-size: 18rpx;
   font-weight: 500;
   color: var(--text-tertiary);
   margin: 0;
@@ -577,12 +577,12 @@
 }
 
 .message-action {
-  width: 28rpx;
-  height: 28rpx;
+  width: 36rpx;
+  height: 36rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6rpx;
+  border-radius: 8rpx;
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.05);
 }

@@ -3802,7 +3802,7 @@ export default function MindChatPage() {
                     onClick={() => copyMessage(typeof msg.content === 'string' ? msg.content : '')}
                   >
                     <Copy
-                      size={10}
+                      size={14}
                       color={msg.role === 'user' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.3)'}
                     />
                   </View>
