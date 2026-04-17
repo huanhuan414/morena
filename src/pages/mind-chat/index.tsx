@@ -2883,7 +2883,8 @@ export default function MindChatPage() {
                         src={media.url || ''}
                         className="media-image"
                         mode="aspectFit"
-                        style={{ maxHeight: '800rpx' }}
+                        style={{ height: '800rpx', width: '100%' }}
+                        lazyLoad
                         onLoad={() => {
                           console.log('[图片渲染] 图片加载成功:', media.url)
                         }}
