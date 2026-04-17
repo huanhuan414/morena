@@ -381,7 +381,14 @@
 .af-action-btn-text {
   font-size: 24rpx;
   font-weight: 700;
-  color: #fff;
+}
+
+.af-chat-btn .af-action-btn-text {
+  color: #00f5ff;
+}
+
+.af-call-btn .af-action-btn-text {
+  color: #00ff88;
 }
 
 /* Chat Modal */
