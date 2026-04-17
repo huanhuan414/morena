@@ -27,7 +27,10 @@
 
 .grid-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-image:
     linear-gradient(rgba(59, 130, 246, 0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(59, 130, 246, 0.02) 1px, transparent 1px);
@@ -64,7 +67,7 @@
   flex-shrink: 0;
   border-radius: 28rpx;
   background: var(--card);
-  backdrop-filter: blur(40rpx);
+  /* backdrop-filter removed for compatibility */
   border: 2rpx solid var(--border);
   box-shadow: var(--card-shadow);
   display: flex;
@@ -160,7 +163,7 @@
   background: var(--card);
   border: 2rpx solid var(--border);
   border-radius: var(--radius-xl);
-  backdrop-filter: blur(40rpx);
+  /* backdrop-filter removed for compatibility */
   z-index: 10;
   box-sizing: border-box;
   transition: all var(--transition-slow) ease;
