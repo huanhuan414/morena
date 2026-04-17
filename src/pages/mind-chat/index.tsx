@@ -3856,7 +3856,9 @@ export default function MindChatPage() {
         scrollIntoView={scrollIntoView}
         scrollWithAnimation
         enableBackToTop
-        refresherEnabled={false}  // 禁用下拉刷新，避免与 onScrollToUpper 冲突
+        enableFlex
+        style={{ height: '100%' }}
+        refresherEnabled={false}
         refresherTriggered={refreshing}
         onRefresherRefresh={() => {
           console.log('[下拉刷新] 触发刷新')
@@ -3864,31 +3866,51 @@ export default function MindChatPage() {
           loadMoreMessages()
         }}
         onScrollToUpper={() => {
-          // 滚动到顶部时加载更多历史消息
-          console.log('[滚动检测] 滚动到顶部，加载更多消息')
+          console.log('[滚动检测] onScrollToUpper 触发')
+          console.log('[滚动检测] hasMoreMessages:', hasMoreMessages, 'isLoadingMore:', isLoadingMore)
           loadMoreMessages()
         }}
-        upperThreshold={50}
+        upperThreshold={200}
         onScroll={(e) => {
-          // 调试：打印滚动位置
           const scrollTop = e.detail.scrollTop
-          // 只在滚动到最顶部时打印
+          const scrollHeight = e.detail.scrollHeight
+          // 只在顶部附近时打印
+          if (scrollTop <= 200) {
+            console.log('[滚动位置] scrollTop:', scrollTop, 'scrollHeight:', scrollHeight)
+          }
           if (scrollTop <= 10) {
-            console.log('[滚动位置] 接近顶部:', scrollTop)
+            console.log('[滚动检测] 已滚动到最顶部')
           }
         }}
       >
+        {/* 加载更多按钮（顶部） */}
+        {hasMoreMessages && messages.length > 0 && (
+          <View
+            className="text-center py-2"
+            onClick={() => {
+              console.log('[手动加载] 用户点击加载更多')
+              loadMoreMessages()
+            }}
+          >
+            <Text className="text-xs text-blue-500">点击加载更多消息</Text>
+          </View>
+        )}
+        
         {/* 加载更多提示 */}
         {isLoadingMore && (
-          <View className="loading-more-tip">
-            <Text className="loading-more-text">加载中...</Text>
+          <View className="text-center py-3">
+            <Text className="text-sm text-gray-500">加载中...</Text>
           </View>
         )}
+        
+        {/* 没有更多消息提示 */}
         {!hasMoreMessages && messages.length > 0 && (
-          <View className="no-more-tip">
-            <Text className="no-more-text">没有更多消息了</Text>
+          <View className="text-center py-3">
+            <Text className="text-sm text-gray-400">没有更多消息了</Text>
           </View>
         )}
+        
+        {/* 消息列表 */}
         {messages.length === 0 ? (
           hasNoAvatar ? (
             <View className="no-avatar-empty">
