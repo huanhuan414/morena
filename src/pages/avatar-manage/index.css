@@ -1,19 +1,17 @@
-/* 分身管理页面 - 明亮模式优化设计 */
+/* 分身管理页面 - 修复基础样式 */
 
-/* 页面容器 */
+/* ========== 页面容器 ========== */
 .avatar-manage-page {
   min-height: 100vh;
   background: var(--background);
   padding-bottom: 120rpx;
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
 }
 
-/* 顶部导航 */
-.page-header {
+/* ========== 头部 ========== */
+.manage-header {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 24rpx;
@@ -23,8 +21,6 @@
   top: 0;
   z-index: 10;
   width: 100%;
-  box-sizing: border-box;
-  box-shadow: var(--card-shadow);
 }
 
 .header-title {
@@ -33,35 +29,28 @@
   color: var(--text-primary);
 }
 
-/* 创建按钮 */
-.create-btn {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 24rpx;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 26rpx;
-  font-weight: 500;
-  box-shadow: var(--card-shadow);
-  transition: all var(--transition-normal) ease;
+.header-left-wrap {
+  flex: 1;
 }
 
-.create-btn:active {
-  transform: scale(0.95);
-  opacity: 0.9;
+.header-right-placeholder {
+  flex-shrink: 0;
+  width: 120rpx;
 }
 
-/* 分身列表 */
-.avatar-list {
+/* ========== 滚动容器 ========== */
+.manage-scroll {
+  flex: 1;
   padding: 24rpx;
   width: 100%;
-  box-sizing: border-box;
 }
 
-/* 分身卡片 */
+/* ========== 分身容器 ========== */
+.avatars-container {
+  width: 100%;
+}
+
+/* ========== 分身卡片 ========== */
 .avatar-card {
   background: var(--card);
   border: 1rpx solid var(--border);
@@ -69,21 +58,6 @@
   padding: 24rpx;
   margin-bottom: 24rpx;
   box-shadow: var(--card-shadow);
-  transition: all var(--transition-normal) ease;
-  position: relative;
-}
-
-.avatar-card:active {
-  transform: scale(0.98);
-  box-shadow: var(--card-shadow);
-}
-
-/* 分身信息 */
-.avatar-header {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
 }
 
 .avatar-avatar {
@@ -93,7 +67,19 @@
   background: var(--secondary);
   border: 2rpx solid var(--border);
   overflow: hidden;
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-placeholder {
+  font-size: 48rpx;
+  color: var(--text-muted);
 }
 
 .avatar-details {
@@ -111,108 +97,191 @@
   white-space: nowrap;
 }
 
-.avatar-desc {
-  font-size: 24rpx;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 标签 */
-.avatar-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-bottom: 20rpx;
-}
-
-.tag-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4rpx;
-  padding: 6rpx 16rpx;
-  background: var(--secondary);
-  border: 1rpx solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 22rpx;
-  color: var(--text-secondary);
-}
-
-/* 状态指示器 */
-.avatar-status {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid var(--border-light);
-}
-
-.status-dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.status-dot.online {
-  background: var(--success);
-  box-shadow: 0 0 8rpx rgba(16, 185, 129, 0.4);
-}
-
-.status-dot.offline {
-  background: var(--text-muted);
-}
-
-.status-text {
+.avatar-meta {
   font-size: 24rpx;
   color: var(--text-tertiary);
+  margin-bottom: 4rpx;
 }
 
-/* 操作按钮 */
-.avatar-actions {
-  display: flex;
-  gap: 12rpx;
+.avatar-personality {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+/* ========== 托管状态 ========== */
+.hosting-section {
   margin-top: 16rpx;
   padding-top: 16rpx;
   border-top: 1rpx solid var(--border-light);
 }
 
-.action-btn {
-  flex: 1;
+.hosting-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  padding: 16rpx;
-  background: var(--secondary);
-  color: var(--text-secondary);
-  border: 1rpx solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 26rpx;
-  transition: all var(--transition-normal) ease;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
 }
 
-.action-btn.primary {
+.hosting-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.hosting-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hosting-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  background: var(--success-light);
+  border-radius: 12rpx;
+}
+
+.hosting-badge-text {
+  font-size: 22rpx;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.hosting-settings {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 8rpx;
+}
+
+.feature-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.freq-text {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+/* ========== 订单状态 ========== */
+.orders-section {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border-light);
+}
+
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.orders-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.orders-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.highlight {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ========== 自定义设置 ========== */
+.custom-section {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border-light);
+}
+
+.custom-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12rpx;
+}
+
+/* ========== 时间选择 ========== */
+.custom-time-picker {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.frequency-options {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+
+/* ========== 信息区域 ========== */
+.avatar-info-section {
+  margin-top: 16rpx;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+}
+
+.meta-divider {
+  width: 1rpx;
+  height: 24rpx;
+  background: var(--border);
+}
+
+/* ========== 好友列表 ========== */
+.friend-list-entry {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.friend-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.friend-entry-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+/* ========== 创建按钮 ========== */
+.create-btn-small {
+  padding: 12rpx 24rpx;
   background: var(--primary);
   color: var(--primary-foreground);
-  border-color: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 26rpx;
+  font-weight: 500;
 }
 
-.action-btn.danger {
-  background: var(--destructive-light);
-  color: var(--destructive);
-  border-color: var(--destructive);
+.create-text-small {
+  font-size: 26rpx;
 }
 
-.action-btn:active {
-  transform: scale(0.95);
-  opacity: 0.9;
-}
-
-/* 空状态 */
-.empty-state {
+/* ========== 空状态 ========== */
+.empty-section {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -221,103 +290,39 @@
   gap: 24rpx;
 }
 
-.empty-state-icon {
+.empty-icon {
   font-size: 120rpx;
   color: var(--text-muted);
   opacity: 0.5;
 }
 
-.empty-state-text {
+.empty-title {
   font-size: 28rpx;
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-.empty-state-hint {
-  font-size: 24rpx;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* 加载状态 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60rpx 24rpx;
-  gap: 24rpx;
-}
-
-.loading-spinner {
-  width: 48rpx;
-  height: 48rpx;
-  border: 4rpx solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
-}
-
-/* 统计信息 */
-.avatar-stats {
-  display: flex;
-  gap: 24rpx;
-  margin-bottom: 16rpx;
-}
-
-.stat-item {
-  flex: 1;
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 32rpx;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-primary);
 }
 
-.stat-label {
-  font-size: 22rpx;
-  color: var(--text-tertiary);
-  margin-top: 4rpx;
-}
-
-/* 托管状态 */
-.hosting-status {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 16rpx;
-  background: var(--success-light);
-  border: 1rpx solid var(--success);
-  border-radius: var(--radius-md);
-  margin-bottom: 16rpx;
-}
-
-.hosting-status.inactive {
-  background: var(--secondary);
-  border-color: var(--border);
-}
-
-.hosting-icon {
-  font-size: 28rpx;
-}
-
-.hosting-text {
+.empty-desc {
   font-size: 24rpx;
-  color: var(--success);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.empty-btn {
+  padding: 16rpx 32rpx;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 28rpx;
   font-weight: 500;
 }
 
-.hosting-status.inactive .hosting-text {
-  color: var(--text-tertiary);
+.empty-btn-text {
+  font-size: 28rpx;
+}
+
+/* ========== 底部空间 ========== */
+.bottom-space {
+  height: 60rpx;
 }
