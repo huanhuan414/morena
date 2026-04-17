@@ -372,7 +372,7 @@ export default function AvatarManagePage() {
                     <Text className="avatar-personality">{getPersonalityName(avatar.personality)}</Text>
                   </View>
                   <Button className="settings-btn" onClick={() => goToSettings(avatar.id)}>
-                    <Settings size={20} color="rgba(255,255,255,0.6)" />
+                    <Settings size={24} color="#ffffff" />
                   </Button>
                 </View>
 

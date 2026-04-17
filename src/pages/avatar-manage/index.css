@@ -261,11 +261,12 @@
   border-radius: var(--radius-xl);
   border: 1.5rpx solid rgba(6, 182, 212, 0.15);
   padding: 28rpx;
+  padding-top: 36rpx;  /* 为设置按钮留出空间 */
+  padding-right: 84rpx;  /* 为设置按钮留出空间 */
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
 }
 
 .avatar-card::before {
@@ -371,21 +372,27 @@
 }
 
 .settings-btn {
-  width: 64rpx;
-  height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1.5rpx solid rgba(255, 255, 255, 0.15);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+  box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  z-index: 10;
 }
 
 .settings-btn:active {
   transform: scale(0.9);
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%);
+  box-shadow: 0 2rpx 8rpx rgba(6, 182, 212, 0.2);
 }
 
 /* Hosting Section */
