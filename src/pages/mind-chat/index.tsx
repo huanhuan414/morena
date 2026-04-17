@@ -2907,27 +2907,70 @@ export default function MindChatPage() {
                           className="image-action-btn"
                           onClick={async (e) => {
                             e.stopPropagation()
-                            // 下载图片到相册
+                            console.log('[图片下载] 开始下载图片:', media.url)
                             Taro.showLoading({ title: '保存中...' })
                             try {
-                              // 直接使用 Taro.downloadFile，避免跨域问题
-                              const res = await Taro.downloadFile({
-                                url: media.url || ''
-                              })
-                              console.log('[图片下载] 下载成功，临时文件:', res.tempFilePath)
-                              await Taro.saveImageToPhotosAlbum({
-                                filePath: res.tempFilePath
-                              })
-                              Taro.hideLoading()
-                              Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                              const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+
+                              if (isH5) {
+                                // H5 端：直接打开图片，让用户手动保存
+                                console.log('[图片下载] H5 端，直接打开图片')
+                                Taro.hideLoading()
+                                Taro.showToast({
+                                  title: '长按图片保存到相册',
+                                  icon: 'none',
+                                  duration: 2000
+                                })
+                                // 延迟后显示预览
+                                setTimeout(() => {
+                                  Taro.previewImage({
+                                    current: media.url,
+                                    urls: [media.url || '']
+                                  })
+                                }, 500)
+                              } else {
+                                // 小程序端：下载到相册
+                                console.log('[图片下载] 小程序端，开始下载')
+                                const res = await Taro.downloadFile({
+                                  url: media.url || ''
+                                })
+                                console.log('[图片下载] 下载成功，临时文件:', res.tempFilePath)
+
+                                if (res.tempFilePath) {
+                                  await Taro.saveImageToPhotosAlbum({
+                                    filePath: res.tempFilePath
+                                  })
+                                  Taro.hideLoading()
+                                  Taro.showToast({ title: '已保存到相册', icon: 'success' })
+                                } else {
+                                  throw new Error('下载失败，未获取到临时文件')
+                                }
+                              }
                             } catch (err) {
                               Taro.hideLoading()
-                              console.error('保存失败:', err)
+                              console.error('[图片下载] 保存失败:', err)
+
                               // 检查是否是权限问题
                               if (err.errMsg && err.errMsg.includes('auth')) {
-                                Taro.showToast({ title: '请先授权访问相册', icon: 'none' })
+                                Taro.showModal({
+                                  title: '需要授权',
+                                  content: '需要访问相册权限才能保存图片',
+                                  confirmText: '去授权',
+                                  success: (res) => {
+                                    if (res.confirm) {
+                                      Taro.openSetting()
+                                    }
+                                  }
+                                })
                               } else {
-                                Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+                                // 通用错误处理
+                                const errorMsg = err.errMsg || err.message || '下载失败'
+                                console.error('[图片下载] 错误详情:', errorMsg)
+                                Taro.showToast({
+                                  title: errorMsg.includes('fail') ? '下载失败，请重试' : errorMsg,
+                                  icon: 'none',
+                                  duration: 2000
+                                })
                               }
                             }
                           }}
@@ -3812,9 +3855,11 @@ export default function MindChatPage() {
         scrollTop={scrollTop}
         scrollIntoView={scrollIntoView}
         scrollWithAnimation
-        refresherEnabled
+        enableBackToTop
+        refresherEnabled={false}  // 禁用下拉刷新，避免与 onScrollToUpper 冲突
         refresherTriggered={refreshing}
         onRefresherRefresh={() => {
+          console.log('[下拉刷新] 触发刷新')
           setRefreshing(true)
           loadMoreMessages()
         }}
@@ -3824,6 +3869,14 @@ export default function MindChatPage() {
           loadMoreMessages()
         }}
         upperThreshold={50}
+        onScroll={(e) => {
+          // 调试：打印滚动位置
+          const scrollTop = e.detail.scrollTop
+          // 只在滚动到最顶部时打印
+          if (scrollTop <= 10) {
+            console.log('[滚动位置] 接近顶部:', scrollTop)
+          }
+        }}
       >
         {/* 加载更多提示 */}
         {isLoadingMore && (
