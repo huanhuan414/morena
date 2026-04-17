@@ -27,7 +27,7 @@ export class AvatarService {
     // 检查用户是否可以创建分身
     const canCreate = await this.subscriptionService.canCreateAvatar(userId)
     if (!canCreate.canCreate) {
-      throw new Error(canCreate.reason || 'Cannot create avatar, please check your subscription plan')
+      throw new Error(canCreate.reason || '无法创建分身，请检查您的订阅计划')
     }
 
     const client = getSupabaseClient()
@@ -99,7 +99,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to create avatar: ${error.message}`)
+      throw new Error(`创建分身失败: ${error.message}`)
     }
 
     // 添加用户选择的技能到分身技能表
@@ -463,7 +463,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
     
     if (error) {
-      throw new Error(`Failed to get avatar list: ${error.message}`)
+      throw new Error(`获取分身列表失败: ${error.message}`)
     }
     
     return data
@@ -479,7 +479,7 @@ export class AvatarService {
       .maybeSingle()
 
     if (error) {
-      throw new Error(`Failed to get avatar detail: ${error.message}`)
+      throw new Error(`获取分身详情失败: ${error.message}`)
     }
     
     return data
@@ -496,7 +496,7 @@ export class AvatarService {
       .single()
 
     if (fetchError || !existingAvatar) {
-      throw new Error(`Avatar not found: ${avatarId}`)
+      throw new Error(`分身不存在: ${avatarId}`)
     }
 
     // 如果更新了地理位置，进行逆地理编码
@@ -514,7 +514,7 @@ export class AvatarService {
       } catch (error) {
         console.warn('[更新分身] 逆地理编码失败，使用原始坐标:', error)
         // 逆地理编码失败，使用原始坐标
-        finalUpdates.location_text = updates.latitude.toFixed(6) + ", " + updates.longitude.toFixed(6)
+        finalUpdates.location_text = `${updates.latitude.toFixed(6)}, ${updates.longitude.toFixed(6)}`
       }
     }
 
@@ -531,7 +531,7 @@ export class AvatarService {
 
     if (error) {
       console.error('[AvatarService] 更新分身失败:', error)
-      throw new Error(`Failed to update avatar: ${error.message}`)
+      throw new Error(`更新分身失败: ${error.message}`)
     }
 
     return data
@@ -565,7 +565,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to update avatar exp: ${error.message}`)
+      throw new Error(`更新分身经验失败: ${error.message}`)
     }
     
     if (newLevel > avatar.level) {
@@ -607,7 +607,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to set hosting: ${error.message}`)
+      throw new Error(`托管设置失败: ${error.message}`)
     }
     
     return data
@@ -620,7 +620,7 @@ export class AvatarService {
 
     // 验证用户权限
     if (avatar.user_id !== userId) {
-      throw new Error('No permission to modify this avatar')
+      throw new Error('无权修改此分身的设置')
     }
 
     const currentSettings = avatar.config?.hosting_settings || {}
@@ -639,7 +639,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to update hosting settings: ${error.message}`)
+      throw new Error(`更新托管设置失败: ${error.message}`)
     }
 
     return data
@@ -746,7 +746,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to post: ${error.message}`)
+      throw new Error(`发帖失败: ${error.message}`)
     }
     
     // 增加分身经验（有媒体内容额外加分）
@@ -996,7 +996,7 @@ export class AvatarService {
       })
     
     if (error) {
-      throw new Error(`Failed to like: ${error.message}`)
+      throw new Error(`点赞失败: ${error.message}`)
     }
     
     // 更新帖子点赞数
@@ -1050,7 +1050,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to comment: ${error.message}`)
+      throw new Error(`评论失败: ${error.message}`)
     }
     
     // 更新帖子评论数
@@ -1151,7 +1151,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to get friend list: ${error.message}`)
+      throw new Error(`获取好友列表失败: ${error.message}`)
     }
 
     // 获取所有好友分身ID（去重）
@@ -1216,7 +1216,7 @@ export class AvatarService {
       .eq('user_id', userId)
     
     if (error) {
-      throw new Error(`Failed to delete avatar: ${error.message}`)
+      throw new Error(`删除分身失败: ${error.message}`)
     }
     
     return { success: true }
@@ -1401,7 +1401,7 @@ export class AvatarService {
       .eq('status', 'accepted')
 
     if (error) {
-      throw new Error(`Failed to query friend relationship: ${error.message}`)
+      throw new Error(`查询好友关系失败: ${error.message}`)
     }
 
     // 从双向好友关系中找到对应的好友
@@ -1422,7 +1422,7 @@ export class AvatarService {
       .order('created_at', { ascending: true })
 
     if (messagesError) {
-      throw new Error(`Failed to get chat history: ${messagesError.message}`)
+      throw new Error(`获取聊天记录失败: ${messagesError.message}`)
     }
 
     return {
@@ -1450,7 +1450,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to get account data: ${error.message}`)
+      throw new Error(`获取账号数据失败: ${error.message}`)
     }
 
     return data || []
@@ -1501,7 +1501,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to create account data: ${error.message}`)
+      throw new Error(`创建账号数据失败: ${error.message}`)
     }
 
     return data
@@ -1540,7 +1540,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to update account data: ${error.message}`)
+      throw new Error(`更新账号数据失败: ${error.message}`)
     }
 
     return data
@@ -1593,7 +1593,7 @@ export class AvatarService {
       console.log('上传成功，fileKey:', fileKey)
     } catch (error: any) {
       console.error('上传到TOS失败:', error)
-      throw new Error(`Failed to upload image: ${error.message}`)
+      throw new Error(`图片上传失败: ${error.message}`)
     }
 
     // 2. 生成访问 URL
@@ -1607,7 +1607,7 @@ export class AvatarService {
       console.log('生成URL成功:', imageUrl.substring(0, 100) + '...')
     } catch (error: any) {
       console.error('生成预签名URL失败:', error)
-      throw new Error(`Failed to generate URL: ${error.message}`)
+      throw new Error(`生成URL失败: ${error.message}`)
     }
 
     // 3. 使用 LLM 视觉模型识别图片
@@ -1664,7 +1664,7 @@ export class AvatarService {
       console.log('LLM返回内容:', response.content.substring(0, 200) + '...')
     } catch (error: any) {
       console.error('LLM调用失败:', error)
-      throw new Error(`Failed to recognize image: ${error.message}`)
+      throw new Error(`图片识别失败: ${error.message}`)
     }
 
     // 4. 解析返回结果
@@ -1837,12 +1837,12 @@ export class AvatarService {
     // 1. 获取重定向URL，提取 sec_uid
     const redirectUrl = await this.getRedirectUrl(url)
     if (!redirectUrl) {
-      throw new Error('Failed to get redirect URL')
+      throw new Error('无法获取重定向URL')
     }
 
     const secUidMatch = redirectUrl.match(/sec_uid=([^&]+)/)
     if (!secUidMatch) {
-      throw new Error('Failed to extract sec_uid from redirect URL')
+      throw new Error('无法从重定向URL中提取sec_uid')
     }
 
     const secUid = secUidMatch[1]
@@ -2075,7 +2075,7 @@ ${htmlContent.substring(0, 15000)}
       .single()
 
     if (error) {
-      throw new Error('Failed to block: ' + error.message)
+      throw new Error('拉黑失败: ' + error.message)
     }
 
     return data
@@ -2094,7 +2094,7 @@ ${htmlContent.substring(0, 15000)}
       .eq('blocked_avatar_id', blockedAvatarId)
 
     if (error) {
-      throw new Error('Failed to unblock: ' + error.message)
+      throw new Error('解除拉黑失败: ' + error.message)
     }
 
     return { success: true }
@@ -2114,7 +2114,7 @@ ${htmlContent.substring(0, 15000)}
       .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error('Failed to get blocked list: ' + error.message)
+      throw new Error('获取拉黑列表失败: ' + error.message)
     }
 
     // 获取被拉黑的分身信息

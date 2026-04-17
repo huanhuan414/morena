@@ -141,11 +141,17 @@ export default function AvatarCreatePage() {
         })
       } else {
         console.error('[技能广场] API返回异常:', res)
-        showToast({ title: '加载技能失败', icon: 'none' })
+        // API失败时使用默认技能列表
+        console.log('[技能广场] 使用默认技能列表')
+        setSkillsFromSquare([])
+        showToast({ title: '使用默认技能列表', icon: 'none', duration: 1500 })
       }
     } catch (error) {
       console.error('[技能广场] 加载失败:', error)
-      showToast({ title: '加载技能失败', icon: 'none' })
+      // 加载失败时使用默认技能列表
+      console.log('[技能广场] 使用默认技能列表（API失败）')
+      setSkillsFromSquare([])
+      showToast({ title: '使用默认技能列表', icon: 'none', duration: 1500 })
     }
   }
 
@@ -959,7 +965,6 @@ export default function AvatarCreatePage() {
               >
                 <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
                 <Icon size={48} color={isSelected ? '#ffffff' : s.color} style={{ zIndex: 2 }} />
-                {isSelected && <View className="preview-pulse" style={{ borderColor: s.color }} />}
               </View>
               <Text className="appearance-name">{s.name}</Text>
               <Text className="appearance-desc">{s.desc}</Text>
