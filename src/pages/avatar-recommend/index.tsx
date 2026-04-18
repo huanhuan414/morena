@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, navigateTo } from '@tarojs/taro'
 import * as Network from '@/network'
 import { User, MapPin, Star, Zap, Heart, Sparkles, Send } from 'lucide-react-taro'
+import { getAvatarStyleClass } from '@/utils/avatar-style'
 import './index.css'
 
 interface RecommendedAvatar {
@@ -13,6 +14,7 @@ interface RecommendedAvatar {
   personality: string
   abilities: string[]
   exp: number
+  appearance_style?: string
   distance?: number
   matchScore: number
   description: string
@@ -252,8 +254,8 @@ export default function AvatarRecommendPage() {
                 <View className="avatar-avatar-container">
                   <View className="avatar-glow" />
                   <Image 
-                    src={avatar.avatar_url} 
-                    className="avatar-avatar-img"
+                    src={avatar.avatar_url}
+                    className={`avatar-avatar-img ${getAvatarStyleClass(avatar.appearance_style)}`}
                     mode="aspectFill"
                   />
                   <View className="avatar-level-badge">

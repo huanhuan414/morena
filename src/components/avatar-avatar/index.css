@@ -1,0 +1,34 @@
+.avatar-container {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-shape-circle {
+  border-radius: 50%;
+}
+
+.avatar-shape-rounded {
+  border-radius: 16rpx;
+}
+
+.avatar-shape-square {
+  border-radius: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  transition: filter 0.3s ease;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}

@@ -2,10 +2,11 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
-import { 
-  Sparkles, ArrowLeft, UserPlus, Heart, Phone, 
+import {
+  Sparkles, ArrowLeft, UserPlus, Heart, Phone,
   MessageCircle, Star, Zap, Users
 } from 'lucide-react-taro'
+import { getAvatarStyleClass } from '@/utils/avatar-style'
 import './index.css'
 
 interface FriendInfo {
@@ -14,6 +15,7 @@ interface FriendInfo {
   avatar_url: string
   level: number
   personality: string
+  appearance_style?: string
 }
 
 interface AvatarFriend {
@@ -196,10 +198,10 @@ export default function AvatarFriendsPage() {
                 <View className="af-friend-header">
                   <View className="af-friend-avatar">
                     {friend.friend?.avatar_url ? (
-                      <Image 
-                        src={friend.friend.avatar_url} 
-                        className="af-friend-img" 
-                        mode="aspectFill" 
+                      <Image
+                        src={friend.friend.avatar_url}
+                        className={`af-friend-img ${getAvatarStyleClass(friend.friend.appearance_style)}`}
+                        mode="aspectFill"
                       />
                     ) : (
                       <View className="af-friend-placeholder">

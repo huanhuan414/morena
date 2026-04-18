@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
-  Play, Video as VideoIcon, Paperclip, Plus, Image as ImageIcon
+  Play, Video as VideoIcon, Plus, Image as ImageIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import "./index.css"
@@ -513,7 +513,7 @@ export default function MindChatPage() {
 
   // 防止 loading 状态卡住：如果 loading 状态超过 5 分钟，提示用户任务可能还在执行
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
 
     if (loading) {
       timer = setTimeout(() => {
@@ -1964,7 +1964,7 @@ export default function MindChatPage() {
         method: 'POST',
         data: {
           audioUrl: uploadData.data.url,
-          uid: userStore.userInfo?.userId || 'guest'
+          uid: userInfo?.id || 'guest'
         }
       })
 
@@ -2920,7 +2920,7 @@ export default function MindChatPage() {
                           console.log('[图片渲染] 图片加载成功:', media.url, e)
                           // 获取图片实际尺寸
                           const { width, height } = e.detail
-                          const aspectRatio = height / width
+                          const aspectRatio = (typeof width === "number" const aspectRatio = (width && height) ? height / width : 1const aspectRatio = (width && height) ? height / width : 1 typeof height === "number") ? height / width : 1
                           console.log('[图片渲染] 图片尺寸:', width, height, '比例:', aspectRatio)
                         }}
                         onError={(e) => {
