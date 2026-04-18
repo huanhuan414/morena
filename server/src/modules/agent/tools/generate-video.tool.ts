@@ -8,7 +8,7 @@ import { getSupabaseClient } from '../../../storage/database/supabase-client'
  */
 export class GenerateVideoTool implements ITool {
   name = 'generate_video'
-  description = '根据文本描述生成高质量视频，支持4-12秒时长，可生成带音频的视频，适用于短视频、动画、广告等场景'
+  description = '根据文本描述生成高质量视频，支持4-12秒时长，可生成带音频的视频，适用于短视频、动画、广告等场景。只支持纯文本描述生成视频，不使用图片作为参考。'
   
   private storage: S3Storage
 
@@ -49,10 +49,6 @@ export class GenerateVideoTool implements ITool {
         type: 'boolean' as const,
         description: '是否生成音频（配音、音效、背景音乐）',
         default: true
-      },
-      firstFrameUrl: {
-        type: 'string' as const,
-        description: '首帧图片URL（可选），用于图片转视频'
       }
     },
     required: ['prompt']
@@ -64,8 +60,7 @@ export class GenerateVideoTool implements ITool {
       duration = 5,
       ratio = '16:9',
       resolution = '720p',
-      generateAudio = true,
-      firstFrameUrl
+      generateAudio = true
     } = params
     const { userId, avatarId, taskId, headers } = context
 
@@ -92,23 +87,13 @@ export class GenerateVideoTool implements ITool {
       const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers as any) : undefined
       const videoClient = new VideoGenerationClient(config, customHeaders)
 
-      // 构建内容数组
-      const content: any[] = []
-
-      // 如果有首帧图片，添加图片内容
-      if (firstFrameUrl) {
-        content.push({
-          type: 'image_url' as const,
-          image_url: { url: firstFrameUrl },
-          role: 'first_frame' as const
-        })
-      }
-
-      // 添加文本描述
-      content.push({
-        type: 'text' as const,
-        text: prompt
-      })
+      // 🔴 修复：只使用文本生成视频，不使用图片（避免真实人物限制）
+      const content = [
+        {
+          type: 'text' as const,
+          text: prompt
+        }
+      ]
 
       // 更新进度
       await client
@@ -173,7 +158,6 @@ export class GenerateVideoTool implements ITool {
             ratio,
             resolution,
             hasAudio: generateAudio,
-            firstFrameUrl,
             original_url: originalUrl
           }
         })

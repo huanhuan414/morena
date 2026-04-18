@@ -946,33 +946,15 @@ export class GenerateVideoTool implements ITool {
       // 构建 content 数组
       const content: any[] = []
 
+      // 🔴 修复：不使用 reference_images 参数，避免真实人物限制问题
+      // 只使用文本生成视频，不使用图片或视频参考
+      // 如果需要参考图片，应该使用 first_frame 而不是 reference_image
+
       // 添加优化后的文本描述
       content.push({
         type: 'text',
         text: optimizedPrompt
       })
-
-      // 添加参考图片
-      if (params.reference_images && Array.isArray(params.reference_images)) {
-        for (const imgUrl of params.reference_images) {
-          content.push({
-            type: 'image_url',
-            image_url: { url: imgUrl },
-            role: 'reference_image'
-          })
-        }
-      }
-
-      // 添加参考视频
-      if (params.reference_videos && Array.isArray(params.reference_videos)) {
-        for (const videoUrl of params.reference_videos) {
-          content.push({
-            type: 'video_url',
-            video_url: { url: videoUrl },
-            role: 'reference_video'
-          })
-        }
-      }
 
       // 添加参考音频
       if (params.reference_audios && Array.isArray(params.reference_audios)) {

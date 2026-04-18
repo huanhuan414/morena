@@ -684,17 +684,17 @@ ${scriptContent}
               await new Promise(resolve => setTimeout(resolve, delay))
             }
 
-            // 🔴 修复：构建内容数组，包含参考图像
+            // 🔴 修复：构建内容数组，使用 first_frame 作为参考图像
             const content: any[] = []
 
-            // 如果有角色参考图像，添加到内容中
+            // 如果有角色参考图像，添加到内容中（使用 first_frame 而不是 reference_image）
             if (referencedCharacterImage) {
               content.push({
                 type: 'image_url',
                 image_url: { url: referencedCharacterImage },
-                role: 'reference_image' // 🔴 修复：正确的 role 是 reference_image
+                role: 'first_frame' // 🔴 修复：使用 first_frame 而不是 reference_image
               })
-              console.log(`[短剧制作] 添加角色参考图像: ${referencedCharacterImage.substring(0, 50)}...`)
+              console.log(`[短剧制作] 添加角色参考图像（作为首帧）: ${referencedCharacterImage.substring(0, 50)}...`)
             }
 
             // 添加文本描述

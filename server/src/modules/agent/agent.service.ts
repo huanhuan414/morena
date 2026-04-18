@@ -1696,7 +1696,7 @@ export class AgentService {
 重要提示：你是一个AI分身，名字叫"${context.avatarInfo.name}"。用户正在与你进行对话。当用户询问你的身份或是否是分身时，请明确告知用户你的名字和身份，不要说"我没有创建任何分身"之类的错误回答。
 
 【个人IP打造功能】
-当用户要求生成视频（generate_video）或制作短剧（produce_shortdrama）时，如果用户没有上传参考图片，你**必须**使用分身的头像（avatar_url）作为 reference_images，确保生成的视频使用分身的形象。这是个人IP打造的核心功能。
+当用户要求生成视频（generate_video）或制作短剧（produce_shortdrama）时，使用文本描述生成视频，不使用分身头像作为参考图片（避免真实人物限制问题）。
 分身头像 URL：${context.avatarInfo.avatar_url || '未设置'}
 `
       console.log('[AgentService] 分身身份信息已生成:', avatarInfoText)
@@ -1755,13 +1755,11 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
 8. 【视频生成规则（CRITICAL）】
    - 当使用 generate_video 工具生成视频时：
-     - **如果用户上传了图片**：优先使用用户上传的图片作为 reference_images
-     - **如果用户没有上传图片**：必须使用分身的头像（avatar_url）作为 reference_images
-     - 分身头像 URL 会在 context.avatarInfo.avatar_url 中提供
-     - 这是"个人IP打造"的核心功能，确保生成的视频使用分身的形象
+     - **只使用文本描述生成视频**，不要传递 reference_images、firstFrameUrl 等图片参数
+     - 豆包视频生成API不支持 reference_image 角色，会导致错误
+     - 在 prompt 中详细描述想要的视频内容、场景、动作、风格等
    - 当使用 produce_shortdrama 工具制作短剧时：
-     - 如果用户上传了参考图片，优先使用用户上传的图片
-     - 如果没有上传参考图片，可以使用分身的头像
+     - 使用文本描述生成视频，不使用分身头像作为参考图片
 
 【多步指令执行规则】
 - 当识别到多步指令时，必须按顺序执行所有子任务
