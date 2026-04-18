@@ -344,7 +344,7 @@ export default function OrderCreatePage() {
       if (res.data?.code === 200) {
         const orderId = res.data.data?.id
 
-        // 调用支付接口
+        // 调用真实支付接口
         try {
           // 获取用户 openid（从本地存储或后端接口获取）
           const openid = Taro.getStorageSync('openid') || ''
@@ -355,6 +355,10 @@ export default function OrderCreatePage() {
             return
           }
 
+          // 检测当前环境
+          const env = Taro.getEnv()
+          const isWeapp = env === Taro.ENV_TYPE.WEAPP
+
           const payRes = await Network.request({
             url: '/api/payment/wechat/create-order-payment',
             method: 'POST',
@@ -362,35 +366,64 @@ export default function OrderCreatePage() {
               orderId,
               amount: totalPrice.total,
               description: `订单支付-${form.title}`,
-              openid
+              openid,
+              platform: isWeapp ? 'miniprogram' : 'h5'
             }
           })
 
           if (payRes.data?.code === 200) {
-            // 调用微信支付
             const payParams = payRes.data.data
 
-            await requestPayment({
-              timeStamp: payParams.timeStamp,
-              nonceStr: payParams.nonceStr,
-              package: payParams.package,
-              signType: payParams.signType,
-              paySign: payParams.paySign
-            })
+            // 根据平台使用不同的支付方式
+            if (isWeapp) {
+              // 小程序端：使用真实的小程序支付
+              console.log('[OrderCreate] 拉起小程序支付，参数:', payParams)
 
-            showToast({ title: '支付成功', icon: 'success' })
-            setTimeout(() => {
-              navigateTo({
-                url: `/pages/order-matching/index?orderId=${orderId}`
+              await requestPayment({
+                timeStamp: payParams.timeStamp,
+                nonceStr: payParams.nonceStr,
+                package: payParams.package,
+                signType: payParams.signType,
+                paySign: payParams.paySign
               })
-            }, 1500)
+
+              console.log('[OrderCreate] 小程序支付成功')
+              showToast({ title: '支付成功', icon: 'success' })
+              setTimeout(() => {
+                navigateTo({
+                  url: `/pages/order-matching/index?orderId=${orderId}`
+                })
+              }, 1500)
+            } else {
+              // H5端：跳转到微信H5支付页面
+              console.log('[OrderCreate] 跳转H5支付，mweb_url:', payParams.mweb_url)
+
+              if (payParams.mweb_url) {
+                // 保存订单ID用于支付回调
+                Taro.setStorageSync('pending_order_id', orderId)
+
+                // 跳转到微信H5支付页面
+                window.location.href = payParams.mweb_url
+              } else {
+                showToast({ title: '支付参数错误', icon: 'none' })
+                setLoading(false)
+              }
+            }
           } else {
             showToast({ title: payRes.data?.message || '支付失败', icon: 'none' })
+            setLoading(false)
           }
-        } catch (payError) {
-          console.error('支付失败:', payError)
-          // 支付失败，但订单已创建，跳转到订单匹配页面
-          showToast({ title: '支付失败，订单已创建', icon: 'none' })
+        } catch (payError: any) {
+          console.error('[OrderCreate] 支付失败:', payError)
+
+          // 如果是用户取消支付，给出提示
+          if (payError.errMsg && payError.errMsg.includes('cancel')) {
+            showToast({ title: '您已取消支付', icon: 'none' })
+          } else {
+            showToast({ title: payError.message || '支付失败', icon: 'none' })
+          }
+
+          // 支付失败/取消，但订单已创建，跳转到订单匹配页面
           setTimeout(() => {
             navigateTo({
               url: `/pages/order-matching/index?orderId=${orderId}`
@@ -399,11 +432,11 @@ export default function OrderCreatePage() {
         }
       } else {
         showToast({ title: res.data?.message || '发布失败', icon: 'none' })
+        setLoading(false)
       }
     } catch (error) {
-      console.error('发布订单失败:', error)
+      console.error('[OrderCreate] 发布订单失败:', error)
       showToast({ title: '发布失败', icon: 'none' })
-    } finally {
       setLoading(false)
     }
   }

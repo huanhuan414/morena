@@ -149,17 +149,69 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvExample
         }
       }
 
-      console.log('[WechatPayService] 创建订单参数:', params)
+      console.log('[WechatPayService] 创建小程序订单参数:', params)
 
       // 调用微信支付统一下单API（JSAPI支付/小程序支付）
       const result = await this.pay.transactions_jsapi(params)
 
-      console.log('[WechatPayService] 创建订单响应:', result)
+      console.log('[WechatPayService] 创建小程序订单响应:', result)
 
       return result
     } catch (error: any) {
-      console.error('[WechatPayService] 创建订单失败:', error)
+      console.error('[WechatPayService] 创建小程序订单失败:', error)
       throw new Error(error.message || '创建订单失败')
+    }
+  }
+
+  /**
+   * 创建H5支付订单
+   * @param description 商品描述
+   * @param outTradeNo 商户订单号
+   * @param totalAmount 订单总金额（单位：分）
+   * @param notifyUrl 支付结果通知地址
+   */
+  async createH5Order(
+    description: string,
+    outTradeNo: string,
+    totalAmount: number,
+    notifyUrl?: string
+  ): Promise<any> {
+    if (!this.pay) {
+      throw new Error('微信支付服务未初始化，请检查配置')
+    }
+
+    try {
+      const params = {
+        appid: this.appid,
+        mchid: this.mchid,
+        description,
+        out_trade_no: outTradeNo,
+        notify_url: notifyUrl || process.env.WECHAT_PAY_NOTIFY_URL || '',
+        amount: {
+          total: totalAmount,
+          currency: 'CNY'
+        },
+        scene_info: {
+          payer_client_ip: '127.0.0.1', // 实际应该获取客户端真实IP
+          h5_info: {
+            type: 'Wap',
+            app_name: '分身营销助手',
+            app_url: window?.location?.origin || 'https://yourdomain.com'
+          }
+        }
+      }
+
+      console.log('[WechatPayService] 创建H5订单参数:', params)
+
+      // 调用微信支付统一下单API（H5支付）
+      const result = await this.pay.transactions_h5(params)
+
+      console.log('[WechatPayService] 创建H5订单响应:', result)
+
+      return result
+    } catch (error: any) {
+      console.error('[WechatPayService] 创建H5订单失败:', error)
+      throw new Error(error.message || '创建H5订单失败')
     }
   }
 

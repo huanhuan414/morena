@@ -19,6 +19,7 @@ interface CreateOrderPaymentRequest {
   amount: number
   description: string
   openid: string
+  platform?: 'miniprogram' | 'h5'
 }
 
 /**
@@ -154,7 +155,7 @@ export class PaymentController {
     @Body() body: CreateOrderPaymentRequest
   ) {
     try {
-      const { orderId, amount, description, openid } = body
+      const { orderId, amount, description, openid, platform = 'miniprogram' } = body
 
       if (!openid) {
         return {
@@ -196,53 +197,86 @@ export class PaymentController {
       // 创建统一下单（金额单位：分）
       const totalAmount = Math.round(amount * 100) // 元转分
 
-      const wechatOrderResult = await this.wechatPayService.createOrder(
-        description,
+      console.log('[PaymentController] 创建订单支付:', {
+        platform,
+        orderId,
         outTradeNo,
         totalAmount,
         openid
-      )
+      })
 
-      console.log('[PaymentController] 订单支付创建成功:', wechatOrderResult)
+      // 根据平台调用不同的支付接口
+      let wechatOrderResult: any
+      let payParams: any
 
-      if (wechatOrderResult.prepay_id) {
-        // 生成小程序支付参数
-        const payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
+      if (platform === 'h5') {
+        // H5端：使用微信H5支付
+        wechatOrderResult = await this.wechatPayService.createH5Order(
+          description,
+          outTradeNo,
+          totalAmount
+        )
 
-        // 创建支付记录
-        const { data: payment, error: paymentError } = await client
-          .from('order_payments')
-          .insert({
-            user_id: userId,
-            order_id: orderId,
-            out_trade_no: outTradeNo,
-            transaction_id: wechatOrderResult.prepay_id,
-            total_amount: totalAmount,
-            status: 'pending',
-            payment_method: 'wechat',
-            payment_params: payParams
-          })
-          .select()
-          .single()
+        console.log('[PaymentController] H5支付订单创建成功:', wechatOrderResult)
 
-        if (paymentError) {
-          console.error('[PaymentController] 创建支付记录失败:', paymentError)
-          throw new Error('创建支付记录失败')
-        }
-
-        return {
-          code: 200,
-          data: {
-            paymentId: payment.id,
-            orderId,
-            outTradeNo,
-            prepayId: wechatOrderResult.prepay_id,
-            ...payParams
-          },
-          message: '支付订单创建成功'
+        if (wechatOrderResult.h5_url) {
+          payParams = {
+            mweb_url: wechatOrderResult.h5_url
+          }
+        } else {
+          throw new Error('微信H5支付订单创建失败')
         }
       } else {
-        throw new Error('微信支付订单创建失败')
+        // 小程序端：使用小程序支付
+        wechatOrderResult = await this.wechatPayService.createOrder(
+          description,
+          outTradeNo,
+          totalAmount,
+          openid
+        )
+
+        console.log('[PaymentController] 小程序支付订单创建成功:', wechatOrderResult)
+
+        if (wechatOrderResult.prepay_id) {
+          // 生成小程序支付参数
+          payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
+        } else {
+          throw new Error('微信支付订单创建失败')
+        }
+      }
+
+      // 创建支付记录
+      const { data: payment, error: paymentError } = await client
+        .from('order_payments')
+        .insert({
+          user_id: userId,
+          order_id: orderId,
+          out_trade_no: outTradeNo,
+          transaction_id: wechatOrderResult.prepay_id || wechatOrderResult.h5_url,
+          total_amount: totalAmount,
+          status: 'pending',
+          payment_method: 'wechat',
+          payment_params: payParams,
+          platform
+        })
+        .select()
+        .single()
+
+      if (paymentError) {
+        console.error('[PaymentController] 创建支付记录失败:', paymentError)
+        throw new Error('创建支付记录失败')
+      }
+
+      return {
+        code: 200,
+        data: {
+          paymentId: payment.id,
+          orderId,
+          outTradeNo,
+          platform,
+          ...payParams
+        },
+        message: '支付订单创建成功'
       }
     } catch (error: any) {
       console.error('[PaymentController] 创建订单支付失败:', error)
