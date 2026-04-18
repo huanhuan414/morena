@@ -264,76 +264,76 @@ export class AvatarService {
       const config = new Config()
       const client = new LLMClient(config)
       
-      const analysisPrompt = 'You are a professional AI avatar designer and personality analyst. Please carefully analyze this photo.\n' +
+      const analysisPrompt = '你是一位专业的AI分身形象设计师和人格分析师。请仔细分析这张照片。\n' +
         '\n' +
-        '[IMPORTANT] Step 1: First, determine if there is a face in the photo\n' +
-        '- If the photo is landscape, objects, buildings, cartoons, anime, text images (such as business licenses), etc., and does not contain a real human face, hasFace must be set to false, faceConfidence set to 0\n' +
-        '- If the photo contains a real human face (real person photo), hasFace is set to true, and face confidence faceConfidence is given (0.7-1.0)\n' +
-        '- If the face is blurry, side face, or severely obstructed, hasFace is set to false, faceConfidence set to 0-0.5\n' +
+        '【重要】第一步：首先判断照片中是否有人脸\n' +
+        '- 如果照片是风景、物品、建筑、卡通、动漫、文字图片（如营业执照）等，不包含真实人脸，hasFace 必须设为 false，faceConfidence 设为 0\n' +
+        '- 如果照片中包含真实的人脸（真人照片），hasFace 设为 true，并给出人脸置信度 faceConfidence（0.7-1.0）\n' +
+        '- 如果人脸模糊、侧脸、遮挡严重，hasFace 设为 false，faceConfidence 设为 0-0.5\n' +
         '\n' +
-        'Only when hasFace = true, perform subsequent analysis. If hasFace = false, other fields return default values.\n' +
+        '只有当 hasFace = true 时，才进行后续分析。如果 hasFace = false，其他字段返回默认值即可。\n' +
         '\n' +
-        '## 2. Facial Feature Analysis (only when hasFace = true)\n' +
-        '- Expression characteristics (natural/smile/serious, etc.)\n' +
-        '- Eye characteristics (gentle/sharp/deep, etc.)\n' +
-        '- Overall facial impression\n' +
+        '## 2. 面部特征分析（仅当 hasFace = true）\n' +
+        '- 表情特点（自然/微笑/严肃等）\n' +
+        '- 眼神特点（温和/锐利/深邃等）\n' +
+        '- 整体面部印象\n' +
         '\n' +
-        '## 3. Temperament Type Judgment (only when hasFace = true)\n' +
-        'According to facial features and expressions, determine the temperament type (choose from the following options):\n' +
-        '- Sunny: Cheerful and outgoing, full of positive energy\n' +
-        '- Steady: Thoughtful, steady and reliable\n' +
-        '- Creative: Active thinking, full of imagination\n' +
-        '- Professional: Efficient, goal-oriented\n' +
-        '- Warm: Empathetic, understanding\n' +
+        '## 3. 气质类型判断（仅当 hasFace = true）\n' +
+        '根据面部特征和表情，判断气质类型（从以下选项中选择）：\n' +
+        '- 阳光活力型：开朗外向，充满正能量\n' +
+        '- 沉稳内敛型：深思熟虑，稳重可靠\n' +
+        '- 创意艺术型：思维活跃，富有想象\n' +
+        '- 专业精英型：干练高效，目标明确\n' +
+        '- 温暖治愈型：善解人意，富有同理心\n' +
         '\n' +
-        '## 4. Personality Trait Inference (only when hasFace = true)\n' +
-        'Based on facial expressions and demeanor, infer 3-5 core personality traits\n' +
+        '## 4. 性格特征推断（仅当 hasFace = true）\n' +
+        '基于面部表情和神态，推断3-5个核心性格特质\n' +
         '\n' +
-        '## 5. Communication Style Prediction (only when hasFace = true)\n' +
-        'Predict the possible characteristics of this person in communication\n' +
+        '## 5. 沟通风格预测（仅当 hasFace = true）\n' +
+        '预测这个人在沟通时可能的特点\n' +
         '\n' +
-        '## 6. Expertise Suggestions (only when hasFace = true)\n' +
-        'Based on temperament and characteristics, recommend the fields where the avatar may be good at\n' +
+        '## 6. 擅长领域建议（仅当 hasFace = true）\n' +
+        '根据气质和特征，推荐分身可能擅长的能力领域\n' +
         '\n' +
-        '## 7. Avatar Naming Suggestions (only when hasFace = true)\n' +
-        'Based on the overall analysis, suggest 3 suitable avatar names\n' +
+        '## 7. 分身命名建议（仅当 hasFace = true）\n' +
+        '根据整体分析，建议3个合适的分身名字\n' +
         '\n' +
-        'Please return in JSON format, format as follows:\n' +
+        '请以JSON格式返回，格式如下：\n' +
         '{\n' +
         '  "hasFace": true/false,\n' +
         '  "faceConfidence": 0.0-1.0,\n' +
         '  "facialFeatures": {\n' +
-        '    "expression": "Expression description",\n' +
-        '    "eyes": "Eye description",\n' +
-        '    "impression": "Overall impression"\n' +
+        '    "expression": "表情描述",\n' +
+        '    "eyes": "眼神描述",\n' +
+        '    "impression": "整体印象"\n' +
         '  },\n' +
         '  "temperament": {\n' +
-        '    "type": "Temperament type",\n' +
-        '    "description": "Temperament description",\n' +
-        '    "keywords": ["keyword1", "keyword2"]\n' +
+        '    "type": "气质类型",\n' +
+        '    "description": "气质描述",\n' +
+        '    "keywords": ["关键词1", "关键词2"]\n' +
         '  },\n' +
         '  "personality": {\n' +
-        '    "core": ["core trait1", "core trait2", "core trait3"],\n' +
-        '    "strengths": ["advantage1", "advantage2"],\n' +
-        '    "workStyle": "Work style description"\n' +
+        '    "core": ["核心特质1", "核心特质2", "核心特质3"],\n' +
+        '    "strengths": ["优点1", "优点2"],\n' +
+        '    "workStyle": "工作风格描述"\n' +
         '  },\n' +
-        '  "communicationStyle": "Communication style description",\n' +
-        '  "strengths": ["expertise1", "expertise2", "expertise3"],\n' +
-        '  "recommendedType": "Recommended avatar type(creative/analytical/empathetic/strategic)",\n' +
+        '  "communicationStyle": "沟通风格描述",\n' +
+        '  "strengths": ["擅长领域1", "擅长领域2", "擅长领域3"],\n' +
+        '  "recommendedType": "推荐的分身类型(creative/analytical/empathetic/strategic)",\n' +
         '  "nameSuggestions": [\n' +
-        '    { "name": "name1", "reason": "reason" },\n' +
-        '    { "name": "name2", "reason": "reason" },\n' +
-        '    { "name": "name3", "reason": "reason" }\n' +
+        '    { "name": "名字1", "reason": "理由" },\n' +
+        '    { "name": "名字2", "reason": "理由" },\n' +
+        '    { "name": "名字3", "reason": "理由" }\n' +
         '  ],\n' +
-        '  "summary": "One sentence summary of this person\'s characteristics",\n' +
-        '  "suggestedName": "Most recommended name"\n' +
+        '  "summary": "一句话总结这个人的特点",\n' +
+        '  "suggestedName": "最推荐的名字"\n' +
         '}\n' +
         '\n' +
-        '[STRICT EXECUTION]:\n' +
-        '1. Please only return JSON, no other text\n' +
-        '2. hasFace field must be accurately judged: face true, no face false\n' +
-        '3. If there is no real face in the photo (such as business license, landscape, objects, cartoon, etc.), hasFace must be set to false\n' +
-        '4. faceConfidence: 0.7-1.0 when there is a face, 0 when there is no face\n'
+        '【严格执行】：\n' +
+        '1. 请只返回JSON，不要有其他文字\n' +
+        '2. hasFace 字段必须准确判断：有人脸 true，无人脸 false\n' +
+        '3. 如果照片中没有真实人脸（如营业执照、风景、物品、卡通等），hasFace 必须设为 false\n' +
+        '4. faceConfidence：有人脸时 0.7-1.0，无人脸时 0'
 
       const messages = [
         {
@@ -431,23 +431,23 @@ export class AvatarService {
       facialFeatures: {
         expression: '无法识别',
         eyes: '无法识别',
-        impression: 'Photo analysis failed'
+        impression: '照片中无人脸'
       },
       temperament: {
-        type: 'Unknown',
-        description: 'Unable to analyze',
+        type: '未知',
+        description: '照片中无人脸，无法分析',
         keywords: []
       },
       personality: {
         core: [],
         strengths: [],
-        workStyle: 'Unable to analyze'
+        workStyle: '无法分析'
       },
-      communicationStyle: 'Unable to analyze',
+      communicationStyle: '无法分析',
       strengths: [],
       recommendedType: 'empathetic',
       nameSuggestions: [],
-      summary: 'Unable to analyze photo',
+      summary: '照片中无人脸，请上传包含清晰正面人脸的照片',
       suggestedName: ''
     }
   }
