@@ -15,6 +15,7 @@ interface Avatar {
   level: number
   personality: string
   exp: number
+  appearance_style?: string
   is_hosted?: boolean
   config?: {
     hosting_settings?: {
@@ -355,7 +356,11 @@ export default function AvatarManagePage() {
                 <View className="avatar-info-section">
                   <View className="avatar-avatar">
                     {avatar.avatar_url ? (
-                      <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
+                      <Image
+                        src={avatar.avatar_url}
+                        className={`avatar-img style-${avatar.appearance_style || 'real'}`}
+                        mode="aspectFill"
+                      />
                     ) : (
                       <View className="avatar-placeholder">
                         <Sparkles size={32} color="#00f5ff" />

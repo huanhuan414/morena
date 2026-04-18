@@ -97,50 +97,61 @@ export class RecommendationService {
   ) {
     const client = getSupabaseClient()
 
-    // 获取用户信息
-    const { data: user, error: userError } = await client
-      .from('users')
-      .select(`
-        *,
-        avatars (
-          id,
-          personality,
-          abilities
-        )
-      `)
-      .eq('id', userId)
-      .single()
+    console.log('[推荐服务] 开始获取推荐分身，userId:', userId)
 
-    if (userError || !user) {
-      throw new Error('User not found')
-    }
+    try {
+      // 获取用户信息
+      const { data: user, error: userError } = await client
+        .from('users')
+        .select(`
+          *,
+          avatars (
+            id,
+            personality,
+            abilities
+          )
+        `)
+        .eq('id', userId)
+        .maybeSingle() // 使用 maybeSingle 而不是 single，避免用户不存在时报错
 
-    const latestAvatar = user.avatars && user.avatars.length > 0 ? user.avatars[0] : null
-    const userPersonality = latestAvatar?.personality || null
-    const userAbilities = latestAvatar?.abilities || []
+      console.log('[推荐服务] 用户信息:', user ? '已获取' : '不存在')
 
-    // 获取其他用户的公开分身
-    const { data: otherAvatars, error: avatarsError } = await client
-      .from('avatars')
-      .select(`
-        *,
-        user (
-          id,
-          latitude,
-          longitude
-        )
-      `)
-      .neq('user_id', userId)
-      .eq('is_public', true)
-      .eq('status', 'active')
-      .limit(limit * 2) // 获取更多候选，用于排序
+      const latestAvatar = user?.avatars && user.avatars.length > 0 ? user.avatars[0] : null
+      const userPersonality = latestAvatar?.personality || null
+      const userAbilities = latestAvatar?.abilities || []
+      console.log('[推荐服务] 用户分身:', latestAvatar ? '存在' : '不存在')
 
-    if (avatarsError) {
-      throw new Error('Failed to get avatars: ' + avatarsError.message)
-    }
+      // 获取其他用户的公开分身
+      const { data: otherAvatars, error: avatarsError } = await client
+        .from('avatars')
+        .select(`
+          *,
+          user (
+            id,
+            latitude,
+            longitude
+          )
+        `)
+        .neq('user_id', userId)
+        .eq('is_public', true)
+        .eq('status', 'active')
+        .limit(limit * 2) // 获取更多候选，用于排序
 
-    // 为每个分身计算推荐分数
-    const scoredAvatars = otherAvatars.map(avatar => {
+      console.log('[推荐服务] 公开分身数量:', otherAvatars?.length || 0)
+
+      if (avatarsError) {
+        console.error('[推荐服务] 获取公开分身失败:', avatarsError)
+        // 不抛出错误，返回空数组
+        return []
+      }
+
+      if (!otherAvatars || otherAvatars.length === 0) {
+        console.log('[推荐服务] 没有公开分身可用')
+        return []
+      }
+
+      // 为每个分身计算推荐分数
+      const scoredAvatars = otherAvatars.map(avatar => {
       let matchScore = 50 // 基础分
       const reasons: string[] = []
 
@@ -216,7 +227,13 @@ export class RecommendationService {
           } : undefined
         }
       })
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, limit)
 
-    return recommendations
+      return recommendations
+    } catch (error) {
+      console.error('[推荐服务] 推荐分身失败:', error)
+      return []
+    }
   }
 }

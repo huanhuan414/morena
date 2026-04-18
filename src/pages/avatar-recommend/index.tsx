@@ -32,6 +32,7 @@ export default function AvatarRecommendPage() {
     latitude: null,
     longitude: null
   })
+  const [activeFilter, setActiveFilter] = useState<'all' | 'level' | 'distance' | 'personality'>('all')
 
   useLoad(() => {
     loadRecommendations()
@@ -40,32 +41,54 @@ export default function AvatarRecommendPage() {
   const loadRecommendations = async () => {
     try {
       setLoading(true)
-      
-      // 获取用户位置
+
+      // 1. 先获取用户位置
+      let location = userLocation
       try {
         const locationRes = await Taro.getLocation({
           type: 'wgs84'
         })
-        setUserLocation({
+        location = {
           latitude: locationRes.latitude,
           longitude: locationRes.longitude
-        })
+        }
+        setUserLocation(location)
+        console.log('获取用户位置成功:', location)
       } catch (error) {
-        console.warn('获取位置失败:', error)
+        console.warn('获取位置失败，将使用默认推荐:', error)
       }
 
-      // 请求推荐分身
+      // 2. 请求推荐分身（使用获取到的位置）
+      console.log('请求推荐分身，location:', location)
       const res = await Network.request({
         url: '/api/avatar/recommendations',
         method: 'POST',
         data: {
-          location: userLocation,
+          location: location,
           limit: 20
         }
       })
 
+      console.log('推荐分身响应:', res)
+
       if (res.data?.code === 200) {
-        setAvatars(res.data.data || [])
+        const recommendations = res.data.data || []
+        console.log('获取到推荐分身数量:', recommendations.length)
+        setAvatars(recommendations)
+
+        if (recommendations.length === 0) {
+          Taro.showToast({
+            title: '暂无推荐分身',
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      } else {
+        console.error('推荐分身API返回错误:', res.data)
+        Taro.showToast({
+          title: res.data?.msg || '加载失败',
+          icon: 'none'
+        })
       }
     } catch (error) {
       console.error('加载推荐失败:', error)
@@ -77,6 +100,25 @@ export default function AvatarRecommendPage() {
       setLoading(false)
     }
   }
+
+  const getFilteredAvatars = () => {
+    if (activeFilter === 'all') return avatars
+
+    return avatars.filter(avatar => {
+      switch (activeFilter) {
+        case 'level':
+          return avatar.level >= 10
+        case 'distance':
+          return avatar.distance !== undefined && avatar.distance < 50
+        case 'personality':
+          return avatar.matchScore >= 80
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredAvatars = getFilteredAvatars()
 
   const sendFriendRequest = async (avatarId: string) => {
     try {
@@ -151,20 +193,32 @@ export default function AvatarRecommendPage() {
       {/* 推荐理由标签 */}
       <ScrollView className="filter-scroll" scrollX>
         <View className="filter-tags">
-          <View className="filter-tag active">
-            <Sparkles size={16} color="#06b6d4" />
+          <View
+            className={`filter-tag ${activeFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveFilter('all')}
+          >
+            <Sparkles size={16} color={activeFilter === 'all' ? '#06b6d4' : '#94a3b8'} />
             <Text className="filter-text">综合推荐</Text>
           </View>
-          <View className="filter-tag">
-            <Star size={16} color="#94a3b8" />
+          <View
+            className={`filter-tag ${activeFilter === 'level' ? 'active' : ''}`}
+            onClick={() => setActiveFilter('level')}
+          >
+            <Star size={16} color={activeFilter === 'level' ? '#06b6d4' : '#94a3b8'} />
             <Text className="filter-text">高等级</Text>
           </View>
-          <View className="filter-tag">
-            <MapPin size={16} color="#94a3b8" />
+          <View
+            className={`filter-tag ${activeFilter === 'distance' ? 'active' : ''}`}
+            onClick={() => setActiveFilter('distance')}
+          >
+            <MapPin size={16} color={activeFilter === 'distance' ? '#06b6d4' : '#94a3b8'} />
             <Text className="filter-text">距离近</Text>
           </View>
-          <View className="filter-tag">
-            <Heart size={16} color="#94a3b8" />
+          <View
+            className={`filter-tag ${activeFilter === 'personality' ? 'active' : ''}`}
+            onClick={() => setActiveFilter('personality')}
+          >
+            <Heart size={16} color={activeFilter === 'personality' ? '#06b6d4' : '#94a3b8'} />
             <Text className="filter-text">性格匹配</Text>
           </View>
         </View>
@@ -176,14 +230,18 @@ export default function AvatarRecommendPage() {
           <View className="loading-container">
             <Text className="loading-text">正在为你推荐...</Text>
           </View>
-        ) : avatars.length === 0 ? (
+        ) : filteredAvatars.length === 0 ? (
           <View className="empty-container">
             <User size={64} color="#cbd5e1" />
-            <Text className="empty-text">暂无推荐分身</Text>
-            <Text className="empty-hint">稍后再来看看吧</Text>
+            <Text className="empty-text">
+              {activeFilter === 'all' ? '暂无推荐分身' : '没有符合条件的分身'}
+            </Text>
+            <Text className="empty-hint">
+              {activeFilter === 'all' ? '稍后再来看看吧' : '试试其他筛选条件'}
+            </Text>
           </View>
         ) : (
-          avatars.map((avatar, index) => (
+          filteredAvatars.map((avatar, index) => (
             <View 
               key={avatar.id} 
               className="avatar-card"
