@@ -1,9 +1,7 @@
 import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input as BaseInput } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
@@ -37,7 +35,7 @@ const PRICE_CONFIG = {
 
 export default function OrderCreatePage() {
   const [loading, setLoading] = useState(false)
-  const [showCalendar, setShowCalendar] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [form, setForm] = useState<OrderForm>({
     title: '',
     description: '',
@@ -58,6 +56,58 @@ export default function OrderCreatePage() {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
   })
+
+  // 生成日期选择器的数据
+  const dateRange = useMemo(() => {
+    const years: number[] = []
+    const months: number[] = []
+    const days: number[] = []
+    const currentYear = new Date().getFullYear()
+
+    for (let i = currentYear; i <= currentYear + 2; i++) {
+      years.push(i)
+    }
+
+    for (let i = 1; i <= 12; i++) {
+      months.push(i)
+    }
+
+    for (let i = 1; i <= 31; i++) {
+      days.push(i)
+    }
+
+    return { years, months, days }
+  }, [])
+
+  const [datePickerValue, setDatePickerValue] = useState([0, 0, 0])
+
+  const handleDateChange = (e: any) => {
+    setDatePickerValue(e.detail.value)
+  }
+
+  const handleDateConfirm = () => {
+    const { years, months, days } = dateRange
+    const year = years[datePickerValue[0]]
+    const month = String(months[datePickerValue[1]]).padStart(2, '0')
+    const day = String(days[datePickerValue[2]]).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    // 检查是否选择了过去的日期
+    const selectedDate = new Date(dateStr)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (selectedDate < today) {
+      showToast({ title: '不能选择过去的日期', icon: 'none' })
+      return
+    }
+
+    setForm(prev => ({
+      ...prev,
+      requirements: { ...prev.requirements, deadline: dateStr }
+    }))
+    setShowDatePicker(false)
+  }
 
   // 计算总价格
   const totalPrice = useMemo(() => {
@@ -116,18 +166,6 @@ export default function OrderCreatePage() {
           : [...prev.requirements.platforms, platform]
       }
     }))
-  }
-
-  const handleDateSelect = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const dateStr = `${year}-${month}-${day}`
-    setForm(prev => ({
-      ...prev,
-      requirements: { ...prev.requirements, deadline: dateStr }
-    }))
-    setShowCalendar(false)
   }
 
   const handleSubmit = async () => {
@@ -249,6 +287,29 @@ export default function OrderCreatePage() {
           <Text className="char-count">{form.description.length}/500</Text>
         </View>
 
+        {/* 发布平台 */}
+        <View className="section-card">
+          <View className="card-header">
+            <Sparkles size={20} color="#3b82f6" />
+            <Text className="card-title">发布平台</Text>
+          </View>
+          <View className="platform-grid">
+            {platforms.map((platform) => {
+              const isActive = form.requirements.platforms.includes(platform.value)
+              return (
+                <View
+                  key={platform.value}
+                  className={`platform-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => togglePlatform(platform.value)}
+                >
+                  <Text className={`platform-text ${isActive ? 'active' : ''}`}>{platform.label}</Text>
+                  {isActive && <Check size={16} color="#3b82f6" />}
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
         {/* 内容类型选择 */}
         <View className="section-card">
           <View className="card-header">
@@ -272,29 +333,6 @@ export default function OrderCreatePage() {
                   <Icon size={32} color={isActive ? type.color : '#9ca3af'} />
                   <Text className={`type-text ${isActive ? 'active' : ''}`}>{type.label}</Text>
                   {isActive && <View className="type-check" style={{ background: type.color }}></View>}
-                </View>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* 发布平台 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Sparkles size={20} color="#3b82f6" />
-            <Text className="card-title">发布平台</Text>
-          </View>
-          <View className="platform-grid">
-            {platforms.map((platform) => {
-              const isActive = form.requirements.platforms.includes(platform.value)
-              return (
-                <View
-                  key={platform.value}
-                  className={`platform-chip ${isActive ? 'active' : ''}`}
-                  onClick={() => togglePlatform(platform.value)}
-                >
-                  <Text className={`platform-text ${isActive ? 'active' : ''}`}>{platform.label}</Text>
-                  {isActive && <Check size={16} color="#3b82f6" />}
                 </View>
               )
             })}
@@ -443,29 +481,17 @@ export default function OrderCreatePage() {
 
           <View className="info-item">
             <Text className="info-label">截止日期</Text>
-            <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-              <PopoverTrigger asChild>
-                <View
-                  className="info-input date-input"
-                  onClick={() => setShowCalendar(true)}
-                >
-                  {form.requirements.deadline ? (
-                    <Text className="date-text">{form.requirements.deadline}</Text>
-                  ) : (
-                    <Text className="date-placeholder">选择截止日期</Text>
-                  )}
-                  <CalendarIcon size={18} color="#9ca3af" />
-                </View>
-              </PopoverTrigger>
-              <PopoverContent sideOffset={4} align="start">
-                <Calendar
-                  mode="single"
-                  selected={form.requirements.deadline ? new Date(form.requirements.deadline) : undefined}
-                  onSelect={(date) => date && handleDateSelect(date)}
-                  disabled={(date) => date < new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+            <View
+              className="info-input date-input"
+              onClick={() => setShowDatePicker(true)}
+            >
+              {form.requirements.deadline ? (
+                <Text className="date-text">{form.requirements.deadline}</Text>
+              ) : (
+                <Text className="date-placeholder">选择截止日期</Text>
+              )}
+              <CalendarIcon size={18} color="#9ca3af" />
+            </View>
           </View>
         </View>
 
@@ -489,6 +515,68 @@ export default function OrderCreatePage() {
 
         <View className="bottom-space"></View>
       </ScrollView>
+
+      {/* 日期选择器弹窗 */}
+      {showDatePicker && (
+        <View className="date-picker-modal">
+          <View className="date-picker-content">
+            <View className="date-picker-header">
+              <Text className="date-picker-title">选择截止日期</Text>
+              <View className="date-picker-close" onClick={() => setShowDatePicker(false)}>
+                <Text>取消</Text>
+              </View>
+            </View>
+            <View className="date-picker-body">
+              <Picker
+                mode="selector"
+                range={dateRange.years.map(y => `${y}年`)}
+                value={datePickerValue[0]}
+                onChange={(e: any) => {
+                  const newValue = [...datePickerValue]
+                  newValue[0] = e.detail.value
+                  setDatePickerValue(newValue)
+                }}
+              >
+                <View className="picker-item">
+                  <Text className="picker-text">{dateRange.years[datePickerValue[0]]}年</Text>
+                </View>
+              </Picker>
+              <Picker
+                mode="selector"
+                range={dateRange.months.map(m => `${m}月`)}
+                value={datePickerValue[1]}
+                onChange={(e: any) => {
+                  const newValue = [...datePickerValue]
+                  newValue[1] = e.detail.value
+                  setDatePickerValue(newValue)
+                }}
+              >
+                <View className="picker-item">
+                  <Text className="picker-text">{dateRange.months[datePickerValue[1]]}月</Text>
+                </View>
+              </Picker>
+              <Picker
+                mode="selector"
+                range={dateRange.days.map(d => `${d}日`)}
+                value={datePickerValue[2]}
+                onChange={handleDateChange}
+              >
+                <View className="picker-item">
+                  <Text className="picker-text">{dateRange.days[datePickerValue[2]]}日</Text>
+                </View>
+              </Picker>
+            </View>
+            <View className="date-picker-footer">
+              <Button
+                className="date-picker-confirm"
+                onClick={handleDateConfirm}
+              >
+                <Text>确定</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
