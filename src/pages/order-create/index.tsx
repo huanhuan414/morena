@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   Briefcase, DollarSign, Target, Sparkles, Users, ArrowLeft, Image,
-  Video, FileText, Calculator, TrendingUp, Zap, Check, Calendar as CalendarIcon
+  Video, FileText, Calculator, TrendingUp, Zap, Check, Calendar as CalendarIcon,
+  X
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -25,6 +26,13 @@ interface OrderForm {
   }
 }
 
+interface Attachment {
+  id: string
+  name: string
+  url: string
+  type: 'image' | 'video' | 'file'
+}
+
 // 价格配置（可调整）
 const PRICE_CONFIG = {
   avatarBase: 5,      // 分身基础费用（元/个）
@@ -36,6 +44,9 @@ const PRICE_CONFIG = {
 export default function OrderCreatePage() {
   const [loading, setLoading] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState(false)
+
   const [form, setForm] = useState<OrderForm>({
     title: '',
     description: '',
@@ -107,6 +118,90 @@ export default function OrderCreatePage() {
       requirements: { ...prev.requirements, deadline: dateStr }
     }))
     setShowDatePicker(false)
+  }
+
+  // 选择图片
+  const handleChooseImage = async () => {
+    try {
+      const res = await chooseImage({
+        count: 9 - attachments.length,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera']
+      })
+
+      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+        // 上传图片
+        await uploadFiles(res.tempFilePaths.map((path) => ({
+          path,
+          type: 'image' as const,
+          name: `图片_${Date.now()}.jpg`
+        })))
+      }
+    } catch (error) {
+      console.error('选择图片失败:', error)
+      showToast({ title: '选择图片失败', icon: 'none' })
+    }
+  }
+
+  // 选择视频
+  const handleChooseVideo = async () => {
+    try {
+      const res = await chooseVideo({
+        sourceType: ['album', 'camera'],
+        maxDuration: 300 // 5分钟
+      })
+
+      if (res.tempFilePath) {
+        // 上传视频
+        await uploadFiles([{
+          path: res.tempFilePath,
+          type: 'video' as const,
+          name: `视频_${Date.now()}.mp4`
+        }])
+      }
+    } catch (error) {
+      console.error('选择视频失败:', error)
+      showToast({ title: '选择视频失败', icon: 'none' })
+    }
+  }
+
+  // 上传文件
+  const uploadFiles = async (files: Array<{ path: string; type: 'image' | 'video'; name: string }>) => {
+    setUploading(true)
+    try {
+      const uploadPromises = files.map(async (file) => {
+        const uploadRes = await Network.uploadFile({
+          url: '/api/upload',
+          filePath: file.path,
+          name: 'file'
+        })
+
+        const data = JSON.parse(uploadRes.data)
+        if (data.code === 200) {
+          return {
+            id: Date.now().toString() + Math.random(),
+            name: file.name,
+            url: data.data.url,
+            type: file.type
+          }
+        }
+        throw new Error('上传失败')
+      })
+
+      const uploadedFiles = await Promise.all(uploadPromises)
+      setAttachments(prev => [...prev, ...uploadedFiles])
+      showToast({ title: '上传成功', icon: 'success' })
+    } catch (error) {
+      console.error('上传失败:', error)
+      showToast({ title: '上传失败', icon: 'none' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // 删除附件
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(att => att.id !== id))
   }
 
   // 计算总价格
@@ -214,6 +309,11 @@ export default function OrderCreatePage() {
           content_config: {
             quantity_per_avatar: form.quantityPerAvatar
           },
+          attachments: attachments.map(att => ({
+            url: att.url,
+            type: att.type,
+            name: att.name
+          })),
           ...locationData
         }
       })
@@ -285,6 +385,58 @@ export default function OrderCreatePage() {
             placeholderClass="textarea-placeholder"
           />
           <Text className="char-count">{form.description.length}/500</Text>
+
+          {/* 附件上传 */}
+          <View className="attachment-section">
+            <Text className="attachment-title">添加附件</Text>
+
+            {/* 上传按钮 */}
+            <View className="upload-buttons">
+              <Button
+                className={`upload-btn ${uploading ? 'disabled' : ''}`}
+                onClick={handleChooseImage}
+                disabled={uploading || attachments.length >= 9}
+                size="sm"
+              >
+                <Image size={16} color="#3b82f6" />
+                <Text>图片</Text>
+              </Button>
+              <Button
+                className={`upload-btn ${uploading ? 'disabled' : ''}`}
+                onClick={handleChooseVideo}
+                disabled={uploading}
+                size="sm"
+              >
+                <Video size={16} color="#ec4899" />
+                <Text>视频</Text>
+              </Button>
+            </View>
+
+            {/* 附件列表 */}
+            {attachments.length > 0 && (
+              <View className="attachment-list">
+                {attachments.map((att) => (
+                  <View key={att.id} className="attachment-item">
+                    <View className="attachment-icon">
+                      {att.type === 'image' ? (
+                        <Image size={24} color="#3b82f6" />
+                      ) : (
+                        <Video size={24} color="#ec4899" />
+                      )}
+                    </View>
+                    <Text className="attachment-name">{att.name}</Text>
+                    <View className="attachment-remove" onClick={() => handleRemoveAttachment(att.id)}>
+                      <X size={18} color="#ef4444" />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {uploading && (
+              <Text className="uploading-text">上传中...</Text>
+            )}
+          </View>
         </View>
 
         {/* 发布平台 */}

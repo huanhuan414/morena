@@ -126,6 +126,109 @@
   margin-top: 8px;
 }
 
+/* 附件上传 */
+.attachment-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.attachment-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.upload-btn:active {
+  background: #dbeafe;
+  transform: scale(0.98);
+}
+
+.upload-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.attachment-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.attachment-name {
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.attachment-remove:active {
+  background-color: #fee2e2;
+}
+
+.uploading-text {
+  font-size: 13px;
+  color: #3b82f6;
+  margin-top: 8px;
+  display: block;
+}
+
 /* 内容类型网格 */
 .type-grid {
   display: grid;
@@ -148,6 +251,7 @@
 
 .type-card.active {
   border-color: #3b82f6;
+  border-width: 2px;
   background: #eff6ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
@@ -297,8 +401,8 @@
   width: 48px;
   height: 32px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: #1f2937;
   background: transparent;
   border: none;
