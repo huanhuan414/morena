@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service'
+import { getSupabaseClient } from '../../storage/database/supabase-client'
 
 @Injectable()
 export class RecommendationService {
-  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * 计算两个经纬度之间的距离（单位：公里）
@@ -96,53 +95,59 @@ export class RecommendationService {
     location?: { latitude: number | null; longitude: number | null },
     limit: number = 20
   ) {
-    // 获取用户信息
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        avatars: {
-          take: 1,
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    })
+    const client = getSupabaseClient()
 
-    if (!user) {
-      throw new Error('用户不存在')
+    // 获取用户信息
+    const { data: user, error: userError } = await client
+      .from('users')
+      .select(`
+        *,
+        avatars (
+          id,
+          personality,
+          abilities
+        )
+      `)
+      .eq('id', userId)
+      .single()
+
+    if (userError || !user) {
+      throw new Error('User not found')
     }
 
-    const latestAvatar = user.avatars[0]
+    const latestAvatar = user.avatars && user.avatars.length > 0 ? user.avatars[0] : null
     const userPersonality = latestAvatar?.personality || null
     const userAbilities = latestAvatar?.abilities || []
 
     // 获取其他用户的公开分身
-    const otherAvatars = await this.prisma.aiAvatar.findMany({
-      where: {
-        userId: { not: userId },
-        isPublic: true,
-        status: 'active'
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            latitude: true,
-            longitude: true
-          }
-        }
-      },
-      take: limit * 2 // 获取更多候选，用于排序
-    })
+    const { data: otherAvatars, error: avatarsError } = await client
+      .from('avatars')
+      .select(`
+        *,
+        user (
+          id,
+          latitude,
+          longitude
+        )
+      `)
+      .neq('user_id', userId)
+      .eq('is_public', true)
+      .eq('status', 'active')
+      .limit(limit * 2) // 获取更多候选，用于排序
+
+    if (avatarsError) {
+      throw new Error('Failed to get avatars: ' + avatarsError.message)
+    }
 
     // 为每个分身计算推荐分数
     const scoredAvatars = otherAvatars.map(avatar => {
       let matchScore = 50 // 基础分
-      const reasons = []
+      const reasons: string[] = []
 
       // 1. 等级得分（占20%）
       const levelScore = Math.min(avatar.level / 50 * 20, 20)
       matchScore += levelScore
-      if (avatar.level >= 10) reasons.push('高等级')
+      if (avatar.level >= 10) reasons.push('High Level')
 
       // 2. 地理位置得分（占25%）
       let distance: number | undefined
@@ -155,23 +160,23 @@ export class RecommendationService {
         )
         const distanceScore = Math.max(25 - distance * 0.5, 0) // 距离越近得分越高，最高25分
         matchScore += distanceScore
-        if (distance < 50) reasons.push('距离近')
+        if (distance < 50) reasons.push('Nearby')
       }
 
       // 3. 性格匹配度（占30%）
       const personalityMatch = this.calculatePersonalityMatch(userPersonality, avatar.personality)
       matchScore += personalityMatch * 0.3
-      if (personalityMatch >= 70) reasons.push('性格匹配')
+      if (personalityMatch >= 70) reasons.push('Personality Match')
 
       // 4. 技能互补性（占25%）
       const abilityMatch = this.calculateAbilityMatch(userAbilities, avatar.abilities || [])
       matchScore += abilityMatch * 0.25
-      if (abilityMatch >= 60) reasons.push('技能互补')
+      if (abilityMatch >= 60) reasons.push('Skill Complementarity')
 
       // 5. 活跃度加分（+5分）
       if (avatar.exp > 1000) {
         matchScore += 5
-        reasons.push('高活跃度')
+        reasons.push('High Activity')
       }
 
       return {

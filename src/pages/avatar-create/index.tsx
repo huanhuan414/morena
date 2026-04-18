@@ -141,17 +141,11 @@ export default function AvatarCreatePage() {
         })
       } else {
         console.error('[技能广场] API返回异常:', res)
-        // API失败时使用默认技能列表
-        console.log('[技能广场] 使用默认技能列表')
-        setSkillsFromSquare([])
-        showToast({ title: '使用默认技能列表', icon: 'none', duration: 1500 })
+        showToast({ title: '加载技能失败', icon: 'none' })
       }
     } catch (error) {
       console.error('[技能广场] 加载失败:', error)
-      // 加载失败时使用默认技能列表
-      console.log('[技能广场] 使用默认技能列表（API失败）')
-      setSkillsFromSquare([])
-      showToast({ title: '使用默认技能列表', icon: 'none', duration: 1500 })
+      showToast({ title: '加载技能失败', icon: 'none' })
     }
   }
 

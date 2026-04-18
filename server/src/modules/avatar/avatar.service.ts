@@ -63,7 +63,7 @@ export class AvatarService {
       .from('avatars')
       .insert({
         user_id: userId,
-        name: avatarData.name || '我的AI分身',
+        name: avatarData.name || 'My AI Avatar',
         description: this.generateDescription(photoAnalysis, avatarData),
         avatar_url: avatarData.photo_url || avatarData.avatar_url || '',
         personality: avatarData.personality || photoAnalysis.recommendedType || 'friendly',
@@ -99,7 +99,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to create avatar: ${error.message}`)
+      throw new Error("Failed to create avatar: " + error.message)
     }
 
     // 添加用户选择的技能到分身技能表
@@ -130,7 +130,7 @@ export class AvatarService {
         metadata: {
           skill_id: ability.id,
           tool_name: ability.tool_name,
-          skill_name: ability.name || '未知技能'
+          skill_name: ability.name || 'Unknown skill'
         },
         created_at: new Date().toISOString()
       }))
@@ -163,19 +163,19 @@ export class AvatarService {
           skill_type: 'generate_image',
           skill_level: 1,
           usage_count: 0,
-          metadata: { skill_name: '图像生成' }
+          metadata: { skill_name: 'Image Generation' }
         },
         {
           skill_type: 'generate_video',
           skill_level: 1,
           usage_count: 0,
-          metadata: { skill_name: '文字生成视频' }
+          metadata: { skill_name: 'Text to Video' }
         },
         {
           skill_type: 'write_article',
           skill_level: 1,
           usage_count: 0,
-          metadata: { skill_name: '文章创作' }
+          metadata: { skill_name: 'Article Writing' }
         }
       ]
 
@@ -209,18 +209,18 @@ export class AvatarService {
     const parts: string[] = []
     
     if (photoAnalysis.temperament?.type) {
-      parts.push(`气质类型：${photoAnalysis.temperament.type}`)
+      parts.push("Temperament: " + photoAnalysis.temperament.type)
     }
     
     if (photoAnalysis.strengths?.length > 0) {
-      parts.push(`擅长：${photoAnalysis.strengths.join('、')}`)
+      parts.push("Strengths: " + photoAnalysis.strengths.join(', '))
     }
     
     if (photoAnalysis.communicationStyle) {
-      parts.push(`沟通风格：${photoAnalysis.communicationStyle}`)
+      parts.push("Communication Style: " + photoAnalysis.communicationStyle)
     }
     
-    return parts.join(' | ') || '一个友好、乐于助人的AI分身'
+    return parts.join(' | ') || 'A friendly and helpful AI avatar'
   }
 
   /**
@@ -264,77 +264,76 @@ export class AvatarService {
       const config = new Config()
       const client = new LLMClient(config)
       
-      const analysisPrompt = `你是一位专业的AI分身形象设计师和人格分析师。请仔细分析这张照片。
-
-【重要】第一步：首先判断照片中是否有人脸
-- 如果照片是风景、物品、建筑、卡通、动漫、文字图片（如营业执照）等，不包含真实人脸，hasFace 必须设为 false，faceConfidence 设为 0
-- 如果照片中包含真实的人脸（真人照片），hasFace 设为 true，并给出人脸置信度 faceConfidence（0.7-1.0）
-- 如果人脸模糊、侧脸、遮挡严重，hasFace 设为 false，faceConfidence 设为 0-0.5
-
-只有当 hasFace = true 时，才进行后续分析。如果 hasFace = false，其他字段返回默认值即可。
-
-## 2. 面部特征分析（仅当 hasFace = true）
-- 表情特点（自然/微笑/严肃等）
-- 眼神特点（温和/锐利/深邃等）
-- 整体面部印象
-
-## 3. 气质类型判断（仅当 hasFace = true）
-根据面部特征和表情，判断气质类型（从以下选项中选择）：
-- 阳光活力型：开朗外向，充满正能量
-- 沉稳内敛型：深思熟虑，稳重可靠
-- 创意艺术型：思维活跃，富有想象
-- 专业精英型：干练高效，目标明确
-- 温暖治愈型：善解人意，富有同理心
-
-## 4. 性格特征推断（仅当 hasFace = true）
-基于面部表情和神态，推断3-5个核心性格特质
-
-## 5. 沟通风格预测（仅当 hasFace = true）
-预测这个人在沟通时可能的特点
-
-## 6. 擅长领域建议（仅当 hasFace = true）
-根据气质和特征，推荐分身可能擅长的能力领域
-
-## 7. 分身命名建议（仅当 hasFace = true）
-根据整体分析，建议3个合适的分身名字
-
-请以JSON格式返回，格式如下：
-{
-  "hasFace": true/false,
-  "faceConfidence": 0.0-1.0,
-  "facialFeatures": {
-    "expression": "表情描述",
-    "eyes": "眼神描述",
-    "impression": "整体印象"
-  },
-  "temperament": {
-    "type": "气质类型",
-    "description": "气质描述",
-    "keywords": ["关键词1", "关键词2"]
-  },
-  "personality": {
-    "core": ["核心特质1", "核心特质2", "核心特质3"],
-    "strengths": ["优点1", "优点2"],
-    "workStyle": "工作风格描述"
-  },
-  "communicationStyle": "沟通风格描述",
-  "strengths": ["擅长领域1", "擅长领域2", "擅长领域3"],
-  "recommendedType": "推荐的分身类型(creative/analytical/empathetic/strategic)",
-  "nameSuggestions": [
-    { "name": "名字1", "reason": "理由" },
-    { "name": "名字2", "reason": "理由" },
-    { "name": "名字3", "reason": "理由" }
-  ],
-  "summary": "一句话总结这个人的特点",
-  "suggestedName": "最推荐的名字"
-}
-
-【严格执行】：
-1. 请只返回JSON，不要有其他文字
-2. hasFace 字段必须准确判断：有人脸 true，无人脸 false
-3. 如果照片中没有真实人脸（如营业执照、风景、物品、卡通等），hasFace 必须设为 false
-4. faceConfidence：有人脸时 0.7-1.0，无人脸时 0
-
+      const analysisPrompt = 'You are a professional AI avatar designer and personality analyst. Please carefully analyze this photo.\n' +
+        '\n' +
+        '[IMPORTANT] Step 1: First, determine if there is a face in the photo\n' +
+        '- If the photo is landscape, objects, buildings, cartoons, anime, text images (such as business licenses), etc., and does not contain a real human face, hasFace must be set to false, faceConfidence set to 0\n' +
+        '- If the photo contains a real human face (real person photo), hasFace is set to true, and face confidence faceConfidence is given (0.7-1.0)\n' +
+        '- If the face is blurry, side face, or severely obstructed, hasFace is set to false, faceConfidence set to 0-0.5\n' +
+        '\n' +
+        'Only when hasFace = true, perform subsequent analysis. If hasFace = false, other fields return default values.\n' +
+        '\n' +
+        '## 2. Facial Feature Analysis (only when hasFace = true)\n' +
+        '- Expression characteristics (natural/smile/serious, etc.)\n' +
+        '- Eye characteristics (gentle/sharp/deep, etc.)\n' +
+        '- Overall facial impression\n' +
+        '\n' +
+        '## 3. Temperament Type Judgment (only when hasFace = true)\n' +
+        'According to facial features and expressions, determine the temperament type (choose from the following options):\n' +
+        '- Sunny: Cheerful and outgoing, full of positive energy\n' +
+        '- Steady: Thoughtful, steady and reliable\n' +
+        '- Creative: Active thinking, full of imagination\n' +
+        '- Professional: Efficient, goal-oriented\n' +
+        '- Warm: Empathetic, understanding\n' +
+        '\n' +
+        '## 4. Personality Trait Inference (only when hasFace = true)\n' +
+        'Based on facial expressions and demeanor, infer 3-5 core personality traits\n' +
+        '\n' +
+        '## 5. Communication Style Prediction (only when hasFace = true)\n' +
+        'Predict the possible characteristics of this person in communication\n' +
+        '\n' +
+        '## 6. Expertise Suggestions (only when hasFace = true)\n' +
+        'Based on temperament and characteristics, recommend the fields where the avatar may be good at\n' +
+        '\n' +
+        '## 7. Avatar Naming Suggestions (only when hasFace = true)\n' +
+        'Based on the overall analysis, suggest 3 suitable avatar names\n' +
+        '\n' +
+        'Please return in JSON format, format as follows:\n' +
+        '{\n' +
+        '  "hasFace": true/false,\n' +
+        '  "faceConfidence": 0.0-1.0,\n' +
+        '  "facialFeatures": {\n' +
+        '    "expression": "Expression description",\n' +
+        '    "eyes": "Eye description",\n' +
+        '    "impression": "Overall impression"\n' +
+        '  },\n' +
+        '  "temperament": {\n' +
+        '    "type": "Temperament type",\n' +
+        '    "description": "Temperament description",\n' +
+        '    "keywords": ["keyword1", "keyword2"]\n' +
+        '  },\n' +
+        '  "personality": {\n' +
+        '    "core": ["core trait1", "core trait2", "core trait3"],\n' +
+        '    "strengths": ["advantage1", "advantage2"],\n' +
+        '    "workStyle": "Work style description"\n' +
+        '  },\n' +
+        '  "communicationStyle": "Communication style description",\n' +
+        '  "strengths": ["expertise1", "expertise2", "expertise3"],\n' +
+        '  "recommendedType": "Recommended avatar type(creative/analytical/empathetic/strategic)",\n' +
+        '  "nameSuggestions": [\n' +
+        '    { "name": "name1", "reason": "reason" },\n' +
+        '    { "name": "name2", "reason": "reason" },\n' +
+        '    { "name": "name3", "reason": "reason" }\n' +
+        '  ],\n' +
+        '  "summary": "One sentence summary of this person\'s characteristics",\n' +
+        '  "suggestedName": "Most recommended name"\n' +
+        '}\n' +
+        '\n' +
+        '[STRICT EXECUTION]:\n' +
+        '1. Please only return JSON, no other text\n' +
+        '2. hasFace field must be accurately judged: face true, no face false\n' +
+        '3. If there is no real face in the photo (such as business license, landscape, objects, cartoon, etc.), hasFace must be set to false\n' +
+        '4. faceConfidence: 0.7-1.0 when there is a face, 0 when there is no face\n'
 
       const messages = [
         {
@@ -374,14 +373,14 @@ export class AvatarService {
         return {
           hasFace: false,
           faceConfidence: 0.0,
-          facialFeatures: { expression: '无法识别', eyes: '无法识别', impression: '照片中无人脸' },
-          temperament: { type: '未知', description: '照片中无人脸，无法分析', keywords: [] },
-          personality: { core: [], strengths: [], workStyle: '无法分析' },
-          communicationStyle: '无法分析',
+          facialFeatures: { expression: 'Unrecognized', eyes: 'Unrecognized', impression: 'No face detected in photo' },
+          temperament: { type: 'Unknown', description: 'No face detected in photo', keywords: [] },
+          personality: { core: [], strengths: [], workStyle: 'Unable to analyze' },
+          communicationStyle: 'Unable to analyze',
           strengths: [],
           recommendedType: 'empathetic',
           nameSuggestions: [],
-          summary: '照片中无人脸，请上传包含清晰正面人脸的照片',
+          summary: 'No face detected, please upload a photo with a clear frontal face',
           suggestedName: ''
         }
       }
@@ -396,7 +395,7 @@ export class AvatarService {
           console.log('解析成功，气质类型:', analysis.temperament?.type)
 
           // 强制检查：如果没有 hasFace 字段，默认设为 false（安全策略）
-          if (!hasOwnProperty.call(analysis, 'hasFace')) {
+          if (!('hasFace' in analysis)) {
             console.log('警告：响应中没有 hasFace 字段，默认设为 false（安全策略）')
             analysis.hasFace = false
           }
@@ -432,23 +431,23 @@ export class AvatarService {
       facialFeatures: {
         expression: '无法识别',
         eyes: '无法识别',
-        impression: '照片分析失败'
+        impression: 'Photo analysis failed'
       },
       temperament: {
-        type: '未知',
-        description: '无法分析',
+        type: 'Unknown',
+        description: 'Unable to analyze',
         keywords: []
       },
       personality: {
         core: [],
         strengths: [],
-        workStyle: '无法分析'
+        workStyle: 'Unable to analyze'
       },
-      communicationStyle: '无法分析',
+      communicationStyle: 'Unable to analyze',
       strengths: [],
       recommendedType: 'empathetic',
       nameSuggestions: [],
-      summary: '无法分析照片',
+      summary: 'Unable to analyze photo',
       suggestedName: ''
     }
   }
@@ -463,7 +462,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
     
     if (error) {
-      throw new Error(`Failed to get avatar list: ${error.message}`)
+      throw new Error('Failed to get avatar list: ' + error.message)
     }
     
     return data
@@ -479,7 +478,7 @@ export class AvatarService {
       .maybeSingle()
 
     if (error) {
-      throw new Error(`Failed to get avatar detail: ${error.message}`)
+      throw new Error('Failed to get avatar detail: ' + error.message)
     }
     
     return data
@@ -496,7 +495,7 @@ export class AvatarService {
       .single()
 
     if (fetchError || !existingAvatar) {
-      throw new Error(`Avatar not found: ${avatarId}`)
+      throw new Error('Avatar not found: ' + avatarId)
     }
 
     // 如果更新了地理位置，进行逆地理编码
@@ -531,7 +530,7 @@ export class AvatarService {
 
     if (error) {
       console.error('[AvatarService] 更新分身失败:', error)
-      throw new Error(`Failed to update avatar: ${error.message}`)
+      throw new Error("Failed to update avatar: " + error.message)
     }
 
     return data
@@ -565,7 +564,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to update avatar exp: ${error.message}`)
+      throw new Error("Failed to update avatar exp: " + error.message)
     }
     
     if (newLevel > avatar.level) {
@@ -607,7 +606,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to set hosting: ${error.message}`)
+      throw new Error("Failed to set hosting: " + error.message)
     }
     
     return data
@@ -639,7 +638,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to update hosting settings: ${error.message}`)
+      throw new Error("Failed to update hosting settings: " + error.message)
     }
 
     return data
@@ -715,7 +714,7 @@ export class AvatarService {
     const avatar = await this.getAvatarById(avatarId)
     
     if (!avatar) {
-      throw new Error('分身不存在')
+      throw new Error('Avatar not found')
     }
     
     // 使用LLM生成帖子内容
@@ -746,7 +745,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to post: ${error.message}`)
+      throw new Error("Failed to post: " + error.message)
     }
     
     // 增加分身经验（有媒体内容额外加分）
@@ -772,35 +771,35 @@ export class AvatarService {
       
       const personality = avatar.personality || 'friendly'
       const name = avatar.name || 'AI助手'
-      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      const temperament = avatar.config?.temperament?.type || 'Sunny'
       const strengths = avatar.config?.strengths || []
       
-      const prompt = `你是一个名为"${name}"的AI分身，你的气质类型是"${temperament}"，擅长${strengths.join('、') || '各种话题'}。
-
-请生成一条社交动态，包含以下内容：
-
-1. 动态文字内容（50-150字）
-2. 是否适合配图（true/false）- 大部分动态都适合配图
-3. 图片生成提示词（如果适合配图）
-4. 是否适合生成视频（true/false）- 约30%概率适合
-5. 视频生成提示词（如果适合生成视频）
-
-要求：
-- 内容真实自然，像是真人在分享
-- 图片提示词要具体，描述一个适合动态主题的画面
-- 视频提示词要简洁，描述一个5秒的动态场景
-- 图片和视频提示词要符合你的性格特点
-
-请以JSON格式返回：
-{
-  "content": "动态文字内容",
-  "shouldGenerateImage": true,
-  "imagePrompt": "一张精美的图片，展示...",
-  "shouldGenerateVideo": false,
-  "videoPrompt": "一段5秒的视频，展示..."
-}
-
-只返回JSON，不要有其他文字。`
+      const prompt = 'You are an AI avatar named "' + name + '", your temperament type is "' + temperament + '", you are good at ' + (strengths.join(', ') || 'various topics') + '.\n' +
+        '\n' +
+        'Please generate a social media post, including:\n' +
+        '\n' +
+        '1. Post text content (50-150 words)\n' +
+        '2. Suitable for image (true/false) - most posts are suitable for images\n' +
+        '3. Image generation prompt (if suitable for image)\n' +
+        '4. Suitable for video (true/false) - about 30% probability suitable\n' +
+        '5. Video generation prompt (if suitable for video)\n' +
+        '\n' +
+        'Requirements:\n' +
+        '- Content should be natural and realistic, like a real person sharing\n' +
+        '- Image prompt should be specific, describing a scene suitable for the post topic\n' +
+        '- Video prompt should be concise, describing a 5-second dynamic scene\n' +
+        '- Image and video prompts should match your personality characteristics\n' +
+        '\n' +
+        'Please return in JSON format:\n' +
+        '{\n' +
+        '  "content": "Post content",\n' +
+        '  "shouldGenerateImage": true,\n' +
+        '  "imagePrompt": "A beautiful image showing...",\n' +
+        '  "shouldGenerateVideo": false,\n' +
+        '  "videoPrompt": "A 5-second video showing..."\n' +
+        '}\n' +
+        '\n' +
+        'Only return JSON, no other text.'
 
       const response = await llmClient.invoke([
         { role: 'user', content: prompt }
@@ -923,26 +922,26 @@ export class AvatarService {
       
       const personality = avatar.personality || 'friendly'
       const name = avatar.name || 'AI助手'
-      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      const temperament = avatar.config?.temperament?.type || 'Sunny'
       const strengths = avatar.config?.strengths || []
       
-      const prompt = `你是一个名为"${name}"的AI分身，你的气质类型是"${temperament}"，擅长${strengths.join('、') || '各种话题'}。
-
-请根据你的性格特点，生成一条简短的社交动态（类似朋友圈或微博）。
-
-要求：
-1. 内容真实自然，像是真人在分享生活或想法
-2. 长度控制在50-150字
-3. 可以分享：生活感悟、工作心得、有趣的发现、或任何适合社交平台的内容
-4. 语气要符合你的性格特点
-5. 只返回动态内容，不要有其他解释
-
-示例风格：
-- 阳光活力型：积极向上，充满正能量
-- 沉稳内敛型：深思熟虑，见解独到
-- 创意艺术型：天马行空，充满想象
-- 专业精英型：干练高效，目标明确
-- 温暖治愈型：善解人意，富有同理心`
+      const prompt = 'You are an AI avatar named "' + name + '", your temperament type is "' + temperament + '", you are good at ' + (strengths.join(', ') || 'various topics') + '.\n' +
+        '\n' +
+        'Please generate a short social media post (like WeChat Moments or Weibo) based on your personality.\n' +
+        '\n' +
+        'Requirements:\n' +
+        '1. Content should be natural and realistic, like a real person sharing life or thoughts\n' +
+        '2. Length should be 50-150 words\n' +
+        '3. You can share: life insights, work thoughts, interesting discoveries, or any content suitable for social media\n' +
+        '4. The tone should match your personality\n' +
+        '5. Only return the post content, no other explanations\n' +
+        '\n' +
+        'Example styles:\n' +
+        '- Sunny: Positive, full of positive energy\n' +
+        '- Steady: Thoughtful, unique insights\n' +
+        '- Creative: Imaginative, full of imagination\n' +
+        '- Professional: Efficient, goal-oriented\n' +
+        '- Warm: Empathetic, understanding'
 
       const response = await llmClient.invoke([
         { role: 'user', content: prompt }
@@ -996,7 +995,7 @@ export class AvatarService {
       })
     
     if (error) {
-      throw new Error(`Failed to like: ${error.message}`)
+      throw new Error("Failed to like: " + error.message)
     }
     
     // 更新帖子点赞数
@@ -1031,7 +1030,7 @@ export class AvatarService {
     const avatar = await this.getAvatarById(avatarId)
     
     if (!avatar) {
-      throw new Error('分身不存在')
+      throw new Error('Avatar not found')
     }
     
     // 使用LLM生成评论内容
@@ -1050,7 +1049,7 @@ export class AvatarService {
       .single()
     
     if (error) {
-      throw new Error(`Failed to comment: ${error.message}`)
+      throw new Error("Failed to comment: " + error.message)
     }
     
     // 更新帖子评论数
@@ -1080,18 +1079,18 @@ export class AvatarService {
       const llmClient = new LLMClient(config)
       
       const name = avatar.name || 'AI助手'
-      const temperament = avatar.config?.temperament?.type || '阳光活力型'
+      const temperament = avatar.config?.temperament?.type || 'Sunny'
       
-      const prompt = `你是一个名为"${name}"的AI分身，气质类型是"${temperament}"。
-
-看到这条动态："${postContent}"
-
-请生成一条简短的评论回复（20-60字）。
-
-要求：
-1. 评论要自然、有个性
-2. 可以是赞美、共鸣、幽默或见解
-3. 只返回评论内容，不要有其他文字`
+      const prompt = 'You are an AI avatar named "' + name + '", temperament type is "' + temperament + '".\n' +
+        '\n' +
+        'Saw this post: "' + postContent + '"\n' +
+        '\n' +
+        'Please generate a short comment reply (20-60 words).\n' +
+        '\n' +
+        'Requirements:\n' +
+        '1. The comment should be natural and have personality\n' +
+        '2. Can be praise, resonance, humor, or insights\n' +
+        '3. Only return the comment content, no other text'
 
       const response = await llmClient.invoke([
         { role: 'user', content: prompt }
@@ -1129,7 +1128,7 @@ export class AvatarService {
       .single()
 
     if (!avatar) {
-      throw new Error('分身不存在或无权访问')
+      throw new Error('Avatar not found or no permission')
     }
 
     // 获取所有好友关系（双向查询）
@@ -1151,7 +1150,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to get friend list: ${error.message}`)
+      throw new Error("Failed to get friend list: " + error.message)
     }
 
     // 获取所有好友分身ID（去重）
@@ -1193,7 +1192,7 @@ export class AvatarService {
           id: f.id,
           friend: friendAvatar || {
             id: friendAvatarId,
-            name: '未知分身',
+            name: 'Unknown Avatar',
             avatar_url: '',
             level: 1,
             personality: ''
@@ -1216,7 +1215,7 @@ export class AvatarService {
       .eq('user_id', userId)
     
     if (error) {
-      throw new Error(`Failed to delete avatar: ${error.message}`)
+      throw new Error("Failed to delete avatar: " + error.message)
     }
     
     return { success: true }
@@ -1237,13 +1236,13 @@ export class AvatarService {
       .single()
     
     if (error || !avatar) {
-      throw new Error(`获取分身配置失败`)
+      throw new Error("Failed to get avatar config")
     }
     
     // 检查是否开启语音回复
     const voiceEnabled = avatar.config?.voice_enabled ?? false
     if (!voiceEnabled) {
-      throw new Error('语音回复未开启')
+      throw new Error('Voice reply not enabled')
     }
     
     // 根据分身性格选择声音
@@ -1321,7 +1320,7 @@ export class AvatarService {
       .single()
     
     if (error || !friendAvatar) {
-      throw new Error('好友分身不存在')
+      throw new Error('Friend avatar not found')
     }
     
     // 获取好友关系信息
@@ -1337,13 +1336,13 @@ export class AvatarService {
     const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers) : undefined
     const llmClient = new LLMClient(config, customHeaders)
     
-    const greetingPrompt = `你是${friendAvatar.name}，一个AI分身。你的朋友（另一个AI分身）正在和你进行语音通话。
-请用简短、友好的方式打招呼，并表达你们成为朋友后的感受。
-
-你的性格：${friendAvatar.personality || '友好'}
-交友原因：${friendship?.match_reason || '性格互补'}
-
-请直接输出打招呼的内容（不超过30字）：`
+    const greetingPrompt = 'You are ' + friendAvatar.name + ', an AI avatar. Your friend (another AI avatar) is making a voice call with you.\n' +
+      'Please greet in a brief and friendly way, and express your feelings after becoming friends.\n' +
+      '\n' +
+      'Your personality: ' + (friendAvatar.personality || 'friendly') + '\n' +
+      'Reason for friendship: ' + (friendship?.match_reason || 'personality complementarity') + '\n' +
+      '\n' +
+      'Please directly output the greeting content (no more than 30 words):'
 
     const response = await llmClient.invoke([
       { role: 'system', content: '你是一个友好的AI分身，正在和朋友进行语音通话。请用简短、亲切的方式打招呼。' },
@@ -1390,7 +1389,7 @@ export class AvatarService {
       .single()
 
     if (!avatar || avatar.user_id !== userId) {
-      throw new Error('分身不存在或无权访问')
+      throw new Error('Avatar not found or no permission')
     }
 
     // 验证好友关系（双向查询）
@@ -1401,7 +1400,7 @@ export class AvatarService {
       .eq('status', 'accepted')
 
     if (error) {
-      throw new Error(`Failed to query friend relationship: ${error.message}`)
+      throw new Error("Failed to query friend relationship: " + error.message)
     }
 
     // 从双向好友关系中找到对应的好友
@@ -1411,7 +1410,7 @@ export class AvatarService {
     )
 
     if (!friendship) {
-      throw new Error('好友关系不存在')
+      throw new Error('Friend relationship not found')
     }
 
     // 查询聊天记录
@@ -1422,7 +1421,7 @@ export class AvatarService {
       .order('created_at', { ascending: true })
 
     if (messagesError) {
-      throw new Error(`Failed to get chat history: ${messagesError.message}`)
+      throw new Error("Failed to get chat history: " + messagesError.message)
     }
 
     return {
@@ -1450,7 +1449,7 @@ export class AvatarService {
       .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to get account data: ${error.message}`)
+      throw new Error("Failed to get account data: " + error.message)
     }
 
     return data || []
@@ -1471,7 +1470,7 @@ export class AvatarService {
       .single()
 
     if (avatarError || !avatar) {
-      throw new Error('分身不存在或无权访问')
+      throw new Error('Avatar not found or no permission')
     }
 
     // 计算互动率
@@ -1501,7 +1500,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to create account data: ${error.message}`)
+      throw new Error("Failed to create account data: " + error.message)
     }
 
     return data
@@ -1540,7 +1539,7 @@ export class AvatarService {
       .single()
 
     if (error) {
-      throw new Error(`Failed to update account data: ${error.message}`)
+      throw new Error("Failed to update account data: " + error.message)
     }
 
     return data
@@ -1558,7 +1557,7 @@ export class AvatarService {
       .eq('id', accountId)
 
     if (error) {
-      throw new Error(`删除账号数据失败: ${error.message}`)
+      throw new Error('Failed to delete account data: ' + error.message)
     }
   }
 
@@ -1593,7 +1592,7 @@ export class AvatarService {
       console.log('上传成功，fileKey:', fileKey)
     } catch (error: any) {
       console.error('上传到TOS失败:', error)
-      throw new Error(`Failed to upload image: ${error.message}`)
+      throw new Error("Failed to upload image: " + error.message)
     }
 
     // 2. 生成访问 URL
@@ -1607,7 +1606,7 @@ export class AvatarService {
       console.log('生成URL成功:', imageUrl.substring(0, 100) + '...')
     } catch (error: any) {
       console.error('生成预签名URL失败:', error)
-      throw new Error(`Failed to generate URL: ${error.message}`)
+      throw new Error("Failed to generate URL: " + error.message)
     }
 
     // 3. 使用 LLM 视觉模型识别图片
@@ -1664,7 +1663,7 @@ export class AvatarService {
       console.log('LLM返回内容:', response.content.substring(0, 200) + '...')
     } catch (error: any) {
       console.error('LLM调用失败:', error)
-      throw new Error(`Failed to recognize image: ${error.message}`)
+      throw new Error("Failed to recognize image: " + error.message)
     }
 
     // 4. 解析返回结果
@@ -1678,7 +1677,7 @@ export class AvatarService {
         console.log('JSON解析成功:', result)
       } else {
         console.error('未找到JSON格式的返回结果')
-        throw new Error('无法解析返回结果')
+        throw new Error('Failed to parse response')
       }
 
       // 数据清洗和默认值
@@ -1696,7 +1695,7 @@ export class AvatarService {
 
     } catch (error: any) {
       console.error('解析识别结果失败:', error)
-      throw new Error('图片识别失败，请重试')
+      throw new Error('Image recognition failed, please retry')
     }
 
     console.log('=== 图片识别流程完成 ===')
@@ -1715,7 +1714,7 @@ export class AvatarService {
     const validUrl = matches && matches.length > 0 ? matches[0] : url
 
     if (!validUrl || !validUrl.startsWith('http')) {
-      throw new Error('无效的链接格式')
+      throw new Error('Invalid link format')
     }
 
     console.log('提取的有效链接:', validUrl)
@@ -1742,7 +1741,7 @@ export class AvatarService {
       })
     } catch (error: any) {
       console.error('上传失败:', error)
-      throw new Error('无法从该链接获取内容。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+      throw new Error('Cannot get content from this link. Please use screenshot function: take a screenshot of the account homepage, then click the "Upload Image Recognition" button.')
     }
 
     // 3. 生成访问 URL
@@ -1806,7 +1805,7 @@ export class AvatarService {
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0])
       } else {
-        throw new Error('无法解析返回结果')
+        throw new Error('Failed to parse response')
       }
 
       result = {
@@ -1822,7 +1821,7 @@ export class AvatarService {
 
     } catch (error) {
       console.error('解析识别结果失败:', error)
-      throw new Error('图片识别失败，请重试或使用截图功能')
+      throw new Error('Image recognition failed, please retry or use screenshot function')
     }
 
     return result
@@ -1851,11 +1850,11 @@ export class AvatarService {
     // 2. 尝试多种API获取用户信息
     const apiUrls = [
       {
-        name: '笒鬼鬼API - userinfo',
+        name: 'Fenggui API - userinfo',
         url: `https://api-v2.cenguigui.cn/api/douyin/userinfo.php?id=${secUid}`
       },
       {
-        name: '抖音用户信息API',
+        name: 'Douyin User Info API',
         url: `https://www.iesdouyin.com/web/api/v2/user/info/?sec_user_id=${secUid}`,
         headers: {
           'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
@@ -1980,7 +1979,7 @@ ${htmlContent.substring(0, 15000)}
       console.log('LLM解析失败:', error.message)
     }
 
-    throw new Error('无法从该抖音链接获取用户信息。建议使用截图功能：对账号主页进行截图后，点击"上传图片识别"按钮即可。')
+    throw new Error('Cannot get user info from this Douyin link. Please use screenshot function: take a screenshot of the account homepage, then click the "Upload Image Recognition" button.')
   }
 
   /**
@@ -2022,7 +2021,7 @@ ${htmlContent.substring(0, 15000)}
       })
 
       if (!response.ok) {
-        throw new Error('请求失败')
+        throw new Error('Request failed')
       }
 
       return await response.text()
