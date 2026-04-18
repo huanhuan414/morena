@@ -144,6 +144,7 @@
 .upload-buttons {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
@@ -234,6 +235,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  padding: 2px;
 }
 
 .type-card {
@@ -247,14 +249,16 @@
   background: #f9fafb;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  box-sizing: border-box;
 }
 
 .type-card.active {
-  border-color: #3b82f6;
-  border-width: 2px;
+  border-color: #3b82f6 !important;
+  border-style: solid !important;
+  border-width: 2px !important;
   background: #eff6ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
 .type-text {

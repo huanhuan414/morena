@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo, chooseMessageFile } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,7 @@ interface Attachment {
   id: string
   name: string
   url: string
-  type: 'image' | 'video' | 'file'
+  type: 'image' | 'video' | 'document' | 'file'
 }
 
 // 价格配置（可调整）
@@ -165,8 +165,31 @@ export default function OrderCreatePage() {
     }
   }
 
+  // 选择文档
+  const handleChooseDocument = async () => {
+    try {
+      const res = await chooseMessageFile({
+        count: 9 - attachments.length,
+        type: 'file',
+        extension: ['doc', 'docx', 'pdf']
+      })
+
+      if (res.tempFiles && res.tempFiles.length > 0) {
+        // 上传文档
+        await uploadFiles(res.tempFiles.map((file) => ({
+          path: file.path,
+          type: 'document' as const,
+          name: file.name
+        })))
+      }
+    } catch (error) {
+      console.error('选择文档失败:', error)
+      showToast({ title: '选择文档失败', icon: 'none' })
+    }
+  }
+
   // 上传文件
-  const uploadFiles = async (files: Array<{ path: string; type: 'image' | 'video'; name: string }>) => {
+  const uploadFiles = async (files: Array<{ path: string; type: 'image' | 'video' | 'document'; name: string }>) => {
     setUploading(true)
     try {
       const uploadPromises = files.map(async (file) => {
@@ -410,6 +433,15 @@ export default function OrderCreatePage() {
                 <Video size={16} color="#ec4899" />
                 <Text>视频</Text>
               </Button>
+              <Button
+                className={`upload-btn ${uploading ? 'disabled' : ''}`}
+                onClick={handleChooseDocument}
+                disabled={uploading || attachments.length >= 9}
+                size="sm"
+              >
+                <FileText size={16} color="#8b5cf6" />
+                <Text>文档</Text>
+              </Button>
             </View>
 
             {/* 附件列表 */}
@@ -420,8 +452,10 @@ export default function OrderCreatePage() {
                     <View className="attachment-icon">
                       {att.type === 'image' ? (
                         <Image size={24} color="#3b82f6" />
-                      ) : (
+                      ) : att.type === 'video' ? (
                         <Video size={24} color="#ec4899" />
+                      ) : (
+                        <FileText size={24} color="#8b5cf6" />
                       )}
                     </View>
                     <Text className="attachment-name">{att.name}</Text>
