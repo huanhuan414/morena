@@ -12,6 +12,16 @@ interface CreatePaymentRequest {
 }
 
 /**
+ * 订单支付请求体接口
+ */
+interface CreateOrderPaymentRequest {
+  orderId: string
+  amount: number
+  description: string
+  openid: string
+}
+
+/**
  * 支付控制器
  */
 @Controller('payment')
@@ -129,6 +139,116 @@ export class PaymentController {
       return {
         code: 500,
         message: error.message || '创建支付订单失败',
+        data: null
+      }
+    }
+  }
+
+  /**
+   * 创建订单支付
+   * POST /api/payment/wechat/create-order-payment
+   */
+  @Post('wechat/create-order-payment')
+  async createOrderPayment(
+    @Headers('x-user-id') userId: string,
+    @Body() body: CreateOrderPaymentRequest
+  ) {
+    try {
+      const { orderId, amount, description, openid } = body
+
+      if (!openid) {
+        return {
+          code: 400,
+          message: '缺少用户openid',
+          data: null
+        }
+      }
+
+      const client = getSupabaseClient()
+
+      // 验证订单是否存在
+      const { data: order, error: orderError } = await client
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .eq('user_id', userId)
+        .single()
+
+      if (orderError || !order) {
+        return {
+          code: 400,
+          message: '订单不存在',
+          data: null
+        }
+      }
+
+      if (order.status !== 'pending_payment') {
+        return {
+          code: 400,
+          message: '订单状态不正确',
+          data: null
+        }
+      }
+
+      // 生成商户订单号
+      const outTradeNo = `ORDER_${userId}_${orderId}_${Date.now()}`
+
+      // 创建统一下单（金额单位：分）
+      const totalAmount = Math.round(amount * 100) // 元转分
+
+      const wechatOrderResult = await this.wechatPayService.createOrder(
+        description,
+        outTradeNo,
+        totalAmount,
+        openid
+      )
+
+      console.log('[PaymentController] 订单支付创建成功:', wechatOrderResult)
+
+      if (wechatOrderResult.prepay_id) {
+        // 生成小程序支付参数
+        const payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
+
+        // 创建支付记录
+        const { data: payment, error: paymentError } = await client
+          .from('order_payments')
+          .insert({
+            user_id: userId,
+            order_id: orderId,
+            out_trade_no: outTradeNo,
+            transaction_id: wechatOrderResult.prepay_id,
+            total_amount: totalAmount,
+            status: 'pending',
+            payment_method: 'wechat',
+            payment_params: payParams
+          })
+          .select()
+          .single()
+
+        if (paymentError) {
+          console.error('[PaymentController] 创建支付记录失败:', paymentError)
+          throw new Error('创建支付记录失败')
+        }
+
+        return {
+          code: 200,
+          data: {
+            paymentId: payment.id,
+            orderId,
+            outTradeNo,
+            prepayId: wechatOrderResult.prepay_id,
+            ...payParams
+          },
+          message: '支付订单创建成功'
+        }
+      } else {
+        throw new Error('微信支付订单创建失败')
+      }
+    } catch (error: any) {
+      console.error('[PaymentController] 创建订单支付失败:', error)
+      return {
+        code: 500,
+        message: error.message || '创建订单支付失败',
         data: null
       }
     }

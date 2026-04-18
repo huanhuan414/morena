@@ -405,11 +405,12 @@
   width: 48px;
   height: 32px;
   text-align: center;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  color: #1f2937;
-  background: transparent;
+  color: #000000 !important;
+  background: transparent !important;
   border: none;
+  -webkit-text-fill-color: #000000;
 }
 
 /* 价格明细 */

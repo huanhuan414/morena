@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo, chooseMessageFile } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -342,13 +342,61 @@ export default function OrderCreatePage() {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '发布成功', icon: 'success' })
         const orderId = res.data.data?.id
-        setTimeout(() => {
-          navigateTo({
-            url: `/pages/order-matching/index?orderId=${orderId}`
+
+        // 调用支付接口
+        try {
+          // 获取用户 openid（从本地存储或后端接口获取）
+          const openid = Taro.getStorageSync('openid') || ''
+
+          if (!openid) {
+            showToast({ title: '请先登录', icon: 'none' })
+            setLoading(false)
+            return
+          }
+
+          const payRes = await Network.request({
+            url: '/api/payment/wechat/create-order-payment',
+            method: 'POST',
+            data: {
+              orderId,
+              amount: totalPrice.total,
+              description: `订单支付-${form.title}`,
+              openid
+            }
           })
-        }, 1500)
+
+          if (payRes.data?.code === 200) {
+            // 调用微信支付
+            const payParams = payRes.data.data
+
+            await requestPayment({
+              timeStamp: payParams.timeStamp,
+              nonceStr: payParams.nonceStr,
+              package: payParams.package,
+              signType: payParams.signType,
+              paySign: payParams.paySign
+            })
+
+            showToast({ title: '支付成功', icon: 'success' })
+            setTimeout(() => {
+              navigateTo({
+                url: `/pages/order-matching/index?orderId=${orderId}`
+              })
+            }, 1500)
+          } else {
+            showToast({ title: payRes.data?.message || '支付失败', icon: 'none' })
+          }
+        } catch (payError) {
+          console.error('支付失败:', payError)
+          // 支付失败，但订单已创建，跳转到订单匹配页面
+          showToast({ title: '支付失败，订单已创建', icon: 'none' })
+          setTimeout(() => {
+            navigateTo({
+              url: `/pages/order-matching/index?orderId=${orderId}`
+            })
+          }, 1500)
+        }
       } else {
         showToast({ title: res.data?.message || '发布失败', icon: 'none' })
       }
