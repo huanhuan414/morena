@@ -1696,7 +1696,9 @@ export class AgentService {
 重要提示：你是一个AI分身，名字叫"${context.avatarInfo.name}"。用户正在与你进行对话。当用户询问你的身份或是否是分身时，请明确告知用户你的名字和身份，不要说"我没有创建任何分身"之类的错误回答。
 
 【个人IP打造功能】
-当用户要求生成视频（generate_video）或制作短剧（produce_shortdrama）时，使用文本描述生成视频，不使用分身头像作为参考图片（避免真实人物限制问题）。
+当用户要求生成视频（generate_video）或制作短剧（produce_shortdrama）时：
+- 如果用户上传了图片：必须使用用户上传的图片作为首帧参考（first_frame参数）
+- 如果用户没有上传图片：只使用文本描述生成视频，不传递图片参数
 分身头像 URL：${context.avatarInfo.avatar_url || '未设置'}
 `
       console.log('[AgentService] 分身身份信息已生成:', avatarInfoText)
@@ -1755,11 +1757,13 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 
 8. 【视频生成规则（CRITICAL）】
    - 当使用 generate_video 工具生成视频时：
-     - **只使用文本描述生成视频**，不要传递 reference_images、firstFrameUrl 等图片参数
-     - 豆包视频生成API不支持 reference_image 角色，会导致错误
-     - 在 prompt 中详细描述想要的视频内容、场景、动作、风格等
+     - **如果用户上传了图片**：使用用户上传的图片作为 firstFrameUrl 参数（role: 'first_frame'）
+     - **如果用户没有上传图片**：只使用文本描述生成视频，不传递 firstFrameUrl 参数
+     - 注意：豆包视频生成API不支持 'reference_image' 角色，必须使用 'first_frame'
+     - 注意：只支持AI生成的图片，不支持真实人物照片（会导致"The request failed because the input image may contain real person"错误）
    - 当使用 produce_shortdrama 工具制作短剧时：
-     - 使用文本描述生成视频，不使用分身头像作为参考图片
+     - 如果用户上传了参考图片，使用用户上传的图片作为首帧（first_frame）
+     - 如果没有上传参考图片，只使用文本描述生成视频
 
 【多步指令执行规则】
 - 当识别到多步指令时，必须按顺序执行所有子任务

@@ -8,7 +8,7 @@ import { getSupabaseClient } from '../../../storage/database/supabase-client'
  */
 export class GenerateVideoTool implements ITool {
   name = 'generate_video'
-  description = '根据文本描述生成高质量视频，支持4-12秒时长，可生成带音频的视频，适用于短视频、动画、广告等场景。只支持纯文本描述生成视频，不使用图片作为参考。'
+  description = '根据文本描述生成高质量视频，支持4-12秒时长，可生成带音频的视频，适用于短视频、动画、广告等场景。如果用户上传了图片，可以使用图片作为首帧参考（first_frame），确保视频内容与图片一致。如果用户没有上传图片，只使用文本描述生成视频。'
   
   private storage: S3Storage
 
@@ -49,6 +49,10 @@ export class GenerateVideoTool implements ITool {
         type: 'boolean' as const,
         description: '是否生成音频（配音、音效、背景音乐）',
         default: true
+      },
+      firstFrameUrl: {
+        type: 'string' as const,
+        description: '首帧图片URL（可选），用于图片转视频。注意：只支持AI生成的图片，不支持真实人物照片。'
       }
     },
     required: ['prompt']
@@ -60,11 +64,12 @@ export class GenerateVideoTool implements ITool {
       duration = 5,
       ratio = '16:9',
       resolution = '720p',
-      generateAudio = true
+      generateAudio = true,
+      firstFrameUrl
     } = params
     const { userId, avatarId, taskId, headers } = context
 
-    console.log('[GenerateVideoTool] 开始生成视频:', { prompt, duration, ratio, resolution })
+    console.log('[GenerateVideoTool] 开始生成视频:', { prompt, duration, ratio, resolution, hasFirstFrame: !!firstFrameUrl })
 
     const client = getSupabaseClient()
 
@@ -87,13 +92,24 @@ export class GenerateVideoTool implements ITool {
       const customHeaders = headers ? HeaderUtils.extractForwardHeaders(headers as any) : undefined
       const videoClient = new VideoGenerationClient(config, customHeaders)
 
-      // 🔴 修复：只使用文本生成视频，不使用图片（避免真实人物限制）
-      const content = [
-        {
-          type: 'text' as const,
-          text: prompt
-        }
-      ]
+      // 🔴 根据用户是否上传图片来决定是否使用图片
+      const content: any[] = []
+
+      // 如果用户上传了首帧图片，添加图片内容（使用 first_frame 角色）
+      if (firstFrameUrl) {
+        console.log('[GenerateVideoTool] 使用用户上传的首帧图片:', firstFrameUrl.substring(0, 50))
+        content.push({
+          type: 'image_url' as const,
+          image_url: { url: firstFrameUrl },
+          role: 'first_frame' as const // ✅ 使用 first_frame 而不是 reference_image
+        })
+      }
+
+      // 添加文本描述
+      content.push({
+        type: 'text' as const,
+        text: prompt
+      })
 
       // 更新进度
       await client
@@ -158,6 +174,8 @@ export class GenerateVideoTool implements ITool {
             ratio,
             resolution,
             hasAudio: generateAudio,
+            hasFirstFrame: !!firstFrameUrl,
+            firstFrameUrl: firstFrameUrl || null,
             original_url: originalUrl
           }
         })

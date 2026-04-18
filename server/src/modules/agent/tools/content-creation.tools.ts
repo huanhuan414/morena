@@ -946,9 +946,17 @@ export class GenerateVideoTool implements ITool {
       // 构建 content 数组
       const content: any[] = []
 
-      // 🔴 修复：不使用 reference_images 参数，避免真实人物限制问题
-      // 只使用文本生成视频，不使用图片或视频参考
-      // 如果需要参考图片，应该使用 first_frame 而不是 reference_image
+      // 🔴 添加参考图片（仅在用户上传时）
+      if (params.reference_images && Array.isArray(params.reference_images) && params.reference_images.length > 0) {
+        console.log('[ContentCreationTool] 用户上传了参考图片，将作为首帧使用')
+        for (const imgUrl of params.reference_images) {
+          content.push({
+            type: 'image_url',
+            image_url: { url: imgUrl },
+            role: 'first_frame' // ✅ 使用 first_frame 而不是 reference_image
+          })
+        }
+      }
 
       // 添加优化后的文本描述
       content.push({
