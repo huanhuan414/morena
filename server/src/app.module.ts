@@ -24,6 +24,7 @@ import { ContentGenerationModule } from './modules/content-generation/content-ge
 import { UploadModule } from './modules/upload/upload.module';
 import { AsrModule } from './modules/asr/asr.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
+import { VideoModule } from './modules/video/video.module';
 
 @Module({
   imports: [
@@ -49,7 +50,8 @@ import { RecommendationModule } from './modules/recommendation/recommendation.mo
     ContentGenerationModule,
     UploadModule,
     AsrModule,
-    RecommendationModule
+    RecommendationModule,
+    VideoModule
   ],
   controllers: [AppController],
   providers: [AppService],
