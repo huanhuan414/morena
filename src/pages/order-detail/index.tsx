@@ -1,14 +1,13 @@
 import Taro, { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
-  Sparkles, ChevronRight, ArrowLeft, Pencil, Save, Check, X, ExternalLink, Star,
-  TrendingUp, MessageCircle, Share2, Eye, Loader, Circle, Bell, User,
-  Clock, DollarSign, Tag, Calendar, Zap
+  Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
+  Loader, Circle, User,
+  Clock, DollarSign, Calendar, Zap
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -121,26 +120,12 @@ export default function OrderDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
 
   const [executions, setExecutions] = useState<ExecutionStep[]>([])
-  const [dispatchStatus, setDispatchStatus] = useState<{
-    acceptedAvatar?: any
-    pendingRequest?: any
-    executions: ExecutionStep[]
-    currentStep?: ExecutionStep | null
-  } | null>(null)
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
-    }
 
     if (id) {
       fetchOrder()
@@ -173,7 +158,6 @@ export default function OrderDetailPage() {
     try {
       const res = await Network.request({ url: `/api/order-dispatch/${id}/status` })
       if (res.data?.code === 200) {
-        setDispatchStatus(res.data.data)
         setExecutions(res.data.data.executions || [])
       }
     } catch (error) {
@@ -536,7 +520,7 @@ export default function OrderDetailPage() {
           <View className="progress-panel">
             {executions.length > 0 ? (
               <View className="timeline">
-                {executions.map((step, idx) => (
+                {executions.map((step) => (
                   <View key={step.id} className="timeline-item">
                     <View className="timeline-marker">
                       {getStepIcon(step.status)}
