@@ -315,7 +315,7 @@ export default function OrderDetailPage() {
         <View className="nav-content">
           <View className="nav-left">
             <View className="back-btn" onClick={() => navigateBack()}>
-              <ArrowLeft size={24} color="#fff" />
+              <ArrowLeft size={24} color="#1f2937" />
             </View>
             <Text className="nav-title">订单详情</Text>
           </View>
