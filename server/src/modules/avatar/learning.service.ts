@@ -111,7 +111,7 @@ export class LearningService {
     conversationContext?: string[]
   ): Promise<void> {
     const client = getSupabaseClient()
-    
+
     try {
       // 获取当前学习数据
       const { data: avatar } = await client
@@ -119,16 +119,21 @@ export class LearningService {
         .select('config, learning_data')
         .eq('id', avatarId)
         .single()
-      
+
+      if (!avatar) {
+        console.error('[LearningService] 分身不存在:', avatarId)
+        return
+      }
+
       // 获取当前学习数据，如果为空或无效则使用默认值
       const rawLearningData = avatar?.learning_data
       const currentLearning: UserLearningData = (rawLearningData && typeof rawLearningData === 'object' && 'messageCount' in rawLearningData)
         ? rawLearningData as UserLearningData
         : this.getDefaultLearningData()
-      
+
       // 使用LLM分析用户消息
       const analysis = await this.analyzeMessage(userMessage, conversationContext)
-      
+
       // 分析风格指纹
       const styleAnalysis = this.analyzeStyleFingerprint(userMessage, currentLearning.styleFingerprint)
       
@@ -165,7 +170,8 @@ export class LearningService {
       console.log('[LearningService] 学习数据已更新:', avatarId, {
         messageCount: updatedLearning.messageCount,
         masteryLevel: progressMetrics.masteryLevel,
-        level: progressMetrics.level
+        level: progressMetrics.level,
+        totalExp: progressMetrics.totalExp
       })
     } catch (error) {
       console.error('[LearningService] 学习分析失败:', error)
@@ -175,7 +181,7 @@ export class LearningService {
   /**
    * 使用LLM分析用户消息
    */
-  private async analyzeMessage(message: string, context?: string[]): Promise<Partial<UserLearningData>> {
+  private async analyzeMessage(message: string, context?: string[]): Promise<any> {
     const config = new Config()
     const llmClient = new LLMClient(config)
     
