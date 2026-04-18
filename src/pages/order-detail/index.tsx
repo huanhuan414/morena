@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
-  Sparkles, ChevronRight,
-  Pencil, Save, Check, X, ExternalLink, Star, ThumbsUp,
-  TrendingUp, MessageCircle, Share2, Eye, Loader, Circle,
-  Sparkle, ArrowRight, Bell, User
+  Sparkles, ChevronRight, ArrowLeft, Pencil, Save, Check, X, ExternalLink, Star,
+  TrendingUp, MessageCircle, Share2, Eye, Loader, Circle, Bell, User,
+  Clock, DollarSign, Tag, Calendar, Zap
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -74,23 +73,6 @@ interface ExecutionStep {
   completed_at?: string
 }
 
-interface PlatformConfig {
-  platform: string
-  hasApi: boolean
-  color: string
-  name: string
-}
-
-const PLATFORM_CONFIGS: PlatformConfig[] = [
-  { platform: 'wechat_mp', hasApi: true, color: '#07c160', name: '微信小程序' },
-  { platform: 'xiaohongshu', hasApi: false, color: '#fe2c55', name: '小红书' },
-  { platform: 'bilibili', hasApi: false, color: '#00a1d6', name: 'B站' },
-  { platform: 'weibo', hasApi: false, color: '#ff8200', name: '微博' },
-  { platform: 'douyin', hasApi: false, color: '#161823', name: '抖音' },
-  { platform: 'wechat_video', hasApi: false, color: '#1aad19', name: '视频号' }
-]
-
-// 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {
   'wechat_mp': '微信公众号',
   'xiaohongshu': '小红书',
@@ -109,20 +91,20 @@ const getPlatformName = (platform: string): string => {
 }
 
 const STATUS_CONFIG = {
-  open: { label: '待接单', color: '#f59e0b' },
-  in_progress: { label: '进行中', color: '#3b82f6' },
-  reviewing: { label: '待验收', color: '#8b5cf6' },
-  completed: { label: '已完成', color: '#22c55e' },
-  cancelled: { label: '已取消', color: '#6b7280' }
+  open: { label: '待接单', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
+  in_progress: { label: '进行中', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+  reviewing: { label: '待验收', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+  completed: { label: '已完成', color: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e, #4ade80)' },
+  cancelled: { label: '已取消', color: '#6b7280', gradient: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
 }
 
 export default function OrderDetailPage() {
   const router = useRouter()
   const { id } = router.params
-  
+
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'detail' | 'notifications' | 'avatar' | 'feedback'>('detail')
+  const [activeTab, setActiveTab] = useState<'detail' | 'progress' | 'result'>('detail')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
@@ -130,23 +112,15 @@ export default function OrderDetailPage() {
     description: '',
     budget: 0
   })
-  
-  // 验收评分
+
   const [showRating, setShowRating] = useState(false)
   const [rating, setRating] = useState(5)
   const [ratingComment, setRatingComment] = useState('')
-  
-  // 驳回
+
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  
-  // 执行进度
+
   const [executions, setExecutions] = useState<ExecutionStep[]>([])
-
-  // 数据反馈
-  const [feedback, setFeedback] = useState<any>(null)
-
-  // 分配状态
   const [dispatchStatus, setDispatchStatus] = useState<{
     acceptedAvatar?: any
     pendingRequest?: any
@@ -154,29 +128,20 @@ export default function OrderDetailPage() {
     currentStep?: ExecutionStep | null
   } | null>(null)
 
-  // 通知记录
-  const [notifications, setNotifications] = useState<any[]>([])
-
-  // 分身已接受的订单列表
-  const [avatarAcceptedOrders, setAvatarAcceptedOrders] = useState<any[]>([])
-  const [loadingAvatarOrders, setLoadingAvatarOrders] = useState(false)
-
-  // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
-    // 初始化状态栏和胶囊按钮信息
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
+
     const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
     if (menuButtonBoundingClientRect) {
       const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
       const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
       setCapsuleWidth(capsuleWidthWithMargins)
     }
-    
+
     if (id) {
       fetchOrder()
     }
@@ -194,12 +159,7 @@ export default function OrderDetailPage() {
           description: orderData.description,
           budget: orderData.budget
         })
-
-        // 获取分配状态
         fetchDispatchStatus()
-
-        // 获取通知记录
-        fetchNotifications()
       }
     } catch (error) {
       console.error('获取订单详情失败:', error)
@@ -215,75 +175,18 @@ export default function OrderDetailPage() {
       if (res.data?.code === 200) {
         setDispatchStatus(res.data.data)
         setExecutions(res.data.data.executions || [])
-
-        // 获取分身已接受的订单列表
-        if (res.data.data.acceptedAvatar) {
-          fetchAvatarAcceptedOrders()
-        }
       }
     } catch (error) {
       console.error('获取分配状态失败:', error)
     }
   }
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await Network.request({ url: `/api/notifications/order/${id}` })
-      if (res.data?.code === 200) {
-        setNotifications(res.data.data || [])
-      }
-    } catch (error) {
-      console.error('获取通知记录失败:', error)
-    }
-  }
-
-  // 获取分身已接受的订单
-  const fetchAvatarAcceptedOrders = async () => {
-    setLoadingAvatarOrders(true)
-    try {
-      // 获取当前订单的分身ID
-      const avatarId = dispatchStatus?.acceptedAvatar?.id || order?.avatars?.id
-
-      if (!avatarId) {
-        return
-      }
-
-      // 调用后端接口获取该分身已接受的订单
-      const res = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
-
-      if (res.data?.code === 200) {
-        setAvatarAcceptedOrders(res.data.data || [])
-      }
-    } catch (error) {
-      console.error('获取分身已接受订单失败:', error)
-    } finally {
-      setLoadingAvatarOrders(false)
-    }
-  }
-
-  const fetchFeedback = async () => {
-    try {
-      const res = await Network.request({ url: `/api/order/${id}/feedback` })
-      if (res.data?.code === 200) {
-        setFeedback(res.data.data)
-      }
-    } catch (error) {
-      console.error('获取数据反馈失败:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab === 'feedback' && !feedback) {
-      fetchFeedback()
-    }
-  }, [activeTab])
-
   const handleSave = async () => {
     if (!formData.title.trim()) {
       showToast({ title: '请输入订单标题', icon: 'none' })
       return
     }
-    
+
     setSaving(true)
     try {
       const res = await Network.request({
@@ -291,7 +194,7 @@ export default function OrderDetailPage() {
         method: 'PUT',
         data: formData
       })
-      
+
       if (res.data?.code === 200) {
         showToast({ title: '保存成功', icon: 'success' })
         setEditing(false)
@@ -314,7 +217,7 @@ export default function OrderDetailPage() {
         method: 'PUT',
         data: rating > 0 ? { rating: { score: rating, comment: ratingComment } } : {}
       })
-      
+
       if (res.data?.code === 200) {
         showToast({ title: '验收通过', icon: 'success' })
         setShowRating(false)
@@ -331,14 +234,14 @@ export default function OrderDetailPage() {
       showToast({ title: '请输入驳回原因', icon: 'none' })
       return
     }
-    
+
     try {
       const res = await Network.request({
         url: `/api/order/${id}/reject`,
         method: 'PUT',
         data: { reason: rejectReason }
       })
-      
+
       if (res.data?.code === 200) {
         showToast({ title: '已驳回', icon: 'success' })
         setShowReject(false)
@@ -357,7 +260,7 @@ export default function OrderDetailPage() {
         url: `/api/order/${id}/cancel`,
         method: 'PUT'
       })
-      
+
       if (res.data?.code === 200) {
         showToast({ title: '订单已取消', icon: 'success' })
         navigateBack()
@@ -369,36 +272,31 @@ export default function OrderDetailPage() {
   }
 
   const handleRetryDispatch = () => {
-    // 跳转到匹配页面重新分配
     navigateTo({
       url: `/pages/order-matching/index?orderId=${id}`
     })
   }
 
-  const handleOpenPlatform = (url: string) => {
-    if (url) {
-      showToast({ title: '链接: ' + url, icon: 'none' })
-    }
-  }
-
   const getStepIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Check size={18} color="#22c55e" />
+        return <Check size={20} color="#22c55e" />
       case 'in_progress':
-        return <Loader size={18} color="#3b82f6" className="animate-spin" />
+        return <Loader size={20} color="#3b82f6" className="animate-spin" />
       case 'failed':
-        return <X size={18} color="#ef4444" />
+        return <X size={20} color="#ef4444" />
       default:
-        return <Circle size={18} color="rgba(255,255,255,0.3)" />
+        return <Circle size={20} color="rgba(255,255,255,0.2)" />
     }
   }
 
   if (loading) {
     return (
       <View className="order-detail-page">
-        <View className="loading-state">
-          <Loader size={32} color="#00f5ff" className="animate-spin" />
+        <View className="loading-container">
+          <View className="loading-spinner">
+            <Loader size={48} color="#00f5ff" className="animate-spin" />
+          </View>
           <Text className="loading-text">加载中...</Text>
         </View>
       </View>
@@ -408,8 +306,8 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <View className="order-detail-page">
-        <View className="error-state">
-          <Circle size={48} color="#ef4444" />
+        <View className="error-container">
+          <Circle size={64} color="#ef4444" />
           <Text className="error-text">订单不存在</Text>
         </View>
       </View>
@@ -421,337 +319,210 @@ export default function OrderDetailPage() {
 
   return (
     <View className="order-detail-page">
-      {/* 头部 */}
-      <View className="detail-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="header-top">
-          <View 
-            className="back-btn"
-            onClick={() => navigateBack()}
-          >
-            <ChevronRight size={24} color="#fff" style={{ transform: 'rotate(180deg)' }} />
+      {/* 背景特效 */}
+      <View className="bg-effects">
+        <View className="bg-orb orb-1"></View>
+        <View className="bg-orb orb-2"></View>
+        <View className="bg-orb orb-3"></View>
+      </View>
+
+      {/* 顶部导航 */}
+      <View className="nav-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="nav-content">
+          <View className="nav-left">
+            <View className="back-btn" onClick={() => navigateBack()}>
+              <ArrowLeft size={24} color="#fff" />
+            </View>
+            <Text className="nav-title">订单详情</Text>
           </View>
-          <Text className="page-title">订单详情</Text>
-          <View className="header-right" style={{ width: `${capsuleWidth}rpx` }}>
-            {!editing && order?.status === 'open' && (
-              <View className="edit-btn" onClick={() => setEditing(true)}>
-                <Pencil size={18} color="#00f5ff" />
-              </View>
-            )}
-          </View>
+          {editing && (
+            <View className="nav-actions">
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                <Text>取消</Text>
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Save size={16} color="#fff" />
+              </Button>
+            </View>
+          )}
+          {!editing && order?.status === 'open' && (
+            <View className="edit-btn" onClick={() => setEditing(true)}>
+              <Pencil size={20} color="#00f5ff" />
+            </View>
+          )}
         </View>
-        
-        {/* 状态标签 */}
-        <View className="status-badge" style={{ background: `${statusConfig.color}20` }}>
-          <Text className="status-text" style={{ color: statusConfig.color }}>
+      </View>
+
+      {/* 状态卡片 */}
+      <View className="status-card">
+        <View className="status-badge">
+          <View className="status-dot" style={{ background: statusConfig.gradient }}></View>
+          <Text className="status-label" style={{ color: statusConfig.color }}>
             {statusConfig.label}
           </Text>
+        </View>
+        <View className="status-info">
+          <Text className="order-title-text">{order.title}</Text>
+          <View className="order-meta">
+            <View className="meta-item">
+              <DollarSign size={16} color="#00f5ff" />
+              <Text className="meta-value">¥{order.budget || 0}</Text>
+            </View>
+            <View className="meta-item">
+              <Calendar size={16} color="#00f5ff" />
+              <Text className="meta-value">
+                {new Date(order.created_at).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
 
       {/* Tab切换 */}
-      <View className="detail-tabs">
-        <View
-          className={`detail-tab ${activeTab === 'detail' ? 'active' : ''}`}
-          onClick={() => setActiveTab('detail')}
-        >
-          <Text className="tab-text">订单详情</Text>
-        </View>
-        <View
-          className={`detail-tab ${activeTab === 'notifications' ? 'active' : ''}`}
-          onClick={() => setActiveTab('notifications')}
-        >
-          <Text className="tab-text">通知记录</Text>
-          {notifications.length > 0 && (
-            <View className="tab-badge">
-              <Text className="tab-badge-text">{notifications.length}</Text>
-            </View>
-          )}
-        </View>
-        {(dispatchStatus?.acceptedAvatar || order.avatars) && (
+      <View className="tab-bar">
+        {['detail', 'progress', 'result'].map((tab) => (
           <View
-            className={`detail-tab ${activeTab === 'avatar' ? 'active' : ''}`}
-            onClick={() => setActiveTab('avatar')}
+            key={tab}
+            className={`tab-item ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab as any)}
           >
-            <Text className="tab-text">接单分身</Text>
+            <Text className="tab-text">
+              {tab === 'detail' && '订单详情'}
+              {tab === 'progress' && '执行进度'}
+              {tab === 'result' && '成果展示'}
+            </Text>
+            {activeTab === tab && <View className="tab-indicator"></View>}
           </View>
-        )}
-        {(order.status === 'completed' || feedback) && (
-          <View
-            className={`detail-tab ${activeTab === 'feedback' ? 'active' : ''}`}
-            onClick={() => setActiveTab('feedback')}
-          >
-            <Text className="tab-text">数据</Text>
-          </View>
-        )}
+        ))}
       </View>
 
-      <ScrollView className="detail-content" scrollY>
+      <ScrollView className="content-scroll" scrollY>
         {/* 订单详情 */}
         {activeTab === 'detail' && (
-          <View className="tab-panel">
-            {/* 基本信息 */}
-            <View className="info-section">
-              <Text className="section-title">基本信息</Text>
-              
-              {editing ? (
-                <View className="edit-form">
-                  <View className="form-item">
-                    <Text className="form-label">标题</Text>
-                    <Input 
-                      value={formData.title}
-                      onInput={(e: any) => setFormData({...formData, title: e.detail.value})}
-                      placeholder="请输入订单标题"
-                      className="mt-2"
-                    />
-                  </View>
-                  <View className="form-item">
-                    <Text className="form-label">描述</Text>
-                    <Textarea
-                      value={formData.description}
-                      onInput={(e: any) => setFormData({...formData, description: e.detail.value})}
-                      placeholder="请输入订单描述"
-                      className="mt-2"
-                    />
-                  </View>
-                  <View className="form-actions">
-                    <Button variant="outline" onClick={() => setEditing(false)}>
-                      <Text>取消</Text>
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving}>
-                      <Save size={16} color="#fff" />
-                      <Text>{saving ? '保存中...' : '保存'}</Text>
-                    </Button>
-                  </View>
-                </View>
-              ) : (
-                <>
-                  <View className="info-row">
-                    <Text className="info-label">标题</Text>
-                    <Text className="info-value">{order.title}</Text>
-                  </View>
-                  <View className="info-row">
-                    <Text className="info-label">描述</Text>
-                    <Text className="info-value">{order.description || '暂无描述'}</Text>
-                  </View>
-                  <View className="info-row">
-                    <Text className="info-label">预算</Text>
-                    <Text className="info-value budget">¥{order.budget || 0}</Text>
-                  </View>
-                </>
-              )}
+          <View className="detail-panel">
+            {/* 描述卡片 */}
+            <View className="info-card glass-card">
+              <View className="card-header">
+                <Sparkles size={20} color="#00f5ff" />
+                <Text className="card-title">订单描述</Text>
+              </View>
+              <Text className="card-content">
+                {editing ? (
+                  <Textarea
+                    value={formData.description}
+                    onInput={(e: any) => setFormData({ ...formData, description: e.detail.value })}
+                    placeholder="请输入订单描述"
+                    className="edit-textarea"
+                  />
+                ) : (
+                  <Text>{order.description || '暂无描述'}</Text>
+                )}
+              </Text>
             </View>
 
-            {/* 需求 */}
+            {/* 需求卡片 */}
             {order.requirements && (
-              <View className="info-section">
-                <Text className="section-title">需求</Text>
-                {order.requirements.platforms && order.requirements.platforms.length > 0 && (
-                  <View className="info-row">
-                    <Text className="info-label">发布平台</Text>
-                    <View className="platform-tags">
-                      {order.requirements.platforms.map((p, idx) => (
-                        <View key={idx} className="platform-tag">
-                          <Text className="tag-text">{getPlatformName(p)}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                {order.requirements.targetAudience && (
-                  <View className="info-row">
-                    <Text className="info-label">目标受众</Text>
-                    <Text className="info-value">{order.requirements.targetAudience}</Text>
-                  </View>
-                )}
-                {order.requirements.contentType && (
-                  <View className="info-row">
-                    <Text className="info-label">内容类型</Text>
-                    <Text className="info-value">{order.requirements.contentType}</Text>
-                  </View>
-                )}
-                {order.requirements.expectedResults && (
-                  <View className="info-row">
-                    <Text className="info-label">预期效果</Text>
-                    <Text className="info-value">{order.requirements.expectedResults}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* 内容 */}
-            {content && (
-              <View className="info-section">
-                <Text className="section-title">内容</Text>
-                {content.title && (
-                  <Text className="content-title-section">{content.title}</Text>
-                )}
-                <Text className="content-text-section">{content.content}</Text>
-
-                {content.images && content.images.length > 0 && (
-                  <View className="content-images">
-                    {content.images.map((img, idx) => (
-                      <Image key={idx} src={img} className="content-image" mode="aspectFill" />
-                    ))}
-                  </View>
-                )}
-
-                {content.platform_results && content.platform_results.length > 0 && (
-                  <View className="publish-results">
-                    <Text className="sub-section-title">发布结果</Text>
-                    {content.platform_results.map((result, idx) => {
-                      const config = PLATFORM_CONFIGS.find(p => p.platform === result.platform)
-                      return (
-                        <View key={idx} className="publish-item">
-                          <View className="publish-platform">
-                            <Text className="platform-name">{config?.name || result.platform}</Text>
-                            <View className={`publish-status ${result.status}`}>
-                              <Text className="status-text">
-                                {result.status === 'published' ? '已发布' : '待发布'}
-                              </Text>
-                            </View>
+              <View className="info-card glass-card">
+                <View className="card-header">
+                  <Zap size={20} color="#00f5ff" />
+                  <Text className="card-title">详细需求</Text>
+                </View>
+                <View className="requirement-list">
+                  {order.requirements.platforms && order.requirements.platforms.length > 0 && (
+                    <View className="requirement-item">
+                      <Text className="req-label">发布平台</Text>
+                      <View className="platform-chips">
+                        {order.requirements.platforms.map((p, idx) => (
+                          <View key={idx} className="platform-chip">
+                            <Text className="chip-text">{getPlatformName(p)}</Text>
                           </View>
-                          {result.post_url && (
-                            <View
-                              className="publish-link"
-                              onClick={() => handleOpenPlatform(result.post_url!)}
-                            >
-                              <Text className="link-text">查看链接</Text>
-                              <ExternalLink size={14} color="#00f5ff" />
-                            </View>
-                          )}
-                          {!config?.hasApi && !result.post_url && (
-                            <View className="manual-publish">
-                              <Text className="publish-tip">需要手动发布</Text>
-                              <Button size="sm" variant="outline">
-                                <ExternalLink size={14} color="#fff" />
-                                <Text>获取指引</Text>
-                              </Button>
-                            </View>
-                          )}
-                        </View>
-                      )
-                    })}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* 执行进度（独立显示，当没有接单分身信息时） */}
-            {executions.length > 0 && !dispatchStatus?.acceptedAvatar && !order.avatars && (
-              <View className="info-section">
-                <Text className="section-title">执行进度</Text>
-                <View className="exec-steps">
-                  {executions.map((step, idx) => (
-                    <View key={step.id} className="exec-step">
-                      <View className="step-indicator">
-                        {getStepIcon(step.status)}
-                        {idx < executions.length - 1 && (
-                          <View className={`step-line ${step.status === 'completed' ? 'completed' : ''}`} />
-                        )}
-                      </View>
-                      <View className="step-content">
-                        <Text className="step-name">{step.step_name}</Text>
-                        {step.description && (
-                          <Text className="step-desc">{step.description}</Text>
-                        )}
+                        ))}
                       </View>
                     </View>
-                  ))}
+                  )}
+                  {order.requirements.contentType && (
+                    <View className="requirement-item">
+                      <Text className="req-label">内容类型</Text>
+                      <Text className="req-value">{order.requirements.contentType}</Text>
+                    </View>
+                  )}
+                  {order.requirements.targetAudience && (
+                    <View className="requirement-item">
+                      <Text className="req-label">目标受众</Text>
+                      <Text className="req-value">{order.requirements.targetAudience}</Text>
+                    </View>
+                  )}
+                  {order.requirements.expectedResults && (
+                    <View className="requirement-item">
+                      <Text className="req-label">预期效果</Text>
+                      <Text className="req-value">{order.requirements.expectedResults}</Text>
+                    </View>
+                  )}
+                  {order.requirements.deadline && (
+                    <View className="requirement-item">
+                      <Text className="req-label">截止日期</Text>
+                      <View className="req-value-wrapper">
+                        <Clock size={16} color="#f59e0b" />
+                        <Text className="req-value">{order.requirements.deadline}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-              </View>
-            )}
-
-            {/* 驳回原因 */}
-            {order.rejection && (
-              <View className="info-section rejection">
-                <View className="rejection-header">
-                  <Circle size={18} color="#f59e0b" />
-                  <Text className="rejection-title">被驳回</Text>
-                </View>
-                <Text className="rejection-reason">{order.rejection.reason}</Text>
-              </View>
-            )}
-
-            {/* 评分 */}
-            {order.rating && (
-              <View className="info-section">
-                <Text className="section-title">您的评分</Text>
-                <View className="rating-display">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <Star 
-                      key={star}
-                      size={24}
-                      color={star <= order.rating!.score ? '#eab308' : 'rgba(255,255,255,0.2)'}
-                    />
-                  ))}
-                </View>
-                {order.rating.comment && (
-                  <Text className="rating-comment">{order.rating.comment}</Text>
-                )}
               </View>
             )}
 
             {/* 分身信息 */}
             {order.avatars && (
-              <View className="info-section">
-                <Text className="section-title">执行分身</Text>
-                <View className="avatar-card">
-                  <View className="avatar-avatar">
+              <View className="info-card glass-card avatar-card">
+                <View className="card-header">
+                  <User size={20} color="#00f5ff" />
+                  <Text className="card-title">执行分身</Text>
+                </View>
+                <View className="avatar-display">
+                  <View className="avatar-image-wrapper">
                     {order.avatars.avatar_url ? (
-                      <Image src={order.avatars.avatar_url} className="avatar-img" />
+                      <Image src={order.avatars.avatar_url} className="avatar-image" />
                     ) : (
-                      <Sparkles size={24} color="#00f5ff" />
+                      <View className="avatar-placeholder">
+                        <Sparkles size={32} color="#00f5ff" />
+                      </View>
                     )}
                   </View>
-                  <View className="avatar-info">
+                  <View className="avatar-details">
                     <Text className="avatar-name">{order.avatars.name}</Text>
                     {order.avatars.level && (
-                      <Text className="avatar-level">Lv.{order.avatars.level}</Text>
+                      <View className="avatar-level-badge">
+                        <Star size={12} color="#eab308" />
+                        <Text className="level-text">Lv.{order.avatars.level}</Text>
+                      </View>
                     )}
                   </View>
                 </View>
               </View>
             )}
 
-            {/* 时间信息 */}
-            <View className="info-section">
-              <View className="info-row">
-                <Text className="info-label">创建时间</Text>
-                <Text className="info-value">{new Date(order.created_at).toLocaleString()}</Text>
-              </View>
-              {order.completed_at && (
-                <View className="info-row">
-                  <Text className="info-label">完成时间</Text>
-                  <Text className="info-value">{new Date(order.completed_at).toLocaleString()}</Text>
-                </View>
-              )}
-            </View>
-
             {/* 操作按钮 */}
-            <View className="action-section">
+            <View className="action-buttons">
               {order.status === 'open' && !order.avatars && (
                 <>
-                  <Button onClick={handleRetryDispatch} className="dispatch-btn">
-                    <Sparkle size={18} color="#fff" />
-                    <Text className="dispatch-btn-text">AI智能匹配分身</Text>
-                    <View className="dispatch-btn-arrow">
-                      <ArrowRight size={16} color="#fff" />
-                    </View>
+                  <Button onClick={handleRetryDispatch} className="primary-action-btn">
+                    <Sparkles size={18} color="#fff" />
+                    <Text>AI智能匹配分身</Text>
                   </Button>
-                  <Button variant="ghost" onClick={handleCancel}>
+                  <Button variant="outline" onClick={handleCancel} className="secondary-action-btn">
                     <Text style={{ color: '#ef4444' }}>取消订单</Text>
                   </Button>
                 </>
               )}
-              
+
               {order.status === 'reviewing' && (
                 <>
-                  <Button onClick={() => setShowRating(true)} className="w-full approve-btn">
-                    <Check size={16} color="#fff" />
+                  <Button onClick={() => setShowRating(true)} className="primary-action-btn">
+                    <Check size={18} color="#fff" />
                     <Text>验收通过</Text>
                   </Button>
-                  <Button variant="outline" onClick={() => setShowReject(true)}>
-                    <X size={16} color="#fff" />
+                  <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
+                    <X size={18} color="#fff" />
                     <Text>驳回修改</Text>
                   </Button>
                 </>
@@ -760,224 +531,67 @@ export default function OrderDetailPage() {
           </View>
         )}
 
-        {/* 通知记录 */}
-        {activeTab === 'notifications' && (
-          <View className="tab-panel">
-            <View className="notification-section">
-              {/* 通知我的 */}
-              <View className="notification-block">
-                <View className="block-header">
-                  <Bell size={16} color="#00f5ff" />
-                  <Text className="block-title">通知我的</Text>
-                  <View className="block-count">
-                    <Text className="count-text">{notifications.length}</Text>
+        {/* 执行进度 */}
+        {activeTab === 'progress' && (
+          <View className="progress-panel">
+            {executions.length > 0 ? (
+              <View className="timeline">
+                {executions.map((step, idx) => (
+                  <View key={step.id} className="timeline-item">
+                    <View className="timeline-marker">
+                      {getStepIcon(step.status)}
+                      <View className={`timeline-line ${step.status === 'completed' ? 'completed' : ''}`} />
+                    </View>
+                    <View className={`timeline-content ${step.status === 'completed' ? 'completed' : ''}`}>
+                      <Text className="timeline-title">{step.step_name}</Text>
+                      {step.description && (
+                        <Text className="timeline-desc">{step.description}</Text>
+                      )}
+                      <Text className="timeline-time">
+                        {step.completed_at
+                          ? `完成于 ${new Date(step.completed_at).toLocaleString()}`
+                          : step.started_at
+                          ? `开始于 ${new Date(step.started_at).toLocaleString()}`
+                          : '待开始'}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                {notifications.length > 0 ? (
-                  <View className="notification-list">
-                    {notifications.map((notification) => (
-                      <View key={notification.id} className="notification-item">
-                        <View className="notification-header">
-                          <View className="notification-avatar">
-                            {notification.avatar?.avatar_url ? (
-                              <Image
-                                src={notification.avatar.avatar_url}
-                                className="avatar-image"
-                              />
-                            ) : (
-                              <View className="avatar-placeholder">
-                                <User size={20} color="rgba(255, 255, 255, 0.5)" />
-                              </View>
-                            )}
-                          </View>
-                          <View className="notification-info">
-                            <Text className="notification-avatar-name">
-                              {notification.avatar?.name || '未知分身'}
-                            </Text>
-                            <Text className="notification-time">
-                              {new Date(notification.created_at).toLocaleString()}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text className="notification-content">{notification.content}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <View className="empty-state mini">
-                    <Bell size={32} color="rgba(255, 255, 255, 0.2)" />
-                    <Text className="empty-text">暂无通知记录</Text>
-                  </View>
-                )}
+                ))}
               </View>
-
-              {/* 分身已接受的订单 */}
-              <View className="notification-block">
-                <View className="block-header">
-                  <Check size={16} color="#22c55e" />
-                  <Text className="block-title">分身已接受的订单</Text>
-                  <View className="block-count">
-                    <Text className="count-text">{avatarAcceptedOrders.length}</Text>
-                  </View>
-                </View>
-                {loadingAvatarOrders ? (
-                  <View className="loading-state">
-                    <Loader size={24} color="#00f5ff" />
-                    <Text className="loading-text">加载中...</Text>
-                  </View>
-                ) : avatarAcceptedOrders.length > 0 ? (
-                  <View className="avatar-orders-list">
-                    {avatarAcceptedOrders.map((item) => (
-                      <View key={item.order_id} className="avatar-order-item" onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}>
-                        <View className="order-info">
-                          <Text className="order-title-small">{item.orders?.title || '未知订单'}</Text>
-                          <Text className="order-status-badge">{STATUS_CONFIG[item.orders?.status || 'open']?.label || '未知状态'}</Text>
-                        </View>
-                        <View className="order-meta">
-                          <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
-                          <Text className="order-time">
-                            {item.accepted_at ? new Date(item.accepted_at).toLocaleDateString() : ''}
-                          </Text>
-                        </View>
-                        <ChevronRight size={16} color="rgba(255, 255, 255, 0.4)" />
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <View className="empty-state mini">
-                    <Check size={32} color="rgba(255, 255, 255, 0.2)" />
-                    <Text className="empty-text">暂无已接受订单</Text>
-                  </View>
-                )}
+            ) : (
+              <View className="empty-state">
+                <Clock size={64} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text">暂无执行进度</Text>
               </View>
-            </View>
+            )}
           </View>
         )}
 
-        {/* 接单分身 */}
-        {activeTab === 'avatar' && (
-          <View className="tab-panel">
-            <View className="avatar-section">
-              <View className="avatar-card">
-                <View className="avatar-avatar">
-                  {(dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url) ? (
-                    <Image
-                      src={dispatchStatus?.acceptedAvatar?.avatar_url || order.avatars?.avatar_url}
-                      className="avatar-img"
-                    />
-                  ) : (
-                    <Sparkles size={24} color="#00f5ff" />
-                  )}
+        {/* 成果展示 */}
+        {activeTab === 'result' && (
+          <View className="result-panel">
+            {content ? (
+              <View className="result-content">
+                {content.title && (
+                  <View className="result-title-card glass-card">
+                    <Text className="result-title-text">{content.title}</Text>
+                  </View>
+                )}
+                <View className="result-body-card glass-card">
+                  <Text className="result-body-text">{content.content}</Text>
                 </View>
-                <View className="avatar-info">
-                  <Text className="avatar-name">
-                    {dispatchStatus?.acceptedAvatar?.name || order.avatars?.name || '未知分身'}
-                  </Text>
-                  <View className="avatar-meta">
-                    <Text className="avatar-level">
-                      Lv.{dispatchStatus?.acceptedAvatar?.level || order.avatars?.level || 1}
-                    </Text>
-                    {dispatchStatus?.currentStep && (
-                      <View className="avatar-status">
-                        <Loader size={12} color="#3b82f6" className="animate-spin" />
-                        <Text className="status-text-mini">正在执行: {dispatchStatus.currentStep.step_name}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              {/* 执行进度 */}
-              {executions.length > 0 && (
-                <View className="exec-progress-wrapper">
-                  <Text className="progress-title">执行进度</Text>
-                  <View className="exec-steps">
-                    {executions.map((step, idx) => (
-                      <View key={step.id} className="exec-step">
-                        <View className="step-indicator">
-                          {getStepIcon(step.status)}
-                          {idx < executions.length - 1 && (
-                            <View className={`step-line ${step.status === 'completed' ? 'completed' : ''}`} />
-                          )}
-                        </View>
-                        <View className="step-content">
-                          <Text className="step-name">{step.step_name}</Text>
-                          {step.description && (
-                            <Text className="step-desc">{step.description}</Text>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* 数据反馈 */}
-        {activeTab === 'feedback' && (
-          <View className="tab-panel">
-            {feedback ? (
-              <View className="feedback-section">
-                <View className="summary-cards">
-                  <View className="summary-card">
-                    <Eye size={24} color="#3b82f6" />
-                    <Text className="summary-num">{feedback.summary?.totalReach || 0}</Text>
-                    <Text className="summary-label">总曝光</Text>
-                  </View>
-                  <View className="summary-card">
-                    <ThumbsUp size={24} color="#22c55e" />
-                    <Text className="summary-num">{feedback.summary?.totalLikes || 0}</Text>
-                    <Text className="summary-label">总点赞</Text>
-                  </View>
-                  <View className="summary-card">
-                    <MessageCircle size={24} color="#8b5cf6" />
-                    <Text className="summary-num">{feedback.summary?.totalComments || 0}</Text>
-                    <Text className="summary-label">总评论</Text>
-                  </View>
-                  <View className="summary-card">
-                    <Share2 size={24} color="#f59e0b" />
-                    <Text className="summary-num">{feedback.summary?.totalShares || 0}</Text>
-                    <Text className="summary-label">总转发</Text>
-                  </View>
-                </View>
-                
-                {feedback.platformStats && feedback.platformStats.length > 0 && (
-                  <View className="platform-stats">
-                    <Text className="section-title">各平台数据</Text>
-                    {feedback.platformStats.map((stat: any, idx: number) => (
-                      <View key={idx} className="platform-stat-item">
-                        <View className="platform-stat-header">
-                          <Text className="stat-platform">{getPlatformName(stat.platform)}</Text>
-                        </View>
-                        <View className="stat-details">
-                          <View className="stat-item">
-                            <Text className="stat-label">曝光</Text>
-                            <Text className="stat-value">{stat.reach || 0}</Text>
-                          </View>
-                          <View className="stat-item">
-                            <Text className="stat-label">点赞</Text>
-                            <Text className="stat-value">{stat.likes || 0}</Text>
-                          </View>
-                          <View className="stat-item">
-                            <Text className="stat-label">评论</Text>
-                            <Text className="stat-value">{stat.comments || 0}</Text>
-                          </View>
-                          <View className="stat-item">
-                            <Text className="stat-label">转发</Text>
-                            <Text className="stat-value">{stat.shares || 0}</Text>
-                          </View>
-                        </View>
-                      </View>
+                {content.images && content.images.length > 0 && (
+                  <View className="result-images">
+                    {content.images.map((img, idx) => (
+                      <Image key={idx} src={img} className="result-image" mode="aspectFill" />
                     ))}
                   </View>
                 )}
               </View>
             ) : (
-              <View className="empty-feedback">
-                <TrendingUp size={48} color="rgba(255,255,255,0.2)" />
-                <Text className="empty-text">暂无数据反馈</Text>
+              <View className="empty-state">
+                <Sparkles size={64} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text">暂无成果内容</Text>
               </View>
             )}
           </View>
@@ -988,32 +602,35 @@ export default function OrderDetailPage() {
       {showRating && (
         <View className="modal-overlay" onClick={() => setShowRating(false)}>
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
-            <Text className="modal-title">验收评价</Text>
-            
+            <View className="modal-header">
+              <Text className="modal-title">验收评价</Text>
+              <View className="modal-close" onClick={() => setShowRating(false)}>
+                <X size={24} color="#fff" />
+              </View>
+            </View>
             <View className="rating-stars">
               {[1, 2, 3, 4, 5].map(star => (
-                <View 
+                <View
                   key={star}
-                  className="star-btn"
+                  className="star-item"
                   onClick={() => setRating(star)}
                 >
-                  <Star 
-                    size={36}
+                  <Star
+                    size={40}
                     color={star <= rating ? '#eab308' : 'rgba(255,255,255,0.2)'}
                   />
                 </View>
               ))}
             </View>
-            
-            <View className="comment-input">
+            <View className="modal-input">
               <Textarea
                 value={ratingComment}
                 onInput={(e: any) => setRatingComment(e.detail.value)}
                 placeholder="请输入评价（选填）"
+                className="comment-textarea"
               />
             </View>
-            
-            <View className="modal-actions">
+            <View className="modal-footer">
               <Button variant="outline" onClick={() => setShowRating(false)}>
                 <Text>取消</Text>
               </Button>
@@ -1030,21 +647,26 @@ export default function OrderDetailPage() {
       {showReject && (
         <View className="modal-overlay" onClick={() => setShowReject(false)}>
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
-            <Text className="modal-title">驳回原因</Text>
-            
-            <View className="reject-input">
+            <View className="modal-header">
+              <Text className="modal-title">驳回原因</Text>
+              <View className="modal-close" onClick={() => setShowReject(false)}>
+                <X size={24} color="#fff" />
+              </View>
+            </View>
+            <View className="modal-input">
               <Textarea
                 value={rejectReason}
                 onInput={(e: any) => setRejectReason(e.detail.value)}
                 placeholder="请输入驳回原因，帮助分身更好地修改"
+                className="reject-textarea"
               />
             </View>
-            
-            <View className="modal-actions">
+            <View className="modal-footer">
               <Button variant="outline" onClick={() => setShowReject(false)}>
                 <Text>取消</Text>
               </Button>
               <Button onClick={handleReject}>
+                <X size={16} color="#fff" />
                 <Text>确认驳回</Text>
               </Button>
             </View>
