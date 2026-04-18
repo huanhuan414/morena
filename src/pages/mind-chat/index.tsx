@@ -2920,7 +2920,7 @@ export default function MindChatPage() {
                           console.log('[图片渲染] 图片加载成功:', media.url, e)
                           // 获取图片实际尺寸
                           const { width, height } = e.detail
-                          const aspectRatio = (typeof width === "number" const aspectRatio = (width && height) ? height / width : 1const aspectRatio = (width && height) ? height / width : 1 typeof height === "number") ? height / width : 1
+                          const aspectRatio = (typeof width === 'number' && typeof height === 'number') ? height / width : 1
                           console.log('[图片渲染] 图片尺寸:', width, height, '比例:', aspectRatio)
                         }}
                         onError={(e) => {
@@ -2963,12 +2963,14 @@ export default function MindChatPage() {
                               } else {
                                 // 小程序端：下载到相册
                                 console.log('[图片下载] 小程序端，开始下载')
+                                // @ts-ignore - 小程序端必须使用Taro.downloadFile
                                 const res = await Taro.downloadFile({
                                   url: media.url || ''
                                 })
                                 console.log('[图片下载] 下载成功，临时文件:', res.tempFilePath)
 
                                 if (res.tempFilePath) {
+                                  // @ts-ignore - 小程序端API
                                   await Taro.saveImageToPhotosAlbum({
                                     filePath: res.tempFilePath
                                   })
