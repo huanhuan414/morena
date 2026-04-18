@@ -55,7 +55,7 @@
    ======================================== */
 .profile-bg {
   position: relative;
-  height: 420rpx;
+  height: 320rpx; /* 从420rpx减少到320rpx */
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(236, 72, 153, 0.12) 50%, rgba(34, 211, 238, 0.15) 100%);
   overflow: hidden;
   animation: bgExpand 1.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -67,7 +67,7 @@
     opacity: 0;
   }
   to {
-    height: 420rpx;
+    height: 320rpx;
     opacity: 1;
   }
 }
@@ -97,8 +97,8 @@
    ======================================== */
 .user-card {
   position: relative;
-  margin: -200rpx 32rpx 36rpx;
-  padding: 44rpx 36rpx 36rpx;
+  margin: -120rpx 32rpx 36rpx; /* 从-200rpx改为-120rpx */
+  padding: 32rpx 28rpx 28rpx; /* 从44rpx 36rpx 36rpx改为32rpx 28rpx 28rpx */
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(30rpx);
   border-radius: var(--radius-xl);
@@ -145,8 +145,8 @@
 }
 
 .user-avatar {
-  width: 128rpx;
-  height: 128rpx;
+  width: 104rpx; /* 从128rpx减少到104rpx */
+  height: 104rpx;
   border-radius: 50%;
   border: 3rpx solid rgba(99, 102, 241, 0.4);
   box-shadow: 0 12rpx 32rpx rgba(99, 102, 241, 0.35);
@@ -163,8 +163,8 @@
 }
 
 .avatar-placeholder {
-  width: 128rpx;
-  height: 128rpx;
+  width: 104rpx; /* 从128rpx减少到104rpx */
+  height: 104rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
   display: flex;
@@ -185,7 +185,7 @@
 }
 
 .avatar-text {
-  font-size: 52rpx;
+  font-size: 44rpx; /* 从52rpx减少到44rpx */
   font-weight: 800;
   color: #ffffff;
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
@@ -231,7 +231,7 @@
 }
 
 .user-name {
-  font-size: 40rpx;
+  font-size: 34rpx; /* 从40rpx减少到34rpx */
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.2;

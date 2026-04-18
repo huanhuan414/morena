@@ -13,7 +13,7 @@
 }
 
 .level-modal-content {
-  background: #0a0a0f;
+  background: var(--card); /* 使用CSS变量适配主题 */
   border: 4rpx solid rgba(255, 255, 255, 0.1);
   border-radius: 48rpx;
   max-height: 80vh;
@@ -48,7 +48,7 @@
 .level-modal-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .level-modal-close {
@@ -57,14 +57,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 28rpx;
 }
 
 .level-modal-status {
   padding: 24rpx 32rpx;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 2rpx solid rgba(0, 0, 0, 0.08);
 }
 
 .level-modal-badge {
@@ -91,17 +91,17 @@
 .level-modal-title-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .level-modal-exp {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
 }
 
 .level-modal-progress {
   height: 12rpx;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 6rpx;
   overflow: hidden;
   margin-bottom: 16rpx;
@@ -115,14 +115,14 @@
 
 .level-modal-hint {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-tertiary);
   text-align: center;
 }
 
 .level-modal-tabs {
   display: flex;
   padding: 0 32rpx;
-  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2rpx solid rgba(0, 0, 0, 0.08);
 }
 
 .level-modal-tab {
@@ -146,11 +146,11 @@
 
 .level-modal-tab-text {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 
 .level-modal-tab-text-active {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -164,8 +164,8 @@
 }
 
 .level-modal-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 2rpx solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.02);
+  border: 2rpx solid rgba(0, 0, 0, 0.05);
   border-radius: 32rpx;
   padding: 24rpx;
   margin-bottom: 16rpx;
@@ -206,13 +206,13 @@
 .level-modal-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   display: block;
 }
 
 .level-modal-item-exp {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-secondary);
 }
 
 .level-modal-item-done {
@@ -235,14 +235,14 @@
 .level-modal-benefit-item {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   padding: 8rpx 16rpx;
   border-radius: 16rpx;
 }
 
 .level-modal-benefit-text {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
   margin-left: 8rpx;
 }
 
@@ -262,7 +262,7 @@
 .guide-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 20rpx;
   display: block;
 }
@@ -272,7 +272,7 @@
   align-items: flex-start;
   margin-bottom: 20rpx;
   padding: 20rpx;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
   border-radius: 24rpx;
 }
 
@@ -298,14 +298,14 @@
 .guide-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   display: block;
   margin-bottom: 8rpx;
 }
 
 .guide-item-desc {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
   display: block;
 }
 
