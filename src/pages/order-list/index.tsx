@@ -506,27 +506,7 @@ export default function OrderListPage() {
                     
                     {mode !== 'avatar' && order.status === 'open' && !order.avatars && (
                       <View className="order-actions">
-                        <View
-                          className="retry-btn"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            console.log('[OrderList] 点击重新分配按钮，订单ID:', order.id)
-                            handleRetryDispatch(order.id)
-                          }}
-                        >
-                          <RefreshCw size={10} color="#ffffff" />
-                          <Text>重新分配</Text>
-                        </View>
-                        <View
-                          className="cancel-btn"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            console.log('[OrderList] 点击取消按钮，订单ID:', order.id)
-                            handleCancelOrder(order.id)
-                          }}
-                        >
-                          <Text>取消</Text>
-                        </View>
+                        {/* 按钮已隐藏 */}
                       </View>
                     )}
                     
