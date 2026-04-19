@@ -5,9 +5,9 @@
   "description": "NestJS server application",
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
-    "start": "nest start",
-    "start:debug": "nest start --debug --watch",
+    "dev": "node load-env.js start --watch",
+    "start": "node load-env.js start",
+    "start:debug": "node load-env.js start --debug --watch",
     "start:prod": "node dist/main"
   },
   "dependencies": {

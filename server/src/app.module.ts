@@ -25,6 +25,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { AsrModule } from './modules/asr/asr.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { VideoModule } from './modules/video/video.module';
+import { TestModule } from './modules/test/test.module';
 
 @Module({
   imports: [
@@ -51,7 +52,8 @@ import { VideoModule } from './modules/video/video.module';
     UploadModule,
     AsrModule,
     RecommendationModule,
-    VideoModule
+    VideoModule,
+    TestModule
   ],
   controllers: [AppController],
   providers: [AppService],

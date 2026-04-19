@@ -2,6 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app.module';
 import * as express from 'express';
 import { HttpStatusInterceptor } from '@/interceptors/http-status.interceptor';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// 加载 .env 文件
+const envPath = path.resolve(__dirname, '../../.env');
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.warn('[main.ts] Warning: Failed to load .env file:', result.error.message);
+} else {
+  console.log('[main.ts] Successfully loaded .env file from:', envPath);
+}
 
 function parsePort(): number {
   const args = process.argv.slice(2);
