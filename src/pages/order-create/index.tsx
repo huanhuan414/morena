@@ -698,6 +698,16 @@ export default function OrderCreatePage() {
               <BaseInput
                 className="counter-input"
                 type="number"
+                style={{
+                  width: '48px',
+                  height: '32px',
+                  fontSize: '20px',
+                  fontWeight: '800',
+                  color: '#000000',
+                  backgroundColor: '#ffffff',
+                  border: 'none',
+                  textAlign: 'center'
+                }}
                 value={form.avatarCount.toString()}
                 onInput={(e: any) => {
                   const value = parseInt(e.detail.value) || 1
@@ -732,6 +742,16 @@ export default function OrderCreatePage() {
               <BaseInput
                 className="counter-input"
                 type="number"
+                style={{
+                  width: '48px',
+                  height: '32px',
+                  fontSize: '20px',
+                  fontWeight: '800',
+                  color: '#000000',
+                  backgroundColor: '#ffffff',
+                  border: 'none',
+                  textAlign: 'center'
+                }}
                 value={form.quantityPerAvatar.toString()}
                 onInput={(e: any) => {
                   const value = parseInt(e.detail.value) || 1

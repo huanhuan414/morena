@@ -396,7 +396,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f9fafb;
+  background: #ffffff;
   border-radius: 8px;
   padding: 4px;
   border: 1px solid #e5e7eb;
@@ -406,7 +406,7 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: #ffffff;
+  background: #f9fafb;
   border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
@@ -415,6 +415,7 @@
   font-weight: 600;
   color: #1f2937;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .counter-btn:active {
@@ -428,16 +429,39 @@
 }
 
 .counter-input {
-  width: 48px;
-  height: 32px;
-  text-align: center;
+  width: 48px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+/* 覆盖 BaseInput 内部的 TaroInput 样式 */
+.counter-input input,
+.counter-input .taro-input {
+  width: 48px !important;
+  height: 32px !important;
   font-size: 20px !important;
   font-weight: 800 !important;
   color: #000000 !important;
   background: #ffffff !important;
-  border: none;
-  -webkit-text-fill-color: #000000;
-  border-radius: 4px;
+  text-align: center !important;
+  padding: 0 !important;
+  border: none !important;
+  -webkit-text-fill-color: #000000 !important;
+  line-height: 32px !important;
+}
+
+/* 确保输入框的容器样式也被覆盖 */
+.counter-input > View,
+.counter-input > div {
+  width: 48px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  border: none !important;
+  min-height: 32px !important;
 }
 
 /* 价格明细 */
