@@ -496,53 +496,56 @@
   gap: 6rpx;
 }
 
-/* 重新分配按钮 - 美化 */
+/* 重新分配按钮 - 精致小巧版 */
 .retry-btn {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 20rpx;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.3);
-  border: none;
-  transition: all 0.3s ease;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
 }
 
 .retry-btn:active {
-  transform: translateY(-2rpx);
-  box-shadow: 0 6rpx 16rpx rgba(59, 130, 246, 0.4);
+  transform: scale(0.95);
+  background: linear-gradient(135deg, #5b5fe6 0%, #7a4fe8 100%);
+  box-shadow: 0 1rpx 4rpx rgba(99, 102, 241, 0.3);
 }
 
 .retry-btn Text {
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 600;
   color: #ffffff;
+  letter-spacing: 0.5rpx;
 }
 
-/* 取消按钮 - 美化 */
+/* 取消按钮 - 精致小巧版 */
 .cancel-btn {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 20rpx;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
   background: #ffffff;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
-  border: 1.5rpx solid rgba(239, 68, 68, 0.3);
-  transition: all 0.3s ease;
+  border-radius: 12rpx;
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  transition: all 0.2s ease;
 }
 
 .cancel-btn:active {
-  transform: translateY(-2rpx);
+  transform: scale(0.95);
   background: #fef2f2;
-  box-shadow: 0 4rpx 12rpx rgba(239, 68, 68, 0.15);
+  box-shadow: 0 2rpx 6rpx rgba(239, 68, 68, 0.1);
 }
 
 .cancel-btn Text {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #ef4444;
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #f87171;
+  letter-spacing: 0.5rpx;
 }
 
 .reviewing-tip {
