@@ -157,7 +157,17 @@ export class PaymentController {
     try {
       const { orderId, amount, description, openid, platform = 'miniprogram' } = body
 
+      console.log('[PaymentController] 开始创建订单支付:', {
+        userId,
+        orderId,
+        amount,
+        description,
+        openid,
+        platform
+      })
+
       if (!openid) {
+        console.error('[PaymentController] 缺少用户openid')
         return {
           code: 400,
           message: '缺少用户openid',
@@ -176,6 +186,7 @@ export class PaymentController {
         .single()
 
       if (orderError || !order) {
+        console.error('[PaymentController] 订单不存在:', { orderId, userId, error: orderError })
         return {
           code: 400,
           message: '订单不存在',
@@ -183,12 +194,18 @@ export class PaymentController {
         }
       }
 
+      console.log('[PaymentController] 订单查询成功，当前状态:', order.status, '预算:', order.budget)
+
       // 检查订单状态
       if (order.status !== 'pending_payment' && order.status !== 'paying') {
+        console.error('[PaymentController] 订单状态不正确，当前状态:', order.status, '期望状态: pending_payment 或 paying')
         return {
           code: 400,
-          message: '订单状态不正确',
-          data: null
+          message: `订单状态不正确，当前状态：${order.status}，期望状态：待支付或支付中`,
+          data: {
+            currentStatus: order.status,
+            expectedStatus: ['pending_payment', 'paying']
+          }
         }
       }
 
@@ -201,6 +218,7 @@ export class PaymentController {
         .maybeSingle()
 
       if (existingPayment) {
+        console.log('[PaymentController] 订单已在支付中，返回已有支付记录:', existingPayment.id)
         return {
           code: 400,
           message: '订单已在支付中，请勿重复操作',
@@ -212,6 +230,7 @@ export class PaymentController {
       }
 
       // 将订单状态改为支付中（防并发）
+      console.log('[PaymentController] 尝试更新订单状态: pending_payment -> paying')
       const { error: updateError } = await client
         .from('orders')
         .update({ status: 'paying' })
@@ -219,12 +238,22 @@ export class PaymentController {
         .eq('status', 'pending_payment')
 
       if (updateError) {
+        console.error('[PaymentController] 订单状态更新失败:', updateError)
+        // 查询订单当前状态
+        const { data: currentOrder } = await client
+          .from('orders')
+          .select('status')
+          .eq('id', orderId)
+          .single()
+
         return {
           code: 400,
-          message: '订单状态已变更，请刷新后重试',
+          message: `订单状态已变更，请刷新后重试。当前状态：${currentOrder?.status || 'unknown'}`,
           data: null
         }
       }
+
+      console.log('[PaymentController] 订单状态更新成功: paying')
 
       // 生成商户订单号
       const outTradeNo = `ORDER_${userId}_${orderId}_${Date.now()}`
@@ -232,12 +261,13 @@ export class PaymentController {
       // 创建统一下单（金额单位：分）
       const totalAmount = Math.round(amount * 100) // 元转分
 
-      console.log('[PaymentController] 创建订单支付:', {
+      console.log('[PaymentController] 创建微信支付订单:', {
         platform,
         orderId,
         outTradeNo,
         totalAmount,
-        openid
+        openid,
+        description
       })
 
       // 根据平台调用不同的支付接口
@@ -247,6 +277,7 @@ export class PaymentController {
       try {
         if (platform === 'h5') {
           // H5端：使用微信H5支付
+          console.log('[PaymentController] 调用微信H5支付接口')
           wechatOrderResult = await this.wechatPayService.createH5Order(
             description,
             outTradeNo,
@@ -260,10 +291,11 @@ export class PaymentController {
               mweb_url: wechatOrderResult.h5_url
             }
           } else {
-            throw new Error('微信H5支付订单创建失败')
+            throw new Error('微信H5支付订单创建失败：h5_url为空')
           }
         } else {
           // 小程序端：使用小程序支付
+          console.log('[PaymentController] 调用微信小程序支付接口')
           wechatOrderResult = await this.wechatPayService.createOrder(
             description,
             outTradeNo,
@@ -277,11 +309,12 @@ export class PaymentController {
             // 生成小程序支付参数
             payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
           } else {
-            throw new Error('微信支付订单创建失败')
+            throw new Error('微信支付订单创建失败：prepay_id为空')
           }
         }
 
         // 创建支付记录
+        console.log('[PaymentController] 创建支付记录')
         const { data: payment, error: paymentError } = await client
           .from('order_payments')
           .insert({
@@ -301,12 +334,15 @@ export class PaymentController {
         if (paymentError) {
           console.error('[PaymentController] 创建支付记录失败:', paymentError)
           // 回滚订单状态
+          console.log('[PaymentController] 回滚订单状态: paying -> pending_payment')
           await client
             .from('orders')
             .update({ status: 'pending_payment' })
             .eq('id', orderId)
-          throw new Error('创建支付记录失败')
+          throw new Error(`创建支付记录失败: ${paymentError.message}`)
         }
+
+        console.log('[PaymentController] 支付记录创建成功，支付ID:', payment.id)
 
         return {
           code: 200,

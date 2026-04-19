@@ -1,4 +1,4 @@
-/* 订单创建页面 - 明亮模式 */
+/* 订单创建页面 - 明亮模式 + 跨端兼容 */
 
 .order-create-page {
   min-height: 100vh;
@@ -16,24 +16,24 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
 }
 
 .nav-content {
-  height: 44px;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 32rpx;
 }
 
 .back-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
   transition: background-color 0.2s;
 }
 
@@ -42,39 +42,39 @@
 }
 
 .nav-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #1f2937;
 }
 
 .nav-right {
-  width: 40px;
+  width: 80rpx;
 }
 
 /* 内容滚动区域 */
 .content-scroll {
   flex: 1;
-  height: calc(100vh - 44px);
-  padding: 0 16px 80px;
+  padding: 0 32rpx 160rpx;
+  min-height: 0;
 }
 
 /* 标题输入区域 */
 .title-section {
   background: #ffffff;
-  border-radius: 16px;
-  margin-top: 16px;
-  padding: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 32rpx;
+  margin-top: 32rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
 .title-input {
   width: 100%;
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #1f2937;
   background: transparent;
   border: none;
-  padding: 8px 0;
+  padding: 16rpx 0;
 }
 
 .title-placeholder {
@@ -84,21 +84,21 @@
 /* 卡片通用样式 */
 .section-card {
   background: #ffffff;
-  border-radius: 16px;
-  margin-top: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 32rpx;
+  margin-top: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
   color: #1f2937;
   flex: 1;
@@ -108,12 +108,12 @@
 .ai-write-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 12rpx;
+  padding: 12rpx 24rpx;
   background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border: 1.5px solid #8b5cf6;
-  border-radius: 20px;
-  font-size: 13px;
+  border: 2rpx solid #8b5cf6;
+  border-radius: 40rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: #7c3aed;
   transition: all 0.2s ease;
@@ -132,12 +132,12 @@
 /* 描述输入 */
 .desc-textarea {
   width: 100%;
-  min-height: 120px;
-  font-size: 15px;
+  min-height: 240rpx;
+  font-size: 30rpx;
   color: #1f2937;
   background: #f9fafb;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 24rpx;
+  padding: 24rpx;
   border: 1px solid #e5e7eb;
 }
 
@@ -146,43 +146,43 @@
 }
 
 .char-count {
-  font-size: 12px;
+  font-size: 24rpx;
   color: #9ca3af;
   text-align: right;
-  margin-top: 8px;
+  margin-top: 16rpx;
 }
 
 /* 附件上传 */
 .attachment-section {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 32rpx;
+  padding-top: 32rpx;
   border-top: 1px solid #e5e7eb;
 }
 
 .attachment-title {
-  font-size: 14px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #374151;
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 .upload-buttons {
   display: flex;
-  gap: 8px;
+  gap: 16rpx;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 .upload-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 12rpx;
+  padding: 16rpx 32rpx;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 16rpx;
+  font-size: 28rpx;
   color: #1e40af;
   font-weight: 500;
   transition: all 0.2s;
@@ -201,16 +201,16 @@
 .attachment-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .attachment-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 20rpx;
+  padding: 20rpx;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: 16rpx;
   border: 1px solid #e5e7eb;
 }
 
@@ -218,16 +218,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: 12rpx;
   flex-shrink: 0;
 }
 
 .attachment-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 28rpx;
   color: #374151;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -238,9 +238,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
   flex-shrink: 0;
   transition: background-color 0.2s;
 }
@@ -250,9 +250,9 @@
 }
 
 .uploading-text {
-  font-size: 13px;
+  font-size: 26rpx;
   color: #3b82f6;
-  margin-top: 8px;
+  margin-top: 16rpx;
   display: block;
 }
 
@@ -260,8 +260,8 @@
 .type-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 2px;
+  gap: 24rpx;
+  padding: 4rpx;
 }
 
 .type-card {
@@ -269,8 +269,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  border-radius: 12px;
+  padding: 32rpx;
+  border-radius: 24rpx;
   border: 2px solid #e5e7eb;
   background: #f9fafb;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -283,14 +283,14 @@
   border-style: solid !important;
   border-width: 2px !important;
   background: #eff6ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.3);
+  transform: translateY(-4rpx);
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
 .type-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: #6b7280;
-  margin-top: 8px;
+  margin-top: 16rpx;
   font-weight: 500;
 }
 
@@ -301,10 +301,10 @@
 
 .type-check {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
+  top: 16rpx;
+  right: 16rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -329,18 +329,18 @@
 .platform-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .platform-chip {
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 16rpx 32rpx;
+  border-radius: 16rpx;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12rpx;
 }
 
 .platform-chip.active {
@@ -349,7 +349,7 @@
 }
 
 .platform-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: #6b7280;
 }
 
@@ -368,25 +368,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 24rpx;
 }
 
 .price-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
   flex: 1;
 }
 
 .label-text {
-  font-size: 14px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #1f2937;
   display: block;
 }
 
 .label-hint {
-  font-size: 12px;
+  font-size: 24rpx;
   color: #9ca3af;
   display: block;
 }
@@ -395,23 +395,23 @@
 .counter-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
   background: #ffffff;
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: 16rpx;
+  padding: 8rpx;
   border: 1px solid #e5e7eb;
 }
 
 .counter-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #1f2937;
   transition: all 0.2s;
@@ -429,20 +429,20 @@
 }
 
 .counter-input {
-  width: 48px !important;
-  height: 32px !important;
+  width: 96rpx !important;
+  height: 64rpx !important;
   padding: 0 !important;
   background: #ffffff !important;
   border: none !important;
-  border-radius: 4px !important;
+  border-radius: 8rpx !important;
 }
 
 /* 覆盖 BaseInput 内部的 TaroInput 样式 */
 .counter-input input,
 .counter-input .taro-input {
-  width: 48px !important;
-  height: 32px !important;
-  font-size: 20px !important;
+  width: 96rpx !important;
+  height: 64rpx !important;
+  font-size: 40rpx !important;
   font-weight: 800 !important;
   color: #000000 !important;
   background: #ffffff !important;
@@ -450,26 +450,26 @@
   padding: 0 !important;
   border: none !important;
   -webkit-text-fill-color: #000000 !important;
-  line-height: 32px !important;
+  line-height: 64rpx !important;
 }
 
 /* 确保输入框的容器样式也被覆盖 */
 .counter-input > View,
 .counter-input > div {
-  width: 48px !important;
-  height: 32px !important;
+  width: 96rpx !important;
+  height: 64rpx !important;
   padding: 0 !important;
   background: #ffffff !important;
   border: none !important;
-  min-height: 32px !important;
+  min-height: 64rpx !important;
 }
 
 /* 价格明细 */
 .price-breakdown {
-  margin: 16px 0;
-  padding: 16px;
+  margin: 32rpx 0;
+  padding: 32rpx;
   background: #f9fafb;
-  border-radius: 12px;
+  border-radius: 24rpx;
   border: 1px solid #e5e7eb;
 }
 
@@ -477,28 +477,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 }
 
 .breakdown-label {
-  font-size: 14px;
+  font-size: 28rpx;
   color: #6b7280;
   font-weight: 500;
 }
 
 .breakdown-value {
-  font-size: 13px;
+  font-size: 26rpx;
   color: #9ca3af;
 }
 
 .breakdown-price {
   display: flex;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 16rpx;
 }
 
 .price-amount {
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 700;
   color: #1f2937;
 }
@@ -508,21 +508,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 32rpx;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 12px;
-  margin-top: 8px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-radius: 24rpx;
+  margin-top: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
 }
 
 .total-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .total-text {
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
   color: #ffffff;
 }
@@ -533,14 +533,14 @@
 }
 
 .amount-text {
-  font-size: 24px;
+  font-size: 48rpx;
   font-weight: 700;
   color: #ffffff;
 }
 
 /* 其他信息 */
 .info-item {
-  margin-bottom: 16px;
+  margin-bottom: 32rpx;
 }
 
 .info-item:last-child {
@@ -548,20 +548,20 @@
 }
 
 .info-label {
-  font-size: 14px;
+  font-size: 28rpx;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
   display: block;
 }
 
 .info-input {
   width: 100%;
-  padding: 12px;
+  padding: 24rpx;
   background: #f9fafb;
-  border-radius: 10px;
+  border-radius: 20rpx;
   border: 1px solid #e5e7eb;
-  font-size: 15px;
+  font-size: 30rpx;
   color: #1f2937;
   transition: border-color 0.2s;
 }
@@ -582,23 +582,23 @@
 }
 
 .date-text {
-  font-size: 15px;
+  font-size: 30rpx;
   color: #1f2937;
 }
 
 .date-placeholder {
-  font-size: 15px;
+  font-size: 30rpx;
   color: #9ca3af;
 }
 
 .info-textarea {
   width: 100%;
-  min-height: 80px;
-  padding: 12px;
+  min-height: 160rpx;
+  padding: 24rpx;
   background: #f9fafb;
-  border-radius: 10px;
+  border-radius: 20rpx;
   border: 1px solid #e5e7eb;
-  font-size: 15px;
+  font-size: 30rpx;
   color: #1f2937;
 }
 
@@ -608,35 +608,35 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.03);
   z-index: 99;
 }
 
 .submit-btn {
   width: 100%;
-  height: 50px;
-  border-radius: 12px;
+  height: 100rpx;
+  border-radius: 24rpx;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 16rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .submit-btn:active {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  transform: translateY(-4rpx);
+  box-shadow: 0 12rpx 32rpx rgba(59, 130, 246, 0.4);
 }
 
 .submit-btn.loading {
@@ -645,13 +645,13 @@
 
 .btn-text {
   color: #ffffff;
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
 }
 
 /* 底部占位 */
 .bottom-space {
-  height: 80px;
+  height: 160rpx;
 }
 
 /* 日期选择器弹窗 */
@@ -671,7 +671,7 @@
 .date-picker-content {
   background: #ffffff;
   width: 100%;
-  border-radius: 16px 16px 0 0;
+  border-radius: 32rpx 32rpx 0 0;
   overflow: hidden;
   animation: slideUp 0.3s ease-out;
 }
@@ -689,21 +689,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 32rpx 40rpx;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .date-picker-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #1f2937;
 }
 
 .date-picker-close {
-  font-size: 15px;
+  font-size: 30rpx;
   color: #6b7280;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
   transition: background-color 0.2s;
 }
 
@@ -713,15 +713,15 @@
 
 .date-picker-body {
   display: flex;
-  padding: 20px;
-  gap: 12px;
+  padding: 40rpx;
+  gap: 24rpx;
 }
 
 .picker-item {
   flex: 1;
-  padding: 12px;
+  padding: 24rpx;
   background: #f9fafb;
-  border-radius: 10px;
+  border-radius: 20rpx;
   border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
@@ -729,24 +729,24 @@
 }
 
 .picker-text {
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
   color: #1f2937;
 }
 
 .date-picker-footer {
-  padding: 16px 20px;
+  padding: 32rpx 40rpx;
   border-top: 1px solid #e5e7eb;
 }
 
 .date-picker-confirm {
   width: 100%;
-  height: 48px;
+  height: 96rpx;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 12px;
+  border-radius: 24rpx;
   border: none;
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
 }

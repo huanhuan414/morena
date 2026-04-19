@@ -14,18 +14,17 @@ export class OrderController {
     @Headers('x-user-id') userId: string,
     @Body() orderData: Record<string, any>
   ) {
+    console.log('[OrderController] 创建订单，用户ID:', userId, '订单数据:', orderData)
+
     const order = await this.orderService.createOrder(userId, orderData)
 
-    // 如果订单有金额，设置为待支付状态
-    if (order.budget > 0) {
-      await this.orderService.updateOrder(order.id, {
-        status: 'pending_payment'
-      })
-      return {
-        code: 200,
-        data: { ...order, status: 'pending_payment' },
-        message: '创建成功，请完成支付'
-      }
+    console.log('[OrderController] 订单创建成功，订单ID:', order.id, '状态:', order.status, '预算:', order.budget)
+
+    // 订单状态已根据预算自动设置（pending_payment 或 open）
+    return {
+      code: 200,
+      data: order,
+      message: order.status === 'pending_payment' ? '创建成功，请完成支付' : '创建成功'
     }
 
     // TODO: 暂时禁用自动调度，避免LLM调用超时

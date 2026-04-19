@@ -33,6 +33,9 @@ export class OrderService {
       }
     }
 
+    // 根据预算金额设置订单状态
+    const status = orderData.budget && orderData.budget > 0 ? 'pending_payment' : 'open'
+
     const { data, error } = await client
       .from('orders')
       .insert({
@@ -46,7 +49,7 @@ export class OrderService {
         budget: orderData.budget || 0,
         expected_quantity: orderData.expected_quantity || 1,
         deadline: orderData.deadline || null,
-        status: 'open',
+        status,
         // 地理位置信息（包含逆地理编码结果）
         ...locationData
       })
