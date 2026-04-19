@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
-import Taro from '@tarojs/taro'
-import { Star, Check, ShoppingCart, Search } from 'lucide-react-taro'
+import Taro, { navigateBack } from '@tarojs/taro'
+import { Star, Check, ShoppingCart, Search, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 技能名称中文映射
@@ -740,6 +740,9 @@ export default function SkillsSquare() {
     <View className="skills-square-container">
       {/* 头部 */}
       <View className="skills-header">
+        <View className="back-button" onClick={() => navigateBack()}>
+          <ArrowLeft size={24} color="#1f2937" />
+        </View>
         <Text className="header-title">技能广场</Text>
         {currentAvatar && (
           <View className="avatar-selector">
