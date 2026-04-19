@@ -494,16 +494,50 @@ export default function OrderCreatePage() {
                 // 保存订单ID用于支付回调
                 Taro.setStorageSync('pending_order_id', orderId)
 
-                // 跳转到微信H5支付页面
-                window.location.href = payParams.mweb_url
+                // 使用 Taro 的方式跳转，避免 window is not defined 错误
+                try {
+                  Taro.setStorageSync('payment_redirect_url', payParams.mweb_url)
+                  // H5 端，检查 window 是否存在
+                  if (typeof window !== 'undefined' && window.location) {
+                    window.location.href = payParams.mweb_url
+                  } else {
+                    showToast({ title: '支付页面加载失败', icon: 'none' })
+                    setLoading(false)
+                  }
+                } catch (err) {
+                  console.error('[OrderCreate] 跳转支付失败:', err)
+                  showToast({ title: '支付页面跳转失败', icon: 'none' })
+                  setLoading(false)
+                }
               } else {
                 showToast({ title: '支付参数错误', icon: 'none' })
                 setLoading(false)
               }
             }
           } else {
-            showToast({ title: payRes.data?.message || '支付失败', icon: 'none' })
+            showToast({ title: payRes.data?.message || '创建支付订单失败', icon: 'none' })
             setLoading(false)
+            // 支付订单创建失败，询问是否取消订单
+            setTimeout(() => {
+              Taro.showModal({
+                title: '提示',
+                content: '支付订单创建失败，是否取消当前订单？',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    // 取消订单
+                    Network.request({
+                      url: `/api/order/${orderId}/cancel`,
+                      method: 'PUT'
+                    }).then(() => {
+                      showToast({ title: '订单已取消', icon: 'success' })
+                      navigateBack()
+                    }).catch(() => {
+                      showToast({ title: '取消订单失败', icon: 'none' })
+                    })
+                  }
+                }
+              })
+            }, 1000)
           }
         } catch (payError: any) {
           console.error('[OrderCreate] 支付失败:', payError)
@@ -511,16 +545,40 @@ export default function OrderCreatePage() {
           // 如果是用户取消支付，给出提示
           if (payError.errMsg && payError.errMsg.includes('cancel')) {
             showToast({ title: '您已取消支付', icon: 'none' })
+          } else if (payError.message && payError.message.includes('window is not defined')) {
+            showToast({ title: '支付环境异常，请重试', icon: 'none' })
           } else {
-            showToast({ title: payError.message || '支付失败', icon: 'none' })
+            showToast({ title: payError.message || '支付失败，请重试', icon: 'none' })
           }
 
-          // 支付失败/取消，但订单已创建，跳转到订单匹配页面
+          setLoading(false)
+
+          // 支付失败/取消，询问用户是否取消订单
           setTimeout(() => {
-            navigateTo({
-              url: `/pages/order-matching/index?orderId=${orderId}`
+            Taro.showModal({
+              title: '提示',
+              content: '支付失败或已取消，是否取消当前订单？',
+              confirmText: '取消订单',
+              cancelText: '重新支付',
+              success: (modalRes) => {
+                if (modalRes.confirm) {
+                  // 取消订单
+                  Network.request({
+                    url: `/api/order/${orderId}/cancel`,
+                    method: 'PUT'
+                  }).then(() => {
+                    showToast({ title: '订单已取消', icon: 'success' })
+                    navigateBack()
+                  }).catch(() => {
+                    showToast({ title: '取消订单失败', icon: 'none' })
+                  })
+                } else if (modalRes.cancel) {
+                  // 重新支付，不退出
+                  showToast({ title: '请重新点击支付按钮', icon: 'none' })
+                }
+              }
             })
-          }, 1500)
+          }, 1000)
         }
       } else {
         showToast({ title: res.data?.message || '发布失败', icon: 'none' })
