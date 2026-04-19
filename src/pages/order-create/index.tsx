@@ -319,24 +319,60 @@ export default function OrderCreatePage() {
   ]
 
   const platforms = [
+    { value: 'wechat_moments', label: '朋友圈' },
     { value: 'wechat_mp', label: '公众号' },
     { value: 'xiaohongshu', label: '小红书' },
     { value: 'douyin', label: '抖音' },
     { value: 'bilibili', label: 'B站' },
     { value: 'weibo', label: '微博' },
-    { value: 'wechat_video', label: '视频号' }
+    { value: 'wechat_video', label: '视频号' },
+    { value: 'unlimited', label: '不限' }
   ]
 
   const togglePlatform = (platform: string) => {
-    setForm(prev => ({
-      ...prev,
-      requirements: {
-        ...prev.requirements,
-        platforms: prev.requirements.platforms.includes(platform)
-          ? prev.requirements.platforms.filter(p => p !== platform)
-          : [...prev.requirements.platforms, platform]
+    setForm(prev => {
+      const currentPlatforms = prev.requirements.platforms
+
+      // 如果选择的是"不限"
+      if (platform === 'unlimited') {
+        // 如果"不限"已经被选中，取消选中
+        if (currentPlatforms.includes('unlimited')) {
+          return {
+            ...prev,
+            requirements: {
+              ...prev.requirements,
+              platforms: []
+            }
+          }
+        } else {
+          // 如果"不限"未被选中，清空其他平台，只选中"不限"
+          return {
+            ...prev,
+            requirements: {
+              ...prev.requirements,
+              platforms: ['unlimited']
+            }
+          }
+        }
       }
-    }))
+
+      // 如果选择的是其他平台
+      // 如果当前选中了"不限"，先清空"不限"
+      const platformsWithoutUnlimited = currentPlatforms.filter(p => p !== 'unlimited')
+
+      // 切换平台选中状态
+      const newPlatforms = platformsWithoutUnlimited.includes(platform)
+        ? platformsWithoutUnlimited.filter(p => p !== platform)
+        : [...platformsWithoutUnlimited, platform]
+
+      return {
+        ...prev,
+        requirements: {
+          ...prev.requirements,
+          platforms: newPlatforms
+        }
+      }
+    })
   }
 
   const handleSubmit = async () => {
@@ -553,6 +589,7 @@ export default function OrderCreatePage() {
             onInput={(e: any) => setForm({ ...form, description: e.detail.value })}
             maxlength={500}
             placeholderClass="textarea-placeholder"
+            autoHeight
           />
           <Text className="char-count">{form.description.length}/500</Text>
 
