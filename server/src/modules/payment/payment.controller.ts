@@ -183,10 +183,45 @@ export class PaymentController {
         }
       }
 
-      if (order.status !== 'pending_payment') {
+      // 检查订单状态
+      if (order.status !== 'pending_payment' && order.status !== 'paying') {
         return {
           code: 400,
           message: '订单状态不正确',
+          data: null
+        }
+      }
+
+      // 防并发：检查是否已有支付中的订单
+      const { data: existingPayment } = await client
+        .from('order_payments')
+        .select('*')
+        .eq('order_id', orderId)
+        .in('status', ['pending', 'paying'])
+        .maybeSingle()
+
+      if (existingPayment) {
+        return {
+          code: 400,
+          message: '订单已在支付中，请勿重复操作',
+          data: {
+            paymentId: existingPayment.id,
+            ...existingPayment.payment_params
+          }
+        }
+      }
+
+      // 将订单状态改为支付中（防并发）
+      const { error: updateError } = await client
+        .from('orders')
+        .update({ status: 'paying' })
+        .eq('id', orderId)
+        .eq('status', 'pending_payment')
+
+      if (updateError) {
+        return {
+          code: 400,
+          message: '订单状态已变更，请刷新后重试',
           data: null
         }
       }
@@ -209,74 +244,90 @@ export class PaymentController {
       let wechatOrderResult: any
       let payParams: any
 
-      if (platform === 'h5') {
-        // H5端：使用微信H5支付
-        wechatOrderResult = await this.wechatPayService.createH5Order(
-          description,
-          outTradeNo,
-          totalAmount
-        )
+      try {
+        if (platform === 'h5') {
+          // H5端：使用微信H5支付
+          wechatOrderResult = await this.wechatPayService.createH5Order(
+            description,
+            outTradeNo,
+            totalAmount
+          )
 
-        console.log('[PaymentController] H5支付订单创建成功:', wechatOrderResult)
+          console.log('[PaymentController] H5支付订单创建成功:', wechatOrderResult)
 
-        if (wechatOrderResult.h5_url) {
-          payParams = {
-            mweb_url: wechatOrderResult.h5_url
+          if (wechatOrderResult.h5_url) {
+            payParams = {
+              mweb_url: wechatOrderResult.h5_url
+            }
+          } else {
+            throw new Error('微信H5支付订单创建失败')
           }
         } else {
-          throw new Error('微信H5支付订单创建失败')
+          // 小程序端：使用小程序支付
+          wechatOrderResult = await this.wechatPayService.createOrder(
+            description,
+            outTradeNo,
+            totalAmount,
+            openid
+          )
+
+          console.log('[PaymentController] 小程序支付订单创建成功:', wechatOrderResult)
+
+          if (wechatOrderResult.prepay_id) {
+            // 生成小程序支付参数
+            payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
+          } else {
+            throw new Error('微信支付订单创建失败')
+          }
         }
-      } else {
-        // 小程序端：使用小程序支付
-        wechatOrderResult = await this.wechatPayService.createOrder(
-          description,
-          outTradeNo,
-          totalAmount,
-          openid
-        )
 
-        console.log('[PaymentController] 小程序支付订单创建成功:', wechatOrderResult)
+        // 创建支付记录
+        const { data: payment, error: paymentError } = await client
+          .from('order_payments')
+          .insert({
+            user_id: userId,
+            order_id: orderId,
+            out_trade_no: outTradeNo,
+            transaction_id: wechatOrderResult.prepay_id || wechatOrderResult.h5_url,
+            total_amount: totalAmount,
+            status: 'paying',
+            payment_method: 'wechat',
+            payment_params: payParams,
+            platform
+          })
+          .select()
+          .single()
 
-        if (wechatOrderResult.prepay_id) {
-          // 生成小程序支付参数
-          payParams = this.generateMiniProgramPayParams(wechatOrderResult.prepay_id)
-        } else {
-          throw new Error('微信支付订单创建失败')
+        if (paymentError) {
+          console.error('[PaymentController] 创建支付记录失败:', paymentError)
+          // 回滚订单状态
+          await client
+            .from('orders')
+            .update({ status: 'pending_payment' })
+            .eq('id', orderId)
+          throw new Error('创建支付记录失败')
         }
-      }
 
-      // 创建支付记录
-      const { data: payment, error: paymentError } = await client
-        .from('order_payments')
-        .insert({
-          user_id: userId,
-          order_id: orderId,
-          out_trade_no: outTradeNo,
-          transaction_id: wechatOrderResult.prepay_id || wechatOrderResult.h5_url,
-          total_amount: totalAmount,
-          status: 'pending',
-          payment_method: 'wechat',
-          payment_params: payParams,
-          platform
-        })
-        .select()
-        .single()
-
-      if (paymentError) {
-        console.error('[PaymentController] 创建支付记录失败:', paymentError)
-        throw new Error('创建支付记录失败')
-      }
-
-      return {
-        code: 200,
-        data: {
-          paymentId: payment.id,
-          orderId,
-          outTradeNo,
-          platform,
-          ...payParams
-        },
-        message: '支付订单创建成功'
+        return {
+          code: 200,
+          data: {
+            paymentId: payment.id,
+            orderId,
+            outTradeNo,
+            platform,
+            ...payParams
+          },
+          message: '支付订单创建成功'
+        }
+      } catch (error: any) {
+        // 支付失败，回滚订单状态
+        console.error('[PaymentController] 创建微信支付订单失败，回滚订单状态:', error)
+        await client
+          .from('orders')
+          .update({ status: 'pending_payment' })
+          .eq('id', orderId)
+          .eq('status', 'paying')
+        throw error
       }
     } catch (error: any) {
       console.error('[PaymentController] 创建订单支付失败:', error)

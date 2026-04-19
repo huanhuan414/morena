@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import type { TextareaProps } from "@tarojs/components"
 
 const Textarea = React.forwardRef<any, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, autoHeight, ...props }, ref) => {
     return (
       <TaroTextarea
         className={cn(
@@ -12,6 +12,7 @@ const Textarea = React.forwardRef<any, TextareaProps>(
           className
         )}
         ref={ref}
+        autoHeight={autoHeight || false}
         {...props}
       />
     )

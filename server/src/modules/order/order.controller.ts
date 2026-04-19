@@ -16,6 +16,18 @@ export class OrderController {
   ) {
     const order = await this.orderService.createOrder(userId, orderData)
 
+    // 如果订单有金额，设置为待支付状态
+    if (order.budget > 0) {
+      await this.orderService.updateOrder(order.id, {
+        status: 'pending_payment'
+      })
+      return {
+        code: 200,
+        data: { ...order, status: 'pending_payment' },
+        message: '创建成功，请完成支付'
+      }
+    }
+
     // TODO: 暂时禁用自动调度，避免LLM调用超时
     // 自动调度分身
     // try {
