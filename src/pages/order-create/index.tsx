@@ -8,7 +8,7 @@ import * as Network from '@/network'
 import {
   Briefcase, DollarSign, Target, Sparkles, Users, ArrowLeft, Image,
   Video, FileText, Calculator, TrendingUp, Zap, Check, Calendar as CalendarIcon,
-  X
+  X, Loader
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -46,6 +46,7 @@ export default function OrderCreatePage() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
+  const [aiWriting, setAiWriting] = useState(false) // AI帮写状态
 
   const [form, setForm] = useState<OrderForm>({
     title: '',
@@ -185,6 +186,88 @@ export default function OrderCreatePage() {
     } catch (error) {
       console.error('选择文档失败:', error)
       showToast({ title: '选择文档失败', icon: 'none' })
+    }
+  }
+
+  // AI帮写需求描述
+  const handleAiWrite = async () => {
+    if (!form.title.trim()) {
+      showToast({ title: '请先填写订单标题', icon: 'none' })
+      return
+    }
+
+    setAiWriting(true)
+
+    try {
+      // 第一步：创建临时对话
+      const createRes = await Network.request({
+        url: '/api/chat/conversation',
+        method: 'POST',
+        data: {
+          avatar_id: '', // 使用默认值
+          title: 'AI帮写订单描述'
+        }
+      })
+
+      console.log('[AI帮写] 创建对话响应:', createRes.data)
+
+      if (!createRes.data || !createRes.data.data || !createRes.data.data.id) {
+        throw new Error('创建对话失败')
+      }
+
+      const conversationId = createRes.data.data.id
+
+      // 第二步：发送消息
+      const prompt = `请根据以下订单标题，生成一份详细的需求描述。要求：
+1. 描述要清晰、具体、可执行
+2. 包含目标受众、预期效果、核心要求等关键信息
+3. 内容要专业、详实，便于AI分身理解和执行
+4. 字数控制在100-300字之间
+
+订单标题：${form.title}
+
+请直接生成需求描述内容，不需要其他说明：`
+
+      const sendRes = await Network.request({
+        url: '/api/chat/send',
+        method: 'POST',
+        data: {
+          conversation_id: conversationId,
+          avatar_id: '',
+          content: prompt
+        }
+      })
+
+      console.log('[AI帮写] 发送消息响应:', sendRes.data)
+
+      if (sendRes.data && sendRes.data.data) {
+        let aiDescription = ''
+        // 尝试从不同字段获取内容
+        if (sendRes.data.data.content) {
+          aiDescription = sendRes.data.data.content
+        } else if (sendRes.data.data.message) {
+          aiDescription = sendRes.data.data.message
+        } else if (typeof sendRes.data.data === 'string') {
+          aiDescription = sendRes.data.data
+        }
+
+        if (aiDescription && aiDescription.trim()) {
+          setForm(prev => ({
+            ...prev,
+            description: aiDescription.trim()
+          }))
+          showToast({ title: 'AI帮写完成', icon: 'success' })
+        } else {
+          throw new Error('AI响应为空')
+        }
+      } else {
+        throw new Error('AI响应格式错误')
+      }
+    } catch (error) {
+      console.error('AI帮写失败:', error)
+      showToast({ title: 'AI帮写失败，请重试', icon: 'none' })
+    } finally {
+      setAiWriting(false)
     }
   }
 
@@ -479,6 +562,19 @@ export default function OrderCreatePage() {
           <View className="card-header">
             <Briefcase size={20} color="#3b82f6" />
             <Text className="card-title">需求描述</Text>
+            <View className="ai-write-btn" onClick={handleAiWrite}>
+              {aiWriting ? (
+                <>
+                  <Loader size={16} color="#8b5cf6" className="animate-spin" />
+                  <Text className="ai-btn-text block">AI生成中...</Text>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} color="#8b5cf6" />
+                  <Text className="ai-btn-text block">AI帮写</Text>
+                </>
+              )}
+            </View>
           </View>
           <Textarea
             className="desc-textarea"

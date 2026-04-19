@@ -101,6 +101,32 @@
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
+  flex: 1;
+}
+
+/* AI帮写按钮 */
+.ai-write-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1.5px solid #8b5cf6;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c3aed;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ai-write-btn:active {
+  transform: scale(0.95);
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+}
+
+.ai-btn-text {
+  color: #7c3aed;
 }
 
 /* 描述输入 */
