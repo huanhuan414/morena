@@ -112,12 +112,14 @@ export default function OrderListPage() {
   })
 
   useDidShow(() => {
+    console.log('[OrderList] useDidShow 触发，当前 activeTab:', activeTab)
     fetchOrders()
     fetchStats()
   })
 
   // 监听 activeTab 变化，重新获取订单
   useEffect(() => {
+    console.log('[OrderList] activeTab 变化:', activeTab, 'mode:', mode)
     if (mode === 'avatar') return // 分身模式不需要筛选
     fetchOrders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,20 +229,28 @@ export default function OrderListPage() {
   }
 
   const handleRetryDispatch = async (orderId: string) => {
+    console.log('[OrderList] 开始重新分配订单，订单ID:', orderId)
     try {
+      console.log('[OrderList] 调用接口:', `/api/order-dispatch/${orderId}/dispatch`)
       const res = await Network.request({
         url: `/api/order-dispatch/${orderId}/dispatch`,
         method: 'POST'
       })
-      
+
+      console.log('[OrderList] 重新分配响应:', res.data)
+
       if (res.data?.code === 200) {
+        console.log('[OrderList] 重新分配成功')
         showToast({ title: '重新分配成功', icon: 'success' })
         fetchOrders()
         fetchStats()
+      } else {
+        console.error('[OrderList] 重新分配失败，响应:', res.data)
+        showToast({ title: res.data?.message || '重新分配失败', icon: 'none' })
       }
     } catch (error) {
-      console.error('重新分配失败:', error)
-      showToast({ title: '重新分配失败', icon: 'none' })
+      console.error('[OrderList] 重新分配异常:', error)
+      showToast({ title: '重新分配失败，请稍后重试', icon: 'none' })
     }
   }
 
@@ -496,27 +506,27 @@ export default function OrderListPage() {
                     
                     {mode !== 'avatar' && order.status === 'open' && !order.avatars && (
                       <View className="order-actions">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
+                        <View
+                          className="retry-btn"
                           onClick={(e) => {
                             e.stopPropagation()
+                            console.log('[OrderList] 点击重新分配按钮，订单ID:', order.id)
                             handleRetryDispatch(order.id)
                           }}
                         >
-                          <RefreshCw size={14} color="#fff" />
+                          <RefreshCw size={16} color="#ffffff" />
                           <Text>重新分配</Text>
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
+                        </View>
+                        <View
+                          className="cancel-btn"
                           onClick={(e) => {
                             e.stopPropagation()
+                            console.log('[OrderList] 点击取消按钮，订单ID:', order.id)
                             handleCancelOrder(order.id)
                           }}
                         >
-                          <Text style={{ color: '#ef4444' }}>取消</Text>
-                        </Button>
+                          <Text>取消</Text>
+                        </View>
                       </View>
                     )}
                     
