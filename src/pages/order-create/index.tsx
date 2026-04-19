@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input as BaseInput } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
+import { useUserStore } from '@/stores/user'
 import {
   Briefcase, DollarSign, Target, Sparkles, Users, ArrowLeft, Image,
   Video, FileText, Calculator, TrendingUp, Zap, Check, Calendar as CalendarIcon,
@@ -62,6 +63,7 @@ export default function OrderCreatePage() {
     }
   })
 
+  const { userInfo } = useUserStore()
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
@@ -435,14 +437,15 @@ export default function OrderCreatePage() {
 
         // 调用真实支付接口
         try {
-          // 获取用户 openid（从本地存储或后端接口获取）
-          const openid = Taro.getStorageSync('openid') || ''
-
-          if (!openid) {
+          // 检查用户是否登录
+          if (!userInfo) {
             showToast({ title: '请先登录', icon: 'none' })
             setLoading(false)
             return
           }
+
+          // 从用户信息获取 openid（如果有的话）
+          const openid = userInfo.openid || Taro.getStorageSync('openid') || ''
 
           // 检测当前环境
           const env = Taro.getEnv()
@@ -748,12 +751,12 @@ export default function OrderCreatePage() {
                 value={form.avatarCount.toString()}
                 onInput={(e: any) => {
                   const value = parseInt(e.detail.value) || 1
-                  setForm(prev => ({ ...prev, avatarCount: Math.max(1, Math.min(10, value)) }))
+                  setForm(prev => ({ ...prev, avatarCount: Math.max(1, value) }))
                 }}
               />
               <View
-                className={`counter-btn ${form.avatarCount >= 10 ? 'disabled' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.min(10, prev.avatarCount + 1) }))}
+                className="counter-btn"
+                onClick={() => setForm(prev => ({ ...prev, avatarCount: prev.avatarCount + 1 }))}
               >
                 <Text>+</Text>
               </View>
