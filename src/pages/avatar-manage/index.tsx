@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
@@ -512,6 +512,15 @@ export default function AvatarManagePage() {
                               <Package size={24} color="#06b6d4" />
                             </View>
                             <Text className="quick-entry-label">商单</Text>
+                          </View>
+                          <View
+                            className="quick-entry-btn"
+                            onClick={() => navigateTo({ url: `/pages/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}` })}
+                          >
+                            <View className="quick-entry-icon">
+                              <Link size={24} color="#06b6d4" />
+                            </View>
+                            <Text className="quick-entry-label">账号绑定</Text>
                           </View>
                         </View>
                       </View>
