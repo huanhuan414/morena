@@ -281,7 +281,7 @@ export default function OrderDetailPage() {
           <View className="loading-spinner">
             <Loader size={48} color="#00f5ff" className="animate-spin" />
           </View>
-          <Text className="loading-text">加载中...</Text>
+          <Text className="loading-text block">加载中...</Text>
         </View>
       </View>
     )
@@ -292,7 +292,7 @@ export default function OrderDetailPage() {
       <View className="order-detail-page">
         <View className="error-container">
           <Circle size={64} color="#ef4444" />
-          <Text className="error-text">订单不存在</Text>
+          <Text className="error-text block">订单不存在</Text>
         </View>
       </View>
     )
@@ -390,7 +390,7 @@ export default function OrderDetailPage() {
                 <Sparkles size={20} color="#00f5ff" />
                 <Text className="card-title">订单描述</Text>
               </View>
-              <Text className="card-content">
+              <Text className="card-content block">
                 {editing ? (
                   <Textarea
                     value={formData.description}
@@ -399,7 +399,7 @@ export default function OrderDetailPage() {
                     className="edit-textarea"
                   />
                 ) : (
-                  <Text>{order.description || '暂无描述'}</Text>
+                  <Text className="block">{order.description || '暂无描述'}</Text>
                 )}
               </Text>
             </View>
@@ -426,28 +426,28 @@ export default function OrderDetailPage() {
                   )}
                   {order.requirements.contentType && (
                     <View className="requirement-item">
-                      <Text className="req-label">内容类型</Text>
-                      <Text className="req-value">{order.requirements.contentType}</Text>
+                      <Text className="req-label block">内容类型</Text>
+                      <Text className="req-value block">{order.requirements.contentType}</Text>
                     </View>
                   )}
                   {order.requirements.targetAudience && (
                     <View className="requirement-item">
-                      <Text className="req-label">目标受众</Text>
-                      <Text className="req-value">{order.requirements.targetAudience}</Text>
+                      <Text className="req-label block">目标受众</Text>
+                      <Text className="req-value block">{order.requirements.targetAudience}</Text>
                     </View>
                   )}
                   {order.requirements.expectedResults && (
                     <View className="requirement-item">
-                      <Text className="req-label">预期效果</Text>
-                      <Text className="req-value">{order.requirements.expectedResults}</Text>
+                      <Text className="req-label block">预期效果</Text>
+                      <Text className="req-value block">{order.requirements.expectedResults}</Text>
                     </View>
                   )}
                   {order.requirements.deadline && (
                     <View className="requirement-item">
-                      <Text className="req-label">截止日期</Text>
+                      <Text className="req-label block">截止日期</Text>
                       <View className="req-value-wrapper">
                         <Clock size={16} color="#f59e0b" />
-                        <Text className="req-value">{order.requirements.deadline}</Text>
+                        <Text className="req-value block">{order.requirements.deadline}</Text>
                       </View>
                     </View>
                   )}
@@ -527,11 +527,11 @@ export default function OrderDetailPage() {
                       <View className={`timeline-line ${step.status === 'completed' ? 'completed' : ''}`} />
                     </View>
                     <View className={`timeline-content ${step.status === 'completed' ? 'completed' : ''}`}>
-                      <Text className="timeline-title">{step.step_name}</Text>
+                      <Text className="timeline-title block">{step.step_name}</Text>
                       {step.description && (
-                        <Text className="timeline-desc">{step.description}</Text>
+                        <Text className="timeline-desc block">{step.description}</Text>
                       )}
-                      <Text className="timeline-time">
+                      <Text className="timeline-time block">
                         {step.completed_at
                           ? `完成于 ${new Date(step.completed_at).toLocaleString()}`
                           : step.started_at
@@ -545,7 +545,7 @@ export default function OrderDetailPage() {
             ) : (
               <View className="empty-state">
                 <Clock size={64} color="rgba(255,255,255,0.2)" />
-                <Text className="empty-text">暂无执行进度</Text>
+                <Text className="empty-text block">暂无执行进度</Text>
               </View>
             )}
           </View>
@@ -558,11 +558,11 @@ export default function OrderDetailPage() {
               <View className="result-content">
                 {content.title && (
                   <View className="result-title-card glass-card">
-                    <Text className="result-title-text">{content.title}</Text>
+                    <Text className="result-title-text block">{content.title}</Text>
                   </View>
                 )}
                 <View className="result-body-card glass-card">
-                  <Text className="result-body-text">{content.content}</Text>
+                  <Text className="result-body-text block">{content.content}</Text>
                 </View>
                 {content.images && content.images.length > 0 && (
                   <View className="result-images">
@@ -575,7 +575,7 @@ export default function OrderDetailPage() {
             ) : (
               <View className="empty-state">
                 <Sparkles size={64} color="rgba(255,255,255,0.2)" />
-                <Text className="empty-text">暂无成果内容</Text>
+                <Text className="empty-text block">暂无成果内容</Text>
               </View>
             )}
           </View>
@@ -584,10 +584,14 @@ export default function OrderDetailPage() {
 
       {/* 验收弹窗 */}
       {showRating && (
-        <View className="modal-overlay" onClick={() => setShowRating(false)}>
+        <View
+          className="modal-overlay"
+          style={{ position: 'fixed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowRating(false)}
+        >
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
             <View className="modal-header">
-              <Text className="modal-title">验收评价</Text>
+              <Text className="modal-title block">验收评价</Text>
               <View className="modal-close" onClick={() => setShowRating(false)}>
                 <X size={24} color="#fff" />
               </View>
@@ -616,11 +620,11 @@ export default function OrderDetailPage() {
             </View>
             <View className="modal-footer">
               <Button variant="outline" onClick={() => setShowRating(false)}>
-                <Text>取消</Text>
+                <Text className="block">取消</Text>
               </Button>
               <Button onClick={handleApprove}>
                 <Check size={16} color="#fff" />
-                <Text>确认验收</Text>
+                <Text className="block">确认验收</Text>
               </Button>
             </View>
           </View>
@@ -629,10 +633,14 @@ export default function OrderDetailPage() {
 
       {/* 驳回弹窗 */}
       {showReject && (
-        <View className="modal-overlay" onClick={() => setShowReject(false)}>
+        <View
+          className="modal-overlay"
+          style={{ position: 'fixed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowReject(false)}
+        >
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
             <View className="modal-header">
-              <Text className="modal-title">驳回原因</Text>
+              <Text className="modal-title block">驳回原因</Text>
               <View className="modal-close" onClick={() => setShowReject(false)}>
                 <X size={24} color="#fff" />
               </View>
@@ -647,11 +655,11 @@ export default function OrderDetailPage() {
             </View>
             <View className="modal-footer">
               <Button variant="outline" onClick={() => setShowReject(false)}>
-                <Text>取消</Text>
+                <Text className="block">取消</Text>
               </Button>
               <Button onClick={handleReject}>
                 <X size={16} color="#fff" />
-                <Text>确认驳回</Text>
+                <Text className="block">确认驳回</Text>
               </Button>
             </View>
           </View>

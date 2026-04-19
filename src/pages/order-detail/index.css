@@ -119,11 +119,11 @@
 /* 内容滚动区域 */
 .content-scroll {
   flex: 1;
-  height: calc(100vh - 44px);
   padding: 20px;
   overflow-y: auto;
   position: relative;
   z-index: 1;
+  min-height: 0;
 }
 
 /* 状态卡片 */
