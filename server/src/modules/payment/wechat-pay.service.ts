@@ -88,6 +88,45 @@ export class WechatPayService {
   }
 
   /**
+   * 获取配置状态信息
+   */
+  getConfigStatus(): {
+    isAvailable: boolean
+    mchid: string
+    appid: string
+    missingConfigs: string[]
+    instructions: string
+  } {
+    const missingConfigs: string[] = []
+
+    if (!process.env.WECHAT_PAY_PRIVATE_KEY && !process.env.WECHAT_PAY_PRIVATE_KEY_PATH) {
+      missingConfigs.push('商户私钥（WECHAT_PAY_PRIVATE_KEY）')
+    }
+
+    if (!process.env.WECHAT_PAY_APIV3_KEY) {
+      missingConfigs.push('APIv3密钥（WECHAT_PAY_APIV3_KEY）')
+    }
+
+    if (!process.env.WECHAT_PAY_MCHID) {
+      missingConfigs.push('商户号（WECHAT_PAY_MCHID）')
+    }
+
+    if (!process.env.WECHAT_PAY_APPID) {
+      missingConfigs.push('小程序AppID（WECHAT_PAY_APPID）')
+    }
+
+    return {
+      isAvailable: this.isServiceAvailable(),
+      mchid: this.mchid,
+      appid: this.appid,
+      missingConfigs,
+      instructions: missingConfigs.length > 0
+        ? `请在 .env 文件中配置以下项：${missingConfigs.join('、')}。详细说明请查看 docs/WECHAT_PAY_CONFIG.md`
+        : '配置完整，服务正常运行'
+    }
+  }
+
+  /**
    * 从文件读取商户私钥
    * @param filePath 证书文件路径
    */

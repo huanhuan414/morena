@@ -82,6 +82,27 @@ export class PaymentController {
         }
       }
 
+      // 检查微信支付服务是否可用
+      if (!this.wechatPayService.isServiceAvailable()) {
+        const configStatus = this.wechatPayService.getConfigStatus()
+        console.error('[PaymentController] 微信支付服务未初始化，配置状态:', configStatus)
+        return {
+          code: 400,
+          message: '微信支付服务未初始化',
+          data: {
+            isAvailable: configStatus.isAvailable,
+            missingConfigs: configStatus.missingConfigs,
+            instructions: configStatus.instructions,
+            currentConfig: {
+              hasAppid: !!process.env.WECHAT_PAY_APPID,
+              hasMchid: !!process.env.WECHAT_PAY_MCHID,
+              hasPrivateKey: !!(process.env.WECHAT_PAY_PRIVATE_KEY || process.env.WECHAT_PAY_PRIVATE_KEY_PATH),
+              hasKey: !!process.env.WECHAT_PAY_APIV3_KEY
+            }
+          }
+        }
+      }
+
       // 生成商户订单号
       const outTradeNo = `SUB_${userId}_${Date.now()}`
 
@@ -254,6 +275,27 @@ export class PaymentController {
       }
 
       console.log('[PaymentController] 订单状态更新成功: paying')
+
+      // 检查微信支付服务是否可用
+      if (!this.wechatPayService.isServiceAvailable()) {
+        const configStatus = this.wechatPayService.getConfigStatus()
+        console.error('[PaymentController] 微信支付服务未初始化，配置状态:', configStatus)
+        return {
+          code: 400,
+          message: '微信支付服务未初始化',
+          data: {
+            isAvailable: configStatus.isAvailable,
+            missingConfigs: configStatus.missingConfigs,
+            instructions: configStatus.instructions,
+            currentConfig: {
+              hasAppid: !!process.env.WECHAT_PAY_APPID,
+              hasMchid: !!process.env.WECHAT_PAY_MCHID,
+              hasPrivateKey: !!(process.env.WECHAT_PAY_PRIVATE_KEY || process.env.WECHAT_PAY_PRIVATE_KEY_PATH),
+              hasKey: !!process.env.WECHAT_PAY_APIV3_KEY
+            }
+          }
+        }
+      }
 
       // 生成商户订单号
       const outTradeNo = `ORDER_${userId}_${orderId}_${Date.now()}`
