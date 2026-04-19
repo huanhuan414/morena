@@ -271,34 +271,34 @@
 }
 
 /* ============================================
-   内容卡片 - 纯净明亮
+   内容卡片 - 纯净明亮（优化版）
    ============================================ */
 .glass-card {
   background: #ffffff;
-  border-radius: 24rpx;
-  margin-bottom: 24rpx;
-  padding: 40rpx;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  border-radius: 20rpx;
+  margin-bottom: 20rpx;
+  padding: 32rpx;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
 }
 
 .glass-card:active {
-  transform: scale(0.99);
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+  transform: scale(0.995);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  margin-bottom: 24rpx;
-  padding-bottom: 20rpx;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .card-title {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: #0f172a;
   letter-spacing: 0.5rpx;
@@ -313,20 +313,104 @@
 }
 
 /* ============================================
-   需求列表
+   Markdown 内容样式
+   ============================================ */
+.markdown-content {
+  font-size: 28rpx;
+  color: #334155;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+.markdown-h1 {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 32rpx;
+  margin-bottom: 16rpx;
+  line-height: 1.4;
+}
+
+.markdown-h2 {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 28rpx;
+  margin-bottom: 12rpx;
+  line-height: 1.4;
+}
+
+.markdown-h3 {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 24rpx;
+  margin-bottom: 12rpx;
+  line-height: 1.4;
+}
+
+.markdown-p {
+  margin-bottom: 16rpx;
+  line-height: 1.8;
+}
+
+.markdown-strong {
+  font-weight: 700;
+  color: #0f172a;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  padding: 4rpx 8rpx;
+  border-radius: 6rpx;
+}
+
+.markdown-em {
+  font-style: italic;
+  color: #64748b;
+}
+
+.markdown-list {
+  margin: 16rpx 0;
+  padding-left: 32rpx;
+}
+
+.markdown-list-item {
+  margin-bottom: 8rpx;
+  line-height: 1.8;
+  position: relative;
+}
+
+.markdown-list-item::before {
+  content: '•';
+  position: absolute;
+  left: -24rpx;
+  color: #6366f1;
+  font-weight: 700;
+}
+
+.markdown-link {
+  color: #6366f1;
+  text-decoration: underline;
+  padding: 0 4rpx;
+}
+
+.markdown-br {
+  margin-bottom: 12rpx;
+}
+
+/* ============================================
+   需求列表（优化版）
    ============================================ */
 .requirement-list {
   display: flex;
   flex-direction: column;
-  gap: 28rpx;
+  gap: 24rpx;
 }
 
 .requirement-item {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
-  padding-bottom: 28rpx;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 8rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .requirement-item:last-child {
@@ -336,18 +420,19 @@
 }
 
 .req-label {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #94a3b8;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1rpx;
+  margin-bottom: 4rpx;
 }
 
 .req-value {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #334155;
-  font-weight: 600;
-  line-height: 1.7;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 .req-value-wrapper {
@@ -459,47 +544,56 @@
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  margin-top: 32rpx;
+  gap: 12rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .primary-action-btn {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: #ffffff;
   border: none;
-  border-radius: 20rpx;
-  padding: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
-  font-size: 30rpx;
-  font-weight: 700;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(99, 102, 241, 0.25);
+  font-size: 28rpx;
+  font-weight: 600;
   letter-spacing: 0.5rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  transition: all 0.3s ease;
+  gap: 10rpx;
+  transition: all 0.2s ease;
 }
 
 .primary-action-btn:active {
-  transform: translateY(2rpx);
-  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.4);
+  transform: translateY(1rpx) scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.35);
 }
 
 .secondary-action-btn {
   background: #ffffff;
   color: #6366f1;
-  border: 2px solid rgba(99, 102, 241, 0.2);
-  border-radius: 20rpx;
-  padding: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
-  font-size: 30rpx;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  border: 1.5rpx solid rgba(99, 102, 241, 0.2);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  font-size: 28rpx;
+  font-weight: 500;
+  letter-spacing: 0.5rpx;
+  transition: all 0.2s ease;
 }
 
 .secondary-action-btn:active {
-  transform: translateY(2rpx);
+  transform: translateY(1rpx) scale(0.98);
   background: #f8fafc;
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.06);
+}
+
+.cancel-text {
+  color: #f87171 !important;
+  font-weight: 600;
 }
 
 /* ============================================

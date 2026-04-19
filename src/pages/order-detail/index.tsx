@@ -123,6 +123,89 @@ export default function OrderDetailPage() {
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
+  // Markdown 解析函数
+  const parseMarkdown = (text: string): JSX.Element[] => {
+    if (!text) return [<Text key="empty"></Text>]
+
+    const lines = text.split('\n')
+    const result: JSX.Element[] = []
+    let listItems: string[] = []
+    let inList = false
+
+    const flushList = () => {
+      if (listItems.length > 0) {
+        result.push(
+          <View key={`list-${result.length}`} className="markdown-list">
+            {listItems.map((item, idx) => (
+              <Text key={idx} className="markdown-list-item block">{item}</Text>
+            ))}
+          </View>
+        )
+        listItems = []
+        inList = false
+      }
+    }
+
+    lines.forEach((line, index) => {
+      // 处理标题
+      const headingMatch = line.match(/^(#{1,3})\s+(.+)$/)
+      if (headingMatch) {
+        flushList()
+        const level = headingMatch[1].length
+        let content = headingMatch[2]
+        // 处理粗体
+        content = content.replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
+        // 处理斜体
+        content = content.replace(/\*(.+?)\*/g, '<Text class="markdown-em">$1</Text>')
+        if (level === 1) {
+          result.push(<Text key={`h1-${index}`} className="markdown-h1 block">{content}</Text>)
+        } else if (level === 2) {
+          result.push(<Text key={`h2-${index}`} className="markdown-h2 block">{content}</Text>)
+        } else {
+          result.push(<Text key={`h3-${index}`} className="markdown-h3 block">{content}</Text>)
+        }
+        return
+      }
+
+      // 处理列表
+      const listMatch = line.match(/^[\-\*]\s+(.+)$/)
+      if (listMatch) {
+        if (!inList) {
+          inList = true
+        }
+        let content = listMatch[1]
+        // 处理粗体
+        content = content.replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
+        listItems.push(content)
+        return
+      }
+
+      // 如果不是列表项，先刷新列表
+      if (inList) {
+        flushList()
+      }
+
+      // 处理空行
+      if (!line.trim()) {
+        result.push(<View key={`br-${index}`} className="markdown-br"></View>)
+        return
+      }
+
+      // 处理段落（支持粗体和斜体）
+      let content = line
+        .replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
+        .replace(/\*(.+?)\*/g, '<Text class="markdown-em">$1</Text>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<Text class="markdown-link">$1</Text>')
+
+      result.push(<Text key={`p-${index}`} className="markdown-p block">{content}</Text>)
+    })
+
+    // 刷新最后的列表
+    flushList()
+
+    return result.length > 0 ? result : [<Text key="empty" className="markdown-p block">{text}</Text>]
+  }
+
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
@@ -390,18 +473,18 @@ export default function OrderDetailPage() {
                 <Sparkles size={20} color="#00f5ff" />
                 <Text className="card-title">订单描述</Text>
               </View>
-              <Text className="card-content block">
-                {editing ? (
-                  <Textarea
-                    value={formData.description}
-                    onInput={(e: any) => setFormData({ ...formData, description: e.detail.value })}
-                    placeholder="请输入订单描述"
-                    className="edit-textarea"
-                  />
-                ) : (
-                  <Text className="block">{order.description || '暂无描述'}</Text>
-                )}
-              </Text>
+              {editing ? (
+                <Textarea
+                  value={formData.description}
+                  onInput={(e: any) => setFormData({ ...formData, description: e.detail.value })}
+                  placeholder="请输入订单描述"
+                  className="edit-textarea"
+                />
+              ) : (
+                <View className="markdown-content">
+                  {parseMarkdown(order.description || '暂无描述')}
+                </View>
+              )}
             </View>
 
             {/* 需求卡片 */}
@@ -439,7 +522,9 @@ export default function OrderDetailPage() {
                   {order.requirements.expectedResults && (
                     <View className="requirement-item">
                       <Text className="req-label block">预期效果</Text>
-                      <Text className="req-value block">{order.requirements.expectedResults}</Text>
+                      <View className="markdown-content">
+                        {parseMarkdown(order.requirements.expectedResults)}
+                      </View>
                     </View>
                   )}
                   {order.requirements.deadline && (
