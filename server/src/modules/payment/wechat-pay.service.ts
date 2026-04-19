@@ -24,27 +24,43 @@ export class WechatPayService {
     this.mchid = process.env.WECHAT_PAY_MCHID || '1290305501'
     this.appid = process.env.WECHAT_PAY_APPID || ''
 
-    // 检查是否配置了必要的证书文件
+    // 支持两种配置方式：文件路径 或 直接证书内容
     const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH
     const publicKeyPath = process.env.WECHAT_PAY_PUBLIC_KEY_PATH
+    const privateKeyContent = process.env.WECHAT_PAY_PRIVATE_KEY
+    const publicKeyContent = process.env.WECHAT_PAY_PUBLIC_KEY
 
-    if (!privateKeyPath || !publicKeyPath) {
-      console.warn('[WechatPayService] 未配置完整的支付证书，支付功能将不可用')
+    console.log('[WechatPayService] 开始初始化微信支付服务', {
+      hasPrivateKeyPath: !!privateKeyPath,
+      hasPublicKeyPath: !!publicKeyPath,
+      hasPrivateKeyContent: !!privateKeyContent,
+      hasPublicKeyContent: !!publicKeyContent
+    })
+
+    // 如果两种方式都没有配置，返回警告
+    if (!privateKeyPath && !privateKeyContent) {
+      console.warn('[WechatPayService] 未配置商户私钥（文件路径或证书内容），支付功能将不可用')
+      console.warn('[WechatPayService] 请在 .env 文件中配置 WECHAT_PAY_PRIVATE_KEY_PATH 或 WECHAT_PAY_PRIVATE_KEY')
       this.pay = null
       this.isAvailable = false
       return
     }
 
     try {
-      // 获取私钥和公钥
-      const privateKey = this.getPrivateKey()
-      const publicKey = this.getPublicKey()
+      // 获取私钥和公钥（优先使用直接配置的证书内容）
+      const privateKey = privateKeyContent || this.getPrivateKeyFromFile(privateKeyPath)
+      const publicKey = publicKeyContent || this.getPublicKeyFromFile(publicKeyPath)
+
+      console.log('[WechatPayService] 成功获取证书', {
+        hasPrivateKey: !!privateKey,
+        hasPublicKey: !!publicKey
+      })
 
       // 初始化微信支付
       this.pay = new WxPay({
         appid: this.appid,
         mchid: this.mchid,
-        publicKey: Buffer.from(publicKey),
+        publicKey: publicKey ? Buffer.from(publicKey) : undefined,
         privateKey: Buffer.from(privateKey),
         serial_no: process.env.WECHAT_PAY_SERIAL_NO || '',
         key: process.env.WECHAT_PAY_APIV3_KEY || ''
@@ -53,10 +69,12 @@ export class WechatPayService {
       this.isAvailable = true
       console.log('[WechatPayService] 微信支付服务初始化完成', {
         mchid: this.mchid,
-        appid: this.appid
+        appid: this.appid,
+        isAvailable: true
       })
-    } catch (error) {
-      console.error('[WechatPayService] 微信支付服务初始化失败:', error)
+    } catch (error: any) {
+      console.error('[WechatPayService] 微信支付服务初始化失败:', error.message)
+      console.error('[WechatPayService] 错误详情:', error)
       this.pay = null
       this.isAvailable = false
     }
@@ -70,47 +88,38 @@ export class WechatPayService {
   }
 
   /**
-   * 获取商户私钥
-   * 注意：实际生产环境需要从商户平台下载证书文件
+   * 从文件读取商户私钥
+   * @param filePath 证书文件路径
    */
-  private getPrivateKey(): string {
-    try {
-      const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH
-      if (privateKeyPath) {
-        // 读取证书文件
-        return readFileSync(privateKeyPath, 'utf-8')
-      }
+  private getPrivateKeyFromFile(filePath?: string): string {
+    if (!filePath) {
+      console.warn('[WechatPayService] 未配置商户私钥文件路径')
+      return ''
+    }
 
-      // 如果没有配置证书文件，返回一个占位符（仅用于测试）
-      console.warn('[WechatPayService] 未配置商户私钥文件路径，使用测试模式')
-      return `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDExample
------END PRIVATE KEY-----`
+    try {
+      return readFileSync(filePath, 'utf-8')
     } catch (error) {
       console.error('[WechatPayService] 读取商户私钥失败:', error)
-      throw new Error('读取商户私钥失败')
+      throw new Error(`读取商户私钥失败: ${filePath}`)
     }
   }
 
   /**
-   * 获取微信平台公钥（用于验证签名）
-   * 如果未配置，返回占位符
+   * 从文件读取微信平台公钥（用于验证签名）
+   * @param filePath 证书文件路径
    */
-  private getPublicKey(): string {
+  private getPublicKeyFromFile(filePath?: string): string {
+    if (!filePath) {
+      console.warn('[WechatPayService] 未配置平台公钥文件路径')
+      return ''
+    }
+
     try {
-      const publicKeyPath = process.env.WECHAT_PAY_PUBLIC_KEY_PATH
-      if (publicKeyPath) {
-        return readFileSync(publicKeyPath, 'utf-8')
-      }
-      console.warn('[WechatPayService] 未配置平台公钥文件路径，使用占位符')
-      return `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvExample
------END PUBLIC KEY-----`
+      return readFileSync(filePath, 'utf-8')
     } catch (error) {
       console.warn('[WechatPayService] 读取平台公钥失败，签名验证可能受影响:', error)
-      return `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvExample
------END PUBLIC KEY-----`
+      return ''
     }
   }
 
