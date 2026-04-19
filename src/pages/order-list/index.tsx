@@ -514,7 +514,7 @@ export default function OrderListPage() {
                             handleRetryDispatch(order.id)
                           }}
                         >
-                          <RefreshCw size={12} color="#ffffff" />
+                          <RefreshCw size={10} color="#ffffff" />
                           <Text>重新分配</Text>
                         </View>
                         <View

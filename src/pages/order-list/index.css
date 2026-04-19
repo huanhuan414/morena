@@ -478,75 +478,86 @@
 
 .order-actions {
   display: flex;
-  gap: 8rpx;
+  gap: 6rpx !important;
   align-items: center;
 }
 
 /* 接单按钮 */
 .accept-btn {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 16rpx;
-  padding: 12rpx 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.3);
+  border-radius: 12rpx;
+  padding: 8rpx 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.25);
   border: none;
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
 .accept-btn > View {
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 4rpx;
 }
 
-/* 重新分配按钮 - 超小精致版 */
+/* 重新分配按钮 - 极致小巧版 */
 .retry-btn {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  padding: 6rpx 12rpx;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 8rpx;
-  box-shadow: 0 1rpx 4rpx rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3rpx !important;
+  padding: 4rpx 10rpx !important;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  border-radius: 6rpx !important;
+  box-shadow: 0 1rpx 3rpx rgba(99, 102, 241, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.15s ease !important;
+  min-width: auto !important;
 }
 
 .retry-btn:active {
-  transform: scale(0.95);
-  background: linear-gradient(135deg, #5b5fe6 0%, #7a4fe8 100%);
-  box-shadow: 0 1rpx 2rpx rgba(99, 102, 241, 0.2);
+  transform: scale(0.95) !important;
+  background: linear-gradient(135deg, #5b5fe6 0%, #7a4fe8 100%) !important;
+  box-shadow: 0 1rpx 2rpx rgba(99, 102, 241, 0.25) !important;
 }
 
 .retry-btn Text {
-  font-size: 20rpx;
-  font-weight: 500;
-  color: #ffffff;
-  letter-spacing: 0.3rpx;
+  font-size: 18rpx !important;
+  font-weight: 500 !important;
+  color: #ffffff !important;
+  letter-spacing: 0.2rpx !important;
+  line-height: 1.2 !important;
 }
 
-/* 取消按钮 - 超小精致版 */
+.retry-btn lucide-react-taro-image {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* 取消按钮 - 极致小巧版 */
 .cancel-btn {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  padding: 6rpx 12rpx;
-  background: #ffffff;
-  border-radius: 8rpx;
-  box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(239, 68, 68, 0.12);
-  transition: all 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3rpx !important;
+  padding: 4rpx 10rpx !important;
+  background: #ffffff !important;
+  border-radius: 6rpx !important;
+  box-shadow: 0 1rpx 3rpx rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  transition: all 0.15s ease !important;
+  min-width: auto !important;
 }
 
 .cancel-btn:active {
-  transform: scale(0.95);
-  background: #fef2f2;
-  box-shadow: 0 1rpx 2rpx rgba(239, 68, 68, 0.08);
+  transform: scale(0.95) !important;
+  background: #fef2f2 !important;
+  box-shadow: 0 1rpx 2rpx rgba(239, 68, 68, 0.12) !important;
 }
 
 .cancel-btn Text {
-  font-size: 20rpx;
-  font-weight: 400;
-  color: #f87171;
-  letter-spacing: 0.3rpx;
+  font-size: 18rpx !important;
+  font-weight: 400 !important;
+  color: #f87171 !important;
+  letter-spacing: 0.2rpx !important;
+  line-height: 1.2 !important;
 }
 
 .reviewing-tip {
