@@ -199,25 +199,6 @@ export default function OrderCreatePage() {
     setAiWriting(true)
 
     try {
-      // 第一步：创建临时对话
-      const createRes = await Network.request({
-        url: '/api/chat/conversation',
-        method: 'POST',
-        data: {
-          avatar_id: '', // 使用默认值
-          title: 'AI帮写订单描述'
-        }
-      })
-
-      console.log('[AI帮写] 创建对话响应:', createRes.data)
-
-      if (!createRes.data || !createRes.data.data || !createRes.data.data.id) {
-        throw new Error('创建对话失败')
-      }
-
-      const conversationId = createRes.data.data.id
-
-      // 第二步：发送消息
       const prompt = `请根据以下订单标题，生成一份详细的需求描述。要求：
 1. 描述要清晰、具体、可执行
 2. 包含目标受众、预期效果、核心要求等关键信息
@@ -228,38 +209,23 @@ export default function OrderCreatePage() {
 
 请直接生成需求描述内容，不需要其他说明：`
 
-      const sendRes = await Network.request({
-        url: '/api/chat/send',
+      const res = await Network.request({
+        url: '/api/chat/generate',
         method: 'POST',
         data: {
-          conversation_id: conversationId,
-          avatar_id: '',
-          content: prompt
+          prompt
         }
       })
 
-      console.log('[AI帮写] 发送消息响应:', sendRes.data)
+      console.log('[AI帮写] 响应数据:', res.data)
 
-      if (sendRes.data && sendRes.data.data) {
-        let aiDescription = ''
-        // 尝试从不同字段获取内容
-        if (sendRes.data.data.content) {
-          aiDescription = sendRes.data.data.content
-        } else if (sendRes.data.data.message) {
-          aiDescription = sendRes.data.data.message
-        } else if (typeof sendRes.data.data === 'string') {
-          aiDescription = sendRes.data.data
-        }
-
-        if (aiDescription && aiDescription.trim()) {
-          setForm(prev => ({
-            ...prev,
-            description: aiDescription.trim()
-          }))
-          showToast({ title: 'AI帮写完成', icon: 'success' })
-        } else {
-          throw new Error('AI响应为空')
-        }
+      if (res.data && res.data.data && res.data.data.content) {
+        const aiDescription = res.data.data.content
+        setForm(prev => ({
+          ...prev,
+          description: aiDescription.trim()
+        }))
+        showToast({ title: 'AI帮写完成', icon: 'success' })
       } else {
         throw new Error('AI响应格式错误')
       }

@@ -881,4 +881,31 @@ export class ChatService {
       .eq('user_id', userId)
   }
 
+  /**
+   * 直接调用LLM生成内容
+   * 不需要创建对话，直接返回生成的文本
+   */
+  async generateContent(prompt: string): Promise<string> {
+    const messages = [
+      {
+        role: 'system' as const,
+        content: '你是一个专业的AI助手，擅长根据用户的输入生成高质量的内容。请根据用户的提示词生成准确、有用的内容。'
+      },
+      {
+        role: 'user' as const,
+        content: prompt
+      }
+    ]
+
+    const config = new Config()
+    const llmClient = new LLMClient(config)
+
+    const response = await llmClient.invoke(messages, {
+      model: 'doubao-seed-1-8-251228',
+      temperature: 0.8
+    })
+
+    return response.content
+  }
+
 }

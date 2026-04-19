@@ -114,4 +114,20 @@ export class ChatController {
       message: '删除成功'
     }
   }
+
+  /**
+   * 直接调用LLM生成内容
+   * 不需要创建对话，直接返回生成的文本
+   */
+  @Post('generate')
+  async generateContent(@Body('prompt') prompt: string) {
+    const content = await this.chatService.generateContent(prompt)
+    return {
+      code: 200,
+      data: {
+        content
+      },
+      message: '生成成功'
+    }
+  }
 }
