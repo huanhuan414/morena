@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import {
   Clock, ChevronRight, Sparkles, Plus,
-  Check, RefreshCw, DollarSign,
+  Check, DollarSign,
   Package, Loader, Circle, SlidersHorizontal, ArrowLeft
 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
@@ -225,50 +225,6 @@ export default function OrderListPage() {
     } catch (error) {
       console.error('接单失败:', error)
       showToast({ title: '接单失败', icon: 'none' })
-    }
-  }
-
-  const handleRetryDispatch = async (orderId: string) => {
-    console.log('[OrderList] 开始重新分配订单，订单ID:', orderId)
-    try {
-      console.log('[OrderList] 调用接口:', `/api/order-dispatch/${orderId}/dispatch`)
-      const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/dispatch`,
-        method: 'POST'
-      })
-
-      console.log('[OrderList] 重新分配响应:', res.data)
-
-      if (res.data?.code === 200) {
-        console.log('[OrderList] 重新分配成功')
-        showToast({ title: '重新分配成功', icon: 'success' })
-        fetchOrders()
-        fetchStats()
-      } else {
-        console.error('[OrderList] 重新分配失败，响应:', res.data)
-        showToast({ title: res.data?.message || '重新分配失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('[OrderList] 重新分配异常:', error)
-      showToast({ title: '重新分配失败，请稍后重试', icon: 'none' })
-    }
-  }
-
-  const handleCancelOrder = async (orderId: string) => {
-    try {
-      const res = await Network.request({
-        url: `/api/order/${orderId}/cancel`,
-        method: 'PUT'
-      })
-      
-      if (res.data?.code === 200) {
-        showToast({ title: '订单已取消', icon: 'success' })
-        fetchOrders()
-        fetchStats()
-      }
-    } catch (error) {
-      console.error('取消订单失败:', error)
-      showToast({ title: '取消失败', icon: 'none' })
     }
   }
 

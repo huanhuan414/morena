@@ -438,7 +438,7 @@ export default function OrderDetailPage() {
             <View className="meta-item">
               <Calendar size={16} color="#00f5ff" />
               <Text className="meta-value">
-                {new Date(order.created_at).toLocaleDateString()}
+                {order.requirements?.deadline || new Date(order.created_at).toLocaleDateString()}
               </Text>
             </View>
           </View>
