@@ -1,5 +1,4 @@
-import { Image } from '@tarojs/components'
-import { View } from '@tarojs/components'
+import { Image, View } from '@tarojs/components'
 import { User } from 'lucide-react-taro'
 import { getAvatarStyleClass } from '@/utils/avatar-style'
 import './index.css'

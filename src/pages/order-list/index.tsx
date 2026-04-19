@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, useRouter, navigateTo, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, useRouter, navigateTo, navigateBack, showToast } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import {
   Clock, ChevronRight, Sparkles, Plus,
   Check, RefreshCw, DollarSign,
-  Package, Loader, Circle, SlidersHorizontal
+  Package, Loader, Circle, SlidersHorizontal, ArrowLeft
 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -278,9 +278,14 @@ export default function OrderListPage() {
       {/* 头部 */}
       <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
-          <Text className="page-title">
-            {mode === 'avatar' ? '任务大厅' : '我的订单'}
-          </Text>
+          <View className="back-button" onClick={() => navigateBack()}>
+            <ArrowLeft size={24} color="#1f2937" />
+          </View>
+          <View className="header-title-container">
+            <Text className="page-title">
+              {mode === 'avatar' ? '任务大厅' : '我的订单'}
+            </Text>
+          </View>
           {mode !== 'avatar' && (
             <View className="header-actions" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
               <View

@@ -2942,9 +2942,9 @@ export default function MindChatPage() {
                             console.log('[图片下载] 开始下载图片:', media.url)
                             Taro.showLoading({ title: '保存中...' })
                             try {
-                              const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                              const isH5Platform = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
-                              if (isH5) {
+                              if (isH5Platform) {
                                 // H5 端：直接打开图片，让用户手动保存
                                 console.log('[图片下载] H5 端，直接打开图片')
                                 Taro.hideLoading()
@@ -2963,8 +2963,7 @@ export default function MindChatPage() {
                               } else {
                                 // 小程序端：下载到相册
                                 console.log('[图片下载] 小程序端，开始下载')
-                                // @ts-ignore - 小程序端必须使用Taro.downloadFile
-                                const res = await Taro.downloadFile({
+                                const res = await Network.downloadFile({
                                   url: media.url || ''
                                 })
                                 console.log('[图片下载] 下载成功，临时文件:', res.tempFilePath)
@@ -3906,13 +3905,13 @@ export default function MindChatPage() {
         }}
         upperThreshold={200}
         onScroll={(e) => {
-          const scrollTop = e.detail.scrollTop
+          const currentScrollTop = e.detail.scrollTop
           const scrollHeight = e.detail.scrollHeight
           // 只在顶部附近时打印
-          if (scrollTop <= 200) {
-            console.log('[滚动位置] scrollTop:', scrollTop, 'scrollHeight:', scrollHeight)
+          if (currentScrollTop <= 200) {
+            console.log('[滚动位置] scrollTop:', currentScrollTop, 'scrollHeight:', scrollHeight)
           }
-          if (scrollTop <= 10) {
+          if (currentScrollTop <= 10) {
             console.log('[滚动检测] 已滚动到最顶部')
           }
         }}
