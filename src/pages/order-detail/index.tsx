@@ -7,7 +7,7 @@ import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
   Loader, Circle, User,
-  Clock, DollarSign, Calendar, Zap
+  Clock, DollarSign, Calendar, Zap, Users
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -17,6 +17,7 @@ interface Order {
   description: string
   budget: number
   status: string
+  expected_quantity?: number
   requirements: {
     contentType?: string
     platforms?: string[]
@@ -440,6 +441,10 @@ export default function OrderDetailPage() {
               <Text className="meta-value">
                 {order.requirements?.deadline || new Date(order.created_at).toLocaleDateString()}
               </Text>
+            </View>
+            <View className="meta-item">
+              <Users size={16} color="#00f5ff" />
+              <Text className="meta-value">{order.expected_quantity || 1} 人</Text>
             </View>
           </View>
         </View>
