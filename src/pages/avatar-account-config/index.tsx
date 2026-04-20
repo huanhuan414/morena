@@ -23,6 +23,7 @@ interface AvatarAccount {
   appid?: string        // 微信公众号 appid
   appkey?: string       // 微信公众号 AppKey
   account_url?: string  // 小红书主页链接
+  extra_info?: string   // 额外信息（JSON字符串）：nickname, avatar_url, signature 等
 }
 
 const PLATFORMS = [
@@ -211,19 +212,42 @@ export default function AvatarAccountConfigPage() {
       }
     }
 
-    const data: AvatarAccount = {
+    // 构建账号数据
+    const data: any = {
       avatar_id: avatarId,
       platform: platformId,
-      account_name: accountName || '',  // 用于抖音账号名
-      followers: 0,  // 这三个平台暂时不需要统计字段
-      total_exposure: 0,
-      total_works: 0,
-      avg_likes_per_work: 0,
-      avg_comments_per_work: 0,
-      avg_shares_per_work: 0,
+      account_name: accountName || '',
       appid: platformId === 'wechat' ? appid : undefined,
       appkey: platformId === 'wechat' ? appkey : undefined,
       account_url: platformId === 'xiaohongshu' ? xiaohongshuUrl : undefined,
+    }
+
+    // 如果获取了用户信息，使用这些数据
+    if (fetchedUserInfo) {
+      console.log('[AvatarAccountConfig] 使用获取到的用户信息:', fetchedUserInfo)
+      data.followers = fetchedUserInfo.follower_count || 0
+      data.total_works = fetchedUserInfo.aweme_count || fetchedUserInfo.notes_count || 0
+      data.total_exposure = 0
+      data.avg_likes_per_work = 0
+      data.avg_comments_per_work = 0
+      data.avg_shares_per_work = 0
+
+      // 保存额外的用户信息（使用 JSON 字符串）
+      data.extra_info = JSON.stringify({
+        nickname: fetchedUserInfo.nickname || '',
+        avatar_url: fetchedUserInfo.avatar_url || '',
+        signature: fetchedUserInfo.signature || '',
+        following_count: fetchedUserInfo.following_count || 0,
+        sec_uid: fetchedUserInfo.sec_uid || '',
+      })
+    } else {
+      // 没有获取用户信息，使用默认值
+      data.followers = 0
+      data.total_works = 0
+      data.total_exposure = 0
+      data.avg_likes_per_work = 0
+      data.avg_comments_per_work = 0
+      data.avg_shares_per_work = 0
     }
 
     try {
@@ -324,11 +348,42 @@ export default function AvatarAccountConfigPage() {
           ) : (
             accounts.map((account) => {
               const platformInfo = PLATFORMS.find(p => p.id === account.platform)
+
+              // 解析 extra_info
+              let extraInfo: any = {}
+              if (account.extra_info) {
+                try {
+                  extraInfo = JSON.parse(account.extra_info)
+                } catch (e) {
+                  console.error('[AvatarAccountConfig] 解析 extra_info 失败:', e)
+                }
+              }
+
+              // 优先显示 extra_info 中的昵称，否则显示 account_name
+              const displayName = extraInfo.nickname || account.account_name
+              const avatarUrl = extraInfo.avatar_url || ''
+
               return (
                 <View key={account.id} className="account-card">
                   <View className="account-header">
-                    <Text className="account-platform">{platformInfo?.label || account.platform}</Text>
-                    <Text className="account-name">{account.account_name}</Text>
+                    {avatarUrl && (
+                      <Image
+                        src={avatarUrl}
+                        className="account-avatar"
+                        mode="aspectFill"
+                      />
+                    )}
+                    <View className="account-info">
+                      <View className="account-platform-name">
+                        <Text className="account-platform">{platformInfo?.label || account.platform}</Text>
+                        <Text className="account-name">{displayName}</Text>
+                      </View>
+                      {extraInfo.signature && (
+                        <Text className="account-signature" numberOfLines={1}>
+                          {extraInfo.signature}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                   <View className="account-stats">
                     <View className="stat-item">

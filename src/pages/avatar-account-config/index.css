@@ -172,9 +172,29 @@
 
 .account-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12rpx;
   margin-bottom: 16rpx;
+}
+
+.account-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.account-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-platform-name {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .account-platform {
@@ -188,10 +208,19 @@
 }
 
 .account-name {
-  flex: 1;
   font-size: 28rpx;
   font-weight: 600;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-signature {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
