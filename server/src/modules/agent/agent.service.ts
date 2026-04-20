@@ -2509,45 +2509,64 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       const accessToken = data.access_token
 
       // 2. 获取公众号基本信息
-      const basicInfoUrl = `https://api.weixin.qq.com/cgi-bin/account/getaccountbasicinfo?access_token=${accessToken}`
-      const basicInfoRes = await fetch(basicInfoUrl)
-      const basicInfo = await basicInfoRes.json()
-
       let accountInfo: any = {}
 
-      if (basicInfo.errcode === 0) {
-        accountInfo = {
-          nickname: basicInfo.account_name,
-          account_name: basicInfo.account_name,
-          avatar_url: basicInfo.avatar_url,
-          signature: basicInfo.signature,
-          account_type: basicInfo.account_type,
-          service_type_info: basicInfo.service_type_info,
-          verify_type_info: basicInfo.verify_type_info,
+      // 先尝试使用公众号账号信息 API
+      try {
+        const accountInfoUrl = `https://api.weixin.qq.com/cgi-bin/account/getaccountbasicinfo?access_token=${accessToken}`
+        const accountInfoRes = await fetch(accountInfoUrl)
+        const accountData = await accountInfoRes.json()
+
+        console.log('公众号账号信息 API 响应:', accountData)
+
+        if (accountData.errcode === 0) {
+          accountInfo = {
+            nickname: accountData.account_name,
+            account_name: accountData.account_name,
+            avatar_url: accountData.avatar_url || '',
+            signature: accountData.signature || '',
+            account_type: accountData.account_type,
+            service_type_info: accountData.service_type_info,
+            verify_type_info: accountData.verify_type_info,
+          }
+          console.log('获取公众号基本信息成功:', accountInfo)
+        } else {
+          console.log('获取公众号基本信息失败，错误码:', accountData.errcode, '错误信息:', accountData.errmsg)
+          // 即使获取基本信息失败，也继续尝试获取其他信息
+          accountInfo = {
+            note: `无法获取公众号详细信息（${accountData.errmsg || '权限不足'}）`,
+            errcode: accountData.errcode,
+            errmsg: accountData.errmsg
+          }
         }
-        console.log('获取公众号基本信息成功:', accountInfo)
-      } else {
-        console.log('获取公众号基本信息失败:', basicInfo)
-        accountInfo = { note: '无法获取公众号基本信息，可能需要更多权限' }
+      } catch (err: any) {
+        console.log('获取公众号基本信息异常:', err)
+        accountInfo = {
+          note: '无法获取公众号详细信息（网络异常）',
+          error: err.message
+        }
       }
 
-      // 3. 尝试获取粉丝数（需要高级权限）
+      // 3. 尝试获取粉丝数
       try {
         const userCountUrl = `https://api.weixin.qq.com/cgi-bin/user/get?access_token=${accessToken}`
         const userCountRes = await fetch(userCountUrl)
         const userCountData = await userCountRes.json()
 
-        if (userCountData.errcode === 0) {
-          accountInfo.follower_count = userCountData.total || 0
+        console.log('粉丝数 API 响应:', userCountData)
+
+        if (userCountData.errcode === 0 && userCountData.total !== undefined) {
+          accountInfo.follower_count = userCountData.total
           console.log('获取粉丝数成功:', accountInfo.follower_count)
         } else {
           accountInfo.follower_count = 0
-          accountInfo.follower_note = '无法获取粉丝数，可能需要认证的服务号权限'
+          accountInfo.follower_note = `无法获取粉丝数：${userCountData.errmsg || '可能需要认证的服务号权限'}`
           console.log('获取粉丝数失败:', userCountData)
         }
-      } catch (err) {
+      } catch (err: any) {
         accountInfo.follower_count = 0
-        accountInfo.follower_note = '无法获取粉丝数，可能需要认证的服务号权限'
+        accountInfo.follower_note = `无法获取粉丝数：${err.message}`
+        console.log('获取粉丝数异常:', err)
       }
 
       // 4. 尝试获取作品数量（已发布的图文）
@@ -2556,22 +2575,39 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         const publishRes = await fetch(publishListUrl)
         const publishData = await publishRes.json()
 
-        if (publishData.errcode === 0) {
-          accountInfo.total_works = publishData.total_count || 0
+        console.log('作品数量 API 响应:', publishData)
+
+        if (publishData.errcode === 0 && publishData.total_count !== undefined) {
+          accountInfo.total_works = publishData.total_count
           console.log('获取作品数量成功:', accountInfo.total_works)
         } else {
           accountInfo.total_works = 0
-          accountInfo.works_note = '无法获取作品数量，可能需要更多权限'
+          accountInfo.works_note = `无法获取作品数量：${publishData.errmsg || '可能需要更多权限'}`
           console.log('获取作品数量失败:', publishData)
         }
-      } catch (err) {
+      } catch (err: any) {
         accountInfo.total_works = 0
-        accountInfo.works_note = '无法获取作品数量，可能需要更多权限'
+        accountInfo.works_note = `无法获取作品数量：${err.message}`
+        console.log('获取作品数量异常:', err)
+      }
+
+      // 构建验证成功消息
+      let successMessage = '配置验证成功'
+      const availableInfo: string[] = []
+      
+      if (accountInfo.nickname) availableInfo.push(`公众号：${accountInfo.nickname}`)
+      if (accountInfo.follower_count && accountInfo.follower_count > 0) availableInfo.push(`粉丝数：${accountInfo.follower_count}`)
+      if (accountInfo.total_works && accountInfo.total_works > 0) availableInfo.push(`作品数：${accountInfo.total_works}`)
+      
+      if (availableInfo.length > 0) {
+        successMessage = `配置验证成功！${availableInfo.join('，')}`
+      } else if (accountInfo.note) {
+        successMessage = `配置验证成功！${accountInfo.note}`
       }
 
       return {
         valid: true,
-        message: `配置验证成功！公众号：${accountInfo.nickname || '未知'}`,
+        message: successMessage,
         accountInfo
       }
     } catch (err: any) {

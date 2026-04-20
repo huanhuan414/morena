@@ -876,6 +876,18 @@ export default function AvatarAccountConfigPage() {
                               </Text>
                             </View>
                           )}
+                          {/* 如果没有任何详细信息，显示提示 */}
+                          {(!wechatValidationResult.accountInfo.avatar_url &&
+                           !wechatValidationResult.accountInfo.nickname &&
+                           !wechatValidationResult.accountInfo.signature &&
+                           wechatValidationResult.accountInfo.follower_count === 0 &&
+                           wechatValidationResult.accountInfo.total_works === 0) && (
+                            <View className="info-item">
+                              <Text className="info-value" style={{ color: '#6b7280' }}>
+                                无法获取公众号详细信息，可能是权限不足或 API 限制。但不影响账号配置保存。
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       )}
                     </View>
