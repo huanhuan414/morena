@@ -8,9 +8,10 @@ import { VoiceCallGateway } from './voice-call.gateway';
 import { VoiceCallService } from './voice-call.service';
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { TikHubModule } from '../tikhub/tikhub.module';
 
 @Module({
-  imports: [SubscriptionModule],
+  imports: [SubscriptionModule, TikHubModule],
   controllers: [AvatarController],
   providers: [AvatarService, LearningService, HostingService, FriendshipService, VoiceCallGateway, VoiceCallService, ReverseGeocodingService],
   exports: [AvatarService, LearningService, HostingService, FriendshipService, VoiceCallService]

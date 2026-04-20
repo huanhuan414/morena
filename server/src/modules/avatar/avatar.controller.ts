@@ -404,6 +404,31 @@ export class AvatarController {
   }
 
   /**
+   * 刷新分身账号信息（从第三方平台重新获取数据）
+   */
+  @Post(':avatarId/accounts/:accountId/refresh')
+  async refreshAccount(
+    @Param('avatarId') avatarId: string,
+    @Param('accountId') accountId: string
+  ) {
+    try {
+      const result = await this.avatarService.refreshAccount(avatarId, accountId)
+      return {
+        code: 200,
+        data: result,
+        message: '刷新成功'
+      }
+    } catch (error: any) {
+      console.error('[AvatarController] 刷新账号信息失败:', error)
+      return {
+        code: 400,
+        message: error.message || '刷新失败',
+        data: null
+      }
+    }
+  }
+
+  /**
    * 通过图片识别账号信息
    */
   @Post('accounts/recognize-image')

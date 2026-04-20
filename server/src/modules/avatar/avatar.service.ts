@@ -4,6 +4,7 @@ import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { SubscriptionService } from '../subscription/subscription.service'
+import { TikHubService } from '../tikhub/tikhub.service'
 
 @Injectable()
 export class AvatarService {
@@ -11,7 +12,8 @@ export class AvatarService {
 
   constructor(
     private readonly reverseGeocodingService: ReverseGeocodingService,
-    private readonly subscriptionService: SubscriptionService
+    private readonly subscriptionService: SubscriptionService,
+    private readonly tikHubService: TikHubService
   ) {
     // 初始化火山引擎CDN存储
     this.storage = new S3Storage({
@@ -1566,6 +1568,96 @@ export class AvatarService {
 
     if (error) {
       throw new Error('Failed to delete account data: ' + error.message)
+    }
+  }
+
+  /**
+   * 刷新分身账号信息（从第三方平台重新获取数据）
+   */
+  async refreshAccount(avatarId: string, accountId: string) {
+    console.log('[AvatarService] 刷新账号信息:', { avatarId, accountId })
+
+    const client = getSupabaseClient()
+
+    // 1. 获取账号信息
+    const { data: account, error: fetchError } = await client
+      .from('avatar_accounts')
+      .select('*')
+      .eq('id', accountId)
+      .single()
+
+    if (fetchError) {
+      throw new Error('获取账号信息失败: ' + fetchError.message)
+    }
+
+    if (!account) {
+      throw new Error('账号不存在')
+    }
+
+    // 2. 根据平台刷新数据
+    let updatedData: any = {}
+
+    if (account.platform === 'douyin' && account.unique_id) {
+      // 刷新抖音账号信息
+      const result = await this.tikHubService.getDouyinUserInfo(account.unique_id)
+
+      if (result.success && result.data) {
+        updatedData = {
+          extra_info: {
+            nickname: result.data.nickname,
+            avatar_url: result.data.avatar_url,
+            signature: result.data.signature,
+            follower_count: result.data.follower_count,
+            following_count: result.data.following_count,
+            aweme_count: result.data.aweme_count,
+            total_favorited: result.data.total_favorited,
+            sec_uid: result.data.sec_uid,
+            updated_at: new Date().toISOString()
+          }
+        }
+      }
+    } else if (account.platform === 'xiaohongshu' && account.account_url) {
+      // 刷新小红书账号信息
+      const result = await this.tikHubService.getXiaohongshuUserInfo(account.account_url)
+
+      if (result.success && result.data) {
+        updatedData = {
+          extra_info: {
+            nickname: result.data.nickname,
+            avatar_url: result.data.avatar_url,
+            desc: result.data.desc,
+            follower_count: result.data.follower_count,
+            following_count: result.data.following_count,
+            notes_count: result.data.notes_count,
+            interaction_count: result.data.interaction_count,
+            total_favorited: result.data.total_favorited,
+            updated_at: new Date().toISOString()
+          }
+        }
+      }
+    }
+
+    // 3. 更新数据库
+    if (Object.keys(updatedData).length > 0) {
+      const { error: updateError } = await client
+        .from('avatar_accounts')
+        .update(updatedData)
+        .eq('id', accountId)
+
+      if (updateError) {
+        throw new Error('更新账号信息失败: ' + updateError.message)
+      }
+
+      // 4. 返回更新后的账号信息
+      const { data: updatedAccount } = await client
+        .from('avatar_accounts')
+        .select('*')
+        .eq('id', accountId)
+        .single()
+
+      return updatedAccount
+    } else {
+      throw new Error('该平台暂不支持自动刷新，请手动更新')
     }
   }
 

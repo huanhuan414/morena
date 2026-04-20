@@ -644,3 +644,249 @@
 [data-theme="dark"] .skill-card {
   border-color: rgba(16, 185, 129, 0.12);
 }
+
+/* ========================================
+   账号管理相关样式
+   ======================================== */
+
+.special-card.account-manager {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.special-card.account-manager:active {
+  transform: scale(0.98);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
+}
+
+.special-badge.account {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.special-action.account {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.account-features {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.account-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12rpx 16rpx;
+  border-radius: var(--radius-md);
+  border: 1rpx solid rgba(245, 158, 11, 0.2);
+}
+
+.account-feature-icon {
+  font-size: 24rpx;
+}
+
+.account-feature-text {
+  font-size: 20rpx;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.account-count {
+  font-size: 20rpx;
+  color: var(--text-secondary);
+  margin-top: 12rpx;
+}
+
+/* 账号管理弹窗 */
+.account-manager-dialog {
+  width: 90%;
+  max-width: 700rpx;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  border: 1.5rpx solid rgba(245, 158, 11, 0.2);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+}
+
+.account-manager-content {
+  max-height: 60vh;
+  padding: 32rpx;
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 32rpx;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+}
+
+.empty-accounts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 48rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: var(--text-primary);
+  margin-top: 24rpx;
+  margin-bottom: 16rpx;
+  font-weight: 600;
+}
+
+.empty-tip {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.accounts-scroll {
+  max-height: 50vh;
+}
+
+.account-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  border: 1.5rpx solid rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.account-card:active {
+  transform: scale(0.99);
+}
+
+.account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.account-platform-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.account-icon-wrapper {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-platform-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.refresh-account-btn {
+  padding: 8rpx 16rpx;
+  background: var(--background);
+  border: 1rpx solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.refresh-account-btn:active {
+  background: var(--background);
+  opacity: 0.7;
+}
+
+.refresh-btn-text {
+  font-size: 20rpx;
+  color: var(--text-primary);
+}
+
+.account-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.account-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.account-detail-item:last-child {
+  border-bottom: none;
+}
+
+.account-detail-label {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.account-detail-value {
+  font-size: 24rpx;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.account-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-top: 16rpx;
+  border: 2rpx solid rgba(0, 0, 0, 0.1);
+}
+
+.dialog-cancel-btn {
+  flex: 1;
+  height: 80rpx;
+  background: var(--background);
+  border: 1.5rpx solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.dialog-cancel-btn:active {
+  background: var(--background);
+  opacity: 0.7;
+}
+
+.dialog-confirm-btn {
+  flex: 1;
+  height: 80rpx;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4rpx 16rpx rgba(245, 158, 11, 0.3);
+}
+
+.dialog-confirm-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(245, 158, 11, 0.2);
+}
+
+.dialog-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog-confirm-btn .dialog-btn-text {
+  color: #fff;
+}
