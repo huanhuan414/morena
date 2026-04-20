@@ -515,16 +515,12 @@ export default function AvatarManagePage() {
                           </View>
                           <View
                             className="quick-entry-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
+                            onClick={() => {
                               const targetUrl = `/pages/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}`
-                              console.log('[AvatarManage] 点击账号绑定按钮')
-                              console.log('[AvatarManage] avatarId:', avatar.id)
-                              console.log('[AvatarManage] avatarName:', avatar.name)
-                              console.log('[AvatarManage] 目标URL:', targetUrl)
-                              showToast({ title: '正在跳转到账号配置...', icon: 'none' })
+                              console.log('[AvatarManage] 点击账号绑定按钮，URL:', targetUrl)
+                              showToast({ title: '正在跳转到账号配置页面...', icon: 'none' })
 
-                              try {
+                              setTimeout(() => {
                                 navigateTo({
                                   url: targetUrl,
                                   success: () => {
@@ -532,13 +528,10 @@ export default function AvatarManagePage() {
                                   },
                                   fail: (err) => {
                                     console.error('[AvatarManage] 跳转失败:', err)
-                                    showToast({ title: `跳转失败: ${JSON.stringify(err)}`, icon: 'none' })
+                                    showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
                                   }
                                 })
-                              } catch (error) {
-                                console.error('[AvatarManage] navigateTo 异常:', error)
-                                showToast({ title: `跳转异常: ${String(error)}`, icon: 'none' })
-                              }
+                              }, 100)
                             }}
                           >
                             <View className="quick-entry-icon">
