@@ -22,19 +22,23 @@ export class TikHubService {
 
   /**
    * 根据抖音号获取用户信息
-   * @param douyinId 抖音号
+   * @param douyinId 抖音号或sec_user_id
    * @returns 用户信息
    */
   async getDouyinUserInfo(douyinId: string) {
     try {
       console.log('[TikHubService] 获取抖音用户信息，抖音号:', douyinId)
+      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // 调用 TikHub API
-      const response = await this.axios.post('/douyin/web/handler_user_profile_v2', {
-        douyin_id: douyinId,
+      // 尝试使用 GET 请求
+      const response = await this.axios.get('/douyin/web/handler_user_profile_v2', {
+        params: {
+          sec_user_id: douyinId,
+        },
       })
 
-      console.log('[TikHubService] 抖音用户信息响应:', JSON.stringify(response.data, null, 2))
+      console.log('[TikHubService] 抖音用户信息响应状态:', response.status)
+      console.log('[TikHubService] 抖音用户信息响应数据:', JSON.stringify(response.data, null, 2))
 
       if (response.data?.code === 200 && response.data?.data) {
         const data = response.data.data
@@ -57,11 +61,13 @@ export class TikHubService {
         success: false,
         message: response.data?.message || '获取用户信息失败',
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[TikHubService] 获取抖音用户信息失败:', error)
+      console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
+
       return {
         success: false,
-        message: '网络请求失败，请稍后重试',
+        message: `网络请求失败: ${error.response?.data?.message || error.message || '请稍后重试'}`,
       }
     }
   }

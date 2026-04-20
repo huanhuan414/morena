@@ -138,16 +138,16 @@ export default function AvatarAccountConfigPage() {
 
         console.log('[AvatarAccountConfig] 抖音用户信息响应:', res.data)
 
-        if (res.data?.code === 200) {
+        if (res.data?.code === 200 && res.data?.data) {
           const userInfo = res.data.data
           setFetchedUserInfo(userInfo)
           showToast({ title: '获取成功', icon: 'success' })
         } else {
-          showToast({ title: res.data?.message || '获取失败', icon: 'none' })
+          showToast({ title: res.data?.message || '获取失败，请检查抖音号/SecUid是否正确', icon: 'none' })
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('[AvatarAccountConfig] 获取抖音用户信息失败:', error)
-        showToast({ title: '获取失败，请重试', icon: 'none' })
+        showToast({ title: `网络请求失败: ${error.message || '请稍后重试'}`, icon: 'none' })
       } finally {
         setIsFetchingUserInfo(false)
       }
@@ -171,16 +171,16 @@ export default function AvatarAccountConfigPage() {
 
         console.log('[AvatarAccountConfig] 小红书用户信息响应:', res.data)
 
-        if (res.data?.code === 200) {
+        if (res.data?.code === 200 && res.data?.data) {
           const userInfo = res.data.data
           setFetchedUserInfo(userInfo)
           showToast({ title: '获取成功', icon: 'success' })
         } else {
-          showToast({ title: res.data?.message || '获取失败', icon: 'none' })
+          showToast({ title: res.data?.message || '获取失败，请检查分享链接是否正确', icon: 'none' })
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('[AvatarAccountConfig] 获取小红书用户信息失败:', error)
-        showToast({ title: '获取失败，请重试', icon: 'none' })
+        showToast({ title: `网络请求失败: ${error.message || '请稍后重试'}`, icon: 'none' })
       } finally {
         setIsFetchingUserInfo(false)
       }
@@ -393,11 +393,11 @@ export default function AvatarAccountConfigPage() {
               {PLATFORMS[platformIndex].id === 'douyin' && (
                 <>
                   <View className="form-item">
-                    <Text className="form-label required">抖音号</Text>
+                    <Text className="form-label required">抖音号/SecUid</Text>
                     <View className="input-with-action">
                       <Input
                         className="form-input"
-                        placeholder="请输入抖音号（用户名）"
+                        placeholder="请输入抖音号或SecUid"
                         value={accountName}
                         onInput={(e) => setAccountName(e.detail.value)}
                       />
