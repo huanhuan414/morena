@@ -10,13 +10,20 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<React.ElementRef<typeof TaroInput>, InputProps>(
-  ({ className, type, autoFocus, focus, onFocus, onBlur, ...props }, ref) => {
+  ({ className, type, autoFocus, focus, onFocus, onBlur, value, onInput, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false)
     const disabled = !!(props as any).disabled
 
     React.useEffect(() => {
       if (autoFocus || focus) setIsFocused(true)
     }, [autoFocus, focus])
+
+    const handleInput = (e: any) => {
+      console.log('[Input] onInput event:', e)
+      if (onInput) {
+        onInput(e)
+      }
+    }
 
     return (
       <View
@@ -33,6 +40,7 @@ const Input = React.forwardRef<React.ElementRef<typeof TaroInput>, InputProps>(
       >
         <TaroInput
           type={type}
+          value={value}
           className="w-full flex-1 bg-transparent text-sm text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 selection:bg-selection selection:text-selection-foreground"
           placeholderClass="text-muted-foreground"
           ref={ref}
@@ -45,6 +53,7 @@ const Input = React.forwardRef<React.ElementRef<typeof TaroInput>, InputProps>(
             setIsFocused(false)
             onBlur?.(e)
           }}
+          onInput={handleInput}
           {...props}
         />
       </View>
