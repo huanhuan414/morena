@@ -11,18 +11,19 @@ import { Config, ImageGenerationClient } from 'coze-coding-dev-sdk'
 
 /**
  * 平台配置检查工具
+ * 检查分身是否已绑定指定平台的账号
  */
 @Injectable()
 export class CheckPlatformConfigTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'check_platform_config',
-    displayName: '检查平台配置',
-    description: '检查用户是否已配置指定平台的授权信息',
+    displayName: '检查分身账号配置',
+    description: '检查分身是否已绑定指定平台的账号（抖音、小红书、微信公众号等）',
     category: 'data_analysis',
     paramsSchema: {
-      platform: { 
-        type: 'string', 
-        enum: ['wechat_mp', 'xiaohongshu', 'bilibili', 'weibo', 'douyin', 'wechat_video'],
+      platform: {
+        type: 'string',
+        enum: ['wechat', 'xiaohongshu', 'bilibili', 'weibo', 'douyin'],
         description: '平台类型',
         required: true
       }
@@ -33,60 +34,70 @@ export class CheckPlatformConfigTool implements ITool {
     try {
       const client = getSupabaseClient()
       const platform = params.platform as PlatformType
-      
+
+      // 平台名称映射
+      const platformNames: Record<string, string> = {
+        'douyin': '抖音',
+        'xiaohongshu': '小红书',
+        'wechat': '微信公众号',
+        'bilibili': 'B站',
+        'weibo': '微博'
+      }
+
+      // 查询分身是否绑定了该平台的账号
       const { data, error } = await client
-        .from('platform_configs')
+        .from('avatar_accounts')
         .select('*')
-        .eq('user_id', context.userId)
-        .eq('platform_type', platform)
+        .eq('avatar_id', context.avatarId)
+        .eq('platform', platform)
         .maybeSingle()
 
       if (error) {
-        return { success: false, error: `查询配置失败: ${error.message}` }
+        return { success: false, error: `查询账号配置失败: ${error.message}` }
       }
 
-      if (!data || data.status === 'unconfigured') {
-        const template = PLATFORM_CONFIG_TEMPLATES[platform]
+      if (!data) {
         return {
           success: true,
           data: {
             configured: false,
             platform,
-            platform_name: template.platform_name,
-            required_fields: template.fields,
-            instructions: template.instructions,
-            help_url: template.help_url
-          },
-          requires_config: true,
-          config_platform: platform,
-          config_fields: template.fields
-        }
-      }
-
-      if (data.status === 'expired') {
-        return {
-          success: true,
-          data: {
-            configured: false,
-            platform,
-            platform_name: PLATFORM_CONFIG_TEMPLATES[platform].platform_name,
-            status: 'expired',
-            message: '配置已过期，请重新配置'
+            platform_name: platformNames[platform] || platform,
+            message: `分身尚未绑定${platformNames[platform] || platform}账号，请先在分身账号配置页面绑定账号`
           },
           requires_config: true,
           config_platform: platform
         }
       }
 
+      // 返回账号信息
+      const accountInfo: any = {
+        configured: true,
+        platform,
+        platform_name: platformNames[platform] || platform,
+        account_name: data.account_name || data.name,
+        followers: data.followers || data.extra_info?.follower_count || 0,
+        total_works: data.total_works || data.extra_info?.aweme_count || data.extra_info?.notes_count || 0,
+        created_at: data.created_at
+      }
+
+      // 如果有 extra_info，添加更多详细信息
+      if (data.extra_info) {
+        accountInfo.extra_info = data.extra_info
+        if (data.extra_info.nickname) {
+          accountInfo.nickname = data.extra_info.nickname
+        }
+        if (data.extra_info.avatar_url) {
+          accountInfo.avatar_url = data.extra_info.avatar_url
+        }
+        if (data.extra_info.total_favorited !== undefined) {
+          accountInfo.total_favorited = data.extra_info.total_favorited
+        }
+      }
+
       return {
         success: true,
-        data: {
-          configured: true,
-          platform,
-          platform_name: PLATFORM_CONFIG_TEMPLATES[platform].platform_name,
-          status: data.status,
-          last_used_at: data.last_used_at
-        }
+        data: accountInfo
       }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -96,13 +107,14 @@ export class CheckPlatformConfigTool implements ITool {
 
 /**
  * 发布微信公众号文章工具
- * 
+ *
  * 实现完整的微信公众号发布流程：
- * 1. 获取 access_token
- * 2. 上传封面图片（支持外部URL和自动生成）
- * 3. 根据文章内容自动生成配图
- * 4. 创建草稿
- * 5. 发布草稿
+ * 1. 从分身账号配置获取 app_id 和 app_secret
+ * 2. 获取 access_token
+ * 3. 上传封面图片（支持外部URL和自动生成）
+ * 4. 根据文章内容自动生成配图
+ * 5. 创建草稿
+ * 6. 发布草稿
  */
 @Injectable()
 export class PublishWechatMpTool implements ITool {
@@ -118,40 +130,45 @@ export class PublishWechatMpTool implements ITool {
       digest: { type: 'string', description: '摘要' },
       auto_image: { type: 'boolean', description: '是否自动配图（默认true）' }
     },
-    requiresPlatform: 'wechat_mp'
+    requiresPlatform: 'wechat'
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
       const client = getSupabaseClient()
-      
-      // 检查配置
-      const { data: config, error: configError } = await client
-        .from('platform_configs')
+
+      // 从分身账号配置获取公众号配置
+      const { data: account, error: accountError } = await client
+        .from('avatar_accounts')
         .select('*')
-        .eq('user_id', context.userId)
-        .eq('platform_type', 'wechat_mp')
+        .eq('avatar_id', context.avatarId)
+        .eq('platform', 'wechat')
         .maybeSingle()
 
-      if (configError || !config || config.status !== 'active') {
-        const template = PLATFORM_CONFIG_TEMPLATES['wechat_mp']
+      if (accountError || !account) {
         return {
           success: false,
-          error: '未配置微信公众号',
+          error: '未配置微信公众号账号，请先在分身账号配置页面绑定公众号账号',
           requires_config: true,
-          config_platform: 'wechat_mp',
-          config_fields: template.fields
+          config_platform: 'wechat'
         }
       }
 
-      const appId = config.config_data?.app_id
-      const appSecret = config.config_data?.app_secret
-      
+      const appId = account.appid
+      const appSecret = account.appkey || account.app_secret
+
+      if (!appId || !appSecret) {
+        return {
+          success: false,
+          error: '微信公众号账号配置不完整，缺少 AppID 或 AppSecret'
+        }
+      }
+
       console.log('Agent工具 - 发布公众号文章:', {
         title: params.title,
         cover_url: params.cover_url,
         app_id: appId,
-        user_id: context.userId,
+        avatar_id: context.avatarId,
         content_length: params.content?.length || 0,
         content_preview: params.content?.substring(0, 200)
       })
@@ -1218,6 +1235,7 @@ export class PublishDouyinTool implements ITool {
 
 /**
  * 发布视频号工具
+ * 注意：视频号暂无官方开放API，此工具仅用于生成内容，需要用户手动发布
  */
 @Injectable()
 export class PublishWechatVideoTool implements ITool {
@@ -1231,35 +1249,12 @@ export class PublishWechatVideoTool implements ITool {
       video_url: { type: 'string', description: '视频URL', required: true },
       cover_url: { type: 'string', description: '封面URL' },
       description: { type: 'string', description: '视频描述' }
-    },
-    requiresPlatform: 'wechat_video'
+    }
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const client = getSupabaseClient()
-      
-      const { data: config } = await client
-        .from('platform_configs')
-        .select('*')
-        .eq('user_id', context.userId)
-        .eq('platform_type', 'wechat_video')
-        .maybeSingle()
-
-      if (!config || config.status !== 'active') {
-        const template = PLATFORM_CONFIG_TEMPLATES['wechat_video']
-        return {
-          success: false,
-          error: '未配置微信视频号',
-          requires_config: true,
-          config_platform: 'wechat_video',
-          config_fields: template.fields
-        }
-      }
-
-      console.log('Agent工具 - 准备视频号内容:', params.title)
-
-      // 视频号没有官方开放 API，无法自动发布
+      // 微信视频号暂无官方API，返回提示信息
       return {
         success: true,
         data: {
@@ -1267,12 +1262,13 @@ export class PublishWechatVideoTool implements ITool {
           video_url: params.video_url,
           cover_url: params.cover_url,
           description: params.description,
-          manual_publish_required: true,
-          message: `⚠️ 重要提示：微信视频号暂无官方开放API，无法自动发布。\n\n请按以下步骤手动发布：\n1. 打开微信 → 发现 → 视频号\n2. 点击右上角"相机"图标\n3. 选择"发表视频"\n4. 上传视频并填写信息\n\n📋 标题：${params.title}\n🎥 视频URL：${params.video_url}${params.description ? `\n📝 描述：${params.description}` : ''}`
+          message: '视频内容已准备完成。由于微信视频号暂无官方开放API，请手动前往微信视频号创作者平台发布视频。',
+          manual_action_required: true,
+          action_url: 'https://channels.weixin.qq.com'
         }
       }
     } catch (err: any) {
-      return { success: false, error: `发布失败: ${err.message}` }
+      return { success: false, error: err.message }
     }
   }
 }

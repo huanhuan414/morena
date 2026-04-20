@@ -418,7 +418,7 @@ export default function MindChatPage() {
 
   // 账号绑定检查弹窗
   const [showAccountConfigDialog, setShowAccountConfigDialog] = useState(false)
-  const [requiredPlatform, setRequiredPlatform] = useState<'douyin' | 'xiaohongshu' | 'wechat' | null>(null)
+  const [requiredPlatform, setRequiredPlatform] = useState<'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null>(null)
 
   // 辅助函数：获取记忆类型名称
   const getMemoryTypeName = (type: string): string => {
@@ -448,7 +448,7 @@ export default function MindChatPage() {
   }
 
   // 检测消息是否涉及第三方平台
-  const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | null => {
+  const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null => {
     const lowerMessage = message.toLowerCase()
 
     // 检测抖音相关关键词
@@ -472,11 +472,24 @@ export default function MindChatPage() {
       return 'wechat'
     }
 
+    // 检测B站相关关键词
+    if (lowerMessage.includes('b站') || lowerMessage.includes('bilibili') ||
+        lowerMessage.includes('哔哩哔哩') || lowerMessage.includes('发布b站') ||
+        lowerMessage.includes('b站视频') || lowerMessage.includes('b站投稿')) {
+      return 'bilibili'
+    }
+
+    // 检测微博相关关键词
+    if (lowerMessage.includes('微博') || lowerMessage.includes('weibo') ||
+        lowerMessage.includes('发布微博') || lowerMessage.includes('微博文章')) {
+      return 'weibo'
+    }
+
     return null
   }
 
   // 检查分身是否绑定了指定平台的账号
-  const checkAccountBinding = async (platform: 'douyin' | 'xiaohongshu' | 'wechat'): Promise<boolean> => {
+  const checkAccountBinding = async (platform: 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo'): Promise<boolean> => {
     try {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/accounts`
@@ -4468,7 +4481,7 @@ export default function MindChatPage() {
           </DialogHeader>
           <View className="account-config-content">
             <Text className="account-config-tip">
-              检测到您的请求涉及 {requiredPlatform === 'douyin' ? '抖音' : requiredPlatform === 'xiaohongshu' ? '小红书' : '微信公众号'} 平台，
+              检测到您的请求涉及 {requiredPlatform === 'douyin' ? '抖音' : requiredPlatform === 'xiaohongshu' ? '小红书' : requiredPlatform === 'wechat' ? '微信公众号' : requiredPlatform === 'bilibili' ? 'B站' : requiredPlatform === 'weibo' ? '微博' : requiredPlatform} 平台，
               需要先为分身绑定对应的账号才能继续。
             </Text>
             <View className="account-config-actions">

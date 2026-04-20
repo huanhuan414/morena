@@ -2431,7 +2431,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 
     try {
       switch (platform) {
-        case 'wechat_mp':
+        case 'wechat':
           return await this.validateWechatMpConfig(configData)
         case 'xiaohongshu':
           return await this.validateXiaohongshuConfig(configData)
@@ -2441,8 +2441,6 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
           return await this.validateWeiboConfig(configData)
         case 'douyin':
           return await this.validateDouyinConfig(configData)
-        case 'wechat_video':
-          return await this.validateWechatVideoConfig(configData)
         default:
           return { valid: false, error: '不支持的平台类型' }
       }
@@ -2729,7 +2727,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     let params: Record<string, any> = {}
 
     switch (platform) {
-      case 'wechat_mp':
+      case 'wechat':
         toolName = 'publish_wechat_mp'
         params = {
           title: content.title,
@@ -2776,16 +2774,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
           tags: content.tags
         }
         break
-      
-      case 'wechat_video':
-        toolName = 'publish_wechat_video'
-        params = {
-          title: content.title,
-          video_url: content.content, // 视频号需要视频URL
-          cover_url: content.cover_url
-        }
-        break
-      
+
       default:
         return { success: false, message: '不支持的平台' }
     }
@@ -2934,8 +2923,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       'publish_wechat_mp': '公众号发布',
       'publish_xiaohongshu': '小红书发布',
       'publish_douyin': '抖音发布',
-      'publish_bilibili': 'B站发布',
-      'publish_wechat_video': '视频号发布'
+      'publish_bilibili': 'B站发布'
     }
 
     return toolNameMap[toolName] || toolName

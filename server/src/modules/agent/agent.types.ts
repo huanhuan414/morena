@@ -4,13 +4,12 @@
  */
 
 // 平台类型
-export type PlatformType = 
-  | 'wechat_mp'      // 微信公众号
+export type PlatformType =
+  | 'wechat'         // 微信公众号
   | 'xiaohongshu'    // 小红书
   | 'bilibili'       // B站
   | 'weibo'          // 微博
   | 'douyin'         // 抖音
-  | 'wechat_video'   // 微信视频号
 
 // 工具分类
 export type ToolCategory = 
@@ -167,61 +166,50 @@ export interface PlatformConfigRequirement {
 
 // 平台配置模板
 export const PLATFORM_CONFIG_TEMPLATES: Record<PlatformType, PlatformConfigRequirement> = {
-  wechat_mp: {
-    platform: 'wechat_mp',
+  wechat: {
+    platform: 'wechat',
     platform_name: '微信公众号',
     fields: [
       { name: 'app_id', label: 'AppID', type: 'text', required: true, placeholder: '请输入公众号AppID' },
       { name: 'app_secret', label: 'AppSecret', type: 'password', required: true, placeholder: '请输入公众号AppSecret' },
     ],
-    instructions: '请前往微信公众平台 → 开发 → 基本配置获取AppID和AppSecret',
+    instructions: '请前往分身账号配置页面绑定公众号账号',
     help_url: 'https://mp.weixin.qq.com'
   },
   xiaohongshu: {
     platform: 'xiaohongshu',
     platform_name: '小红书',
     fields: [
-      { name: 'cookie', label: 'Cookie', type: 'textarea', required: true, placeholder: '请输入小红书网页版Cookie' },
+      { name: 'account_url', label: '分享链接', type: 'text', required: true, placeholder: '请输入小红书个人主页分享链接' },
     ],
-    instructions: '请登录小红书网页版，按F12打开开发者工具，在Network中找到请求头中的Cookie',
+    instructions: '请前往分身账号配置页面绑定小红书账号',
     help_url: 'https://www.xiaohongshu.com'
   },
   bilibili: {
     platform: 'bilibili',
     platform_name: 'B站',
     fields: [
-      { name: 'sessdata', label: 'SESSDATA', type: 'password', required: true, placeholder: '请输入SESSDATA' },
-      { name: 'bili_jct', label: 'bili_jct', type: 'password', required: true, placeholder: '请输入bili_jct' },
+      { name: 'account_name', label: '账号名称', type: 'text', required: true, placeholder: '请输入B站账号名称' },
     ],
-    instructions: '请登录B站网页版，按F12打开开发者工具，在Application → Cookies中找到SESSDATA和bili_jct',
+    instructions: '请前往分身账号配置页面绑定B站账号',
     help_url: 'https://www.bilibili.com'
   },
   weibo: {
     platform: 'weibo',
     platform_name: '微博',
     fields: [
-      { name: 'cookie', label: 'Cookie', type: 'textarea', required: true, placeholder: '请输入微博网页版Cookie' },
+      { name: 'account_name', label: '账号名称', type: 'text', required: true, placeholder: '请输入微博账号名称' },
     ],
-    instructions: '请登录微博网页版，按F12打开开发者工具，在Network中找到请求头中的Cookie',
+    instructions: '请前往分身账号配置页面绑定微博账号',
     help_url: 'https://weibo.com'
   },
   douyin: {
     platform: 'douyin',
     platform_name: '抖音',
     fields: [
-      { name: 'cookie', label: 'Cookie', type: 'textarea', required: true, placeholder: '请输入抖音创作者平台Cookie' },
+      { name: 'unique_id', label: '抖音号', type: 'text', required: true, placeholder: '请输入抖音号' },
     ],
-    instructions: '请登录抖音创作者平台，按F12打开开发者工具，在Network中找到请求头中的Cookie',
+    instructions: '请前往分身账号配置页面绑定抖音账号',
     help_url: 'https://creator.douyin.com'
-  },
-  wechat_video: {
-    platform: 'wechat_video',
-    platform_name: '微信视频号',
-    fields: [
-      { name: 'app_id', label: 'AppID', type: 'text', required: true, placeholder: '请输入视频号AppID' },
-      { name: 'app_secret', label: 'AppSecret', type: 'password', required: true, placeholder: '请输入视频号AppSecret' },
-    ],
-    instructions: '请前往微信视频号创作者平台获取AppID和AppSecret',
-    help_url: 'https://channels.weixin.qq.com'
   }
 }
