@@ -1597,9 +1597,23 @@ export class AvatarService {
     // 2. 根据平台刷新数据
     let updatedData: any = {}
 
-    if (account.platform === 'douyin' && account.unique_id) {
+    console.log('[AvatarService] 账号信息:', {
+      platform: account.platform,
+      unique_id: account.unique_id,
+      account_url: account.account_url,
+      appid: account.appid
+    })
+
+    if (account.platform === 'douyin') {
+      if (!account.unique_id) {
+        throw new Error('抖音账号缺少 unique_id，无法刷新')
+      }
+
       // 刷新抖音账号信息
+      console.log('[AvatarService] 开始刷新抖音账号信息，unique_id:', account.unique_id)
       const result = await this.tikHubService.getDouyinUserInfo(account.unique_id)
+
+      console.log('[AvatarService] TikHub 返回结果:', result)
 
       if (result.success && result.data) {
         updatedData = {
@@ -1615,10 +1629,20 @@ export class AvatarService {
             updated_at: new Date().toISOString()
           }
         }
+        console.log('[AvatarService] 抖音账号信息刷新成功')
+      } else {
+        throw new Error('刷新抖音账号失败: ' + (result.message || '未知错误'))
       }
-    } else if (account.platform === 'xiaohongshu' && account.account_url) {
+    } else if (account.platform === 'xiaohongshu') {
+      if (!account.account_url) {
+        throw new Error('小红书账号缺少 account_url，无法刷新')
+      }
+
       // 刷新小红书账号信息
+      console.log('[AvatarService] 开始刷新小红书账号信息，account_url:', account.account_url)
       const result = await this.tikHubService.getXiaohongshuUserInfo(account.account_url)
+
+      console.log('[AvatarService] TikHub 返回结果:', result)
 
       if (result.success && result.data) {
         updatedData = {
@@ -1634,7 +1658,14 @@ export class AvatarService {
             updated_at: new Date().toISOString()
           }
         }
+        console.log('[AvatarService] 小红书账号信息刷新成功')
+      } else {
+        throw new Error('刷新小红书账号失败: ' + (result.message || '未知错误'))
       }
+    } else if (account.platform === 'wechat') {
+      throw new Error('微信公众号账号暂不支持自动刷新，请手动更新')
+    } else {
+      throw new Error(`未知平台: ${account.platform}`)
     }
 
     // 3. 更新数据库
