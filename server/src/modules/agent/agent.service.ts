@@ -2461,7 +2461,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证微信公众号配置
    */
-  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string; accountInfo?: any }> {
     const { app_id, app_secret } = configData
 
     if (!app_id || !app_secret) {
@@ -2478,8 +2478,9 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 
     // 调用微信API验证
     try {
-      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${app_id}&secret=${app_secret}`
-      const res = await fetch(url)
+      // 1. 获取 access_token
+      const tokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${app_id}&secret=${app_secret}`
+      const res = await fetch(tokenUrl)
       const data = await res.json()
 
       if (data.errcode) {
@@ -2494,11 +2495,78 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         return { valid: false, error: msg }
       }
 
-      if (data.access_token) {
-        return { valid: true, message: '配置验证成功，AppID和AppSecret正确' }
+      if (!data.access_token) {
+        return { valid: false, error: '验证失败，请检查配置' }
       }
 
-      return { valid: false, error: '验证失败，请检查配置' }
+      const accessToken = data.access_token
+
+      // 2. 获取公众号基本信息
+      const basicInfoUrl = `https://api.weixin.qq.com/cgi-bin/account/getaccountbasicinfo?access_token=${accessToken}`
+      const basicInfoRes = await fetch(basicInfoUrl)
+      const basicInfo = await basicInfoRes.json()
+
+      let accountInfo: any = {}
+
+      if (basicInfo.errcode === 0) {
+        accountInfo = {
+          nickname: basicInfo.account_name,
+          account_name: basicInfo.account_name,
+          avatar_url: basicInfo.avatar_url,
+          signature: basicInfo.signature,
+          account_type: basicInfo.account_type,
+          service_type_info: basicInfo.service_type_info,
+          verify_type_info: basicInfo.verify_type_info,
+        }
+        console.log('获取公众号基本信息成功:', accountInfo)
+      } else {
+        console.log('获取公众号基本信息失败:', basicInfo)
+        accountInfo = { note: '无法获取公众号基本信息，可能需要更多权限' }
+      }
+
+      // 3. 尝试获取粉丝数（需要高级权限）
+      try {
+        const userCountUrl = `https://api.weixin.qq.com/cgi-bin/user/get?access_token=${accessToken}`
+        const userCountRes = await fetch(userCountUrl)
+        const userCountData = await userCountRes.json()
+
+        if (userCountData.errcode === 0) {
+          accountInfo.follower_count = userCountData.total || 0
+          console.log('获取粉丝数成功:', accountInfo.follower_count)
+        } else {
+          accountInfo.follower_count = 0
+          accountInfo.follower_note = '无法获取粉丝数，可能需要认证的服务号权限'
+          console.log('获取粉丝数失败:', userCountData)
+        }
+      } catch (err) {
+        accountInfo.follower_count = 0
+        accountInfo.follower_note = '无法获取粉丝数，可能需要认证的服务号权限'
+      }
+
+      // 4. 尝试获取作品数量（已发布的图文）
+      try {
+        const publishListUrl = `https://api.weixin.qq.com/cgi-bin/freepublish/batchget?access_token=${accessToken}&offset=0&count=1&no_content=1`
+        const publishRes = await fetch(publishListUrl)
+        const publishData = await publishRes.json()
+
+        if (publishData.errcode === 0) {
+          accountInfo.total_works = publishData.total_count || 0
+          console.log('获取作品数量成功:', accountInfo.total_works)
+        } else {
+          accountInfo.total_works = 0
+          accountInfo.works_note = '无法获取作品数量，可能需要更多权限'
+          console.log('获取作品数量失败:', publishData)
+        }
+      } catch (err) {
+        accountInfo.total_works = 0
+        accountInfo.works_note = '无法获取作品数量，可能需要更多权限'
+      }
+
+      return {
+        valid: true,
+        message: `配置验证成功！公众号：${accountInfo.nickname || '未知'}`,
+        accountInfo
+      }
     } catch (err: any) {
       return { valid: false, error: `API调用失败: ${err.message}` }
     }

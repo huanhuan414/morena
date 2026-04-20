@@ -62,6 +62,7 @@ export default function AvatarAccountConfigPage() {
   const [wechatValidationResult, setWechatValidationResult] = useState<{
     valid: boolean
     message: string
+    accountInfo?: any
   } | null>(null)
 
   useLoad((options) => {
@@ -236,11 +237,17 @@ export default function AvatarAccountConfigPage() {
         const validation = res.data.data
         setWechatValidationResult({
           valid: validation.valid,
-          message: validation.message || (validation.valid ? '验证成功' : '验证失败')
+          message: validation.message || (validation.valid ? '验证成功' : '验证失败'),
+          accountInfo: validation.accountInfo
         })
 
+        // 如果有账号信息，更新 fetchedUserInfo
+        if (validation.accountInfo) {
+          setFetchedUserInfo(validation.accountInfo)
+        }
+
         if (validation.valid) {
-          showToast({ title: '验证成功', icon: 'success' })
+          showToast({ title: validation.message || '验证成功', icon: 'success' })
         } else {
           showToast({ title: validation.message || '验证失败', icon: 'none', duration: 3000 })
         }
@@ -807,6 +814,52 @@ export default function AvatarAccountConfigPage() {
                       <Text className="validation-message">
                         {wechatValidationResult.valid ? '✅ ' : '❌ '}{wechatValidationResult.message}
                       </Text>
+
+                      {/* 显示公众号详细信息 */}
+                      {wechatValidationResult.valid && wechatValidationResult.accountInfo && (
+                        <View className="wechat-account-info">
+                          {wechatValidationResult.accountInfo.avatar_url && (
+                            <View className="info-item">
+                              <Text className="info-label">头像：</Text>
+                              <Image
+                                className="info-avatar"
+                                src={wechatValidationResult.accountInfo.avatar_url}
+                                mode="aspectFill"
+                              />
+                            </View>
+                          )}
+                          {wechatValidationResult.accountInfo.nickname && (
+                            <View className="info-item">
+                              <Text className="info-label">名称：</Text>
+                              <Text className="info-value">{wechatValidationResult.accountInfo.nickname}</Text>
+                            </View>
+                          )}
+                          {wechatValidationResult.accountInfo.signature && (
+                            <View className="info-item">
+                              <Text className="info-label">简介：</Text>
+                              <Text className="info-value">{wechatValidationResult.accountInfo.signature}</Text>
+                            </View>
+                          )}
+                          {wechatValidationResult.accountInfo.follower_count !== undefined && (
+                            <View className="info-item">
+                              <Text className="info-label">粉丝数：</Text>
+                              <Text className="info-value highlight">
+                                {wechatValidationResult.accountInfo.follower_count.toLocaleString()}
+                                {wechatValidationResult.accountInfo.follower_note && ` (${wechatValidationResult.accountInfo.follower_note})`}
+                              </Text>
+                            </View>
+                          )}
+                          {wechatValidationResult.accountInfo.total_works !== undefined && (
+                            <View className="info-item">
+                              <Text className="info-label">作品数：</Text>
+                              <Text className="info-value highlight">
+                                {wechatValidationResult.accountInfo.total_works.toLocaleString()}
+                                {wechatValidationResult.accountInfo.works_note && ` (${wechatValidationResult.accountInfo.works_note})`}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
                   )}
 

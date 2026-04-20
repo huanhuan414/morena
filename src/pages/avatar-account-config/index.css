@@ -687,6 +687,7 @@
   font-size: 24rpx;
   line-height: 1.6;
   color: var(--text-primary);
+  margin-bottom: 16rpx;
 }
 
 .validation-result.success .validation-message {
@@ -695,4 +696,48 @@
 
 .validation-result.error .validation-message {
   color: #dc2626;
+}
+
+/* ========== 微信公众号信息展示 ========== */
+.wechat-account-info {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid rgba(52, 211, 153, 0.3);
+}
+
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+  font-size: 26rpx;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  width: 120rpx;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 24rpx;
+}
+
+.info-value {
+  flex: 1;
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 24rpx;
+}
+
+.info-value.highlight {
+  color: #059669;
+  font-weight: 600;
+}
+
+.info-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
