@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -40,6 +40,7 @@ export default function AvatarAccountConfigPage() {
   const [accounts, setAccounts] = useState<AvatarAccount[]>([])
   const [showModal, setShowModal] = useState(false)
   const [editingAccount, setEditingAccount] = useState<AvatarAccount | null>(null)
+  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null)
 
   // 表单状态
   const [platformIndex, setPlatformIndex] = useState<number>(0)
@@ -311,6 +312,95 @@ export default function AvatarAccountConfigPage() {
     }
   }
 
+  const refreshAccount = async (account: AvatarAccount) => {
+    try {
+      setRefreshingAccountId(account.id!)
+      console.log('[AvatarAccountConfig] 开始刷新账号:', account.platform, account.account_name)
+
+      let userInfo: any = null
+
+      // 根据平台调用不同的 API
+      if (account.platform === 'douyin') {
+        // 抖音：调用 TikHub API
+        const res = await Network.request({
+          url: '/api/tikhub/douyin/user-info',
+          method: 'POST',
+          data: { douyinId: account.account_name }
+        })
+
+        if (res.data?.code === 200 && res.data?.data) {
+          userInfo = res.data.data
+        }
+      } else if (account.platform === 'xiaohongshu' && account.account_url) {
+        // 小红书：调用 TikHub API
+        const res = await Network.request({
+          url: '/api/tikhub/xiaohongshu/user-info',
+          method: 'POST',
+          data: { shareUrl: account.account_url }
+        })
+
+        if (res.data?.code === 200 && res.data?.data) {
+          userInfo = res.data.data
+        }
+      }
+
+      if (!userInfo) {
+        showToast({ title: '刷新失败，请稍后重试', icon: 'none' })
+        return
+      }
+
+      // 解析 extra_info
+      let extraInfo: any = {}
+      if (account.extra_info) {
+        try {
+          extraInfo = JSON.parse(account.extra_info)
+        } catch (e) {
+          console.error('[AvatarAccountConfig] 解析 extra_info 失败:', e)
+        }
+      }
+
+      // 更新 extra_info 中的数据
+      const updatedExtraInfo = {
+        ...extraInfo,
+        nickname: userInfo.nickname || extraInfo.nickname,
+        avatar_url: userInfo.avatar_url || extraInfo.avatar_url,
+        signature: userInfo.signature || userInfo.desc || extraInfo.signature,
+        following_count: userInfo.following_count || extraInfo.following_count || 0,
+        sec_uid: userInfo.sec_uid || extraInfo.sec_uid,
+        total_favorited: userInfo.total_favorited || extraInfo.total_favorited || 0,
+        interaction_count: userInfo.interaction_count || extraInfo.interaction_count || 0,
+      }
+
+      // 更新账号数据
+      const updateData: any = {
+        platform: account.platform,
+        account_name: account.account_name,
+        followers: userInfo.follower_count || account.followers,
+        total_exposure: userInfo.total_favorited || account.total_exposure,
+        total_works: userInfo.aweme_count || userInfo.notes_count || account.total_works,
+        extra_info: JSON.stringify(updatedExtraInfo),
+      }
+
+      const res = await Network.request({
+        url: `/api/avatar/accounts/${account.id}`,
+        method: 'PUT',
+        data: updateData
+      })
+
+      if (res.data?.code === 200) {
+        showToast({ title: '刷新成功', icon: 'success' })
+        fetchAccounts()
+      } else {
+        showToast({ title: res.data?.message || '刷新失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[AvatarAccountConfig] 刷新账号失败:', error)
+      showToast({ title: '刷新失败', icon: 'none' })
+    } finally {
+      setRefreshingAccountId(null)
+    }
+  }
+
   const onPlatformChange = (e: any) => {
     setPlatformIndex(e.detail.value)
   }
@@ -416,6 +506,17 @@ export default function AvatarAccountConfigPage() {
                     </View>
                   </View>
                   <View className="account-actions">
+                    <View
+                      className="action-btn"
+                      onClick={() => refreshAccount(account)}
+                    >
+                      {refreshingAccountId === account.id ? (
+                        <Loader className="animate-spin" size={16} color="#1890ff" />
+                      ) : (
+                        <RefreshCw size={16} color="#1890ff" />
+                      )}
+                      <Text className="action-text">刷新</Text>
+                    </View>
                     <View
                       className="action-btn"
                       onClick={() => {
