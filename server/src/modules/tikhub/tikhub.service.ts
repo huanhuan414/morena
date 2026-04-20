@@ -92,10 +92,13 @@ export class TikHubService {
   async getXiaohongshuUserInfo(shareUrl: string) {
     try {
       console.log('[TikHubService] 获取小红书用户信息，分享链接:', shareUrl)
+      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // 调用 TikHub API
-      const response = await this.axios.post('/xiaohongshu/app_v2/get_user_info', {
-        share_url: shareUrl,
+      // 使用 GET 请求，参数名为 share_url
+      const response = await this.axios.get('/xiaohongshu/app_v2/get_user_info', {
+        params: {
+          share_url: shareUrl,
+        },
       })
 
       console.log('[TikHubService] 小红书用户信息响应:', JSON.stringify(response.data, null, 2))
@@ -127,6 +130,19 @@ export class TikHubService {
       }
     } catch (error: any) {
       console.error('[TikHubService] 获取小红书用户信息失败:', error)
+      console.error('[TikHubService] 错误状态码:', error.response?.status)
+      console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
+
+      const errorMsg = error.response?.data?.message ||
+                      error.response?.data?.detail ||
+                      '请检查分享链接是否正确'
+
+      return {
+        success: false,
+        message: `获取失败 (${error.response?.status}): ${errorMsg}`,
+      }
+    }
+  }
       console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
 
       const errorMsg = error.response?.data?.message ||
