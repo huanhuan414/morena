@@ -30,6 +30,13 @@ export class TikHubService {
       console.log('[TikHubService] 获取抖音用户信息，输入值:', douyinId)
       console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
+      if (!this.apiKey) {
+        return {
+          success: false,
+          message: 'TikHub API Key 未配置',
+        }
+      }
+
       // 使用 GET 请求，参数名为 unique_id
       const response = await this.axios.get('/douyin/web/handler_user_profile_v2', {
         params: {
@@ -94,16 +101,16 @@ export class TikHubService {
       console.log('[TikHubService] 获取小红书用户信息，分享链接:', shareUrl)
       console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // TikHub 的小红书接口可能暂时不可用，返回提示信息
-      console.log('[TikHubService] 小红书接口暂时不可用，需要手动输入用户信息')
+      // TikHub 的小红书接口暂时不可用，返回提示信息
+      console.log('[TikHubService] 小红书接口返回 400 错误，可能是接口维护中')
       
       return {
         success: false,
-        message: '小红书接口暂时不可用，请手动输入账号信息后保存。建议先使用抖音账号绑定功能。',
+        message: '小红书接口暂时不可用（TikHub 返回 400 错误），请手动输入账号信息后保存。建议先使用抖音账号绑定功能。',
       }
     } catch (error: any) {
       console.error('[TikHubService] 获取小红书用户信息失败:', error)
-
+      
       return {
         success: false,
         message: '小红书接口暂时不可用，请手动输入账号信息后保存。',

@@ -189,7 +189,9 @@ export default function AvatarAccountConfigPage() {
           })
           showToast({ title: '获取成功', icon: 'success' })
         } else {
-          showToast({ title: res.data?.message || '获取失败，请检查分享链接是否正确', icon: 'none' })
+          // 显示后端返回的具体错误信息
+          const errorMsg = res.data?.message || res.data?.msg || '获取失败，请检查分享链接是否正确'
+          showToast({ title: errorMsg, icon: 'none', duration: 3000 })
         }
       } catch (error: any) {
         console.error('[AvatarAccountConfig] 获取小红书用户信息失败:', error)
@@ -635,15 +637,24 @@ export default function AvatarAccountConfigPage() {
                 <>
                   <View className="form-item">
                     <Text className="form-label required">个人主页链接</Text>
-                    <View className="input-wrapper">
+                    <View className="input-with-action">
                       <Input
                         className="form-input"
                         placeholder="请输入小红书个人主页分享的链接"
                         value={xiaohongshuUrl}
                         onInput={(e) => setXiaohongshuUrl(e.detail.value)}
                       />
+                      <Button
+                        className="fetch-info-btn"
+                        size="small"
+                        onClick={fetchUserInfo}
+                        disabled={isFetchingUserInfo || !xiaohongshuUrl}
+                      >
+                        {isFetchingUserInfo ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
+                        <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
+                      </Button>
                     </View>
-                    <Text className="form-tip warning">⚠️ 小红书信息获取功能暂时不可用，请手动输入账号名称后保存</Text>
+                    <Text className="form-tip">提示：请输入小红书个人主页的分享链接（如：http://xhslink.com/xxxxx）</Text>
                   </View>
 
                   {/* 显示获取到的用户信息 */}
