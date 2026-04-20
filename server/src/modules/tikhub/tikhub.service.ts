@@ -101,19 +101,81 @@ export class TikHubService {
       console.log('[TikHubService] 获取小红书用户信息，分享链接:', shareUrl)
       console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // TikHub 的小红书接口暂时不可用，返回提示信息
-      console.log('[TikHubService] 小红书接口返回 400 错误，可能是接口维护中')
-      
+      if (!this.apiKey) {
+        return {
+          success: false,
+          message: 'TikHub API Key 未配置',
+        }
+      }
+
+      // 第一步：从分享链接中提取用户ID和xsec_token
+      const tokenResponse = await this.axios.get('/xiaohongshu/app/get_user_id_and_xsec_token', {
+        params: {
+          share_link: shareUrl,
+        },
+      })
+
+      console.log('[TikHubService] 第一步获取token响应:', JSON.stringify(tokenResponse.data, null, 2))
+
+      if (tokenResponse.data?.code !== 200 || !tokenResponse.data?.data) {
+        return {
+          success: false,
+          message: tokenResponse.data?.message || '获取用户ID失败，请检查分享链接是否正确',
+        }
+      }
+
+      const tokenData = tokenResponse.data.data
+      const userId = tokenData.user_id
+      const xsecToken = tokenData.xsec_token
+
+      console.log('[TikHubService] 获取到用户ID:', userId)
+
+      // 第二步：使用用户ID获取详细信息
+      const userResponse = await this.axios.get('/xiaohongshu/app/get_user_info', {
+        params: {
+          user_id: userId,
+        },
+      })
+
+      console.log('[TikHubService] 第二步获取用户信息响应:', JSON.stringify(userResponse.data, null, 2))
+
+      if (userResponse.data?.code === 200 && userResponse.data?.data?.data) {
+        const data = userResponse.data.data.data
+
+        // 从interactions数组中找到"获赞与收藏"的数量
+        const interaction = data.interactions?.find((item: any) => item.name === '获赞与收藏')
+        const totalFavorited = interaction?.count || 0
+
+        return {
+          success: true,
+          data: {
+            nickname: data.nickname,
+            avatar_url: data.images || data.imageb,
+            desc: data.desc,
+            follower_count: data.fans || data.follower_count || 0,
+            following_count: data.follows || data.following_count || 0,
+            notes_count: data.note_num_stat?.posted || data.notes_count || 0,
+            interaction_count: totalFavorited,
+            total_favorited: totalFavorited, // 小红书的获赞与收藏数
+          },
+        }
+      }
+
       return {
         success: false,
-        message: '小红书接口暂时不可用（TikHub 返回 400 错误），请手动输入账号信息后保存。建议先使用抖音账号绑定功能。',
+        message: userResponse.data?.message || '获取用户详细信息失败',
       }
     } catch (error: any) {
       console.error('[TikHubService] 获取小红书用户信息失败:', error)
-      
+      console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
+
+      const errorMsg = error.response?.data?.detail ||
+                      error.response?.data?.message ||
+                      '请检查分享链接是否正确，确保使用完整的小红书分享链接'
+
       return {
         success: false,
-        message: '小红书接口暂时不可用，请手动输入账号信息后保存。',
+        message: `获取失败: ${errorMsg}`,
       }
     }
   }
