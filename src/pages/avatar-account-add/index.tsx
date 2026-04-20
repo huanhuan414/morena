@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Search, Loader2, Save } from 'lucide-react-taro'
+import { ArrowLeft, Search, Loader, Save } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -266,7 +266,7 @@ export default function AvatarAccountAddPage() {
               </View>
               <Button className="fetch-btn" onClick={fetchUserInfo} disabled={isFetchingUserInfo}>
                 {isFetchingUserInfo ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader size={16} className="animate-spin" />
                 ) : (
                   <Search size={16} />
                 )}
@@ -344,7 +344,7 @@ export default function AvatarAccountAddPage() {
               </View>
               <Button className="fetch-btn" onClick={fetchUserInfo} disabled={isFetchingUserInfo}>
                 {isFetchingUserInfo ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader size={16} className="animate-spin" />
                 ) : (
                   <Search size={16} />
                 )}

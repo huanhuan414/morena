@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader2 } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -403,7 +403,7 @@ export default function AvatarAccountConfigPage() {
                         onClick={fetchUserInfo}
                         disabled={isFetchingUserInfo || !accountName}
                       >
-                        {isFetchingUserInfo ? <Loader2 className="animate-spin" /> : <Search size={16} />}
+                        {isFetchingUserInfo ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
                         <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
                       </Button>
                     </View>
@@ -459,7 +459,7 @@ export default function AvatarAccountConfigPage() {
                         onClick={fetchUserInfo}
                         disabled={isFetchingUserInfo || !xiaohongshuUrl}
                       >
-                        {isFetchingUserInfo ? <Loader2 className="animate-spin" /> : <Search size={16} />}
+                        {isFetchingUserInfo ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
                         <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
                       </Button>
                     </View>
