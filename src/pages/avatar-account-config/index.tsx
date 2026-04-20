@@ -20,6 +20,9 @@ interface AvatarAccount {
   avg_likes_per_work: number
   avg_comments_per_work: number
   avg_shares_per_work: number
+  appid?: string        // 微信公众号 appid
+  appkey?: string       // 微信公众号 AppKey
+  account_url?: string  // 小红书主页链接
 }
 
 const PLATFORMS = [
@@ -51,11 +54,18 @@ export default function AvatarAccountConfigPage() {
   const [avgComments, setAvgComments] = useState<string>('')
   const [avgShares, setAvgShares] = useState<string>('')
 
+  // 微信公众号专用字段
+  const [appid, setAppid] = useState<string>('')
+  const [appkey, setAppkey] = useState<string>('')
+
+  // 小红书专用字段
+  const [xiaohongshuUrl, setXiaohongshuUrl] = useState<string>('')
+
   // 图片识别相关状态
   const [isRecognizing, setIsRecognizing] = useState(false)
   const [previewImage, setPreviewImage] = useState<string>('')
 
-  // 链接输入相关状态
+  // 链接输入相关状态（用于智能填充）
   const [accountUrl, setAccountUrl] = useState<string>('')
 
   useLoad((options) => {
@@ -98,6 +108,9 @@ export default function AvatarAccountConfigPage() {
       setAvgLikes(account.avg_likes_per_work?.toString() || '')
       setAvgComments(account.avg_comments_per_work?.toString() || '')
       setAvgShares(account.avg_shares_per_work?.toString() || '')
+      setAppid(account.appid || '')
+      setAppkey(account.appkey || '')
+      setXiaohongshuUrl(account.account_url || '')
     } else {
       setEditingAccount(null)
       setPlatformIndex(0)
@@ -108,6 +121,9 @@ export default function AvatarAccountConfigPage() {
       setAvgLikes('')
       setAvgComments('')
       setAvgShares('')
+      setAppid('')
+      setAppkey('')
+      setXiaohongshuUrl('')
     }
     setShowModal(true)
   }
@@ -118,6 +134,9 @@ export default function AvatarAccountConfigPage() {
     setPreviewImage('')
     setAccountUrl('')
     setIsRecognizing(false)
+    setAppid('')
+    setAppkey('')
+    setXiaohongshuUrl('')
   }
 
   // 选择并识别图片
@@ -280,14 +299,38 @@ export default function AvatarAccountConfigPage() {
   }
 
   const saveAccount = async () => {
-    if (!accountName || !followers || !totalExposure) {
-      showToast({ title: '请填写必填项', icon: 'none' })
-      return
+    const platformId = PLATFORMS[platformIndex].id
+
+    // 根据平台进行不同的验证
+    if (platformId === 'douyin') {
+      // 抖音：只需填入抖音号
+      if (!accountName) {
+        showToast({ title: '请填写抖音号', icon: 'none' })
+        return
+      }
+    } else if (platformId === 'xiaohongshu') {
+      // 小红书：只需输入个人主页链接
+      if (!xiaohongshuUrl) {
+        showToast({ title: '请输入小红书个人主页链接', icon: 'none' })
+        return
+      }
+    } else if (platformId === 'wechat') {
+      // 微信公众号：需要填入 appid 和 AppKey
+      if (!appid || !appkey) {
+        showToast({ title: '请填写 AppID 和 AppKey', icon: 'none' })
+        return
+      }
+    } else {
+      // 其他平台：需要填写必填项
+      if (!accountName || !followers || !totalExposure) {
+        showToast({ title: '请填写必填项', icon: 'none' })
+        return
+      }
     }
 
     const data: AvatarAccount = {
       avatar_id: avatarId,
-      platform: PLATFORMS[platformIndex].id,
+      platform: platformId,
       account_name: accountName,
       followers: parseInt(followers) || 0,
       total_exposure: parseInt(totalExposure) || 0,
@@ -295,6 +338,9 @@ export default function AvatarAccountConfigPage() {
       avg_likes_per_work: parseInt(avgLikes) || 0,
       avg_comments_per_work: parseInt(avgComments) || 0,
       avg_shares_per_work: parseInt(avgShares) || 0,
+      appid: platformId === 'wechat' ? appid : undefined,
+      appkey: platformId === 'wechat' ? appkey : undefined,
+      account_url: platformId === 'xiaohongshu' ? xiaohongshuUrl : undefined,
     }
 
     try {
@@ -428,58 +474,62 @@ export default function AvatarAccountConfigPage() {
               <Text className="modal-title">{editingAccount ? '编辑账号' : '添加账号'}</Text>
             </View>
             <ScrollView className="modal-body" scrollY>
-              {/* 图片识别和链接抓取区域 */}
-              <View className="smart-input-section">
-                <Text className="smart-input-title">智能填充</Text>
+              {/* 图片识别和链接抓取区域 - 仅对除抖音、小红书、微信以外的平台显示 */}
+              {!['douyin', 'xiaohongshu', 'wechat'].includes(PLATFORMS[platformIndex].id) && (
+                <>
+                  <View className="smart-input-section">
+                    <Text className="smart-input-title">智能填充</Text>
 
-                {/* 图片上传 */}
-                <View className="smart-input-row">
-                  <View className="smart-input-item">
-                    <Text className="smart-input-label">上传主页截图</Text>
-                    <View className="smart-input-actions">
-                      {previewImage ? (
-                        <Image className="preview-image" src={previewImage} mode="aspectFill" />
-                      ) : (
-                        <Button
-                          className="smart-btn"
-                          size="small"
-                          onClick={chooseAndRecognizeImage}
-                          disabled={isRecognizing}
-                        >
-                          {isRecognizing ? <Loader className="animate-spin" /> : <Upload />}
-                          <Text className="smart-btn-text">{isRecognizing ? '识别中...' : '上传图片'}</Text>
-                        </Button>
-                      )}
+                    {/* 图片上传 */}
+                    <View className="smart-input-row">
+                      <View className="smart-input-item">
+                        <Text className="smart-input-label">上传主页截图</Text>
+                        <View className="smart-input-actions">
+                          {previewImage ? (
+                            <Image className="preview-image" src={previewImage} mode="aspectFill" />
+                          ) : (
+                            <Button
+                              className="smart-btn"
+                              size="small"
+                              onClick={chooseAndRecognizeImage}
+                              disabled={isRecognizing}
+                            >
+                              {isRecognizing ? <Loader className="animate-spin" /> : <Upload />}
+                              <Text className="smart-btn-text">{isRecognizing ? '识别中...' : '上传图片'}</Text>
+                            </Button>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* 链接输入 */}
+                    <View className="smart-input-row">
+                      <View className="smart-input-item">
+                        <Text className="smart-input-label">输入主页链接</Text>
+                        <View className="smart-input-actions">
+                          <Input
+                            className="url-input"
+                            placeholder="请输入账号主页链接"
+                            value={accountUrl}
+                            onInput={(e) => setAccountUrl(e.detail.value)}
+                          />
+                          <Button
+                            className="smart-btn"
+                            size="small"
+                            onClick={fetchFromUrl}
+                            disabled={isRecognizing || !accountUrl}
+                          >
+                            {isRecognizing ? <Loader className="animate-spin" /> : <LinkIcon />}
+                            <Text className="smart-btn-text">{isRecognizing ? '抓取中...' : '抓取信息'}</Text>
+                          </Button>
+                        </View>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                {/* 链接输入 */}
-                <View className="smart-input-row">
-                  <View className="smart-input-item">
-                    <Text className="smart-input-label">输入主页链接</Text>
-                    <View className="smart-input-actions">
-                      <Input
-                        className="url-input"
-                        placeholder="请输入账号主页链接"
-                        value={accountUrl}
-                        onInput={(e) => setAccountUrl(e.detail.value)}
-                      />
-                      <Button
-                        className="smart-btn"
-                        size="small"
-                        onClick={fetchFromUrl}
-                        disabled={isRecognizing || !accountUrl}
-                      >
-                        {isRecognizing ? <Loader className="animate-spin" /> : <LinkIcon />}
-                        <Text className="smart-btn-text">{isRecognizing ? '抓取中...' : '抓取信息'}</Text>
-                      </Button>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              <View className="divider" />
+                  <View className="divider" />
+                </>
+              )}
 
               <View className="form-item">
                 <Text className="form-label required">平台</Text>
@@ -495,81 +545,138 @@ export default function AvatarAccountConfigPage() {
                 </Picker>
               </View>
 
-              <View className="form-item">
-                <Text className="form-label required">账号名称</Text>
-                <Input
-                  className="form-input"
-                  placeholder="请输入账号名称"
-                  value={accountName}
-                  onInput={(e) => setAccountName(e.detail.value)}
-                />
-              </View>
+              {/* 根据平台显示不同的表单字段 */}
+              {PLATFORMS[platformIndex].id === 'douyin' && (
+                <>
+                  <View className="form-item">
+                    <Text className="form-label required">抖音号</Text>
+                    <Input
+                      className="form-input"
+                      placeholder="请输入抖音号（用户名）"
+                      value={accountName}
+                      onInput={(e) => setAccountName(e.detail.value)}
+                    />
+                  </View>
+                </>
+              )}
 
-              <View className="form-item">
-                <Text className="form-label required">粉丝数</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入粉丝数"
-                  value={followers}
-                  onInput={(e) => setFollowers(e.detail.value)}
-                />
-              </View>
+              {PLATFORMS[platformIndex].id === 'xiaohongshu' && (
+                <>
+                  <View className="form-item">
+                    <Text className="form-label required">个人主页链接</Text>
+                    <Input
+                      className="form-input"
+                      placeholder="请输入小红书个人主页分享的链接"
+                      value={xiaohongshuUrl}
+                      onInput={(e) => setXiaohongshuUrl(e.detail.value)}
+                    />
+                  </View>
+                </>
+              )}
 
-              <View className="form-item">
-                <Text className="form-label required">总曝光量</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入总曝光量"
-                  value={totalExposure}
-                  onInput={(e) => setTotalExposure(e.detail.value)}
-                />
-              </View>
+              {PLATFORMS[platformIndex].id === 'wechat' && (
+                <>
+                  <View className="form-item">
+                    <Text className="form-label required">AppID</Text>
+                    <Input
+                      className="form-input"
+                      placeholder="请输入微信公众号 AppID"
+                      value={appid}
+                      onInput={(e) => setAppid(e.detail.value)}
+                    />
+                  </View>
+                  <View className="form-item">
+                    <Text className="form-label required">AppKey</Text>
+                    <Input
+                      className="form-input"
+                      placeholder="请输入微信公众号 AppKey"
+                      value={appkey}
+                      onInput={(e) => setAppkey(e.detail.value)}
+                    />
+                  </View>
+                </>
+              )}
 
-              <View className="form-item">
-                <Text className="form-label">作品总数</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入作品总数"
-                  value={totalWorks}
-                  onInput={(e) => setTotalWorks(e.detail.value)}
-                />
-              </View>
+              {/* 其他平台显示完整表单 */}
+              {!['douyin', 'xiaohongshu', 'wechat'].includes(PLATFORMS[platformIndex].id) && (
+                <>
+                  <View className="form-item">
+                    <Text className="form-label required">账号名称</Text>
+                    <Input
+                      className="form-input"
+                      placeholder="请输入账号名称"
+                      value={accountName}
+                      onInput={(e) => setAccountName(e.detail.value)}
+                    />
+                  </View>
 
-              <View className="form-item">
-                <Text className="form-label">平均点赞数/作品</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入平均点赞数"
-                  value={avgLikes}
-                  onInput={(e) => setAvgLikes(e.detail.value)}
-                />
-              </View>
+                  <View className="form-item">
+                    <Text className="form-label required">粉丝数</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入粉丝数"
+                      value={followers}
+                      onInput={(e) => setFollowers(e.detail.value)}
+                    />
+                  </View>
 
-              <View className="form-item">
-                <Text className="form-label">平均评论数/作品</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入平均评论数"
-                  value={avgComments}
-                  onInput={(e) => setAvgComments(e.detail.value)}
-                />
-              </View>
+                  <View className="form-item">
+                    <Text className="form-label required">总曝光量</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入总曝光量"
+                      value={totalExposure}
+                      onInput={(e) => setTotalExposure(e.detail.value)}
+                    />
+                  </View>
 
-              <View className="form-item">
-                <Text className="form-label">平均转发数/作品</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="请输入平均转发数"
-                  value={avgShares}
-                  onInput={(e) => setAvgShares(e.detail.value)}
-                />
-              </View>
+                  <View className="form-item">
+                    <Text className="form-label">作品总数</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入作品总数"
+                      value={totalWorks}
+                      onInput={(e) => setTotalWorks(e.detail.value)}
+                    />
+                  </View>
+
+                  <View className="form-item">
+                    <Text className="form-label">平均点赞数/作品</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入平均点赞数"
+                      value={avgLikes}
+                      onInput={(e) => setAvgLikes(e.detail.value)}
+                    />
+                  </View>
+
+                  <View className="form-item">
+                    <Text className="form-label">平均评论数/作品</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入平均评论数"
+                      value={avgComments}
+                      onInput={(e) => setAvgComments(e.detail.value)}
+                    />
+                  </View>
+
+                  <View className="form-item">
+                    <Text className="form-label">平均转发数/作品</Text>
+                    <Input
+                      className="form-input"
+                      type="number"
+                      placeholder="请输入平均转发数"
+                      value={avgShares}
+                      onInput={(e) => setAvgShares(e.detail.value)}
+                    />
+                  </View>
+                </>
+              )}
             </ScrollView>
             <View className="modal-footer">
               <Button className="modal-btn cancel" onClick={closeModal}>取消</Button>
