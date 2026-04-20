@@ -1,11 +1,11 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, showToast, chooseImage } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft, Upload, Link as LinkIcon, Loader } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -29,10 +29,6 @@ const PLATFORMS = [
   { id: 'douyin', label: '抖音' },
   { id: 'wechat', label: '微信公众号' },
   { id: 'xiaohongshu', label: '小红书' },
-  { id: 'bilibili', label: 'B站' },
-  { id: 'weibo', label: '微博' },
-  { id: 'kuaishou', label: '快手' },
-  { id: 'zhihu', label: '知乎' },
 ]
 
 const PLATFORM_INDEX = PLATFORMS.map(p => p.label)
@@ -47,12 +43,6 @@ export default function AvatarAccountConfigPage() {
   // 表单状态
   const [platformIndex, setPlatformIndex] = useState<number>(0)
   const [accountName, setAccountName] = useState<string>('')
-  const [followers, setFollowers] = useState<string>('')
-  const [totalExposure, setTotalExposure] = useState<string>('')
-  const [totalWorks, setTotalWorks] = useState<string>('')
-  const [avgLikes, setAvgLikes] = useState<string>('')
-  const [avgComments, setAvgComments] = useState<string>('')
-  const [avgShares, setAvgShares] = useState<string>('')
 
   // 微信公众号专用字段
   const [appid, setAppid] = useState<string>('')
@@ -60,13 +50,6 @@ export default function AvatarAccountConfigPage() {
 
   // 小红书专用字段
   const [xiaohongshuUrl, setXiaohongshuUrl] = useState<string>('')
-
-  // 图片识别相关状态
-  const [isRecognizing, setIsRecognizing] = useState(false)
-  const [previewImage, setPreviewImage] = useState<string>('')
-
-  // 链接输入相关状态（用于智能填充）
-  const [accountUrl, setAccountUrl] = useState<string>('')
 
   useLoad((options) => {
     if (options.avatarId) {
@@ -102,12 +85,6 @@ export default function AvatarAccountConfigPage() {
       setEditingAccount(account)
       setPlatformIndex(PLATFORMS.findIndex(p => p.id === account.platform) || 0)
       setAccountName(account.account_name || '')
-      setFollowers(account.followers?.toString() || '')
-      setTotalExposure(account.total_exposure?.toString() || '')
-      setTotalWorks(account.total_works?.toString() || '')
-      setAvgLikes(account.avg_likes_per_work?.toString() || '')
-      setAvgComments(account.avg_comments_per_work?.toString() || '')
-      setAvgShares(account.avg_shares_per_work?.toString() || '')
       setAppid(account.appid || '')
       setAppkey(account.appkey || '')
       setXiaohongshuUrl(account.account_url || '')
@@ -115,12 +92,6 @@ export default function AvatarAccountConfigPage() {
       setEditingAccount(null)
       setPlatformIndex(0)
       setAccountName('')
-      setFollowers('')
-      setTotalExposure('')
-      setTotalWorks('')
-      setAvgLikes('')
-      setAvgComments('')
-      setAvgShares('')
       setAppid('')
       setAppkey('')
       setXiaohongshuUrl('')
@@ -131,171 +102,9 @@ export default function AvatarAccountConfigPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingAccount(null)
-    setPreviewImage('')
-    setAccountUrl('')
-    setIsRecognizing(false)
     setAppid('')
     setAppkey('')
     setXiaohongshuUrl('')
-  }
-
-  // 选择并识别图片
-  const chooseAndRecognizeImage = async () => {
-    try {
-      showToast({ title: '选择图片...', icon: 'loading' })
-
-      const res = await chooseImage({
-        count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera']
-      })
-
-      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
-        const filePath = res.tempFilePaths[0]
-        setPreviewImage(filePath)
-        setIsRecognizing(true)
-
-        console.log('=== 开始图片识别 ===')
-        console.log('临时文件路径:', filePath)
-        console.log('开始上传...')
-
-        // 上传图片并识别
-        const uploadRes = await Network.uploadFile({
-          url: '/api/avatar/accounts/recognize-image',
-          filePath: filePath,
-          name: 'image'
-        })
-
-        console.log('上传响应完整对象:', JSON.stringify(uploadRes, null, 2))
-        console.log('上传响应.data:', uploadRes.data)
-        console.log('上传响应.statusCode:', uploadRes.statusCode)
-
-        // 处理响应数据
-        let responseData
-        if (typeof uploadRes.data === 'string') {
-          try {
-            responseData = JSON.parse(uploadRes.data)
-          } catch (e) {
-            console.error('解析响应数据失败:', e)
-            responseData = uploadRes.data
-          }
-        } else {
-          responseData = uploadRes.data
-        }
-
-        console.log('解析后的响应数据:', responseData)
-
-        if (responseData?.code === 200) {
-          const data = responseData.data
-
-          // 填充表单数据
-          if (data.platform) {
-            const foundPlatformIndex = PLATFORMS.findIndex(p => p.label === data.platform)
-            if (foundPlatformIndex >= 0) {
-              setPlatformIndex(foundPlatformIndex)
-            }
-          }
-          setAccountName(data.accountName || '')
-          setFollowers(data.followers?.toString() || '')
-          setTotalExposure(data.totalExposure?.toString() || '')
-          setTotalWorks(data.totalWorks?.toString() || '')
-          setAvgLikes(data.avgLikes?.toString() || '')
-          setAvgComments(data.avgComments?.toString() || '')
-          setAvgShares(data.avgShares?.toString() || '')
-
-          showToast({ title: '识别成功', icon: 'success' })
-        } else {
-          showToast({ title: responseData?.message || '识别失败', icon: 'none' })
-        }
-
-        setIsRecognizing(false)
-      }
-    } catch (error) {
-      console.error('图片识别失败:', error)
-      showToast({ title: '图片识别失败', icon: 'none' })
-      setIsRecognizing(false)
-    }
-  }
-
-  // 提取URL的正则表达式
-  const extractUrl = (text: string): string | null => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g
-    const matches = text.match(urlRegex)
-    return matches && matches.length > 0 ? matches[0] : null
-  }
-
-  // 从链接抓取信息
-  const fetchFromUrl = async () => {
-    if (!accountUrl) {
-      showToast({ title: '请输入链接', icon: 'none' })
-      return
-    }
-
-    // 从输入文本中提取纯URL
-    const extractedUrl = extractUrl(accountUrl)
-    if (!extractedUrl) {
-      showToast({ title: '未找到有效链接', icon: 'none' })
-      return
-    }
-
-    try {
-      setIsRecognizing(true)
-      showToast({ title: '正在抓取...', icon: 'loading' })
-
-      const res = await Network.request({
-        url: '/api/avatar/accounts/fetch-from-url',
-        method: 'POST',
-        data: { url: extractedUrl }
-      })
-
-      console.log('链接抓取响应完整对象:', JSON.stringify(res, null, 2))
-      console.log('链接抓取响应.data:', res.data)
-      console.log('链接抓取响应.statusCode:', res.statusCode)
-
-      // 处理响应数据
-      let responseData
-      if (typeof res.data === 'string') {
-        try {
-          responseData = JSON.parse(res.data)
-        } catch (e) {
-          console.error('解析响应数据失败:', e)
-          responseData = res.data
-        }
-      } else {
-        responseData = res.data
-      }
-
-      console.log('解析后的响应数据:', responseData)
-
-      if (responseData?.code === 200) {
-        const data = responseData.data
-
-        // 填充表单数据
-        if (data.platform) {
-          const foundPlatformIndex = PLATFORMS.findIndex(p => p.label === data.platform)
-          if (foundPlatformIndex >= 0) {
-            setPlatformIndex(foundPlatformIndex)
-          }
-        }
-        setAccountName(data.accountName || '')
-        setFollowers(data.followers?.toString() || '')
-        setTotalExposure(data.totalExposure?.toString() || '')
-        setTotalWorks(data.totalWorks?.toString() || '')
-        setAvgLikes(data.avgLikes?.toString() || '')
-        setAvgComments(data.avgComments?.toString() || '')
-        setAvgShares(data.avgShares?.toString() || '')
-
-        showToast({ title: '抓取成功', icon: 'success' })
-      } else {
-        showToast({ title: responseData?.message || '抓取失败', icon: 'none' })
-      }
-
-      setIsRecognizing(false)
-    } catch (error) {
-      console.error('链接抓取失败:', error)
-      showToast({ title: '链接抓取失败', icon: 'none' })
-      setIsRecognizing(false)
-    }
   }
 
   const saveAccount = async () => {
@@ -320,24 +129,18 @@ export default function AvatarAccountConfigPage() {
         showToast({ title: '请填写 AppID 和 AppKey', icon: 'none' })
         return
       }
-    } else {
-      // 其他平台：需要填写必填项
-      if (!accountName || !followers || !totalExposure) {
-        showToast({ title: '请填写必填项', icon: 'none' })
-        return
-      }
     }
 
     const data: AvatarAccount = {
       avatar_id: avatarId,
       platform: platformId,
-      account_name: accountName,
-      followers: parseInt(followers) || 0,
-      total_exposure: parseInt(totalExposure) || 0,
-      total_works: parseInt(totalWorks) || 0,
-      avg_likes_per_work: parseInt(avgLikes) || 0,
-      avg_comments_per_work: parseInt(avgComments) || 0,
-      avg_shares_per_work: parseInt(avgShares) || 0,
+      account_name: accountName || '',  // 用于抖音账号名
+      followers: 0,  // 这三个平台暂时不需要统计字段
+      total_exposure: 0,
+      total_works: 0,
+      avg_likes_per_work: 0,
+      avg_comments_per_work: 0,
+      avg_shares_per_work: 0,
       appid: platformId === 'wechat' ? appid : undefined,
       appkey: platformId === 'wechat' ? appkey : undefined,
       account_url: platformId === 'xiaohongshu' ? xiaohongshuUrl : undefined,
@@ -474,63 +277,6 @@ export default function AvatarAccountConfigPage() {
               <Text className="modal-title">{editingAccount ? '编辑账号' : '添加账号'}</Text>
             </View>
             <ScrollView className="modal-body" scrollY>
-              {/* 图片识别和链接抓取区域 - 仅对除抖音、小红书、微信以外的平台显示 */}
-              {!['douyin', 'xiaohongshu', 'wechat'].includes(PLATFORMS[platformIndex].id) && (
-                <>
-                  <View className="smart-input-section">
-                    <Text className="smart-input-title">智能填充</Text>
-
-                    {/* 图片上传 */}
-                    <View className="smart-input-row">
-                      <View className="smart-input-item">
-                        <Text className="smart-input-label">上传主页截图</Text>
-                        <View className="smart-input-actions">
-                          {previewImage ? (
-                            <Image className="preview-image" src={previewImage} mode="aspectFill" />
-                          ) : (
-                            <Button
-                              className="smart-btn"
-                              size="small"
-                              onClick={chooseAndRecognizeImage}
-                              disabled={isRecognizing}
-                            >
-                              {isRecognizing ? <Loader className="animate-spin" /> : <Upload />}
-                              <Text className="smart-btn-text">{isRecognizing ? '识别中...' : '上传图片'}</Text>
-                            </Button>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* 链接输入 */}
-                    <View className="smart-input-row">
-                      <View className="smart-input-item">
-                        <Text className="smart-input-label">输入主页链接</Text>
-                        <View className="smart-input-actions">
-                          <Input
-                            className="url-input"
-                            placeholder="请输入账号主页链接"
-                            value={accountUrl}
-                            onInput={(e) => setAccountUrl(e.detail.value)}
-                          />
-                          <Button
-                            className="smart-btn"
-                            size="small"
-                            onClick={fetchFromUrl}
-                            disabled={isRecognizing || !accountUrl}
-                          >
-                            {isRecognizing ? <Loader className="animate-spin" /> : <LinkIcon />}
-                            <Text className="smart-btn-text">{isRecognizing ? '抓取中...' : '抓取信息'}</Text>
-                          </Button>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View className="divider" />
-                </>
-              )}
-
               <View className="form-item">
                 <Text className="form-label required">平台</Text>
                 <Picker
@@ -592,87 +338,6 @@ export default function AvatarAccountConfigPage() {
                       placeholder="请输入微信公众号 AppKey"
                       value={appkey}
                       onInput={(e) => setAppkey(e.detail.value)}
-                    />
-                  </View>
-                </>
-              )}
-
-              {/* 其他平台显示完整表单 */}
-              {!['douyin', 'xiaohongshu', 'wechat'].includes(PLATFORMS[platformIndex].id) && (
-                <>
-                  <View className="form-item">
-                    <Text className="form-label required">账号名称</Text>
-                    <Input
-                      className="form-input"
-                      placeholder="请输入账号名称"
-                      value={accountName}
-                      onInput={(e) => setAccountName(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label required">粉丝数</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入粉丝数"
-                      value={followers}
-                      onInput={(e) => setFollowers(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label required">总曝光量</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入总曝光量"
-                      value={totalExposure}
-                      onInput={(e) => setTotalExposure(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label">作品总数</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入作品总数"
-                      value={totalWorks}
-                      onInput={(e) => setTotalWorks(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label">平均点赞数/作品</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入平均点赞数"
-                      value={avgLikes}
-                      onInput={(e) => setAvgLikes(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label">平均评论数/作品</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入平均评论数"
-                      value={avgComments}
-                      onInput={(e) => setAvgComments(e.detail.value)}
-                    />
-                  </View>
-
-                  <View className="form-item">
-                    <Text className="form-label">平均转发数/作品</Text>
-                    <Input
-                      className="form-input"
-                      type="number"
-                      placeholder="请输入平均转发数"
-                      value={avgShares}
-                      onInput={(e) => setAvgShares(e.detail.value)}
                     />
                   </View>
                 </>
