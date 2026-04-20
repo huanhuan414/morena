@@ -1494,6 +1494,10 @@ export class AvatarService {
         avg_comments_per_work: accountData.avg_comments_per_work || 0,
         avg_shares_per_work: accountData.avg_shares_per_work || 0,
         engagement_rate: engagementRate,
+        appid: accountData.appid,
+        appkey: accountData.appkey,
+        account_url: accountData.account_url,
+        extra_info: accountData.extra_info,
         last_updated_at: new Date().toISOString(),
       })
       .select()
@@ -1532,6 +1536,10 @@ export class AvatarService {
         avg_comments_per_work: accountData.avg_comments_per_work || 0,
         avg_shares_per_work: accountData.avg_shares_per_work || 0,
         engagement_rate: engagementRate,
+        appid: accountData.appid,
+        appkey: accountData.appkey,
+        account_url: accountData.account_url,
+        extra_info: accountData.extra_info,
         last_updated_at: new Date().toISOString(),
       })
       .eq('id', accountId)
