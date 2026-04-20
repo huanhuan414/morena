@@ -57,6 +57,13 @@ export default function AvatarAccountConfigPage() {
   const [isFetchingUserInfo, setIsFetchingUserInfo] = useState(false)
   const [fetchedUserInfo, setFetchedUserInfo] = useState<any>(null)
 
+  // 微信公众号验证状态
+  const [isValidatingWechat, setIsValidatingWechat] = useState(false)
+  const [wechatValidationResult, setWechatValidationResult] = useState<{
+    valid: boolean
+    message: string
+  } | null>(null)
+
   useLoad((options) => {
     if (options.avatarId) {
       setAvatarId(options.avatarId as string)
@@ -105,6 +112,7 @@ export default function AvatarAccountConfigPage() {
       setXiaohongshuUrl('')
     }
     setFetchedUserInfo(null)
+    setWechatValidationResult(null)
     setShowModal(true)
   }
 
@@ -115,6 +123,7 @@ export default function AvatarAccountConfigPage() {
     setAppkey('')
     setXiaohongshuUrl('')
     setFetchedUserInfo(null)
+    setWechatValidationResult(null)
   }
 
   // 获取用户信息
@@ -202,6 +211,58 @@ export default function AvatarAccountConfigPage() {
     }
   }
 
+  // 验证微信公众号配置
+  const validateWechatConfig = async () => {
+    if (!appid || !appkey) {
+      showToast({ title: '请填写 AppID 和 AppKey', icon: 'none' })
+      return
+    }
+
+    try {
+      setIsValidatingWechat(true)
+      setWechatValidationResult(null)
+
+      console.log('[AvatarAccountConfig] 开始验证微信公众号配置，AppID:', appid)
+
+      const res = await Network.request({
+        url: `/api/agent/platform-config/wechat/validate`,
+        method: 'POST',
+        data: { app_id: appid, app_secret: appkey }
+      })
+
+      console.log('[AvatarAccountConfig] 微信公众号配置验证响应:', res.data)
+
+      if (res.data?.code === 200) {
+        const validation = res.data.data
+        setWechatValidationResult({
+          valid: validation.valid,
+          message: validation.message || (validation.valid ? '验证成功' : '验证失败')
+        })
+
+        if (validation.valid) {
+          showToast({ title: '验证成功', icon: 'success' })
+        } else {
+          showToast({ title: validation.message || '验证失败', icon: 'none', duration: 3000 })
+        }
+      } else {
+        setWechatValidationResult({
+          valid: false,
+          message: res.data?.message || '验证失败，请稍后重试'
+        })
+        showToast({ title: res.data?.message || '验证失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      console.error('[AvatarAccountConfig] 验证微信公众号配置失败:', error)
+      setWechatValidationResult({
+        valid: false,
+        message: `网络请求失败: ${error.message || '请稍后重试'}`
+      })
+      showToast({ title: `网络请求失败: ${error.message || '请稍后重试'}`, icon: 'none' })
+    } finally {
+      setIsValidatingWechat(false)
+    }
+  }
+
   const saveAccount = async () => {
     const platformId = PLATFORMS[platformIndex].id
 
@@ -222,6 +283,12 @@ export default function AvatarAccountConfigPage() {
       // 微信公众号：需要填入 appid 和 AppKey
       if (!appid || !appkey) {
         showToast({ title: '请填写 AppID 和 AppKey', icon: 'none' })
+        return
+      }
+
+      // 检查是否已验证配置
+      if (!wechatValidationResult || !wechatValidationResult.valid) {
+        showToast({ title: '请先验证配置连通性', icon: 'none' })
         return
       }
     }
@@ -715,12 +782,36 @@ export default function AvatarAccountConfigPage() {
                   </View>
                   <View className="form-item">
                     <Text className="form-label required">AppKey</Text>
-                    <Input
-                      className="form-input"
-                      placeholder="请输入微信公众号 AppKey"
-                      value={appkey}
-                      onInput={(e) => setAppkey(e.detail.value)}
-                    />
+                    <View className="input-with-action">
+                      <Input
+                        className="form-input"
+                        placeholder="请输入微信公众号 AppKey"
+                        value={appkey}
+                        onInput={(e) => setAppkey(e.detail.value)}
+                      />
+                      <Button
+                        className="fetch-info-btn"
+                        size="small"
+                        onClick={validateWechatConfig}
+                        disabled={isValidatingWechat || !appid || !appkey}
+                      >
+                        {isValidatingWechat ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
+                        <Text>{isValidatingWechat ? '验证中...' : '验证'}</Text>
+                      </Button>
+                    </View>
+                  </View>
+
+                  {/* 验证结果显示 */}
+                  {wechatValidationResult && (
+                    <View className={`validation-result ${wechatValidationResult.valid ? 'success' : 'error'}`}>
+                      <Text className="validation-message">
+                        {wechatValidationResult.valid ? '✅ ' : '❌ '}{wechatValidationResult.message}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View className="form-item">
+                    <Text className="form-tip">提示：配置验证通过后才能保存账号信息</Text>
                   </View>
                 </>
               )}

@@ -664,3 +664,35 @@
   color: var(--destructive);
   font-weight: 600;
 }
+
+/* ========== 验证结果样式 ========== */
+.validation-result {
+  padding: 20rpx 24rpx;
+  border-radius: var(--radius-md);
+  margin-top: 20rpx;
+  border: 2rpx solid;
+}
+
+.validation-result.success {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: #10b981;
+}
+
+.validation-result.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.validation-message {
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.validation-result.success .validation-message {
+  color: #059669;
+}
+
+.validation-result.error .validation-message {
+  color: #dc2626;
+}
