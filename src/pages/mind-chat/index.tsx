@@ -416,6 +416,10 @@ export default function MindChatPage() {
   const [showH5PublishDialog, setShowH5PublishDialog] = useState(false)
   const [h5PublishUrl, setH5PublishUrl] = useState('')
 
+  // 账号绑定检查弹窗
+  const [showAccountConfigDialog, setShowAccountConfigDialog] = useState(false)
+  const [requiredPlatform, setRequiredPlatform] = useState<'douyin' | 'xiaohongshu' | 'wechat' | null>(null)
+
   // 辅助函数：获取记忆类型名称
   const getMemoryTypeName = (type: string): string => {
     const typeMap: Record<string, string> = {
@@ -441,6 +445,55 @@ export default function MindChatPage() {
       'tool_call': '工具调用'
     }
     return intentMap[intent] || intent
+  }
+
+  // 检测消息是否涉及第三方平台
+  const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | null => {
+    const lowerMessage = message.toLowerCase()
+
+    // 检测抖音相关关键词
+    if (lowerMessage.includes('抖音') || lowerMessage.includes('douyin') ||
+        lowerMessage.includes('抖音号') || lowerMessage.includes('发布抖音') ||
+        lowerMessage.includes('抖音视频') || lowerMessage.includes('抖音直播')) {
+      return 'douyin'
+    }
+
+    // 检测小红书相关关键词
+    if (lowerMessage.includes('小红书') || lowerMessage.includes('xiaohongshu') ||
+        lowerMessage.includes('小红书号') || lowerMessage.includes('发布小红书') ||
+        lowerMessage.includes('小红书笔记') || lowerMessage.includes('小红书图文')) {
+      return 'xiaohongshu'
+    }
+
+    // 检测微信公众号相关关键词
+    if (lowerMessage.includes('微信公众号') || lowerMessage.includes('wechat') ||
+        lowerMessage.includes('公众号') || lowerMessage.includes('发布公众号') ||
+        lowerMessage.includes('公众号文章') || lowerMessage.includes('公众号推文')) {
+      return 'wechat'
+    }
+
+    return null
+  }
+
+  // 检查分身是否绑定了指定平台的账号
+  const checkAccountBinding = async (platform: 'douyin' | 'xiaohongshu' | 'wechat'): Promise<boolean> => {
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}/accounts`
+      })
+
+      if (res.data?.code === 200 && res.data.data) {
+        const accounts = res.data.data
+        const hasBinding = accounts.some((acc: any) => acc.platform === platform)
+        console.log('[MindChat] 账号绑定检查:', { platform, hasBinding, accounts })
+        return hasBinding
+      }
+
+      return false
+    } catch (error) {
+      console.error('[MindChat] 检查账号绑定失败:', error)
+      return false
+    }
   }
 
   useLoad(() => {
@@ -1330,6 +1383,20 @@ export default function MindChatPage() {
     if (!conversation) {
       showToast({ title: '对话不存在', icon: 'none' })
       return
+    }
+
+    // 🔴 新增：检查消息是否涉及第三方平台
+    const detectedPlatform = detectPlatformFromMessage(messageText)
+    console.log('[MindChat] 检测到平台:', detectedPlatform)
+
+    if (detectedPlatform) {
+      const hasBinding = await checkAccountBinding(detectedPlatform)
+      if (!hasBinding) {
+        console.log('[MindChat] 未绑定账号，显示提示弹窗')
+        setRequiredPlatform(detectedPlatform)
+        setShowAccountConfigDialog(true)
+        return
+      }
     }
 
     // 如果 loading 状态卡住，强制清空（不考虑 loadingRef）
@@ -4390,6 +4457,42 @@ export default function MindChatPage() {
               <Text className="dialog-btn-text">关闭</Text>
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 账号绑定检查弹窗 */}
+      <Dialog open={showAccountConfigDialog} onOpenChange={setShowAccountConfigDialog}>
+        <DialogContent className="account-config-dialog">
+          <DialogHeader>
+            <DialogTitle>需要绑定账号</DialogTitle>
+          </DialogHeader>
+          <View className="account-config-content">
+            <Text className="account-config-tip">
+              检测到您的请求涉及 {requiredPlatform === 'douyin' ? '抖音' : requiredPlatform === 'xiaohongshu' ? '小红书' : '微信公众号'} 平台，
+              需要先为分身绑定对应的账号才能继续。
+            </Text>
+            <View className="account-config-actions">
+              <Button
+                className="account-config-btn cancel"
+                onClick={() => setShowAccountConfigDialog(false)}
+              >
+                <Text className="account-config-btn-text">取消</Text>
+              </Button>
+              <Button
+                className="account-config-btn confirm"
+                onClick={() => {
+                  setShowAccountConfigDialog(false)
+                  // 跳转到账号配置页面
+                  const avatarName = avatar?.name || ''
+                  navigateTo({
+                    url: `/pages/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
+                  })
+                }}
+              >
+                <Text className="account-config-btn-text">去绑定账号</Text>
+              </Button>
+            </View>
+          </View>
         </DialogContent>
       </Dialog>
 
