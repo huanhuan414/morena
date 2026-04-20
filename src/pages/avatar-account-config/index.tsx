@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -82,25 +82,6 @@ export default function AvatarAccountConfigPage() {
       console.error('获取账号数据失败:', error)
       showToast({ title: '获取账号数据失败', icon: 'none' })
     }
-  }
-
-  const openModal = (account?: AvatarAccount) => {
-    if (account) {
-      setEditingAccount(account)
-      setPlatformIndex(PLATFORMS.findIndex(p => p.id === account.platform) || 0)
-      setAccountName(account.account_name || '')
-      setAppid(account.appid || '')
-      setAppkey(account.appkey || '')
-      setXiaohongshuUrl(account.account_url || '')
-    } else {
-      setEditingAccount(null)
-      setPlatformIndex(0)
-      setAccountName('')
-      setAppid('')
-      setAppkey('')
-      setXiaohongshuUrl('')
-    }
-    setShowModal(true)
   }
 
   const closeModal = () => {
@@ -296,7 +277,16 @@ export default function AvatarAccountConfigPage() {
         <View className="section">
           <View className="section-header">
             <Text className="section-title">已配置账号</Text>
-            <Button size="sm" className="add-btn" onClick={() => openModal()}>
+            <Button
+              size="sm"
+              className="add-btn"
+              onClick={() => {
+                console.log('[AvatarAccountConfig] 点击添加账号，跳转到新页面')
+                navigateTo({
+                  url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
+                })
+              }}
+            >
               <Plus size={16} />
               <Text className="add-btn-text">添加账号</Text>
             </Button>
@@ -330,7 +320,15 @@ export default function AvatarAccountConfigPage() {
                     </View>
                   </View>
                   <View className="account-actions">
-                    <View className="action-btn" onClick={() => openModal(account)}>
+                    <View
+                      className="action-btn"
+                      onClick={() => {
+                        console.log('[AvatarAccountConfig] 点击编辑账号，跳转到新页面')
+                        navigateTo({
+                          url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}&accountId=${account.id}`
+                        })
+                      }}
+                    >
                       <Pencil size={16} color="#1890ff" />
                       <Text className="action-text">编辑</Text>
                     </View>
