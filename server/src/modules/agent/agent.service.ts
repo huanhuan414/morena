@@ -48,6 +48,7 @@ import {
   GenerateVideoTool
 } from './tools/content-creation.tools'
 import {
+  ListAvatarAccountsTool,
   CheckPlatformConfigTool,
   PublishWechatMpTool,
   PublishXiaohongshuTool,
@@ -182,6 +183,7 @@ export class AgentService {
     this.tools.set('recommend_bgm', new RecommendBGMTool())
 
     // 平台发布工具
+    this.tools.set('list_avatar_accounts', new ListAvatarAccountsTool())
     this.tools.set('check_platform_config', new CheckPlatformConfigTool())
     this.tools.set('publish_wechat_mp', new PublishWechatMpTool())
     this.tools.set('publish_xiaohongshu', new PublishXiaohongshuTool())
@@ -1886,6 +1888,12 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
     else if (lowerTask.match(/订阅|升级|开通|购买套餐|套餐/)) {
       hints.push(`【任务解析】这是一个订阅套餐任务：
 请先使用 app_get_subscription 工具查看当前订阅状态，然后根据用户需求使用 app_subscribe 工具订阅套餐。`)
+      return hints.join('\n\n')
+    }
+    else if (lowerTask.match(/查看.*账号|我的.*账号|账号.*列表|账号.*配置|绑定.*账号|已绑定.*账号|配置.*平台/)) {
+      hints.push(`【任务解析】这是一个查看已配置账号列表任务：
+请使用 list_avatar_accounts 工具查询分身已绑定的所有第三方平台账号（抖音、小红书、微信公众号、B站、微博等）。
+参数示例：{ }`)
       return hints.join('\n\n')
     }
 

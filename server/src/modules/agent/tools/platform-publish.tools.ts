@@ -10,6 +10,79 @@ import { getSupabaseClient } from '../../../storage/database/supabase-client'
 import { Config, ImageGenerationClient } from 'coze-coding-dev-sdk'
 
 /**
+ * 查询分身账号列表工具
+ * 查询分身绑定的所有第三方平台账号（抖音、小红书、微信公众号等）
+ */
+@Injectable()
+export class ListAvatarAccountsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'list_avatar_accounts',
+    displayName: '查看分身绑定的平台账号',
+    description: '查询分身已绑定的所有第三方平台账号列表（抖音、小红书、微信公众号、B站、微博等）',
+    category: 'data_analysis',
+    paramsSchema: {}
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const client = getSupabaseClient()
+
+      // 查询分身绑定的所有平台账号
+      const { data, error } = await client
+        .from('avatar_accounts')
+        .select('*')
+        .eq('avatar_id', context.avatarId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        return { success: false, error: `查询账号列表失败: ${error.message}` }
+      }
+
+      // 平台名称映射
+      const platformNames: Record<string, string> = {
+        'douyin': '抖音',
+        'xiaohongshu': '小红书',
+        'wechat': '微信公众号',
+        'bilibili': 'B站',
+        'weibo': '微博'
+      }
+
+      // 格式化账号列表
+      const accounts = data.map(account => ({
+        platform: account.platform,
+        platform_name: platformNames[account.platform] || account.platform,
+        account_name: account.account_name || account.name || '未命名',
+        followers: account.followers || account.extra_info?.follower_count || 0,
+        total_works: account.total_works || account.extra_info?.aweme_count || account.extra_info?.notes_count || 0,
+        total_favorited: account.extra_info?.total_favorited || 0,
+        created_at: account.created_at,
+        // 详细信息
+        extra_info: account.extra_info ? {
+          nickname: account.extra_info.nickname,
+          avatar_url: account.extra_info.avatar_url,
+          signature: account.extra_info.signature,
+          aweme_count: account.extra_info.aweme_count,
+          notes_count: account.extra_info.notes_count,
+          follower_count: account.extra_info.follower_count,
+          total_favorited: account.extra_info.total_favorited
+        } : undefined
+      }))
+
+      return {
+        success: true,
+        data: {
+          accounts,
+          total: accounts.length,
+          platforms: accounts.map(a => a.platform_name).join('、') || '暂无绑定平台'
+        }
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+/**
  * 平台配置检查工具
  * 检查分身是否已绑定指定平台的账号
  */
