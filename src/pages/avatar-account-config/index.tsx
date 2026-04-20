@@ -283,19 +283,27 @@ export default function AvatarAccountConfigPage() {
         <View className="section">
           <View className="section-header">
             <Text className="section-title">已配置账号</Text>
-            <Button
-              size="sm"
-              className="add-btn"
+            <View
+              className="add-btn-wrapper"
               onClick={() => {
-                console.log('[AvatarAccountConfig] 点击添加账号，跳转到新页面')
-                navigateTo({
-                  url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
-                })
+                console.log('[AvatarAccountConfig] 点击添加账号')
+                console.log('[AvatarAccountConfig] avatarId:', avatarId)
+                console.log('[AvatarAccountConfig] avatarName:', avatarName)
+                showToast({ title: '正在跳转...', icon: 'none' })
+                setTimeout(() => {
+                  navigateTo({
+                    url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`,
+                    fail: (err) => {
+                      console.error('[AvatarAccountConfig] 跳转失败:', err)
+                      showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
+                    }
+                  })
+                }, 100)
               }}
             >
-              <Plus size={16} />
+              <Plus size={16} color="#fff" />
               <Text className="add-btn-text">添加账号</Text>
-            </Button>
+            </View>
           </View>
 
           {accounts.length === 0 ? (
@@ -329,9 +337,14 @@ export default function AvatarAccountConfigPage() {
                     <View
                       className="action-btn"
                       onClick={() => {
-                        console.log('[AvatarAccountConfig] 点击编辑账号，跳转到新页面')
+                        console.log('[AvatarAccountConfig] 点击编辑账号')
+                        console.log('[AvatarAccountConfig] accountId:', account.id)
                         navigateTo({
-                          url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}&accountId=${account.id}`
+                          url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}&accountId=${account.id}`,
+                          fail: (err) => {
+                            console.error('[AvatarAccountConfig] 编辑跳转失败:', err)
+                            showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
+                          }
                         })
                       }}
                     >
