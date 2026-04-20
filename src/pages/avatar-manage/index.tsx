@@ -516,13 +516,29 @@ export default function AvatarManagePage() {
                           <View
                             className="quick-entry-btn"
                             onClick={(e) => {
-                              console.log('[AvatarManage] 点击账号绑定按钮，avatarId:', avatar.id)
-                              console.log('[AvatarManage] avatarName:', avatar.name)
                               e.stopPropagation()
+                              const targetUrl = `/pages/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}`
+                              console.log('[AvatarManage] 点击账号绑定按钮')
+                              console.log('[AvatarManage] avatarId:', avatar.id)
+                              console.log('[AvatarManage] avatarName:', avatar.name)
+                              console.log('[AvatarManage] 目标URL:', targetUrl)
                               showToast({ title: '正在跳转到账号配置...', icon: 'none' })
-                              setTimeout(() => {
-                                navigateTo({ url: `/pages/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}` })
-                              }, 100)
+
+                              try {
+                                navigateTo({
+                                  url: targetUrl,
+                                  success: () => {
+                                    console.log('[AvatarManage] 跳转成功')
+                                  },
+                                  fail: (err) => {
+                                    console.error('[AvatarManage] 跳转失败:', err)
+                                    showToast({ title: `跳转失败: ${JSON.stringify(err)}`, icon: 'none' })
+                                  }
+                                })
+                              } catch (error) {
+                                console.error('[AvatarManage] navigateTo 异常:', error)
+                                showToast({ title: `跳转异常: ${String(error)}`, icon: 'none' })
+                              }
                             }}
                           >
                             <View className="quick-entry-icon">
