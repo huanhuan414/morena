@@ -143,16 +143,4 @@ export class TikHubService {
       }
     }
   }
-      console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
-
-      const errorMsg = error.response?.data?.message ||
-                      error.response?.data?.detail ||
-                      '请检查分享链接是否正确'
-
-      return {
-        success: false,
-        message: `获取失败: ${errorMsg}`,
-      }
-    }
-  }
 }
