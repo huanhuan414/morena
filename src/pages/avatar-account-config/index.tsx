@@ -183,7 +183,7 @@ export default function AvatarAccountConfigPage() {
             follower_count: userInfo.follower_count,
             following_count: userInfo.following_count,
             notes_count: userInfo.notes_count,
-            total_exposure: userInfo.total_exposure || 0,
+            total_favorited: userInfo.total_favorited || 0,
             interaction_count: userInfo.interaction_count || 0,
           })
           showToast({ title: '获取成功', icon: 'success' })
@@ -239,20 +239,8 @@ export default function AvatarAccountConfigPage() {
       data.followers = fetchedUserInfo.follower_count || 0
       data.total_works = fetchedUserInfo.aweme_count || fetchedUserInfo.notes_count || 0
 
-      // 获取总曝光数
-      data.total_exposure = fetchedUserInfo.total_exposure || 0
-
-      // 如果没有 total_exposure，尝试估算
-      if (!data.total_exposure) {
-        // 抖音：使用获赞数估算
-        if (fetchedUserInfo.total_favorited) {
-          data.total_exposure = fetchedUserInfo.total_favorited * 10
-        }
-        // 小红书：使用互动数估算
-        else if (fetchedUserInfo.interaction_count) {
-          data.total_exposure = fetchedUserInfo.interaction_count * 10
-        }
-      }
+      // 获取总获赞数
+      data.total_exposure = fetchedUserInfo.total_favorited || 0
 
       data.avg_likes_per_work = 0
       data.avg_comments_per_work = 0
@@ -419,7 +407,7 @@ export default function AvatarAccountConfigPage() {
                       <Text className="stat-value">{account.followers.toLocaleString()}</Text>
                     </View>
                     <View className="stat-item">
-                      <Text className="stat-label">总曝光</Text>
+                      <Text className="stat-label">总获赞</Text>
                       <Text className="stat-value">{account.total_exposure.toLocaleString()}</Text>
                     </View>
                     <View className="stat-item">
@@ -526,6 +514,12 @@ export default function AvatarAccountConfigPage() {
                         </View>
                         <View className="stat-item">
                           <Text className="stat-value">
+                            {fetchedUserInfo.total_favorited ? fetchedUserInfo.total_favorited.toLocaleString() : 0}
+                          </Text>
+                          <Text className="stat-label">总获赞</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">
                             {fetchedUserInfo.aweme_count ? fetchedUserInfo.aweme_count.toLocaleString() : 0}
                           </Text>
                           <Text className="stat-label">作品</Text>
@@ -585,6 +579,12 @@ export default function AvatarAccountConfigPage() {
                             {fetchedUserInfo.following_count ? fetchedUserInfo.following_count.toLocaleString() : 0}
                           </Text>
                           <Text className="stat-label">关注</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">
+                            {fetchedUserInfo.total_favorited ? fetchedUserInfo.total_favorited.toLocaleString() : 0}
+                          </Text>
+                          <Text className="stat-label">总获赞</Text>
                         </View>
                         <View className="stat-item">
                           <Text className="stat-value">
