@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -82,6 +82,28 @@ export default function AvatarAccountConfigPage() {
       console.error('获取账号数据失败:', error)
       showToast({ title: '获取账号数据失败', icon: 'none' })
     }
+  }
+
+  const openModal = (account?: AvatarAccount) => {
+    if (account) {
+      // 编辑模式
+      setEditingAccount(account)
+      setPlatformIndex(PLATFORMS.findIndex(p => p.id === account.platform) || 0)
+      setAccountName(account.account_name || '')
+      setAppid(account.appid || '')
+      setAppkey(account.appkey || '')
+      setXiaohongshuUrl(account.account_url || '')
+    } else {
+      // 添加模式
+      setEditingAccount(null)
+      setPlatformIndex(0)
+      setAccountName('')
+      setAppid('')
+      setAppkey('')
+      setXiaohongshuUrl('')
+    }
+    setFetchedUserInfo(null)
+    setShowModal(true)
   }
 
   const closeModal = () => {
@@ -286,19 +308,8 @@ export default function AvatarAccountConfigPage() {
             <View
               className="add-btn-wrapper"
               onClick={() => {
-                console.log('[AvatarAccountConfig] 点击添加账号')
-                console.log('[AvatarAccountConfig] avatarId:', avatarId)
-                console.log('[AvatarAccountConfig] avatarName:', avatarName)
-                showToast({ title: '正在跳转...', icon: 'none' })
-                setTimeout(() => {
-                  navigateTo({
-                    url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`,
-                    fail: (err) => {
-                      console.error('[AvatarAccountConfig] 跳转失败:', err)
-                      showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
-                    }
-                  })
-                }, 100)
+                console.log('[AvatarAccountConfig] 打开添加账号弹窗')
+                openModal()
               }}
             >
               <Plus size={16} color="#fff" />
@@ -337,15 +348,8 @@ export default function AvatarAccountConfigPage() {
                     <View
                       className="action-btn"
                       onClick={() => {
-                        console.log('[AvatarAccountConfig] 点击编辑账号')
-                        console.log('[AvatarAccountConfig] accountId:', account.id)
-                        navigateTo({
-                          url: `/pages/avatar-account-add/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}&accountId=${account.id}`,
-                          fail: (err) => {
-                            console.error('[AvatarAccountConfig] 编辑跳转失败:', err)
-                            showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
-                          }
-                        })
+                        console.log('[AvatarAccountConfig] 打开编辑账号弹窗')
+                        openModal(account)
                       }}
                     >
                       <Pencil size={16} color="#1890ff" />
