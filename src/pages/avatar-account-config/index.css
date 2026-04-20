@@ -27,20 +27,27 @@
 
 .header-left,
 .header-right {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--muted);
+  border: 2rpx solid var(--border);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .header-left:active {
-  background: rgba(0, 0, 0, 0.1);
-  transform: scale(0.95);
+  background: var(--accent);
+  transform: scale(0.92);
+  border-color: var(--accent);
+}
+
+.header-left:active > * {
+  color: #fff !important;
 }
 
 .header-title {
@@ -54,6 +61,11 @@
   font-size: 32rpx;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.header-back-icon {
+  color: var(--text-primary);
+  transition: color 0.3s ease;
 }
 
 /* ========== 内容区 ========== */

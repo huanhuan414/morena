@@ -257,8 +257,14 @@ export default function AvatarAccountConfigPage() {
     <View className="page-container">
       {/* 头部 */}
       <View className="header">
-        <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#333" />
+        <View
+          className="header-left"
+          onClick={() => {
+            console.log('[AvatarAccountConfig] 点击返回按钮')
+            navigateBack()
+          }}
+        >
+          <ArrowLeft size={26} className="header-back-icon" />
         </View>
         <View className="header-title">
           <Text className="header-title-text">{avatarName || '分身'} - 账号配置</Text>
