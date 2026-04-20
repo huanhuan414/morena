@@ -2434,7 +2434,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   async validatePlatformConfig(
     platform: PlatformType,
     configData: Record<string, any>
-  ): Promise<{ valid: boolean; message?: string; accountInfo?: any }> {
+  ): Promise<{ valid: boolean; message?: string; accountInfo?: any; serverIp?: string }> {
     console.log(`验证平台配置: ${platform}`, Object.keys(configData))
 
     try {
@@ -2461,7 +2461,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证微信公众号配置
    */
-  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string; accountInfo?: any }> {
+  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string; accountInfo?: any; serverIp?: string }> {
     const { app_id, app_secret } = configData
 
     if (!app_id || !app_secret) {
@@ -2487,12 +2487,19 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         const errorMessages: Record<number, string> = {
           40001: 'AppSecret错误或不属于该公众号，请检查AppSecret是否正确',
           40013: 'AppID不合法，请检查AppID是否正确',
-          40164: '服务器IP未加入白名单，请在公众平台后台配置IP白名单',
+          40164: '服务器IP未加入白名单，请在微信公众平台后台配置IP白名单：115.191.1.219（路径：设置与开发 -> 基本配置 -> IP白名单）',
           41004: '缺少AppSecret参数',
           48001: 'api功能未授权，请确认公众号已开通相关权限',
         }
         const msg = errorMessages[data.errcode] || `微信API错误: ${data.errmsg} (${data.errcode})`
-        return { valid: false, message: msg }
+
+        // 如果是 IP 白名单问题，添加服务器 IP
+        let serverIp: string | undefined
+        if (data.errcode === 40164) {
+          serverIp = '115.191.1.219'
+        }
+
+        return { valid: false, message: msg, serverIp }
       }
 
       if (!data.access_token) {

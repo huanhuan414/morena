@@ -698,6 +698,55 @@
   color: #dc2626;
 }
 
+/* ========== IP 白名单配置指引 ========== */
+.ip-whitelist-guide {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-md);
+  border: 2rpx solid #3b82f6;
+}
+
+.guide-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.guide-step {
+  font-size: 24rpx;
+  color: var(--text-primary);
+  line-height: 1.8;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.guide-step.highlight {
+  color: #2563eb;
+  font-weight: 600;
+  margin-top: 16rpx;
+}
+
+.guide-step .ip-address {
+  font-family: 'Courier New', monospace;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+}
+
+.guide-note {
+  font-size: 22rpx;
+  color: #6b7280;
+  margin-top: 16rpx;
+  display: block;
+  font-style: italic;
+}
+
 /* ========== 微信公众号信息展示 ========== */
 .wechat-account-info {
   margin-top: 24rpx;

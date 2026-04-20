@@ -63,6 +63,7 @@ export default function AvatarAccountConfigPage() {
     valid: boolean
     message: string
     accountInfo?: any
+    serverIp?: string
   } | null>(null)
 
   useLoad((options) => {
@@ -238,7 +239,8 @@ export default function AvatarAccountConfigPage() {
         setWechatValidationResult({
           valid: validation.valid,
           message: validation.message || (validation.valid ? '验证成功' : '验证失败'),
-          accountInfo: validation.accountInfo
+          accountInfo: validation.accountInfo,
+          serverIp: validation.serverIp
         })
 
         // 如果有账号信息，更新 fetchedUserInfo
@@ -814,6 +816,22 @@ export default function AvatarAccountConfigPage() {
                       <Text className="validation-message">
                         {wechatValidationResult.valid ? '✅ ' : '❌ '}{wechatValidationResult.message}
                       </Text>
+
+                      {/* 如果是 IP 白名单问题，显示配置指引 */}
+                      {!wechatValidationResult.valid && wechatValidationResult.serverIp && (
+                        <View className="ip-whitelist-guide">
+                          <Text className="guide-title">📋 配置 IP 白名单指引：</Text>
+                          <Text className="guide-step">1. 登录微信公众平台</Text>
+                          <Text className="guide-step">2. 进入「设置与开发」→「基本配置」</Text>
+                          <Text className="guide-step">3. 找到「IP白名单」设置</Text>
+                          <Text className="guide-step">4. 点击「配置」按钮</Text>
+                          <Text className="guide-step highlight">
+                            5. 添加服务器 IP：<Text className="ip-address">{wechatValidationResult.serverIp}</Text>
+                          </Text>
+                          <Text className="guide-step">6. 点击「确定」保存</Text>
+                          <Text className="guide-note">配置完成后，再次点击「验证」按钮即可</Text>
+                        </View>
+                      )}
 
                       {/* 显示公众号详细信息 */}
                       {wechatValidationResult.valid && wechatValidationResult.accountInfo && (
