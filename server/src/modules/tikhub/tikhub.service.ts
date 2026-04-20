@@ -22,7 +22,7 @@ export class TikHubService {
 
   /**
    * 根据抖音号获取用户信息
-   * @param douyinId 抖音号或sec_user_id
+   * @param douyinId 抖音号
    * @returns 用户信息
    */
   async getDouyinUserInfo(douyinId: string) {
@@ -30,9 +30,11 @@ export class TikHubService {
       console.log('[TikHubService] 获取抖音用户信息，输入值:', douyinId)
       console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // 使用 POST 请求，参数名为 sec_user_id
-      const response = await this.axios.post('/douyin/web/handler_user_profile_v2', {
-        sec_user_id: douyinId,
+      // 使用 GET 请求，参数名为 unique_id
+      const response = await this.axios.get('/douyin/web/handler_user_profile_v2', {
+        params: {
+          unique_id: douyinId,
+        },
       })
 
       console.log('[TikHubService] 抖音用户信息响应状态:', response.status)
@@ -68,7 +70,7 @@ export class TikHubService {
       const errorMsg = error.response?.data?.message ||
                       error.response?.data?.msg ||
                       error.response?.data?.detail ||
-                      '请检查抖音号/SecUid是否正确'
+                      '请检查抖音号是否正确'
 
       return {
         success: false,
