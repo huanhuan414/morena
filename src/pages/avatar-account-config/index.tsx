@@ -2,10 +2,10 @@
 // @ts-nocheck
 import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Picker } from '@tarojs/components'
+import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Save, Trash2, ArrowLeft } from 'lucide-react-taro'
+import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader2 } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
@@ -50,6 +50,10 @@ export default function AvatarAccountConfigPage() {
 
   // 小红书专用字段
   const [xiaohongshuUrl, setXiaohongshuUrl] = useState<string>('')
+
+  // 获取用户信息相关状态
+  const [isFetchingUserInfo, setIsFetchingUserInfo] = useState(false)
+  const [fetchedUserInfo, setFetchedUserInfo] = useState<any>(null)
 
   useLoad((options) => {
     if (options.avatarId) {
@@ -105,6 +109,79 @@ export default function AvatarAccountConfigPage() {
     setAppid('')
     setAppkey('')
     setXiaohongshuUrl('')
+    setFetchedUserInfo(null)
+  }
+
+  // 获取用户信息
+  const fetchUserInfo = async () => {
+    const platformId = PLATFORMS[platformIndex].id
+
+    if (platformId === 'douyin') {
+      // 抖音：根据抖音号获取用户信息
+      if (!accountName) {
+        showToast({ title: '请输入抖音号', icon: 'none' })
+        return
+      }
+
+      try {
+        setIsFetchingUserInfo(true)
+        console.log('[AvatarAccountConfig] 开始获取抖音用户信息，抖音号:', accountName)
+
+        const res = await Network.request({
+          url: '/api/tikhub/douyin/user-info',
+          method: 'POST',
+          data: { douyinId: accountName }
+        })
+
+        console.log('[AvatarAccountConfig] 抖音用户信息响应:', res.data)
+
+        if (res.data?.code === 200) {
+          const userInfo = res.data.data
+          setFetchedUserInfo(userInfo)
+          showToast({ title: '获取成功', icon: 'success' })
+        } else {
+          showToast({ title: res.data?.message || '获取失败', icon: 'none' })
+        }
+      } catch (error) {
+        console.error('[AvatarAccountConfig] 获取抖音用户信息失败:', error)
+        showToast({ title: '获取失败，请重试', icon: 'none' })
+      } finally {
+        setIsFetchingUserInfo(false)
+      }
+
+    } else if (platformId === 'xiaohongshu') {
+      // 小红书：根据分享链接获取用户信息
+      if (!xiaohongshuUrl) {
+        showToast({ title: '请输入小红书分享链接', icon: 'none' })
+        return
+      }
+
+      try {
+        setIsFetchingUserInfo(true)
+        console.log('[AvatarAccountConfig] 开始获取小红书用户信息，分享链接:', xiaohongshuUrl)
+
+        const res = await Network.request({
+          url: '/api/tikhub/xiaohongshu/user-info',
+          method: 'POST',
+          data: { shareUrl: xiaohongshuUrl }
+        })
+
+        console.log('[AvatarAccountConfig] 小红书用户信息响应:', res.data)
+
+        if (res.data?.code === 200) {
+          const userInfo = res.data.data
+          setFetchedUserInfo(userInfo)
+          showToast({ title: '获取成功', icon: 'success' })
+        } else {
+          showToast({ title: res.data?.message || '获取失败', icon: 'none' })
+        }
+      } catch (error) {
+        console.error('[AvatarAccountConfig] 获取小红书用户信息失败:', error)
+        showToast({ title: '获取失败，请重试', icon: 'none' })
+      } finally {
+        setIsFetchingUserInfo(false)
+      }
+    }
   }
 
   const saveAccount = async () => {
@@ -296,13 +373,55 @@ export default function AvatarAccountConfigPage() {
                 <>
                   <View className="form-item">
                     <Text className="form-label required">抖音号</Text>
-                    <Input
-                      className="form-input"
-                      placeholder="请输入抖音号（用户名）"
-                      value={accountName}
-                      onInput={(e) => setAccountName(e.detail.value)}
-                    />
+                    <View className="input-with-action">
+                      <Input
+                        className="form-input"
+                        placeholder="请输入抖音号（用户名）"
+                        value={accountName}
+                        onInput={(e) => setAccountName(e.detail.value)}
+                      />
+                      <Button
+                        className="fetch-info-btn"
+                        size="small"
+                        onClick={fetchUserInfo}
+                        disabled={isFetchingUserInfo || !accountName}
+                      >
+                        {isFetchingUserInfo ? <Loader2 className="animate-spin" /> : <Search size={16} />}
+                        <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
+                      </Button>
+                    </View>
                   </View>
+
+                  {/* 显示获取到的用户信息 */}
+                  {fetchedUserInfo && (
+                    <View className="user-info-card">
+                      <View className="user-info-header">
+                        {fetchedUserInfo.avatar_url && (
+                          <Image className="user-avatar" src={fetchedUserInfo.avatar_url} mode="aspectFill" />
+                        )}
+                        <View className="user-info-content">
+                          <Text className="user-name">{fetchedUserInfo.nickname || accountName}</Text>
+                          {fetchedUserInfo.signature && (
+                            <Text className="user-desc">{fetchedUserInfo.signature}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View className="user-stats">
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.follower_count || 0}</Text>
+                          <Text className="stat-label">粉丝</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.following_count || 0}</Text>
+                          <Text className="stat-label">关注</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.aweme_count || 0}</Text>
+                          <Text className="stat-label">作品</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </>
               )}
 
@@ -310,13 +429,55 @@ export default function AvatarAccountConfigPage() {
                 <>
                   <View className="form-item">
                     <Text className="form-label required">个人主页链接</Text>
-                    <Input
-                      className="form-input"
-                      placeholder="请输入小红书个人主页分享的链接"
-                      value={xiaohongshuUrl}
-                      onInput={(e) => setXiaohongshuUrl(e.detail.value)}
-                    />
+                    <View className="input-with-action">
+                      <Input
+                        className="form-input"
+                        placeholder="请输入小红书个人主页分享的链接"
+                        value={xiaohongshuUrl}
+                        onInput={(e) => setXiaohongshuUrl(e.detail.value)}
+                      />
+                      <Button
+                        className="fetch-info-btn"
+                        size="small"
+                        onClick={fetchUserInfo}
+                        disabled={isFetchingUserInfo || !xiaohongshuUrl}
+                      >
+                        {isFetchingUserInfo ? <Loader2 className="animate-spin" /> : <Search size={16} />}
+                        <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
+                      </Button>
+                    </View>
                   </View>
+
+                  {/* 显示获取到的用户信息 */}
+                  {fetchedUserInfo && (
+                    <View className="user-info-card">
+                      <View className="user-info-header">
+                        {fetchedUserInfo.avatar_url && (
+                          <Image className="user-avatar" src={fetchedUserInfo.avatar_url} mode="aspectFill" />
+                        )}
+                        <View className="user-info-content">
+                          <Text className="user-name">{fetchedUserInfo.nickname}</Text>
+                          {fetchedUserInfo.desc && (
+                            <Text className="user-desc">{fetchedUserInfo.desc}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View className="user-stats">
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.follower_count || 0}</Text>
+                          <Text className="stat-label">粉丝</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.following_count || 0}</Text>
+                          <Text className="stat-label">关注</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">{fetchedUserInfo.notes_count || 0}</Text>
+                          <Text className="stat-label">笔记</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </>
               )}
 

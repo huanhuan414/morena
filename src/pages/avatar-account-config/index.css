@@ -461,6 +461,112 @@
   }
 }
 
+/* ========== 输入框带操作按钮 ========== */
+.input-with-action {
+  display: flex;
+  gap: 12rpx;
+  align-items: stretch;
+}
+
+.input-with-action .form-input {
+  flex: 1;
+}
+
+.fetch-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  padding: 0 16rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 24rpx;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fetch-info-btn:disabled {
+  opacity: 0.5;
+}
+
+/* ========== 用户信息卡片 ========== */
+.user-info-card {
+  background: var(--secondary);
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  margin-top: 20rpx;
+  border: 1rpx solid var(--border);
+}
+
+.user-info-header {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.user-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  border: 2rpx solid var(--border);
+  flex-shrink: 0;
+}
+
+.user-info-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  justify-content: center;
+}
+
+.user-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.user-desc {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.user-stats {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--border);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.stat-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 /* ========== 语义色类 ========== */
 .cancel {
   padding: 12rpx 24rpx;

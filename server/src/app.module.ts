@@ -26,6 +26,7 @@ import { AsrModule } from './modules/asr/asr.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { VideoModule } from './modules/video/video.module';
 import { TestModule } from './modules/test/test.module';
+import { TikHubModule } from './modules/tikhub/tikhub.module';
 
 @Module({
   imports: [
@@ -53,7 +54,8 @@ import { TestModule } from './modules/test/test.module';
     AsrModule,
     RecommendationModule,
     VideoModule,
-    TestModule
+    TestModule,
+    TikHubModule
   ],
   controllers: [AppController],
   providers: [AppService],
