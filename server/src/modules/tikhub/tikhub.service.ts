@@ -40,19 +40,21 @@ export class TikHubService {
       console.log('[TikHubService] 抖音用户信息响应状态:', response.status)
       console.log('[TikHubService] 抖音用户信息响应数据:', JSON.stringify(response.data, null, 2))
 
-      if (response.data?.code === 200 && response.data?.data) {
-        const data = response.data.data
+      if (response.data?.code === 200 && response.data?.data?.user_info) {
+        const userInfo = response.data.data.user_info
+
         return {
           success: true,
           data: {
-            sec_uid: data.sec_uid,
-            nickname: data.nickname,
-            avatar_url: data.avatar_larger?.url_list?.[0] || data.avatar_thumb?.url_list?.[0],
-            signature: data.signature,
-            follower_count: data.follower_count || 0,
-            following_count: data.following_count || 0,
-            aweme_count: data.aweme_count || 0,
-            total_favorited: data.total_favorited || 0,
+            sec_uid: userInfo.sec_uid,
+            nickname: userInfo.nickname,
+            avatar_url: userInfo.avatar_medium?.url_list?.[0] || userInfo.avatar_thumb?.url_list?.[0] || '',
+            signature: userInfo.signature || '',
+            follower_count: userInfo.mplatform_followers_count || userInfo.follower_count || 0,
+            following_count: userInfo.following_count || 0,
+            aweme_count: userInfo.aweme_count || 0,
+            total_favorited: parseInt(userInfo.total_favorited || '0', 10),
+            favoriting_count: userInfo.favoriting_count || 0,
           },
         }
       }

@@ -430,15 +430,21 @@ export default function AvatarAccountConfigPage() {
                       </View>
                       <View className="user-stats">
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.follower_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.follower_count ? fetchedUserInfo.follower_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">粉丝</Text>
                         </View>
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.following_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.following_count ? fetchedUserInfo.following_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">关注</Text>
                         </View>
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.aweme_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.aweme_count ? fetchedUserInfo.aweme_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">作品</Text>
                         </View>
                       </View>
@@ -486,15 +492,21 @@ export default function AvatarAccountConfigPage() {
                       </View>
                       <View className="user-stats">
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.follower_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.follower_count ? fetchedUserInfo.follower_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">粉丝</Text>
                         </View>
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.following_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.following_count ? fetchedUserInfo.following_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">关注</Text>
                         </View>
                         <View className="stat-item">
-                          <Text className="stat-value">{fetchedUserInfo.notes_count || 0}</Text>
+                          <Text className="stat-value">
+                            {fetchedUserInfo.notes_count ? fetchedUserInfo.notes_count.toLocaleString() : 0}
+                          </Text>
                           <Text className="stat-label">笔记</Text>
                         </View>
                       </View>
