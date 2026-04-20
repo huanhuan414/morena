@@ -96,7 +96,7 @@ export default function AvatarOrdersPage() {
       <View className="avatar-orders-page">
         <View className="page-header">
           <View className="header-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
+            <ArrowLeft size={24} color="rgba(255,255,255,0.9)" />
           </View>
           <Text className="header-title">商单管理</Text>
           <View className="header-right" />

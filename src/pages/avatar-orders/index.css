@@ -47,7 +47,19 @@
 .header-left {
   display: flex;
   align-items: center;
-  padding: 8rpx;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5rpx solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-left:active {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.3);
+  transform: scale(0.92);
 }
 
 .header-right {
