@@ -174,7 +174,18 @@ export default function AvatarAccountConfigPage() {
 
         if (res.data?.code === 200 && res.data?.data) {
           const userInfo = res.data.data
-          setFetchedUserInfo(userInfo)
+
+          // 将小红书的数据结构转换为统一格式
+          setFetchedUserInfo({
+            nickname: userInfo.nickname,
+            avatar_url: userInfo.avatar_url,
+            signature: userInfo.desc,
+            follower_count: userInfo.follower_count,
+            following_count: userInfo.following_count,
+            notes_count: userInfo.notes_count,
+            total_exposure: userInfo.total_exposure || 0,
+            interaction_count: userInfo.interaction_count || 0,
+          })
           showToast({ title: '获取成功', icon: 'success' })
         } else {
           showToast({ title: res.data?.message || '获取失败，请检查分享链接是否正确', icon: 'none' })
@@ -227,7 +238,22 @@ export default function AvatarAccountConfigPage() {
       console.log('[AvatarAccountConfig] 使用获取到的用户信息:', fetchedUserInfo)
       data.followers = fetchedUserInfo.follower_count || 0
       data.total_works = fetchedUserInfo.aweme_count || fetchedUserInfo.notes_count || 0
-      data.total_exposure = 0
+
+      // 获取总曝光数
+      data.total_exposure = fetchedUserInfo.total_exposure || 0
+
+      // 如果没有 total_exposure，尝试估算
+      if (!data.total_exposure) {
+        // 抖音：使用获赞数估算
+        if (fetchedUserInfo.total_favorited) {
+          data.total_exposure = fetchedUserInfo.total_favorited * 10
+        }
+        // 小红书：使用互动数估算
+        else if (fetchedUserInfo.interaction_count) {
+          data.total_exposure = fetchedUserInfo.interaction_count * 10
+        }
+      }
+
       data.avg_likes_per_work = 0
       data.avg_comments_per_work = 0
       data.avg_shares_per_work = 0
@@ -239,6 +265,8 @@ export default function AvatarAccountConfigPage() {
         signature: fetchedUserInfo.signature || '',
         following_count: fetchedUserInfo.following_count || 0,
         sec_uid: fetchedUserInfo.sec_uid || '',
+        total_favorited: fetchedUserInfo.total_favorited || 0,
+        interaction_count: fetchedUserInfo.interaction_count || 0,
       })
     } else {
       // 没有获取用户信息，使用默认值
@@ -396,7 +424,7 @@ export default function AvatarAccountConfigPage() {
                     </View>
                     <View className="stat-item">
                       <Text className="stat-label">作品数</Text>
-                      <Text className="stat-value">{account.total_works}</Text>
+                      <Text className="stat-value">{account.total_works.toLocaleString()}</Text>
                     </View>
                   </View>
                   <View className="account-actions">
