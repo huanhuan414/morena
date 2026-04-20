@@ -2434,7 +2434,7 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   async validatePlatformConfig(
     platform: PlatformType,
     configData: Record<string, any>
-  ): Promise<{ valid: boolean; error?: string; message?: string }> {
+  ): Promise<{ valid: boolean; message?: string; accountInfo?: any }> {
     console.log(`验证平台配置: ${platform}`, Object.keys(configData))
 
     try {
@@ -2450,30 +2450,30 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         case 'douyin':
           return await this.validateDouyinConfig(configData)
         default:
-          return { valid: false, error: '不支持的平台类型' }
+          return { valid: false, message: '不支持的平台类型' }
       }
     } catch (err: any) {
       console.error('验证配置失败:', err)
-      return { valid: false, error: `验证失败: ${err.message}` }
+      return { valid: false, message: `验证失败: ${err.message}` }
     }
   }
 
   /**
    * 验证微信公众号配置
    */
-  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string; accountInfo?: any }> {
+  private async validateWechatMpConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string; accountInfo?: any }> {
     const { app_id, app_secret } = configData
 
     if (!app_id || !app_secret) {
-      return { valid: false, error: '请填写AppID和AppSecret' }
+      return { valid: false, message: '请填写AppID和AppSecret' }
     }
 
     if (!app_id.startsWith('wx')) {
-      return { valid: false, error: 'AppID格式错误，应以wx开头' }
+      return { valid: false, message: 'AppID格式错误，应以wx开头' }
     }
 
     if (app_secret.length !== 32) {
-      return { valid: false, error: 'AppSecret格式错误，应为32位字符' }
+      return { valid: false, message: 'AppSecret格式错误，应为32位字符' }
     }
 
     // 调用微信API验证
@@ -2492,11 +2492,11 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
           48001: 'api功能未授权，请确认公众号已开通相关权限',
         }
         const msg = errorMessages[data.errcode] || `微信API错误: ${data.errmsg} (${data.errcode})`
-        return { valid: false, error: msg }
+        return { valid: false, message: msg }
       }
 
       if (!data.access_token) {
-        return { valid: false, error: '验证失败，请检查配置' }
+        return { valid: false, message: '验证失败，请检查配置' }
       }
 
       const accessToken = data.access_token
@@ -2568,24 +2568,24 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
         accountInfo
       }
     } catch (err: any) {
-      return { valid: false, error: `API调用失败: ${err.message}` }
+      return { valid: false, message: `API调用失败: ${err.message}` }
     }
   }
 
   /**
    * 验证小红书配置
    */
-  private async validateXiaohongshuConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateXiaohongshuConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string }> {
     const { cookie } = configData
 
     if (!cookie || cookie.length < 50) {
-      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+      return { valid: false, message: 'Cookie格式不正确，请确保复制了完整的Cookie' }
     }
 
     // 小红书没有官方API，只能做基本的格式验证
     // 检查Cookie中是否包含必要的字段
     if (!cookie.includes('web_session') && !cookie.includes('webId')) {
-      return { valid: false, error: 'Cookie可能无效，请确保已登录小红书并正确复制Cookie' }
+      return { valid: false, message: 'Cookie可能无效，请确保已登录小红书并正确复制Cookie' }
     }
 
     return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
@@ -2594,24 +2594,24 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证B站配置
    */
-  private async validateBilibiliConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateBilibiliConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string }> {
     const { sessdata, bili_jct } = configData
 
     if (!sessdata) {
-      return { valid: false, error: '请填写SESSDATA' }
+      return { valid: false, message: '请填写SESSDATA' }
     }
 
     if (!bili_jct) {
-      return { valid: false, error: '请填写bili_jct' }
+      return { valid: false, message: '请填写bili_jct' }
     }
 
     // B站没有官方API，只能做基本的格式验证
     if (sessdata.length < 20) {
-      return { valid: false, error: 'SESSDATA格式不正确' }
+      return { valid: false, message: 'SESSDATA格式不正确' }
     }
 
     if (bili_jct.length !== 32) {
-      return { valid: false, error: 'bili_jct格式不正确，应为32位' }
+      return { valid: false, message: 'bili_jct格式不正确，应为32位' }
     }
 
     return { valid: true, message: '配置格式验证通过（实际有效性需发布时验证）' }
@@ -2620,16 +2620,16 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证微博配置
    */
-  private async validateWeiboConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateWeiboConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string }> {
     const { cookie } = configData
 
     if (!cookie || cookie.length < 50) {
-      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+      return { valid: false, message: 'Cookie格式不正确，请确保复制了完整的Cookie' }
     }
 
     // 微博没有官方API，只能做基本的格式验证
     if (!cookie.includes('SUB') && !cookie.includes('ALF')) {
-      return { valid: false, error: 'Cookie可能无效，请确保已登录微博并正确复制Cookie' }
+      return { valid: false, message: 'Cookie可能无效，请确保已登录微博并正确复制Cookie' }
     }
 
     return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
@@ -2638,16 +2638,16 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证抖音配置
    */
-  private async validateDouyinConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateDouyinConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string }> {
     const { cookie } = configData
 
     if (!cookie || cookie.length < 50) {
-      return { valid: false, error: 'Cookie格式不正确，请确保复制了完整的Cookie' }
+      return { valid: false, message: 'Cookie格式不正确，请确保复制了完整的Cookie' }
     }
 
     // 抖音没有官方API，只能做基本的格式验证
     if (!cookie.includes('sessionid') && !cookie.includes('passport_csrf_token')) {
-      return { valid: false, error: 'Cookie可能无效，请确保已登录抖音创作者平台并正确复制Cookie' }
+      return { valid: false, message: 'Cookie可能无效，请确保已登录抖音创作者平台并正确复制Cookie' }
     }
 
     return { valid: true, message: 'Cookie格式验证通过（实际有效性需发布时验证）' }
@@ -2656,11 +2656,11 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
   /**
    * 验证视频号配置
    */
-  private async validateWechatVideoConfig(configData: Record<string, any>): Promise<{ valid: boolean; error?: string; message?: string }> {
+  private async validateWechatVideoConfig(configData: Record<string, any>): Promise<{ valid: boolean; message?: string }> {
     const { app_id, app_secret } = configData
 
     if (!app_id || !app_secret) {
-      return { valid: false, error: '请填写AppID和AppSecret' }
+      return { valid: false, message: '请填写AppID和AppSecret' }
     }
 
     // 视频号API目前在内测阶段，暂时只能做格式验证
