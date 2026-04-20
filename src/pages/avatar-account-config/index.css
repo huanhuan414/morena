@@ -333,6 +333,14 @@
   color: var(--text-muted);
 }
 
+.form-tip {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  margin-top: 8rpx;
+  line-height: 1.5;
+}
+
 .form-input:focus {
   border-color: var(--primary);
   outline: none;

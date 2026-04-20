@@ -397,7 +397,7 @@ export default function AvatarAccountConfigPage() {
                     <View className="input-with-action">
                       <Input
                         className="form-input"
-                        placeholder="请输入抖音号或SecUid"
+                        placeholder="请输入抖音号（如：67377862593）或 SecUid"
                         value={accountName}
                         onInput={(e) => setAccountName(e.detail.value)}
                       />
@@ -411,6 +411,7 @@ export default function AvatarAccountConfigPage() {
                         <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
                       </Button>
                     </View>
+                    <Text className="form-tip">提示：输入抖音号（纯数字）或 SecUid（以 MS4wLjABAAAA 开头）均可</Text>
                   </View>
 
                   {/* 显示获取到的用户信息 */}
