@@ -635,23 +635,15 @@ export default function AvatarAccountConfigPage() {
                 <>
                   <View className="form-item">
                     <Text className="form-label required">个人主页链接</Text>
-                    <View className="input-with-action">
+                    <View className="input-wrapper">
                       <Input
                         className="form-input"
                         placeholder="请输入小红书个人主页分享的链接"
                         value={xiaohongshuUrl}
                         onInput={(e) => setXiaohongshuUrl(e.detail.value)}
                       />
-                      <Button
-                        className="fetch-info-btn"
-                        size="small"
-                        onClick={fetchUserInfo}
-                        disabled={isFetchingUserInfo || !xiaohongshuUrl}
-                      >
-                        {isFetchingUserInfo ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
-                        <Text>{isFetchingUserInfo ? '获取中...' : '获取信息'}</Text>
-                      </Button>
                     </View>
+                    <Text className="form-tip warning">⚠️ 小红书信息获取功能暂时不可用，请手动输入账号名称后保存</Text>
                   </View>
 
                   {/* 显示获取到的用户信息 */}

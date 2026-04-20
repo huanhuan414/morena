@@ -370,6 +370,10 @@
   line-height: 1.5;
 }
 
+.form-tip.warning {
+  color: #f59e0b;
+}
+
 .form-input:focus {
   border-color: var(--primary);
   outline: none;

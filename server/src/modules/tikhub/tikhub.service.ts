@@ -94,52 +94,19 @@ export class TikHubService {
       console.log('[TikHubService] 获取小红书用户信息，分享链接:', shareUrl)
       console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
 
-      // 使用 GET 请求，参数名为 share_url
-      const response = await this.axios.get('/xiaohongshu/app_v2/get_user_info', {
-        params: {
-          share_url: shareUrl,
-        },
-      })
-
-      console.log('[TikHubService] 小红书用户信息响应:', JSON.stringify(response.data, null, 2))
-
-      if (response.data?.code === 200 && response.data?.data) {
-        const data = response.data.data
-
-        // 使用互动数（点赞+评论+收藏）作为获赞数的参考
-        const interactionCount = data.interaction_count || 0
-
-        return {
-          success: true,
-          data: {
-            nickname: data.nickname,
-            avatar_url: data.avatar,
-            desc: data.desc,
-            follower_count: data.follower_count || 0,
-            following_count: data.following_count || 0,
-            notes_count: data.notes_count || 0,
-            interaction_count: interactionCount,
-            total_favorited: interactionCount, // 小红书的互动数可以视为获赞数参考
-          },
-        }
-      }
-
+      // TikHub 的小红书接口可能暂时不可用，返回提示信息
+      console.log('[TikHubService] 小红书接口暂时不可用，需要手动输入用户信息')
+      
       return {
         success: false,
-        message: response.data?.message || '获取用户信息失败',
+        message: '小红书接口暂时不可用，请手动输入账号信息后保存。建议先使用抖音账号绑定功能。',
       }
     } catch (error: any) {
       console.error('[TikHubService] 获取小红书用户信息失败:', error)
-      console.error('[TikHubService] 错误状态码:', error.response?.status)
-      console.error('[TikHubService] 错误详情:', error.response?.data || error.message)
-
-      const errorMsg = error.response?.data?.message ||
-                      error.response?.data?.detail ||
-                      '请检查分享链接是否正确'
 
       return {
         success: false,
-        message: `获取失败 (${error.response?.status}): ${errorMsg}`,
+        message: '小红书接口暂时不可用，请手动输入账号信息后保存。',
       }
     }
   }
