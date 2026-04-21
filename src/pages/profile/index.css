@@ -55,7 +55,7 @@
    ======================================== */
 .profile-bg {
   position: relative;
-  height: 320rpx; /* 从420rpx减少到320rpx */
+  height: 260rpx; /* 从320rpx减少到260rpx */
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(236, 72, 153, 0.12) 50%, rgba(34, 211, 238, 0.15) 100%);
   overflow: hidden;
   animation: bgExpand 1.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -67,7 +67,7 @@
     opacity: 0;
   }
   to {
-    height: 320rpx;
+    height: 260rpx;
     opacity: 1;
   }
 }
@@ -97,8 +97,8 @@
    ======================================== */
 .user-card {
   position: relative;
-  margin: -120rpx 32rpx 36rpx; /* 从-200rpx改为-120rpx */
-  padding: 32rpx 28rpx 28rpx; /* 从44rpx 36rpx 36rpx改为32rpx 28rpx 28rpx */
+  margin: -100rpx 32rpx 28rpx; /* 从-120rpx改为-100rpx */
+  padding: 28rpx 24rpx 24rpx; /* 从32rpx 28rpx 28rpx改为28rpx 24rpx 24rpx */
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(30rpx);
   border-radius: var(--radius-xl);
@@ -203,6 +203,14 @@
   animation: badgePop 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.6s both;
 }
 
+.level-badge-text {
+  font-size: 18rpx; /* 从20rpx改为18rpx */
+  font-weight: 700; /* 从800改为700，减少粗细 */
+  color: rgba(255, 255, 255, 1); /* 确保完全不透明 */
+  letter-spacing: 0.5rpx;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.2); /* 添加文字阴影 */
+}
+
 @keyframes badgePop {
   from {
     opacity: 0;
@@ -258,6 +266,11 @@
   border: 1.5rpx solid rgba(99, 102, 241, 0.25);
   box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-btn .settings-icon {
+  color: rgba(255, 255, 255, 0.95) !important; /* 从0.6改为0.95，更清晰 */
+  filter: drop-shadow(0 1rpx 2rpx rgba(0, 0, 0, 0.3)); /* 添加阴影 */
 }
 
 .settings-btn:active {

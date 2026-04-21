@@ -757,20 +757,28 @@ export class ChatService {
 
   private async addAvatarExp(avatarId: string, exp: number) {
     const client = getSupabaseClient()
-    
+
     const { data: avatar } = await client
       .from('avatars')
       .select('exp, level')
       .eq('id', avatarId)
       .single()
-    
+
     if (avatar) {
       const newExp = (avatar.exp || 0) + exp
-      const newLevel = Math.floor(newExp / 100) + 1
-      
+      // 🔴 修复：添加最大等级限制（Lv.10）
+      const calculatedLevel = Math.floor(newExp / 100) + 1
+      const newLevel = Math.min(calculatedLevel, 10) // 最高等级为 Lv.10
+
+      // 如果已达到最高等级，只更新经验值，不更新等级
+      const updateData: { exp: number; level?: number } = { exp: newExp }
+      if (newLevel > (avatar.level || 1)) {
+        updateData.level = newLevel
+      }
+
       await client
         .from('avatars')
-        .update({ exp: newExp, level: newLevel })
+        .update(updateData)
         .eq('id', avatarId)
     }
   }
