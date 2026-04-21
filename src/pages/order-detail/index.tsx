@@ -18,12 +18,12 @@ interface Order {
   budget: number
   status: string
   expected_quantity?: number
+  deadline?: string
   requirements: {
     contentType?: string
     platforms?: string[]
     targetAudience?: string
     expectedResults?: string
-    deadline?: string
     requiredSkills?: string[]
   }
   result?: {
@@ -439,7 +439,7 @@ export default function OrderDetailPage() {
             <View className="meta-item">
               <Calendar size={16} color="#00f5ff" />
               <Text className="meta-value">
-                {order.requirements?.deadline || new Date(order.created_at).toLocaleDateString()}
+                {order.deadline || new Date(order.created_at).toLocaleDateString()}
               </Text>
             </View>
             <View className="meta-item">
@@ -532,12 +532,12 @@ export default function OrderDetailPage() {
                       </View>
                     </View>
                   )}
-                  {order.requirements.deadline && (
+                  {order.deadline && (
                     <View className="requirement-item">
                       <Text className="req-label block">截止日期</Text>
                       <View className="req-value-wrapper">
                         <Clock size={16} color="#f59e0b" />
-                        <Text className="req-value block">{order.requirements.deadline}</Text>
+                        <Text className="req-value block">{order.deadline}</Text>
                       </View>
                     </View>
                   )}
