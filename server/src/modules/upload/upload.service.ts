@@ -174,7 +174,7 @@ export class UploadService {
 3. 确认 Bucket 的跨域配置（CORS）已设置
 
 解决方案：
-登录火山引擎 TOS 控制台 -> Bucket "morina-ai" -> 权限管理 -> 设置 Bucket 权限为"私有"或"公共读"
+登录火山引擎 TOS 控制台 -> Bucket "${this.bucketName}" -> 权限管理 -> 设置 Bucket 权限为"私有"或"公共读"
 并确保 Access Key 有该 Bucket 的读写权限`)
         }
       }
