@@ -2234,59 +2234,132 @@ export default function MindChatPage() {
       return null
     })()
 
-    // 检测分身列表数据
+    // 检测分身列表数据（支持 agent_result 和 task_state 两种结构）
     const hasAvatarList = (() => {
+      // 优先检查 agent_result（新消息）
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
-        return steps.some((step: ReActStep) =>
+        const found = steps.some((step: ReActStep) =>
           step.action === 'app_list_avatars' && step.observation?.data?.avatars
         )
+        if (found) return true
       }
+
+      // 检查 task_state.progressHistory（历史消息）
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const found = progressHistory.some((item: any) =>
+          item.action === 'observation' &&
+          item.data?.action === 'app_list_avatars' &&
+          item.data?.data?.avatars
+        )
+        return found
+      }
+
       return false
     })()
 
-    // 检测用户好友列表数据
+    // 检测用户好友列表数据（支持 agent_result 和 task_state 两种结构）
     const hasUserFriendList = (() => {
+      // 优先检查 agent_result（新消息）
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
-        return steps.some((step: ReActStep) =>
+        const found = steps.some((step: ReActStep) =>
           step.action === 'app_list_user_friends' && step.observation?.data?.friends
         )
+        if (found) return true
       }
+
+      // 检查 task_state.progressHistory（历史消息）
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const found = progressHistory.some((item: any) =>
+          item.action === 'observation' &&
+          item.data?.action === 'app_list_user_friends' &&
+          item.data?.data?.friends
+        )
+        return found
+      }
+
       return false
     })()
 
-    // 检测分身好友列表数据
+    // 检测分身好友列表数据（支持 agent_result 和 task_state 两种结构）
     const hasAvatarFriendList = (() => {
+      // 优先检查 agent_result（新消息）
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
-        return steps.some((step: ReActStep) =>
+        const found = steps.some((step: ReActStep) =>
           step.action === 'app_list_avatar_friends' && step.observation?.data?.friends
         )
+        if (found) return true
       }
+
+      // 检查 task_state.progressHistory（历史消息）
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const found = progressHistory.some((item: any) =>
+          item.action === 'observation' &&
+          item.data?.action === 'app_list_avatar_friends' &&
+          item.data?.data?.friends
+        )
+        return found
+      }
+
       return false
     })()
 
-    // 检测账号列表数据
+    // 检测账号列表数据（支持 agent_result 和 task_state 两种结构）
     const hasAccountList = (() => {
+      // 优先检查 agent_result（新消息）
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
-        return steps.some((step: ReActStep) =>
+        const found = steps.some((step: ReActStep) =>
           step.action === 'list_avatar_accounts' && step.observation?.data?.accounts
         )
+        if (found) return true
       }
+
+      // 检查 task_state.progressHistory（历史消息）
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const found = progressHistory.some((item: any) =>
+          item.action === 'observation' &&
+          item.data?.action === 'list_avatar_accounts' &&
+          item.data?.data?.accounts
+        )
+        return found
+      }
+
       return false
     })()
 
-    // 提取账号列表数据
+    // 提取账号列表数据（支持 agent_result 和 task_state 两种结构）
     const accountListData = (() => {
+      // 优先从 agent_result 提取
       if (msg.metadata?.agent_result?.steps) {
         const steps = msg.metadata.agent_result.steps || []
         const accountStep = steps.find((step: ReActStep) =>
           step.action === 'list_avatar_accounts' && step.observation?.data?.accounts
         )
-        return accountStep?.observation?.data?.accounts || []
+        if (accountStep?.observation?.data?.accounts) {
+          return accountStep.observation.data.accounts
+        }
       }
+
+      // 从 task_state.progressHistory 提取
+      if (msg.metadata?.task_state?.progressHistory) {
+        const progressHistory = msg.metadata.task_state.progressHistory as any[]
+        const accountStep = progressHistory.find((item: any) =>
+          item.action === 'observation' &&
+          item.data?.action === 'list_avatar_accounts' &&
+          item.data?.data?.accounts
+        )
+        if (accountStep?.data?.data?.accounts) {
+          return accountStep.data.data.accounts
+        }
+      }
+
       return []
     })()
 
@@ -2521,11 +2594,26 @@ export default function MindChatPage() {
 
         {/* 分身列表卡片展示 */}
         {hasAvatarList && (() => {
-          const steps = msg.metadata?.agent_result?.steps || []
-          const listStep = steps.find((step: ReActStep) =>
-            step.action === 'app_list_avatars' && step.observation?.data?.avatars
-          )
-          const avatarList = listStep?.observation?.data?.avatars || []
+          // 从 agent_result 提取
+          let avatarList: any[] = []
+          if (msg.metadata?.agent_result?.steps) {
+            const steps = msg.metadata.agent_result.steps || []
+            const listStep = steps.find((step: ReActStep) =>
+              step.action === 'app_list_avatars' && step.observation?.data?.avatars
+            )
+            avatarList = listStep?.observation?.data?.avatars || []
+          }
+
+          // 从 task_state.progressHistory 提取（历史消息）
+          if (avatarList.length === 0 && msg.metadata?.task_state?.progressHistory) {
+            const progressHistory = msg.metadata.task_state.progressHistory as any[]
+            const listStep = progressHistory.find((item: any) =>
+              item.action === 'observation' &&
+              item.data?.action === 'app_list_avatars' &&
+              item.data?.data?.avatars
+            )
+            avatarList = listStep?.data?.data?.avatars || []
+          }
 
           if (avatarList.length === 0) {
             return (
@@ -2601,11 +2689,26 @@ export default function MindChatPage() {
 
         {/* 用户好友列表卡片展示 */}
         {hasUserFriendList && (() => {
-          const steps = msg.metadata?.agent_result?.steps || []
-          const listStep = steps.find((step: ReActStep) =>
-            step.action === 'app_list_user_friends' && step.observation?.data?.friends
-          )
-          const friends = listStep?.observation?.data?.friends || []
+          // 从 agent_result 提取
+          let friends: any[] = []
+          if (msg.metadata?.agent_result?.steps) {
+            const steps = msg.metadata.agent_result.steps || []
+            const listStep = steps.find((step: ReActStep) =>
+              step.action === 'app_list_user_friends' && step.observation?.data?.friends
+            )
+            friends = listStep?.observation?.data?.friends || []
+          }
+
+          // 从 task_state.progressHistory 提取（历史消息）
+          if (friends.length === 0 && msg.metadata?.task_state?.progressHistory) {
+            const progressHistory = msg.metadata.task_state.progressHistory as any[]
+            const listStep = progressHistory.find((item: any) =>
+              item.action === 'observation' &&
+              item.data?.action === 'app_list_user_friends' &&
+              item.data?.data?.friends
+            )
+            friends = listStep?.data?.data?.friends || []
+          }
 
           if (friends.length === 0) {
             return (
@@ -2662,16 +2765,35 @@ export default function MindChatPage() {
 
         {/* 分身好友列表卡片展示 */}
         {hasAvatarFriendList && (() => {
-          const steps = msg.metadata?.agent_result?.steps || []
-          const listStep = steps.find((step: ReActStep) =>
-            step.action === 'app_list_avatar_friends' && step.observation?.data?.friends
-          )
-          const friends = listStep?.observation?.data?.friends || []
+          // 从 agent_result 提取
+          let friends: any[] = []
+          let message = '暂无分身好友，敬请期待！'
+
+          if (msg.metadata?.agent_result?.steps) {
+            const steps = msg.metadata.agent_result.steps || []
+            const listStep = steps.find((step: ReActStep) =>
+              step.action === 'app_list_avatar_friends' && step.observation?.data?.friends
+            )
+            friends = listStep?.observation?.data?.friends || []
+            message = listStep?.observation?.data?.message || message
+          }
+
+          // 从 task_state.progressHistory 提取（历史消息）
+          if (friends.length === 0 && msg.metadata?.task_state?.progressHistory) {
+            const progressHistory = msg.metadata.task_state.progressHistory as any[]
+            const listStep = progressHistory.find((item: any) =>
+              item.action === 'observation' &&
+              item.data?.action === 'app_list_avatar_friends' &&
+              item.data?.data?.friends
+            )
+            friends = listStep?.data?.data?.friends || []
+            message = listStep?.data?.data?.message || message
+          }
 
           if (friends.length === 0) {
             return (
               <View className="avatar-list-empty">
-                <Text className="empty-text">{listStep?.observation?.data?.message || '暂无分身好友，敬请期待！'}</Text>
+                <Text className="empty-text">{message}</Text>
               </View>
             )
           }
