@@ -641,6 +641,85 @@ ${contentTypePrompt}
     }
   }
 
+  // 暂不支付，直接创建订单并跳转到分身匹配页面
+  const handleNoPay = async () => {
+    if (!form.title.trim()) {
+      showToast({ title: '请输入订单标题', icon: 'none' })
+      return
+    }
+    if (!form.description.trim()) {
+      showToast({ title: '请输入需求描述', icon: 'none' })
+      return
+    }
+    if (form.requirements.platforms.length === 0) {
+      showToast({ title: '请选择发布平台', icon: 'none' })
+      return
+    }
+
+    setLoading(true)
+    try {
+      let locationData = {
+        latitude: null as number | null,
+        longitude: null as number | null
+      }
+
+      try {
+        const locationRes = await getLocation({ type: 'wgs84' })
+        locationData = {
+          latitude: locationRes.latitude,
+          longitude: locationRes.longitude
+        }
+      } catch (error) {
+        console.warn('获取地理位置失败:', error)
+      }
+
+      // 创建订单，budget设为0，后端会自动设置status为'open'
+      const res = await Network.request({
+        url: '/api/order',
+        method: 'POST',
+        data: {
+          title: form.title,
+          description: form.description,
+          budget: 0, // 暂不支付，预算为0
+          content_type: form.requirements.contentType,
+          platforms: form.requirements.platforms,
+          target_audience: form.requirements.targetAudience,
+          deadline: form.requirements.deadline || null,
+          expected_quantity: form.avatarCount,
+          content_config: {
+            quantity_per_avatar: form.quantityPerAvatar
+          },
+          attachments: attachments.map(att => ({
+            url: att.url,
+            type: att.type,
+            name: att.name
+          })),
+          ...locationData
+        }
+      })
+
+      if (res.data?.code === 200) {
+        const orderId = res.data.data?.id
+        showToast({ title: '订单创建成功', icon: 'success' })
+        setLoading(false)
+
+        // 跳转到分身匹配页面
+        setTimeout(() => {
+          navigateTo({
+            url: `/pages/order-matching/index?id=${orderId}`
+          })
+        }, 500)
+      } else {
+        showToast({ title: res.data?.message || '创建订单失败', icon: 'none' })
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('[OrderCreate] 创建订单失败:', error)
+      showToast({ title: '创建订单失败', icon: 'none' })
+      setLoading(false)
+    }
+  }
+
   const selectedType = contentTypes.find(t => t.value === form.requirements.contentType)
   const contentPricePerUnit = selectedType
     ? (form.requirements.contentType === 'image' ? PRICE_CONFIG.image :
@@ -998,6 +1077,21 @@ ${contentTypePrompt}
 
         {/* 提交按钮 */}
         <View className="submit-section">
+          <Button
+            className={`submit-btn ${loading ? 'loading' : ''}`}
+            onClick={handleNoPay}
+            disabled={loading}
+            style={{ marginBottom: '12px' }}
+          >
+            {loading ? (
+              <Text className="btn-text">创建中...</Text>
+            ) : (
+              <>
+                <Zap size={18} color="#fff" />
+                <Text className="btn-text">暂不支付</Text>
+              </>
+            )}
+          </Button>
           <Button
             className={`submit-btn ${loading ? 'loading' : ''}`}
             onClick={handleSubmit}
