@@ -184,7 +184,7 @@ export default function ProfilePage() {
             <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
           </View>
           <Button className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-            <Settings size={20} color="rgba(255,255,255,0.6)" />
+            <Settings size={20} color="#ffffff" />
           </Button>
         </View>
 

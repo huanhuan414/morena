@@ -256,21 +256,21 @@
 }
 
 .settings-btn {
-  width: 68rpx;
-  height: 68rpx;
-  background: rgba(99, 102, 241, 0.12);
+  width: 72rpx; /* 从68rpx改为72rpx */
+  height: 72rpx;
+  background: rgba(255, 255, 255, 0.08); /* 从rgba(99,102,241,0.12)改为更亮的背景 */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5rpx solid rgba(99, 102, 241, 0.25);
-  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
+  border: 2rpx solid rgba(255, 255, 255, 0.2); /* 边框更明显 */
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2); /* 增强阴影 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .settings-btn .settings-icon {
-  color: rgba(255, 255, 255, 0.95) !important; /* 从0.6改为0.95，更清晰 */
-  filter: drop-shadow(0 1rpx 2rpx rgba(0, 0, 0, 0.3)); /* 添加阴影 */
+  color: rgba(255, 255, 255, 1) !important; /* 从0.95改为1，完全不透明 */
+  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.4)); /* 增强阴影 */
 }
 
 .settings-btn:active {
@@ -285,12 +285,14 @@
 .stats-row {
   display: flex;
   justify-content: space-around;
-  padding: 28rpx 0;
+  align-items: center;
+  padding: 32rpx 0; /* 从28rpx改为32rpx */
   margin-bottom: 28rpx;
   background: rgba(0, 0, 0, 0.25);
   border-radius: var(--radius-lg);
   border: 1rpx solid rgba(99, 102, 241, 0.12);
   animation: statsFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both;
+  min-height: 160rpx; /* 添加最小高度 */
 }
 
 @keyframes statsFadeIn {
@@ -309,8 +311,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10rpx;
+  justify-content: center; /* 添加垂直居中 */
+  gap: 12rpx; /* 从10rpx改为12rpx */
   transition: transform 0.2s ease;
+  min-height: 120rpx; /* 添加最小高度 */
 }
 
 .stat-item:active {
@@ -318,7 +322,7 @@
 }
 
 .stat-value {
-  font-size: 38rpx;
+  font-size: 40rpx; /* 从38rpx改为40rpx */
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.2;
@@ -326,14 +330,16 @@
 }
 
 .stat-label {
-  font-size: 22rpx;
+  font-size: 24rpx; /* 从22rpx改为24rpx */
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .stat-divider {
-  width: 1.5rpx;
+  width: 2rpx; /* 从1.5rpx改为2rpx */
+  height: 80rpx; /* 添加固定高度 */
   background: rgba(99, 102, 241, 0.15);
+  align-self: center; /* 垂直居中 */
 }
 
 /* ========================================
