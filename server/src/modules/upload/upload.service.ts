@@ -24,7 +24,7 @@ export class UploadService {
         accessKey: process.env.VOLC_ACCESS_KEY || '',
         secretKey: process.env.VOLC_SECRET_KEY || '',
         bucketName: this.bucketName,
-        region: 'cn-beijing',
+        region: 'cn-guangzhou', // 华南1（广州）
       })
       this.logger.log('S3 客户端初始化成功')
     } catch (error) {
@@ -151,10 +151,31 @@ export class UploadService {
       if (error.$response) {
         const responseBody = error.$response?.body?.toString()
         this.logger.error('原始响应:', responseBody)
+        this.logger.error('HTTP 状态码:', error.$response?.statusCode)
+        this.logger.error('响应头:', JSON.stringify(error.$response?.headers))
 
         // 🔴 解析 TOS 错误信息
         if (responseBody && responseBody.includes('NoSuchBucket')) {
-          throw new Error(`Bucket "${this.bucketName}" 不存在或无访问权限。请检查：1. Bucket 是否创建在北京区域（cn-beijing） 2. Access Key 是否有该 Bucket 的读写权限 3. Bucket 名称是否正确（morina-ai，注意大小写）`)
+          throw new Error(`Bucket "${this.bucketName}" 不存在或无访问权限。请检查：1. Bucket 是否创建在华南1（广州）区域（cn-guangzhou） 2. Access Key 是否有该 Bucket 的读写权限 3. Bucket 名称是否正确（morina-ai，注意大小写）`)
+        }
+
+        if (responseBody && responseBody.includes('AccessDenied')) {
+          throw new Error(`Access Key 没有访问 Bucket "${this.bucketName}" 的权限。请在 IAM 控制台为 Access Key 添加 TOS 读写权限`)
+        }
+
+        if (responseBody && responseBody.includes('InvalidAccessKeyId')) {
+          throw new Error(`Access Key 无效。请检查 Access Key 是否正确`)
+        }
+
+        if (responseBody && responseBody.includes('InvalidPathAccess')) {
+          throw new Error(`TOS 路径访问被禁止。原因可能是：
+1. Bucket "${this.bucketName}" 的 ACL 配置不允许公开读写
+2. 需要在 TOS 控制台配置 Bucket 的访问权限为"公共读"或"私有"
+3. 确认 Bucket 的跨域配置（CORS）已设置
+
+解决方案：
+登录火山引擎 TOS 控制台 -> Bucket "morina-ai" -> 权限管理 -> 设置 Bucket 权限为"私有"或"公共读"
+并确保 Access Key 有该 Bucket 的读写权限`)
         }
       }
 
