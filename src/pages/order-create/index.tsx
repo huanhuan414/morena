@@ -212,6 +212,10 @@ export default function OrderCreatePage() {
         .filter(Boolean)
         .join('、')
 
+      // 获取内容类型名称
+      const selectedContentType = contentTypes.find(t => t.value === form.requirements.contentType)
+      const contentTypeName = selectedContentType?.label || '图文'
+
       // 构建平台特定的提示词
       let platformPrompt = ''
       if (form.requirements.platforms.includes('xiaohongshu')) {
@@ -228,19 +232,33 @@ export default function OrderCreatePage() {
         platformPrompt = `针对微博：内容要有话题性、时效性，适合热点事件，内容要简洁有力，易于转发传播，注重社交属性。`
       }
 
-      const prompt = `请根据以下订单标题和发布平台，生成一份详细的需求描述。
+      // 构建内容类型特定的提示词
+      let contentTypePrompt = ''
+      if (form.requirements.contentType === 'image') {
+        contentTypePrompt = `针对图片内容：注重视觉表现力，画面要精美、有质感，构图要吸引人，色调要和谐。内容要有故事性或情感共鸣，让用户一看就有兴趣。适合用于种草、展示产品、生活方式等场景。`
+      } else if (form.requirements.contentType === 'video') {
+        contentTypePrompt = `针对视频内容：注重脚本策划、画面表现、节奏把控。要有完整的故事结构（开头、发展、高潮、结尾），画面切换流畅，音乐配乐合适。时长控制在15-60秒最佳，要能在短时间内传递有效信息。`
+      } else if (form.requirements.contentType === 'article') {
+        contentTypePrompt = `针对图文内容：注重文字表达和逻辑结构。标题要吸引人，开头要有钩子，正文要有层次感，结尾要有行动号召。内容要有价值、有深度，能让用户有所收获。适合用于知识分享、观点表达、品牌故事等。`
+      } else if (form.requirements.contentType === 'mixed') {
+        contentTypePrompt = `针对混合内容：综合考虑图文、视频等多种形式，要根据不同内容的特点进行创作，灵活运用多种表现形式，让内容更加丰富多样，提升用户的参与度和体验感。`
+      }
+
+      const prompt = `请根据以下订单标题、发布平台和内容类型，生成一份详细的需求描述。
 
 发布平台：${selectedPlatformNames}
+内容类型：${contentTypeName}
 ${platformPrompt}
+${contentTypePrompt}
 
 要求：
 1. 必须包含以下五个方面：内容方向、风格要求、受众目标、品牌调性、预期效果
-2. 内容方向：明确说明要创作的内容类型和方向
-3. 风格要求：描述内容的风格特点、语言风格、表现形式等
+2. 内容方向：明确说明要创作的内容类型和方向，结合内容类型特点进行描述
+3. 风格要求：描述内容的风格特点、语言风格、表现形式等，符合平台调性
 4. 受众目标：明确目标用户群体画像和特征
 5. 品牌调性：描述品牌形象、价值观、传达的情感
-6. 预期效果：说明希望达到的量化指标和影响
-7. 每个方面2-3句话，详细且具体，并针对所选平台特点进行优化
+6. 预期效果：说明希望达到的量化指标和影响，适合平台传播
+7. 每个方面2-3句话，详细且具体，并针对所选平台和内容类型特点进行优化
 8. 字数控制在200-350字之间
 
 订单标题：${form.title}
@@ -679,6 +697,35 @@ ${platformPrompt}
           </View>
         </View>
 
+        {/* 内容类型选择 */}
+        <View className="section-card">
+          <View className="card-header">
+            <Target size={20} color="#3b82f6" />
+            <Text className="card-title">内容类型</Text>
+          </View>
+          <View className="type-grid">
+            {contentTypes.map((type) => {
+              const Icon = type.icon
+              const isActive = form.requirements.contentType === type.value
+              return (
+                <View
+                  key={type.value}
+                  className={`type-card ${isActive ? 'active' : ''}`}
+                  onClick={() => setForm(prev => ({
+                    ...prev,
+                    requirements: { ...prev.requirements, contentType: type.value }
+                  }))}
+                  style={isActive ? { borderColor: type.color, background: `${type.color}15` } : {}}
+                >
+                  <Icon size={32} color={isActive ? type.color : '#9ca3af'} />
+                  <Text className={`type-text ${isActive ? 'active' : ''}`}>{type.label}</Text>
+                  {isActive && <View className="type-check" style={{ background: type.color }}></View>}
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
         {/* 描述输入 */}
         <View className="section-card">
           <View className="card-header">
@@ -770,35 +817,6 @@ ${platformPrompt}
             {uploading && (
               <Text className="uploading-text">上传中...</Text>
             )}
-          </View>
-        </View>
-
-        {/* 内容类型选择 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Target size={20} color="#3b82f6" />
-            <Text className="card-title">内容类型</Text>
-          </View>
-          <View className="type-grid">
-            {contentTypes.map((type) => {
-              const Icon = type.icon
-              const isActive = form.requirements.contentType === type.value
-              return (
-                <View
-                  key={type.value}
-                  className={`type-card ${isActive ? 'active' : ''}`}
-                  onClick={() => setForm(prev => ({
-                    ...prev,
-                    requirements: { ...prev.requirements, contentType: type.value }
-                  }))}
-                  style={isActive ? { borderColor: type.color, background: `${type.color}15` } : {}}
-                >
-                  <Icon size={32} color={isActive ? type.color : '#9ca3af'} />
-                  <Text className={`type-text ${isActive ? 'active' : ''}`}>{type.label}</Text>
-                  {isActive && <View className="type-check" style={{ background: type.color }}></View>}
-                </View>
-              )
-            })}
           </View>
         </View>
 
