@@ -361,6 +361,8 @@ export class AgentService {
       conversationId?: string
       taskId?: string
       headers?: Record<string, string>
+      uploadedImages?: string[] // 新增：用户上传的图片URL列表
+      uploadedVideos?: string[] // 新增：用户上传的视频URL列表
     }
   ): AsyncGenerator<any> {
     // 发送开始事件
@@ -596,6 +598,8 @@ export class AgentService {
       taskId?: string
       headers?: Record<string, string>
       conversationHistory?: ConversationMessage[] // 新增：对话历史
+      uploadedImages?: string[] // 新增：用户上传的图片URL列表
+      uploadedVideos?: string[] // 新增：用户上传的视频URL列表
     }
   ): Promise<AgentExecutionResult> {
     // 设置任务上下文
@@ -675,6 +679,8 @@ export class AgentService {
       taskId?: string
       headers?: Record<string, string>
       conversationHistory?: ConversationMessage[]
+      uploadedImages?: string[] // 新增：用户上传的图片URL列表
+      uploadedVideos?: string[] // 新增：用户上传的视频URL列表
     }
   ): Promise<AgentExecutionResult> {
     const taskId = options?.taskId || `task-${Date.now()}`
@@ -1343,6 +1349,8 @@ export class AgentService {
       taskId?: string
       headers?: Record<string, string>
       conversationHistory?: ConversationMessage[]
+      uploadedImages?: string[] // 新增：用户上传的图片URL列表
+      uploadedVideos?: string[] // 新增：用户上传的视频URL列表
     }
   ): Promise<AgentContext> {
     const client = getSupabaseClient()
@@ -1419,6 +1427,8 @@ export class AgentService {
       avatarSkills: (avatarSkills || []) as AvatarSkill[],
       executionHistory: [],
       conversationHistory,
+      uploadedImages: options?.uploadedImages || [], // 新增：用户上传的图片URL列表
+      uploadedVideos: options?.uploadedVideos || [], // 新增：用户上传的视频URL列表
       maxSteps: 50, // 增加最大步数，支持复杂多步任务
       currentStep: 0
     }
@@ -1711,6 +1721,30 @@ export class AgentService {
     // 智能任务理解提示（不包含技能检测，因为已经在前面处理了）
     const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history, context)
 
+    // 🔴 新增：构建用户上传媒体信息提示
+    let mediaInfoText = ''
+    if (context.uploadedImages && context.uploadedImages.length > 0) {
+      mediaInfoText += `
+【用户上传的图片】
+用户上传了 ${context.uploadedImages.length} 张图片：
+${context.uploadedImages.map((url, index) => `${index + 1}. ${url}`).join('\n')}
+
+【图片使用规则】
+- 如果任务涉及"文章创作"、"公众号文章"、"小红书笔记"等，必须理解图片内容，并将图片插入到文章的合适位置
+- 如果任务涉及"图片生成"，可以使用上传的图片作为参考
+- 如果任务涉及"视频生成"，可以使用上传的图片作为首帧（first_frame）
+- 在使用图片时，请分析图片内容，并在文章或生成内容中恰当地引用和描述图片
+`
+    }
+
+    if (context.uploadedVideos && context.uploadedVideos.length > 0) {
+      mediaInfoText += `
+【用户上传的视频】
+用户上传了 ${context.uploadedVideos.length} 个视频：
+${context.uploadedVideos.map((url, index) => `${index + 1}. ${url}`).join('\n')}
+`
+    }
+
     const prompt = `你是一个智能Agent，能够使用工具完成任务。
 
 ${avatarInfoText}
@@ -1719,6 +1753,8 @@ ${avatarInfoText}
 ${toolsDescription}
 
 ${conversationHistoryText ? `对话历史：\n${conversationHistoryText}\n` : ''}
+
+${mediaInfoText}
 
 当前任务：${context.taskDescription}
 
@@ -2049,6 +2085,8 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
       avatarId: context.avatarId,
       taskId: context.taskId,
       headers: undefined,
+      uploadedImages: context.uploadedImages || [], // 新增：传递用户上传的图片
+      uploadedVideos: context.uploadedVideos || [], // 新增：传递用户上传的视频
       onProgress: (message: string, step?: number, subStep?: string) => {
         // 通过 progressCache 更新进度
         if (!context.taskId) {

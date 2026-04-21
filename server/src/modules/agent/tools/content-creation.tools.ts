@@ -343,14 +343,57 @@ class VideoPromptOptimizer {
  * 根据文章内容自动添加配图
  * 提取为独立函数，供多个工具使用
  */
-async function addImagesToArticleContent(content: string, title: string): Promise<string> {
+async function addImagesToArticleContent(
+  content: string,
+  title: string,
+  uploadedImages?: string[] // 新增：用户上传的图片URL列表
+): Promise<string> {
   try {
     const config = new Config()
     const imageClient = new ImageGenerationClient(config)
 
+    let contentWithImages = ''
+
+    // 🔴 新增：优先使用用户上传的图片作为文章配图
+    if (uploadedImages && uploadedImages.length > 0) {
+      console.log(`使用用户上传的 ${uploadedImages.length} 张图片作为文章配图`)
+
+      // 将用户上传的图片插入到文章开头和中间位置
+      const paragraphs = content.split('\n\n').filter(p => p.trim())
+      const imageCount = Math.min(uploadedImages.length, paragraphs.length)
+
+      // 开头插入第一张图片
+      if (uploadedImages.length > 0) {
+        contentWithImages = `![${title}](${uploadedImages[0]})\n\n`
+        console.log('已插入第一张用户上传图片到文章开头')
+      }
+
+      contentWithImages += content
+
+      // 根据段落数量，均匀插入剩余的图片
+      if (imageCount > 1 && paragraphs.length > 1) {
+        const remainingImages = uploadedImages.slice(1)
+        const interval = Math.floor(paragraphs.length / remainingImages.length)
+
+        let insertedCount = 0
+        for (let i = 0; i < remainingImages.length && insertedCount < remainingImages.length; i++) {
+          const insertPos = (i + 1) * interval + insertedCount * 2 // 每次插入后位置偏移
+          if (insertPos < paragraphs.length) {
+            const paragraphsWithImages = contentWithImages.split('\n\n')
+            paragraphsWithImages.splice(insertPos, 0, `\n![配图](${remainingImages[i]})\n`)
+            contentWithImages = paragraphsWithImages.join('\n\n')
+            insertedCount++
+          }
+        }
+        console.log(`已插入 ${insertedCount} 张用户上传图片到文章中`)
+      }
+
+      return contentWithImages
+    }
+
+    // 🔴 如果没有用户上传的图片，则生成新配图（原有逻辑）
     // 生成文章开头封面图
     const coverPrompt = `${title}，文章配图，简约现代风格，专业设计`
-    let contentWithImages = ''
 
     // 生成开头配图
     console.log('正在生成文章开头配图...')
@@ -446,13 +489,19 @@ export class WriteArticleTool implements ITool {
         creative: '创意、独特、有想象力'
       }
 
-      const prompt = `请撰写一篇关于「${params.topic}」的文章。
+      // 🔴 新增：如果用户上传了图片，先理解图片内容
+      let imageContext = ''
+      if (context.uploadedImages && context.uploadedImages.length > 0) {
+        imageContext = `\n\n【用户上传的图片】\n用户上传了 ${context.uploadedImages.length} 张图片，请理解这些图片的内容，并在生成文章时恰当地引用和描述这些图片。\n图片链接：${context.uploadedImages.join(', ')}\n\n`
+      }
 
+      const prompt = `请撰写一篇关于「${params.topic}」的文章。${imageContext}
 要求：
 - 风格：${styleGuide[params.style] || '专业、客观'}
 - 目标字数：${params.length || 800}字左右
 ${params.keywords ? `- 包含关键词：${params.keywords.join('、')}` : ''}
 ${params.outline ? `- 参考大纲：${params.outline}` : ''}
+${context.uploadedImages && context.uploadedImages.length > 0 ? '- 请在文章的合适位置插入用户上传的图片，并描述图片内容' : ''}
 
 请直接输出文章内容，使用Markdown格式。`
 
@@ -469,11 +518,17 @@ ${params.outline ? `- 参考大纲：${params.outline}` : ''}
       const titleMatch = content.match(/^#\s*(.+)$/m)
       const title = titleMatch ? titleMatch[1] : params.topic
 
+      // 🔴 新增：添加用户上传的图片到文章中
+      let finalContent = content
+      if (context.uploadedImages && context.uploadedImages.length > 0) {
+        finalContent = await addImagesToArticleContent(content, title, context.uploadedImages)
+      }
+
       return {
         success: true,
         data: {
           title,
-          content,
+          content: finalContent,
           word_count: content.length,
           style: params.style,
           message: `${title}`
@@ -608,7 +663,11 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
 
       // 自动添加文章配图
       console.log('正在为文章添加配图...')
-      const contentWithImages = await addImagesToArticleContent(mainContent, titles[0] || params.topic)
+      const contentWithImages = await addImagesToArticleContent(
+        mainContent,
+        titles[0] || params.topic,
+        context.uploadedImages // 新增：传递用户上传的图片
+      )
       console.log('配图后内容长度:', contentWithImages.length)
 
       // 构建发布参数模板，方便 Agent 直接使用
@@ -676,11 +735,17 @@ export class WriteXiaohongshuNoteTool implements ITool {
       const client = new LLMClient(config)
       const imageClient = new ImageGenerationClient(config)
 
+      // 🔴 新增：如果用户上传了图片，先理解图片内容
+      let imageContext = ''
+      if (context.uploadedImages && context.uploadedImages.length > 0) {
+        imageContext = `\n\n【用户上传的图片】\n用户上传了 ${context.uploadedImages.length} 张图片，请理解这些图片的内容，并在生成小红书笔记时恰当地引用和描述这些图片。\n图片链接：${context.uploadedImages.join(', ')}\n\n`
+      }
+
       const prompt = `你是一位小红书爆款笔记撰写专家。请为以下主题撰写一篇小红书笔记：
 
 主题：${params.topic}
 风格：${params.style}
-
+${imageContext}
 请严格按照以下小红书爆款格式输出：
 
 ## 标题
@@ -694,6 +759,7 @@ export class WriteXiaohongshuNoteTool implements ITool {
 4. 结尾引导互动（点赞收藏评论）
 5. 正文300-500字，短小精悍
 6. 每段1-2行，方便阅读
+${context.uploadedImages && context.uploadedImages.length > 0 ? '7. 在合适的位置引用用户上传的图片，并描述图片内容' : ''}
 
 ## 话题标签
 （生成5-10个热门话题标签，带#号）
@@ -731,24 +797,30 @@ export class WriteXiaohongshuNoteTool implements ITool {
         tags = tagsMatch[1].match(/#[^\s#]+/g) || []
       }
 
-      // 生成配图
-      const imageCount = Math.min(Math.max(params.images_count || 3, 1), 9)
+      // 🔴 修改：优先使用用户上传的图片，否则生成新图片
       const imageUrls: string[] = []
+      if (context.uploadedImages && context.uploadedImages.length > 0) {
+        console.log(`使用用户上传的 ${context.uploadedImages.length} 张图片作为小红书笔记配图`)
+        imageUrls.push(...context.uploadedImages)
+      } else {
+        // 生成配图
+        const imageCount = Math.min(Math.max(params.images_count || 3, 1), 9)
 
-      for (let i = 0; i < imageCount; i++) {
-        try {
-          const imgPrompt = `小红书风格${params.style}笔记配图，${params.topic}，${titles[0] || ''}，ins风格，色彩鲜艳，种草感强，简洁明了`
-          const imgResponse = await imageClient.generate({
-            prompt: imgPrompt,
-            size: '1K',
-            watermark: false
-          })
-          const imgHelper = imageClient.getResponseHelper(imgResponse)
-          if (imgHelper.success && imgHelper.imageUrls.length > 0) {
-            imageUrls.push(imgHelper.imageUrls[0])
+        for (let i = 0; i < imageCount; i++) {
+          try {
+            const imgPrompt = `小红书风格${params.style}笔记配图，${params.topic}，${titles[0] || ''}，ins风格，色彩鲜艳，种草感强，简洁明了`
+            const imgResponse = await imageClient.generate({
+              prompt: imgPrompt,
+              size: '1K',
+              watermark: false
+            })
+            const imgHelper = imageClient.getResponseHelper(imgResponse)
+            if (imgHelper.success && imgHelper.imageUrls.length > 0) {
+              imageUrls.push(imgHelper.imageUrls[0])
+            }
+          } catch (err) {
+            console.error(`生成第 ${i + 1} 张配图失败:`, err)
           }
-        } catch (err) {
-          console.error(`生成第 ${i + 1} 张配图失败:`, err)
         }
       }
 

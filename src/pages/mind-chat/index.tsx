@@ -1260,45 +1260,89 @@ export default function MindChatPage() {
     }
   }
 
+  // 🔴 修复：获取当前技能类型允许的最大图片数量
+  const getMaxImageCount = (messageText: string): number => {
+    const lowerText = messageText.toLowerCase()
+    // 公众号文章、文章创作、小红书笔记支持最多5张图片
+    if (lowerText.includes('公众号文章') || lowerText.includes('文章创作') || lowerText.includes('小红书笔记')) {
+      return 5
+    }
+    // 图片生成、视频生成只支持1张图片
+    if (lowerText.includes('图片生成') || lowerText.includes('视频生成') || lowerText.includes('生成图片') || lowerText.includes('生成视频')) {
+      return 1
+    }
+    // 默认支持5张图片
+    return 5
+  }
+
   // 🔴 修复：上传图片
   const handleUploadImage = () => {
     console.log('[上传图片] 开始选择图片')
+
+    // 根据当前输入确定最大图片数量
+    const maxCount = getMaxImageCount(inputText)
+    const remainingCount = maxCount - uploadedImages.length
+
+    if (remainingCount <= 0) {
+      showToast({
+        title: maxCount === 1 ? '只能上传1张图片' : `最多只能上传${maxCount}张图片`,
+        icon: 'none'
+      })
+      return
+    }
+
     Taro.chooseImage({
-      count: 1,
+      count: remainingCount,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0]
-        console.log('[上传图片] 已选择图片:', tempFilePath)
+        const tempFilePaths = res.tempFilePaths
+        console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
 
         setIsUploadingImage(true)
         setUploadProgress(0)
 
         try {
-          // 上传图片到 TOS
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload/image',
-            filePath: tempFilePath,
-            name: 'file'
-          })
+          // 逐个上传图片
+          const newImageUrls: string[] = []
+          for (let i = 0; i < tempFilePaths.length; i++) {
+            const tempFilePath = tempFilePaths[i]
+            console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
 
-          console.log('[上传图片] 上传结果:', uploadRes)
+            // 更新上传进度
+            setUploadProgress(Math.round(((i + 1) / tempFilePaths.length) * 100))
 
-          // 处理响应数据
-          let uploadData
-          if (typeof uploadRes.data === 'string') {
-            uploadData = JSON.parse(uploadRes.data)
-          } else {
-            uploadData = uploadRes.data
+            // 上传图片到 TOS
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload/image',
+              filePath: tempFilePath,
+              name: 'file'
+            })
+
+            console.log(`[上传图片] 第 ${i + 1} 张图片上传结果:`, uploadRes)
+
+            // 处理响应数据
+            let uploadData
+            if (typeof uploadRes.data === 'string') {
+              uploadData = JSON.parse(uploadRes.data)
+            } else {
+              uploadData = uploadRes.data
+            }
+
+            if (uploadData.code === 200 && uploadData.data?.url) {
+              newImageUrls.push(uploadData.data.url)
+            } else {
+              throw new Error(uploadData.message || '上传失败')
+            }
           }
 
-          setUploadProgress(100)
-
-          if (uploadData.code === 200 && uploadData.data?.url) {
-            setUploadedImages([...uploadedImages, uploadData.data.url])
-            showToast({ title: '图片上传成功', icon: 'success' })
-          } else {
-            showToast({ title: uploadData.message || '上传失败', icon: 'none' })
+          // 批量添加上传成功的图片
+          if (newImageUrls.length > 0) {
+            setUploadedImages([...uploadedImages, ...newImageUrls])
+            showToast({
+              title: `成功上传 ${newImageUrls.length} 张图片`,
+              icon: 'success'
+            })
           }
         } catch (error) {
           console.error('[上传图片] 错误:', error)
@@ -1307,6 +1351,10 @@ export default function MindChatPage() {
           setIsUploadingImage(false)
           setTimeout(() => setUploadProgress(0), 1000)
         }
+      },
+      fail: (error) => {
+        console.error('[上传图片] 选择图片失败:', error)
+        setIsUploadingImage(false)
       }
     })
   }

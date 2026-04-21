@@ -132,6 +132,8 @@ export interface AgentContext {
   avatarSkills: AvatarSkill[]
   executionHistory: ReActStep[]
   conversationHistory: ConversationMessage[] // 新增：对话历史
+  uploadedImages?: string[] // 新增：用户上传的图片URL列表
+  uploadedVideos?: string[] // 新增：用户上传的视频URL列表
   maxSteps: number
   currentStep: number
 }

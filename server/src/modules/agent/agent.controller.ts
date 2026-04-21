@@ -91,14 +91,18 @@ export class AgentController {
       conversation_id?: string
       task_id?: string
       conversation_history?: Array<{ role: string; content: string }>
+      attachments?: {
+        images?: string[]
+        videos?: string[]
+      }
     }
   ) {
     // 生成任务ID
     const taskId = body.task_id || `task-${Date.now()}`
-    
+
     // 创建任务记录
     this.progressCache.createTask(userId, taskId)
-    
+
     // 异步执行任务（不等待结果）
     this.agentService.executeTaskAsync(
       userId,
@@ -107,13 +111,15 @@ export class AgentController {
       {
         conversationId: body.conversation_id,
         taskId,
-        conversationHistory: body.conversation_history as any
+        conversationHistory: body.conversation_history as any,
+        uploadedImages: body.attachments?.images || [], // 新增：上传的图片
+        uploadedVideos: body.attachments?.videos || []  // 新增：上传的视频
       }
     ).catch(err => {
       console.error(`[AgentController] 任务执行失败: ${taskId}`, err)
       this.progressCache.updateTaskStatus(userId, taskId, 'failed', null, err.message)
     })
-    
+
     // 立即返回 taskId
     return {
       code: 200,
