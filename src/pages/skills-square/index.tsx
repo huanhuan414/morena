@@ -1,12 +1,12 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { useState, useEffect } from 'react'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
-import Taro, { navigateBack, navigateTo } from '@tarojs/taro'
-import { Star, Check, ShoppingCart, Search, ArrowLeft, Link2, RefreshCw, Smartphone, BookOpen, MessageSquare } from 'lucide-react-taro'
+import Taro, { navigateBack } from '@tarojs/taro'
+import { Star, Check, ShoppingCart, Search, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 技能名称中文映射
@@ -178,18 +178,6 @@ const PERSONAL_IP_KIT: {
   purchase_count: 666
 }
 
-// 账号管理功能配置
-const ACCOUNT_MANAGER = {
-  id: 'account_manager',
-  name: '账号管理',
-  description: '查看和管理分身绑定的第三方平台账号（抖音、小红书、微信公众号），支持刷新账号信息和添加新账号',
-  icon: '🔗',
-  category: '账号管理',
-  tags: ['账号', '绑定', '管理'],
-  rating: 5.0,
-  purchase_count: 999
-}
-
 // 根据 tool_name 获取图标
 const getSkillIcon = (toolName?: string): string => {
   const iconMap: Record<string, string> = {
@@ -268,12 +256,6 @@ export default function SkillsSquare() {
   const [purchasing, setPurchasing] = useState(false)
   const [showKitDialog, setShowKitDialog] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
-
-  // 账号管理相关状态
-  const [showAccountManager, setShowAccountManager] = useState(false)
-  const [avatarAccounts, setAvatarAccounts] = useState<any[]>([])
-  const [loadingAccounts, setLoadingAccounts] = useState(false)
-  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null)
 
   // 打印环境信息
   useEffect(() => {
@@ -709,99 +691,6 @@ export default function SkillsSquare() {
     }
   }
 
-  // 获取分身账号列表
-  const fetchAvatarAccounts = async () => {
-    if (!currentAvatar?.id) {
-      console.warn('[SkillSquare] currentAvatar.id 为空，跳过获取账号列表')
-      return
-    }
-
-    try {
-      setLoadingAccounts(true)
-      console.log('[SkillSquare] 获取分身账号列表:', currentAvatar.id)
-
-      const res = await Network.request({
-        url: `/api/avatar/${currentAvatar.id}/accounts`,
-        method: 'GET'
-      })
-
-      console.log('[SkillSquare] 账号列表响应:', res)
-
-      if (res.data?.code === 200) {
-        setAvatarAccounts(res.data.data || [])
-      }
-    } catch (error) {
-      console.error('[SkillSquare] 获取账号列表失败:', error)
-      Taro.showToast({ title: '获取账号列表失败', icon: 'none' })
-    } finally {
-      setLoadingAccounts(false)
-    }
-  }
-
-  // 刷新账号信息
-  const handleRefreshAccount = async (accountId: string, platform: string) => {
-    if (!currentAvatar?.id) {
-      Taro.showToast({ title: '分身信息不存在', icon: 'none' })
-      return
-    }
-
-    try {
-      setRefreshingAccountId(accountId)
-      console.log('[SkillSquare] 刷新账号信息:', { accountId, platform })
-
-      const res = await Network.request({
-        url: `/api/avatar/${currentAvatar.id}/accounts/${accountId}/refresh`,
-        method: 'POST'
-      })
-
-      console.log('[SkillSquare] 刷新账号响应:', res)
-
-      if (res.data?.code === 200) {
-        Taro.showToast({ title: '刷新成功', icon: 'success' })
-        // 重新获取账号列表
-        fetchAvatarAccounts()
-      } else {
-        Taro.showToast({ title: res.data?.message || '刷新失败', icon: 'none' })
-      }
-    } catch (error: any) {
-      console.error('[SkillSquare] 刷新账号失败:', error)
-      Taro.showToast({ title: '刷新失败: ' + (error.message || '未知错误'), icon: 'none' })
-    } finally {
-      setRefreshingAccountId(null)
-    }
-  }
-
-  // 打开账号管理弹窗
-  const handleOpenAccountManager = () => {
-    if (!currentAvatar?.id) {
-      Taro.showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
-    setShowAccountManager(true)
-    fetchAvatarAccounts()
-  }
-
-  // 跳转到账号配置页面
-  const handleGoToAccountConfig = () => {
-    if (!currentAvatar?.id) return
-
-    const avatarName = currentAvatar.name || ''
-    navigateTo({
-      url: `/pages/avatar-account-config/index?avatarId=${currentAvatar.id}&avatarName=${encodeURIComponent(avatarName)}`
-    })
-    setShowAccountManager(false)
-  }
-
-  // 获取平台显示信息
-  const getPlatformInfo = (platform: string) => {
-    const platformMap: Record<string, { name: string; icon: any; color: string }> = {
-      'douyin': { name: '抖音', icon: Smartphone, color: '#1f2937' },
-      'xiaohongshu': { name: '小红书', icon: BookOpen, color: '#ff2442' },
-      'wechat': { name: '微信公众号', icon: MessageSquare, color: '#07c160' }
-    }
-    return platformMap[platform] || { name: platform, icon: Link2, color: '#6b7280' }
-  }
-
   // 搜索
   const handleSearch = () => {
     fetchSkills()
@@ -1037,44 +926,6 @@ export default function SkillsSquare() {
             </View>
           </View>
 
-          {/* 账号管理 */}
-          <View className="special-card account-manager" onClick={handleOpenAccountManager}>
-            <View className="special-header">
-              <View className="special-icon-large">{ACCOUNT_MANAGER.icon}</View>
-              <View className="special-badge account">🔗 账号管理</View>
-            </View>
-            <View className="special-content">
-              <Text className="special-title">{ACCOUNT_MANAGER.name}</Text>
-              <Text className="special-desc">{ACCOUNT_MANAGER.description}</Text>
-              <View className="account-features">
-                <View className="account-feature-item">
-                  <Text className="account-feature-icon">📱</Text>
-                  <Text className="account-feature-text">抖音账号</Text>
-                </View>
-                <View className="account-feature-item">
-                  <Text className="account-feature-icon">📝</Text>
-                  <Text className="account-feature-text">小红书账号</Text>
-                </View>
-                <View className="account-feature-item">
-                  <Text className="account-feature-icon">💬</Text>
-                  <Text className="account-feature-text">微信公众号</Text>
-                </View>
-              </View>
-              {currentAvatar && avatarAccounts.length > 0 && (
-                <Text className="account-count">已绑定 {avatarAccounts.length} 个账号</Text>
-              )}
-            </View>
-            <View className="special-footer">
-              <View className="special-stats">
-                <Star size={14} color="#ffb800" />
-                <Text className="special-stat-value">{ACCOUNT_MANAGER.rating}</Text>
-                <Text className="special-stat-label">({ACCOUNT_MANAGER.purchase_count}人使用)</Text>
-              </View>
-              <View className="special-action account">
-                <Text className="special-action-text">查看账号</Text>
-              </View>
-            </View>
-          </View>
         </View>
       )}
 
@@ -1334,139 +1185,6 @@ export default function SkillsSquare() {
         </DialogContent>
       </Dialog>
 
-      {/* 账号管理弹窗 */}
-      <Dialog open={showAccountManager} onOpenChange={setShowAccountManager}>
-        <DialogContent className="account-manager-dialog">
-          <DialogHeader>
-            <DialogTitle>账号管理</DialogTitle>
-          </DialogHeader>
-          <View className="account-manager-content">
-            {loadingAccounts ? (
-              <View className="loading-container">
-                <Text className="loading-text">加载中...</Text>
-              </View>
-            ) : avatarAccounts.length === 0 ? (
-              <View className="empty-accounts">
-                <Link2 size={48} color="#9ca3af" />
-                <Text className="empty-text">暂无绑定账号</Text>
-                <Text className="empty-tip">绑定抖音、小红书、微信公众号等平台账号，让分身可以在多个平台上工作</Text>
-              </View>
-            ) : (
-              <ScrollView className="accounts-scroll" scrollY>
-                {avatarAccounts.map((account) => {
-                  const platformInfo = getPlatformInfo(account.platform)
-                  const PlatformIcon = platformInfo.icon
-
-                  return (
-                    <View key={account.id} className="account-card">
-                      <View className="account-header">
-                        <View className="account-platform-info">
-                          <View className="account-icon-wrapper" style={{ backgroundColor: platformInfo.color + '20' }}>
-                            <PlatformIcon size={20} color={platformInfo.color} />
-                          </View>
-                          <Text className="account-platform-name">{platformInfo.name}</Text>
-                        </View>
-                        <Button
-                          className="refresh-account-btn"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRefreshAccount(account.id, account.platform)
-                          }}
-                          disabled={refreshingAccountId === account.id}
-                        >
-                          <RefreshCw size={14} color={refreshingAccountId === account.id ? '#9ca3af' : '#6b7280'} />
-                          <Text className="refresh-btn-text">
-                            {refreshingAccountId === account.id ? '刷新中' : '刷新'}
-                          </Text>
-                        </Button>
-                      </View>
-
-                      {account.platform === 'douyin' && account.extra_info && (
-                        <View className="account-details">
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">昵称</Text>
-                            <Text className="account-detail-value">{account.extra_info.nickname || '未设置'}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">粉丝数</Text>
-                            <Text className="account-detail-value">{account.extra_info.follower_count || 0}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">作品数</Text>
-                            <Text className="account-detail-value">{account.extra_info.aweme_count || 0}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">总获赞数</Text>
-                            <Text className="account-detail-value">{account.extra_info.total_favorited || 0}</Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {account.platform === 'xiaohongshu' && account.extra_info && (
-                        <View className="account-details">
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">昵称</Text>
-                            <Text className="account-detail-value">{account.extra_info.nickname || '未设置'}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">粉丝数</Text>
-                            <Text className="account-detail-value">{account.extra_info.follower_count || 0}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">笔记数</Text>
-                            <Text className="account-detail-value">{account.extra_info.notes_count || 0}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">获赞与收藏</Text>
-                            <Text className="account-detail-value">{account.extra_info.interaction_count || 0}</Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {account.platform === 'wechat' && (
-                        <View className="account-details">
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">AppID</Text>
-                            <Text className="account-detail-value">{account.appid || '未设置'}</Text>
-                          </View>
-                          <View className="account-detail-item">
-                            <Text className="account-detail-label">公众号名称</Text>
-                            <Text className="account-detail-value">{account.name || '未设置'}</Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {account.platform === 'douyin' && account.extra_info?.avatar_url && (
-                        <Image
-                          src={account.extra_info.avatar_url}
-                          className="account-avatar"
-                          mode="aspectFit"
-                        />
-                      )}
-                      {account.platform === 'xiaohongshu' && account.extra_info?.avatar_url && (
-                        <Image
-                          src={account.extra_info.avatar_url}
-                          className="account-avatar"
-                          mode="aspectFit"
-                        />
-                      )}
-                    </View>
-                  )
-                })}
-              </ScrollView>
-            )}
-          </View>
-          <DialogFooter>
-            <Button className="dialog-cancel-btn" onClick={() => setShowAccountManager(false)}>
-              <Text className="dialog-btn-text">关闭</Text>
-            </Button>
-            <Button className="dialog-confirm-btn" onClick={handleGoToAccountConfig}>
-              <Text className="dialog-btn-text">添加账号</Text>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </View>
   )
 }
