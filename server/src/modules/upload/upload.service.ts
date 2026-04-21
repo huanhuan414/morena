@@ -154,7 +154,7 @@ export class UploadService {
 
         // 🔴 解析 TOS 错误信息
         if (responseBody && responseBody.includes('NoSuchBucket')) {
-          throw new Error(`Bucket "${this.bucketName}" 不存在，请在 TOS 控制台检查 Bucket 配置`)
+          throw new Error(`Bucket "${this.bucketName}" 不存在或无访问权限。请检查：1. Bucket 是否创建在北京区域（cn-beijing） 2. Access Key 是否有该 Bucket 的读写权限 3. Bucket 名称是否正确（morina-ai，注意大小写）`)
         }
       }
 
