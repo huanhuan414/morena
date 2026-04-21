@@ -569,20 +569,41 @@ export default function AvatarAccountConfigPage() {
                       )}
                     </View>
                   </View>
-                  <View className="account-stats">
-                    <View className="stat-item">
-                      <Text className="stat-label">粉丝数</Text>
-                      <Text className="stat-value">{account.followers.toLocaleString()}</Text>
+
+                  {/* 统计数据 - 微信公众号不显示 */}
+                  {account.platform !== 'wechat' && (
+                    <View className="account-stats">
+                      <View className="stat-item">
+                        <Text className="stat-label">粉丝数</Text>
+                        <Text className="stat-value">{account.followers.toLocaleString()}</Text>
+                      </View>
+                      <View className="stat-item">
+                        <Text className="stat-label">总获赞</Text>
+                        <Text className="stat-value">{account.total_exposure.toLocaleString()}</Text>
+                      </View>
+                      <View className="stat-item">
+                        <Text className="stat-label">作品数</Text>
+                        <Text className="stat-value">{account.total_works.toLocaleString()}</Text>
+                      </View>
                     </View>
-                    <View className="stat-item">
-                      <Text className="stat-label">总获赞</Text>
-                      <Text className="stat-value">{account.total_exposure.toLocaleString()}</Text>
+                  )}
+
+                  {/* 微信公众号显示 AppID 和验证状态 */}
+                  {account.platform === 'wechat' && (
+                    <View className="wechat-config-info">
+                      <View className="wechat-config-item">
+                        <Text className="wechat-config-label">AppID：</Text>
+                        <Text className="wechat-config-value">{account.appid}</Text>
+                      </View>
+                      <View className="wechat-config-item">
+                        <Text className="wechat-config-label">AppSecret：</Text>
+                        <Text className="wechat-config-value">
+                          {account.appkey ? '已验证 ✓' : '未验证'}
+                        </Text>
+                      </View>
                     </View>
-                    <View className="stat-item">
-                      <Text className="stat-label">作品数</Text>
-                      <Text className="stat-value">{account.total_works.toLocaleString()}</Text>
-                    </View>
-                  </View>
+                  )}
+
                   <View className="account-actions">
                     <View
                       className="action-btn"
