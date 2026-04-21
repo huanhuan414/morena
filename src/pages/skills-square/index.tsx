@@ -22,6 +22,8 @@ const SKILL_NAME_MAP: Record<string, string> = {
   recommend_bgm: '背景音乐推荐',
   // 分身秩序
   app_assign_order: '分身秩序',
+  // 账号管理
+  list_avatar_accounts: '账号管理',
   // 个人IP打造套件中的技能
   generate_video: '视频生成',
   // 视频相关
@@ -200,6 +202,8 @@ const getSkillIcon = (toolName?: string): string => {
     'edit_shortdrama_video': '✂️',
     'generate_subtitle': '💬',
     'recommend_bgm': '🎵',
+    // 账号管理
+    'list_avatar_accounts': '🔗',
     // 内容创作
     'write_article': '✍️',
     'write_wechat_mp_article': '📰',
