@@ -256,27 +256,30 @@
 }
 
 .settings-btn {
-  width: 72rpx; /* 从68rpx改为72rpx */
-  height: 72rpx;
-  background: rgba(255, 255, 255, 0.08); /* 从rgba(99,102,241,0.12)改为更亮的背景 */
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  width: 80rpx;
+  height: 80rpx;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2rpx solid rgba(255, 255, 255, 0.2); /* 边框更明显 */
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2); /* 增强阴影 */
+  border: 2.5rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.settings-btn .settings-icon {
-  color: rgba(255, 255, 255, 1) !important; /* 从0.95改为1，完全不透明 */
-  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.4)); /* 增强阴影 */
 }
 
 .settings-btn:active {
   transform: scale(0.9);
-  background: rgba(99, 102, 241, 0.18);
-  box-shadow: 0 2rpx 8rpx rgba(99, 102, 241, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Settings 图标是 lucide-react-taro 渲染的 Image */
+.settings-btn Image {
+  width: 40rpx !important;
+  height: 40rpx !important;
 }
 
 /* ========================================

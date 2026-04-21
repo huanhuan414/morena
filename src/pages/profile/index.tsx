@@ -183,9 +183,9 @@ export default function ProfilePage() {
             <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
             <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
           </View>
-          <Button className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-            <Settings size={20} color="#ffffff" />
-          </Button>
+          <View className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+            <Settings size={24} color="#ffffff" />
+          </View>
         </View>
 
         {/* 统计数据 */}
