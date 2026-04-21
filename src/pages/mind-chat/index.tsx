@@ -3527,10 +3527,73 @@ export default function MindChatPage() {
 
             // 清理消息内容，移除图片链接等调试信息
             const cleanedContent = cleanMessageContent(msg.content)
+
             return (
-              <View className="text-message">
-                <MarkdownRender content={cleanedContent} />
-              </View>
+              <>
+                {/* 🔴 新增：显示用户上传的图片 */}
+                {msg.metadata?.uploaded_images && msg.metadata.uploaded_images.length > 0 && (
+                  <View className="message-uploaded-images">
+                    {msg.metadata.uploaded_images.map((imageUrl: string, imgIdx: number) => (
+                      <Image
+                        key={`uploaded-img-${imgIdx}`}
+                        src={imageUrl}
+                        className="message-uploaded-image"
+                        mode="aspectFill"
+                        onError={() => {
+                          console.error('[上传图片] 加载失败:', imageUrl)
+                        }}
+                      />
+                    ))}
+                  </View>
+                )}
+
+                {/* 🔴 新增：显示用户上传的视频 */}
+                {msg.metadata?.uploaded_videos && msg.metadata.uploaded_videos.length > 0 && (
+                  <View className="message-uploaded-videos">
+                    {msg.metadata.uploaded_videos.map((uploadedVideoUrl: string, vidIdx: number) => {
+                      const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                      return (
+                        <View key={`uploaded-video-${vidIdx}`} className="message-uploaded-video">
+                          {isH5 ? (
+                            <video
+                              src={uploadedVideoUrl}
+                              className="message-video-player"
+                              controls
+                              playsInline
+                              webkit-playsinline="true"
+                              x5-playsinline="true"
+                              preload="metadata"
+                              style={{ width: '100%', height: '180px', borderRadius: '8px', backgroundColor: '#000' }}
+                              onError={() => {
+                                console.error('[上传视频] 播放失败:', uploadedVideoUrl)
+                              }}
+                            />
+                          ) : (
+                            <Video
+                              src={uploadedVideoUrl}
+                              className="message-video-player"
+                              controls
+                              showFullscreenBtn
+                              showPlayBtn
+                              showCenterPlayBtn
+                              objectFit="contain"
+                              style={{ width: '100%', height: '180px', borderRadius: '8px' }}
+                              onError={() => {
+                                console.error('[上传视频] 播放失败:', videoUrl)
+                              }}
+                            />
+                          )}
+                        </View>
+                      )
+                    })}
+                  </View>
+                )}
+
+                {/* 文本内容 */}
+                <View className="text-message">
+                  <MarkdownRender content={cleanedContent} />
+                </View>
+              </>
             )
           }
 

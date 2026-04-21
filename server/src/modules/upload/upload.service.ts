@@ -176,17 +176,23 @@ export class UploadService {
     const path = require('path')
 
     try {
-      // 创建完整的目录结构
-      const filePath = path.join(process.cwd(), 'uploads', fileName)
+      // 🔴 修复：确保保存到项目根目录的 uploads 文件夹
+      // 项目根目录：/workspace/projects
+      const projectRoot = process.cwd().includes('server') ? path.join(process.cwd(), '..') : process.cwd()
+      const filePath = path.join(projectRoot, 'uploads', fileName)
       const dir = path.dirname(filePath)
+
+      this.logger.log(`准备保存文件到: ${filePath}`)
+      this.logger.log(`项目根目录: ${projectRoot}`)
+      this.logger.log(`当前工作目录: ${process.cwd()}`)
 
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true })
+        this.logger.log(`创建目录: ${dir}`)
       }
 
       // 保存文件
       fs.writeFileSync(filePath, file.buffer)
-
       this.logger.log(`文件已保存到本地: ${filePath}`)
 
       // 返回本地文件路径

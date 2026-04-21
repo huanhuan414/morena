@@ -49,7 +49,9 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // 🔴 添加静态文件服务，用于本地存储的文件访问
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  // 🔴 修复：确保路径指向项目根目录的 uploads 文件夹
+  const projectRoot = process.cwd().includes('server') ? path.join(process.cwd(), '..') : process.cwd()
+  app.use('/uploads', express.static(path.join(projectRoot, 'uploads')));
 
   // 全局拦截器：统一将 POST 请求的 201 状态码改为 200
   app.useGlobalInterceptors(new HttpStatusInterceptor());
