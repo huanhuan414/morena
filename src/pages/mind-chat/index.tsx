@@ -2267,6 +2267,29 @@ export default function MindChatPage() {
       return false
     })()
 
+    // 检测账号列表数据
+    const hasAccountList = (() => {
+      if (msg.metadata?.agent_result?.steps) {
+        const steps = msg.metadata.agent_result.steps || []
+        return steps.some((step: ReActStep) =>
+          step.action === 'list_avatar_accounts' && step.observation?.data?.accounts
+        )
+      }
+      return false
+    })()
+
+    // 提取账号列表数据
+    const accountListData = (() => {
+      if (msg.metadata?.agent_result?.steps) {
+        const steps = msg.metadata.agent_result.steps || []
+        const accountStep = steps.find((step: ReActStep) =>
+          step.action === 'list_avatar_accounts' && step.observation?.data?.accounts
+        )
+        return accountStep?.observation?.data?.accounts || []
+      }
+      return []
+    })()
+
     return (
       <View className="message-content-wrapper">
         {/* Agent 执行步骤展示 */}
@@ -2696,6 +2719,85 @@ export default function MindChatPage() {
                   )}
                 </View>
               ))}
+            </View>
+          )
+        })()}
+
+        {/* 账号列表卡片展示 */}
+        {hasAccountList && (() => {
+          const accounts = accountListData
+
+          if (accounts.length === 0) {
+            return (
+              <View className="avatar-list-empty">
+                <Text className="empty-text">暂无绑定账号，请前往账号配置页面添加！</Text>
+              </View>
+            )
+          }
+
+          return (
+            <View className="account-list-cards">
+              {accounts.map((account: any, index: number) => {
+                // 获取平台信息
+                const platformConfig: Record<string, { name: string; icon: any; color: string; avatar: string }> = {
+                  douyin: { name: '抖音', icon: '🎵', color: '#1f2937', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' },
+                  xiaohongshu: { name: '小红书', icon: '📱', color: '#ff2442', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' },
+                  wechat: { name: '微信公众号', icon: '💬', color: '#07c160', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' },
+                  bilibili: { name: 'B站', icon: '📺', color: '#fb7299', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' },
+                  weibo: { name: '微博', icon: '🌐', color: '#e6162d', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' }
+                }
+
+                const platformInfo = platformConfig[account.platform] || { name: account.platform, icon: '🔗', color: '#6b7280', avatar: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/direct-paint-logo.1590226457341' }
+                const accountName = account.account_name || account.name || '未命名'
+                const followers = account.followers || account.extra_info?.follower_count || 0
+                const totalWorks = account.total_works || account.extra_info?.aweme_count || account.extra_info?.notes_count || 0
+
+                return (
+                  <View key={account.id || index} className="account-card">
+                    <View className="account-card-header">
+                      <View className="account-card-avatar">
+                        {account.extra_info?.avatar_url ? (
+                          <Image
+                            src={account.extra_info.avatar_url}
+                            className="account-card-img"
+                            mode="aspectFill"
+                          />
+                        ) : (
+                          <View className="account-avatar-placeholder" style={{ backgroundColor: platformInfo.color + '30' }}>
+                            <Text className="account-avatar-icon">{platformInfo.icon}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="account-card-info">
+                        <View className="account-card-platform">
+                          <Text className="platform-name" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
+                        </View>
+                        <Text className="account-card-name">{accountName}</Text>
+                        <View className="account-card-stats">
+                          {account.platform !== 'wechat' && (
+                            <>
+                              <View className="stat-item">
+                                <Text className="stat-label">粉丝</Text>
+                                <Text className="stat-value">{followers.toLocaleString()}</Text>
+                              </View>
+                              <View className="stat-item">
+                                <Text className="stat-label">作品</Text>
+                                <Text className="stat-value">{totalWorks.toLocaleString()}</Text>
+                              </View>
+                            </>
+                          )}
+                          {account.platform === 'wechat' && (
+                            <View className="stat-item">
+                              <Text className="stat-label">AppID</Text>
+                              <Text className="stat-value">{account.appid}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )
+              })}
             </View>
           )
         })()}
