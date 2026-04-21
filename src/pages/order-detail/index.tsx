@@ -124,6 +124,20 @@ export default function OrderDetailPage() {
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
+  // 格式化日期显示
+  const formatDate = (dateStr?: string): string => {
+    if (!dateStr) return ''
+    try {
+      const date = new Date(dateStr)
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      return `${year}/${month}/${day}`
+    } catch {
+      return dateStr
+    }
+  }
+
   // Markdown 解析函数
   const parseMarkdown = (text: string): JSX.Element[] => {
     if (!text) return [<Text key="empty"></Text>]
@@ -439,7 +453,7 @@ export default function OrderDetailPage() {
             <View className="meta-item">
               <Calendar size={16} color="#00f5ff" />
               <Text className="meta-value">
-                {order.deadline || new Date(order.created_at).toLocaleDateString()}
+                {formatDate(order.deadline) || new Date(order.created_at).toLocaleDateString()}
               </Text>
             </View>
             <View className="meta-item">
@@ -537,7 +551,7 @@ export default function OrderDetailPage() {
                       <Text className="req-label block">截止日期</Text>
                       <View className="req-value-wrapper">
                         <Clock size={16} color="#f59e0b" />
-                        <Text className="req-value block">{order.deadline}</Text>
+                        <Text className="req-value block">{formatDate(order.deadline)}</Text>
                       </View>
                     </View>
                   )}
