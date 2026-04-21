@@ -1376,7 +1376,7 @@ export default function MindChatPage() {
         try {
           // 上传视频到 TOS
           const uploadRes = await Network.uploadFile({
-            url: '/api/upload/image',
+            url: '/api/upload/video',
             filePath: tempFilePath,
             name: 'file'
           })

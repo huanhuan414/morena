@@ -39,13 +39,19 @@ export class UploadService {
   async uploadOrderScreenshot(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `order-screenshots/${nanoid()}${path.extname(file.originalname)}`
 
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
+    try {
+      // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+      const actualFileName = await this.uploadToS3(file, fileName)
 
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+      // 生成签名 URL
+      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-    return { url: signedUrl }
+      return { url: signedUrl }
+    } catch (s3Error) {
+      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
+      const localUrl = await this.uploadToLocal(file, fileName)
+      return { url: localUrl }
+    }
   }
 
   /**
@@ -54,13 +60,19 @@ export class UploadService {
   async uploadAvatarImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `avatar-images/${nanoid()}${path.extname(file.originalname)}`
 
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
+    try {
+      // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+      const actualFileName = await this.uploadToS3(file, fileName)
 
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+      // 生成签名 URL
+      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-    return { url: signedUrl }
+      return { url: signedUrl }
+    } catch (s3Error) {
+      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
+      const localUrl = await this.uploadToLocal(file, fileName)
+      return { url: localUrl }
+    }
   }
 
   /**
@@ -69,13 +81,48 @@ export class UploadService {
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `general-images/${nanoid()}${path.extname(file.originalname)}`
 
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
+    try {
+      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+      const actualFileName = await this.uploadToS3(file, fileName)
 
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+      // 生成签名 URL
+      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-    return { url: signedUrl }
+      return { url: signedUrl }
+    } catch (s3Error) {
+      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
+
+      // 🔴 Fallback: 使用本地文件存储
+      const localUrl = await this.uploadToLocal(file, fileName)
+      console.log('图片已保存到本地:', localUrl)
+
+      return { url: localUrl }
+    }
+  }
+
+  /**
+   * 🔴 上传视频
+   */
+  async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {
+    const fileName = `videos/${nanoid()}${path.extname(file.originalname)}`
+
+    try {
+      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+      const actualFileName = await this.uploadToS3(file, fileName)
+
+      // 生成签名 URL
+      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+
+      return { url: signedUrl }
+    } catch (s3Error) {
+      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
+
+      // 🔴 Fallback: 使用本地文件存储
+      const localUrl = await this.uploadToLocal(file, fileName)
+      console.log('视频已保存到本地:', localUrl)
+
+      return { url: localUrl }
+    }
   }
 
   /**
@@ -87,7 +134,7 @@ export class UploadService {
       this.logger.log(`准备上传文件: ${fileName}, 大小: ${file.size} bytes`)
       this.logger.log(`文件类型: ${file.mimetype}`)
 
-      // 🔴 修复：使用 StorageService 而不是直接使用 S3Storage，避免配置问题
+      // 🔴 尝试使用 StorageService 上传
       const actualFileName = await this.storageService.uploadFile(
         file.buffer,
         fileName,
@@ -117,6 +164,36 @@ export class UploadService {
       }
 
       throw new Error(`文件上传失败: ${error.message}`)
+    }
+  }
+
+  /**
+   * 🔴 备用方案：使用本地文件存储
+   * 当 S3 上传失败时使用
+   */
+  private async uploadToLocal(file: Express.Multer.File, fileName: string): Promise<string> {
+    const fs = require('fs')
+    const path = require('path')
+
+    try {
+      // 创建完整的目录结构
+      const filePath = path.join(process.cwd(), 'uploads', fileName)
+      const dir = path.dirname(filePath)
+
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true })
+      }
+
+      // 保存文件
+      fs.writeFileSync(filePath, file.buffer)
+
+      this.logger.log(`文件已保存到本地: ${filePath}`)
+
+      // 返回本地文件路径
+      return `http://localhost:3000/uploads/${fileName}`
+    } catch (error: any) {
+      this.logger.error('本地保存失败:', error)
+      throw new Error(`本地保存失败: ${error.message}`)
     }
   }
 }

@@ -71,4 +71,26 @@ export class UploadController {
       }
     }
   }
+
+  /**
+   * 🔴 上传视频
+   */
+  @Post('video')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadVideo(@UploadedFile() file: Express.Multer.File) {
+    try {
+      const result = await this.uploadService.uploadVideo(file)
+      return {
+        code: 200,
+        message: '上传成功',
+        data: result
+      }
+    } catch (error) {
+      return {
+        code: 500,
+        message: error.message || '上传失败',
+        error: error.message
+      }
+    }
+  }
 }

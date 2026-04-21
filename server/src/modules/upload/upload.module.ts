@@ -11,21 +11,28 @@ import * as multer from 'multer'
     MulterModule.register({
       storage: multer.memoryStorage(),
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+        fileSize: 500 * 1024 * 1024, // 500MB（支持视频上传）
       },
       fileFilter: (req, file, callback) => {
-        // 只允许图片
+        // 允许图片和视频
         const allowedMimes = [
+          // 图片
           'image/jpeg',
           'image/jpg',
           'image/png',
           'image/gif',
-          'image/webp'
+          'image/webp',
+          // 视频
+          'video/mp4',
+          'video/mpeg',
+          'video/quicktime',
+          'video/x-msvideo',
+          'video/x-ms-wmv'
         ]
         if (allowedMimes.includes(file.mimetype)) {
           callback(null, true)
         } else {
-          callback(new Error('只支持图片格式（jpg, png, gif, webp）'), false)
+          callback(new Error('只支持图片和视频格式（jpg, png, gif, webp, mp4, mov, avi）'), false)
         }
       }
     })
