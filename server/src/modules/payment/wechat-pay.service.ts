@@ -244,7 +244,7 @@ export class WechatPayService {
           h5_info: {
             type: 'Wap',
             app_name: '分身营销助手',
-            app_url: window?.location?.origin || 'https://yourdomain.com'
+            app_url: process.env.FRONTEND_URL || 'https://yourdomain.com'
           }
         }
       }
