@@ -18,16 +18,18 @@ export class UploadService {
     this.logger.log(`Access Key: ${process.env.VOLC_ACCESS_KEY ? '已配置' : '未配置'}`)
 
     try {
+      // 🔴 修复：使用与 StorageService 相同的简单配置
       this.s3Client = new S3Storage({
         endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
         accessKey: process.env.VOLC_ACCESS_KEY || '',
         secretKey: process.env.VOLC_SECRET_KEY || '',
         bucketName: this.bucketName,
-        region: 'cn-beijing'
+        region: 'cn-beijing',
       })
       this.logger.log('S3 客户端初始化成功')
     } catch (error) {
       this.logger.error('S3 客户端初始化失败:', error)
+      this.logger.error('错误详情:', JSON.stringify(error))
     }
   }
 
@@ -85,48 +87,35 @@ export class UploadService {
       this.logger.log(`准备上传文件: ${fileName}, 大小: ${file.size} bytes`)
       this.logger.log(`文件类型: ${file.mimetype}`)
 
-      // 使用 S3Storage 上传
-      const uploadResult: any = await this.s3Client.uploadFile({
-        fileContent: file.buffer,
-        fileName: fileName,
-        contentType: file.mimetype,
-        bucket: this.bucketName
-      })
+      // 🔴 修复：使用 StorageService 而不是直接使用 S3Storage，避免配置问题
+      const actualFileName = await this.storageService.uploadFile(
+        file.buffer,
+        fileName,
+        file.mimetype
+      )
 
-      this.logger.log(`文件上传结果:`, JSON.stringify(uploadResult))
+      this.logger.log(`文件上传成功: ${actualFileName}`)
+      return actualFileName
+    } catch (error: any) {
+      this.logger.error('S3上传失败:', error)
+      this.logger.error('错误详情:', JSON.stringify(error))
 
-      // 处理不同的返回格式，提取实际文件名
-      let actualFileName = fileName
-      if (typeof uploadResult === 'string') {
-        // 如果返回的是字符串，可能包含完整URL，提取文件名
-        const urlMatch = uploadResult.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
-        if (urlMatch) {
-          actualFileName = urlMatch[0]
-        } else {
-          actualFileName = uploadResult
-        }
-      } else if (uploadResult && uploadResult.url) {
-        const urlMatch = uploadResult.url.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
-        if (urlMatch) {
-          actualFileName = urlMatch[0]
-        }
-      } else if (uploadResult && uploadResult.location) {
-        const urlMatch = uploadResult.location.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
-        if (urlMatch) {
-          actualFileName = urlMatch[0]
-        }
-      } else if (uploadResult && uploadResult.data) {
-        const urlMatch = uploadResult.data.match(/order-screenshots\/[^?]+|avatar-images\/[^?]+|general-images\/[^?]+/)
-        if (urlMatch) {
-          actualFileName = urlMatch[0]
+      // 🔴 尝试查看原始响应
+      if (error.$response) {
+        const responseBody = error.$response?.body?.toString()
+        this.logger.error('原始响应:', responseBody)
+
+        // 🔴 解析 TOS 错误信息
+        if (responseBody && responseBody.includes('NoSuchBucket')) {
+          throw new Error(`Bucket "${this.bucketName}" 不存在，请在 TOS 控制台检查 Bucket 配置`)
         }
       }
 
-      this.logger.log(`提取到的实际文件名: ${actualFileName}`)
-      return actualFileName
-    } catch (error) {
-      this.logger.error('S3上传失败:', error)
-      this.logger.error('错误详情:', JSON.stringify(error))
+      // 🔴 检查 HTTP 状态码
+      if (error.$metadata?.httpStatusCode === 404) {
+        throw new Error(`资源不存在：${this.bucketName}。请检查 Bucket 名称和 Access Key 权限`)
+      }
+
       throw new Error(`文件上传失败: ${error.message}`)
     }
   }
