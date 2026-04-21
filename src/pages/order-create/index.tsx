@@ -198,17 +198,49 @@ export default function OrderCreatePage() {
       return
     }
 
+    if (form.requirements.platforms.length === 0) {
+      showToast({ title: '请先选择发布平台', icon: 'none' })
+      return
+    }
+
     setAiWriting(true)
 
     try {
-      const prompt = `请根据以下订单标题，生成一份详细的需求描述。要求：
+      // 获取选中的平台名称
+      const selectedPlatformNames = form.requirements.platforms
+        .map(p => platforms.find(platform => platform.value === p)?.label)
+        .filter(Boolean)
+        .join('、')
+
+      // 构建平台特定的提示词
+      let platformPrompt = ''
+      if (form.requirements.platforms.includes('xiaohongshu')) {
+        platformPrompt = `针对小红书平台：注意风格要年轻化、生活化，多使用表情符号和话题标签，内容要有"种草"属性，注重真实体验分享。`
+      } else if (form.requirements.platforms.includes('wechat_moments')) {
+        platformPrompt = `针对朋友圈：风格要私密、温暖、有故事性，适合个人化表达，不做过分商业化包装，要能引发朋友互动。`
+      } else if (form.requirements.platforms.includes('wechat_mp')) {
+        platformPrompt = `针对公众号：内容要有深度、专业度，结构清晰、逻辑严密，适合长阅读，要有观点和洞察，注重知识传递。`
+      } else if (form.requirements.platforms.includes('douyin') || form.requirements.platforms.includes('wechat_video')) {
+        platformPrompt = `针对短视频平台（抖音/视频号）：内容要节奏明快、有视觉冲击力，脚本要有悬念和反转，3-5秒内要抓住注意力，注重娱乐性和传播性。`
+      } else if (form.requirements.platforms.includes('bilibili')) {
+        platformPrompt = `针对B站：内容要有趣、有梗，符合二次元文化，可以适当使用网络用语，内容要有梗点和弹幕互动点，注重创意和个性。`
+      } else if (form.requirements.platforms.includes('weibo')) {
+        platformPrompt = `针对微博：内容要有话题性、时效性，适合热点事件，内容要简洁有力，易于转发传播，注重社交属性。`
+      }
+
+      const prompt = `请根据以下订单标题和发布平台，生成一份详细的需求描述。
+
+发布平台：${selectedPlatformNames}
+${platformPrompt}
+
+要求：
 1. 必须包含以下五个方面：内容方向、风格要求、受众目标、品牌调性、预期效果
 2. 内容方向：明确说明要创作的内容类型和方向
 3. 风格要求：描述内容的风格特点、语言风格、表现形式等
 4. 受众目标：明确目标用户群体画像和特征
 5. 品牌调性：描述品牌形象、价值观、传达的情感
 6. 预期效果：说明希望达到的量化指标和影响
-7. 每个方面2-3句话，详细且具体
+7. 每个方面2-3句话，详细且具体，并针对所选平台特点进行优化
 8. 字数控制在200-350字之间
 
 订单标题：${form.title}
@@ -624,6 +656,29 @@ export default function OrderCreatePage() {
           />
         </View>
 
+        {/* 发布平台 */}
+        <View className="section-card">
+          <View className="card-header">
+            <Sparkles size={20} color="#3b82f6" />
+            <Text className="card-title">发布平台</Text>
+          </View>
+          <View className="platform-grid">
+            {platforms.map((platform) => {
+              const isActive = form.requirements.platforms.includes(platform.value)
+              return (
+                <View
+                  key={platform.value}
+                  className={`platform-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => togglePlatform(platform.value)}
+                >
+                  <Text className={`platform-text ${isActive ? 'active' : ''}`}>{platform.label}</Text>
+                  {isActive && <Check size={16} color="#3b82f6" />}
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
         {/* 描述输入 */}
         <View className="section-card">
           <View className="card-header">
@@ -715,29 +770,6 @@ export default function OrderCreatePage() {
             {uploading && (
               <Text className="uploading-text">上传中...</Text>
             )}
-          </View>
-        </View>
-
-        {/* 发布平台 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Sparkles size={20} color="#3b82f6" />
-            <Text className="card-title">发布平台</Text>
-          </View>
-          <View className="platform-grid">
-            {platforms.map((platform) => {
-              const isActive = form.requirements.platforms.includes(platform.value)
-              return (
-                <View
-                  key={platform.value}
-                  className={`platform-chip ${isActive ? 'active' : ''}`}
-                  onClick={() => togglePlatform(platform.value)}
-                >
-                  <Text className={`platform-text ${isActive ? 'active' : ''}`}>{platform.label}</Text>
-                  {isActive && <Check size={16} color="#3b82f6" />}
-                </View>
-              )
-            })}
           </View>
         </View>
 
