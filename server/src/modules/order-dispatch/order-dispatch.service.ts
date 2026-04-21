@@ -603,6 +603,15 @@ export class OrderDispatchService {
   }
 
   /**
+   * 安全地将值转换为字符串
+   */
+  private safeToString(value: any): string {
+    if (typeof value === 'string') return value
+    if (value === null || value === undefined) return ''
+    return String(value)
+  }
+
+  /**
    * 计算语义相似度
    */
   private calculateSemanticSimilarity(
@@ -611,50 +620,56 @@ export class OrderDispatchService {
   ): { score: number; reasons: string[] } {
     let score = 0
     const reasons: string[] = []
-    
+
     // 1. 语义标签匹配 (最高 30 分)
     const orderTags = orderAnalysis.semanticTags || []
     const avatarExpertise = avatarProfile.expertise || []
     const avatarSkills = avatarProfile.skills || []
-    
+
     let tagMatchCount = 0
     orderTags.forEach(tag => {
-      if (avatarExpertise.some(e => e.includes(tag) || tag.includes(e))) {
+      const tagLower = this.safeToString(tag).toLowerCase()
+      if (avatarExpertise.some(e => {
+        const eLower = this.safeToString(e).toLowerCase()
+        return eLower.includes(tagLower) || tagLower.includes(eLower)
+      })) {
         tagMatchCount++
         reasons.push(`专业领域匹配: ${tag}`)
       }
     })
     const tagScore = Math.min((tagMatchCount / Math.max(orderTags.length, 1)) * 30, 30)
     score += tagScore
-    
+
     // 2. 技能匹配 (最高 30 分)
     const orderSkills = orderAnalysis.requiredSkills || []
     const allAvatarSkills = [...avatarSkills, ...avatarExpertise]
-    
+
     let skillMatchCount = 0
     orderSkills.forEach(skill => {
-      if (allAvatarSkills.some(s => 
-        s.toLowerCase().includes(skill.toLowerCase()) || 
-        skill.toLowerCase().includes(s.toLowerCase())
-      )) {
+      const skillLower = this.safeToString(skill).toLowerCase()
+      if (allAvatarSkills.some(s => {
+        const sLower = this.safeToString(s).toLowerCase()
+        return sLower.includes(skillLower) || skillLower.includes(sLower)
+      })) {
         skillMatchCount++
       }
     })
-    const skillScore = orderSkills.length > 0 
+    const skillScore = orderSkills.length > 0
       ? Math.min((skillMatchCount / orderSkills.length) * 30, 30)
       : 20 // 无明确技能要求时给基础分
     score += skillScore
-    
+
     // 3. 说话风格匹配 (最高 20 分)
     const orderTones = orderAnalysis.toneStyle || []
     const avatarStyles = avatarProfile.speakingStyle || []
-    
+
     let toneMatchCount = 0
     orderTones.forEach(tone => {
-      if (avatarStyles.some(s => 
-        s.toLowerCase().includes(tone.toLowerCase()) || 
-        tone.toLowerCase().includes(s.toLowerCase())
-      )) {
+      const toneLower = this.safeToString(tone).toLowerCase()
+      if (avatarStyles.some(s => {
+        const sLower = this.safeToString(s).toLowerCase()
+        return sLower.includes(toneLower) || toneLower.includes(sLower)
+      })) {
         toneMatchCount++
       }
     })
@@ -662,15 +677,16 @@ export class OrderDispatchService {
       ? Math.min((toneMatchCount / orderTones.length) * 20, 20)
       : 15 // 无明确风格要求时给基础分
     score += toneScore
-    
+
     // 4. 内容类型匹配 (最高 20 分)
     const orderTypes = orderAnalysis.contentType || []
     let typeMatchCount = 0
     orderTypes.forEach(type => {
-      if (allAvatarSkills.some(s => 
-        s.toLowerCase().includes(type.toLowerCase()) || 
-        type.toLowerCase().includes(s.toLowerCase())
-      )) {
+      const typeLower = this.safeToString(type).toLowerCase()
+      if (allAvatarSkills.some(s => {
+        const sLower = this.safeToString(s).toLowerCase()
+        return sLower.includes(typeLower) || typeLower.includes(sLower)
+      })) {
         typeMatchCount++
       }
     })
@@ -678,7 +694,7 @@ export class OrderDispatchService {
       ? Math.min((typeMatchCount / orderTypes.length) * 20, 20)
       : 15
     score += typeScore
-    
+
     return { score: Math.round(score * 10) / 10, reasons }
   }
 
