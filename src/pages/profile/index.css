@@ -533,6 +533,26 @@
   }
 }
 
+.request-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.request-order-title {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.4;
+}
+
 .request-avatar-section {
   display: flex;
   align-items: center;
@@ -575,12 +595,6 @@
   color: var(--text-primary);
   margin-bottom: 6rpx;
   letter-spacing: -0.3rpx;
-}
-
-.request-order-title {
-  font-size: 22rpx;
-  font-weight: 500;
-  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
