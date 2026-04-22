@@ -214,7 +214,7 @@ export class OrderProcessingService {
     })
 
     // 查询订单信息
-    let orderData = null
+    let orderData: any = null
     if (request.order_id) {
       const { data: order, error: orderError } = await client
         .from('orders')
@@ -230,7 +230,7 @@ export class OrderProcessingService {
     }
 
     // 查询分身信息
-    let avatarData = null
+    let avatarData: any = null
     if (request.avatar_id) {
       const { data: avatar, error: avatarError } = await client
         .from('avatars')
