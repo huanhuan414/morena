@@ -706,7 +706,7 @@ ${contentTypePrompt}
         // 跳转到分身匹配页面
         setTimeout(() => {
           navigateTo({
-            url: `/pages/order-matching/index?id=${orderId}`
+            url: `/pages/order-matching/index?orderId=${orderId}`
           })
         }, 500)
       } else {
