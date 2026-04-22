@@ -196,9 +196,7 @@ export default function AvatarOrdersPage() {
 
   const displayedOrders = activeTab === 'all'
     ? [...allOrders].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    : activeTab === 'published'
-      ? [...(ordersByStatus.published || []), ...(ordersByStatus.completed || [])].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      : ordersByStatus[activeTab] || []
+    : ordersByStatus[activeTab] || []
 
   const totalStats = {
     all: allOrders.length,
@@ -206,9 +204,9 @@ export default function AvatarOrdersPage() {
     generating: ordersByStatus.generating?.length || 0,
     preview: ordersByStatus.preview?.length || 0,
     publishing: ordersByStatus.publishing?.length || 0,
-    published: (ordersByStatus.published?.length || 0) + (ordersByStatus.completed?.length || 0), // 合并completed到published
+    published: ordersByStatus.published?.length || 0,
     awaiting_acceptance: ordersByStatus.awaiting_acceptance?.length || 0,
-    completed: 0, // 不再单独显示completed
+    completed: ordersByStatus.completed?.length || 0,
     cancelled: ordersByStatus.cancelled?.length || 0
   }
 
@@ -292,9 +290,7 @@ export default function AvatarOrdersPage() {
               <Text className="tab-badge-text">{totalStats.all}</Text>
             </View>
           </View>
-          {Object.entries(ORDER_STATUS_CONFIG)
-            .filter(([status]) => status !== 'completed') // 不显示completed状态
-            .map(([status, config]) => (
+          {Object.entries(ORDER_STATUS_CONFIG).map(([status, config]) => (
             <View
               key={status}
               className={`tab-item ${activeTab === status ? 'active' : ''}`}
@@ -316,9 +312,7 @@ export default function AvatarOrdersPage() {
         {displayedOrders.length > 0 ? (
           <View className="orders-list">
             {displayedOrders.map((order) => {
-              // 如果是completed状态，使用published的配置显示
-              const displayStatus = order.status === 'completed' ? 'published' : order.status
-              const config = ORDER_STATUS_CONFIG[displayStatus] || ORDER_STATUS_CONFIG.accepted
+              const config = ORDER_STATUS_CONFIG[order.status] || ORDER_STATUS_CONFIG.accepted
               const StatusIcon = config.icon
 
               return (
