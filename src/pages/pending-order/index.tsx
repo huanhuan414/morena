@@ -186,7 +186,7 @@ export default function PendingOrderPage() {
 
     showModal({
       title: '确认接受订单',
-      content: `确定接受订单"${orderData.orders.title}"吗？接受后将自动为您生成内容。`,
+      content: `确定接受订单"${orderData.orders.title}"吗？接受后将为您制作内容。`,
       success: async (res) => {
         if (res.confirm) {
           setAccepting(true)
@@ -206,10 +206,10 @@ export default function PendingOrderPage() {
             console.log('[PendingOrder] 接受订单响应:', result.data)
 
             if (result.data?.code === 200) {
-              showToast({ title: '接受成功', icon: 'success' })
+              showToast({ title: '接受成功，正在制作内容...', icon: 'success' })
               setTimeout(() => {
                 navigateTo({
-                  url: `/pages/order-processing/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
+                  url: `/pages/order-content-creation/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
                 })
               }, 1500)
             } else {
