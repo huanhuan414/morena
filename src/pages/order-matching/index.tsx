@@ -269,11 +269,20 @@ export default function OrderMatchingPage() {
           navigateBack()
         }, 1500)
       } else {
-        showToast({ title: res.data?.message || '分配失败', icon: 'none' })
+        // 显示后端返回的具体错误信息
+        const errorMessage = res.data?.message || '分配失败'
+        console.error('[OrderMatching] 分配失败:', {
+          code: res.data?.code,
+          message: errorMessage,
+          fullResponse: res.data
+        })
+        showToast({ title: errorMessage, icon: 'none' })
       }
     } catch (error) {
-      console.error('分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
+      console.error('[OrderMatching] 分配异常:', error)
+      // 尝试从错误对象中提取信息
+      const errorMessage = (error as any)?.response?.data?.message || '分配失败'
+      showToast({ title: errorMessage, icon: 'none' })
     }
   }
 
@@ -283,6 +292,7 @@ export default function OrderMatchingPage() {
 
     setDispatching(true)
     let successCount = 0
+    const errors: Array<{ avatarName: string; message: string }> = []
 
     try {
       for (const avatar of matchedAvatars) {
@@ -295,9 +305,20 @@ export default function OrderMatchingPage() {
 
           if (res.data?.code === 200) {
             successCount++
+          } else {
+            // 收集失败的错误信息
+            errors.push({
+              avatarName: avatar.name,
+              message: res.data?.message || '分配失败'
+            })
           }
-        } catch {
-          // 忽略单个失败，继续分配其他分身
+        } catch (error) {
+          // 收集异常的错误信息
+          const errorMessage = (error as any)?.response?.data?.message || '分配失败'
+          errors.push({
+            avatarName: avatar.name,
+            message: errorMessage
+          })
         }
       }
 
@@ -307,11 +328,19 @@ export default function OrderMatchingPage() {
           navigateBack()
         }, 1500)
       } else {
-        showToast({ title: '分配失败', icon: 'none' })
+        // 显示第一个失败的原因
+        const firstError = errors[0]?.message || '分配失败'
+        console.error('[OrderMatching] 批量分配失败:', {
+          successCount,
+          failCount: errors.length,
+          errors
+        })
+        showToast({ title: firstError, icon: 'none' })
       }
     } catch (error) {
-      console.error('批量分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
+      console.error('[OrderMatching] 批量分配异常:', error)
+      const errorMessage = (error as any)?.response?.data?.message || '分配失败'
+      showToast({ title: errorMessage, icon: 'none' })
     } finally {
       setDispatching(false)
     }
