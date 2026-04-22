@@ -412,7 +412,7 @@ export default function OrderDetailPage() {
   }
 
   const statusConfig = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
-  const content = order.result?.content
+  const content = order.result?.content || order.generated_content || order.confirmed_content
 
   return (
     <View className="order-detail-page">
@@ -673,17 +673,19 @@ export default function OrderDetailPage() {
         {/* 成果展示 */}
         {activeTab === 'result' && (
           <View className="result-panel">
-            {content ? (
+            {content || order.publish_status || order.publish_feedback ? (
               <View className="result-content">
-                {content.title && (
+                {content?.title && (
                   <View className="result-title-card glass-card">
                     <Text className="result-title-text block">{content.title}</Text>
                   </View>
                 )}
-                <View className="result-body-card glass-card">
-                  <Text className="result-body-text block">{content.content}</Text>
-                </View>
-                {content.images && content.images.length > 0 && (
+                {content && (
+                  <View className="result-body-card glass-card">
+                    <Text className="result-body-text block">{content.content}</Text>
+                  </View>
+                )}
+                {content?.images && content.images.length > 0 && (
                   <View className="result-images">
                     {content.images.map((img, idx) => (
                       <Image key={idx} src={img} className="result-image" mode="aspectFill" />
@@ -714,21 +716,21 @@ export default function OrderDetailPage() {
                               >
                                 <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                   <Text className="block" style={{ fontSize: '1rem', fontWeight: 600 }}>{platformName}</Text>
-                                  <View style={{ 
-                                    padding: '0.25rem 0.5rem', 
+                                  <View style={{
+                                    padding: '0.25rem 0.5rem',
                                     borderRadius: '0.25rem',
-                                    backgroundColor: result.status === 'success' ? 'rgba(34, 197, 94, 0.2)' : 
-                                                   result.status === 'manual' ? 'rgba(245, 158, 11, 0.2)' : 
+                                    backgroundColor: result.status === 'success' ? 'rgba(34, 197, 94, 0.2)' :
+                                                   result.status === 'manual' ? 'rgba(245, 158, 11, 0.2)' :
                                                    'rgba(239, 68, 68, 0.2)'
                                   }}
                                   >
-                                    <Text className="block" style={{ 
+                                    <Text className="block" style={{
                                       fontSize: '0.75rem',
-                                      color: result.status === 'success' ? '#22c55e' : 
+                                      color: result.status === 'success' ? '#22c55e' :
                                              result.status === 'manual' ? '#f59e0b' : '#ef4444'
                                     }}
                                     >
-                                      {result.status === 'success' ? '已发布' : 
+                                      {result.status === 'success' ? '已发布' :
                                        result.status === 'manual' ? '需手动发布' : '发布失败'}
                                     </Text>
                                   </View>
@@ -760,14 +762,14 @@ export default function OrderDetailPage() {
                                         <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
                                           发布截图：
                                         </Text>
-                                        <Image 
-                                          src={feedback.image} 
-                                          className="feedback-image" 
+                                        <Image
+                                          src={feedback.image}
+                                          className="feedback-image"
                                           mode="aspectFill"
-                                          style={{ 
-                                            width: '100%', 
-                                            height: '12rem', 
-                                            borderRadius: '0.5rem' 
+                                          style={{
+                                            width: '100%',
+                                            height: '12rem',
+                                            borderRadius: '0.5rem'
                                           }}
                                         />
                                       </View>
