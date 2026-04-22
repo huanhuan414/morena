@@ -1,173 +1,46 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Config, S3Storage } from 'coze-coding-dev-sdk'
-import { nanoid } from 'nanoid'
-import * as path from 'path'
-import { StorageService } from '../storage/storage.service'
+import { VolcengineService } from './volcengine.service'
 
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name)
-  private s3Client: S3Storage
-  private readonly bucketName = process.env.COZE_BUCKET_NAME || 'morena-ai'
 
-  constructor(private readonly storageService: StorageService) {
-    // 初始化 S3 客户端
-    this.logger.log('初始化 S3 客户端...')
-    this.logger.log(`TOS Endpoint: ${process.env.COZE_BUCKET_ENDPOINT_URL}`)
-    this.logger.log(`TOS Bucket: ${this.bucketName}`)
-    this.logger.log(`Access Key: ${process.env.VOLC_ACCESS_KEY ? '已配置' : '未配置'}`)
-
-    try {
-      // 🔴 修复：使用与 StorageService 相同的简单配置
-      this.s3Client = new S3Storage({
-        endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-        accessKey: process.env.VOLC_ACCESS_KEY || '',
-        secretKey: process.env.VOLC_SECRET_KEY || '',
-        bucketName: this.bucketName,
-        region: 'cn-guangzhou', // 华南1（广州）
-      })
-      this.logger.log('S3 客户端初始化成功')
-    } catch (error) {
-      this.logger.error('S3 客户端初始化失败:', error)
-      this.logger.error('错误详情:', JSON.stringify(error))
-    }
+  constructor(private readonly volcengineService: VolcengineService) {
+    this.logger.log('初始化上传服务')
   }
 
   /**
    * 上传订单截图
    */
   async uploadOrderScreenshot(file: Express.Multer.File): Promise<{ url: string }> {
-    const fileName = `order-screenshots/${nanoid()}${path.extname(file.originalname)}`
-
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
-
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
-
-    return { url: signedUrl }
+    return this.volcengineService.uploadImage(file)
   }
 
   /**
    * 上传分身头像
    */
   async uploadAvatarImage(file: Express.Multer.File): Promise<{ url: string }> {
-    const fileName = `avatar-images/${nanoid()}${path.extname(file.originalname)}`
-
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
-
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
-
-    return { url: signedUrl }
+    return this.volcengineService.uploadImage(file)
   }
 
   /**
    * 上传通用图片
    */
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
-    const fileName = `general-images/${nanoid()}${path.extname(file.originalname)}`
-
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
-
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
-
-    return { url: signedUrl }
+    return this.volcengineService.uploadImage(file)
   }
 
   /**
    * 上传视频
    */
   async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {
-    const fileName = `videos/${nanoid()}${path.extname(file.originalname)}`
-
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
-
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
-
-    return { url: signedUrl }
+    return this.volcengineService.uploadVideo(file)
   }
 
   /**
    * 上传音频
    */
   async uploadAudio(file: Express.Multer.File): Promise<{ url: string }> {
-    const fileName = `audios/${nanoid()}${path.extname(file.originalname)}`
-
-    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-    const actualFileName = await this.uploadToS3(file, fileName)
-
-    // 生成签名 URL
-    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
-
-    return { url: signedUrl }
-  }
-
-  /**
-   * 上传到 S3
-   * @returns 返回实际上传后的文件名（key）
-   */
-  private async uploadToS3(file: Express.Multer.File, fileName: string): Promise<string> {
-    try {
-      this.logger.log(`准备上传文件: ${fileName}, 大小: ${file.size} bytes`)
-      this.logger.log(`文件类型: ${file.mimetype}`)
-
-      // 🔴 尝试使用 StorageService 上传
-      const actualFileName = await this.storageService.uploadFile(
-        file.buffer,
-        fileName,
-        file.mimetype
-      )
-
-      this.logger.log(`文件上传成功: ${actualFileName}`)
-      return actualFileName
-    } catch (error: any) {
-      this.logger.error('S3上传失败:', error)
-      this.logger.error('错误详情:', JSON.stringify(error))
-
-      // 🔴 尝试查看原始响应
-      if (error.$response) {
-        const responseBody = error.$response?.body?.toString()
-        this.logger.error('原始响应:', responseBody)
-        this.logger.error('HTTP 状态码:', error.$response?.statusCode)
-        this.logger.error('响应头:', JSON.stringify(error.$response?.headers))
-
-        // 🔴 解析 TOS 错误信息
-        if (responseBody && responseBody.includes('NoSuchBucket')) {
-          throw new Error(`Bucket "${this.bucketName}" 不存在或无访问权限。请检查：1. Bucket 是否创建在华南1（广州）区域（cn-guangzhou） 2. Access Key 是否有该 Bucket 的读写权限 3. Bucket 名称是否正确（morena-ai，注意大小写）`)
-        }
-
-        if (responseBody && responseBody.includes('AccessDenied')) {
-          throw new Error(`Access Key 没有访问 Bucket "${this.bucketName}" 的权限。请在 IAM 控制台为 Access Key 添加 TOS 读写权限`)
-        }
-
-        if (responseBody && responseBody.includes('InvalidAccessKeyId')) {
-          throw new Error(`Access Key 无效。请检查 Access Key 是否正确`)
-        }
-
-        if (responseBody && responseBody.includes('InvalidPathAccess')) {
-          throw new Error(`TOS 路径访问被禁止。原因可能是：
-1. Bucket "${this.bucketName}" 的 ACL 配置不允许公开读写
-2. 需要在 TOS 控制台配置 Bucket 的访问权限为"公共读"或"私有"
-3. 确认 Bucket 的跨域配置（CORS）已设置
-
-解决方案：
-登录火山引擎 TOS 控制台 -> Bucket "${this.bucketName}" -> 权限管理 -> 设置 Bucket 权限为"私有"或"公共读"
-并确保 Access Key 有该 Bucket 的读写权限`)
-        }
-      }
-
-      // 🔴 检查 HTTP 状态码
-      if (error.$metadata?.httpStatusCode === 404) {
-        throw new Error(`资源不存在：${this.bucketName}。请检查 Bucket 名称和 Access Key 权限`)
-      }
-
-      throw new Error(`文件上传失败: ${error.message}`)
-    }
+    return this.volcengineService.uploadAudio(file)
   }
 }

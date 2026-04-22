@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { MulterModule } from '@nestjs/platform-express'
 import { UploadController } from './upload.controller'
 import { UploadService } from './upload.service'
+import { VolcengineService } from './volcengine.service'
 import { StorageModule } from '../storage/storage.module'
 import * as multer from 'multer'
 
@@ -45,7 +46,7 @@ import * as multer from 'multer'
     })
   ],
   controllers: [UploadController],
-  providers: [UploadService],
+  providers: [UploadService, VolcengineService],
   exports: [UploadService]
 })
 export class UploadModule {}
