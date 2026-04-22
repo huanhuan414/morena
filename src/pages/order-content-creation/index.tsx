@@ -47,6 +47,7 @@ export default function OrderContentCreationPage() {
   const [publishing, setPublishing] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [generationFailed, setGenerationFailed] = useState(false) // 是否生成失败
 
   // 进度提示相关状态
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -181,6 +182,23 @@ export default function OrderContentCreationPage() {
           startTimer()
         }
 
+        // 处理失败状态
+        if (data.status === 'failed') {
+          console.log('[OrderContentCreation] 内容生成失败')
+          setGenerationFailed(true)
+          stopTimer()
+          if (pollInterval) {
+            clearInterval(pollInterval)
+            setPollInterval(null)
+          }
+          Taro.showToast({
+            title: '内容生成失败，请重试',
+            icon: 'none',
+            duration: 3000
+          })
+          return
+        }
+
         // 在 preview 或 completed 状态时展示内容
         if ((data.status === 'preview' || data.status === 'completed') && data.generatedContent) {
           setContentData(data.generatedContent)
@@ -191,6 +209,20 @@ export default function OrderContentCreationPage() {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
+        } else if (data.status === 'preview' && !data.generatedContent) {
+          // 状态是preview但没有内容，可能是生成失败
+          console.log('[OrderContentCreation] 状态异常：preview但无内容')
+          setGenerationFailed(true)
+          stopTimer()
+          if (pollInterval) {
+            clearInterval(pollInterval)
+            setPollInterval(null)
+          }
+          Taro.showToast({
+            title: '内容生成异常，请重新生成',
+            icon: 'none',
+            duration: 3000
+          })
         } else {
           // 其他状态（generating, queuing 等）显示加载动画
           console.log('[OrderContentCreation] 内容制作中，当前状态:', data.status)
@@ -366,10 +398,14 @@ export default function OrderContentCreationPage() {
     })
 
     setRegenerating(true)
-    
+
+    // 重置失败状态
+    setGenerationFailed(false)
+    setIsTimeout(false)
+
     try {
       console.log('[OrderContentCreation] 开始重新生成请求')
-      
+
       // 直接重新生成，不显示确认对话框
       const response = await Network.request({
         url: `/api/order-processing/regenerate/${requestId}`,
@@ -546,19 +582,52 @@ export default function OrderContentCreationPage() {
               </View>
             )}
 
+            {/* 生成失败提示 */}
+            {generationFailed && (
+              <View className="timeout-warning" style={{ backgroundColor: '#fee2e2' }}>
+                <Text className="timeout-title block">❌ 内容生成失败</Text>
+                <Text className="timeout-desc block">未能成功生成内容，请点击下方按钮重新生成</Text>
+              </View>
+            )}
+
             {/* 刷新按钮 */}
-            <Button
-              className="refresh-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw size={16} color="#3b82f6" className={isRefreshing ? 'spinning' : ''} />
-              <Text className="refresh-btn-text block">{isRefreshing ? '刷新中...' : '刷新状态'}</Text>
-            </Button>
+            {!generationFailed && (
+              <Button
+                className="refresh-btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw size={16} color="#3b82f6" className={isRefreshing ? 'spinning' : ''} />
+                <Text className="refresh-btn-text block">{isRefreshing ? '刷新中...' : '刷新状态'}</Text>
+              </Button>
+            )}
+
+            {/* 重新生成按钮 */}
+            {(generationFailed || isTimeout) && (
+              <Button
+                className="refresh-btn"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  backgroundColor: '#f97316',
+                  marginTop: '0.75rem'
+                }}
+                onClick={handleRegenerate}
+                disabled={regenerating}
+              >
+                <RefreshCw size={16} color="#fff" className={regenerating ? 'spinning' : ''} />
+                <Text className="refresh-btn-text block" style={{ color: '#fff' }}>
+                  {regenerating ? '重新生成中...' : '重新生成内容'}
+                </Text>
+              </Button>
+            )}
 
             {/* 加载动画 */}
-            <Loader size={28} color="#3b82f6" className="loading-spinner" />
+            {!generationFailed && !isTimeout && (
+              <Loader size={28} color="#3b82f6" className="loading-spinner" />
+            )}
           </View>
         )}
 

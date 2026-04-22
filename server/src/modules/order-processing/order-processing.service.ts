@@ -170,6 +170,16 @@ class TaskQueue {
         generatedContent = generatedContents[0].content
       }
 
+      // 检查是否成功生成内容
+      if (!generatedContent || generatedContent.trim().length === 0) {
+        console.error('[TaskQueue] 生成的内容为空，标记为失败:', requestId)
+        await client
+          .from('order_dispatch_requests')
+          .update({ status: 'failed' })
+          .eq('id', requestId)
+        throw new Error('生成的内容为空')
+      }
+
       // 更新状态为预览
       await client
         .from('order_dispatch_requests')
