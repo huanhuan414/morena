@@ -1644,15 +1644,15 @@ export class OrderDispatchService {
     const client = getSupabaseClient()
 
     try {
-      // 查询该分身已接受的订单（状态为 accepted, generating, preview）
-      // 这些状态都表示订单正在进行中
+      // 查询该分身已接受的订单（状态为 accepted, generating, preview, publishing, completed, published）
+      // 包含所有已接受和已完成的订单
       const { data: requests, error } = await client
         .from('order_dispatch_requests')
         .select('*')
         .eq('avatar_id', avatarId)
-        .in('status', ['accepted', 'generating', 'preview'])
+        .in('status', ['accepted', 'generating', 'preview', 'publishing', 'completed', 'published'])
         .order('updated_at', { ascending: false })
-        .limit(20)
+        .limit(50)
 
       if (error) {
         console.error('[getAvatarAcceptedOrders] 查询失败:', error)
