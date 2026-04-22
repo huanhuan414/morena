@@ -67,10 +67,12 @@ export class VolcengineService {
       this.logger.log(`[VolcengineService] 确认上传成功:`, JSON.stringify(commitRes, null, 2));
 
       // 4. 获取文件URL
-      // 从commitRes的Results中获取上传后的URI
+      // 根据veImageX文档，需要使用服务配置的访问域名
+      // 如果没有配置域名，可以使用tos-cn-beijing.ivolces.com
       if (commitRes.Result?.Results && commitRes.Result.Results.length > 0) {
         const uri = commitRes.Result.Results[0].Uri;
-        const url = `https://${serviceId}.tos-cn-beijing.volces.com/${uri}`;
+        // 使用veImageX的默认访问域名
+        const url = `https://tos-cn-beijing.ivolces.com/${uri}`;
         this.logger.log(`[VolcengineService] 上传成功，URL: ${url}`);
         return { url };
       }
