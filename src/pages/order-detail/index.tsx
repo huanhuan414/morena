@@ -441,7 +441,7 @@ export default function OrderDetailPage() {
       console.log('[OrderDetail] 返回 Tab: detail, progress')
       return ['detail', 'progress']
     }
-    if (displayStatus === 'preview' || displayStatus === 'reviewing' || displayStatus === 'completed' || displayStatus === 'published') {
+    if (displayStatus === 'preview' || displayStatus === 'reviewing' || displayStatus === 'awaiting_acceptance' || displayStatus === 'completed' || displayStatus === 'published') {
       console.log('[OrderDetail] 返回 Tab: detail, progress, result')
       return ['detail', 'progress', 'result']
     }
