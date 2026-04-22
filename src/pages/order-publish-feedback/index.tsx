@@ -33,6 +33,7 @@ export default function OrderPublishFeedback() {
   const [feedback, setFeedback] = useState<Record<string, { image: string; link: string; linkInfo?: any }>>({})
   const [contentExpanded, setContentExpanded] = useState(false) // 内容展开状态
   const [validatingLinks, setValidatingLinks] = useState<Record<string, boolean>>({}) // 验证中状态
+  const [avatarId, setAvatarId] = useState<string>('') // 分身ID
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
@@ -50,6 +51,12 @@ export default function OrderPublishFeedback() {
 
       if (response.data?.code === 200) {
         const data = response.data.data
+        
+        // 提取 avatarId
+        if (data.avatarId) {
+          setAvatarId(data.avatarId)
+        }
+        
         setGeneratedContent(data.generatedContent)
 
         // 获取发布结果（兼容驼峰命名和下划线命名）
@@ -237,7 +244,11 @@ export default function OrderPublishFeedback() {
       const res = await Network.request({
         url: '/api/order-processing/validate-link',
         method: 'POST',
-        data: { url: link }
+        data: {
+          url: link,
+          orderId: orderId,
+          avatarId: avatarId
+        }
       })
 
       console.log('[OrderPublishFeedback] 验证链接响应:', res.data)

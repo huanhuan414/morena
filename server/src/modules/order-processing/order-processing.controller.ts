@@ -36,9 +36,13 @@ export class OrderProcessingController {
    * 验证链接并获取作品信息
    */
   @Post('validate-link')
-  async validateLink(@Body('url') url: string) {
+  async validateLink(
+    @Body('url') url: string,
+    @Body('orderId') orderId?: string,
+    @Body('avatarId') avatarId?: string
+  ) {
     try {
-      const result = await this.linkValidationService.validateLink(url)
+      const result = await this.linkValidationService.validateLink(url, orderId, avatarId)
       return {
         code: 200,
         data: result,
@@ -53,6 +57,27 @@ export class OrderProcessingController {
           error: error.message || '验证失败'
         },
         message: error.message || '验证失败'
+      }
+    }
+  }
+
+  /**
+   * 获取订单的已发布作品列表
+   */
+  @Get('works/:orderId')
+  async getWorksByOrderId(@Param('orderId') orderId: string) {
+    try {
+      const works = await this.linkValidationService.getWorksByOrderId(orderId)
+      return {
+        code: 200,
+        data: works,
+        message: '获取成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: [],
+        message: error.message || '获取失败'
       }
     }
   }

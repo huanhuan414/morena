@@ -581,6 +581,36 @@ export const insertAvatarContextSchema = createCoercedInsertSchema(avatarContext
 export const insertAvatarAgentConfigSchema = createCoercedInsertSchema(avatarAgentConfigs)
 export const insertAvatarLearningRecordSchema = createCoercedInsertSchema(avatarLearningRecords)
 
+// 作品链接表 - 存储用户发布的作品链接和抓取到的详细信息
+export const publishedWorks = pgTable(
+  "published_works",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    order_id: varchar("order_id", { length: 36 }).notNull().references(() => orders.id, { onDelete: "cascade" }),
+    avatar_id: varchar("avatar_id", { length: 36 }).notNull().references(() => avatars.id, { onDelete: "cascade" }),
+    platform: varchar("platform", { length: 30 }).notNull(), // douyin, xiaohongshu, wechat_mp, etc.
+    work_title: varchar("work_title", { length: 500 }), // 作品标题
+    work_url: varchar("work_url", { length: 1000 }).notNull(), // 作品链接
+    author_nickname: varchar("author_nickname", { length: 200 }), // 作者昵称
+    cover_image: varchar("cover_image", { length: 1000 }), // 封面图URL
+    description: text("description"), // 作品描述
+    extra_data: jsonb("extra_data").default({}), // 额外的作品数据（TikHub返回的完整数据）
+    status: varchar("status", { length: 20 }).default("verified").notNull(), // verified, unverified, failed
+    feedback_image: varchar("feedback_image", { length: 1000 }), // 用户上传的反馈截图
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("published_works_order_id_idx").on(table.order_id),
+    index("published_works_avatar_id_idx").on(table.avatar_id),
+    index("published_works_platform_idx").on(table.platform),
+    index("published_works_work_url_idx").on(table.work_url),
+    index("published_works_created_at_idx").on(table.created_at),
+  ]
+)
+
+export const insertPublishedWorkSchema = createCoercedInsertSchema(publishedWorks)
+
 // 类型导出
 export type User = typeof users.$inferSelect
 export type InsertUser = z.infer<typeof insertUserSchema>
@@ -614,3 +644,5 @@ export type AvatarAgentConfig = typeof avatarAgentConfigs.$inferSelect
 export type InsertAvatarAgentConfig = z.infer<typeof insertAvatarAgentConfigSchema>
 export type AvatarLearningRecord = typeof avatarLearningRecords.$inferSelect
 export type InsertAvatarLearningRecord = z.infer<typeof insertAvatarLearningRecordSchema>
+export type PublishedWork = typeof publishedWorks.$inferSelect
+export type InsertPublishedWork = z.infer<typeof insertPublishedWorkSchema>

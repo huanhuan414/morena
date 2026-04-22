@@ -847,6 +847,31 @@ export class OrderProcessingService {
       throw new Error('更新反馈失败')
     }
 
+    // 更新 published_works 表中的反馈截图
+    for (const [platform, feedbackData] of Object.entries(feedback)) {
+      if (feedbackData.image) {
+        // 查找已保存的作品记录
+        const { data: workData, error: workError } = await client
+          .from('published_works')
+          .select('id')
+          .eq('order_id', request.order_id)
+          .eq('platform', platform)
+          .single()
+
+        if (!workError && workData) {
+          // 更新反馈截图
+          await client
+            .from('published_works')
+            .update({
+              feedback_image: feedbackData.image,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', workData.id)
+          console.log(`[OrderProcessing] 已更新平台 ${platform} 的反馈截图`)
+        }
+      }
+    }
+
     console.log('[OrderProcessing] 提交发布反馈成功')
 
     return {
