@@ -61,8 +61,15 @@ export default function AvatarOrdersPage() {
 
       if (ordersRes.data?.code === 200) {
         const orders = ordersRes.data.data || []
-        const inProgress = orders.filter((o: any) => o.orders?.status === 'in_progress' || o.orders?.status === 'pending_review')
-        const completed = orders.filter((o: any) => o.orders?.status === 'completed')
+        const inProgress = orders.filter((o: any) =>
+          o.status === 'accepted' ||
+          o.status === 'generating' ||
+          o.status === 'preview'
+        )
+        const completed = orders.filter((o: any) =>
+          o.status === 'completed' ||
+          o.status === 'published'
+        )
         setOrdersInProgress(inProgress)
         setOrdersCompleted(completed)
       }
@@ -220,7 +227,7 @@ export default function AvatarOrdersPage() {
                   key={item.order_id}
                   className="order-item"
                   onClick={() => navigateTo({
-                    url: `/pages/order-feedback/index?orderId=${item.order_id}&avatarId=${avatarId}&requestId=${item.id}`
+                    url: `/pages/order-content-creation/index?requestId=${item.id}&avatarId=${item.avatar_id}&orderId=${item.order_id}`
                   })}
                 >
                   <View className="order-main">
