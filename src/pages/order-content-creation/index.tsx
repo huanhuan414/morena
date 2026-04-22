@@ -181,12 +181,31 @@ export default function OrderContentCreationPage() {
 
   const parseMarkdown = (text: string): string => {
     let html = text
-    html = html.replace(/^### (.*$)/gim, '<h3 class="md-h3">$1</h3>')
-    html = html.replace(/^## (.*$)/gim, '<h2 class="md-h2">$1</h2>')
-    html = html.replace(/^# (.*$)/gim, '<h1 class="md-h1">$1</h1>')
-    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong class="md-strong">$1</strong>')
-    html = html.replace(/\*(.*?)\*/gim, '<em class="md-em">$1</em>')
-    html = html.replace(/\n/gim, '<br class="md-br">')
+
+    // 处理图片：![alt](url)
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img class="md-image" src="$2" alt="$1" style="width: 100%; border-radius: 8px; margin: 12px 0;" />')
+
+    // 处理引用块：> text
+    html = html.replace(/^> (.*$)/gim, '<blockquote class="md-blockquote">$1</blockquote>')
+
+    // 处理三级标题：### text
+    html = html.replace(/^### (.*$)/gim, '<h3 class="md-h3 block">$1</h3>')
+
+    // 处理二级标题：## text
+    html = html.replace(/^## (.*$)/gim, '<h2 class="md-h2 block">$1</h2>')
+
+    // 处理一级标题：# text
+    html = html.replace(/^# (.*$)/gim, '<h1 class="md-h1 block">$1</h1>')
+
+    // 处理有序列表：1. text
+    html = html.replace(/^\d+\.\s+(.*$)/gim, '<div class="md-list-item block"><span class="md-list-number">$&</span> <span class="md-list-text">$1</span></div>')
+
+    // 处理粗体：**text**
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<text class="md-strong">$1</text>')
+
+    // 处理换行
+    html = html.replace(/\n/gim, '<br class="md-br block" />')
+
     return html
   }
 
