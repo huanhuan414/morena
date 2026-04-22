@@ -76,4 +76,27 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 重新生成内容
+   */
+  @Post('regenerate/:requestId')
+  async regenerate(
+    @Param('requestId') requestId: string
+  ) {
+    try {
+      const result = await this.processingService.regenerateContent(requestId)
+      return {
+        code: 200,
+        data: result,
+        message: '重新生成成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '重新生成失败'
+      }
+    }
+  }
 }

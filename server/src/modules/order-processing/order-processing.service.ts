@@ -404,6 +404,81 @@ export class OrderProcessingService {
   }
 
   /**
+   * 重新生成内容
+   */
+  async regenerateContent(requestId: string) {
+    const client = getSupabaseClient()
+
+    console.log('[OrderProcessing] 开始重新生成内容:', { requestId })
+
+    // 查询订单请求信息
+    const { data: request, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id, avatar_id, status')
+      .eq('id', requestId)
+      .single()
+
+    if (requestError || !request) {
+      throw new Error('获取订单请求失败')
+    }
+
+    // 查询订单信息
+    const { data: order, error: orderError } = await client
+      .from('orders')
+      .select('*')
+      .eq('id', request.order_id)
+      .single()
+
+    if (orderError || !order) {
+      throw new Error('获取订单信息失败')
+    }
+
+    // 查询分身信息
+    const { data: avatar, error: avatarError } = await client
+      .from('avatars')
+      .select('*')
+      .eq('id', request.avatar_id)
+      .single()
+
+    if (avatarError || !avatar) {
+      throw new Error('获取分身信息失败')
+    }
+
+    console.log('[OrderProcessing] 订单和分身信息:', {
+      orderId: order.id,
+      orderTitle: order.title,
+      avatarId: avatar.id,
+      avatarName: avatar.name
+    })
+
+    // 重置状态为 accepted，并清空已生成的内容
+    await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'accepted',
+        generated_content: null,
+        confirmed_content: null,
+        publish_status: null
+      })
+      .eq('id', requestId)
+
+    // 重新将任务加入队列
+    const { position, estimatedTime } = await this.queue.enqueue(requestId)
+
+    console.log('[OrderProcessing] 重新生成任务已加入队列:', {
+      requestId,
+      position,
+      estimatedTime
+    })
+
+    return {
+      success: true,
+      position,
+      estimatedTime
+    }
+  }
+
+  /**
    * 发布到公众号草稿箱
    */
   private async publishToWechatMP(order: any, content: string) {

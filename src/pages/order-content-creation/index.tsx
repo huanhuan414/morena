@@ -1,7 +1,7 @@
 import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { ArrowLeft, Loader, Check, Sparkles, Smartphone, Pencil, Save } from 'lucide-react-taro'
+import { ArrowLeft, Loader, Check, Sparkles, Smartphone, Pencil, Save, RefreshCw } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
@@ -41,6 +41,7 @@ export default function OrderContentCreationPage() {
   const [editedContent, setEditedContent] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useLoad(() => {
@@ -177,6 +178,40 @@ export default function OrderContentCreationPage() {
   const handleCancelEdit = () => {
     setIsEditing(false)
     setEditedContent(contentData?.content || '')
+  }
+
+  const handleRegenerate = async () => {
+    showModal({
+      title: '重新生成内容',
+      content: '确定要重新生成内容吗？当前内容将被替换。',
+      success: async (result) => {
+        if (result.confirm) {
+          setRegenerating(true)
+          try {
+            console.log('[OrderContentCreation] 开始重新生成内容')
+            const res = await Network.request({
+              url: `/api/order-processing/${requestId}/regenerate`,
+              method: 'POST'
+            })
+
+            console.log('[OrderContentCreation] 重新生成响应:', res.data)
+
+            if (res.data?.code === 200) {
+              showToast({ title: '正在重新生成内容...', icon: 'loading' })
+              // 重新开始轮询
+              startPolling()
+            } else {
+              showToast({ title: res.data?.message || '重新生成失败', icon: 'none' })
+            }
+          } catch (error) {
+            console.error('[OrderContentCreation] 重新生成异常:', error)
+            showToast({ title: '重新生成失败', icon: 'none' })
+          } finally {
+            setRegenerating(false)
+          }
+        }
+      }
+    })
   }
 
   const parseMarkdown = (text: string): string => {
@@ -361,14 +396,28 @@ export default function OrderContentCreationPage() {
                       </Button>
                     </View>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsEditing(true)}
+                    <View
+                      className="action-buttons"
+                      style={{ display: 'flex', gap: '0.5rem' }}
                     >
-                      <Pencil size={14} color="#1a1a1a" />
-                      <Text className="action-btn-text block">编辑</Text>
-                    </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRegenerate}
+                        disabled={regenerating}
+                      >
+                        <RefreshCw size={14} color="#1a1a1a" />
+                        <Text className="action-btn-text block">重新生成</Text>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Pencil size={14} color="#1a1a1a" />
+                        <Text className="action-btn-text block">编辑</Text>
+                      </Button>
+                    </View>
                   )}
                 </View>
               </View>
