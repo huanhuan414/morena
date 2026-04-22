@@ -1,11 +1,11 @@
 import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, RichText } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock, TrendingUp, Zap, Award, User } from 'lucide-react-taro'
+import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock, TrendingUp, Zap, User } from 'lucide-react-taro'
 import './index.css'
 
 // 平台名称映射
@@ -24,6 +24,40 @@ const PLATFORM_NAMES: Record<string, string> = {
 const getPlatformNames = (platforms?: string[]): string => {
   if (!platforms || platforms.length === 0) return '全平台'
   return platforms.map(p => PLATFORM_NAMES[p] || p).join('、')
+}
+
+// 简单的 Markdown 解析器
+const parseMarkdown = (text: string): string => {
+  if (!text) return ''
+
+  let html = text
+
+  // 转义 HTML 特殊字符
+  html = html.replace(/&/g, '&amp;')
+  html = html.replace(/</g, '&lt;')
+  html = html.replace(/>/g, '&gt;')
+
+  // 标题（# H1, ## H2, ### H3）
+  html = html.replace(/^### (.+)$/gm, '<text class="md-h3">$1</text>\n')
+  html = html.replace(/^## (.+)$/gm, '<text class="md-h2">$1</text>\n')
+  html = html.replace(/^# (.+)$/gm, '<text class="md-h1">$1</text>\n')
+
+  // 粗体（**text**）
+  html = html.replace(/\*\*(.+?)\*\*/g, '<text class="md-bold">$1</text>')
+
+  // 斜体（*text*）
+  html = html.replace(/\*(.+?)\*/g, '<text class="md-italic">$1</text>')
+
+  // 无序列表（- item）
+  html = html.replace(/^- (.+)$/gm, '<text class="md-li">• $1</text>')
+
+  // 链接（[text](url)）- 只显示文本
+  html = html.replace(/\[([^\]]+)\]\([^)]+\)/g, '<text class="md-link">$1</text>')
+
+  // 换行符
+  html = html.replace(/\n\n/g, '\n\n')
+
+  return html
 }
 
 interface PendingOrderData {
@@ -367,63 +401,7 @@ export default function PendingOrderPage() {
 
               <View className="description-wrapper">
                 <Text className="desc-title block">需求描述</Text>
-                <Text className="desc-text block">
-                  {orderData.orders.description || '暂无详细需求描述'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* 分身信息卡片 */}
-        <View className="section-wrapper">
-          <View className="avatar-card">
-            <View className="avatar-header">
-              <View className="avatar-title-wrapper">
-                <Award size={20} color="#ec4899" />
-                <Text className="avatar-title">推荐分身</Text>
-              </View>
-              <View className="avatar-badges">
-                <View className="avatar-badge level">
-                  <Text className="badge-text">Lv.{orderData.avatars.level}</Text>
-                </View>
-                {orderData.avatars.is_hosted && (
-                  <View className="avatar-badge hosted">
-                    <Zap size={14} color="#fff" />
-                    <Text className="badge-text">托管</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            <View className="avatar-content">
-              <View className="avatar-left">
-                <View className="avatar-image-wrapper">
-                  {orderData.avatars.avatar_url ? (
-                    <Image src={orderData.avatars.avatar_url} className="avatar-image" mode="aspectFill" />
-                  ) : (
-                    <View className="avatar-placeholder">
-                      <Sparkles size={36} color="#00f5ff" />
-                    </View>
-                  )}
-                  <View className="avatar-level-ring" />
-                </View>
-                <View className="avatar-info">
-                  <Text className="avatar-name">{orderData.avatars.name}</Text>
-                  <Text className="avatar-meta">AI智能助手 · 专业创作</Text>
-                </View>
-              </View>
-
-              <View className="avatar-stats">
-                <View className="avatar-stat-item">
-                  <Text className="stat-value">{orderData.avatars.completion_rate}%</Text>
-                  <Text className="stat-label">完成率</Text>
-                </View>
-                <View className="stat-divider" />
-                <View className="avatar-stat-item">
-                  <Text className="stat-value">{orderData.avatars.avg_rating.toFixed(1)}</Text>
-                  <Text className="stat-label">评分</Text>
-                </View>
+                <RichText className="desc-text" nodes={parseMarkdown(orderData.orders.description || '暂无详细需求描述')} />
               </View>
             </View>
           </View>
