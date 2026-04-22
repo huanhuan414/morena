@@ -1,6 +1,6 @@
 import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import * as Network from '@/network'
 import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight, ChevronDown, ListFilter, Hourglass } from 'lucide-react-taro'
 import './index.css'
@@ -253,50 +253,63 @@ export default function AvatarOrdersPage() {
         </View>
       </View>
 
-      {/* 分身信息卡片 - 高级设计 */}
-      <View className="avatar-info-card premium">
+      {/* 分身信息卡片 - 简化版 */}
+      <View className="avatar-info-card simple">
         <View className="avatar-info-content">
-          <View className="avatar-section">
-            <View className="avatar-circle">
-              {avatarInfo?.avatar_url ? (
-                <Image src={avatarInfo.avatar_url} className="avatar-image" mode="aspectFill" />
-              ) : (
-                <Sparkles size={40} color="#8b5cf6" />
-              )}
-            </View>
-            <View className="avatar-details">
-              <View className="avatar-name-row">
-                <Text className="avatar-name">{avatarInfo?.name || '未知分身'}</Text>
-                <View className="level-badge premium">
-                  <Star size={12} color="#fbbf24" />
-                  <Text className="level-text">LV.{avatarInfo?.level || 1}</Text>
-                </View>
-              </View>
-              <Text className="avatar-personality">
-                {avatarInfo?.personality || '暂无个性描述'}
-              </Text>
+          <View className="avatar-name-row">
+            <Text className="avatar-name">{avatarInfo?.name || '未知分身'}</Text>
+            <View className="level-badge">
+              <Star size={12} color="#fbbf24" />
+              <Text className="level-text">LV.{avatarInfo?.level || 1}</Text>
             </View>
           </View>
-
-          {/* 统计数据 */}
-          <View className="stats-row">
-            <View className="stat-item">
-              <Text className="stat-value">{allOrders.length}</Text>
-              <Text className="stat-label">总订单</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{pendingOrders.length}</Text>
-              <Text className="stat-label">待接单</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-value">{ordersByStatus.awaiting_acceptance?.length || 0}</Text>
-              <Text className="stat-label">待验收</Text>
-            </View>
-          </View>
+          <Text className="avatar-personality">
+            {avatarInfo?.personality || '暂无个性描述'}
+          </Text>
         </View>
       </View>
+
+      {/* 统计数据 - 横向滚动 */}
+      <ScrollView scrollX className="stats-scroll">
+        <View className="stats-row-simple">
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{allOrders.length}</Text>
+            <Text className="stat-label-simple">总订单</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{pendingOrders.length}</Text>
+            <Text className="stat-label-simple">待接单</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.accepted?.length || 0}</Text>
+            <Text className="stat-label-simple">制作中</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.generating?.length || 0}</Text>
+            <Text className="stat-label-simple">生成中</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.preview?.length || 0}</Text>
+            <Text className="stat-label-simple">预览中</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.publishing?.length || 0}</Text>
+            <Text className="stat-label-simple">发布中</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.published?.length || 0}</Text>
+            <Text className="stat-label-simple">待反馈</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.awaiting_acceptance?.length || 0}</Text>
+            <Text className="stat-label-simple">等待验收</Text>
+          </View>
+          <View className="stat-item-simple">
+            <Text className="stat-value-simple">{ordersByStatus.completed?.length || 0}</Text>
+            <Text className="stat-label-simple">已完成</Text>
+          </View>
+        </View>
+      </ScrollView>
 
       {/* 调试信息 */}
       <View className="debug-section">
@@ -320,7 +333,7 @@ export default function AvatarOrdersPage() {
       <ScrollView scrollY className="scroll-container" style={{ height: '100%' }}>
         {/* 待接单订单 - 高级卡片 */}
         {pendingOrders.length > 0 && (
-          <View className="status-section premium">
+          <View className="status-section">
             <View className="status-header alert">
               <TrendingUp size={20} color="#f59e0b" />
               <View className="status-title-row">
@@ -335,7 +348,7 @@ export default function AvatarOrdersPage() {
               {pendingOrders.slice(0, 3).map((request) => (
                 <View
                   key={request.id}
-                  className="order-card premium alert"
+                  className="order-card alert"
                   onClick={() => handleViewPendingOrder(request)}
                 >
                   <View className="order-card-header">
@@ -394,10 +407,9 @@ export default function AvatarOrdersPage() {
           </View>
         )}
 
-        {/* 按状态展示所有订单 */}
+        {/* 按状态展示所有订单 - 显示所有状态，即使数量为0 */}
         {Object.entries(ORDER_STATUS_CONFIG).map(([status, config]) => {
           const orders = ordersByStatus[status] || []
-          if (orders.length === 0) return null
 
           const StatusIcon = config.icon
           const isExpanded = expandedStatus[status]
@@ -405,12 +417,19 @@ export default function AvatarOrdersPage() {
           const showMore = orders.length > 3
 
           return (
-            <View key={status} className="status-section premium">
-              <View className="status-header" style={{ borderColor: config.color }} onClick={() => toggleExpand(status)}>
+            <View key={status} className="status-section">
+              <View
+                className="status-header"
+                style={{ borderColor: config.color }}
+                onClick={() => toggleExpand(status)}
+              >
                 <StatusIcon size={20} color={config.color} />
                 <View className="status-title-row">
                   <Text className="status-title">{config.label}</Text>
-                  <View className="status-count" style={{ backgroundColor: config.bgColor, color: config.color }}>
+                  <View
+                    className="status-count"
+                    style={{ backgroundColor: config.bgColor, color: config.color }}
+                  >
                     <Text className="count-text">{orders.length}</Text>
                   </View>
                 </View>
@@ -421,68 +440,76 @@ export default function AvatarOrdersPage() {
                 )}
               </View>
 
-              <View className="orders-grid">
-                {displayOrders.map((order) => (
-                  <View
-                    key={order.id}
-                    className="order-card premium"
-                    style={{ borderColor: `${config.color}20` }}
-                    onClick={() => handleOrderClick(order)}
-                  >
-                    <View className="order-card-header">
-                      <View className="order-title-row">
-                        <Text className="order-title">{order.orders?.title || '未知订单'}</Text>
-                        <View
-                          className="order-status-badge"
-                          style={{ backgroundColor: config.bgColor, color: config.color }}
-                        >
-                          <StatusIcon size={12} color={config.color} />
-                          <Text className="badge-text">{config.shortLabel}</Text>
+              {orders.length > 0 && (
+                <View className="orders-grid">
+                  {displayOrders.map((order) => (
+                    <View
+                      key={order.id}
+                      className="order-card"
+                      style={{ borderColor: `${config.color}20` }}
+                      onClick={() => handleOrderClick(order)}
+                    >
+                      <View className="order-card-header">
+                        <View className="order-title-row">
+                          <Text className="order-title">{order.orders?.title || '未知订单'}</Text>
+                          <View
+                            className="order-status-badge"
+                            style={{ backgroundColor: config.bgColor, color: config.color }}
+                          >
+                            <StatusIcon size={12} color={config.color} />
+                            <Text className="badge-text">{config.shortLabel}</Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
 
-                    <View className="order-card-body">
-                      <View className="info-row">
-                        <Text className="info-label">预算</Text>
-                        <Text className="info-value">¥{order.orders?.budget || 0}</Text>
+                      <View className="order-card-body">
+                        <View className="info-row">
+                          <Text className="info-label">预算</Text>
+                          <Text className="info-value">¥{order.orders?.budget || 0}</Text>
+                        </View>
+                        <View className="info-row">
+                          <Text className="info-label">状态说明</Text>
+                          <Text className="info-value" style={{ color: config.color }}>
+                            {config.description}
+                          </Text>
+                        </View>
                       </View>
-                      <View className="info-row">
-                        <Text className="info-label">状态说明</Text>
-                        <Text className="info-value" style={{ color: config.color }}>
-                          {config.description}
+
+                      <View className="order-card-footer">
+                        <Text className="action-text" style={{ color: config.color }}>
+                          {status === 'published'
+                            ? '去反馈'
+                            : ['awaiting_acceptance', 'completed', 'cancelled'].includes(status)
+                              ? '查看详情'
+                              : '继续处理'}
                         </Text>
+                        <ChevronRight size={16} color={config.color} />
                       </View>
                     </View>
+                  ))}
 
-                    <View className="order-card-footer">
-                      <Text className="action-text" style={{ color: config.color }}>
-                        {status === 'published'
-                          ? '去反馈'
-                          : ['awaiting_acceptance', 'completed', 'cancelled'].includes(status)
-                            ? '查看详情'
-                            : '继续处理'}
-                      </Text>
-                      <ChevronRight size={16} color={config.color} />
+                  {/* 更多提示 */}
+                  {showMore && !isExpanded && (
+                    <View className="more-hint" onClick={() => toggleExpand(status)}>
+                      <Text className="more-hint-text">还有 {orders.length - 3} 个{config.label}订单</Text>
+                      <ChevronDown size={16} color="#8b5cf6" />
                     </View>
-                  </View>
-                ))}
+                  )}
+                </View>
+              )}
 
-                {/* 更多提示 */}
-                {showMore && !isExpanded && (
-                  <View className="more-hint" onClick={() => toggleExpand(status)}>
-                    <Text className="more-hint-text">还有 {orders.length - 3} 个{config.label}订单</Text>
-                    <ChevronDown size={16} color="#8b5cf6" />
-                  </View>
-                )}
-              </View>
+              {orders.length === 0 && (
+                <View className="empty-status">
+                  <Text className="empty-status-text">暂无{config.label}订单</Text>
+                </View>
+              )}
             </View>
           )
         })}
 
         {/* 空状态 */}
         {pendingOrders.length === 0 && allOrders.length === 0 && (
-          <View className="empty-state premium">
+          <View className="empty-state">
             <Award size={64} color="rgba(139, 92, 246, 0.3)" />
             <Text className="empty-title">暂无订单</Text>
             <Text className="empty-description">
