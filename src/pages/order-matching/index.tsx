@@ -128,73 +128,92 @@ export default function OrderMatchingPage() {
   const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useLoad(() => {
+    console.log('[OrderMatching] 页面加载，orderId:', orderId)
+
     // 初始化状态栏和胶囊按钮信息
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
+
     const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
     if (menuButtonBoundingClientRect) {
       const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
       const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
       setCapsuleWidth(capsuleWidthWithMargins)
     }
-    
+
     if (orderId) {
+      console.log('[OrderMatching] 开始智能匹配')
       startMatching()
+    } else {
+      console.error('[OrderMatching] orderId 为空，无法开始匹配')
+      showToast({ title: '订单ID无效', icon: 'none' })
+      setLoading(false)
     }
   })
 
   const startMatching = async () => {
+    console.log('[OrderMatching] startMatching 开始执行')
     setLoading(true)
     setMatchedAvatars([])
-    
+
     // 逐步执行算法动画
     for (let i = 0; i < ALGORITHM_STEPS.length; i++) {
+      console.log(`[OrderMatching] 执行步骤 ${i + 1}/${ALGORITHM_STEPS.length}: ${ALGORITHM_STEPS[i].name}`)
       // 更新当前步骤为 processing
-      setSteps(prev => prev.map((s, idx) => 
+      setSteps(prev => prev.map((s, idx) =>
         idx === i ? { ...s, status: 'processing' } : s
       ))
-      
+
       // 模拟算法处理时间
       await new Promise(resolve => setTimeout(resolve, 600))
-      
+
       // 更新为 completed
-      setSteps(prev => prev.map((s, idx) => 
+      setSteps(prev => prev.map((s, idx) =>
         idx === i ? { ...s, status: 'completed' } : s
       ))
-      
+
       setCurrentStep(i + 1)
     }
-    
+
+    console.log('[OrderMatching] 算法步骤完成，开始获取匹配结果')
     // 获取匹配结果
     await fetchMatchingResults()
   }
 
   const fetchMatchingResults = async () => {
     try {
+      console.log('[OrderMatching] fetchMatchingResults 开始执行')
       // 先获取订单信息
+      console.log('[OrderMatching] 请求订单信息:', `/api/order/${orderId}`)
       const orderRes = await Network.request({ url: `/api/order/${orderId}` })
+      console.log('[OrderMatching] 订单信息响应:', orderRes.data)
 
       if (orderRes.data?.code !== 200) {
+        console.error('[OrderMatching] 获取订单信息失败:', orderRes.data)
         showToast({ title: '获取订单信息失败', icon: 'none' })
+        setLoading(false)
         return
       }
 
       const orderData = orderRes.data.data
+      console.log('[OrderMatching] 订单数据:', orderData)
 
       // 使用订单的 expected_quantity 作为 limit 参数
       const expectedQuantity = orderData.expected_quantity || 1
+      console.log('[OrderMatching] 预期分身数量:', expectedQuantity)
 
-      // 获取推荐分身，传入数量限制
+      // 获取推荐分身，传入数量限制（使用 query 参数）
+      console.log('[OrderMatching] 请求推荐分身:', `/api/order-dispatch/recommend/${orderId}?limit=${expectedQuantity}`)
       const recommendRes = await Network.request({
-        url: `/api/order-dispatch/recommend/${orderId}`,
-        data: { limit: expectedQuantity }
+        url: `/api/order-dispatch/recommend/${orderId}?limit=${expectedQuantity}`
       })
+      console.log('[OrderMatching] 推荐分身响应:', recommendRes.data)
 
       // 获取推荐分身
       if (recommendRes.data?.code === 200) {
         const avatars = recommendRes.data.data || []
         const totalAvatars = avatars.length
+        console.log('[OrderMatching] 推荐分身数量:', totalAvatars)
         setRecommendedCount(totalAvatars)
 
         // 计算每个分身的预估收益（平台抽成20%后）
@@ -210,22 +229,27 @@ export default function OrderMatchingPage() {
         }))
 
         if (totalAvatars > 0) {
+          console.log('[OrderMatching] 开始显示分身卡片')
           // 逐步显示分身卡片
           for (let i = 0; i < totalAvatars; i++) {
             await new Promise(resolve => setTimeout(resolve, 300))
             setMatchedAvatars(prev => [...prev, avatarsWithIncome[i]])
           }
+          console.log('[OrderMatching] 分身卡片显示完成')
         } else {
+          console.log('[OrderMatching] 没有推荐分身')
           // 如果没有推荐，显示空状态
           setMatchedAvatars([])
         }
         setLoading(false)
       } else {
+        console.error('[OrderMatching] 推荐分身接口返回失败:', recommendRes.data)
+        showToast({ title: recommendRes.data?.message || '获取推荐分身失败', icon: 'none' })
         setMatchedAvatars([])
         setLoading(false)
       }
     } catch (error) {
-      console.error('获取匹配结果失败:', error)
+      console.error('[OrderMatching] 获取匹配结果失败:', error)
       showToast({ title: '匹配失败', icon: 'none' })
       setLoading(false)
     }
