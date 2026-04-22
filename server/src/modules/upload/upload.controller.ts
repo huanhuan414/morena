@@ -93,4 +93,26 @@ export class UploadController {
       }
     }
   }
+
+  /**
+   * 🔴 上传音频
+   */
+  @Post('audio')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+    try {
+      const result = await this.uploadService.uploadAudio(file)
+      return {
+        code: 200,
+        message: '上传成功',
+        data: result
+      }
+    } catch (error) {
+      return {
+        code: 500,
+        message: error.message || '上传失败',
+        error: error.message
+      }
+    }
+  }
 }

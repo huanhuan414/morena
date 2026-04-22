@@ -299,7 +299,7 @@ ${contentTypePrompt}
     try {
       const uploadPromises = files.map(async (file) => {
         const uploadRes = await Network.uploadFile({
-          url: '/api/upload',
+          url: '/api/upload/image',
           filePath: file.path,
           name: 'file'
         })

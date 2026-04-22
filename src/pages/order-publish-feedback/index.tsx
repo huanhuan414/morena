@@ -99,7 +99,7 @@ export default function OrderPublishFeedback() {
         try {
           // 上传图片到服务器
           const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
+            url: '/api/upload/image',
             filePath: tempFilePath,
             name: 'file'
           })

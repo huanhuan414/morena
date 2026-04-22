@@ -126,6 +126,31 @@ export class UploadService {
   }
 
   /**
+   * 🔴 上传音频
+   */
+  async uploadAudio(file: Express.Multer.File): Promise<{ url: string }> {
+    const fileName = `audios/${nanoid()}${path.extname(file.originalname)}`
+
+    try {
+      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+      const actualFileName = await this.uploadToS3(file, fileName)
+
+      // 生成签名 URL
+      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+
+      return { url: signedUrl }
+    } catch (s3Error) {
+      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
+
+      // 🔴 Fallback: 使用本地文件存储
+      const localUrl = await this.uploadToLocal(file, fileName)
+      console.log('音频已保存到本地:', localUrl)
+
+      return { url: localUrl }
+    }
+  }
+
+  /**
    * 上传到 S3
    * @returns 返回实际上传后的文件名（key）
    */

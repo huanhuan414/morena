@@ -267,7 +267,7 @@ export default function VoiceCallPage() {
     try {
       // 上传音频文件
       const uploadRes = await Network.uploadFile({
-        url: '/api/upload',
+        url: '/api/upload/audio',
         filePath: tempFilePath,
         name: 'file'
       })
