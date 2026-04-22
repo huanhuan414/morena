@@ -17,7 +17,9 @@ const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 // 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信小程序',
+  wechat_mp: '微信公众号',
+  wechat_moments: '微信朋友圈',
+  wechat_video: '微信视频号',
   xiaohongshu: '小红书',
   douyin: '抖音',
   weibo: '微博',
