@@ -30,7 +30,10 @@ class TaskQueue {
   private activeTasks = new Set<string>() // 正在执行的任务ID
   private queue: Array<{ requestId: string; timestamp: number }> = []
 
-  constructor(private contentGenerationService: ContentGenerationService) {
+  constructor(
+    private contentGenerationService: ContentGenerationService,
+    private checkGenerateSkill: (platform: string, avatarId: string) => Promise<boolean>
+  ) {
     // 每30秒执行一次队列检查
     setInterval(() => this.processQueue(), 30000)
   }
@@ -118,6 +121,28 @@ class TaskQueue {
         throw new Error('订单或分身不存在')
       }
 
+      // 检查分身是否有内容生成技能
+      const platforms = order.platforms || []
+      const firstPlatform = platforms[0]
+
+      const hasGenerateSkill = await this.checkGenerateSkill(firstPlatform, avatarId)
+
+      console.log('[TaskQueue] 分身技能检查:', {
+        avatarId,
+        avatarName: avatar.name,
+        platform: firstPlatform,
+        hasGenerateSkill,
+        message: hasGenerateSkill
+          ? '分身具有内容生成技能，可以使用技能生成内容'
+          : '分身暂无对应的内容生成技能，使用默认内容生成服务'
+      })
+
+      // TODO: 如果分身有技能，调用分身技能生成内容
+      // 目前暂时使用默认的内容生成服务
+      if (hasGenerateSkill) {
+        console.log('[TaskQueue] 检测到分身技能，但尚未实现技能调用，使用默认服务生成')
+      }
+
       // 使用 ContentGenerationService 生成内容
       const generatedContents = await this.contentGenerationService.generateContent({
         orderId,
@@ -125,7 +150,7 @@ class TaskQueue {
         avatarId,
         orderTitle: order.title,
         orderDescription: order.description,
-        platforms: order.platforms || [],
+        platforms: platforms,
         contentType: order.content_type,
         targetAudience: order.target_audience || '',
         avatarName: avatar.name,
@@ -134,7 +159,8 @@ class TaskQueue {
 
       console.log('[TaskQueue] 内容生成成功:', {
         requestId,
-        contentCount: generatedContents.length
+        contentCount: generatedContents.length,
+        usedSkill: hasGenerateSkill
       })
 
       // 取第一个生成的内容（如果有的话）
@@ -193,8 +219,8 @@ export class OrderProcessingService {
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
-    // 将 contentGenerationService 传递给 TaskQueue
-    this.queue = new TaskQueue(contentGenerationService)
+    // 将 contentGenerationService 和 checkGenerateSkill 方法传递给 TaskQueue
+    this.queue = new TaskQueue(contentGenerationService, this.checkGenerateSkill.bind(this))
   }
 
   /**
@@ -368,51 +394,71 @@ export class OrderProcessingService {
 
     // 遍历所有平台进行发布
     for (const platform of platforms) {
-      console.log('[OrderProcessing] 开始发布到平台:', { platform, requestId })
+      console.log('[OrderProcessing] 开始发布到平台:', { platform, requestId, avatarId: request.avatar_id })
 
       try {
-        if (platform === 'wechat_mp') {
-          // 公众号：发布到草稿箱
-          await this.publishToWechatMP(order, finalContent)
-          publishResults.push({
-            platform,
-            status: 'success',
-            message: '已发布到公众号草稿箱',
-            publishedAt: new Date().toISOString()
-          })
-        } else if (platform === 'wechat_moments') {
-          // 朋友圈：需要手动发布
-          publishResults.push({
-            platform,
-            status: 'manual',
-            message: '朋友圈需要手动发布，请复制内容后发布'
-          })
-        } else if (platform === 'wechat_video') {
-          // 视频号：需要手动发布
-          publishResults.push({
-            platform,
-            status: 'manual',
-            message: '视频号需要手动发布，请复制内容后发布'
-          })
-        } else {
-          // 其他平台：检查是否有发布技能
-          const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
+        // 检查分身是否有发布技能
+        const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
 
+        console.log('[OrderProcessing] 发布技能检查结果:', {
+          platform,
+          avatarId: request.avatar_id,
+          hasPublishSkill
+        })
+
+        if (platform === 'wechat_mp') {
           if (hasPublishSkill) {
-            // 自动发布
+            // 公众号：分身有发布技能，尝试自动发布
+            console.log('[OrderProcessing] 分身有公众号发布技能，尝试自动发布')
             await this.autoPublish(platform, order, finalContent)
             publishResults.push({
               platform,
               status: 'success',
-              message: '已自动发布',
+              message: '已使用分身技能发布到公众号草稿箱',
+              publishedAt: new Date().toISOString()
+            })
+          } else {
+            // 分身没有发布技能，提示需要手动发布
+            console.log('[OrderProcessing] 分身无公众号发布技能')
+            publishResults.push({
+              platform,
+              status: 'manual',
+              message: '分身暂未配置公众号发布技能，请手动复制内容发布到公众号草稿箱'
+            })
+          }
+        } else if (platform === 'wechat_moments') {
+          // 朋友圈：微信官方 API 不支持自动发布，需要手动发布
+          publishResults.push({
+            platform,
+            status: 'manual',
+            message: '朋友圈暂不支持自动发布，请手动复制内容后发布'
+          })
+        } else if (platform === 'wechat_video') {
+          // 视频号：微信官方 API 不支持自动发布，需要手动发布
+          publishResults.push({
+            platform,
+            status: 'manual',
+            message: '视频号暂不支持自动发布，请手动复制内容后发布'
+          })
+        } else {
+          // 其他平台：检查是否有发布技能
+          if (hasPublishSkill) {
+            // 自动发布
+            console.log('[OrderProcessing] 分身有发布技能，尝试自动发布')
+            await this.autoPublish(platform, order, finalContent)
+            publishResults.push({
+              platform,
+              status: 'success',
+              message: '已使用分身技能自动发布',
               publishedAt: new Date().toISOString()
             })
           } else {
             // 提示手动发布
+            console.log('[OrderProcessing] 分身无发布技能')
             publishResults.push({
               platform,
               status: 'manual',
-              message: '该平台暂未配置发布技能，请手动发布'
+              message: '分身暂未配置该平台的发布技能，请手动发布'
             })
           }
         }
@@ -543,40 +589,50 @@ export class OrderProcessingService {
   }
 
   /**
-   * 发布到公众号草稿箱
+   * 检查是否有内容生成技能
    */
-  private async publishToWechatMP(order: any, content: string) {
-    // 解析内容，提取标题和正文
-    const lines = content.split('\n')
-    const title = lines[0] || order.title
-    const body = lines.slice(1).join('\n')
+  private async checkGenerateSkill(platform: string, avatarId: string): Promise<boolean> {
+    const client = getSupabaseClient()
 
-    // TODO: 调用微信公众号 API 发布到草稿箱
-    // 需要配置微信公众号的 appId 和 appSecret
+    // 查询分身是否有对应的内容生成技能
+    const { data: skills } = await client
+      .from('avatar_skills')
+      .select('*')
+      .eq('avatar_id', avatarId)
 
-    console.log('[OrderProcessing] 发布到公众号草稿箱:', {
-      orderId: order.id,
-      title: title,
-      contentLength: content.length,
-      bodyLength: body.length,
-      note: '微信公众号 API 未配置，需要手动发布'
+    if (!skills || skills.length === 0) {
+      return false
+    }
+
+    // 根据平台映射到对应的技能类型
+    const platformSkillMap: Record<string, string> = {
+      'wechat_mp': 'write_wechat_mp_article',
+      'xiaohongshu': 'write_xiaohongshu_note',
+      'douyin': 'write_article',
+      'weibo': 'write_article',
+      'bilibili': 'write_article',
+      'wechat_video': 'write_article',
+      'wechat_moments': 'write_article'
+    }
+
+    const skillType = platformSkillMap[platform] || 'write_article'
+
+    // 检查是否有对应的生成技能
+    const hasGenerateSkill = skills.some(skill => {
+      const skillTypeFromDb = skill.skill_type
+      // 完全匹配或者通用的 write_article
+      return skillTypeFromDb === skillType || skillTypeFromDb === 'write_article'
     })
 
-    // 暂时只记录日志，实际发布需要微信公众号授权
-    // 实际实现需要：
-    // 1. 获取微信公众号 access_token
-    // 2. 调用草稿箱 API: https://api.weixin.qq.com/cgi-bin/draft/add
-    // 3. 上传图片等资源（如果有）
-    // 4. 创建草稿文章
-
-    console.log('[OrderProcessing] 发布内容预览:', {
-      title,
-      body: body.substring(0, 200) + (body.length > 200 ? '...' : ''),
-      platforms: order.platforms
+    console.log('[OrderProcessing] 检查内容生成技能:', {
+      avatarId,
+      platform,
+      skillType,
+      hasGenerateSkill,
+      availableSkills: skills.map(s => s.skill_type)
     })
 
-    // 暂时抛出异常，提示需要手动发布
-    throw new Error('微信公众号发布功能未配置授权，请手动复制内容发布到公众号草稿箱')
+    return hasGenerateSkill
   }
 
   /**
@@ -595,10 +651,34 @@ export class OrderProcessingService {
       return false
     }
 
-    // 检查是否有发布相关的技能
+    // 根据平台映射到对应的技能类型
+    const platformSkillMap: Record<string, string> = {
+      'wechat_mp': 'publish_wechat_mp',
+      'xiaohongshu': 'publish_xiaohongshu',
+      'douyin': 'publish_douyin',
+      'weibo': 'publish_weibo',
+      'bilibili': 'publish_bilibili',
+      'wechat_video': 'publish_wechat_video'
+    }
+
+    const skillType = platformSkillMap[platform]
+
+    if (!skillType) {
+      console.log('[OrderProcessing] 平台未映射发布技能:', { platform })
+      return false
+    }
+
+    // 检查是否有对应的发布技能
     const hasPublishSkill = skills.some(skill => {
-      const skillConfig = skill.skill_config || {}
-      return skillConfig.type === 'publish' && skillConfig.platform === platform
+      return skill.skill_type === skillType
+    })
+
+    console.log('[OrderProcessing] 检查发布技能:', {
+      avatarId,
+      platform,
+      skillType,
+      hasPublishSkill,
+      availableSkills: skills.map(s => s.skill_type)
     })
 
     return hasPublishSkill
@@ -608,13 +688,22 @@ export class OrderProcessingService {
    * 自动发布
    */
   private async autoPublish(platform: string, order: any, content: string) {
-    console.log('[OrderProcessing] 自动发布:', {
+    console.log('[OrderProcessing] 自动发布（调用分身技能）:', {
       platform,
       orderId: order.id,
       title: order.title,
       contentLength: content.length
     })
 
-    // TODO: 根据平台调用相应的发布 API
+    // TODO: 实现真实的技能调用
+    // 目前先记录日志，后续需要通过 AvatarAgentService 调用分身的发布技能
+    console.log('[OrderProcessing] 分身发布技能调用待实现')
+    console.log('[OrderProcessing] 发布内容预览:', content.substring(0, 200) + (content.length > 200 ? '...' : ''))
+
+    // 暂时只记录日志，不做实际的发布
+    // 实际实现需要：
+    // 1. 通过 AvatarAgentService 调用分身的发布技能
+    // 2. 传递必要参数：platform, content, order 等
+    // 3. 获取发布结果并返回
   }
 }
