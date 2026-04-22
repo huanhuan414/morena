@@ -28,7 +28,7 @@
 }
 
 .header-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   color: #1a1a1a;
 }
@@ -47,25 +47,25 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 48px 24px;
 }
 
 .loading-icon {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   animation: pulse 2s ease-in-out infinite;
 }
 
 .loading-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .loading-desc {
-  font-size: 14px;
+  font-size: 16px;
   color: #666666;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .loading-spinner {
@@ -95,50 +95,50 @@
 
 /* 内容容器 */
 .content-container {
-  padding: 16px;
+  padding: 20px;
 }
 
 /* 卡片样式 */
 .card {
   background: #ffffff;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
   border: 1px solid #e5e5e5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
 }
 
 .card-subtitle {
-  font-size: 12px;
+  font-size: 14px;
   color: #999999;
 }
 
 /* 订单信息卡片 */
 .info-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
-  margin-bottom: 10px;
-  line-height: 1.4;
+  margin-bottom: 12px;
+  line-height: 1.5;
 }
 
 .info-tag {
   background: #e6f7ff;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
   border: 1px solid #bae7ff;
 }
 
 .info-tag-text {
-  font-size: 11px;
+  font-size: 13px;
   color: #1890ff;
-  margin-left: 6px;
+  margin-left: 8px;
 }
 
 /* 媒体卡片 */
@@ -161,79 +161,79 @@
 
 .image-indicators {
   position: absolute;
-  bottom: 10px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
-  gap: 6px;
+  gap: 8px;
 }
 
 .indicator {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
   transition: all 0.3s;
 }
 
 .indicator.active {
-  width: 20px;
-  border-radius: 3px;
+  width: 24px;
+  border-radius: 4px;
   background: #1890ff;
 }
 
 .video-player {
   width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #f5f5f5;
 }
 
 /* 内容预览卡片 */
 .action-btn-text {
-  font-size: 12px;
+  font-size: 14px;
   color: #1a1a1a;
 }
 
 .markdown-content {
   color: #333333;
   line-height: 1.8;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* Markdown 样式 */
 .md-image {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .md-blockquote {
   background: #f5f5f5;
   border-left: 4px solid #1890ff;
-  padding: 12px 16px;
-  margin: 12px 0;
+  padding: 16px 20px;
+  margin: 16px 0;
   font-style: italic;
   color: #666666;
 }
 
 .md-h1 {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #1a1a1a;
-  margin: 16px 0 10px 0;
+  margin: 20px 0 12px 0;
 }
 
 .md-h2 {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
   color: #1a1a1a;
-  margin: 14px 0 8px 0;
+  margin: 18px 0 10px 0;
 }
 
 .md-h3 {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: #333333;
-  margin: 12px 0 6px 0;
+  margin: 16px 0 8px 0;
 }
 
 .md-strong {
@@ -269,33 +269,33 @@
 
 /* 编辑模式 */
 .edit-mode {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .content-textarea {
   width: 100%;
-  min-height: 200px;
+  min-height: 240px;
   background: #fafafa;
   border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 14px;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
   color: #1a1a1a;
   line-height: 1.8;
 }
 
 /* 发布区域 */
 .publish-section {
-  margin-top: 24px;
-  padding: 0 16px 24px;
+  margin-top: 32px;
+  padding: 0 20px 32px;
 }
 
 .publish-btn {
   width: 100%;
-  height: 50px;
+  height: 56px;
   background: #1890ff;
   border: none;
-  border-radius: 25px;
+  border-radius: 28px;
   transition: all 0.3s;
 }
 
@@ -304,7 +304,7 @@
 }
 
 .publish-btn-text {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #ffffff;
 }
