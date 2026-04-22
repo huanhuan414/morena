@@ -321,7 +321,9 @@ export default function OrderContentCreationPage() {
   const handleRegenerate = async () => {
     Taro.showModal({
       title: '重新生成内容',
-      content: '确定要重新生成内容吗？当前内容将被替换。',
+      content: '确定要重新生成内容吗？\n\n当前内容将被替换，预计需要 1-2 分钟。',
+      confirmText: '确定重新生成',
+      cancelText: '取消',
       success: async (res) => {
         if (res.confirm) {
           setRegenerating(true)
@@ -335,15 +337,44 @@ export default function OrderContentCreationPage() {
             console.log('[OrderContentCreation] 重新生成响应:', response.data)
 
             if (response.data?.code === 200) {
-              Taro.showToast({ title: '正在重新生成内容...', icon: 'loading' })
+              // 显示更详细的提示
+              Taro.showToast({
+                title: '已重新生成，请稍候...',
+                icon: 'loading',
+                duration: 3000
+              })
+
+              // 清空内容，显示生成状态
+              setContentData(null)
+              setEditedContent('')
+              setIsEditing(false)
+
+              // 重置计时器
+              stopTimer()
+              startTimer()
+
+              // 重置步骤
+              setCurrentStepIndex(1) // 生成中
+              setQueuePosition(response.data.data?.position || 0)
+              setEstimatedTime(response.data.data?.estimatedTime || 60)
+              setIsTimeout(false)
+
               // 重新开始轮询
               startPolling()
             } else {
-              Taro.showToast({ title: response.data?.message || '重新生成失败', icon: 'none' })
+              Taro.showToast({
+                title: response.data?.message || '重新生成失败',
+                icon: 'none',
+                duration: 3000
+              })
             }
           } catch (error) {
             console.error('[OrderContentCreation] 重新生成异常:', error)
-            Taro.showToast({ title: '重新生成失败', icon: 'none' })
+            Taro.showToast({
+              title: '网络异常，请重试',
+              icon: 'none',
+              duration: 3000
+            })
           } finally {
             setRegenerating(false)
           }
