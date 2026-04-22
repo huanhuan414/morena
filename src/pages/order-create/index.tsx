@@ -304,7 +304,17 @@ ${contentTypePrompt}
           name: 'file'
         })
 
-        const data = JSON.parse(uploadRes.data)
+        // 解析响应数据（uploadRes.data 可能是字符串或对象）
+        let data
+        try {
+          data = typeof uploadRes.data === 'string'
+            ? JSON.parse(uploadRes.data)
+            : uploadRes.data
+        } catch (parseError) {
+          console.error('解析上传响应失败:', parseError, uploadRes)
+          throw new Error('服务器返回数据格式错误')
+        }
+
         if (data.code === 200) {
           return {
             id: Date.now().toString() + Math.random(),
@@ -313,7 +323,7 @@ ${contentTypePrompt}
             type: file.type
           }
         }
-        throw new Error('上传失败')
+        throw new Error(data.message || '上传失败')
       })
 
       const uploadedFiles = await Promise.all(uploadPromises)

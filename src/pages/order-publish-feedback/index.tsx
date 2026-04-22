@@ -104,10 +104,24 @@ export default function OrderPublishFeedback() {
             name: 'file'
           })
 
-          console.log('[OrderPublishFeedback] 上传响应:', uploadRes.data)
+          console.log('[OrderPublishFeedback] 上传响应:', uploadRes)
 
-          const uploadData = JSON.parse(uploadRes.data)
-          if (uploadData.code === 200) {
+          // 解析响应数据（uploadRes.data 可能是字符串或对象）
+          let uploadData
+          try {
+            // 如果 data 是字符串，需要 JSON.parse
+            uploadData = typeof uploadRes.data === 'string'
+              ? JSON.parse(uploadRes.data)
+              : uploadRes.data
+          } catch (parseError) {
+            console.error('[OrderPublishFeedback] 解析响应失败:', parseError)
+            console.error('[OrderPublishFeedback] 原始响应:', uploadRes)
+            throw new Error('服务器返回数据格式错误')
+          }
+
+          console.log('[OrderPublishFeedback] 解析后的数据:', uploadData)
+
+          if (uploadData.code === 200 && uploadData.data?.url) {
             const imageUrl = uploadData.data.url
             setFeedback(prev => ({
               ...prev,
@@ -118,6 +132,7 @@ export default function OrderPublishFeedback() {
               icon: 'success'
             })
           } else {
+            console.error('[OrderPublishFeedback] 上传失败:', uploadData)
             Taro.showToast({
               title: uploadData.message || '上传失败',
               icon: 'none'
