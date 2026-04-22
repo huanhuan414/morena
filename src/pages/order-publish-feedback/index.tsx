@@ -113,26 +113,38 @@ export default function OrderPublishFeedback() {
         const file = e.target.files[0]
         if (file) {
           console.log('[OrderPublishFeedback] 选择文件成功:', file.name)
+          console.log('[OrderPublishFeedback] 文件类型:', file.type)
+          console.log('[OrderPublishFeedback] 文件大小:', file.size)
+          
           try {
             // 使用FormData上传
             const formData = new FormData()
             formData.append('file', file)
 
+            console.log('[OrderPublishFeedback] 开始上传到:', `${window.location.origin}/api/upload/image`)
             const response = await fetch(`${window.location.origin}/api/upload/image`, {
               method: 'POST',
               body: formData
             })
 
+            console.log('[OrderPublishFeedback] 上传响应状态:', response.status)
             const uploadData = await response.json()
-            console.log('[OrderPublishFeedback] H5上传响应:', uploadData)
+            console.log('[OrderPublishFeedback] H5上传响应完整数据:', JSON.stringify(uploadData, null, 2))
 
             if (uploadData.code === 200 && uploadData.data?.url) {
               const imageUrl = uploadData.data.url
-              console.log('[OrderPublishFeedback] 更新反馈状态:', { platform, imageUrl })
-              setFeedback(prev => ({
-                ...prev,
-                [platform]: { ...(prev[platform] || {}), image: imageUrl }
-              }))
+              console.log('[OrderPublishFeedback] 提取到图片URL:', imageUrl)
+              console.log('[OrderPublishFeedback] 准备更新反馈状态:', { platform, imageUrl })
+              
+              setFeedback(prev => {
+                const newState = {
+                  ...prev,
+                  [platform]: { ...(prev[platform] || {}), image: imageUrl }
+                }
+                console.log('[OrderPublishFeedback] 更新后的反馈状态:', newState)
+                return newState
+              })
+              
               Taro.showToast({
                 title: '上传成功',
                 icon: 'success'
@@ -165,9 +177,11 @@ export default function OrderPublishFeedback() {
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
         console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
+        console.log('[OrderPublishFeedback] 图片信息:', res.tempFiles?.[0])
 
         try {
           // 上传图片到服务器
+          console.log('[OrderPublishFeedback] 开始上传图片到服务器')
           const uploadRes = await Network.uploadFile({
             url: '/api/upload/image',
             filePath: tempFilePath,
@@ -175,6 +189,8 @@ export default function OrderPublishFeedback() {
           })
 
           console.log('[OrderPublishFeedback] 上传响应:', uploadRes)
+          console.log('[OrderPublishFeedback] 上传响应类型:', typeof uploadRes.data)
+          console.log('[OrderPublishFeedback] 上传响应内容:', uploadRes.data)
 
           // 解析响应数据（uploadRes.data 可能是字符串或对象）
           let uploadData
@@ -183,6 +199,7 @@ export default function OrderPublishFeedback() {
             uploadData = typeof uploadRes.data === 'string'
               ? JSON.parse(uploadRes.data)
               : uploadRes.data
+            console.log('[OrderPublishFeedback] 解析后的数据:', JSON.stringify(uploadData, null, 2))
           } catch (parseError) {
             console.error('[OrderPublishFeedback] 解析响应失败:', parseError)
             console.error('[OrderPublishFeedback] 原始响应:', uploadRes)
@@ -193,17 +210,27 @@ export default function OrderPublishFeedback() {
 
           if (uploadData.code === 200 && uploadData.data?.url) {
             const imageUrl = uploadData.data.url
-            console.log('[OrderPublishFeedback] 更新反馈状态:', { platform, imageUrl })
-            setFeedback(prev => ({
-              ...prev,
-              [platform]: { ...(prev[platform] || {}), image: imageUrl }
-            }))
+            console.log('[OrderPublishFeedback] 提取到图片URL:', imageUrl)
+            console.log('[OrderPublishFeedback] URL类型:', typeof imageUrl)
+            console.log('[OrderPublishFeedback] 准备更新反馈状态:', { platform, imageUrl })
+            
+            setFeedback(prev => {
+              const newState = {
+                ...prev,
+                [platform]: { ...(prev[platform] || {}), image: imageUrl }
+              }
+              console.log('[OrderPublishFeedback] 更新后的反馈状态:', JSON.stringify(newState, null, 2))
+              return newState
+            })
+            
             Taro.showToast({
               title: '上传成功',
               icon: 'success'
             })
           } else {
             console.error('[OrderPublishFeedback] 上传失败:', uploadData)
+            console.error('[OrderPublishFeedback] uploadData.code:', uploadData.code)
+            console.error('[OrderPublishFeedback] uploadData.data:', uploadData.data)
             Taro.showToast({
               title: uploadData.message || '上传失败',
               icon: 'none'
@@ -364,7 +391,7 @@ export default function OrderPublishFeedback() {
   }
 
   return (
-    <View className="order-publish-feedback-page bg-gray-50 min-h-screen pb-20">
+    <View className="order-publish-feedback-page bg-gray-50 min-h-screen" style={{ paddingBottom: '120px' }}>
       {/* 顶部导航 */}
       <View className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
         <View onClick={() => Taro.navigateBack()} className="p-2 -ml-2">
@@ -541,11 +568,12 @@ export default function OrderPublishFeedback() {
                   <View className="space-y-2">
                     <Label className="text-sm text-gray-700">发布截图</Label>
                     {fb.image ? (
-                      <View className="relative">
+                      <View className="relative" style={{ minHeight: '160px' }}>
                         <Image
                           src={fb.image}
-                          className="w-full h-40 rounded-lg object-cover"
+                          style={{ width: '100%', height: '160px' }}
                           mode="aspectFill"
+                          lazyLoad
                         />
                         <View
                           className="absolute top-2 right-2"
@@ -565,6 +593,7 @@ export default function OrderPublishFeedback() {
                     ) : (
                       <View
                         className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50"
+                        style={{ minHeight: '160px' }}
                         onClick={() => handleChooseImage(platform)}
                       >
                         <Upload size={32} color="#9ca3af" />
@@ -616,8 +645,9 @@ export default function OrderPublishFeedback() {
                         {fb.linkInfo.cover && (
                           <Image
                             src={fb.linkInfo.cover}
-                            className="mt-2 w-20 h-20 rounded object-cover"
+                            style={{ width: '80px', height: '80px', marginTop: '8px' }}
                             mode="aspectFill"
+                            lazyLoad
                           />
                         )}
                       </View>
@@ -630,7 +660,7 @@ export default function OrderPublishFeedback() {
         </View>
 
         {/* 提交按钮 */}
-        <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }} className="bg-white border-t border-gray-200 p-4">
           <Button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 text-base font-medium"
             onClick={handleSubmit}
@@ -639,6 +669,12 @@ export default function OrderPublishFeedback() {
             {submitting ? '提交中...' : '提交反馈'}
           </Button>
         </View>
+      </View>
+
+      {/* 🔴 调试信息 */}
+      <View className="bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs" style={{ position: 'fixed', bottom: 80, left: 10, right: 10, zIndex: 9999, maxHeight: '200px', overflow: 'auto' }}>
+        <Text className="block font-bold mb-2">调试信息：</Text>
+        <Text className="block">{JSON.stringify(feedback, null, 2)}</Text>
       </View>
     </View>
   )
