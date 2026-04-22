@@ -815,10 +815,10 @@ export class OrderProcessingService {
       .from('order_dispatch_requests')
       .update({
         publish_feedback: feedback,
-        status: 'completed', // 反馈完成后，订单状态变为 completed，等待验收
+        status: 'awaiting_acceptance', // 反馈完成后，订单状态变为 awaiting_acceptance，等待发单者验收
         publish_status: {
           ...request.publish_status,
-          summary: '已提交发布反馈，等待验收',
+          summary: '已提交发布反馈，等待发单者验收',
           feedbackSubmittedAt: new Date().toISOString()
         },
         updated_at: new Date().toISOString()
@@ -835,7 +835,7 @@ export class OrderProcessingService {
     return {
       requestId,
       feedback,
-      status: 'completed'
+      status: 'awaiting_acceptance'
     }
   }
 }

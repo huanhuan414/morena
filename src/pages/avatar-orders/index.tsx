@@ -2,7 +2,7 @@ import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import * as Network from '@/network'
-import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight, ChevronDown, ListFilter } from 'lucide-react-taro'
+import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight, ChevronDown, ListFilter, Hourglass } from 'lucide-react-taro'
 import './index.css'
 
 // 订单状态配置（高级设计风格）
@@ -54,13 +54,21 @@ const ORDER_STATUS_CONFIG: Record<string, {
     icon: CircleAlert,
     description: '需上传截图和链接'
   },
-  completed: {
-    label: '待验收',
+  awaiting_acceptance: {
+    label: '等待验收',
     shortLabel: '验收',
+    color: '#ec4899',
+    bgColor: 'rgba(236, 72, 153, 0.1)',
+    icon: Hourglass,
+    description: '等待发单者验收'
+  },
+  completed: {
+    label: '已完成',
+    shortLabel: '完成',
     color: '#10b981',
     bgColor: 'rgba(16, 185, 129, 0.1)',
     icon: CircleCheck,
-    description: '等待发布者验收'
+    description: '订单已验收完成'
   },
   cancelled: {
     label: '已取消',
@@ -154,6 +162,7 @@ export default function AvatarOrdersPage() {
         handleViewPendingOrder(order)
         break
       case 'publishing':
+      case 'awaiting_acceptance':
       case 'completed':
       case 'cancelled':
         navigateTo({
@@ -264,7 +273,7 @@ export default function AvatarOrdersPage() {
             </View>
             <View className="stat-divider" />
             <View className="stat-item">
-              <Text className="stat-value">{ordersByStatus.completed?.length || 0}</Text>
+              <Text className="stat-value">{ordersByStatus.awaiting_acceptance?.length || 0}</Text>
               <Text className="stat-label">待验收</Text>
             </View>
           </View>
@@ -401,7 +410,11 @@ export default function AvatarOrdersPage() {
 
                     <View className="order-card-footer">
                       <Text className="action-text" style={{ color: config.color }}>
-                        {status === 'published' ? '去反馈' : status === 'completed' ? '查看详情' : '继续处理'}
+                        {status === 'published'
+                          ? '去反馈'
+                          : ['awaiting_acceptance', 'completed', 'cancelled'].includes(status)
+                            ? '查看详情'
+                            : '继续处理'}
                       </Text>
                       <ChevronRight size={16} color={config.color} />
                     </View>
