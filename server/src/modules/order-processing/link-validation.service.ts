@@ -235,7 +235,7 @@ export class LinkValidationService {
       this.logger.log(`[LinkValidation] 验证微信公众号链接: ${url}`)
 
       const response = await this.tikHubService.callTikHubAPI(
-        '/wechat_mp/web/fetch_mp_article_detail_html',
+        '/wechat_mp/web/fetch_mp_article_detail_json',
         { url }
       )
 
