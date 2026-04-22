@@ -1,7 +1,7 @@
 import Taro, { useLoad, useRouter, navigateBack, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { ArrowLeft, Loader, Check, Sparkles, Smartphone, Pencil, Save, RefreshCw } from 'lucide-react-taro'
+import { ArrowLeft, Loader, Check, Sparkles, Smartphone } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
@@ -380,43 +380,44 @@ export default function OrderContentCreationPage() {
                 {isEditing ? (
                   <View
                     className="action-buttons"
-                    style={{ display: 'flex', gap: '0.5rem' }}
+                    style={{ display: 'flex', gap: '0.375rem' }}
                   >
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleCancelEdit}
+                      style={{ fontSize: '0.75rem', height: '2rem', padding: '0 0.75rem' }}
                     >
                       <Text className="action-btn-text block">取消</Text>
                     </Button>
                     <Button
                       size="sm"
                       onClick={handleSaveEdit}
+                      style={{ fontSize: '0.75rem', height: '2rem', padding: '0 0.75rem' }}
                     >
-                      <Save size={14} color="#fff" />
                       <Text className="action-btn-text block">保存</Text>
                     </Button>
                   </View>
                 ) : (
                   <View
                     className="action-buttons"
-                    style={{ display: 'flex', gap: '0.5rem' }}
+                    style={{ display: 'flex', gap: '0.375rem' }}
                   >
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleRegenerate}
                       disabled={regenerating}
+                      style={{ fontSize: '0.75rem', height: '2rem', padding: '0 0.75rem' }}
                     >
-                      <RefreshCw size={14} color="#1a1a1a" />
                       <Text className="action-btn-text block">重新生成</Text>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setIsEditing(true)}
+                      style={{ fontSize: '0.75rem', height: '2rem', padding: '0 0.75rem' }}
                     >
-                      <Pencil size={14} color="#1a1a1a" />
                       <Text className="action-btn-text block">编辑</Text>
                     </Button>
                   </View>
@@ -428,8 +429,8 @@ export default function OrderContentCreationPage() {
                   <Textarea
                     className="content-textarea"
                     placeholder="编辑内容..."
-                    value={editedContent}
-                    onInput={(e) => setEditedContent(e.detail.value)}
+                    defaultValue={editedContent}
+                    onBlur={(e) => setEditedContent(e.detail.value)}
                     maxlength={5000}
                     style={{ minHeight: '20rem' }}
                   />
