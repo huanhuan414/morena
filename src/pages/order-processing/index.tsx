@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import { Clock, Loader, Check, X, Smartphone, Calendar, Sparkles, Zap, ArrowLeft } from 'lucide-react-taro'
+import { Clock, Loader, Check, X, Smartphone, Sparkles, Zap, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 订单处理状态类型
@@ -45,7 +45,6 @@ export default function OrderProcessingPage() {
   const router = useRouter()
   const { requestId, avatarId, orderId } = router.params
 
-  const [orderData, setOrderData] = useState<any>(null)
   const [processingData, setProcessingData] = useState<OrderProcessingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [userContent, setUserContent] = useState('')
@@ -55,9 +54,10 @@ export default function OrderProcessingPage() {
 
   useLoad(() => {
     if (requestId && avatarId && orderId) {
-      fetchOrderData()
+      console.log('[OrderProcessing] 页面加载，参数:', { requestId, avatarId, orderId })
       startPolling()
     } else {
+      console.error('[OrderProcessing] 参数错误', { requestId, avatarId, orderId })
       showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => navigateBack(), 1500)
     }
@@ -84,24 +84,9 @@ export default function OrderProcessingPage() {
     setPollInterval(interval)
   }
 
-  const fetchOrderData = async () => {
-    try {
-      const res = await Network.request({ url: `/api/order-dispatch/pending-requests` })
-      if (res.data?.code === 200) {
-        const requests = res.data.data
-        const request = requests.find((r: any) => r.id === requestId)
-        if (request) {
-          setOrderData(request)
-          setLoading(false)
-        }
-      }
-    } catch (error) {
-      console.error('获取订单数据失败:', error)
-    }
-  }
-
   const fetchProcessingStatus = async () => {
     try {
+      console.log('[OrderProcessing] 开始获取状态:', { requestId })
       const res = await Network.request({
         url: `/api/order-processing/status/${requestId}`
       })
@@ -110,7 +95,13 @@ export default function OrderProcessingPage() {
 
       if (res.data?.code === 200) {
         const data = res.data.data as OrderProcessingData
-        
+
+        // 第一次获取到数据时，设置 loading 为 false
+        if (loading) {
+          console.log('[OrderProcessing] 首次获取状态成功，取消加载状态')
+          setLoading(false)
+        }
+
         // 状态变化时记录日志
         if (processingData?.status && processingData.status !== data.status) {
           console.log('[OrderProcessing] 状态变化:', {
@@ -118,7 +109,7 @@ export default function OrderProcessingPage() {
             to: data.status
           })
         }
-        
+
         setProcessingData(data)
         setLastUpdateTime(new Date())  // 更新最后更新时间
 
@@ -139,6 +130,7 @@ export default function OrderProcessingPage() {
             setPollInterval(null)
           }
           showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
+          if (loading) setLoading(false)
         }
         setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
       }
@@ -152,6 +144,7 @@ export default function OrderProcessingPage() {
         }
         showToast({ title: '网络异常，请刷新页面', icon: 'none' })
       }
+      if (loading) setLoading(false)
       setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
     }
   }
@@ -405,26 +398,18 @@ export default function OrderProcessingPage() {
 
       <ScrollView className="page-scroll" scrollY>
         {/* 订单基本信息 */}
-        {orderData && (
+        {processingData?.generatedContent && (
           <View className="order-info-card">
             <View className="info-header">
               <Sparkles size={20} color="#00f5ff" />
               <Text className="info-title">订单信息</Text>
             </View>
-            <Text className="info-order-title">{orderData.orders.title}</Text>
+            <Text className="info-order-title">{processingData.generatedContent.title}</Text>
             <View className="info-meta">
               <View className="info-meta-item">
                 <Smartphone size={16} color="#6366f1" />
                 <Text className="info-meta-text">
-                  {PLATFORM_NAMES[orderData.orders.platforms[0]] || orderData.orders.platforms[0]}
-                </Text>
-              </View>
-              <View className="info-meta-item">
-                <Calendar size={16} color="#f59e0b" />
-                <Text className="info-meta-text">
-                  {orderData.orders.deadline
-                    ? new Date(orderData.orders.deadline).toLocaleDateString()
-                    : '不限'}
+                  {PLATFORM_NAMES[processingData.generatedContent.platform] || processingData.generatedContent.platform}
                 </Text>
               </View>
             </View>
