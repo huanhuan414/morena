@@ -93,6 +93,26 @@ export interface DispatchResult {
   reason: string[]
 }
 
+// 平台名称映射：中文名称 -> 平台代码
+const PLATFORM_NAME_MAP: Record<string, string> = {
+  '公众号': 'wechat_mp',
+  '微信公号': 'wechat_mp',
+  '微信公众平台': 'wechat_mp',
+  '朋友圈': 'wechat_moments',
+  '微信朋友圈': 'wechat_moments',
+  '抖音': 'douyin',
+  '抖音号': 'douyin',
+  '抖音平台': 'douyin',
+  '视频号': 'wechat_video',
+  '微信视频号': 'wechat_video',
+  '小红书': 'xiaohongshu',
+  '小红书平台': 'xiaohongshu',
+  'B站': 'bilibili',
+  '哔哩哔哩': 'bilibili',
+  '微博': 'weibo',
+  '新浪微博': 'weibo'
+}
+
 @Injectable()
 export class OrderDispatchService {
   private llmClient: LLMClient
@@ -105,6 +125,29 @@ export class OrderDispatchService {
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+  }
+
+  /**
+   * 规范化平台名称：将中文名称转换为平台代码
+   */
+  private normalizePlatformName(platformName: string): string {
+    // 如果已经是平台代码，直接返回
+    if (['wechat_mp', 'wechat_moments', 'douyin', 'wechat_video', 'xiaohongshu', 'bilibili', 'weibo'].includes(platformName)) {
+      return platformName
+    }
+    // 使用映射表转换
+    return PLATFORM_NAME_MAP[platformName] || platformName
+  }
+
+  /**
+   * 规范化平台列表：将所有中文名称转换为平台代码
+   * 过滤掉无效的平台值（如"不限"、"无"等）
+   */
+  private normalizePlatformList(platforms: string[]): string[] {
+    const invalidPlatforms = ['不限', '无', '不限', '任意', 'all', 'none', 'any']
+    return platforms
+      .map(p => this.normalizePlatformName(p))
+      .filter(p => p && !invalidPlatforms.includes(p.toLowerCase()))
   }
 
   /**
@@ -194,7 +237,8 @@ export class OrderDispatchService {
         coreRequirement: analysis.coreRequirement || `完成${title}`,
         targetAudience: analysis.targetAudience || this.extractKeywords(description, 3),
         requiredSkills: analysis.requiredSkills || requirements?.required_skills || [],
-        preferredPlatforms: analysis.preferredPlatforms || requirements?.platforms || [],
+        // 优先使用数据库中的原始平台信息，而不是 LLM 返回的中文名称
+        preferredPlatforms: requirements?.platforms || analysis.preferredPlatforms || [],
         toneStyle: analysis.toneStyle || [],
         contentType: analysis.contentType || [],
         urgencyLevel: analysis.urgencyLevel || 'medium',
@@ -1951,6 +1995,7 @@ export class OrderDispatchService {
     // ========== 第二步半：预过滤 - 平台匹配 ==========
     console.log('[智能匹配] 开始平台匹配预过滤...')
     const orderPlatforms = orderAnalysis.preferredPlatforms || []
+    const normalizedOrderPlatforms = this.normalizePlatformList(orderPlatforms)
 
     // 获取所有分身用户的平台配置
     const userIds = [...new Set(avatars.map(a => a.user_id))]
@@ -1969,14 +2014,15 @@ export class OrderDispatchService {
 
     // 如果订单有明确的平台要求，过滤掉没有绑定对应平台的分身
     let filteredAvatars = avatars
-    if (orderPlatforms.length > 0) {
+    if (normalizedOrderPlatforms.length > 0) {
+      console.log(`[智能匹配] 订单要求平台（规范化后）: ${normalizedOrderPlatforms.join(', ')}`)
       filteredAvatars = avatars.filter(avatar => {
         const userConfigs = platformConfigMap.get(avatar.user_id) || []
         const avatarPlatforms = userConfigs.map(c => c.platform_type)
         // 分身必须至少绑定一个订单要求的平台
-        const hasRequiredPlatform = orderPlatforms.some(p => avatarPlatforms.includes(p))
+        const hasRequiredPlatform = normalizedOrderPlatforms.some(p => avatarPlatforms.includes(p))
         if (!hasRequiredPlatform) {
-          console.log(`[智能匹配] 过滤分身 ${avatar.name}：未绑定所需平台 ${orderPlatforms.join(', ')}`)
+          console.log(`[智能匹配] 过滤分身 ${avatar.name}：未绑定所需平台 ${normalizedOrderPlatforms.join(', ')}，实际绑定: ${avatarPlatforms.join(', ')}`)
         }
         return hasRequiredPlatform
       })
@@ -1996,21 +2042,80 @@ export class OrderDispatchService {
 
     if (requiredSkills.length > 0) {
       const beforeSkillFilter = filteredAvatars.length
-      filteredAvatars = filteredAvatars.filter(avatar => {
-        const avatarSkills = avatar.skills || []
-        // 分身必须至少具备一个订单要求的技能
-        const hasRequiredSkill = requiredSkills.some(skill => {
-          const skillLower = this.safeToString(skill).toLowerCase()
+
+      // 收集所有分身的技能统计
+      const filteredBeforeSkill: any[] = []
+
+      filteredAvatars.forEach(avatar => {
+        // 处理技能列表：可能是对象数组或字符串数组
+        let avatarSkills = avatar.skills || []
+
+        // 如果技能是对象数组，转换为技能名称
+        if (avatarSkills.length > 0 && typeof avatarSkills[0] === 'object') {
+          avatarSkills = avatarSkills.map((skill: any) => {
+            // 尝试获取 tool_name，如果没有则转为字符串
+            if (skill.tool_name) {
+              // 将工具名称转换为友好的技能名称
+              const toolNameMap: Record<string, string> = {
+                'publish_wechat_mp': '公众号发布',
+                'write_wechat_mp_article': '公众号文章写作',
+                'generate_image': '图片生成',
+                'generate_video': '视频生成',
+                'publish_douyin': '抖音发布',
+                'publish_xiaohongshu': '小红书发布',
+                'publish_wechat_moments': '朋友圈发布',
+                'write_xiaohongshu_note': '小红书笔记写作',
+                'app_add_friend': '好友添加',
+                'xhs_upload': '小红书上传',
+                'publish_article': '文章发布',
+                'video_edit': '视频编辑'
+              }
+              return toolNameMap[skill.tool_name] || skill.tool_name
+            }
+            return JSON.stringify(skill)
+          })
+        }
+
+        // 检查是否有技能匹配（使用更灵活的匹配逻辑）
+        const hasRequiredSkill = requiredSkills.some(requiredSkill => {
+          const skillLower = this.safeToString(requiredSkill).toLowerCase()
           return avatarSkills.some(s => {
             const sLower = this.safeToString(s).toLowerCase()
-            return sLower.includes(skillLower) || skillLower.includes(sLower)
+            // 尝试多种匹配方式：
+            // 1. 包含关系
+            if (sLower.includes(skillLower) || skillLower.includes(sLower)) return true
+            // 2. 关键词匹配（提取核心词）
+            const coreSkillWords = ['写作', '创作', '文案', '文章', '内容', '视频', '图片', '发布', '推广', '营销', '分析', '设计']
+            const hasCommonKeyword = coreSkillWords.some(word =>
+              sLower.includes(word) && skillLower.includes(word)
+            )
+            if (hasCommonKeyword) return true
+            // 3. 特定技能映射
+            const skillMappings: Record<string, string[]> = {
+              '专业内容创作能力': ['写作', '创作', '文案', '文章', '内容'],
+              '公众号': ['公众号', '微信'],
+              '视频': ['视频', '短视频'],
+              '图片': ['图片', '图像', '摄影'],
+              '分析': ['分析', '数据', '研究'],
+              '设计': ['设计', '美术', '创意']
+            }
+            for (const [key, values] of Object.entries(skillMappings)) {
+              if (skillLower.includes(key)) {
+                if (values.some(v => sLower.includes(v))) return true
+              }
+            }
+            return false
           })
         })
-        if (!hasRequiredSkill) {
-          console.log(`[智能匹配] 过滤分身 ${avatar.name}：不具备所需技能 ${requiredSkills.join(', ')}`)
+
+        if (hasRequiredSkill) {
+          filteredBeforeSkill.push(avatar)
+        } else {
+          console.log(`[智能匹配] 过滤分身 ${avatar.name}：不具备所需技能 ${requiredSkills.join(', ')}，实际技能: ${avatarSkills.join(', ')}`)
         }
-        return hasRequiredSkill
       })
+
+      filteredAvatars = filteredBeforeSkill
       console.log(`[智能匹配] 技能匹配过滤后：${beforeSkillFilter} -> ${filteredAvatars.length} 个分身`)
     } else {
       console.log('[智能匹配] 订单无明确技能要求，跳过技能过滤')
