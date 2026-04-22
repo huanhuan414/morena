@@ -411,8 +411,12 @@ export default function OrderDetailPage() {
     )
   }
 
-  // 获取当前显示的状态（优先使用分配请求状态，如果有的话）
-  const displayStatus = order.dispatch_request_status || order.status
+  // 获取当前显示的状态
+  // 优先使用订单本身的状态，只有在已分配且有有效状态时才使用分配请求状态
+  const displayStatus =
+    order.dispatch_request_status && order.dispatch_request_status !== 'open'
+      ? order.dispatch_request_status
+      : order.status
   const statusConfig = STATUS_CONFIG[displayStatus as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
   const content = order.result?.content || order.generated_content || order.confirmed_content
 
@@ -502,25 +506,23 @@ export default function OrderDetailPage() {
         </View>
       </View>
 
-      {/* Tab切换 - 根据状态动态显示 */}
-      {availableTabs.length > 1 && (
-        <View className="tab-bar">
-          {availableTabs.map((tab) => (
-            <View
-              key={tab}
-              className={`tab-item ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab as any)}
-            >
-              <Text className="tab-text">
-                {tab === 'detail' && '订单详情'}
-                {tab === 'progress' && '执行进度'}
-                {tab === 'result' && '成果展示'}
-              </Text>
-              {activeTab === tab && <View className="tab-indicator"></View>}
-            </View>
-          ))}
-        </View>
-      )}
+      {/* Tab切换 */}
+      <View className="tab-bar">
+        {availableTabs.map((tab) => (
+          <View
+            key={tab}
+            className={`tab-item ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab as any)}
+          >
+            <Text className="tab-text">
+              {tab === 'detail' && '订单详情'}
+              {tab === 'progress' && '执行进度'}
+              {tab === 'result' && '成果展示'}
+            </Text>
+            {activeTab === tab && <View className="tab-indicator"></View>}
+          </View>
+        ))}
+      </View>
 
       <ScrollView className="content-scroll" scrollY>
         {/* 订单详情 */}
