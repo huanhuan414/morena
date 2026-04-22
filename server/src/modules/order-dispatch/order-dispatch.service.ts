@@ -4,6 +4,7 @@ import { NotificationService } from '../notification/notification.service'
 import { SubscriptionService } from '../subscription/subscription.service'
 import { SmsService } from '../sms/sms.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
+import { OrderProcessingService } from '../order-processing/order-processing.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface OrderAnalysis {
@@ -121,7 +122,8 @@ export class OrderDispatchService {
     private readonly notificationService: NotificationService,
     private readonly subscriptionService: SubscriptionService,
     private readonly smsService: SmsService,
-    private readonly contentGenerationService: ContentGenerationService
+    private readonly contentGenerationService: ContentGenerationService,
+    private readonly orderProcessingService: OrderProcessingService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -1736,7 +1738,7 @@ export class OrderDispatchService {
    */
   async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {
     const client = getSupabaseClient()
-    
+
     // 验证请求
     const { data: request } = await client
       .from('order_dispatch_requests')
@@ -1745,27 +1747,28 @@ export class OrderDispatchService {
       .eq('avatar_id', avatarId)
       .eq('status', 'pending')
       .single()
-    
+
     if (!request) {
       throw new Error('分配请求不存在或已过期')
     }
-    
+
     if (new Date(request.expires_at) < new Date()) {
       throw new Error('分配请求已过期')
     }
-    
+
     // 更新请求状态
     await client
       .from('order_dispatch_requests')
       .update({ status: 'accepted' })
       .eq('id', requestId)
-    
+
     // 分配订单
     await this.assignOrderToAvatar(request.order_id, avatarId)
 
-    // 更新状态为 accepted，让队列系统自动处理
-    // 注意：不再直接调用 autoGenerateContent，由队列系统统一管理
-    console.log(`[订单分配] 订单 ${request.order_id} 已接受，等待队列处理`)
+    // 将任务加入队列
+    await this.orderProcessingService.enqueueTask(requestId)
+
+    console.log(`[订单分配] 订单 ${request.order_id} 已接受并加入队列`)
 
     return true
   }

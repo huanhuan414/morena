@@ -191,11 +191,19 @@ export default function PendingOrderPage() {
         if (res.confirm) {
           setAccepting(true)
           try {
+            console.log('[PendingOrder] 准备接受订单:', {
+              requestId,
+              avatarId: orderData.avatars.id,
+              orderId: orderData.orders.id
+            })
+
             const result = await Network.request({
               url: `/api/order-dispatch/request/${requestId}/confirm`,
               method: 'PUT',
               data: { avatarId: orderData.avatars.id }
             })
+
+            console.log('[PendingOrder] 接受订单响应:', result.data)
 
             if (result.data?.code === 200) {
               showToast({ title: '接受成功', icon: 'success' })
@@ -205,11 +213,14 @@ export default function PendingOrderPage() {
                 })
               }, 1500)
             } else {
-              showToast({ title: result.data?.message || '接受失败', icon: 'none' })
+              const errorMessage = result.data?.message || '接受失败'
+              console.error('[PendingOrder] 接受订单失败:', errorMessage)
+              showToast({ title: errorMessage, icon: 'none' })
             }
           } catch (error) {
-            console.error('接受订单失败:', error)
-            showToast({ title: '接受失败', icon: 'none' })
+            console.error('[PendingOrder] 接受订单异常:', error)
+            const errorMessage = (error as any)?.response?.data?.message || '接受失败'
+            showToast({ title: errorMessage, icon: 'none' })
           } finally {
             setAccepting(false)
           }
@@ -228,21 +239,31 @@ export default function PendingOrderPage() {
         if (res.confirm) {
           setRejecting(true)
           try {
+            console.log('[PendingOrder] 准备拒绝订单:', {
+              requestId,
+              avatarId: orderData.avatars.id
+            })
+
             const result = await Network.request({
               url: `/api/order-dispatch/request/${requestId}/reject`,
               method: 'PUT',
               data: { avatarId: orderData.avatars.id }
             })
 
+            console.log('[PendingOrder] 拒绝订单响应:', result.data)
+
             if (result.data?.code === 200) {
               showToast({ title: '已拒绝订单', icon: 'success' })
               setTimeout(() => navigateBack(), 1500)
             } else {
-              showToast({ title: result.data?.message || '拒绝失败', icon: 'none' })
+              const errorMessage = result.data?.message || '拒绝失败'
+              console.error('[PendingOrder] 拒绝订单失败:', errorMessage)
+              showToast({ title: errorMessage, icon: 'none' })
             }
           } catch (error) {
-            console.error('拒绝订单失败:', error)
-            showToast({ title: '拒绝失败', icon: 'none' })
+            console.error('[PendingOrder] 拒绝订单异常:', error)
+            const errorMessage = (error as any)?.response?.data?.message || '拒绝失败'
+            showToast({ title: errorMessage, icon: 'none' })
           } finally {
             setRejecting(false)
           }

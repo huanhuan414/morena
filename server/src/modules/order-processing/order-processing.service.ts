@@ -182,6 +182,13 @@ export class OrderProcessingService {
   }
 
   /**
+   * 将任务加入队列
+   */
+  async enqueueTask(requestId: string): Promise<{ position: number; estimatedTime: number }> {
+    return this.queue.enqueue(requestId)
+  }
+
+  /**
    * 获取处理状态
    */
   async getProcessingStatus(requestId: string): Promise<ProcessingStatus> {
