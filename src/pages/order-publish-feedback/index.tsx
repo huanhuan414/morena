@@ -27,8 +27,8 @@ export default function OrderPublishFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [orderData, setOrderData] = useState<any>(null)
   const [publishResults, setPublishResults] = useState<any[]>([])
+  const [generatedContent, setGeneratedContent] = useState<any>(null)
   const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
 
   useLoad(() => {
@@ -47,7 +47,7 @@ export default function OrderPublishFeedback() {
 
       if (response.data?.code === 200) {
         const data = response.data.data
-        setOrderData(data)
+        setGeneratedContent(data.generatedContent)
 
         // 获取发布结果（兼容驼峰命名和下划线命名）
         const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
@@ -234,24 +234,47 @@ export default function OrderPublishFeedback() {
             <CardTitle className="text-base">订单信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {orderData?.requirements && (
+            {generatedContent && (
               <>
                 <View className="flex justify-between">
                   <Text className="block text-gray-600 text-sm">标题</Text>
                   <Text className="block text-gray-900 text-sm font-medium">
-                    {orderData.requirements.title}
+                    {generatedContent.title}
                   </Text>
                 </View>
                 <View className="flex justify-between">
                   <Text className="block text-gray-600 text-sm">类型</Text>
                   <Text className="block text-gray-900 text-sm">
-                    {orderData.requirements.content_type === 'article' ? '文章' : '视频'}
+                    {generatedContent.platforms?.includes('video') ? '视频' : '文章'}
                   </Text>
                 </View>
               </>
             )}
           </CardContent>
         </Card>
+
+        {/* 生成内容卡片 */}
+        {generatedContent && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">生成的内容</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {generatedContent.title && (
+                <View className="mb-3">
+                  <Text className="block text-gray-900 text-base font-semibold">
+                    {generatedContent.title}
+                  </Text>
+                </View>
+              )}
+              <View className="bg-gray-50 rounded-lg p-3">
+                <Text className="block text-gray-700 text-sm whitespace-pre-wrap">
+                  {generatedContent.content || ''}
+                </Text>
+              </View>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 发布平台列表 */}
         <View className="space-y-3">
