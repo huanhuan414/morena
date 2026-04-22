@@ -412,32 +412,37 @@ export default function OrderDetailPage() {
   }
 
   // 获取当前显示的状态
-  // 优先使用订单本身的状态，只有在已分配且有有效状态时才使用分配请求状态
-  const displayStatus =
-    order.dispatch_request_status && order.dispatch_request_status !== 'open'
-      ? order.dispatch_request_status
-      : order.status
+  // 始终使用订单本身的状态，确保与列表页一致
+  const displayStatus = order.status
   const statusConfig = STATUS_CONFIG[displayStatus as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
   const content = order.result?.content || order.generated_content || order.confirmed_content
 
   // 根据订单状态确定可用的Tab
   const getAvailableTabs = (): Array<'detail' | 'progress' | 'result'> => {
+    console.log('[OrderDetail] displayStatus:', displayStatus)
     if (displayStatus === 'open' || displayStatus === 'cancelled') {
+      console.log('[OrderDetail] 返回 Tab: detail')
       return ['detail']
     }
     if (displayStatus === 'in_progress') {
+      console.log('[OrderDetail] 返回 Tab: detail, progress')
       return ['detail', 'progress']
     }
     if (displayStatus === 'reviewing' || displayStatus === 'completed') {
+      console.log('[OrderDetail] 返回 Tab: detail, progress, result')
       return ['detail', 'progress', 'result']
     }
+    console.log('[OrderDetail] 返回默认 Tab: detail')
     return ['detail']
   }
 
   const availableTabs = getAvailableTabs()
+  console.log('[OrderDetail] availableTabs:', availableTabs)
+  console.log('[OrderDetail] activeTab:', activeTab)
 
   // 如果当前Tab不在可用列表中，切换到第一个可用的Tab
   if (!availableTabs.includes(activeTab)) {
+    console.log('[OrderDetail] 切换 activeTab 到:', availableTabs[0])
     setActiveTab(availableTabs[0])
   }
 

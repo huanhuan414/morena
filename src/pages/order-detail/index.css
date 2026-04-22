@@ -270,6 +270,17 @@
   font-weight: 700;
 }
 
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40rpx;
+  height: 4rpx;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2rpx;
+}
+
 /* ============================================
    内容卡片 - 纯净明亮（优化版）
    ============================================ */
