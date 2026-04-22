@@ -699,7 +699,23 @@ export class OrderProcessingService {
     })
 
     try {
-      // 根据平台映射到对应的工具名称
+      // 1. 获取分身的 userId
+      const client = getSupabaseClient()
+      const { data: avatar, error: avatarError } = await client
+        .from('avatars')
+        .select('id, user_id, name')
+        .eq('id', avatarId)
+        .single()
+
+      if (avatarError || !avatar) {
+        console.error('[OrderProcessing] 获取分身信息失败:', avatarError)
+        throw new Error('分身不存在')
+      }
+
+      const userId = avatar.user_id
+      console.log('[OrderProcessing] 分身信息:', { avatarId, userId, avatarName: avatar.name })
+
+      // 2. 根据平台映射到对应的工具名称
       const toolMap: Record<string, string> = {
         'wechat_mp': 'publish_wechat_mp',
         'xiaohongshu': 'publish_xiaohongshu',
@@ -716,23 +732,24 @@ export class OrderProcessingService {
         throw new Error(`不支持的平台: ${platform}`)
       }
 
-      console.log('[OrderProcessing] 调用分身发布工具:', { toolName, avatarId })
+      console.log('[OrderProcessing] 调用分身发布工具:', { toolName, avatarId, userId })
 
-      // 构建完整的参数
+      // 3. 构建完整的参数
       const publishParams = {
-        content,
         title: order.title,
-        orderId: order.id,
-        platform
+        content,
+        platform,
+        orderId: order.id
       }
 
-      // 创建 thought 内容
+      // 4. 创建 thought 内容
       const thoughtContent = `发布内容到${platform}，标题：${order.title}，内容长度：${content.length}字`
 
-      // 创建 AvatarThought 对象（根据类型定义）
+      // 5. 创建 AvatarThought 对象（根据类型定义）
       const thought = {
         id: `publish_${order.id}_${Date.now()}`,
         avatarId,
+        userId,  // 传递 userId
         content: thoughtContent,
         reasoning: `根据订单要求，将发布内容到${platform}平台`,
         intent: {
@@ -745,7 +762,9 @@ export class OrderProcessingService {
         createdAt: new Date().toISOString()
       }
 
-      // 调用分身的发布工具
+      console.log('[OrderProcessing] AvatarThought:', thought)
+
+      // 6. 调用分身的发布工具
       const result = await this.avatarAgentService.act(avatarId, thought)
 
       console.log('[OrderProcessing] 发布工具执行结果:', result)
