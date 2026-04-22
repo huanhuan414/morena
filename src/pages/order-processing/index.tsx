@@ -63,6 +63,17 @@ export default function OrderProcessingPage() {
     }
   })
 
+  // 添加状态变化监听，用于调试
+  useEffect(() => {
+    console.log('[OrderProcessing] 状态变化:', {
+      loading,
+      hasProcessingData: !!processingData,
+      status: processingData?.status,
+      hasGeneratedContent: !!processingData?.generatedContent,
+      hasContent: !!processingData?.generatedContent?.content
+    })
+  }, [loading, processingData])
+
   useEffect(() => {
     return () => {
       if (pollInterval) {
@@ -258,12 +269,6 @@ export default function OrderProcessingPage() {
   )
 
   const renderPreviewState = () => {
-    console.log('[OrderProcessing] renderPreviewState 被调用', {
-      hasUserContent: !!userContent,
-      hasGeneratedContent: !!processingData?.generatedContent?.content,
-      contentLength: processingData?.generatedContent?.content?.length
-    })
-
     return (
       <View className="preview-section">
         <View className="preview-header">
@@ -278,6 +283,7 @@ export default function OrderProcessingPage() {
             value={userContent || processingData?.generatedContent?.content || ''}
             onInput={(e) => setUserContent(e.detail.value)}
             maxlength={2000}
+            style={{ width: '100%', minHeight: '200px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', fontSize: '14px', lineHeight: '1.6', color: '#1e293b' }}
           />
         </View>
 
@@ -400,7 +406,7 @@ export default function OrderProcessingPage() {
         <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
-        <Text className="header-title">订单处理</Text>
+        <Text className="header-title block">订单处理</Text>
         <View className="header-right" />
       </View>
 
@@ -410,13 +416,13 @@ export default function OrderProcessingPage() {
           <View className="order-info-card">
             <View className="info-header">
               <Sparkles size={20} color="#00f5ff" />
-              <Text className="info-title">订单信息</Text>
+              <Text className="info-title block">订单信息</Text>
             </View>
-            <Text className="info-order-title">{processingData.generatedContent.title}</Text>
+            <Text className="info-order-title block">{processingData.generatedContent.title}</Text>
             <View className="info-meta">
               <View className="info-meta-item">
                 <Smartphone size={16} color="#6366f1" />
-                <Text className="info-meta-text">
+                <Text className="info-meta-text block">
                   {PLATFORM_NAMES[processingData.generatedContent.platform] || processingData.generatedContent.platform}
                 </Text>
               </View>
@@ -429,28 +435,18 @@ export default function OrderProcessingPage() {
           {/* 显示最后更新时间 */}
           {lastUpdateTime && (
             <View className="last-update-time">
-              <Text className="update-time-text">
+              <Text className="update-time-text block">
                 最后更新: {lastUpdateTime.toLocaleTimeString()}
               </Text>
             </View>
           )}
-          
+
           {/* 如果有多次错误，显示错误状态 */}
           {(processingData as any)?.errorCount >= 5 && renderErrorState()}
-          
+
           {/* 如果没有错误或错误次数不足5次，显示正常状态 */}
           {(!processingData || (processingData as any)?.errorCount < 5) && (
             <>
-              {console.log('[OrderProcessing] 渲染状态:', {
-                hasProcessingData: !!processingData,
-                status: processingData?.status,
-                isQueuing: processingData?.status === 'queuing',
-                isGenerating: processingData?.status === 'generating',
-                isPreview: processingData?.status === 'preview',
-                isPublishing: processingData?.status === 'publishing',
-                isCompleted: processingData?.status === 'completed',
-                isFailed: processingData?.status === 'failed'
-              })}
               {processingData?.status === 'queuing' && renderQueuingState()}
               {processingData?.status === 'generating' && renderGeneratingState()}
               {processingData?.status === 'preview' && renderPreviewState()}
