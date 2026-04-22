@@ -1,20 +1,75 @@
 import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Bell, Check, Clock, ChevronRight, ArrowLeft, Loader, Sparkles } from 'lucide-react-taro'
+import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight } from 'lucide-react-taro'
 import './index.css'
 
-// 订单状态配置（使用 order_dispatch_requests 表中的实际状态值）
-const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  accepted: { label: '制作中', color: '#3b82f6' },
-  generating: { label: '生成中', color: '#8b5cf6' },
-  preview: { label: '预览中', color: '#f59e0b' },
-  publishing: { label: '发布中', color: '#06b6d4' },
-  published: { label: '待反馈', color: '#f59e0b' },
-  completed: { label: '待验收', color: '#10b981' },
-  cancelled: { label: '已取消', color: '#ef4444' }
+// 订单状态配置（高级设计风格）
+const ORDER_STATUS_CONFIG: Record<string, {
+  label: string
+  shortLabel: string
+  color: string
+  bgColor: string
+  icon: any
+  description: string
+}> = {
+  accepted: {
+    label: '制作中',
+    shortLabel: '制作',
+    color: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.1)',
+    icon: FileText,
+    description: '正在创建内容'
+  },
+  generating: {
+    label: '生成中',
+    shortLabel: '生成',
+    color: '#8b5cf6',
+    bgColor: 'rgba(139, 92, 246, 0.1)',
+    icon: Sparkles,
+    description: 'AI正在生成内容'
+  },
+  preview: {
+    label: '预览中',
+    shortLabel: '预览',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.1)',
+    icon: Eye,
+    description: '等待确认内容'
+  },
+  publishing: {
+    label: '发布中',
+    shortLabel: '发布',
+    color: '#06b6d4',
+    bgColor: 'rgba(6, 182, 212, 0.1)',
+    icon: Upload,
+    description: '正在发布到平台'
+  },
+  published: {
+    label: '待反馈',
+    shortLabel: '反馈',
+    color: '#f97316',
+    bgColor: 'rgba(249, 115, 22, 0.1)',
+    icon: CircleAlert,
+    description: '需上传截图和链接'
+  },
+  completed: {
+    label: '待验收',
+    shortLabel: '验收',
+    color: '#10b981',
+    bgColor: 'rgba(16, 185, 129, 0.1)',
+    icon: CircleCheck,
+    description: '等待发布者验收'
+  },
+  cancelled: {
+    label: '已取消',
+    shortLabel: '取消',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.1)',
+    icon: CircleX,
+    description: '订单已取消'
+  }
 }
 
 // 平台名称映射
@@ -34,9 +89,8 @@ export default function AvatarOrdersPage() {
   const avatarId = router.params.avatarId
 
   const [avatarInfo, setAvatarInfo] = useState<any>(null)
+  const [allOrders, setAllOrders] = useState<any[]>([])
   const [pendingOrders, setPendingOrders] = useState<any[]>([])
-  const [ordersInProgress, setOrdersInProgress] = useState<any[]>([])
-  const [ordersCompleted, setOrdersCompleted] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useLoad(() => {
@@ -63,18 +117,7 @@ export default function AvatarOrdersPage() {
 
       if (ordersRes.data?.code === 200) {
         const orders = ordersRes.data.data || []
-        const inProgress = orders.filter((o: any) =>
-          o.status === 'accepted' ||
-          o.status === 'generating' ||
-          o.status === 'preview' ||
-          o.status === 'publishing'
-        )
-        const completed = orders.filter((o: any) =>
-          o.status === 'published' ||
-          o.status === 'completed'
-        )
-        setOrdersInProgress(inProgress)
-        setOrdersCompleted(completed)
+        setAllOrders(orders)
       }
 
       // 获取待接单订单
@@ -83,7 +126,6 @@ export default function AvatarOrdersPage() {
       })
 
       if (pendingRes.data?.code === 200) {
-        // 过滤出当前分身的待接单订单
         const currentAvatarPending = (pendingRes.data.data || []).filter((req: any) =>
           req.avatars?.id === avatarId
         )
@@ -103,18 +145,51 @@ export default function AvatarOrdersPage() {
     })
   }
 
+  const handleOrderClick = (order: any) => {
+    switch (order.status) {
+      case 'pending':
+        handleViewPendingOrder(order)
+        break
+      case 'publishing':
+      case 'completed':
+      case 'cancelled':
+        navigateTo({
+          url: `/pages/order-detail/index?id=${order.order_id}`
+        })
+        break
+      case 'published':
+        navigateTo({
+          url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+        })
+        break
+      default:
+        navigateTo({
+          url: `/pages/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+        })
+    }
+  }
+
+  // 按状态分组
+  const ordersByStatus = allOrders.reduce((acc, order) => {
+    if (!acc[order.status]) {
+      acc[order.status] = []
+    }
+    acc[order.status].push(order)
+    return acc
+  }, {} as Record<string, any[]>)
+
   if (loading) {
     return (
       <View className="avatar-orders-page">
         <View className="page-header">
           <View className="header-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="rgba(255,255,255,0.9)" />
+            <ChevronLeft size={24} color="rgba(255,255,255,0.9)" />
           </View>
           <Text className="header-title">商单管理</Text>
           <View className="header-right" />
         </View>
         <View className="loading-container">
-          <Loader size={32} color="#00f5ff" />
+          <Clock size={32} color="#8b5cf6" />
           <Text className="loading-text">加载中...</Text>
         </View>
       </View>
@@ -126,204 +201,193 @@ export default function AvatarOrdersPage() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
+          <ChevronLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
         <Text className="header-title">商单管理</Text>
         <View className="header-right" />
       </View>
 
-      {/* 分身信息卡片 */}
-      <View className="avatar-info-card">
-        <View className="avatar-info-header">
-          <Text className="avatar-name">{avatarInfo?.name || '未知分身'}</Text>
-          <View className="avatar-level-badge">
-            <Text className="level-text">LV.{avatarInfo?.level || 1}</Text>
+      {/* 分身信息卡片 - 高级设计 */}
+      <View className="avatar-info-card premium">
+        <View className="avatar-info-content">
+          <View className="avatar-section">
+            <View className="avatar-circle">
+              {avatarInfo?.avatar_url ? (
+                <Image src={avatarInfo.avatar_url} className="avatar-image" mode="aspectFill" />
+              ) : (
+                <Sparkles size={40} color="#8b5cf6" />
+              )}
+            </View>
+            <View className="avatar-details">
+              <View className="avatar-name-row">
+                <Text className="avatar-name">{avatarInfo?.name || '未知分身'}</Text>
+                <View className="level-badge premium">
+                  <Star size={12} color="#fbbf24" />
+                  <Text className="level-text">LV.{avatarInfo?.level || 1}</Text>
+                </View>
+              </View>
+              <Text className="avatar-personality">
+                {avatarInfo?.personality || '暂无个性描述'}
+              </Text>
+            </View>
+          </View>
+
+          {/* 统计数据 */}
+          <View className="stats-row">
+            <View className="stat-item">
+              <Text className="stat-value">{allOrders.length}</Text>
+              <Text className="stat-label">总订单</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-item">
+              <Text className="stat-value">{pendingOrders.length}</Text>
+              <Text className="stat-label">待接单</Text>
+            </View>
+            <View className="stat-divider" />
+            <View className="stat-item">
+              <Text className="stat-value">{ordersByStatus.completed?.length || 0}</Text>
+              <Text className="stat-label">待验收</Text>
+            </View>
           </View>
         </View>
-        <Text className="avatar-personality">
-          {avatarInfo?.personality || '暂无个性描述'}
-        </Text>
       </View>
 
       <ScrollView scrollY className="scroll-container">
-        {/* 待接单订单区块（通知） */}
-        <View className="section-block">
-          <View className="section-header">
-            <Bell size={18} color="#00f5ff" />
-            <Text className="section-title">待接单</Text>
-            <View className="section-badge">
-              <Text className="section-badge-text">{pendingOrders.length}</Text>
+        {/* 待接单订单 - 高级卡片 */}
+        {pendingOrders.length > 0 && (
+          <View className="status-section premium">
+            <View className="status-header alert">
+              <TrendingUp size={20} color="#f59e0b" />
+              <View className="status-title-row">
+                <Text className="status-title">待接单</Text>
+                <View className="status-count alert">
+                  <Text className="count-text">{pendingOrders.length}</Text>
+                </View>
+              </View>
             </View>
-          </View>
 
-          {pendingOrders.length > 0 ? (
-            <View className="pending-orders-list">
+            <View className="orders-grid">
               {pendingOrders.map((request) => (
-                <View key={request.id} className="pending-order-card">
-                  <View className="request-avatar-section">
-                    <View className="request-avatar">
-                      {request.avatars?.avatar_url ? (
-                        <Image src={request.avatars.avatar_url} className="request-avatar-img" mode="aspectFill" />
-                      ) : (
-                        <View className="request-avatar-placeholder">
-                          <Sparkles size={24} color="#00f5ff" />
-                        </View>
-                      )}
-                    </View>
-                    <View className="request-info">
-                      <Text className="request-avatar-name">{request.avatars?.name || '未知分身'}</Text>
-                      <Text className="request-order-title">{request.orders?.title || '未知订单'}</Text>
+                <View
+                  key={request.id}
+                  className="order-card premium alert"
+                  onClick={() => handleViewPendingOrder(request)}
+                >
+                  <View className="order-card-header">
+                    <View className="order-title-row">
+                      <Text className="order-title">{request.orders?.title || '未知订单'}</Text>
+                      <View className="order-status-badge alert">
+                        <Clock size={12} color="#f59e0b" />
+                        <Text className="badge-text">待接单</Text>
+                      </View>
                     </View>
                   </View>
 
-                  <View className="request-budget">
-                    <Text className="budget-label">预算</Text>
-                    <Text className="budget-value">¥{request.orders?.budget || 0}</Text>
+                  <View className="order-card-body">
+                    <View className="info-row">
+                      <Text className="info-label">预算</Text>
+                      <Text className="info-value">¥{request.orders?.budget || 0}</Text>
+                    </View>
+                    <View className="info-row">
+                      <Text className="info-label">平台</Text>
+                      <Text className="info-value">
+                        {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}
+                      </Text>
+                    </View>
+                    <View className="info-row">
+                      <Text className="info-label">截止</Text>
+                      <Text className="info-value">
+                        {request.orders?.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View className="request-budget">
-                    <Text className="budget-label">预估收益</Text>
-                    <Text className="budget-value">
-                      ¥{(request.orders as any)?.expected_quantity
-                        ? Math.floor(request.orders.budget / (request.orders as any).expected_quantity)
-                        : Math.floor((request.orders?.budget || 0) * 0.8)}
-                    </Text>
+                  <View className="order-card-footer">
+                    <Text className="action-text">查看详情</Text>
+                    <ChevronRight size={16} color="#8b5cf6" />
                   </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
-                  <View className="request-meta">
-                    <Text className="meta-item">📱 {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}</Text>
-                    <Text className="meta-item">📅 {request.orders?.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
+        {/* 按状态展示所有订单 */}
+        {Object.entries(ORDER_STATUS_CONFIG).map(([status, config]) => {
+          const orders = ordersByStatus[status] || []
+          if (orders.length === 0) return null
+
+          const StatusIcon = config.icon
+
+          return (
+            <View key={status} className="status-section premium">
+              <View className="status-header" style={{ borderColor: config.color }}>
+                <StatusIcon size={20} color={config.color} />
+                <View className="status-title-row">
+                  <Text className="status-title">{config.label}</Text>
+                  <View className="status-count" style={{ backgroundColor: config.bgColor, color: config.color }}>
+                    <Text className="count-text">{orders.length}</Text>
                   </View>
+                </View>
+              </View>
 
-                  <Button
-                    className="view-request-btn"
-                    onClick={() => handleViewPendingOrder(request)}
+              <View className="orders-grid">
+                {orders.map((order) => (
+                  <View
+                    key={order.id}
+                    className="order-card premium"
+                    style={{ borderColor: `${config.color}20` }}
+                    onClick={() => handleOrderClick(order)}
                   >
-                    <Text className="view-request-text">查看详情并确认</Text>
-                    <ChevronRight size={16} color="#00f5ff" />
-                  </Button>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View className="empty-state">
-              <Bell size={32} color="rgba(255,255,255,0.2)" />
-              <Text className="empty-text">暂无待接单订单</Text>
-            </View>
-          )}
-        </View>
+                    <View className="order-card-header">
+                      <View className="order-title-row">
+                        <Text className="order-title">{order.orders?.title || '未知订单'}</Text>
+                        <View
+                          className="order-status-badge"
+                          style={{ backgroundColor: config.bgColor, color: config.color }}
+                        >
+                          <StatusIcon size={12} color={config.color} />
+                          <Text className="badge-text">{config.shortLabel}</Text>
+                        </View>
+                      </View>
+                    </View>
 
-        {/* 进行中订单 */}
-        <View className="section-block">
-          <View className="section-header">
-            <Clock size={18} color="#3b82f6" />
-            <Text className="section-title">进行中</Text>
-            <View className="section-badge blue">
-              <Text className="section-badge-text">{ordersInProgress.length}</Text>
-            </View>
-          </View>
-
-          {ordersInProgress.length > 0 ? (
-            <View className="orders-list">
-              {ordersInProgress.map((item) => (
-                <View
-                  key={item.order_id}
-                  className="order-item"
-                  onClick={() => {
-                    // publishing 状态跳转到订单详情页面
-                    if (item.status === 'publishing') {
-                      navigateTo({
-                        url: `/pages/order-detail/index?id=${item.order_id}`
-                      })
-                    } else {
-                      // 其他状态跳转到内容创建页面
-                      navigateTo({
-                        url: `/pages/order-content-creation/index?requestId=${item.id}&avatarId=${item.avatar_id}&orderId=${item.order_id}`
-                      })
-                    }
-                  }}
-                >
-                  <View className="order-main">
-                    <Text className="order-title">{item.orders?.title || '未知订单'}</Text>
-                    <View className="order-meta">
-                      <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
-                      <View
-                        className="order-status"
-                        style={{ color: ORDER_STATUS_CONFIG[item.status]?.color || '#666' }}
-                      >
-                        <Text className="order-status-text">
-                          {ORDER_STATUS_CONFIG[item.status]?.label || '未知状态'}
+                    <View className="order-card-body">
+                      <View className="info-row">
+                        <Text className="info-label">预算</Text>
+                        <Text className="info-value">¥{order.orders?.budget || 0}</Text>
+                      </View>
+                      <View className="info-row">
+                        <Text className="info-label">状态说明</Text>
+                        <Text className="info-value" style={{ color: config.color }}>
+                          {config.description}
                         </Text>
                       </View>
                     </View>
-                  </View>
-                  <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View className="empty-state">
-              <Clock size={32} color="rgba(255,255,255,0.2)" />
-              <Text className="empty-text">暂无进行中订单</Text>
-            </View>
-          )}
-        </View>
 
-        {/* 已完成订单 */}
-        <View className="section-block">
-          <View className="section-header">
-            <Check size={18} color="#22c55e" />
-            <Text className="section-title">已完成</Text>
-            <View className="section-badge green">
-              <Text className="section-badge-text">{ordersCompleted.length}</Text>
-            </View>
-          </View>
-
-          {ordersCompleted.length > 0 ? (
-            <View className="orders-list">
-              {ordersCompleted.map((item) => (
-                <View
-                  key={item.order_id}
-                  className="order-item"
-                  onClick={() => {
-                    // published 状态跳转到反馈页面
-                    if (item.status === 'published') {
-                      navigateTo({
-                        url: `/pages/order-publish-feedback/index?requestId=${item.id}&orderId=${item.order_id}`
-                      })
-                    } else {
-                      // 其他状态跳转到订单详情页面
-                      navigateTo({
-                        url: `/pages/order-detail/index?id=${item.order_id}`
-                      })
-                    }
-                  }}
-                >
-                  <View className="order-main">
-                    <Text className="order-title">{item.orders?.title || '未知订单'}</Text>
-                    <View className="order-meta">
-                      <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
-                      <View
-                        className="order-status"
-                        style={{ color: ORDER_STATUS_CONFIG[item.status]?.color || '#22c55e' }}
-                      >
-                        <Text className="order-status-text">
-                          {ORDER_STATUS_CONFIG[item.status]?.label || '已完成'}
-                        </Text>
-                      </View>
+                    <View className="order-card-footer">
+                      <Text className="action-text" style={{ color: config.color }}>
+                        {status === 'published' ? '去反馈' : status === 'completed' ? '查看详情' : '继续处理'}
+                      </Text>
+                      <ChevronRight size={16} color={config.color} />
                     </View>
                   </View>
-                  <ChevronRight size={16} color="rgba(255,255,255,0.4)" />
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          ) : (
-            <View className="empty-state">
-              <Check size={32} color="rgba(255,255,255,0.2)" />
-              <Text className="empty-text">暂无已完成订单</Text>
-            </View>
-          )}
-        </View>
+          )
+        })}
+
+        {/* 空状态 */}
+        {pendingOrders.length === 0 && allOrders.length === 0 && (
+          <View className="empty-state premium">
+            <Award size={64} color="rgba(139, 92, 246, 0.3)" />
+            <Text className="empty-title">暂无订单</Text>
+            <Text className="empty-description">
+              等待订单匹配...
+            </Text>
+          </View>
+        )}
 
         <View className="bottom-space" />
       </ScrollView>
