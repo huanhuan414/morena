@@ -1,7 +1,7 @@
 import Taro, { useLoad, useRouter, navigateBack, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { ArrowLeft, Loader, Check, Sparkles, Smartphone } from 'lucide-react-taro'
+import { ArrowLeft, Loader, Check, Sparkles, Smartphone, RefreshCw, Clock } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
@@ -18,6 +18,14 @@ const PLATFORM_NAMES: Record<string, string> = {
   toutiao: '头条'
 }
 
+// 步骤定义
+const STEPS = [
+  { key: 'queuing', label: '排队中', desc: '正在等待处理队列...', icon: '⏳' },
+  { key: 'generating', label: '生成中', desc: 'AI 正在为您创作优质内容...', icon: '✨' },
+  { key: 'preview', label: '预览中', desc: '内容已生成，准备展示...', icon: '👀' },
+  { key: 'completed', label: '已完成', desc: '内容制作完成', icon: '✅' }
+]
+
 interface ContentData {
   title: string
   content: string
@@ -31,7 +39,6 @@ export default function OrderContentCreationPage() {
   const { requestId, avatarId, orderId } = router.params
 
   const [loading, setLoading] = useState(true)
-  const [processingStatus, setProcessingStatus] = useState<string>('')
   const [contentData, setContentData] = useState<ContentData | null>(null)
   const [errorCount, setErrorCount] = useState(0)
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
@@ -40,6 +47,15 @@ export default function OrderContentCreationPage() {
   const [publishing, setPublishing] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // 进度提示相关状态
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [estimatedTime, setEstimatedTime] = useState(60) // 预估完成时间（秒）
+  const [queuePosition, setQueuePosition] = useState<number | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0) // 已用时间（秒）
+  const [isTimeout, setIsTimeout] = useState(false) // 是否超时
+  const [isRefreshing, setIsRefreshing] = useState(false) // 是否正在刷新
+  const [elapsedTimeInterval, setElapsedTimeInterval] = useState<NodeJS.Timeout | null>(null)
 
   useLoad(() => {
     console.log('[OrderContentCreation] 页面加载，参数:', { requestId, avatarId, orderId })
@@ -56,8 +72,59 @@ export default function OrderContentCreationPage() {
       if (pollInterval) {
         clearInterval(pollInterval)
       }
+      if (elapsedTimeInterval) {
+        clearInterval(elapsedTimeInterval)
+      }
     }
-  }, [pollInterval])
+  }, [pollInterval, elapsedTimeInterval])
+
+  // 开始计时
+  const startTimer = () => {
+    if (elapsedTimeInterval) {
+      clearInterval(elapsedTimeInterval)
+    }
+    setElapsedTime(0)
+    setIsTimeout(false)
+
+    const interval = setInterval(() => {
+      setElapsedTime(prev => {
+        const newTime = prev + 1
+        // 超过3分钟提示超时
+        if (newTime >= 180) {
+          setIsTimeout(true)
+        }
+        return newTime
+      })
+    }, 1000)
+
+    setElapsedTimeInterval(interval)
+  }
+
+  // 停止计时
+  const stopTimer = () => {
+    if (elapsedTimeInterval) {
+      clearInterval(elapsedTimeInterval)
+      setElapsedTimeInterval(null)
+    }
+  }
+
+  // 手动刷新状态
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await fetchContentStatus()
+    setTimeout(() => {
+      setIsRefreshing(false)
+    }, 500)
+  }
+
+  // 根据状态获取步骤信息
+  const getStepInfo = (status: string) => {
+    const stepIndex = STEPS.findIndex(step => step.key === status)
+    return {
+      step: stepIndex >= 0 ? STEPS[stepIndex] : STEPS[1], // 默认生成中
+      stepIndex: stepIndex >= 0 ? stepIndex : 1
+    }
+  }
 
   const startPolling = () => {
     console.log('[OrderContentCreation] 开始轮询内容状态')
@@ -78,20 +145,29 @@ export default function OrderContentCreationPage() {
       if (res.data?.code === 200 && res.data.data) {
         const data = res.data.data as any
 
-        // 更新处理状态
-        setProcessingStatus(data.status || '')
+        // 更新步骤信息
+        const { stepIndex } = getStepInfo(data.status || '')
+        setCurrentStepIndex(stepIndex)
+
+        // 更新队列位置和预估时间
+        if (data.queuePosition !== undefined) {
+          setQueuePosition(data.queuePosition)
+          setEstimatedTime(data.estimatedTime || 60)
+        }
 
         if (loading) {
           console.log('[OrderContentCreation] 首次获取状态成功，状态:', data.status)
           setLoading(false)
+          // 开始计时
+          startTimer()
         }
 
         // 在 preview 或 completed 状态时展示内容
-        // 其他状态（generating, queuing 等）显示加载动画
         if ((data.status === 'preview' || data.status === 'completed') && data.generatedContent) {
           setContentData(data.generatedContent)
           setEditedContent(data.generatedContent.content || '')
           console.log('[OrderContentCreation] 内容已制作完成，停止轮询')
+          stopTimer()
           if (pollInterval) {
             clearInterval(pollInterval)
             setPollInterval(null)
@@ -104,6 +180,7 @@ export default function OrderContentCreationPage() {
         console.error('[OrderContentCreation] 获取状态失败:', res.data?.message)
         if (loading) setLoading(false)
         if (errorCount >= 5) {
+          stopTimer()
           if (pollInterval) {
             clearInterval(pollInterval)
             setPollInterval(null)
@@ -116,6 +193,7 @@ export default function OrderContentCreationPage() {
       console.error('[OrderContentCreation] 请求异常:', error)
       if (loading) setLoading(false)
       if (errorCount >= 5) {
+        stopTimer()
         if (pollInterval) {
           clearInterval(pollInterval)
           setPollInterval(null)
@@ -334,10 +412,80 @@ export default function OrderContentCreationPage() {
             <View className="loading-icon">
               <Sparkles size={56} color="#3b82f6" />
             </View>
-            <Text className="loading-title block">AI 正在制作内容</Text>
-            <Text className="loading-desc block">
-              {processingStatus === 'generating' ? '内容正在生成中，请稍候...' : processingStatus === 'preview' ? '内容准备就绪，即将展示...' : processingStatus === 'queuing' ? '正在排队处理中...' : '正在为您的订单生成优质内容...'}
-            </Text>
+
+            {/* 当前步骤 */}
+            <View className="progress-steps">
+              {STEPS.map((step, index) => {
+                const isCurrentStep = index === currentStepIndex
+                const isCompletedStep = index < currentStepIndex
+
+                return (
+                  <View
+                    key={step.key}
+                    className={`step-item ${isCurrentStep ? 'current' : ''} ${isCompletedStep ? 'completed' : ''}`}
+                  >
+                    <View
+                      className="step-icon"
+                      style={{
+                        backgroundColor: isCompletedStep ? '#22c55e' : isCurrentStep ? '#3b82f6' : '#e5e7eb'
+                      }}
+                    >
+                      <Text style={{ color: isCompletedStep || isCurrentStep ? '#fff' : '#9ca3af' }}>
+                        {isCompletedStep ? '✓' : step.icon}
+                      </Text>
+                    </View>
+                    <View className="step-info">
+                      <Text className="step-title block">{step.label}</Text>
+                      <Text className="step-desc block">{step.desc}</Text>
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+
+            {/* 队列位置提示 */}
+            {queuePosition !== null && queuePosition > 0 && (
+              <View className="queue-info">
+                <Text className="queue-title block">排队位置</Text>
+                <Text className="queue-value block">前面还有 {queuePosition} 个订单</Text>
+              </View>
+            )}
+
+            {/* 时间提示 */}
+            <View className="time-info">
+              <View className="time-item">
+                <Clock size={16} color="#3b82f6" />
+                <Text className="time-label block">已用时</Text>
+                <Text className="time-value block">{Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}</Text>
+              </View>
+              {estimatedTime > 0 && (
+                <View className="time-item">
+                  <Text className="time-label block">预计</Text>
+                  <Text className="time-value block">{Math.floor(estimatedTime / 60)}:{(estimatedTime % 60).toString().padStart(2, '0')}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* 超时提示 */}
+            {isTimeout && (
+              <View className="timeout-warning">
+                <Text className="timeout-title block">⚠️ 生成时间较长</Text>
+                <Text className="timeout-desc block">内容生成时间超过预期，请耐心等待或手动刷新状态</Text>
+              </View>
+            )}
+
+            {/* 刷新按钮 */}
+            <Button
+              className="refresh-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw size={16} color="#3b82f6" className={isRefreshing ? 'spinning' : ''} />
+              <Text className="refresh-btn-text block">{isRefreshing ? '刷新中...' : '刷新状态'}</Text>
+            </Button>
+
+            {/* 加载动画 */}
             <Loader size={28} color="#3b82f6" className="loading-spinner" />
           </View>
         )}
