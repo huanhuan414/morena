@@ -66,11 +66,12 @@ export default function AvatarOrdersPage() {
         const inProgress = orders.filter((o: any) =>
           o.status === 'accepted' ||
           o.status === 'generating' ||
-          o.status === 'preview'
+          o.status === 'preview' ||
+          o.status === 'publishing'
         )
         const completed = orders.filter((o: any) =>
-          o.status === 'completed' ||
-          o.status === 'published'
+          o.status === 'published' ||
+          o.status === 'completed'
         )
         setOrdersInProgress(inProgress)
         setOrdersCompleted(completed)
@@ -228,9 +229,19 @@ export default function AvatarOrdersPage() {
                 <View
                   key={item.order_id}
                   className="order-item"
-                  onClick={() => navigateTo({
-                    url: `/pages/order-content-creation/index?requestId=${item.id}&avatarId=${item.avatar_id}&orderId=${item.order_id}`
-                  })}
+                  onClick={() => {
+                    // publishing 状态跳转到订单详情页面
+                    if (item.status === 'publishing') {
+                      navigateTo({
+                        url: `/pages/order-detail/index?id=${item.order_id}`
+                      })
+                    } else {
+                      // 其他状态跳转到内容创建页面
+                      navigateTo({
+                        url: `/pages/order-content-creation/index?requestId=${item.id}&avatarId=${item.avatar_id}&orderId=${item.order_id}`
+                      })
+                    }
+                  }}
                 >
                   <View className="order-main">
                     <Text className="order-title">{item.orders?.title || '未知订单'}</Text>
