@@ -189,36 +189,74 @@ export class OrderProcessingService {
 
     console.log('[OrderProcessing] 查询订单状态:', { requestId })
 
-    const { data: request, error } = await client
+    // 分别查询订单请求、订单和分身信息（因为可能没有外键关系）
+    const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('*, orders(*), avatars(*)')
+      .select('id, order_id, avatar_id, status, generated_content, publish_status, confirmed_content')
       .eq('id', requestId)
       .single()
 
-    if (error) {
-      console.error('[OrderProcessing] 查询订单状态失败:', error)
-      throw new Error(`查询订单状态失败: ${error.message}`)
+    if (requestError) {
+      console.error('[OrderProcessing] 查询订单请求失败:', requestError)
+      throw new Error(`查询订单请求失败: ${requestError.message}`)
     }
 
     if (!request) {
-      console.error('[OrderProcessing] 订单不存在:', { requestId })
-      throw new Error(`订单不存在: ${requestId}`)
+      console.error('[OrderProcessing] 订单请求不存在:', { requestId })
+      throw new Error(`订单请求不存在: ${requestId}`)
     }
 
-    console.log('[OrderProcessing] 订单状态查询成功:', {
+    console.log('[OrderProcessing] 订单请求查询成功:', {
       requestId,
       status: request.status,
-      hasOrders: !!request.orders,
-      hasAvatars: !!request.avatars
+      orderId: request.order_id,
+      avatarId: request.avatar_id
+    })
+
+    // 查询订单信息
+    let orderData = null
+    if (request.order_id) {
+      const { data: order, error: orderError } = await client
+        .from('orders')
+        .select('id, title, platforms, content_type, deadline')
+        .eq('id', request.order_id)
+        .single()
+
+      if (orderError) {
+        console.warn('[OrderProcessing] 查询订单信息失败:', orderError)
+      } else {
+        orderData = order
+      }
+    }
+
+    // 查询分身信息
+    let avatarData = null
+    if (request.avatar_id) {
+      const { data: avatar, error: avatarError } = await client
+        .from('avatars')
+        .select('id, name, avatar_url, level')
+        .eq('id', request.avatar_id)
+        .single()
+
+      if (avatarError) {
+        console.warn('[OrderProcessing] 查询分身信息失败:', avatarError)
+      } else {
+        avatarData = avatar
+      }
+    }
+
+    console.log('[OrderProcessing] 所有数据查询完成:', {
+      hasOrder: !!orderData,
+      hasAvatar: !!avatarData
     })
 
     const status: ProcessingStatus = {
       requestId,
       status: request.status as any,
       generatedContent: request.generated_content ? {
-        title: request.orders?.title || '未知订单',
+        title: orderData?.title || '未知订单',
         content: request.generated_content,
-        platform: request.orders?.platforms?.[0] || ''
+        platform: orderData?.platforms?.[0] || ''
       } : undefined,
       publishStatus: request.publish_status
     }
@@ -264,32 +302,43 @@ export class OrderProcessingService {
   async publishContent(requestId: string) {
     const client = getSupabaseClient()
 
-    // 获取订单信息
-    const { data: request, error } = await client
+    // 分别查询订单请求、订单和分身信息
+    const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('*, orders(*), avatars(*)')
+      .select('id, order_id, avatar_id, status, generated_content, publish_status, confirmed_content')
       .eq('id', requestId)
       .single()
 
-    if (error || !request) {
+    if (requestError || !request) {
+      throw new Error('获取订单请求失败')
+    }
+
+    // 查询订单信息
+    const { data: order, error: orderError } = await client
+      .from('orders')
+      .select('*')
+      .eq('id', request.order_id)
+      .single()
+
+    if (orderError || !order) {
       throw new Error('获取订单信息失败')
     }
 
-    const platform = request.orders.platforms[0]
+    const platform = order.platforms[0]
     const content = request.confirmed_content || request.generated_content
 
     try {
       // 根据平台进行发布
       if (platform === 'wechat_mp') {
         // 公众号：发布到草稿箱
-        await this.publishToWechatMP(request.orders, content)
+        await this.publishToWechatMP(order, content)
       } else {
         // 其他平台：检查是否有发布技能
         const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
 
         if (hasPublishSkill) {
           // 自动发布
-          await this.autoPublish(platform, request.orders, content)
+          await this.autoPublish(platform, order, content)
         } else {
           // 提示手动发布
           throw new Error('该平台暂未配置发布技能，请手动发布')
