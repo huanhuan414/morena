@@ -183,7 +183,7 @@ export default function AvatarOrdersPage() {
       <View className="avatar-orders-page">
         <View className="page-header">
           <View className="header-left" onClick={() => navigateBack()}>
-            <ChevronLeft size={24} color="rgba(255,255,255,0.9)" />
+            <ChevronLeft size={24} color="#64748b" />
           </View>
           <Text className="header-title">商单管理</Text>
           <View className="header-right" />
@@ -201,7 +201,7 @@ export default function AvatarOrdersPage() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ChevronLeft size={20} color="rgba(255,255,255,0.8)" />
+          <ChevronLeft size={20} color="#64748b" />
         </View>
         <Text className="header-title">商单管理</Text>
         <View className="header-right" />
