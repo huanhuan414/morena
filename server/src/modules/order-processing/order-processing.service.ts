@@ -774,7 +774,17 @@ export class OrderProcessingService {
       console.log('[OrderProcessing] AvatarThought:', thought)
 
       // 6. 调用分身的发布工具
-      const result = await this.avatarAgentService.act(avatarId, thought)
+      // 需要构建 AvatarContext 对象，确保 userId 正确传递
+      const avatarContext = {
+        userId,
+        conversationId: `order_${order.id}`,
+        metadata: {
+          orderId: order.id,
+          platform
+        }
+      }
+
+      const result = await this.avatarAgentService.act(avatarId, thought, avatarContext)
 
       console.log('[OrderProcessing] 发布工具执行结果:', result)
 
