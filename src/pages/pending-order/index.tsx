@@ -158,6 +158,13 @@ export default function PendingOrderPage() {
         const requests = res.data.data
         const request = requests.find((r: PendingOrderData) => r.id === requestId)
         if (request) {
+          console.log('[PendingOrder] 订单数据:', {
+            requestId,
+            orderId: request.orders?.id,
+            title: request.orders?.title,
+            titleLength: request.orders?.title?.length,
+            descriptionPreview: request.orders?.description?.substring(0, 50)
+          })
           setOrderData(request)
           setLoading(false)
           return
