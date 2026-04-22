@@ -5,39 +5,78 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* 页面头部 - 明亮模式 */
-.page-header {
+/* 顶部导航栏 - 精美设计 */
+.nav-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 48rpx 40rpx;
-  background: rgba(255, 255, 255, 0.95);
+  padding: 24rpx 32rpx;
+  padding-top: calc(24rpx + constant(safe-area-inset-top));
+  padding-top: calc(24rpx + env(safe-area-inset-top));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.header-left,
-.header-right {
-  width: 96rpx;
-  height: 96rpx;
+.nav-back {
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 24rpx;
-  background: rgba(148, 163, 184, 0.1);
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.05) 100%);
   transition: all 0.3s ease;
 }
 
-.header-left:active {
-  background: rgba(148, 163, 184, 0.2);
+.nav-back:active {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.2) 0%, rgba(148, 163, 184, 0.1) 100%);
   transform: scale(0.95);
 }
 
-.header-title {
-  font-size: 40rpx;
+.nav-back-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-title {
+  flex: 1;
+  font-size: 36rpx;
   font-weight: 600;
   color: #1e293b;
+  text-align: center;
   letter-spacing: 1rpx;
+}
+
+.nav-spacer {
+  width: 64rpx;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.nav-action-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0.04) 100%);
+  transition: all 0.3s ease;
+}
+
+.nav-action-btn:active {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.08) 100%);
+  transform: scale(0.95);
 }
 
 /* 加载状态 */
@@ -57,7 +96,7 @@
 
 /* 分身信息卡片 - 明亮模式 */
 .avatar-info-card.premium {
-  margin: 40rpx;
+  margin: 32rpx;
   padding: 48rpx;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(59, 130, 246, 0.06) 100%);
   backdrop-filter: blur(20px);
@@ -88,6 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .avatar-image {
@@ -122,6 +162,7 @@
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
   border-radius: 24rpx;
   border: 1px solid rgba(251, 191, 36, 0.25);
+  flex-shrink: 0;
 }
 
 .level-text {
@@ -177,7 +218,7 @@
 
 /* 状态区块 - 明亮模式 */
 .status-section.premium {
-  margin: 40rpx;
+  margin: 32rpx;
 }
 
 .status-header {
@@ -191,6 +232,11 @@
   border-left: 8rpx solid;
   border-right: 1px solid rgba(139, 92, 246, 0.1);
   border-top: 1px solid rgba(139, 92, 246, 0.1);
+  transition: all 0.3s ease;
+}
+
+.status-header:active {
+  background: rgba(139, 92, 246, 0.08);
 }
 
 .status-header.alert {
@@ -233,6 +279,15 @@
   font-size: 28rpx;
   font-weight: 700;
   color: #1e293b;
+}
+
+.expand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  margin-left: 8rpx;
 }
 
 /* 订单网格 */
@@ -350,6 +405,30 @@
   font-size: 26rpx;
   font-weight: 500;
   color: #8b5cf6;
+}
+
+/* 更多提示 */
+.more-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 32rpx;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(139, 92, 246, 0.02) 100%);
+  border-radius: 24rpx;
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  transition: all 0.3s ease;
+}
+
+.more-hint:active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+  transform: scale(0.98);
+}
+
+.more-hint-text {
+  font-size: 26rpx;
+  color: #8b5cf6;
+  font-weight: 500;
 }
 
 /* 空状态 */

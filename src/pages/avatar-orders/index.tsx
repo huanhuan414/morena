@@ -2,7 +2,7 @@ import { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import * as Network from '@/network'
-import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight } from 'lucide-react-taro'
+import { ChevronLeft, TrendingUp, Award, Star, FileText, Sparkles, CircleCheck, CircleAlert, CircleX, Clock, Upload, Eye, ChevronRight, ChevronDown, ListFilter } from 'lucide-react-taro'
 import './index.css'
 
 // 订单状态配置（高级设计风格）
@@ -92,6 +92,9 @@ export default function AvatarOrdersPage() {
   const [allOrders, setAllOrders] = useState<any[]>([])
   const [pendingOrders, setPendingOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 控制每个状态的展开/收起
+  const [expandedStatus, setExpandedStatus] = useState<Record<string, boolean>>({})
 
   useLoad(() => {
     if (avatarId) {
@@ -169,6 +172,14 @@ export default function AvatarOrdersPage() {
     }
   }
 
+  // 切换状态的展开/收起
+  const toggleExpand = (status: string) => {
+    setExpandedStatus(prev => ({
+      ...prev,
+      [status]: !prev[status]
+    }))
+  }
+
   // 按状态分组
   const ordersByStatus = allOrders.reduce((acc, order) => {
     if (!acc[order.status]) {
@@ -181,13 +192,15 @@ export default function AvatarOrdersPage() {
   if (loading) {
     return (
       <View className="avatar-orders-page">
-        <View className="page-header">
-          <View className="header-left" onClick={() => navigateBack()}>
-            <ChevronLeft size={24} color="#64748b" />
+        {/* 顶部导航栏 */}
+        <View className="nav-header">
+          <View className="nav-back" onClick={() => navigateBack()}>
+            <ChevronLeft size={20} color="#1e293b" />
           </View>
-          <Text className="header-title">商单管理</Text>
-          <View className="header-right" />
+          <Text className="nav-title">商单管理</Text>
+          <View className="nav-spacer" />
         </View>
+
         <View className="loading-container">
           <Clock size={32} color="#8b5cf6" />
           <Text className="loading-text">加载中...</Text>
@@ -198,13 +211,19 @@ export default function AvatarOrdersPage() {
 
   return (
     <View className="avatar-orders-page">
-      {/* 头部 */}
-      <View className="page-header">
-        <View className="header-left" onClick={() => navigateBack()}>
-          <ChevronLeft size={20} color="#64748b" />
+      {/* 顶部导航栏 - 精美设计 */}
+      <View className="nav-header">
+        <View className="nav-back" onClick={() => navigateBack()}>
+          <View className="nav-back-icon">
+            <ChevronLeft size={20} color="#1e293b" />
+          </View>
         </View>
-        <Text className="header-title">商单管理</Text>
-        <View className="header-right" />
+        <Text className="nav-title">商单管理</Text>
+        <View className="nav-actions">
+          <View className="nav-action-btn">
+            <ListFilter size={18} color="#64748b" />
+          </View>
+        </View>
       </View>
 
       {/* 分身信息卡片 - 高级设计 */}
@@ -267,7 +286,7 @@ export default function AvatarOrdersPage() {
             </View>
 
             <View className="orders-grid">
-              {pendingOrders.map((request) => (
+              {pendingOrders.slice(0, 3).map((request) => (
                 <View
                   key={request.id}
                   className="order-card premium alert"
@@ -294,12 +313,6 @@ export default function AvatarOrdersPage() {
                         {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}
                       </Text>
                     </View>
-                    <View className="info-row">
-                      <Text className="info-label">截止</Text>
-                      <Text className="info-value">
-                        {request.orders?.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}
-                      </Text>
-                    </View>
                   </View>
 
                   <View className="order-card-footer">
@@ -308,6 +321,19 @@ export default function AvatarOrdersPage() {
                   </View>
                 </View>
               ))}
+
+              {/* 待接单更多提示 */}
+              {pendingOrders.length > 3 && (
+                <View
+                  className="more-hint"
+                  onClick={() => {
+                    showToast({ title: '请到订单列表查看全部', icon: 'none' })
+                  }}
+                >
+                  <Text className="more-hint-text">还有 {pendingOrders.length - 3} 个待接单订单</Text>
+                  <ChevronRight size={16} color="#8b5cf6" />
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -318,10 +344,13 @@ export default function AvatarOrdersPage() {
           if (orders.length === 0) return null
 
           const StatusIcon = config.icon
+          const isExpanded = expandedStatus[status]
+          const displayOrders = isExpanded ? orders : orders.slice(0, 3)
+          const showMore = orders.length > 3
 
           return (
             <View key={status} className="status-section premium">
-              <View className="status-header" style={{ borderColor: config.color }}>
+              <View className="status-header" style={{ borderColor: config.color }} onClick={() => toggleExpand(status)}>
                 <StatusIcon size={20} color={config.color} />
                 <View className="status-title-row">
                   <Text className="status-title">{config.label}</Text>
@@ -329,10 +358,15 @@ export default function AvatarOrdersPage() {
                     <Text className="count-text">{orders.length}</Text>
                   </View>
                 </View>
+                {showMore && (
+                  <View className="expand-icon">
+                    {isExpanded ? <ChevronDown size={16} color="#64748b" /> : <ChevronRight size={16} color="#64748b" />}
+                  </View>
+                )}
               </View>
 
               <View className="orders-grid">
-                {orders.map((order) => (
+                {displayOrders.map((order) => (
                   <View
                     key={order.id}
                     className="order-card premium"
@@ -373,6 +407,14 @@ export default function AvatarOrdersPage() {
                     </View>
                   </View>
                 ))}
+
+                {/* 更多提示 */}
+                {showMore && !isExpanded && (
+                  <View className="more-hint" onClick={() => toggleExpand(status)}>
+                    <Text className="more-hint-text">还有 {orders.length - 3} 个{config.label}订单</Text>
+                    <ChevronDown size={16} color="#8b5cf6" />
+                  </View>
+                )}
               </View>
             </View>
           )
