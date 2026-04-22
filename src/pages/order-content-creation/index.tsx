@@ -189,7 +189,10 @@ export default function OrderContentCreationPage() {
 
   return (
     <View className="content-creation-page">
-      <View className="page-header">
+      <View
+        className="page-header"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}
+      >
         <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="#1a1a1a" />
         </View>
@@ -197,7 +200,7 @@ export default function OrderContentCreationPage() {
         <View className="header-right" />
       </View>
 
-      <ScrollView className="page-scroll" scrollY>
+      <ScrollView className="page-scroll" scrollY enableFlex>
         {loading && (
           <View className="loading-container">
             <View className="loading-icon">
@@ -223,13 +226,24 @@ export default function OrderContentCreationPage() {
         {!loading && contentData && contentData.content && contentData.content.length > 0 && (
           <View className="content-container">
             <View className="card order-info-card">
-              <View className="card-header">
-                <Sparkles size={18} color="#1890ff" />
-                <Text className="card-title block">订单信息</Text>
+              <View
+                className="card-header"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+              >
+                <View style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={18} color="#1890ff" />
+                  <Text className="card-title block">订单信息</Text>
+                </View>
               </View>
               <Text className="info-title block">{contentData.title}</Text>
-              <View className="info-meta">
-                <View className="info-tag">
+              <View
+                className="info-meta"
+                style={{ display: 'flex', alignItems: 'center' }}
+              >
+                <View
+                  className="info-tag"
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
                   <Smartphone size={14} color="#1890ff" />
                   <Text className="info-tag-text block">
                     {PLATFORM_NAMES[contentData.platform] || contentData.platform}
@@ -240,7 +254,10 @@ export default function OrderContentCreationPage() {
 
             {contentData.images && contentData.images.length > 0 && (
               <View className="card media-card">
-                <View className="card-header">
+                <View
+                  className="card-header"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                >
                   <Text className="card-title block">图片展示</Text>
                   <Text className="card-subtitle block">{contentData.images.length}张图片</Text>
                 </View>
@@ -251,7 +268,10 @@ export default function OrderContentCreationPage() {
                     mode="aspectFill"
                   />
                   {contentData.images.length > 1 && (
-                    <View className="image-indicators">
+                    <View
+                      className="image-indicators"
+                      style={{ display: 'flex', gap: '6px' }}
+                    >
                       {contentData.images.map((_, index) => (
                         <View
                           key={index}
@@ -267,7 +287,10 @@ export default function OrderContentCreationPage() {
 
             {contentData.videos && contentData.videos.length > 0 && (
               <View className="card media-card">
-                <View className="card-header">
+                <View
+                  className="card-header"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                >
                   <Text className="card-title block">视频展示</Text>
                   <Text className="card-subtitle block">{contentData.videos.length}个视频</Text>
                 </View>
@@ -284,11 +307,20 @@ export default function OrderContentCreationPage() {
             )}
 
             <View className="card content-card">
-              <View className="card-header">
+              <View
+                className="card-header"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+              >
                 <Text className="card-title block">内容预览</Text>
-                <View className="card-actions">
+                <View
+                  className="card-actions"
+                  style={{ display: 'flex', gap: '8px' }}
+                >
                   {isEditing ? (
-                    <View className="action-buttons">
+                    <View
+                      className="action-buttons"
+                      style={{ display: 'flex', gap: '8px' }}
+                    >
                       <Button
                         size="sm"
                         variant="outline"
@@ -338,6 +370,7 @@ export default function OrderContentCreationPage() {
             <View className="publish-section">
               <Button
                 className="publish-btn"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 onClick={handlePublish}
                 disabled={publishing}
               >
