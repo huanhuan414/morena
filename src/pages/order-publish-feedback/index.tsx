@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Video, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateTo } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft } from 'lucide-react-taro'
+import { Upload, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react-taro'
+import MarkdownRender from '@/components/markdown-render'
 import './index.scss'
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function OrderPublishFeedback() {
   const [publishResults, setPublishResults] = useState<any[]>([])
   const [generatedContent, setGeneratedContent] = useState<any>(null)
   const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
+  const [contentExpanded, setContentExpanded] = useState(false) // 内容展开状态
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
@@ -256,8 +258,26 @@ export default function OrderPublishFeedback() {
         {/* 生成内容卡片 */}
         {generatedContent && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">生成的内容</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setContentExpanded(!contentExpanded)}
+                className="flex items-center gap-1"
+              >
+                {contentExpanded ? (
+                  <>
+                    <ChevronUp size={16} color="#6b7280" />
+                    <Text className="text-xs">收起</Text>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={16} color="#6b7280" />
+                    <Text className="text-xs">展开</Text>
+                  </>
+                )}
+              </Button>
             </CardHeader>
             <CardContent>
               {generatedContent.title && (
@@ -267,11 +287,63 @@ export default function OrderPublishFeedback() {
                   </Text>
                 </View>
               )}
-              <View className="bg-gray-50 rounded-lg p-3">
-                <Text className="block text-gray-700 text-sm whitespace-pre-wrap">
-                  {generatedContent.content || ''}
-                </Text>
-              </View>
+
+              {/* 图片展示 */}
+              {generatedContent.images && generatedContent.images.length > 0 && (
+                <View className="mb-3">
+                  <Text className="block text-sm text-gray-600 mb-2">图片素材</Text>
+                  <ScrollView scrollX className="flex flex-row gap-2">
+                    {generatedContent.images.map((img: string, idx: number) => (
+                      <Image
+                        key={idx}
+                        src={img}
+                        className="h-24 w-24 rounded-lg flex-shrink-0"
+                        mode="aspectFill"
+                        onClick={() => {
+                          Taro.previewImage({
+                            current: img,
+                            urls: generatedContent.images
+                          })
+                        }}
+                      />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 视频展示 */}
+              {generatedContent.videoUrl && (
+                <View className="mb-3">
+                  <Text className="block text-sm text-gray-600 mb-2">视频素材</Text>
+                  <Video
+                    src={generatedContent.videoUrl}
+                    className="w-full rounded-lg"
+                    controls
+                  />
+                </View>
+              )}
+
+              {/* 图文内容 - 支持折叠/展开 */}
+              {generatedContent.content && (
+                <View className="bg-gray-50 rounded-lg overflow-hidden">
+                  {contentExpanded ? (
+                    <View className="p-3">
+                      <MarkdownRender content={generatedContent.content} />
+                    </View>
+                  ) : (
+                    <View className="p-3">
+                      <Text className="block text-gray-700 text-sm line-clamp-3">
+                        {generatedContent.content}
+                      </Text>
+                      <View className="mt-2 pt-2 border-t border-gray-200">
+                        <Text className="block text-xs text-gray-500 text-center">
+                          点击展开查看完整内容
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
             </CardContent>
           </Card>
         )}
