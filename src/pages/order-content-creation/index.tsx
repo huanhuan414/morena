@@ -102,19 +102,34 @@ export default function OrderContentCreationPage() {
 
   // 停止计时
   const stopTimer = () => {
-    if (elapsedTimeInterval) {
-      clearInterval(elapsedTimeInterval)
-      setElapsedTimeInterval(null)
+    try {
+      if (elapsedTimeInterval) {
+        clearInterval(elapsedTimeInterval)
+        setElapsedTimeInterval(null)
+      }
+    } catch (error) {
+      console.error('[OrderContentCreation] 停止计时失败:', error)
     }
   }
 
   // 手动刷新状态
   const handleRefresh = async () => {
+    console.log('[OrderContentCreation] 手动刷新状态')
     setIsRefreshing(true)
-    await fetchContentStatus()
-    setTimeout(() => {
-      setIsRefreshing(false)
-    }, 500)
+    try {
+      await fetchContentStatus()
+    } catch (error) {
+      console.error('[OrderContentCreation] 刷新状态失败:', error)
+      Taro.showToast({
+        title: '刷新失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false)
+      }, 500)
+    }
   }
 
   // 根据状态获取步骤信息
@@ -128,8 +143,12 @@ export default function OrderContentCreationPage() {
 
   const startPolling = () => {
     console.log('[OrderContentCreation] 开始轮询内容状态')
+    // 先执行一次
     fetchContentStatus()
-    const interval = setInterval(fetchContentStatus, 1000)
+    // 然后每隔1秒执行一次
+    const interval = setInterval(() => {
+      fetchContentStatus()
+    }, 1000)
     setPollInterval(interval)
   }
 
@@ -205,79 +224,112 @@ export default function OrderContentCreationPage() {
   }
 
   const handlePublish = async () => {
-    if (!contentData) return
+    if (!contentData) {
+      console.error('[OrderContentCreation] 没有内容数据')
+      return
+    }
+    
+    console.log('[OrderContentCreation] 开始发布流程')
 
-    Taro.showModal({
-      title: '确认发布',
-      content: `确定发布内容吗？将发布到所有要求平台。`,
-      success: async (res) => {
-        if (res.confirm) {
-          setPublishing(true)
-          try {
-            const finalContent = editedContent || contentData.content
-            const publishRes = await Network.request({
-              url: `/api/order-processing/publish/${requestId}`,
-              method: 'POST',
-              data: {
-                content: finalContent
-              }
-            })
+    try {
+      Taro.showModal({
+        title: '确认发布',
+        content: `确定发布内容吗？将发布到所有要求平台。`,
+        success: async (res) => {
+          console.log('[OrderContentCreation] 用户选择发布:', res)
+          
+          if (res.confirm) {
+            console.log('[OrderContentCreation] 用户确认发布')
+            setPublishing(true)
+            
+            try {
+              const finalContent = editedContent || contentData.content
+              console.log('[OrderContentCreation] 发送发布请求')
+              
+              const publishRes = await Network.request({
+                url: `/api/order-processing/publish/${requestId}`,
+                method: 'POST',
+                data: {
+                  content: finalContent
+                }
+              })
 
-            console.log('[OrderContentCreation] 发布响应:', publishRes.data)
+              console.log('[OrderContentCreation] 发布响应:', publishRes.data)
 
-            if (publishRes.data?.code === 200) {
-              const result = publishRes.data.data
+              if (publishRes.data?.code === 200) {
+                const result = publishRes.data.data
 
-              // 检查是否有需要手动发布的平台
-              const manualPlatforms = result.publishResults?.filter(
-                (r: any) => r.status === 'manual'
-              ) || []
+                // 检查是否有需要手动发布的平台
+                const manualPlatforms = result.publishResults?.filter(
+                  (r: any) => r.status === 'manual'
+                ) || []
 
-              if (manualPlatforms.length > 0) {
-                // 有平台需要手动发布
-                const platformNames = manualPlatforms.map((p: any) => {
-                  return PLATFORM_NAMES[p.platform] || p.platform
-                }).join('、')
+                if (manualPlatforms.length > 0) {
+                  // 有平台需要手动发布
+                  const platformNames = manualPlatforms.map((p: any) => {
+                    return PLATFORM_NAMES[p.platform] || p.platform
+                  }).join('、')
 
-                Taro.showModal({
-                  title: '发布成功',
-                  content: `部分平台已自动发布成功，${platformNames} 需要手动发布。是否查看发布详情？`,
-                  confirmText: '查看详情',
-                  cancelText: '返回',
-                  success: (modalRes) => {
-                    if (modalRes.confirm) {
-                      // 显示发布详情
-                      showPublishDetails(result)
-                    } else {
-                      setTimeout(() => {
-                        navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
-                      }, 500)
+                  Taro.showModal({
+                    title: '发布成功',
+                    content: `部分平台已自动发布成功，${platformNames} 需要手动发布。是否查看发布详情？`,
+                    confirmText: '查看详情',
+                    cancelText: '返回',
+                    success: (modalRes) => {
+                      if (modalRes.confirm) {
+                        // 显示发布详情
+                        showPublishDetails(result)
+                      } else {
+                        setTimeout(() => {
+                          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                        }, 500)
+                      }
                     }
-                  }
-                })
+                  })
+                } else {
+                  // 全部自动发布成功
+                  Taro.showToast({
+                    title: '发布成功',
+                    icon: 'success',
+                    duration: 2000
+                  })
+                  setTimeout(() => {
+                    navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                  }, 2000)
+                }
               } else {
-                // 全部自动发布成功
+                console.error('[OrderContentCreation] 发布失败:', publishRes.data?.message)
                 Taro.showToast({
-                  title: '发布成功',
-                  icon: 'success',
-                  duration: 2000
+                  title: publishRes.data?.message || '发布失败',
+                  icon: 'none',
+                  duration: 3000
                 })
-                setTimeout(() => {
-                  navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
-                }, 2000)
               }
-            } else {
-              Taro.showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
+            } catch (error) {
+              console.error('[OrderContentCreation] 发布异常:', error)
+              Taro.showToast({
+                title: '发布失败，请重试',
+                icon: 'none',
+                duration: 3000
+              })
+            } finally {
+              console.log('[OrderContentCreation] 发布流程结束')
+              setPublishing(false)
             }
-          } catch (error) {
-            console.error('[OrderContentCreation] 发布异常:', error)
-            Taro.showToast({ title: '发布失败', icon: 'none' })
-          } finally {
-            setPublishing(false)
           }
+        },
+        fail: (err) => {
+          console.error('[OrderContentCreation] 弹窗失败:', err)
         }
-      }
-    })
+      })
+    } catch (error) {
+      console.error('[OrderContentCreation] showModal 错误:', error)
+      Taro.showToast({
+        title: '操作失败，请重试',
+        icon: 'none',
+        duration: 3000
+      })
+    }
   }
 
   const showPublishDetails = (result: any) => {
@@ -319,68 +371,92 @@ export default function OrderContentCreationPage() {
   }
 
   const handleRegenerate = async () => {
-    Taro.showModal({
-      title: '重新生成内容',
-      content: '确定要重新生成内容吗？\n\n当前内容将被替换，预计需要 1-2 分钟。',
-      confirmText: '确定重新生成',
-      cancelText: '取消',
-      success: async (res) => {
-        if (res.confirm) {
-          setRegenerating(true)
-          try {
-            console.log('[OrderContentCreation] 开始重新生成内容')
-            const response = await Network.request({
-              url: `/api/order-processing/regenerate/${requestId}`,
-              method: 'POST'
-            })
-
-            console.log('[OrderContentCreation] 重新生成响应:', response.data)
-
-            if (response.data?.code === 200) {
-              // 显示更详细的提示
-              Taro.showToast({
-                title: '已重新生成，请稍候...',
-                icon: 'loading',
-                duration: 3000
+    console.log('[OrderContentCreation] 点击重新生成按钮')
+    
+    try {
+      Taro.showModal({
+        title: '重新生成内容',
+        content: '确定要重新生成内容吗？\n\n当前内容将被替换，预计需要 1-2 分钟。',
+        confirmText: '确定重新生成',
+        cancelText: '取消',
+        success: async (res) => {
+          console.log('[OrderContentCreation] 用户选择:', res)
+          
+          if (res.confirm) {
+            console.log('[OrderContentCreation] 用户确认重新生成')
+            setRegenerating(true)
+            
+            try {
+              console.log('[OrderContentCreation] 开始重新生成内容')
+              const response = await Network.request({
+                url: `/api/order-processing/regenerate/${requestId}`,
+                method: 'POST'
               })
 
-              // 清空内容，显示生成状态
-              setContentData(null)
-              setEditedContent('')
-              setIsEditing(false)
+              console.log('[OrderContentCreation] 重新生成响应:', response.data)
 
-              // 重置计时器
-              stopTimer()
-              startTimer()
+              if (response.data?.code === 200) {
+                // 显示更详细的提示
+                Taro.showToast({
+                  title: '已重新生成，请稍候...',
+                  icon: 'loading',
+                  duration: 3000
+                })
 
-              // 重置步骤
-              setCurrentStepIndex(1) // 生成中
-              setQueuePosition(response.data.data?.position || 0)
-              setEstimatedTime(response.data.data?.estimatedTime || 60)
-              setIsTimeout(false)
+                // 清空内容，显示生成状态
+                setContentData(null)
+                setEditedContent('')
+                setIsEditing(false)
 
-              // 重新开始轮询
-              startPolling()
-            } else {
+                // 重置计时器
+                stopTimer()
+                startTimer()
+
+                // 重置步骤
+                setCurrentStepIndex(1) // 生成中
+                setQueuePosition(response.data.data?.position || 0)
+                setEstimatedTime(response.data.data?.estimatedTime || 60)
+                setIsTimeout(false)
+
+                // 重新开始轮询
+                startPolling()
+              } else {
+                console.error('[OrderContentCreation] 重新生成失败:', response.data?.message)
+                Taro.showToast({
+                  title: response.data?.message || '重新生成失败',
+                  icon: 'none',
+                  duration: 3000
+                })
+              }
+            } catch (error) {
+              console.error('[OrderContentCreation] 重新生成异常:', error)
               Taro.showToast({
-                title: response.data?.message || '重新生成失败',
+                title: '网络异常，请重试',
                 icon: 'none',
                 duration: 3000
               })
+            } finally {
+              console.log('[OrderContentCreation] 重新生成结束')
+              setRegenerating(false)
             }
-          } catch (error) {
-            console.error('[OrderContentCreation] 重新生成异常:', error)
-            Taro.showToast({
-              title: '网络异常，请重试',
-              icon: 'none',
-              duration: 3000
-            })
-          } finally {
-            setRegenerating(false)
+          } else {
+            console.log('[OrderContentCreation] 用户取消重新生成')
           }
+        },
+        fail: (err) => {
+          console.error('[OrderContentCreation] 弹窗失败:', err)
+          setRegenerating(false)
         }
-      }
-    })
+      })
+    } catch (error) {
+      console.error('[OrderContentCreation] showModal 错误:', error)
+      Taro.showToast({
+        title: '操作失败，请重试',
+        icon: 'none',
+        duration: 3000
+      })
+      setRegenerating(false)
+    }
   }
 
   const parseMarkdown = (text: string): string => {
