@@ -27,6 +27,7 @@ import { RecommendationModule } from './modules/recommendation/recommendation.mo
 import { VideoModule } from './modules/video/video.module';
 import { TestModule } from './modules/test/test.module';
 import { TikHubModule } from './modules/tikhub/tikhub.module';
+import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { TikHubModule } from './modules/tikhub/tikhub.module';
     RecommendationModule,
     VideoModule,
     TestModule,
-    TikHubModule
+    TikHubModule,
+    OrderProcessingModule
   ],
   controllers: [AppController],
   providers: [AppService],

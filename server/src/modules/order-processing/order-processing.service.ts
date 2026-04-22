@@ -1,0 +1,376 @@
+import { Injectable } from '@nestjs/common'
+import { getSupabaseClient } from '../../storage/database/supabase-client'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
+import { LLMClient, Config } from 'coze-coding-dev-sdk'
+
+export interface ProcessingStatus {
+  requestId: string
+  status: 'queuing' | 'generating' | 'preview' | 'publishing' | 'completed' | 'failed'
+  queuePosition?: number
+  estimatedTime?: number
+  generatedContent?: {
+    title: string
+    content: string
+    platform: string
+  }
+  publishStatus?: {
+    platform: string
+    status: 'pending' | 'success' | 'failed' | 'manual'
+    message?: string
+  }
+}
+
+// 队列管理
+class TaskQueue {
+  private maxConcurrentTasks = 3 // 最大并发数
+  private activeTasks = new Set<string>() // 正在执行的任务ID
+  private queue: Array<{ requestId: string; timestamp: number }> = []
+
+  constructor() {
+    // 每30秒执行一次队列检查
+    setInterval(() => this.processQueue(), 30000)
+  }
+
+  // 加入队列
+  async enqueue(requestId: string): Promise<{ position: number; estimatedTime: number }> {
+    const position = this.queue.length
+    this.queue.push({ requestId, timestamp: Date.now() })
+
+    // 每个任务预计耗时 60 秒
+    const estimatedTime = position * 60
+
+    console.log('[TaskQueue] 任务加入队列:', {
+      requestId,
+      position,
+      estimatedTime
+    })
+
+    // 尝试处理队列
+    this.processQueue()
+
+    return { position, estimatedTime }
+  }
+
+  // 处理队列
+  async processQueue() {
+    const client = getSupabaseClient()
+
+    console.log('[TaskQueue] 检查队列:', {
+      activeTasks: this.activeTasks.size,
+      queueLength: this.queue.length,
+      maxConcurrent: this.maxConcurrentTasks
+    })
+
+    // 检查是否有空闲执行槽位
+    while (this.activeTasks.size < this.maxConcurrentTasks && this.queue.length > 0) {
+      const task = this.queue.shift()
+      if (!task) break
+
+      // 检查任务是否还在队列中
+      const { data: request } = await client
+        .from('order_dispatch_requests')
+        .select('id, status, order_id, avatar_id')
+        .eq('id', task.requestId)
+        .single()
+
+      if (!request || request.status !== 'accepted') {
+        console.log('[TaskQueue] 任务已取消或不存在:', task.requestId)
+        continue
+      }
+
+      // 将任务加入执行队列
+      this.activeTasks.add(task.requestId)
+
+      console.log('[TaskQueue] 开始执行任务:', task.requestId)
+
+      // 更新状态为生成中
+      await client
+        .from('order_dispatch_requests')
+        .update({ status: 'generating' })
+        .eq('id', task.requestId)
+
+      // 异步执行任务
+      this.executeTask(task.requestId, request.order_id, request.avatar_id).catch(error => {
+        console.error('[TaskQueue] 任务执行失败:', task.requestId, error)
+        this.activeTasks.delete(task.requestId)
+      })
+    }
+  }
+
+  // 执行任务
+  private async executeTask(requestId: string, orderId: string, avatarId: string) {
+    try {
+      console.log('[TaskQueue] 正在生成内容:', { requestId, orderId, avatarId })
+
+      // 获取订单和分身信息
+      const client = getSupabaseClient()
+
+      const [{ data: order }, { data: avatar }] = await Promise.all([
+        client.from('orders').select('*').eq('id', orderId).single(),
+        client.from('avatars').select('*').eq('id', avatarId).single()
+      ])
+
+      if (!order || !avatar) {
+        throw new Error('订单或分身不存在')
+      }
+
+      // 生成内容（这里简化处理，实际应该调用 LLM）
+      const generatedContent = await this.generateContent(order, avatar)
+
+      console.log('[TaskQueue] 内容生成成功:', {
+        requestId,
+        contentLength: generatedContent.length
+      })
+
+      // 更新状态为预览
+      await client
+        .from('order_dispatch_requests')
+        .update({
+          status: 'preview',
+          generated_content: generatedContent
+        })
+        .eq('id', requestId)
+
+    } catch (error) {
+      console.error('[TaskQueue] 任务执行失败:', error)
+
+      // 更新状态为失败
+      const client = getSupabaseClient()
+      await client
+        .from('order_dispatch_requests')
+        .update({ status: 'failed' })
+        .eq('id', requestId)
+
+    } finally {
+      // 从执行队列移除
+      this.activeTasks.delete(requestId)
+
+      // 尝试处理下一个任务
+      this.processQueue()
+    }
+  }
+
+  // 生成内容（简化版）
+  private async generateContent(order: any, avatar: any): Promise<string> {
+    // 这里应该调用 LLM 生成内容
+    // 暂时返回订单描述
+    return order.description || ''
+  }
+
+  // 获取队列位置
+  getQueuePosition(requestId: string): number {
+    const position = this.queue.findIndex(t => t.requestId === requestId)
+    return position >= 0 ? position + 1 : 0
+  }
+
+  // 获取活跃任务数
+  getActiveTaskCount(): number {
+    return this.activeTasks.size
+  }
+}
+
+@Injectable()
+export class OrderProcessingService {
+  private queue: TaskQueue = new TaskQueue()
+  private llmClient: LLMClient
+
+  constructor(
+    private readonly contentGenerationService: ContentGenerationService
+  ) {
+    const config = new Config()
+    this.llmClient = new LLMClient(config)
+  }
+
+  /**
+   * 获取处理状态
+   */
+  async getProcessingStatus(requestId: string): Promise<ProcessingStatus> {
+    const client = getSupabaseClient()
+
+    const { data: request, error } = await client
+      .from('order_dispatch_requests')
+      .select('*, orders(*), avatars(*)')
+      .eq('id', requestId)
+      .single()
+
+    if (error || !request) {
+      throw new Error('获取订单状态失败')
+    }
+
+    const status: ProcessingStatus = {
+      requestId,
+      status: request.status as any,
+      generatedContent: request.generated_content ? {
+        title: request.orders.title,
+        content: request.generated_content,
+        platform: request.orders.platforms[0] || ''
+      } : undefined,
+      publishStatus: request.publish_status
+    }
+
+    // 如果是排队状态，获取队列位置
+    if (request.status === 'accepted') {
+      const position = this.queue.getQueuePosition(requestId)
+      const estimatedTime = position * 60
+
+      status.status = 'queuing'
+      status.queuePosition = position
+      status.estimatedTime = estimatedTime
+    }
+
+    return status
+  }
+
+  /**
+   * 确认内容并开始发布
+   */
+  async confirmContent(requestId: string, content: string) {
+    const client = getSupabaseClient()
+
+    // 保存用户确认的内容
+    const { error } = await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'publishing',
+        confirmed_content: content
+      })
+      .eq('id', requestId)
+
+    if (error) {
+      throw new Error('确认内容失败')
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * 发布内容
+   */
+  async publishContent(requestId: string) {
+    const client = getSupabaseClient()
+
+    // 获取订单信息
+    const { data: request, error } = await client
+      .from('order_dispatch_requests')
+      .select('*, orders(*), avatars(*)')
+      .eq('id', requestId)
+      .single()
+
+    if (error || !request) {
+      throw new Error('获取订单信息失败')
+    }
+
+    const platform = request.orders.platforms[0]
+    const content = request.confirmed_content || request.generated_content
+
+    try {
+      // 根据平台进行发布
+      if (platform === 'wechat_mp') {
+        // 公众号：发布到草稿箱
+        await this.publishToWechatMP(request.orders, content)
+      } else {
+        // 其他平台：检查是否有发布技能
+        const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
+
+        if (hasPublishSkill) {
+          // 自动发布
+          await this.autoPublish(platform, request.orders, content)
+        } else {
+          // 提示手动发布
+          throw new Error('该平台暂未配置发布技能，请手动发布')
+        }
+      }
+
+      // 更新发布状态
+      await client
+        .from('order_dispatch_requests')
+        .update({
+          status: 'completed',
+          publish_status: {
+            platform,
+            status: 'success',
+            message: '发布成功'
+          }
+        })
+        .eq('id', requestId)
+
+      // 更新订单状态
+      await client
+        .from('orders')
+        .update({ status: 'completed' })
+        .eq('id', request.order_id)
+
+    } catch (error: any) {
+      // 更新发布状态
+      await client
+        .from('order_dispatch_requests')
+        .update({
+          status: 'completed',
+          publish_status: {
+            platform,
+            status: 'manual',
+            message: error.message || '自动发布失败，请手动发布'
+          }
+        })
+        .eq('id', requestId)
+
+      throw error
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * 发布到公众号草稿箱
+   */
+  private async publishToWechatMP(order: any, content: string) {
+    // 这里需要调用微信公众号 API
+    // 暂时只记录日志
+    console.log('[OrderProcessing] 发布到公众号草稿箱:', {
+      orderId: order.id,
+      title: order.title,
+      contentLength: content.length
+    })
+
+    // TODO: 实现真实的公众号草稿箱发布
+  }
+
+  /**
+   * 检查是否有发布技能
+   */
+  private async checkPublishSkill(platform: string, avatarId: string): Promise<boolean> {
+    const client = getSupabaseClient()
+
+    // 查询分身是否有对应的发布技能
+    const { data: skills } = await client
+      .from('avatar_skills')
+      .select('*')
+      .eq('avatar_id', avatarId)
+
+    if (!skills || skills.length === 0) {
+      return false
+    }
+
+    // 检查是否有发布相关的技能
+    const hasPublishSkill = skills.some(skill => {
+      const skillConfig = skill.skill_config || {}
+      return skillConfig.type === 'publish' && skillConfig.platform === platform
+    })
+
+    return hasPublishSkill
+  }
+
+  /**
+   * 自动发布
+   */
+  private async autoPublish(platform: string, order: any, content: string) {
+    console.log('[OrderProcessing] 自动发布:', {
+      platform,
+      orderId: order.id,
+      title: order.title,
+      contentLength: content.length
+    })
+
+    // TODO: 根据平台调用相应的发布 API
+  }
+}

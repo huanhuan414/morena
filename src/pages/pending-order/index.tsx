@@ -198,10 +198,10 @@ export default function PendingOrderPage() {
             })
 
             if (result.data?.code === 200) {
-              showToast({ title: '接受成功，正在生成内容', icon: 'success' })
+              showToast({ title: '接受成功', icon: 'success' })
               setTimeout(() => {
                 navigateTo({
-                  url: `/pages/generated-content/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
+                  url: `/pages/order-processing/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
                 })
               }, 1500)
             } else {

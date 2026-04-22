@@ -1763,14 +1763,9 @@ export class OrderDispatchService {
     // 分配订单
     await this.assignOrderToAvatar(request.order_id, avatarId)
 
-    // 自动生成内容
-    try {
-      await this.autoGenerateContent(request.order_id, avatarId, request.id)
-      console.log(`[订单分配] 已为订单 ${request.order_id} 自动生成内容`)
-    } catch (error) {
-      console.error(`[订单分配] 自动内容生成失败:`, error)
-      // 不抛出错误，允许继续流程
-    }
+    // 更新状态为 accepted，让队列系统自动处理
+    // 注意：不再直接调用 autoGenerateContent，由队列系统统一管理
+    console.log(`[订单分配] 订单 ${request.order_id} 已接受，等待队列处理`)
 
     return true
   }
