@@ -5,17 +5,19 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock, TrendingUp } from 'lucide-react-taro'
+import { Sparkles, Check, X, Calendar, Wallet, Smartphone, Target, Clock, TrendingUp, Zap, Award, User } from 'lucide-react-taro'
 import './index.css'
 
 // 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信小程序',
+  wechat_mp: '公众号',
   xiaohongshu: '小红书',
   douyin: '抖音',
   weibo: '微博',
   bilibili: 'B站',
-  kuaishou: '快手'
+  kuaishou: '快手',
+  wechat_moments: '朋友圈',
+  wechat_video: '视频号'
 }
 
 // 获取平台中文名称
@@ -117,7 +119,6 @@ export default function PendingOrderPage() {
     try {
       setLoading(true)
 
-      // 先查询待接单订单
       const res = await Network.request({ url: `/api/order-dispatch/pending-requests` })
       if (res.data?.code === 200) {
         const requests = res.data.data
@@ -126,21 +127,6 @@ export default function PendingOrderPage() {
           setOrderData(request)
           setLoading(false)
           return
-        }
-      }
-
-      // 如果待接单订单中没有找到，查询已接受的订单
-      const avatarId = orderData?.avatars?.id || null
-      if (avatarId) {
-        const acceptedRes = await Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
-        if (acceptedRes.data?.code === 200) {
-          const orders = acceptedRes.data.data || []
-          const request = orders.find((r: any) => r.id === requestId)
-          if (request) {
-            setOrderData(request)
-            setLoading(false)
-            return
-          }
         }
       }
 
@@ -172,7 +158,6 @@ export default function PendingOrderPage() {
 
             if (result.data?.code === 200) {
               showToast({ title: '接受成功，正在生成内容', icon: 'success' })
-              // 跳转到生成内容页面
               setTimeout(() => {
                 navigateTo({
                   url: `/pages/generated-content/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
@@ -274,7 +259,8 @@ export default function PendingOrderPage() {
   if (loading) {
     return (
       <View className="pending-order-page">
-        <View className="loading-container">
+        <View className="loading-wrapper">
+          <View className="loading-spinner" />
           <Text className="loading-text">加载中...</Text>
         </View>
       </View>
@@ -287,243 +273,291 @@ export default function PendingOrderPage() {
 
   return (
     <View className="pending-order-page">
+      {/* 背景装饰 */}
+      <View className="bg-decoration bg-1" />
+      <View className="bg-decoration bg-2" />
+
       <ScrollView className="page-scroll" scrollY>
         {/* 顶部倒计时 */}
-        <View className="countdown-section">
-          <Clock size={16} color="#f59e0b" />
-          <Text className="countdown-text">
-            剩余时间：{remainingTime}
-          </Text>
+        <View className="countdown-wrapper">
+          <View className="countdown-card">
+            <Clock size={20} color="#ff6b35" className="countdown-icon pulse" />
+            <View className="countdown-content">
+              <Text className="countdown-label">剩余时间</Text>
+              <Text className={`countdown-value ${remainingTime === '已过期' ? 'expired' : ''}`}>
+                {remainingTime}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 订单标题卡片 */}
+        <View className="section-wrapper">
+          <View className="order-title-card">
+            <View className="title-badge">
+              <Sparkles size={14} color="#fff" />
+              <Text className="badge-text">优质订单</Text>
+            </View>
+            <Text className="order-title-text">{orderData.orders.title}</Text>
+            <Text className="order-subtitle">智能匹配 · AI辅助 · 自动生成</Text>
+          </View>
+        </View>
+
+        {/* 预算和收益 */}
+        <View className="section-wrapper">
+          <View className="budget-card">
+            <View className="budget-item">
+              <Wallet size={24} color="#10b981" />
+              <View className="budget-content">
+                <Text className="budget-label">订单预算</Text>
+                <Text className="budget-value">¥{orderData.orders.budget}</Text>
+              </View>
+            </View>
+            <View className="budget-divider" />
+            <View className="budget-item">
+              <TrendingUp size={24} color="#8b5cf6" />
+              <View className="budget-content">
+                <Text className="budget-label">预估收益</Text>
+                <Text className="budget-value">
+                  ¥{Math.floor(orderData.orders.budget * 0.8)}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* 订单详情卡片 */}
-        <View className="order-card">
-          <View className="card-header">
-            <Text className="card-title">订单信息</Text>
-            <Check size={18} color="#00f5ff" />
-          </View>
+        <View className="section-wrapper">
+          <View className="detail-card">
+            <View className="detail-header">
+              <View className="detail-title-wrapper">
+                <Target size={20} color="#3b82f6" />
+                <Text className="detail-title">订单详情</Text>
+              </View>
+            </View>
 
-          <View className="order-main">
-            <Text className="order-title">{orderData.orders.title}</Text>
-          </View>
+            <View className="detail-content">
+              <View className="info-row">
+                <Text className="info-label block">发布平台</Text>
+                <View className="info-value-wrapper">
+                  <Smartphone size={16} color="#6366f1" />
+                  <Text className="info-value block">{getPlatformNames(orderData.orders.platforms)}</Text>
+                </View>
+              </View>
 
-          {/* 需求描述 */}
-          <View className="order-desc-section">
-            <View className="desc-label">需求描述</View>
-            <Text className="order-desc">
-              {orderData.orders.description || '暂无详细需求描述'}
-            </Text>
-          </View>
+              <View className="info-row">
+                <Text className="info-label block">目标受众</Text>
+                <View className="info-value-wrapper">
+                  <User size={16} color="#f43f5e" />
+                  <Text className="info-value block">{orderData.orders.target_audience || '不限'}</Text>
+                </View>
+              </View>
 
-          <View className="order-meta-grid">
-            <View className="meta-item">
-              <Wallet size={16} color="#22c55e" />
-              <Text className="meta-label">预算</Text>
-              <Text className="meta-value">¥{orderData.orders.budget}</Text>
-            </View>
-            <View className="meta-item">
-              <TrendingUp size={16} color="#f59e0b" />
-              <Text className="meta-label">预估收益</Text>
-              <Text className="meta-value">
-                ¥{(orderData.orders as any).expected_quantity
-                  ? Math.floor(orderData.orders.budget / (orderData.orders as any).expected_quantity)
-                  : Math.floor(orderData.orders.budget * 0.8)}
-              </Text>
-            </View>
-            <View className="meta-item">
-              <Smartphone size={16} color="#3b82f6" />
-              <Text className="meta-label">平台</Text>
-              <Text className="meta-value">{getPlatformNames(orderData.orders.platforms)}</Text>
-            </View>
-            <View className="meta-item">
-              <Target size={16} color="#8b5cf6" />
-              <Text className="meta-label">受众</Text>
-              <Text className="meta-value">{orderData.orders.target_audience || '不限'}</Text>
-            </View>
-            <View className="meta-item">
-              <Calendar size={16} color="#f59e0b" />
-              <Text className="meta-label">截止</Text>
-              <Text className="meta-value">
-                {orderData.orders.deadline
-                  ? new Date(orderData.orders.deadline).toLocaleDateString()
-                  : '不限'}
-              </Text>
+              <View className="info-row">
+                <Text className="info-label block">截止日期</Text>
+                <View className="info-value-wrapper">
+                  <Calendar size={16} color="#f59e0b" />
+                  <Text className="info-value block">
+                    {orderData.orders.deadline
+                      ? new Date(orderData.orders.deadline).toLocaleDateString()
+                      : '不限'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="description-wrapper">
+                <Text className="desc-title block">需求描述</Text>
+                <Text className="desc-text block">
+                  {orderData.orders.description || '暂无详细需求描述'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
         {/* 分身信息卡片 */}
-        <View className="avatar-card">
-          <View className="card-header">
-            <Text className="card-title">执行分身</Text>
-            <Sparkles size={18} color="#00f5ff" />
-          </View>
-
-          <View className="avatar-info">
-            <View className="avatar-left">
-              <View className="avatar-wrap">
-                {orderData.avatars.avatar_url ? (
-                  <Image src={orderData.avatars.avatar_url} className="avatar-img" mode="aspectFill" />
-                ) : (
-                  <View className="avatar-placeholder">
-                    <Sparkles size={32} color="#00f5ff" />
+        <View className="section-wrapper">
+          <View className="avatar-card">
+            <View className="avatar-header">
+              <View className="avatar-title-wrapper">
+                <Award size={20} color="#ec4899" />
+                <Text className="avatar-title">推荐分身</Text>
+              </View>
+              <View className="avatar-badges">
+                <View className="avatar-badge level">
+                  <Text className="badge-text">Lv.{orderData.avatars.level}</Text>
+                </View>
+                {orderData.avatars.is_hosted && (
+                  <View className="avatar-badge hosted">
+                    <Zap size={14} color="#fff" />
+                    <Text className="badge-text">托管</Text>
                   </View>
                 )}
               </View>
-              <View className="avatar-details">
-                <Text className="avatar-name">{orderData.avatars.name}</Text>
-                <View className="avatar-badges">
-                  <View className="avatar-badge level">
-                    <Text className="badge-text">Lv.{orderData.avatars.level}</Text>
-                  </View>
-                  {orderData.avatars.is_hosted && (
-                    <View className="avatar-badge hosted">
-                      <Text className="badge-text">已托管</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
             </View>
 
-            <View className="avatar-stats">
-              <View className="stat-item">
-                <Text className="stat-value">{orderData.avatars.completion_rate}%</Text>
-                <Text className="stat-label">完成率</Text>
+            <View className="avatar-content">
+              <View className="avatar-left">
+                <View className="avatar-image-wrapper">
+                  {orderData.avatars.avatar_url ? (
+                    <Image src={orderData.avatars.avatar_url} className="avatar-image" mode="aspectFill" />
+                  ) : (
+                    <View className="avatar-placeholder">
+                      <Sparkles size={36} color="#00f5ff" />
+                    </View>
+                  )}
+                  <View className="avatar-level-ring" />
+                </View>
+                <View className="avatar-info">
+                  <Text className="avatar-name">{orderData.avatars.name}</Text>
+                  <Text className="avatar-meta">AI智能助手 · 专业创作</Text>
+                </View>
               </View>
-              <View className="stat-divider" />
-              <View className="stat-item">
-                <Text className="stat-value">{orderData.avatars.avg_rating}</Text>
-                <Text className="stat-label">评分</Text>
+
+              <View className="avatar-stats">
+                <View className="avatar-stat-item">
+                  <Text className="stat-value">{orderData.avatars.completion_rate}%</Text>
+                  <Text className="stat-label">完成率</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="avatar-stat-item">
+                  <Text className="stat-value">{orderData.avatars.avg_rating.toFixed(1)}</Text>
+                  <Text className="stat-label">评分</Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
         {/* 提示信息 */}
-        <View className="tips-section">
-          <Check size={16} color="#f59e0b" />
-          <Text className="tips-text">
-            接受订单后，系统将自动为您生成适合平台的内容，您可以在完成发布后提交效果数据。
-          </Text>
+        <View className="section-wrapper">
+          <View className="tips-card">
+            <Check size={18} color="#f59e0b" className="tips-icon" />
+            <Text className="tips-text block">
+              接受订单后，系统将自动为您生成适合平台的内容，您可以在完成发布后提交效果数据。
+            </Text>
+          </View>
         </View>
+
+        {/* 底部占位 */}
+        <View className="bottom-placeholder" />
       </ScrollView>
 
       {/* 底部操作按钮 */}
       {orderData.status === 'pending' && (
-        <View className="bottom-actions">
-          <Button
-            className="action-btn reject"
-            onClick={handleReject}
-            disabled={rejecting}
-          >
-            {rejecting ? (
-              <Text className="btn-text">处理中...</Text>
-            ) : (
-              <>
-                <X size={18} color="#fff" />
-                <Text className="btn-text">拒绝订单</Text>
-              </>
-            )}
-          </Button>
-          <Button
-            className="action-btn accept"
-            onClick={handleAccept}
-            disabled={accepting}
-          >
-            {accepting ? (
-              <Text className="btn-text">处理中...</Text>
-            ) : (
-              <>
-                <Check size={18} color="#fff" />
-                <Text className="btn-text">接受订单</Text>
-              </>
-            )}
-          </Button>
+        <View className="bottom-actions-wrapper">
+          <View className="bottom-actions">
+            <Button
+              className="action-btn reject-btn"
+              onClick={handleReject}
+              disabled={rejecting}
+            >
+              {rejecting ? (
+                <Text className="btn-text">处理中...</Text>
+              ) : (
+                <>
+                  <X size={20} color="#fff" />
+                  <Text className="btn-text">拒绝订单</Text>
+                </>
+              )}
+            </Button>
+            <Button
+              className="action-btn accept-btn"
+              onClick={handleAccept}
+              disabled={accepting}
+            >
+              {accepting ? (
+                <Text className="btn-text">处理中...</Text>
+              ) : (
+                <>
+                  <Zap size={20} color="#fff" />
+                  <Text className="btn-text">立即接受</Text>
+                </>
+              )}
+            </Button>
+          </View>
         </View>
       )}
 
       {/* 进行中订单 - 执行反馈表单 */}
       {orderData.status === 'accepted' && (
-        <View className="feedback-section">
-          <View className="feedback-header">
-            <Check size={20} color="#22c55e" />
-            <Text className="feedback-title">执行反馈</Text>
-          </View>
+        <View className="feedback-wrapper">
+          <View className="feedback-card">
+            <View className="feedback-header">
+              <Check size={24} color="#10b981" />
+              <Text className="feedback-title">执行反馈</Text>
+            </View>
 
-          <View className="feedback-form">
-            <View className="form-item">
-              <Text className="form-label">执行内容 *</Text>
-              <View className="form-textarea">
+            <View className="feedback-form">
+              <View className="form-group">
+                <Text className="form-label block">执行内容 *</Text>
                 <Textarea
-                  className="feedback-textarea"
+                  className="form-textarea"
                   placeholder="请详细描述执行过程和结果"
                   value={feedback.content}
                   onInput={(e) => setFeedback({ ...feedback, content: e.detail.value })}
                   maxlength={500}
                 />
               </View>
-            </View>
 
-            <View className="form-row">
-              <View className="form-item half">
-                <Text className="form-label">曝光量</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="0"
-                  value={feedback.impressions}
-                  onInput={(e) => setFeedback({ ...feedback, impressions: e.detail.value })}
-                />
+              <View className="form-grid">
+                <View className="form-item">
+                  <Text className="form-input-label block">曝光量</Text>
+                  <Input
+                    className="form-input-field"
+                    type="number"
+                    placeholder="0"
+                    value={feedback.impressions}
+                    onInput={(e) => setFeedback({ ...feedback, impressions: e.detail.value })}
+                  />
+                </View>
+                <View className="form-item">
+                  <Text className="form-input-label block">点赞数</Text>
+                  <Input
+                    className="form-input-field"
+                    type="number"
+                    placeholder="0"
+                    value={feedback.likes}
+                    onInput={(e) => setFeedback({ ...feedback, likes: e.detail.value })}
+                  />
+                </View>
+                <View className="form-item">
+                  <Text className="form-input-label block">评论数</Text>
+                  <Input
+                    className="form-input-field"
+                    type="number"
+                    placeholder="0"
+                    value={feedback.comments}
+                    onInput={(e) => setFeedback({ ...feedback, comments: e.detail.value })}
+                  />
+                </View>
+                <View className="form-item">
+                  <Text className="form-input-label block">分享数</Text>
+                  <Input
+                    className="form-input-field"
+                    type="number"
+                    placeholder="0"
+                    value={feedback.shares}
+                    onInput={(e) => setFeedback({ ...feedback, shares: e.detail.value })}
+                  />
+                </View>
               </View>
-              <View className="form-item half">
-                <Text className="form-label">点赞数</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="0"
-                  value={feedback.likes}
-                  onInput={(e) => setFeedback({ ...feedback, likes: e.detail.value })}
-                />
-              </View>
-            </View>
 
-            <View className="form-row">
-              <View className="form-item half">
-                <Text className="form-label">评论数</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="0"
-                  value={feedback.comments}
-                  onInput={(e) => setFeedback({ ...feedback, comments: e.detail.value })}
-                />
-              </View>
-              <View className="form-item half">
-                <Text className="form-label">分享数</Text>
-                <Input
-                  className="form-input"
-                  type="number"
-                  placeholder="0"
-                  value={feedback.shares}
-                  onInput={(e) => setFeedback({ ...feedback, shares: e.detail.value })}
-                />
-              </View>
+              <Button
+                className="submit-btn"
+                onClick={handleSubmitFeedback}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Text className="btn-text">提交中...</Text>
+                ) : (
+                  <>
+                    <Check size={18} color="#fff" />
+                    <Text className="btn-text">提交反馈并完成订单</Text>
+                  </>
+                )}
+              </Button>
             </View>
-
-            <Button
-              className="submit-feedback-btn"
-              onClick={handleSubmitFeedback}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <Text className="btn-text">提交中...</Text>
-              ) : (
-                <>
-                  <Check size={18} color="#fff" />
-                  <Text className="btn-text">提交反馈并完成订单</Text>
-                </>
-              )}
-            </Button>
           </View>
         </View>
       )}
