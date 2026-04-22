@@ -184,49 +184,54 @@ export default function PendingOrderPage() {
   const handleAccept = async () => {
     if (!orderData) return
 
-    showModal({
-      title: '确认接受订单',
-      content: `确定接受订单"${orderData.orders.title}"吗？接受后将为您制作内容。`,
-      success: async (res) => {
-        if (res.confirm) {
-          setAccepting(true)
-          try {
-            console.log('[PendingOrder] 准备接受订单:', {
-              requestId,
-              avatarId: orderData.avatars.id,
-              orderId: orderData.orders.id
-            })
+    setAccepting(true)
+    try {
+      console.log('[PendingOrder] 准备接受订单:', {
+        requestId,
+        avatarId: orderData.avatars.id,
+        orderId: orderData.orders.id
+      })
 
-            const result = await Network.request({
-              url: `/api/order-dispatch/request/${requestId}/confirm`,
-              method: 'PUT',
-              data: { avatarId: orderData.avatars.id }
-            })
+      const result = await Network.request({
+        url: `/api/order-dispatch/request/${requestId}/confirm`,
+        method: 'PUT',
+        data: { avatarId: orderData.avatars.id }
+      })
 
-            console.log('[PendingOrder] 接受订单响应:', result.data)
+      console.log('[PendingOrder] 接受订单响应:', result.data)
 
-            if (result.data?.code === 200) {
-              showToast({ title: '接受成功，正在制作内容...', icon: 'success' })
-              setTimeout(() => {
-                navigateTo({
-                  url: `/pages/order-content-creation/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
-                })
-              }, 1500)
-            } else {
-              const errorMessage = result.data?.message || '接受失败'
-              console.error('[PendingOrder] 接受订单失败:', errorMessage)
-              showToast({ title: errorMessage, icon: 'none' })
+      if (result.data?.code === 200) {
+        console.log('[PendingOrder] 接受订单成功，准备跳转')
+        showToast({ title: '接受成功，正在制作内容...', icon: 'success' })
+
+        const jumpUrl = `/pages/order-content-creation/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
+        console.log('[PendingOrder] 跳转URL:', jumpUrl)
+
+        setTimeout(() => {
+          console.log('[PendingOrder] 开始跳转')
+          navigateTo({
+            url: jumpUrl,
+            success: () => {
+              console.log('[PendingOrder] 跳转成功')
+            },
+            fail: (err) => {
+              console.error('[PendingOrder] 跳转失败:', err)
+              showToast({ title: '跳转失败，请手动刷新', icon: 'none' })
             }
-          } catch (error) {
-            console.error('[PendingOrder] 接受订单异常:', error)
-            const errorMessage = (error as any)?.response?.data?.message || '接受失败'
-            showToast({ title: errorMessage, icon: 'none' })
-          } finally {
-            setAccepting(false)
-          }
-        }
+          })
+        }, 1500)
+      } else {
+        const errorMessage = result.data?.message || '接受失败'
+        console.error('[PendingOrder] 接受订单失败:', errorMessage)
+        showToast({ title: errorMessage, icon: 'none' })
       }
-    })
+    } catch (error) {
+      console.error('[PendingOrder] 接受订单异常:', error)
+      const errorMessage = (error as any)?.response?.data?.message || '接受失败'
+      showToast({ title: errorMessage, icon: 'none' })
+    } finally {
+      setAccepting(false)
+    }
   }
 
   const handleReject = async () => {

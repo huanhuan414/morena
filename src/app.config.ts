@@ -27,6 +27,7 @@ export default defineAppConfig({
     'pages/order-detail/index',
     'pages/order-matching/index',
     'pages/pending-order/index',
+    'pages/order-content-creation/index',
     'pages/order-processing/index',
     'pages/order-feedback/index',
     'pages/generated-content/index',
