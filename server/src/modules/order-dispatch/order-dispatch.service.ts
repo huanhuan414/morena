@@ -1947,28 +1947,18 @@ export class OrderDispatchService {
       return []
     }
     console.log(`[智能匹配] 找到 ${avatars.length} 个活跃分身`)
-    
-    // ========== 第二步半：根据订单分析计算推荐分身数量 ==========
-    // 动态计算需要多少推荐分身，根据订单金额和效果目标
-    const orderAmount = order.budget || 0
-    const recommendedCount = limit > 0 
-      ? limit  // 如果前端指定了limit，使用指定的limit
-      : this.calculateRecommendedAvatarCount(orderAnalysis, avatars.length, orderAmount)
-    
-    console.log(`[智能匹配] 根据订单分析计算推荐分身数量: ${recommendedCount}`)
-    console.log(`  - 订单金额: ${orderAmount}元，可分配: ${(orderAmount * 0.8).toFixed(0)}元`)
-    console.log(`  - 紧急程度: ${orderAnalysis.urgencyLevel || 'medium'}`)
-    console.log(`  - 复杂度: ${orderAnalysis.complexityLevel || 5}`)
-    console.log(`  - 技能要求: ${orderAnalysis.requiredSkills?.length || 0}项`)
-    console.log(`  - 平台要求: ${orderAnalysis.preferredPlatforms?.length || 0}个`)
-    
-    // ========== 第三步：获取平台配置 ==========
+
+    // ========== 第二步半：预过滤 - 平台匹配 ==========
+    console.log('[智能匹配] 开始平台匹配预过滤...')
+    const orderPlatforms = orderAnalysis.preferredPlatforms || []
+
+    // 获取所有分身用户的平台配置
     const userIds = [...new Set(avatars.map(a => a.user_id))]
     const { data: platformConfigs } = await client
       .from('platform_configs')
       .select('*')
       .in('user_id', userIds)
-    
+
     // 按 user_id 构建平台配置映射
     const platformConfigMap = new Map<string, any[]>()
     platformConfigs?.forEach(config => {
@@ -1976,12 +1966,81 @@ export class OrderDispatchService {
       existing.push(config)
       platformConfigMap.set(config.user_id, existing)
     })
+
+    // 如果订单有明确的平台要求，过滤掉没有绑定对应平台的分身
+    let filteredAvatars = avatars
+    if (orderPlatforms.length > 0) {
+      filteredAvatars = avatars.filter(avatar => {
+        const userConfigs = platformConfigMap.get(avatar.user_id) || []
+        const avatarPlatforms = userConfigs.map(c => c.platform_type)
+        // 分身必须至少绑定一个订单要求的平台
+        const hasRequiredPlatform = orderPlatforms.some(p => avatarPlatforms.includes(p))
+        if (!hasRequiredPlatform) {
+          console.log(`[智能匹配] 过滤分身 ${avatar.name}：未绑定所需平台 ${orderPlatforms.join(', ')}`)
+        }
+        return hasRequiredPlatform
+      })
+      console.log(`[智能匹配] 平台匹配过滤后：${avatars.length} -> ${filteredAvatars.length} 个分身`)
+    } else {
+      console.log('[智能匹配] 订单无明确平台要求，跳过平台过滤')
+    }
+
+    if (!filteredAvatars || filteredAvatars.length === 0) {
+      console.log('[智能匹配] 经过平台匹配过滤后，无可用分身')
+      return []
+    }
     
-    // ========== 第四步：深度评估每个分身 ==========
+    // ========== 第二步半2：预过滤 - 技能匹配 ==========
+    console.log('[智能匹配] 开始技能匹配预过滤...')
+    const requiredSkills = orderAnalysis.requiredSkills || []
+
+    if (requiredSkills.length > 0) {
+      const beforeSkillFilter = filteredAvatars.length
+      filteredAvatars = filteredAvatars.filter(avatar => {
+        const avatarSkills = avatar.skills || []
+        // 分身必须至少具备一个订单要求的技能
+        const hasRequiredSkill = requiredSkills.some(skill => {
+          const skillLower = this.safeToString(skill).toLowerCase()
+          return avatarSkills.some(s => {
+            const sLower = this.safeToString(s).toLowerCase()
+            return sLower.includes(skillLower) || skillLower.includes(sLower)
+          })
+        })
+        if (!hasRequiredSkill) {
+          console.log(`[智能匹配] 过滤分身 ${avatar.name}：不具备所需技能 ${requiredSkills.join(', ')}`)
+        }
+        return hasRequiredSkill
+      })
+      console.log(`[智能匹配] 技能匹配过滤后：${beforeSkillFilter} -> ${filteredAvatars.length} 个分身`)
+    } else {
+      console.log('[智能匹配] 订单无明确技能要求，跳过技能过滤')
+    }
+
+    if (!filteredAvatars || filteredAvatars.length === 0) {
+      console.log('[智能匹配] 经过技能匹配过滤后，无可用分身')
+      return []
+    }
+
+    // ========== 第二步半3：根据订单分析计算推荐分身数量 ==========
+    // 动态计算需要多少推荐分身，根据订单金额和效果目标
+    const orderAmount = order.budget || 0
+    const recommendedCount = limit > 0
+      ? limit  // 如果前端指定了limit，使用指定的limit
+      : this.calculateRecommendedAvatarCount(orderAnalysis, filteredAvatars.length, orderAmount)
+
+    console.log(`[智能匹配] 根据订单分析计算推荐分身数量: ${recommendedCount}`)
+    console.log(`  - 订单金额: ${orderAmount}元，可分配: ${(orderAmount * 0.8).toFixed(0)}元`)
+    console.log(`  - 紧急程度: ${orderAnalysis.urgencyLevel || 'medium'}`)
+    console.log(`  - 复杂度: ${orderAnalysis.complexityLevel || 5}`)
+    console.log(`  - 技能要求: ${requiredSkills.length}项`)
+    console.log(`  - 平台要求: ${orderPlatforms.length}个`)
+    console.log(`  - 可用分身: ${filteredAvatars.length}个`)
+
+    // ========== 第三步：深度评估每个分身 ==========
     console.log('[智能匹配] 开始深度评估分身能力...')
-    
+
     // 收集评分数据
-    const scoredAvatarsPromises = avatars.map(async (avatar, index) => {
+    const scoredAvatarsPromises = filteredAvatars.map(async (avatar, index) => {
       try {
         const score = await this.evaluateAvatarOrderFit(
           avatar, 
