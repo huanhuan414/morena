@@ -1,4 +1,4 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { ArrowLeft, Loader, Check, Sparkles, Smartphone, Pencil, Save, RefreshCw } from 'lucide-react-taro'
@@ -47,7 +47,7 @@ export default function OrderContentCreationPage() {
   useLoad(() => {
     console.log('[OrderContentCreation] 页面加载，参数:', { requestId, avatarId, orderId })
     if (!requestId || !avatarId || !orderId) {
-      showToast({ title: '参数错误', icon: 'none' })
+      Taro.showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => navigateBack(), 1500)
       return
     }
@@ -111,7 +111,7 @@ export default function OrderContentCreationPage() {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
-          showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
+          Taro.showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
         }
         setErrorCount(errorCount + 1)
       }
@@ -123,7 +123,7 @@ export default function OrderContentCreationPage() {
           clearInterval(pollInterval)
           setPollInterval(null)
         }
-        showToast({ title: '网络异常，请刷新页面', icon: 'none' })
+        Taro.showToast({ title: '网络异常，请刷新页面', icon: 'none' })
       }
       setErrorCount(errorCount + 1)
     }
@@ -132,7 +132,7 @@ export default function OrderContentCreationPage() {
   const handlePublish = async () => {
     if (!contentData) return
 
-    showModal({
+    Taro.showModal({
       title: '确认发布',
       content: `确定发布到${PLATFORM_NAMES[contentData.platform] || '目标平台'}吗？`,
       success: async (res) => {
@@ -152,16 +152,16 @@ export default function OrderContentCreationPage() {
             console.log('[OrderContentCreation] 发布响应:', publishRes.data)
 
             if (publishRes.data?.code === 200) {
-              showToast({ title: '发布成功', icon: 'success' })
+              Taro.showToast({ title: '发布成功', icon: 'success' })
               setTimeout(() => {
                 navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
               }, 1500)
             } else {
-              showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
+              Taro.showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
             }
           } catch (error) {
             console.error('[OrderContentCreation] 发布异常:', error)
-            showToast({ title: '发布失败', icon: 'none' })
+            Taro.showToast({ title: '发布失败', icon: 'none' })
           } finally {
             setPublishing(false)
           }
@@ -172,7 +172,7 @@ export default function OrderContentCreationPage() {
 
   const handleSaveEdit = () => {
     setIsEditing(false)
-    showToast({ title: '保存成功', icon: 'success' })
+    Taro.showToast({ title: '保存成功', icon: 'success' })
   }
 
   const handleCancelEdit = () => {
@@ -181,31 +181,31 @@ export default function OrderContentCreationPage() {
   }
 
   const handleRegenerate = async () => {
-    showModal({
+    Taro.showModal({
       title: '重新生成内容',
       content: '确定要重新生成内容吗？当前内容将被替换。',
-      success: async (result) => {
-        if (result.confirm) {
+      success: async (res) => {
+        if (res.confirm) {
           setRegenerating(true)
           try {
             console.log('[OrderContentCreation] 开始重新生成内容')
-            const res = await Network.request({
+            const response = await Network.request({
               url: `/api/order-processing/${requestId}/regenerate`,
               method: 'POST'
             })
 
-            console.log('[OrderContentCreation] 重新生成响应:', res.data)
+            console.log('[OrderContentCreation] 重新生成响应:', response.data)
 
-            if (res.data?.code === 200) {
-              showToast({ title: '正在重新生成内容...', icon: 'loading' })
+            if (response.data?.code === 200) {
+              Taro.showToast({ title: '正在重新生成内容...', icon: 'loading' })
               // 重新开始轮询
               startPolling()
             } else {
-              showToast({ title: res.data?.message || '重新生成失败', icon: 'none' })
+              Taro.showToast({ title: response.data?.message || '重新生成失败', icon: 'none' })
             }
           } catch (error) {
             console.error('[OrderContentCreation] 重新生成异常:', error)
-            showToast({ title: '重新生成失败', icon: 'none' })
+            Taro.showToast({ title: '重新生成失败', icon: 'none' })
           } finally {
             setRegenerating(false)
           }
@@ -371,55 +371,56 @@ export default function OrderContentCreationPage() {
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
               >
                 <Text className="card-title block">内容预览</Text>
-                <View
-                  className="card-actions"
-                  style={{ display: 'flex', gap: '0.5rem' }}
-                >
-                  {isEditing ? (
-                    <View
-                      className="action-buttons"
-                      style={{ display: 'flex', gap: '0.5rem' }}
+              </View>
+
+              <View
+                className="card-actions"
+                style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', justifyContent: 'flex-end' }}
+              >
+                {isEditing ? (
+                  <View
+                    className="action-buttons"
+                    style={{ display: 'flex', gap: '0.5rem' }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelEdit}
                     >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancelEdit}
-                      >
-                        <Text className="action-btn-text block">取消</Text>
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSaveEdit}
-                      >
-                        <Save size={14} color="#fff" />
-                        <Text className="action-btn-text block">保存</Text>
-                      </Button>
-                    </View>
-                  ) : (
-                    <View
-                      className="action-buttons"
-                      style={{ display: 'flex', gap: '0.5rem' }}
+                      <Text className="action-btn-text block">取消</Text>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEdit}
                     >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRegenerate}
-                        disabled={regenerating}
-                      >
-                        <RefreshCw size={14} color="#1a1a1a" />
-                        <Text className="action-btn-text block">重新生成</Text>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Pencil size={14} color="#1a1a1a" />
-                        <Text className="action-btn-text block">编辑</Text>
-                      </Button>
-                    </View>
-                  )}
-                </View>
+                      <Save size={14} color="#fff" />
+                      <Text className="action-btn-text block">保存</Text>
+                    </Button>
+                  </View>
+                ) : (
+                  <View
+                    className="action-buttons"
+                    style={{ display: 'flex', gap: '0.5rem' }}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRegenerate}
+                      disabled={regenerating}
+                    >
+                      <RefreshCw size={14} color="#1a1a1a" />
+                      <Text className="action-btn-text block">重新生成</Text>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Pencil size={14} color="#1a1a1a" />
+                      <Text className="action-btn-text block">编辑</Text>
+                    </Button>
+                  </View>
+                )}
               </View>
 
               {isEditing ? (
@@ -430,6 +431,7 @@ export default function OrderContentCreationPage() {
                     value={editedContent}
                     onInput={(e) => setEditedContent(e.detail.value)}
                     maxlength={5000}
+                    style={{ minHeight: '20rem' }}
                   />
                 </View>
               ) : (
