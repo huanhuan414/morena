@@ -155,7 +155,7 @@ export class ChatService {
         if (msg.metadata?.media_keys) {
           const urls = await Promise.all(
             msg.metadata.media_keys.map(async (key: string) => {
-              const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 })
+              const url = await this.storageService.getFileUrl(key, 86400)
               return { key, url }
             })
           )
@@ -187,7 +187,7 @@ export class ChatService {
                 }
 
                 try {
-                  const newUrl = await this.storage.generatePresignedUrl({ key: mediaItem.key, expireTime: 86400 * 7 })
+                  const newUrl = await this.storageService.getFileUrl(mediaItem.key, 86400 * 7)
                   console.log('[ChatService] 重新生成签名链接成功:', mediaItem.key, '->', newUrl)
                   return {
                     ...mediaItem,

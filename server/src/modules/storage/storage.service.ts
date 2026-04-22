@@ -80,7 +80,11 @@ export class StorageService {
       mimetype: fileName.endsWith('.png') ? 'image/png' : 'image/jpeg',
       size: imageBuffer.length,
       fieldname: 'file',
-      encoding: '7bit'
+      encoding: '7bit',
+      stream: null as any,
+      destination: '',
+      filename: fileName,
+      path: ''
     }
     return this.uploadImage(file)
   }
@@ -96,7 +100,11 @@ export class StorageService {
       mimetype: 'video/mp4',
       size: videoBuffer.length,
       fieldname: 'file',
-      encoding: '7bit'
+      encoding: '7bit',
+      stream: null as any,
+      destination: '',
+      filename: fileName,
+      path: ''
     }
     try {
       // 优先使用 veImageX 上传
