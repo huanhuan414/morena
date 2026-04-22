@@ -260,20 +260,9 @@ export default function ProfilePage() {
             <ScrollView className="pending-dialog-content" scrollY>
               {pendingRequests.map((request) => (
                 <View key={request.id} className="pending-request-card">
-                  <View className="request-avatar-section">
-                    <View className="request-avatar">
-                      {request.avatars.avatar_url ? (
-                        <Image src={request.avatars.avatar_url} className="request-avatar-img" mode="aspectFill" />
-                      ) : (
-                        <View className="request-avatar-placeholder">
-                          <Sparkles size={24} color="#00f5ff" />
-                        </View>
-                      )}
-                    </View>
-                    <View className="request-info">
-                      <Text className="request-avatar-name">{request.avatars.name}</Text>
-                      <Text className="request-order-title">{request.orders.title}</Text>
-                    </View>
+                  <View className="request-header">
+                    <Sparkles size={20} color="#00f5ff" />
+                    <Text className="request-order-title">{request.orders.title}</Text>
                   </View>
 
                   <View className="request-budget">

@@ -1568,23 +1568,43 @@ export class OrderDispatchService {
       // 3. 关联分身信息和订单信息
       const requestsWithDetails = await Promise.all(
         requests.map(async (request: any) => {
-          // 查询分身信息
+          // 查询分身信息 - 使用可能返回多条记录的方式
           const { data: avatar, error: avatarError } = await client
             .from('avatars')
             .select('id, name, avatar_url, level, completion_rate, avg_rating, is_hosted')
             .eq('id', request.avatar_id)
-            .single()
+            .limit(1)
 
-          // 查询订单信息
+          // 查询订单信息 - 使用可能返回多条记录的方式
           const { data: order, error: orderError } = await client
             .from('orders')
             .select('id, title, description, budget, content_type, platforms, target_audience, deadline, created_at')
             .eq('id', request.order_id)
-            .single()
+            .limit(1)
+
+          const avatarData = avatar && avatar.length > 0 ? avatar[0] : null
+          const orderData = order && order.length > 0 ? order[0] : null
+
+          // 如果查询失败，打印错误日志
+          if (avatarError || !avatarData) {
+            console.warn('[getUserPendingRequests] 分身查询失败:', {
+              requestId: request.id,
+              avatarId: request.avatar_id,
+              error: avatarError?.message || '未找到数据'
+            })
+          }
+
+          if (orderError || !orderData) {
+            console.warn('[getUserPendingRequests] 订单查询失败:', {
+              requestId: request.id,
+              orderId: request.order_id,
+              error: orderError?.message || '未找到数据'
+            })
+          }
 
           return {
             ...request,
-            avatars: avatar || {
+            avatars: avatarData || {
               id: request.avatar_id,
               name: '未知分身',
               avatar_url: null,
@@ -1593,7 +1613,7 @@ export class OrderDispatchService {
               avg_rating: 0,
               is_hosted: false
             },
-            orders: order || {
+            orders: orderData || {
               id: request.order_id,
               title: '未知订单',
               description: '',
