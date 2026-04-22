@@ -26,7 +26,7 @@ class TaskQueue {
   private activeTasks = new Set<string>() // 正在执行的任务ID
   private queue: Array<{ requestId: string; timestamp: number }> = []
 
-  constructor() {
+  constructor(private contentGenerationService: ContentGenerationService) {
     // 每30秒执行一次队列检查
     setInterval(() => this.processQueue(), 30000)
   }
@@ -114,13 +114,30 @@ class TaskQueue {
         throw new Error('订单或分身不存在')
       }
 
-      // 生成内容（这里简化处理，实际应该调用 LLM）
-      const generatedContent = await this.generateContent(order, avatar)
+      // 使用 ContentGenerationService 生成内容
+      const generatedContents = await this.contentGenerationService.generateContent({
+        orderId,
+        requestId,
+        avatarId,
+        orderTitle: order.title,
+        orderDescription: order.description,
+        platforms: order.platforms || [],
+        contentType: order.content_type,
+        targetAudience: order.target_audience || '',
+        avatarName: avatar.name,
+        avatarPersonality: avatar.personality
+      })
 
       console.log('[TaskQueue] 内容生成成功:', {
         requestId,
-        contentLength: generatedContent.length
+        contentCount: generatedContents.length
       })
+
+      // 取第一个生成的内容（如果有的话）
+      let generatedContent = ''
+      if (generatedContents.length > 0 && generatedContents[0].content) {
+        generatedContent = generatedContents[0].content
+      }
 
       // 更新状态为预览
       await client
@@ -150,13 +167,6 @@ class TaskQueue {
     }
   }
 
-  // 生成内容（简化版）
-  private async generateContent(order: any, avatar: any): Promise<string> {
-    // 这里应该调用 LLM 生成内容
-    // 暂时返回订单描述
-    return order.description || ''
-  }
-
   // 获取队列位置
   getQueuePosition(requestId: string): number {
     const position = this.queue.findIndex(t => t.requestId === requestId)
@@ -171,7 +181,7 @@ class TaskQueue {
 
 @Injectable()
 export class OrderProcessingService {
-  private queue: TaskQueue = new TaskQueue()
+  private queue: TaskQueue
   private llmClient: LLMClient
 
   constructor(
@@ -179,6 +189,8 @@ export class OrderProcessingService {
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+    // 将 contentGenerationService 传递给 TaskQueue
+    this.queue = new TaskQueue(contentGenerationService)
   }
 
   /**

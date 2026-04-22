@@ -75,23 +75,27 @@ export default function OrderContentCreationPage() {
 
       console.log('[OrderContentCreation] 状态响应:', res.data)
 
-      if (res.data?.code === 200 && res.data.data?.generatedContent) {
-        const data = res.data.data.generatedContent as ContentData
+      if (res.data?.code === 200 && res.data.data) {
+        const data = res.data.data as any
 
         if (loading) {
-          console.log('[OrderContentCreation] 首次获取内容成功')
+          console.log('[OrderContentCreation] 首次获取状态成功')
           setLoading(false)
         }
 
-        setContentData(data)
-        setEditedContent(data.content || '')
-
-        if (data.content && data.content.length > 0) {
+        // 只在状态为 completed 时才展示内容
+        // preview 状态表示内容还在生成中，不展示订单需求
+        if (data.status === 'completed' && data.generatedContent) {
+          setContentData(data.generatedContent)
+          setEditedContent(data.generatedContent.content || '')
           console.log('[OrderContentCreation] 内容已制作完成，停止轮询')
           if (pollInterval) {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
+        } else {
+          // 其他状态（preview, generating, queuing 等）保持加载状态
+          console.log('[OrderContentCreation] 内容制作中，当前状态:', data.status)
         }
       } else {
         console.error('[OrderContentCreation] 获取状态失败:', res.data?.message)
@@ -187,7 +191,7 @@ export default function OrderContentCreationPage() {
     <View className="content-creation-page">
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="rgba(255,255,255,0.9)" />
+          <ArrowLeft size={20} color="#1a1a1a" />
         </View>
         <Text className="header-title block">制作内容</Text>
         <View className="header-right" />
@@ -197,22 +201,22 @@ export default function OrderContentCreationPage() {
         {loading && (
           <View className="loading-container">
             <View className="loading-icon">
-              <Sparkles size={56} color="#00f5ff" />
+              <Sparkles size={56} color="#1890ff" />
             </View>
             <Text className="loading-title block">AI正在制作内容</Text>
             <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
-            <Loader size={28} color="#00f5ff" className="loading-spinner" />
+            <Loader size={28} color="#1890ff" className="loading-spinner" />
           </View>
         )}
 
         {!loading && contentData && (!contentData.content || contentData.content.length === 0) && (
           <View className="loading-container">
             <View className="loading-icon">
-              <Sparkles size={56} color="#00f5ff" />
+              <Sparkles size={56} color="#1890ff" />
             </View>
             <Text className="loading-title block">AI正在制作内容</Text>
             <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
-            <Loader size={28} color="#00f5ff" className="loading-spinner" />
+            <Loader size={28} color="#1890ff" className="loading-spinner" />
           </View>
         )}
 
@@ -220,13 +224,13 @@ export default function OrderContentCreationPage() {
           <View className="content-container">
             <View className="card order-info-card">
               <View className="card-header">
-                <Sparkles size={18} color="#00f5ff" />
+                <Sparkles size={18} color="#1890ff" />
                 <Text className="card-title block">订单信息</Text>
               </View>
               <Text className="info-title block">{contentData.title}</Text>
               <View className="info-meta">
                 <View className="info-tag">
-                  <Smartphone size={14} color="#00f5ff" />
+                  <Smartphone size={14} color="#1890ff" />
                   <Text className="info-tag-text block">
                     {PLATFORM_NAMES[contentData.platform] || contentData.platform}
                   </Text>
@@ -306,7 +310,7 @@ export default function OrderContentCreationPage() {
                       variant="outline"
                       onClick={() => setIsEditing(true)}
                     >
-                      <Pencil size={14} color="#fff" />
+                      <Pencil size={14} color="#1a1a1a" />
                       <Text className="action-btn-text block">编辑</Text>
                     </Button>
                   )}
