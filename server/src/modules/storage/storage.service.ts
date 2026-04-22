@@ -90,9 +90,10 @@ export class StorageService {
   }
 
   /**
-   * 上传视频 - 优先使用 veImageX
+   * 上传视频 - 使用对象存储（veImageX不支持视频上传）
    */
   async uploadVideo(videoBuffer: Buffer, fileName: string): Promise<string> {
+    this.logger.log(`[StorageService] 上传视频到对象存储: ${fileName}`)
     // 创建 Multer.File 对象
     const file: Express.Multer.File = {
       buffer: videoBuffer,
@@ -106,33 +107,44 @@ export class StorageService {
       filename: fileName,
       path: ''
     }
+
     try {
-      // 优先使用 veImageX 上传
-      const result = await this.volcengineService.uploadVideo(file)
-      this.logger.log(`[StorageService] 使用 veImageX 上传视频成功: ${result.url}`)
-      return result.url
-    } catch (error) {
-      this.logger.warn('[StorageService] veImageX 视频上传失败，降级到对象存储:', error)
-      // 降级到对象存储
+      // veImageX只支持图片上传，不支持视频上传
+      // 视频上传应该使用对象存储
       const key = await this.storage.uploadFile({
         fileContent: videoBuffer,
         fileName: `videos/${fileName}`,
         contentType: 'video/mp4'
       })
-      return key
+      // 生成临时URL
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
+      this.logger.log(`[StorageService] 视频上传成功: ${url}`)
+      return url
+    } catch (error) {
+      this.logger.error('[StorageService] 视频上传失败:', error)
+      throw error
     }
   }
 
   /**
-   * 上传音频 - 使用对象存储
+   * 上传音频 - 使用对象存储（veImageX不支持音频上传）
    */
   async uploadAudio(audioBuffer: Buffer, fileName: string): Promise<string> {
-    const key = await this.storage.uploadFile({
-      fileContent: audioBuffer,
-      fileName: `audio/${fileName}`,
-      contentType: 'audio/mp3'
-    })
-    return key
+    this.logger.log(`[StorageService] 上传音频到对象存储: ${fileName}`)
+    try {
+      const key = await this.storage.uploadFile({
+        fileContent: audioBuffer,
+        fileName: `audio/${fileName}`,
+        contentType: 'audio/mp3'
+      })
+      // 生成临时URL
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
+      this.logger.log(`[StorageService] 音频上传成功: ${url}`)
+      return url
+    } catch (error) {
+      this.logger.error('[StorageService] 音频上传失败:', error)
+      throw error
+    }
   }
 
   /**
