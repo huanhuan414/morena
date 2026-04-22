@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { S3Storage } from 'coze-coding-dev-sdk'
+import { VolcengineService } from '../upload/volcengine.service'
 
 @Injectable()
 export class StorageService {
   private storage: S3Storage
+  private volcengineService: VolcengineService
+  private readonly logger = new Logger(StorageService.name)
 
   constructor() {
     // 初始化火山引擎CDN存储
@@ -14,6 +17,9 @@ export class StorageService {
       bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
       region: 'cn-guangzhou', // 华南1（广州）
     })
+
+    // 创建 VolcengineService 实例（不通过依赖注入，避免循环依赖）
+    this.volcengineService = new VolcengineService()
   }
 
   /**
@@ -37,24 +43,70 @@ export class StorageService {
   }
 
   /**
-   * 上传图片
+   * 上传图片 - 优先使用 veImageX
+   * @param file 文件对象
+   * @returns 图片URL
    */
-  async uploadImage(imageBuffer: Buffer, fileName: string): Promise<string> {
-    return this.uploadFile(imageBuffer, fileName, 'image/png')
+  async uploadImage(file: Express.Multer.File): Promise<string> {
+    try {
+      // 优先使用 veImageX 上传
+      const result = await this.volcengineService.uploadImage(file)
+      this.logger.log(`[StorageService] 使用 veImageX 上传图片成功: ${result.url}`)
+      return result.url
+    } catch (error) {
+      this.logger.warn('[StorageService] veImageX 上传失败，降级到对象存储:', error)
+      // 降级到对象存储
+      const key = await this.storage.uploadFile({
+        fileContent: file.buffer,
+        fileName: `images/${Date.now()}_${file.originalname}`,
+        contentType: file.mimetype || 'image/jpeg'
+      })
+      // 生成临时URL
+      return await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
+    }
   }
 
   /**
-   * 上传视频
+   * 上传图片（使用Buffer）
+   * @param imageBuffer 图片Buffer
+   * @param fileName 文件名
+   * @returns 图片URL
+   */
+  async uploadImageFromBuffer(imageBuffer: Buffer, fileName: string): Promise<string> {
+    // 创建 Multer.File 对象
+    const file: Express.Multer.File = {
+      buffer: imageBuffer,
+      originalname: fileName,
+      mimetype: fileName.endsWith('.png') ? 'image/png' : 'image/jpeg',
+      size: imageBuffer.length,
+      fieldname: 'file',
+      encoding: '7bit'
+    }
+    return this.uploadImage(file)
+  }
+
+  /**
+   * 上传视频 - 使用对象存储
    */
   async uploadVideo(videoBuffer: Buffer, fileName: string): Promise<string> {
-    return this.uploadFile(videoBuffer, fileName, 'video/mp4')
+    const key = await this.storage.uploadFile({
+      fileContent: videoBuffer,
+      fileName: `videos/${fileName}`,
+      contentType: 'video/mp4'
+    })
+    return key
   }
 
   /**
-   * 上传音频
+   * 上传音频 - 使用对象存储
    */
   async uploadAudio(audioBuffer: Buffer, fileName: string): Promise<string> {
-    return this.uploadFile(audioBuffer, fileName, 'audio/mp3')
+    const key = await this.storage.uploadFile({
+      fileContent: audioBuffer,
+      fileName: `audio/${fileName}`,
+      contentType: 'audio/mp3'
+    })
+    return key
   }
 
   /**
@@ -102,7 +154,7 @@ export class StorageService {
     // 移除data:image/xxx;base64,前缀
     const base64String = base64Data.replace(/^data:image\/\w+;base64,/, '')
     const buffer = Buffer.from(base64String, 'base64')
-    return this.uploadImage(buffer, fileName)
+    return this.uploadImageFromBuffer(buffer, fileName)
   }
 
   /**
