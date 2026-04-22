@@ -1,7 +1,7 @@
 import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
-import { ArrowLeft, Loader, Check, Sparkles, Smartphone } from 'lucide-react-taro'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
+import { ArrowLeft, Loader, Check, Sparkles, Smartphone, Pencil, Save } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
@@ -24,6 +24,7 @@ interface ContentData {
   content: string
   platform: string
   images: string[]
+  videos: string[]
   status: 'creating' | 'ready' | 'published'
   created_at: string
 }
@@ -36,7 +37,9 @@ export default function OrderContentCreationPage() {
   const [contentData, setContentData] = useState<ContentData | null>(null)
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
   const [editedContent, setEditedContent] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useLoad(() => {
     console.log('[OrderContentCreation] 页面加载，参数:', { requestId, avatarId, orderId })
@@ -81,6 +84,7 @@ export default function OrderContentCreationPage() {
         }
 
         setContentData(data)
+        setEditedContent(data.content || '')
 
         if (data.content && data.content.length > 0) {
           console.log('[OrderContentCreation] 内容已制作完成，停止轮询')
@@ -158,11 +162,32 @@ export default function OrderContentCreationPage() {
     })
   }
 
+  const handleSaveEdit = () => {
+    setIsEditing(false)
+    showToast({ title: '保存成功', icon: 'success' })
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditedContent(contentData?.content || '')
+  }
+
+  const parseMarkdown = (text: string): string => {
+    let html = text
+    html = html.replace(/^### (.*$)/gim, '<h3 class="md-h3">$1</h3>')
+    html = html.replace(/^## (.*$)/gim, '<h2 class="md-h2">$1</h2>')
+    html = html.replace(/^# (.*$)/gim, '<h1 class="md-h1">$1</h1>')
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong class="md-strong">$1</strong>')
+    html = html.replace(/\*(.*?)\*/gim, '<em class="md-em">$1</em>')
+    html = html.replace(/\n/gim, '<br class="md-br">')
+    return html
+  }
+
   return (
     <View className="content-creation-page">
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
+          <ArrowLeft size={20} color="rgba(255,255,255,0.9)" />
         </View>
         <Text className="header-title block">制作内容</Text>
         <View className="header-right" />
@@ -171,68 +196,156 @@ export default function OrderContentCreationPage() {
       <ScrollView className="page-scroll" scrollY>
         {loading && (
           <View className="loading-container">
-            <Loader size={32} color="#6366f1" />
-            <Text className="loading-text block">加载中...</Text>
+            <View className="loading-icon">
+              <Sparkles size={56} color="#00f5ff" />
+            </View>
+            <Text className="loading-title block">AI正在制作内容</Text>
+            <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
+            <Loader size={28} color="#00f5ff" className="loading-spinner" />
           </View>
         )}
 
         {!loading && contentData && (!contentData.content || contentData.content.length === 0) && (
-          <View className="creating-container">
-            <View className="creating-icon">
-              <Sparkles size={48} color="#6366f1" />
+          <View className="loading-container">
+            <View className="loading-icon">
+              <Sparkles size={56} color="#00f5ff" />
             </View>
-            <Text className="creating-title block">AI正在制作内容</Text>
-            <Text className="creating-desc block">
-              正在为您的订单生成优质内容，请稍候...
-            </Text>
-            <Loader size={24} color="#6366f1" className="creating-spinner" />
+            <Text className="loading-title block">AI正在制作内容</Text>
+            <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
+            <Loader size={28} color="#00f5ff" className="loading-spinner" />
           </View>
         )}
 
         {!loading && contentData && contentData.content && contentData.content.length > 0 && (
           <View className="content-container">
-            <View className="order-info-card">
-              <View className="info-header">
-                <Sparkles size={20} color="#00f5ff" />
-                <Text className="info-title block">订单信息</Text>
+            <View className="card order-info-card">
+              <View className="card-header">
+                <Sparkles size={18} color="#00f5ff" />
+                <Text className="card-title block">订单信息</Text>
               </View>
-              <Text className="info-title-text block">{contentData.title}</Text>
+              <Text className="info-title block">{contentData.title}</Text>
               <View className="info-meta">
-                <View className="info-meta-item">
-                  <Smartphone size={16} color="#6366f1" />
-                  <Text className="info-meta-text block">
+                <View className="info-tag">
+                  <Smartphone size={14} color="#00f5ff" />
+                  <Text className="info-tag-text block">
                     {PLATFORM_NAMES[contentData.platform] || contentData.platform}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <View className="content-editor-card">
-              <View className="editor-header">
-                <Text className="editor-title block">内容预览</Text>
-                <Text className="editor-subtitle block">您可以编辑下方内容后发布</Text>
+            {contentData.images && contentData.images.length > 0 && (
+              <View className="card media-card">
+                <View className="card-header">
+                  <Text className="card-title block">图片展示</Text>
+                  <Text className="card-subtitle block">{contentData.images.length}张图片</Text>
+                </View>
+                <View className="image-slider">
+                  <Image
+                    className="current-image"
+                    src={contentData.images[currentImageIndex]}
+                    mode="aspectFill"
+                  />
+                  {contentData.images.length > 1 && (
+                    <View className="image-indicators">
+                      {contentData.images.map((_, index) => (
+                        <View
+                          key={index}
+                          className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                          onClick={() => setCurrentImageIndex(index)}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
               </View>
-              <Textarea
-                className="content-textarea"
-                placeholder="生成的内容将在这里显示"
-                value={editedContent || contentData.content}
-                onInput={(e) => setEditedContent(e.detail.value)}
-                maxlength={2000}
-              />
+            )}
+
+            {contentData.videos && contentData.videos.length > 0 && (
+              <View className="card media-card">
+                <View className="card-header">
+                  <Text className="card-title block">视频展示</Text>
+                  <Text className="card-subtitle block">{contentData.videos.length}个视频</Text>
+                </View>
+                {contentData.videos.map((videoUrl, index) => (
+                  <Video
+                    key={index}
+                    className="video-player"
+                    src={videoUrl}
+                    controls
+                    autoplay={false}
+                  />
+                ))}
+              </View>
+            )}
+
+            <View className="card content-card">
+              <View className="card-header">
+                <Text className="card-title block">内容预览</Text>
+                <View className="card-actions">
+                  {isEditing ? (
+                    <View className="action-buttons">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                      >
+                        <Text className="action-btn-text block">取消</Text>
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveEdit}
+                      >
+                        <Save size={14} color="#fff" />
+                        <Text className="action-btn-text block">保存</Text>
+                      </Button>
+                    </View>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Pencil size={14} color="#fff" />
+                      <Text className="action-btn-text block">编辑</Text>
+                    </Button>
+                  )}
+                </View>
+              </View>
+
+              {isEditing ? (
+                <View className="edit-mode">
+                  <Textarea
+                    className="content-textarea"
+                    placeholder="编辑内容..."
+                    value={editedContent}
+                    onInput={(e) => setEditedContent(e.detail.value)}
+                    maxlength={5000}
+                  />
+                </View>
+              ) : (
+                <View
+                  className="markdown-content"
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(contentData.content) }}
+                />
+              )}
             </View>
 
-            <View className="action-buttons">
+            <View className="publish-section">
               <Button
                 className="publish-btn"
                 onClick={handlePublish}
                 disabled={publishing}
               >
                 {publishing ? (
-                  <Text className="btn-text block">发布中...</Text>
+                  <>
+                    <Loader size={18} color="#fff" />
+                    <Text className="publish-btn-text block">发布中...</Text>
+                  </>
                 ) : (
                   <>
-                    <Check size={20} color="#fff" />
-                    <Text className="btn-text block">确认发布</Text>
+                    <Check size={18} color="#fff" />
+                    <Text className="publish-btn-text block">确认发布</Text>
                   </>
                 )}
               </Button>
