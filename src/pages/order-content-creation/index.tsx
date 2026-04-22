@@ -141,7 +141,7 @@ export default function OrderContentCreationPage() {
           try {
             const finalContent = editedContent || contentData.content
             const publishRes = await Network.request({
-              url: `/api/order-processing/${requestId}/publish`,
+              url: `/api/order-processing/publish/${requestId}`,
               method: 'POST',
               data: {
                 content: finalContent,
@@ -190,7 +190,7 @@ export default function OrderContentCreationPage() {
           try {
             console.log('[OrderContentCreation] 开始重新生成内容')
             const response = await Network.request({
-              url: `/api/order-processing/${requestId}/regenerate`,
+              url: `/api/order-processing/regenerate/${requestId}`,
               method: 'POST'
             })
 
