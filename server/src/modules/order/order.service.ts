@@ -86,17 +86,34 @@ export class OrderService {
 
   async getOrderById(orderId: string) {
     const client = getSupabaseClient()
-    
+
     const { data, error } = await client
       .from('orders')
       .select('*, users(nickname, avatar), avatars(id, name, avatar_url)')
       .eq('id', orderId)
       .single()
-    
+
     if (error) {
       throw new Error(`获取订单详情失败: ${error.message}`)
     }
-    
+
+    // 查询订单请求信息（用于获取发布结果和反馈）
+    const { data: requestData, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, status, publish_status, publish_feedback, generated_content, confirmed_content')
+      .eq('order_id', orderId)
+      .maybeSingle()
+
+    if (!requestError && requestData) {
+      // 将发布结果和反馈添加到订单数据中
+      data.publish_status = requestData.publish_status
+      data.publish_feedback = requestData.publish_feedback
+      data.generated_content = requestData.generated_content
+      data.confirmed_content = requestData.confirmed_content
+      data.dispatch_request_id = requestData.id
+      data.dispatch_request_status = requestData.status
+    }
+
     return data
   }
 

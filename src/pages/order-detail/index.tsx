@@ -40,6 +40,21 @@ interface Order {
     }
     submitted_at?: string
   }
+  publish_status?: {
+    platforms?: Array<{
+      platform: string
+      status: string
+      message?: string
+      post_url?: string
+    }>
+    summary?: string
+    feedbackSubmittedAt?: string
+  }
+  publish_feedback?: Record<string, { image?: string; link?: string }>
+  generated_content?: any
+  confirmed_content?: any
+  dispatch_request_id?: string
+  dispatch_request_status?: string
   rejection?: {
     reason: string
     rejected_at: string
@@ -673,6 +688,115 @@ export default function OrderDetailPage() {
                     {content.images.map((img, idx) => (
                       <Image key={idx} src={img} className="result-image" mode="aspectFill" />
                     ))}
+                  </View>
+                )}
+
+                {/* 发布结果和反馈 */}
+                {(order.publish_status || order.publish_feedback) && (
+                  <View className="publish-feedback-section">
+                    {/* 发布结果 */}
+                    {order.publish_status?.platforms && order.publish_status.platforms.length > 0 && (
+                      <View className="glass-card publish-results-card">
+                        <View className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                          <Check size={20} color="#22c55e" />
+                          <Text className="card-title" style={{ fontSize: '1rem', fontWeight: 600 }}>发布结果</Text>
+                        </View>
+                        <View className="platform-results-list">
+                          {order.publish_status.platforms.map((result: any, idx: number) => {
+                            const platformName = getPlatformName(result.platform)
+                            const feedback = order.publish_feedback?.[result.platform]
+                            return (
+                              <View key={idx} className="platform-result-item" style={{
+                                marginBottom: '1rem',
+                                paddingBottom: '1rem',
+                                borderBottom: idx < (order.publish_status?.platforms?.length || 0) - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'
+                              }}
+                              >
+                                <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                  <Text className="block" style={{ fontSize: '1rem', fontWeight: 600 }}>{platformName}</Text>
+                                  <View style={{ 
+                                    padding: '0.25rem 0.5rem', 
+                                    borderRadius: '0.25rem',
+                                    backgroundColor: result.status === 'success' ? 'rgba(34, 197, 94, 0.2)' : 
+                                                   result.status === 'manual' ? 'rgba(245, 158, 11, 0.2)' : 
+                                                   'rgba(239, 68, 68, 0.2)'
+                                  }}
+                                  >
+                                    <Text className="block" style={{ 
+                                      fontSize: '0.75rem',
+                                      color: result.status === 'success' ? '#22c55e' : 
+                                             result.status === 'manual' ? '#f59e0b' : '#ef4444'
+                                    }}
+                                    >
+                                      {result.status === 'success' ? '已发布' : 
+                                       result.status === 'manual' ? '需手动发布' : '发布失败'}
+                                    </Text>
+                                  </View>
+                                </View>
+                                {result.message && (
+                                  <Text className="block" style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
+                                    {result.message}
+                                  </Text>
+                                )}
+                                {result.post_url && (
+                                  <View style={{ marginTop: '0.5rem' }}>
+                                    <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+                                      发布链接：
+                                    </Text>
+                                    <Text className="block" style={{ fontSize: '0.875rem', color: '#3b82f6', wordBreak: 'break-all' }}>
+                                      {result.post_url}
+                                    </Text>
+                                  </View>
+                                )}
+
+                                {/* 反馈数据 */}
+                                {feedback && (
+                                  <View style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem' }}>
+                                    <Text className="block" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#3b82f6', marginBottom: '0.5rem' }}>
+                                      分身反馈
+                                    </Text>
+                                    {feedback.image && (
+                                      <View style={{ marginBottom: '0.5rem' }}>
+                                        <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+                                          发布截图：
+                                        </Text>
+                                        <Image 
+                                          src={feedback.image} 
+                                          className="feedback-image" 
+                                          mode="aspectFill"
+                                          style={{ 
+                                            width: '100%', 
+                                            height: '12rem', 
+                                            borderRadius: '0.5rem' 
+                                          }}
+                                        />
+                                      </View>
+                                    )}
+                                    {feedback.link && (
+                                      <View>
+                                        <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+                                          反馈链接：
+                                        </Text>
+                                        <Text className="block" style={{ fontSize: '0.875rem', color: '#3b82f6', wordBreak: 'break-all' }}>
+                                          {feedback.link}
+                                        </Text>
+                                      </View>
+                                    )}
+                                  </View>
+                                )}
+                              </View>
+                            )
+                          })}
+                        </View>
+                        {order.publish_status.summary && (
+                          <View style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.5rem' }}>
+                            <Text className="block" style={{ fontSize: '0.875rem', color: '#22c55e' }}>
+                              {order.publish_status.summary}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
