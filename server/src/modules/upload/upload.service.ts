@@ -39,19 +39,13 @@ export class UploadService {
   async uploadOrderScreenshot(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `order-screenshots/${nanoid()}${path.extname(file.originalname)}`
 
-    try {
-      // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-      const actualFileName = await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
-      // 生成签名 URL
-      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-      return { url: signedUrl }
-    } catch (s3Error) {
-      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
-      const localUrl = await this.uploadToLocal(file, fileName)
-      return { url: localUrl }
-    }
+    return { url: signedUrl }
   }
 
   /**
@@ -60,19 +54,13 @@ export class UploadService {
   async uploadAvatarImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `avatar-images/${nanoid()}${path.extname(file.originalname)}`
 
-    try {
-      // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-      const actualFileName = await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
-      // 生成签名 URL
-      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-      return { url: signedUrl }
-    } catch (s3Error) {
-      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
-      const localUrl = await this.uploadToLocal(file, fileName)
-      return { url: localUrl }
-    }
+    return { url: signedUrl }
   }
 
   /**
@@ -81,73 +69,43 @@ export class UploadService {
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `general-images/${nanoid()}${path.extname(file.originalname)}`
 
-    try {
-      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-      const actualFileName = await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
-      // 生成签名 URL
-      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-      return { url: signedUrl }
-    } catch (s3Error) {
-      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
-
-      // 🔴 Fallback: 使用本地文件存储
-      const localUrl = await this.uploadToLocal(file, fileName)
-      console.log('图片已保存到本地:', localUrl)
-
-      return { url: localUrl }
-    }
+    return { url: signedUrl }
   }
 
   /**
-   * 🔴 上传视频
+   * 上传视频
    */
   async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `videos/${nanoid()}${path.extname(file.originalname)}`
 
-    try {
-      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-      const actualFileName = await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
-      // 生成签名 URL
-      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-      return { url: signedUrl }
-    } catch (s3Error) {
-      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
-
-      // 🔴 Fallback: 使用本地文件存储
-      const localUrl = await this.uploadToLocal(file, fileName)
-      console.log('视频已保存到本地:', localUrl)
-
-      return { url: localUrl }
-    }
+    return { url: signedUrl }
   }
 
   /**
-   * 🔴 上传音频
+   * 上传音频
    */
   async uploadAudio(file: Express.Multer.File): Promise<{ url: string }> {
     const fileName = `audios/${nanoid()}${path.extname(file.originalname)}`
 
-    try {
-      // 尝试上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
-      const actualFileName = await this.uploadToS3(file, fileName)
+    // 上传文件并获取实际的文件名（S3Storage 可能会修改文件名）
+    const actualFileName = await this.uploadToS3(file, fileName)
 
-      // 生成签名 URL
-      const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
+    // 生成签名 URL
+    const signedUrl = await this.storageService.getFileUrl(actualFileName, 86400 * 30) // 30天有效期
 
-      return { url: signedUrl }
-    } catch (s3Error) {
-      this.logger.error('S3上传失败，尝试使用本地存储:', s3Error)
-
-      // 🔴 Fallback: 使用本地文件存储
-      const localUrl = await this.uploadToLocal(file, fileName)
-      console.log('音频已保存到本地:', localUrl)
-
-      return { url: localUrl }
-    }
+    return { url: signedUrl }
   }
 
   /**
@@ -210,42 +168,6 @@ export class UploadService {
       }
 
       throw new Error(`文件上传失败: ${error.message}`)
-    }
-  }
-
-  /**
-   * 🔴 备用方案：使用本地文件存储
-   * 当 S3 上传失败时使用
-   */
-  private async uploadToLocal(file: Express.Multer.File, fileName: string): Promise<string> {
-    const fs = require('fs')
-    const path = require('path')
-
-    try {
-      // 🔴 修复：确保保存到项目根目录的 uploads 文件夹
-      // 项目根目录：/workspace/projects
-      const projectRoot = process.cwd().includes('server') ? path.join(process.cwd(), '..') : process.cwd()
-      const filePath = path.join(projectRoot, 'uploads', fileName)
-      const dir = path.dirname(filePath)
-
-      this.logger.log(`准备保存文件到: ${filePath}`)
-      this.logger.log(`项目根目录: ${projectRoot}`)
-      this.logger.log(`当前工作目录: ${process.cwd()}`)
-
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
-        this.logger.log(`创建目录: ${dir}`)
-      }
-
-      // 保存文件
-      fs.writeFileSync(filePath, file.buffer)
-      this.logger.log(`文件已保存到本地: ${filePath}`)
-
-      // 返回本地文件路径
-      return `http://localhost:3000/uploads/${fileName}`
-    } catch (error: any) {
-      this.logger.error('本地保存失败:', error)
-      throw new Error(`本地保存失败: ${error.message}`)
     }
   }
 }

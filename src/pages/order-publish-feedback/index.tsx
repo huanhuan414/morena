@@ -605,25 +605,26 @@ export default function OrderPublishFeedback() {
                   {/* 填写链接 */}
                   <View className="space-y-2">
                     <Label className="text-sm text-gray-700">发布链接</Label>
-                    <View className="flex gap-2">
-                      <View className="flex-1 bg-gray-50 rounded-lg px-4 py-3">
+                    <View style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
+                      <View style={{ flex: 1, backgroundColor: '#f9fafb', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center' }}>
                         <Input
                           className="w-full bg-transparent"
+                          style={{ fontSize: '14px' }}
                           placeholder="请输入发布链接"
                           value={fb.link}
                           onInput={(e) => handleLinkChange(platform, e.detail.value)}
                         />
                       </View>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleValidateLink(platform)}
-                        disabled={validatingLinks[platform]}
-                      >
-                        <Text className="text-sm">
+                      <View style={{ display: 'flex', alignItems: 'center' }}>
+                        <Button
+                          variant="outline"
+                          style={{ height: '40px', paddingLeft: '16px', paddingRight: '16px', fontSize: '14px' }}
+                          onClick={() => handleValidateLink(platform)}
+                          disabled={validatingLinks[platform]}
+                        >
                           {validatingLinks[platform] ? '验证中...' : '验证'}
-                        </Text>
-                      </Button>
+                        </Button>
+                      </View>
                     </View>
 
                     {/* 验证结果 */}
@@ -669,12 +670,6 @@ export default function OrderPublishFeedback() {
             {submitting ? '提交中...' : '提交反馈'}
           </Button>
         </View>
-      </View>
-
-      {/* 🔴 调试信息 */}
-      <View className="bg-black bg-opacity-80 text-white p-4 rounded-lg text-xs" style={{ position: 'fixed', bottom: 80, left: 10, right: 10, zIndex: 9999, maxHeight: '200px', overflow: 'auto' }}>
-        <Text className="block font-bold mb-2">调试信息：</Text>
-        <Text className="block">{JSON.stringify(feedback, null, 2)}</Text>
       </View>
     </View>
   )
