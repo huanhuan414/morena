@@ -373,95 +373,74 @@ export default function OrderContentCreationPage() {
   const handleRegenerate = async () => {
     console.log('[OrderContentCreation] ========== 点击重新生成按钮 ==========')
 
-    // 简单的测试提示
+    if (regenerating) {
+      console.log('[OrderContentCreation] 正在重新生成中，忽略重复点击')
+      return
+    }
+
+    // 显示提示
     Taro.showToast({
-      title: '点击了重新生成按钮',
-      icon: 'none',
+      title: '正在重新生成内容...',
+      icon: 'loading',
       duration: 2000
     })
+
+    setRegenerating(true)
     
     try {
-      console.log('[OrderContentCreation] 开始显示确认对话框')
-      Taro.showModal({
-        title: '重新生成内容',
-        content: '确定要重新生成内容吗？\n\n当前内容将被替换，预计需要 1-2 分钟。',
-        confirmText: '确定重新生成',
-        cancelText: '取消',
-        success: (res) => {
-          console.log('[OrderContentCreation] 对话框回调成功，用户选择:', res)
-          
-          if (res.confirm) {
-            console.log('[OrderContentCreation] 用户确认重新生成')
-            setRegenerating(true)
-            
-            // 立即执行重新生成
-            Network.request({
-              url: `/api/order-processing/regenerate/${requestId}`,
-              method: 'POST'
-            }).then(response => {
-              console.log('[OrderContentCreation] 重新生成响应:', response.data)
-
-              if (response.data?.code === 200) {
-                console.log('[OrderContentCreation] 重新生成成功')
-                
-                Taro.showToast({
-                  title: '已重新生成，请稍候...',
-                  icon: 'loading',
-                  duration: 3000
-                })
-
-                // 清空内容，显示生成状态
-                setContentData(null)
-                setEditedContent('')
-                setIsEditing(false)
-
-                // 重置计时器
-                stopTimer()
-                startTimer()
-
-                // 重置步骤
-                setCurrentStepIndex(1) // 生成中
-                setQueuePosition(response.data.data?.position || 0)
-                setEstimatedTime(response.data.data?.estimatedTime || 60)
-                setIsTimeout(false)
-
-                // 重新开始轮询
-                startPolling()
-              } else {
-                console.error('[OrderContentCreation] 重新生成失败:', response.data?.message)
-                Taro.showToast({
-                  title: response.data?.message || '重新生成失败',
-                  icon: 'none',
-                  duration: 3000
-                })
-              }
-              
-              setRegenerating(false)
-            }).catch(error => {
-              console.error('[OrderContentCreation] 重新生成异常:', error)
-              Taro.showToast({
-                title: '网络异常，请重试',
-                icon: 'none',
-                duration: 3000
-              })
-              setRegenerating(false)
-            })
-          } else {
-            console.log('[OrderContentCreation] 用户取消重新生成')
-          }
-        },
-        fail: (err) => {
-          console.error('[OrderContentCreation] 对话框回调失败:', err)
-          setRegenerating(false)
-        }
+      console.log('[OrderContentCreation] 开始重新生成请求')
+      
+      // 直接重新生成，不显示确认对话框
+      const response = await Network.request({
+        url: `/api/order-processing/regenerate/${requestId}`,
+        method: 'POST'
       })
+
+      console.log('[OrderContentCreation] 重新生成响应:', response.data)
+
+      if (response.data?.code === 200) {
+        console.log('[OrderContentCreation] 重新生成成功')
+        
+        Taro.showToast({
+          title: '已重新生成，请稍候...',
+          icon: 'success',
+          duration: 2000
+        })
+
+        // 清空内容，显示生成状态
+        setContentData(null)
+        setEditedContent('')
+        setIsEditing(false)
+
+        // 重置计时器
+        stopTimer()
+        startTimer()
+
+        // 重置步骤
+        setCurrentStepIndex(1) // 生成中
+        setQueuePosition(response.data.data?.position || 0)
+        setEstimatedTime(response.data.data?.estimatedTime || 60)
+        setIsTimeout(false)
+
+        // 重新开始轮询
+        startPolling()
+      } else {
+        console.error('[OrderContentCreation] 重新生成失败:', response.data?.message)
+        Taro.showToast({
+          title: response.data?.message || '重新生成失败',
+          icon: 'none',
+          duration: 3000
+        })
+      }
     } catch (error) {
-      console.error('[OrderContentCreation] showModal 异常:', error)
+      console.error('[OrderContentCreation] 重新生成异常:', error)
       Taro.showToast({
-        title: '操作失败，请重试',
+        title: '网络异常，请重试',
         icon: 'none',
         duration: 3000
       })
+    } finally {
+      setRegenerating(false)
     }
   }
 
