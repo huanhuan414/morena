@@ -1,20 +1,53 @@
-import { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, RichText } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import { ArrowLeft, FileText, Image as ImageIcon, Video, Share2, Check, Sparkles, X, PenTool } from 'lucide-react-taro'
+import { ArrowLeft, FileText, Image as ImageIcon, Video, Share2, Check, Sparkles, X, PenTool, Copy, Eye } from 'lucide-react-taro'
 import './index.css'
 
 // 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信小程序',
+  wechat_mp: '微信公众号',
+  wechat_moments: '微信朋友圈',
+  wechat_video: '微信视频号',
   xiaohongshu: '小红书',
   douyin: '抖音',
   weibo: '微博',
   bilibili: 'B站',
   kuaishou: '快手'
+}
+
+// 简单的 Markdown 解析器
+const parseMarkdown = (text: string): string => {
+  if (!text) return ''
+
+  let html = text
+
+  // 转义 HTML 特殊字符
+  html = html.replace(/&/g, '&amp;')
+  html = html.replace(/</g, '&lt;')
+  html = html.replace(/>/g, '&gt;')
+
+  // 标题
+  html = html.replace(/^### (.+)$/gm, '<text class="md-h3">$1</text>\n')
+  html = html.replace(/^## (.+)$/gm, '<text class="md-h2">$1</text>\n')
+  html = html.replace(/^# (.+)$/gm, '<text class="md-h1">$1</text>\n')
+
+  // 粗体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<text class="md-bold">$1</text>')
+
+  // 斜体
+  html = html.replace(/\*(.+?)\*/g, '<text class="md-italic">$1</text>')
+
+  // 无序列表
+  html = html.replace(/^- (.+)$/gm, '<text class="md-li">• $1</text>')
+
+  // 链接
+  html = html.replace(/\[([^\]]+)\]\([^)]+\)/g, '<text class="md-link">$1</text>')
+
+  return html
 }
 
 export default function GeneratedContentPage() {
@@ -79,7 +112,6 @@ export default function GeneratedContentPage() {
       if (res.data?.code === 200) {
         showToast({ title: '保存成功', icon: 'success' })
         setIsEditing(false)
-        // 刷新内容
         fetchGeneratedContent()
       }
     } catch (error) {
@@ -106,9 +138,21 @@ export default function GeneratedContentPage() {
     }
   }
 
+  const handleCopy = () => {
+    const text = selectedContent?.title + '\n\n' + selectedContent?.content
+    Taro.setClipboardData({
+      data: text,
+      success: () => showToast({ title: '已复制', icon: 'success' })
+    })
+  }
+
   if (loading) {
     return (
       <View className="generated-content-page">
+        {/* 背景装饰 */}
+        <View className="bg-decoration bg-1" />
+        <View className="bg-decoration bg-2" />
+
         <View className="page-header">
           <View className="header-left" onClick={() => navigateBack()}>
             <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
@@ -116,9 +160,11 @@ export default function GeneratedContentPage() {
           <Text className="header-title">生成内容</Text>
           <View className="header-right" />
         </View>
-        <View className="loading-container">
-          <Sparkles size={32} color="#00f5ff" />
-          <Text className="loading-text">AI正在为您生成内容...</Text>
+
+        <View className="loading-wrapper">
+          <Sparkles size={48} color="#3b82f6" className="loading-icon" />
+          <Text className="loading-title">AI 正在为您生成内容</Text>
+          <Text className="loading-desc">这需要几秒钟，请稍候...</Text>
         </View>
       </View>
     )
@@ -126,6 +172,10 @@ export default function GeneratedContentPage() {
 
   return (
     <View className="generated-content-page">
+      {/* 背景装饰 */}
+      <View className="bg-decoration bg-1" />
+      <View className="bg-decoration bg-2" />
+
       {/* 头部 */}
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
@@ -137,175 +187,172 @@ export default function GeneratedContentPage() {
 
       {contents.length === 0 ? (
         <View className="empty-state">
-          <X size={48} color="rgba(255,255,255,0.3)" />
-          <Text className="empty-text">暂无生成内容</Text>
+          <View className="empty-icon">
+            <X size={64} color="#94a3b8" />
+          </View>
+          <Text className="empty-title">暂无生成内容</Text>
           <Text className="empty-desc">请先接受订单，系统将自动生成内容</Text>
         </View>
       ) : (
         <>
           {/* 平台标签 */}
-          <View className="platform-tabs">
-            {contents.map((content) => (
-              <View
-                key={content.id}
-                className={`platform-tab ${selectedContent?.id === content.id ? 'active' : ''}`}
-                onClick={() => setSelectedContent(content)}
-              >
-                <Text className="platform-tab-text">
-                  {PLATFORM_NAMES[content.platform] || content.platform}
-                </Text>
-                {content.status === 'approved' && (
-                  <Check size={12} color="#22c55e" />
-                )}
-              </View>
-            ))}
+          <View className="platform-tabs-wrapper">
+            <ScrollView className="platform-tabs" scrollX>
+              {contents.map((content) => (
+                <View
+                  key={content.id}
+                  className={`platform-tab ${selectedContent?.id === content.id ? 'active' : ''}`}
+                  onClick={() => setSelectedContent(content)}
+                >
+                  <Text className="platform-tab-text">
+                    {PLATFORM_NAMES[content.platform] || content.platform}
+                  </Text>
+                  {content.status === 'approved' && (
+                    <View className="platform-tab-badge">
+                      <Check size={12} color="#fff" />
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           <ScrollView className="content-scroll" scrollY>
-            {/* 内容状态提示 */}
             {selectedContent && (
-              <View className="content-status">
-                <FileText size={16} color="#00f5ff" />
-                <Text className="status-text">
-                  {selectedContent.status === 'draft' && '草稿状态 - 可编辑'}
-                  {selectedContent.status === 'approved' && '已批准'}
-                  {selectedContent.status === 'published' && '已发布'}
-                </Text>
-              </View>
-            )}
-
-            {/* 内容卡片 */}
-            {selectedContent && (
-              <View className="content-card">
-                {/* 标题 */}
-                {selectedContent.title && (
-                  <View className="content-title-section">
-                    <Text className="content-title">{selectedContent.title}</Text>
+              <>
+                {/* 内容头部 */}
+                <View className="content-header">
+                  <View className="header-icon">
+                    <FileText size={24} color="#3b82f6" />
                   </View>
-                )}
-
-                {/* 正文内容 */}
-                <View className="content-body-section">
-                  {isEditing ? (
-                    <View className="edit-area">
-                      <Text className="edit-label">编辑内容：</Text>
-                      <Textarea
-                        className="content-textarea"
-                        value={editedContent}
-                        onInput={(e) => setEditedContent(e.detail.value)}
-                        maxlength={2000}
-                      />
-                      <View className="edit-actions">
-                        <Button
-                          className="edit-btn cancel"
-                          onClick={() => setIsEditing(false)}
-                        >
-                          取消
-                        </Button>
-                        <Button
-                          className="edit-btn save"
-                          onClick={handleSave}
-                        >
-                          保存
-                        </Button>
+                  <View className="header-info">
+                    <Text className="header-title-text">{selectedContent.title || '未命名内容'}</Text>
+                    <View className="header-meta">
+                      <View className="meta-item">
+                        <Eye size={14} color="#64748b" />
+                        <Text className="meta-text">
+                          {selectedContent.status === 'draft' && '草稿 - 可编辑'}
+                          {selectedContent.status === 'approved' && '已批准'}
+                          {selectedContent.status === 'published' && '已发布'}
+                        </Text>
                       </View>
                     </View>
-                  ) : (
-                    <>
-                      <Text className="content-body">
-                        {selectedContent.content}
-                      </Text>
-                      {selectedContent.status === 'draft' && (
-                        <Button
-                          className="edit-trigger"
-                          onClick={handleEdit}
-                        >
-                          <PenTool size={16} color="#00f5ff" />
-                          <Text className="edit-trigger-text">编辑内容</Text>
+                  </View>
+                </View>
+
+                {/* 内容卡片 */}
+                <View className="content-card">
+                  {/* Markdown 内容 */}
+                  <View className="content-body">
+                    {isEditing ? (
+                      <View className="edit-wrapper">
+                        <Textarea
+                          className="content-textarea"
+                          value={editedContent}
+                          onInput={(e) => setEditedContent(e.detail.value)}
+                          maxlength={5000}
+                          placeholder="在此编辑内容..."
+                        />
+                        <View className="edit-actions">
+                          <Button className="action-btn cancel-btn" onClick={() => setIsEditing(false)}>
+                            取消
+                          </Button>
+                          <Button className="action-btn save-btn" onClick={handleSave}>
+                            <Check size={18} color="#fff" />
+                            <Text className="btn-text">保存</Text>
+                          </Button>
+                        </View>
+                      </View>
+                    ) : (
+                      <View className="content-display">
+                        <RichText className="markdown-content" nodes={parseMarkdown(selectedContent.content)} />
+                        {selectedContent.status === 'draft' && (
+                          <Button className="edit-trigger" onClick={handleEdit}>
+                            <PenTool size={16} color="#3b82f6" />
+                            <Text className="edit-trigger-text">编辑内容</Text>
+                          </Button>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* 标签 */}
+                  {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
+                    <View className="section-wrapper">
+                      <Text className="section-title block">推荐标签</Text>
+                      <View className="tags-container">
+                        {selectedContent.hashtags.map((tag: string, index: number) => (
+                          <View key={index} className="tag-item">
+                            <Text className="tag-text">#{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 图片建议 */}
+                  {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
+                    <View className="section-wrapper">
+                      <View className="section-header">
+                        <ImageIcon size={18} color="#f59e0b" />
+                        <Text className="section-title">图片建议</Text>
+                      </View>
+                      <View className="suggestions-grid">
+                        {selectedContent.image_suggestions.map((suggestion: string, index: number) => (
+                          <View key={index} className="suggestion-card">
+                            <ImageIcon size={24} color="#f59e0b" />
+                            <Text className="suggestion-text">{suggestion}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 视频建议 */}
+                  {selectedContent.video_suggestions && selectedContent.video_suggestions.length > 0 && (
+                    <View className="section-wrapper">
+                      <View className="section-header">
+                        <Video size={18} color="#8b5cf6" />
+                        <Text className="section-title">视频建议</Text>
+                      </View>
+                      <View className="suggestions-grid">
+                        {selectedContent.video_suggestions.map((suggestion: string, index: number) => (
+                          <View key={index} className="suggestion-card">
+                            <Video size={24} color="#8b5cf6" />
+                            <Text className="suggestion-text">{suggestion}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 操作按钮 */}
+                  <View className="actions-wrapper">
+                    {selectedContent.status === 'draft' && (
+                      <>
+                        <Button className="action-btn approve-btn" onClick={handleApprove}>
+                          <Check size={18} color="#fff" />
+                          <Text className="btn-text">批准内容</Text>
                         </Button>
-                      )}
-                    </>
-                  )}
-                </View>
-
-                {/* 标签 */}
-                {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
-                  <View className="hashtags-section">
-                    <Text className="section-label">推荐标签</Text>
-                    <View className="hashtags-list">
-                      {selectedContent.hashtags.map((tag: string, index: number) => (
-                        <View key={index} className="hashtag-item">
-                          <Text className="hashtag-text">{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* 图片建议 */}
-                {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
-                  <View className="suggestions-section">
-                    <View className="section-header">
-                      <ImageIcon size={18} color="#f59e0b" />
-                      <Text className="section-label">图片建议</Text>
-                    </View>
-                    <View className="suggestions-list">
-                      {selectedContent.image_suggestions.map((suggestion: string, index: number) => (
-                        <View key={index} className="suggestion-item">
-                          <Text className="suggestion-text">{suggestion}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* 视频建议 */}
-                {selectedContent.video_suggestions && selectedContent.video_suggestions.length > 0 && (
-                  <View className="suggestions-section">
-                    <View className="section-header">
-                      <Video size={18} color="#8b5cf6" />
-                      <Text className="section-label">视频建议</Text>
-                    </View>
-                    <View className="suggestions-list">
-                      {selectedContent.video_suggestions.map((suggestion: string, index: number) => (
-                        <View key={index} className="suggestion-item">
-                          <Text className="suggestion-text">{suggestion}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* 操作按钮 */}
-                <View className="action-buttons">
-                  {selectedContent.status === 'draft' && (
-                    <>
-                      <Button
-                        className="action-btn primary"
-                        onClick={handleApprove}
-                      >
-                        <Check size={18} color="#fff" />
-                        <Text className="action-btn-text">批准内容</Text>
+                        <Button className="action-btn edit-btn-style" onClick={handleEdit}>
+                          <PenTool size={18} color="#3b82f6" />
+                          <Text className="btn-text">继续编辑</Text>
+                        </Button>
+                      </>
+                    )}
+                    {selectedContent.status === 'approved' && (
+                      <Button className="action-btn publish-btn">
+                        <Share2 size={18} color="#fff" />
+                        <Text className="btn-text">准备发布</Text>
                       </Button>
-                      <Button
-                        className="action-btn secondary"
-                        onClick={handleEdit}
-                      >
-                        <PenTool size={18} color="#00f5ff" />
-                        <Text className="action-btn-text">继续编辑</Text>
-                      </Button>
-                    </>
-                  )}
-                  {selectedContent.status === 'approved' && (
-                    <Button
-                      className="action-btn success"
-                    >
-                      <Share2 size={18} color="#fff" />
-                      <Text className="action-btn-text">准备发布</Text>
+                    )}
+                    <Button className="action-btn copy-btn" onClick={handleCopy}>
+                      <Copy size={18} color="#64748b" />
+                      <Text className="btn-text">复制内容</Text>
                     </Button>
-                  )}
+                  </View>
                 </View>
-              </View>
+              </>
             )}
           </ScrollView>
         </>
