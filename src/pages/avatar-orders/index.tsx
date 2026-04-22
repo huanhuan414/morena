@@ -114,6 +114,7 @@ export default function AvatarOrdersPage() {
   })
 
   const fetchAvatarData = async () => {
+    console.log('[AvatarOrders] 开始获取分身数据, avatarId:', avatarId)
     setLoading(true)
     try {
       // 并行获取分身信息和订单
@@ -122,13 +123,22 @@ export default function AvatarOrdersPage() {
         Network.request({ url: `/api/order-dispatch/avatar/${avatarId}/accepted-orders` })
       ])
 
+      console.log('[AvatarOrders] 分身信息响应:', avatarRes.data)
+      console.log('[AvatarOrders] 订单响应:', ordersRes.data)
+
       if (avatarRes.data?.code === 200) {
         setAvatarInfo(avatarRes.data.data)
+        console.log('[AvatarOrders] 设置分身信息成功')
+      } else {
+        console.error('[AvatarOrders] 获取分身信息失败:', avatarRes.data?.message)
       }
 
       if (ordersRes.data?.code === 200) {
         const orders = ordersRes.data.data || []
         setAllOrders(orders)
+        console.log('[AvatarOrders] 设置订单成功，订单数量:', orders.length)
+      } else {
+        console.error('[AvatarOrders] 获取订单失败:', ordersRes.data?.message)
       }
 
       // 获取待接单订单
@@ -136,17 +146,25 @@ export default function AvatarOrdersPage() {
         url: '/api/order-dispatch/pending-requests'
       })
 
+      console.log('[AvatarOrders] 待接单订单响应:', pendingRes.data)
+
       if (pendingRes.data?.code === 200) {
         const currentAvatarPending = (pendingRes.data.data || []).filter((req: any) =>
           req.avatars?.id === avatarId
         )
         setPendingOrders(currentAvatarPending)
+        console.log('[AvatarOrders] 设置待接单订单成功，数量:', currentAvatarPending.length)
+      } else {
+        console.error('[AvatarOrders] 获取待接单订单失败:', pendingRes.data?.message)
       }
+
+      console.log('[AvatarOrders] 数据加载完成')
     } catch (error) {
-      console.error('获取分身数据失败:', error)
+      console.error('[AvatarOrders] 获取分身数据失败:', error)
       showToast({ title: '获取数据失败', icon: 'none' })
     } finally {
       setLoading(false)
+      console.log('[AvatarOrders] loading 状态设为 false')
     }
   }
 
@@ -280,7 +298,7 @@ export default function AvatarOrdersPage() {
         </View>
       </View>
 
-      <ScrollView scrollY className="scroll-container">
+      <ScrollView scrollY className="scroll-container" style={{ height: '100%' }}>
         {/* 待接单订单 - 高级卡片 */}
         {pendingOrders.length > 0 && (
           <View className="status-section premium">
