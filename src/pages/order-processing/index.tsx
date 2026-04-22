@@ -104,6 +104,8 @@ export default function OrderProcessingPage() {
         url: `/api/order-processing/status/${requestId}`
       })
 
+      console.log('[OrderProcessing] 状态响应:', res.data)
+
       if (res.data?.code === 200) {
         const data = res.data.data as OrderProcessingData
         setProcessingData(data)
@@ -115,9 +117,31 @@ export default function OrderProcessingPage() {
             setPollInterval(null)
           }
         }
+      } else {
+        console.error('[OrderProcessing] 获取状态失败:', res.data?.message)
+        // 如果连续失败多次，停止轮询
+        const errorCount = (processingData as any)?.errorCount || 0
+        if (errorCount >= 5) {
+          if (pollInterval) {
+            clearInterval(pollInterval)
+            setPollInterval(null)
+          }
+          showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
+        }
+        setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
       }
     } catch (error) {
-      console.error('获取处理状态失败:', error)
+      console.error('[OrderProcessing] 请求异常:', error)
+      // 如果连续失败多次，停止轮询
+      const errorCount = (processingData as any)?.errorCount || 0
+      if (errorCount >= 5) {
+        if (pollInterval) {
+          clearInterval(pollInterval)
+          setPollInterval(null)
+        }
+        showToast({ title: '网络异常，请刷新页面', icon: 'none' })
+      }
+      setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
     }
   }
 
@@ -285,6 +309,29 @@ export default function OrderProcessingPage() {
     </View>
   )
 
+  const renderErrorState = () => (
+    <View className="status-card error">
+      <View className="status-icon error">
+        <X size={48} color="#ef4444" />
+      </View>
+      <Text className="status-title">获取状态失败</Text>
+      <Text className="status-desc">
+        无法获取订单处理状态，请刷新页面重试
+      </Text>
+      <Button
+        className="action-btn"
+        onClick={() => {
+          if (pollInterval) {
+            clearInterval(pollInterval)
+          }
+          startPolling()
+        }}
+      >
+        <Text className="btn-text">重新加载</Text>
+      </Button>
+    </View>
+  )
+
   if (loading) {
     return (
       <View className="order-processing-page">
@@ -341,12 +388,35 @@ export default function OrderProcessingPage() {
 
         {/* 状态展示 */}
         <View className="status-section">
-          {processingData?.status === 'queuing' && renderQueuingState()}
-          {processingData?.status === 'generating' && renderGeneratingState()}
-          {processingData?.status === 'preview' && renderPreviewState()}
-          {processingData?.status === 'publishing' && renderPublishingState()}
-          {processingData?.status === 'completed' && renderCompletedState()}
-          {processingData?.status === 'failed' && renderFailedState()}
+          {/* 如果有多次错误，显示错误状态 */}
+          {(processingData as any)?.errorCount >= 5 && renderErrorState()}
+          
+          {/* 如果没有错误或错误次数不足5次，显示正常状态 */}
+          {(!processingData || (processingData as any)?.errorCount < 5) && (
+            <>
+              {processingData?.status === 'queuing' && renderQueuingState()}
+              {processingData?.status === 'generating' && renderGeneratingState()}
+              {processingData?.status === 'preview' && renderPreviewState()}
+              {processingData?.status === 'publishing' && renderPublishingState()}
+              {processingData?.status === 'completed' && renderCompletedState()}
+              {processingData?.status === 'failed' && renderFailedState()}
+              
+              {/* 如果有processingData但没有匹配的状态，显示默认状态 */}
+              {processingData && 
+               !['queuing', 'generating', 'preview', 'publishing', 'completed', 'failed'].includes(processingData.status) && (
+                <View className="status-card">
+                  <View className="status-icon">
+                    <Clock size={48} color="#6366f1" />
+                  </View>
+                  <Text className="status-title">等待处理</Text>
+                  <Text className="status-desc">
+                    当前状态：{processingData.status}
+                  </Text>
+                  <Loader size={24} color="#6366f1" className="loading-spinner" />
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         <View className="bottom-space" />

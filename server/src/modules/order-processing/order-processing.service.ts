@@ -187,23 +187,38 @@ export class OrderProcessingService {
   async getProcessingStatus(requestId: string): Promise<ProcessingStatus> {
     const client = getSupabaseClient()
 
+    console.log('[OrderProcessing] 查询订单状态:', { requestId })
+
     const { data: request, error } = await client
       .from('order_dispatch_requests')
       .select('*, orders(*), avatars(*)')
       .eq('id', requestId)
       .single()
 
-    if (error || !request) {
-      throw new Error('获取订单状态失败')
+    if (error) {
+      console.error('[OrderProcessing] 查询订单状态失败:', error)
+      throw new Error(`查询订单状态失败: ${error.message}`)
     }
+
+    if (!request) {
+      console.error('[OrderProcessing] 订单不存在:', { requestId })
+      throw new Error(`订单不存在: ${requestId}`)
+    }
+
+    console.log('[OrderProcessing] 订单状态查询成功:', {
+      requestId,
+      status: request.status,
+      hasOrders: !!request.orders,
+      hasAvatars: !!request.avatars
+    })
 
     const status: ProcessingStatus = {
       requestId,
       status: request.status as any,
       generatedContent: request.generated_content ? {
-        title: request.orders.title,
+        title: request.orders?.title || '未知订单',
         content: request.generated_content,
-        platform: request.orders.platforms[0] || ''
+        platform: request.orders?.platforms?.[0] || ''
       } : undefined,
       publishStatus: request.publish_status
     }
