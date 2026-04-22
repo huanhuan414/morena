@@ -106,11 +106,21 @@ const getPlatformName = (platform: string): string => {
 }
 
 const STATUS_CONFIG = {
+  // 订单状态
   open: { label: '待接单', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
   in_progress: { label: '进行中', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
   reviewing: { label: '待验收', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
   completed: { label: '已完成', color: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e, #4ade80)' },
-  cancelled: { label: '已取消', color: '#6b7280', gradient: 'linear-gradient(135deg, #6b7280, #9ca3af)' }
+  cancelled: { label: '已取消', color: '#6b7280', gradient: 'linear-gradient(135deg, #6b7280, #9ca3af)' },
+
+  // 分身订单状态
+  pending: { label: '待确认', color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
+  accepted: { label: '已接单', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+  generating: { label: '生成中', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+  preview: { label: '预览中', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+  publishing: { label: '发布中', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+  published: { label: '已发布', color: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e, #4ade80)' },
+  awaiting_acceptance: { label: '待验收', color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' }
 }
 
 export default function OrderDetailPage() {
@@ -412,23 +422,26 @@ export default function OrderDetailPage() {
   }
 
   // 获取当前显示的状态
-  // 始终使用订单本身的状态，确保与列表页一致
-  const displayStatus = order.status
+  // 优先使用 dispatch_request_status（分身订单状态），如果没有则使用 order.status
+  const displayStatus = order.dispatch_request_status || order.status
   const statusConfig = STATUS_CONFIG[displayStatus as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
   const content = order.result?.content || order.generated_content || order.confirmed_content
 
   // 根据订单状态确定可用的Tab
   const getAvailableTabs = (): Array<'detail' | 'progress' | 'result'> => {
     console.log('[OrderDetail] displayStatus:', displayStatus)
-    if (displayStatus === 'open' || displayStatus === 'cancelled') {
+    console.log('[OrderDetail] order.status:', order.status)
+    console.log('[OrderDetail] dispatch_request_status:', order.dispatch_request_status)
+
+    if (displayStatus === 'open' || displayStatus === 'cancelled' || displayStatus === 'pending') {
       console.log('[OrderDetail] 返回 Tab: detail')
       return ['detail']
     }
-    if (displayStatus === 'in_progress') {
+    if (displayStatus === 'accepted' || displayStatus === 'generating' || displayStatus === 'in_progress') {
       console.log('[OrderDetail] 返回 Tab: detail, progress')
       return ['detail', 'progress']
     }
-    if (displayStatus === 'reviewing' || displayStatus === 'completed') {
+    if (displayStatus === 'preview' || displayStatus === 'reviewing' || displayStatus === 'completed' || displayStatus === 'published') {
       console.log('[OrderDetail] 返回 Tab: detail, progress, result')
       return ['detail', 'progress', 'result']
     }
