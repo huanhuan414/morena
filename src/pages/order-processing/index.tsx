@@ -207,14 +207,14 @@ export default function OrderProcessingPage() {
       <View className="status-icon queuing">
         <Clock size={48} color="#f59e0b" />
       </View>
-      <Text className="status-title">排队中</Text>
-      <Text className="status-desc">
+      <Text className="status-title block">排队中</Text>
+      <Text className="status-desc block">
         当前有 {processingData?.queuePosition || 0} 个任务在队列中
       </Text>
       {processingData?.estimatedTime && (
         <View className="time-estimate">
-          <Text className="time-label">预计等待时间</Text>
-          <Text className="time-value">{processingData.estimatedTime}秒</Text>
+          <Text className="time-label block">预计等待时间</Text>
+          <Text className="time-value block">{processingData.estimatedTime}秒</Text>
         </View>
       )}
       <View className="progress-wrapper">
@@ -227,7 +227,7 @@ export default function OrderProcessingPage() {
             }}
           />
         </View>
-        <Text className="progress-text">0%</Text>
+        <Text className="progress-text block">0%</Text>
       </View>
       <Loader size={24} color="#f59e0b" className="loading-spinner" />
     </View>
@@ -238,8 +238,8 @@ export default function OrderProcessingPage() {
       <View className="status-icon generating">
         <Sparkles size={48} color="#3b82f6" />
       </View>
-      <Text className="status-title">生成内容中</Text>
-      <Text className="status-desc">
+      <Text className="status-title block">生成内容中</Text>
+      <Text className="status-desc block">
         AI 正在为您生成优质内容，请稍候...
       </Text>
       <View className="progress-wrapper">
@@ -257,49 +257,57 @@ export default function OrderProcessingPage() {
     </View>
   )
 
-  const renderPreviewState = () => (
-    <View className="preview-section">
-      <View className="preview-header">
-        <Text className="preview-title">内容预览</Text>
-        <Text className="preview-subtitle">请确认下方内容，如需修改可编辑后提交</Text>
-      </View>
+  const renderPreviewState = () => {
+    console.log('[OrderProcessing] renderPreviewState 被调用', {
+      hasUserContent: !!userContent,
+      hasGeneratedContent: !!processingData?.generatedContent?.content,
+      contentLength: processingData?.generatedContent?.content?.length
+    })
 
-      <View className="content-editor">
-        <Textarea
-          className="content-textarea"
-          placeholder="生成的内容将在这里显示"
-          value={userContent || processingData?.generatedContent?.content || ''}
-          onInput={(e) => setUserContent(e.detail.value)}
-          maxlength={2000}
-        />
-      </View>
+    return (
+      <View className="preview-section">
+        <View className="preview-header">
+          <Text className="preview-title block">内容预览</Text>
+          <Text className="preview-subtitle block">请确认下方内容，如需修改可编辑后提交</Text>
+        </View>
 
-      <View className="preview-actions">
-        <Button
-          className="action-btn confirm-btn"
-          onClick={handleConfirmContent}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <Text className="btn-text">提交中...</Text>
-          ) : (
-            <>
-              <Check size={20} color="#fff" />
-              <Text className="btn-text">确认并发布</Text>
-            </>
-          )}
-        </Button>
+        <View className="content-editor">
+          <Textarea
+            className="content-textarea"
+            placeholder="生成的内容将在这里显示"
+            value={userContent || processingData?.generatedContent?.content || ''}
+            onInput={(e) => setUserContent(e.detail.value)}
+            maxlength={2000}
+          />
+        </View>
+
+        <View className="preview-actions">
+          <Button
+            className="action-btn confirm-btn"
+            onClick={handleConfirmContent}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <Text className="btn-text block">提交中...</Text>
+            ) : (
+              <>
+                <Check size={20} color="#fff" />
+                <Text className="btn-text block">确认并发布</Text>
+              </>
+            )}
+          </Button>
+        </View>
       </View>
-    </View>
-  )
+    )
+  }
 
   const renderPublishingState = () => (
     <View className="status-card">
       <View className="status-icon publishing">
         <Zap size={48} color="#10b981" />
       </View>
-      <Text className="status-title">发布中</Text>
-      <Text className="status-desc">
+      <Text className="status-title block">发布中</Text>
+      <Text className="status-desc block">
         正在发布到 {PLATFORM_NAMES[processingData?.generatedContent?.platform || '目标平台']}...
       </Text>
       <View className="progress-wrapper">
@@ -322,12 +330,12 @@ export default function OrderProcessingPage() {
       <View className="status-icon success">
         <Check size={48} color="#22c55e" />
       </View>
-      <Text className="status-title">发布成功</Text>
+      <Text className="status-title block">发布成功</Text>
       {processingData?.publishStatus?.message && (
-        <Text className="status-desc">{processingData.publishStatus.message}</Text>
+        <Text className="status-desc block">{processingData.publishStatus.message}</Text>
       )}
       <Button className="action-btn" onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })}>
-        <Text className="btn-text">查看订单详情</Text>
+        <Text className="btn-text block">查看订单详情</Text>
       </Button>
     </View>
   )
@@ -337,12 +345,12 @@ export default function OrderProcessingPage() {
       <View className="status-icon error">
         <X size={48} color="#ef4444" />
       </View>
-      <Text className="status-title">处理失败</Text>
-      <Text className="status-desc">
+      <Text className="status-title block">处理失败</Text>
+      <Text className="status-desc block">
         内容生成或发布失败，请稍后重试
       </Text>
       <Button className="action-btn" onClick={() => navigateBack()}>
-        <Text className="btn-text">返回</Text>
+        <Text className="btn-text block">返回</Text>
       </Button>
     </View>
   )
@@ -352,8 +360,8 @@ export default function OrderProcessingPage() {
       <View className="status-icon error">
         <X size={48} color="#ef4444" />
       </View>
-      <Text className="status-title">获取状态失败</Text>
-      <Text className="status-desc">
+      <Text className="status-title block">获取状态失败</Text>
+      <Text className="status-desc block">
         无法获取订单处理状态，请刷新页面重试
       </Text>
       <Button
@@ -433,34 +441,44 @@ export default function OrderProcessingPage() {
           {/* 如果没有错误或错误次数不足5次，显示正常状态 */}
           {(!processingData || (processingData as any)?.errorCount < 5) && (
             <>
+              {console.log('[OrderProcessing] 渲染状态:', {
+                hasProcessingData: !!processingData,
+                status: processingData?.status,
+                isQueuing: processingData?.status === 'queuing',
+                isGenerating: processingData?.status === 'generating',
+                isPreview: processingData?.status === 'preview',
+                isPublishing: processingData?.status === 'publishing',
+                isCompleted: processingData?.status === 'completed',
+                isFailed: processingData?.status === 'failed'
+              })}
               {processingData?.status === 'queuing' && renderQueuingState()}
               {processingData?.status === 'generating' && renderGeneratingState()}
               {processingData?.status === 'preview' && renderPreviewState()}
               {processingData?.status === 'publishing' && renderPublishingState()}
               {processingData?.status === 'completed' && renderCompletedState()}
               {processingData?.status === 'failed' && renderFailedState()}
-              
+
               {/* 如果有processingData但没有匹配的状态，显示默认状态 */}
-              {processingData && 
+              {processingData &&
                !['queuing', 'generating', 'preview', 'publishing', 'completed', 'failed'].includes(processingData.status) && (
                 <View className="status-card">
                   <View className="status-icon">
                     <Clock size={48} color="#6366f1" />
                   </View>
-                  <Text className="status-title">等待处理</Text>
-                  <Text className="status-desc">
+                  <Text className="status-title block">等待处理</Text>
+                  <Text className="status-desc block">
                     当前状态：{processingData.status}
                   </Text>
                   <View className="progress-wrapper">
                     <View className="progress-bar">
-                      <View 
-                        className="progress-fill animated" 
-                        style={{ 
+                      <View
+                        className="progress-fill animated"
+                        style={{
                           background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)'
                         }}
                       />
                     </View>
-                    <Text className="progress-text">处理中...</Text>
+                    <Text className="progress-text block">处理中...</Text>
                   </View>
                   <Loader size={24} color="#6366f1" className="loading-spinner" />
                 </View>
