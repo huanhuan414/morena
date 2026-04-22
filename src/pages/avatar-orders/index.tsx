@@ -6,12 +6,14 @@ import * as Network from '@/network'
 import { Bell, Check, Clock, ChevronRight, ArrowLeft, Loader, Sparkles } from 'lucide-react-taro'
 import './index.css'
 
-// 订单状态配置
+// 订单状态配置（使用 order_dispatch_requests 表中的实际状态值）
 const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  open: { label: '待接单', color: '#f59e0b' },
-  in_progress: { label: '进行中', color: '#3b82f6' },
-  pending_review: { label: '待验收', color: '#8b5cf6' },
+  accepted: { label: '制作中', color: '#3b82f6' },
+  generating: { label: '生成中', color: '#8b5cf6' },
+  preview: { label: '预览中', color: '#f59e0b' },
+  publishing: { label: '发布中', color: '#06b6d4' },
   completed: { label: '已完成', color: '#22c55e' },
+  published: { label: '已发布', color: '#10b981' },
   cancelled: { label: '已取消', color: '#ef4444' }
 }
 
@@ -236,10 +238,10 @@ export default function AvatarOrdersPage() {
                       <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
                       <View
                         className="order-status"
-                        style={{ color: ORDER_STATUS_CONFIG[item.orders?.status]?.color || '#666' }}
+                        style={{ color: ORDER_STATUS_CONFIG[item.status]?.color || '#666' }}
                       >
                         <Text className="order-status-text">
-                          {ORDER_STATUS_CONFIG[item.orders?.status]?.label || '未知状态'}
+                          {ORDER_STATUS_CONFIG[item.status]?.label || '未知状态'}
                         </Text>
                       </View>
                     </View>
@@ -280,10 +282,10 @@ export default function AvatarOrdersPage() {
                       <Text className="order-budget">¥{item.orders?.budget || 0}</Text>
                       <View
                         className="order-status"
-                        style={{ color: ORDER_STATUS_CONFIG[item.orders?.status]?.color || '#666' }}
+                        style={{ color: ORDER_STATUS_CONFIG[item.status]?.color || '#22c55e' }}
                       >
                         <Text className="order-status-text">
-                          {ORDER_STATUS_CONFIG[item.orders?.status]?.label || '已完成'}
+                          {ORDER_STATUS_CONFIG[item.status]?.label || '已完成'}
                         </Text>
                       </View>
                     </View>
