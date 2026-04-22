@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
+import { AvatarAgentService } from '../avatar-agent/avatar-agent.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface ProcessingStatus {
@@ -215,7 +216,8 @@ export class OrderProcessingService {
   private llmClient: LLMClient
 
   constructor(
-    private readonly contentGenerationService: ContentGenerationService
+    private readonly contentGenerationService: ContentGenerationService,
+    private readonly avatarAgentService: AvatarAgentService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -410,7 +412,7 @@ export class OrderProcessingService {
           if (hasPublishSkill) {
             // 公众号：分身有发布技能，尝试自动发布
             console.log('[OrderProcessing] 分身有公众号发布技能，尝试自动发布')
-            await this.autoPublish(platform, order, finalContent)
+            await this.autoPublish(platform, order, finalContent, request.avatar_id)
             publishResults.push({
               platform,
               status: 'success',
@@ -445,7 +447,7 @@ export class OrderProcessingService {
           if (hasPublishSkill) {
             // 自动发布
             console.log('[OrderProcessing] 分身有发布技能，尝试自动发布')
-            await this.autoPublish(platform, order, finalContent)
+            await this.autoPublish(platform, order, finalContent, request.avatar_id)
             publishResults.push({
               platform,
               status: 'success',
@@ -685,25 +687,79 @@ export class OrderProcessingService {
   }
 
   /**
-   * 自动发布
+   * 自动发布（调用分身技能）
    */
-  private async autoPublish(platform: string, order: any, content: string) {
-    console.log('[OrderProcessing] 自动发布（调用分身技能）:', {
+  private async autoPublish(platform: string, order: any, content: string, avatarId: string) {
+    console.log('[OrderProcessing] 开始自动发布（调用分身技能）:', {
       platform,
       orderId: order.id,
       title: order.title,
-      contentLength: content.length
+      contentLength: content.length,
+      avatarId
     })
 
-    // TODO: 实现真实的技能调用
-    // 目前先记录日志，后续需要通过 AvatarAgentService 调用分身的发布技能
-    console.log('[OrderProcessing] 分身发布技能调用待实现')
-    console.log('[OrderProcessing] 发布内容预览:', content.substring(0, 200) + (content.length > 200 ? '...' : ''))
+    try {
+      // 根据平台映射到对应的工具名称
+      const toolMap: Record<string, string> = {
+        'wechat_mp': 'publish_wechat_mp',
+        'xiaohongshu': 'publish_xiaohongshu',
+        'douyin': 'publish_douyin',
+        'weibo': 'publish_weibo',
+        'bilibili': 'publish_bilibili',
+        'wechat_video': 'publish_wechat_video'
+      }
 
-    // 暂时只记录日志，不做实际的发布
-    // 实际实现需要：
-    // 1. 通过 AvatarAgentService 调用分身的发布技能
-    // 2. 传递必要参数：platform, content, order 等
-    // 3. 获取发布结果并返回
+      const toolName = toolMap[platform]
+
+      if (!toolName) {
+        console.error('[OrderProcessing] 不支持的平台:', platform)
+        throw new Error(`不支持的平台: ${platform}`)
+      }
+
+      console.log('[OrderProcessing] 调用分身发布工具:', { toolName, avatarId })
+
+      // 构建完整的参数
+      const publishParams = {
+        content,
+        title: order.title,
+        orderId: order.id,
+        platform
+      }
+
+      // 创建 thought 内容
+      const thoughtContent = `发布内容到${platform}，标题：${order.title}，内容长度：${content.length}字`
+
+      // 创建 AvatarThought 对象（根据类型定义）
+      const thought = {
+        id: `publish_${order.id}_${Date.now()}`,
+        avatarId,
+        content: thoughtContent,
+        reasoning: `根据订单要求，将发布内容到${platform}平台`,
+        intent: {
+          type: 'publish',
+          toolName,
+          params: publishParams,
+          confidence: 0.9
+        },
+        requiresTool: true,
+        createdAt: new Date().toISOString()
+      }
+
+      // 调用分身的发布工具
+      const result = await this.avatarAgentService.act(avatarId, thought)
+
+      console.log('[OrderProcessing] 发布工具执行结果:', result)
+
+      if (result.success) {
+        console.log('[OrderProcessing] 发布成功')
+        return result
+      } else {
+        console.error('[OrderProcessing] 发布失败:', result.error)
+        throw new Error(result.error || '发布失败')
+      }
+    } catch (error) {
+      console.error('[OrderProcessing] 自动发布异常:', error)
+      throw error
+    }
   }
 }
