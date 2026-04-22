@@ -216,11 +216,11 @@ export class GenerateVideoTool implements AvatarTool {
 
   constructor() {
     this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
       accessKey: process.env.VOLC_ACCESS_KEY || '',
       secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
-      region: 'cn-beijing',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
+      region: 'cn-guangzhou',
     })
   }
 
@@ -348,7 +348,7 @@ export class GenerateVideoTool implements AvatarTool {
       }
 
       let finalVideoUrl = videoUrl
-      if (!videoUrl.includes('tos-cn-beijing')) {
+      if (!videoUrl.includes('tos-cn-guangzhou')) {
         try {
           const response = await fetch(videoUrl)
           const buffer = Buffer.from(await response.arrayBuffer())

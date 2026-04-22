@@ -15,11 +15,11 @@ export class GenerateImageTool implements ITool {
   constructor() {
     // 初始化火山引擎CDN存储
     this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
       accessKey: process.env.VOLC_ACCESS_KEY || '',
       secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
-      region: 'cn-beijing',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
+      region: 'cn-guangzhou',
     })
   }
 

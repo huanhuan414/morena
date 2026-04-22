@@ -59,11 +59,11 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     this.llmClient = new LLMClient(config)
     this.searchClient = new SearchClient(config)
     this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
       accessKey: process.env.VOLC_ACCESS_KEY || '',
       secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
-      region: 'cn-beijing',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
+      region: 'cn-guangzhou',
     })
 
     // 将 LLM 客户端传递给交友服务
@@ -1326,7 +1326,7 @@ ${friendMessageContents}
         if (imageUrls.length > 0) {
           console.log('[托管服务] 配图生成成功:', imageUrls[0])
           // 确认URL来自TOS CDN
-          if (imageUrls[0].includes('tos-cn-beijing')) {
+          if (imageUrls[0].includes('tos-cn-guangzhou')) {
             return imageUrls[0] // 直接返回TOS CDN URL
           } else {
             // 需要上传到CDN

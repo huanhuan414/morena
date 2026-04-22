@@ -931,7 +931,7 @@ export class GenerateImageTool implements ITool {
 
       // 确认URL已来自TOS CDN
       console.log('Agent工具 - 图片生成成功，CDN URL:', imageUrls[0])
-      console.log('Agent工具 - URL来源:', imageUrls[0].includes('tos-cn-beijing') ? '火山引擎TOS CDN' : '未知')
+      console.log('Agent工具 - URL来源:', imageUrls[0].includes('tos-cn-guangzhou') ? '火山引擎TOS CDN' : '未知')
 
       return {
         success: true,
@@ -995,11 +995,11 @@ export class GenerateVideoTool implements ITool {
   constructor() {
     // 初始化火山引擎 TOS 存储
     this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-beijing.volces.com',
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
       accessKey: process.env.VOLC_ACCESS_KEY || '',
       secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morina-ai',
-      region: 'cn-beijing',
+      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
+      region: 'cn-guangzhou',
     })
   }
 
@@ -1166,13 +1166,13 @@ export class GenerateVideoTool implements ITool {
 
       // 确认URL已来自TOS CDN
       console.log('Agent工具 - 视频生成成功，原始URL:', videoUrl)
-      console.log('Agent工具 - URL来源:', videoUrl.includes('tos-cn-beijing') ? '火山引擎TOS CDN' : '需要上传到CDN')
+      console.log('Agent工具 - URL来源:', videoUrl.includes('tos-cn-guangzhou') ? '火山引擎TOS CDN' : '需要上传到CDN')
 
       // 如果返回的URL不是TOS CDN，则上传到TOS
       let finalVideoUrl = videoUrl
       let videoKey: string | undefined // 🔴 声明变量
 
-      if (!videoUrl.includes('tos-cn-beijing')) {
+      if (!videoUrl.includes('tos-cn-guangzhou')) {
         console.log('Agent工具 - 视频需要上传到火山引擎CDN...')
         try {
           const response = await fetch(videoUrl)
