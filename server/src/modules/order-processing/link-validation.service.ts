@@ -141,7 +141,7 @@ export class LinkValidationService {
       this.logger.log(`[LinkValidation] 验证抖音链接: ${url}`)
 
       const response = await this.tikHubService.callTikHubAPI(
-        '/api/v1/douyin/app/v3/fetch_one_video_by_share_url',
+        '/douyin/app/v3/fetch_one_video_by_share_url',
         { share_url: url }
       )
 
@@ -187,7 +187,7 @@ export class LinkValidationService {
       // 小红书笔记信息获取接口
       // 根据TikHub文档，使用app端接口获取笔记详情
       const response = await this.tikHubService.callTikHubAPI(
-        '/api/v1/xiaohongshu/app/fetch_one_note_by_url',
+        '/xiaohongshu/app/fetch_one_note_by_url',
         { url }
       )
 
@@ -235,7 +235,7 @@ export class LinkValidationService {
       this.logger.log(`[LinkValidation] 验证微信公众号链接: ${url}`)
 
       const response = await this.tikHubService.callTikHubAPI(
-        '/api/v1/wechat_mp/web/fetch_mp_article_detail_html',
+        '/wechat_mp/web/fetch_mp_article_detail_html',
         { url }
       )
 
