@@ -271,48 +271,34 @@ export default function OrderListPage() {
           )}
         </View>
         
-        {/* 统计卡片 */}
-        {mode !== 'avatar' && (
-          <View className="stats-row">
-            <View className="stat-item" onClick={() => setActiveTab('open')}>
-              <Text className="stat-num" style={{ color: '#f59e0b' }}>{stats.open}</Text>
-              <Text className="stat-label">待接单</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item" onClick={() => setActiveTab('in_progress')}>
-              <Text className="stat-num" style={{ color: '#3b82f6' }}>{stats.inProgress}</Text>
-              <Text className="stat-label">进行中</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item" onClick={() => setActiveTab('reviewing')}>
-              <Text className="stat-num" style={{ color: '#8b5cf6' }}>{stats.reviewing}</Text>
-              <Text className="stat-label">待验收</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item" onClick={() => setActiveTab('completed')}>
-              <Text className="stat-num" style={{ color: '#22c55e' }}>{stats.completed}</Text>
-              <Text className="stat-label">已完成</Text>
-            </View>
-          </View>
-        )}
-        
         {/* Tab切换 */}
         <View className="tab-bar">
           {TABS.map(tab => (
-            <View 
+            <View
               key={tab.key}
               className={`tab-item ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
             >
               <Text className="tab-text">{tab.label}</Text>
+              {/* 显示数量徽章 */}
               {tab.key === 'open' && stats.open > 0 && (
-                <View className="tab-badge">
+                <View className="tab-badge open">
                   <Text className="tab-badge-text">{stats.open}</Text>
                 </View>
               )}
+              {tab.key === 'in_progress' && stats.inProgress > 0 && (
+                <View className="tab-badge in-progress">
+                  <Text className="tab-badge-text">{stats.inProgress}</Text>
+                </View>
+              )}
               {tab.key === 'reviewing' && stats.reviewing > 0 && (
-                <View className="tab-badge" style={{ background: '#8b5cf6' }}>
+                <View className="tab-badge reviewing">
                   <Text className="tab-badge-text">{stats.reviewing}</Text>
+                </View>
+              )}
+              {tab.key === 'completed' && stats.completed > 0 && (
+                <View className="tab-badge completed">
+                  <Text className="tab-badge-text">{stats.completed}</Text>
                 </View>
               )}
             </View>
