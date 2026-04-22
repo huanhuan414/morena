@@ -221,6 +221,41 @@
   overflow-y: auto;
 }
 
+/* 调试信息 */
+.debug-section {
+  margin: 32rpx;
+  padding: 32rpx;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 24rpx;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.debug-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #8b5cf6;
+  margin-bottom: 20rpx;
+}
+
+.debug-item {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  margin-bottom: 12rpx;
+  line-height: 1.5;
+}
+
+.debug-item:last-child {
+  margin-bottom: 0;
+}
+
+.debug-orders {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+}
+
 /* 状态区块 - 明亮模式 */
 .status-section.premium {
   margin: 32rpx;

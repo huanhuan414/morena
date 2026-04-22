@@ -298,6 +298,25 @@ export default function AvatarOrdersPage() {
         </View>
       </View>
 
+      {/* 调试信息 */}
+      <View className="debug-section">
+        <Text className="debug-title">数据调试</Text>
+        <Text className="debug-item">总订单: {allOrders.length}</Text>
+        <Text className="debug-item">待接单: {pendingOrders.length}</Text>
+        <Text className="debug-item">分身ID: {avatarId}</Text>
+        <Text className="debug-item">分身名: {avatarInfo?.name || '未知'}</Text>
+        {allOrders.length > 0 && (
+          <View className="debug-orders">
+            <Text className="debug-item">订单状态分布:</Text>
+            {Object.entries(ordersByStatus).map(([status, orders]: [string, any[]]) => (
+              <Text key={status} className="debug-item">
+                {status}: {orders.length}个
+              </Text>
+            ))}
+          </View>
+        )}
+      </View>
+
       <ScrollView scrollY className="scroll-container" style={{ height: '100%' }}>
         {/* 待接单订单 - 高级卡片 */}
         {pendingOrders.length > 0 && (
@@ -337,9 +356,19 @@ export default function AvatarOrdersPage() {
                     <View className="info-row">
                       <Text className="info-label">平台</Text>
                       <Text className="info-value">
-                        {request.orders?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '全平台'}
+                        {request.orders?.platforms && request.orders.platforms.length > 0
+                          ? request.orders.platforms.map((p: string) => PLATFORM_NAMES[p] || p).join('、')
+                          : '全平台'}
                       </Text>
                     </View>
+                    {request.orders?.deadline && (
+                      <View className="info-row">
+                        <Text className="info-label">截止</Text>
+                        <Text className="info-value">
+                          {new Date(request.orders.deadline).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View className="order-card-footer">

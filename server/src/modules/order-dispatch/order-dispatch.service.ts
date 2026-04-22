@@ -1669,7 +1669,7 @@ export class OrderDispatchService {
           // 查询订单信息
           const { data: order, error: orderError } = await client
             .from('orders')
-            .select('id, title, description, budget, status, created_at')
+            .select('id, title, description, budget, status, platforms, deadline, created_at')
             .eq('id', request.order_id)
             .single()
 
@@ -1682,6 +1682,8 @@ export class OrderDispatchService {
               description: '',
               budget: 0,
               status: 'unknown',
+              platforms: [],
+              deadline: null,
               created_at: request.created_at
             }
           }
