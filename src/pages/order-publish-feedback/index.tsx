@@ -332,9 +332,9 @@ export default function OrderPublishFeedback() {
                     </View>
                   ) : (
                     <View className="p-3">
-                      <Text className="block text-gray-700 text-sm line-clamp-3">
-                        {generatedContent.content}
-                      </Text>
+                      <View className="markdown-content-collapsed overflow-hidden">
+                        <MarkdownRender content={generatedContent.content} />
+                      </View>
                       <View className="mt-2 pt-2 border-t border-gray-200">
                         <Text className="block text-xs text-gray-500 text-center">
                           点击展开查看完整内容
