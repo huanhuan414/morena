@@ -411,8 +411,31 @@ export default function OrderDetailPage() {
     )
   }
 
-  const statusConfig = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
+  // 获取当前显示的状态（优先使用分配请求状态，如果有的话）
+  const displayStatus = order.dispatch_request_status || order.status
+  const statusConfig = STATUS_CONFIG[displayStatus as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
   const content = order.result?.content || order.generated_content || order.confirmed_content
+
+  // 根据订单状态确定可用的Tab
+  const getAvailableTabs = (): Array<'detail' | 'progress' | 'result'> => {
+    if (displayStatus === 'open' || displayStatus === 'cancelled') {
+      return ['detail']
+    }
+    if (displayStatus === 'in_progress') {
+      return ['detail', 'progress']
+    }
+    if (displayStatus === 'reviewing' || displayStatus === 'completed') {
+      return ['detail', 'progress', 'result']
+    }
+    return ['detail']
+  }
+
+  const availableTabs = getAvailableTabs()
+
+  // 如果当前Tab不在可用列表中，切换到第一个可用的Tab
+  if (!availableTabs.includes(activeTab)) {
+    setActiveTab(availableTabs[0])
+  }
 
   return (
     <View className="order-detail-page">
@@ -479,23 +502,25 @@ export default function OrderDetailPage() {
         </View>
       </View>
 
-      {/* Tab切换 */}
-      <View className="tab-bar">
-        {['detail', 'progress', 'result'].map((tab) => (
-          <View
-            key={tab}
-            className={`tab-item ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab as any)}
-          >
-            <Text className="tab-text">
-              {tab === 'detail' && '订单详情'}
-              {tab === 'progress' && '执行进度'}
-              {tab === 'result' && '成果展示'}
-            </Text>
-            {activeTab === tab && <View className="tab-indicator"></View>}
-          </View>
-        ))}
-      </View>
+      {/* Tab切换 - 根据状态动态显示 */}
+      {availableTabs.length > 1 && (
+        <View className="tab-bar">
+          {availableTabs.map((tab) => (
+            <View
+              key={tab}
+              className={`tab-item ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab as any)}
+            >
+              <Text className="tab-text">
+                {tab === 'detail' && '订单详情'}
+                {tab === 'progress' && '执行进度'}
+                {tab === 'result' && '成果展示'}
+              </Text>
+              {activeTab === tab && <View className="tab-indicator"></View>}
+            </View>
+          ))}
+        </View>
+      )}
 
       <ScrollView className="content-scroll" scrollY>
         {/* 订单详情 */}
@@ -604,9 +629,10 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 操作按钮 */}
+            {/* 操作按钮 - 根据状态动态显示 */}
             <View className="action-buttons">
-              {order.status === 'open' && !order.avatars && (
+              {/* 待接单状态 */}
+              {displayStatus === 'open' && !order.avatars && (
                 <>
                   <Button onClick={handleRetryDispatch} className="primary-action-btn">
                     <Sparkles size={18} color="#fff" />
@@ -618,7 +644,17 @@ export default function OrderDetailPage() {
                 </>
               )}
 
-              {order.status === 'reviewing' && (
+              {/* 进行中状态 */}
+              {displayStatus === 'in_progress' && (
+                <>
+                  <Button variant="outline" onClick={handleCancel} className="secondary-action-btn">
+                    <Text style={{ color: '#ef4444' }}>取消订单</Text>
+                  </Button>
+                </>
+              )}
+
+              {/* 待验收状态 */}
+              {displayStatus === 'reviewing' && (
                 <>
                   <Button onClick={() => setShowRating(true)} className="primary-action-btn">
                     <Check size={18} color="#fff" />
@@ -629,6 +665,25 @@ export default function OrderDetailPage() {
                     <Text>驳回修改</Text>
                   </Button>
                 </>
+              )}
+
+              {/* 已完成状态 */}
+              {displayStatus === 'completed' && order.rating && (
+                <View className="rating-display">
+                  <Text className="rating-label block">已评价</Text>
+                  <View className="rating-stars-display">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <Star
+                        key={star}
+                        size={16}
+                        color={star <= order.rating!.score ? '#eab308' : 'rgba(255,255,255,0.2)'}
+                      />
+                    ))}
+                  </View>
+                  {order.rating.comment && (
+                    <Text className="rating-comment block">{order.rating.comment}</Text>
+                  )}
+                </View>
               )}
             </View>
           </View>
