@@ -51,6 +51,7 @@ export default function OrderProcessingPage() {
   const [userContent, setUserContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null)
 
   useLoad(() => {
     if (requestId && avatarId && orderId) {
@@ -71,13 +72,14 @@ export default function OrderProcessingPage() {
   }, [pollInterval])
 
   const startPolling = () => {
+    console.log('[OrderProcessing] 开始轮询状态')
     // 初始获取处理状态
     fetchProcessingStatus()
 
-    // 每2秒轮询一次状态
+    // 每1秒轮询一次状态（从2秒改为1秒，更实时）
     const interval = setInterval(() => {
       fetchProcessingStatus()
-    }, 2000)
+    }, 1000)
 
     setPollInterval(interval)
   }
@@ -108,7 +110,17 @@ export default function OrderProcessingPage() {
 
       if (res.data?.code === 200) {
         const data = res.data.data as OrderProcessingData
+        
+        // 状态变化时记录日志
+        if (processingData?.status && processingData.status !== data.status) {
+          console.log('[OrderProcessing] 状态变化:', {
+            from: processingData.status,
+            to: data.status
+          })
+        }
+        
         setProcessingData(data)
+        setLastUpdateTime(new Date())  // 更新最后更新时间
 
         // 如果生成完成，停止轮询
         if (data.status === 'preview' || data.status === 'completed' || data.status === 'failed') {
@@ -116,10 +128,10 @@ export default function OrderProcessingPage() {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
+          console.log('[OrderProcessing] 状态轮询停止，当前状态:', data.status)
         }
       } else {
         console.error('[OrderProcessing] 获取状态失败:', res.data?.message)
-        // 如果连续失败多次，停止轮询
         const errorCount = (processingData as any)?.errorCount || 0
         if (errorCount >= 5) {
           if (pollInterval) {
@@ -132,7 +144,6 @@ export default function OrderProcessingPage() {
       }
     } catch (error) {
       console.error('[OrderProcessing] 请求异常:', error)
-      // 如果连续失败多次，停止轮询
       const errorCount = (processingData as any)?.errorCount || 0
       if (errorCount >= 5) {
         if (pollInterval) {
@@ -213,6 +224,18 @@ export default function OrderProcessingPage() {
           <Text className="time-value">{processingData.estimatedTime}秒</Text>
         </View>
       )}
+      <View className="progress-wrapper">
+        <View className="progress-bar queuing">
+          <View 
+            className="progress-fill" 
+            style={{ 
+              width: '0%',
+              background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text">0%</Text>
+      </View>
       <Loader size={24} color="#f59e0b" className="loading-spinner" />
     </View>
   )
@@ -226,6 +249,17 @@ export default function OrderProcessingPage() {
       <Text className="status-desc">
         AI 正在为您生成优质内容，请稍候...
       </Text>
+      <View className="progress-wrapper">
+        <View className="progress-bar generating">
+          <View 
+            className="progress-fill animated" 
+            style={{ 
+              background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text">生成中...</Text>
+      </View>
       <Loader size={24} color="#3b82f6" className="loading-spinner" />
     </View>
   )
@@ -275,6 +309,17 @@ export default function OrderProcessingPage() {
       <Text className="status-desc">
         正在发布到 {PLATFORM_NAMES[processingData?.generatedContent?.platform || '目标平台']}...
       </Text>
+      <View className="progress-wrapper">
+        <View className="progress-bar publishing">
+          <View 
+            className="progress-fill animated" 
+            style={{ 
+              background: 'linear-gradient(90deg, #10b981 0%, #22c55e 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text">发布中...</Text>
+      </View>
       <Loader size={24} color="#10b981" className="loading-spinner" />
     </View>
   )
@@ -388,6 +433,15 @@ export default function OrderProcessingPage() {
 
         {/* 状态展示 */}
         <View className="status-section">
+          {/* 显示最后更新时间 */}
+          {lastUpdateTime && (
+            <View className="last-update-time">
+              <Text className="update-time-text">
+                最后更新: {lastUpdateTime.toLocaleTimeString()}
+              </Text>
+            </View>
+          )}
+          
           {/* 如果有多次错误，显示错误状态 */}
           {(processingData as any)?.errorCount >= 5 && renderErrorState()}
           
@@ -412,6 +466,17 @@ export default function OrderProcessingPage() {
                   <Text className="status-desc">
                     当前状态：{processingData.status}
                   </Text>
+                  <View className="progress-wrapper">
+                    <View className="progress-bar">
+                      <View 
+                        className="progress-fill animated" 
+                        style={{ 
+                          background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)'
+                        }}
+                      />
+                    </View>
+                    <Text className="progress-text">处理中...</Text>
+                  </View>
                   <Loader size={24} color="#6366f1" className="loading-spinner" />
                 </View>
               )}
