@@ -34,7 +34,9 @@ export default function OrderContentCreationPage() {
   const { requestId, avatarId, orderId } = router.params
 
   const [loading, setLoading] = useState(true)
+  const [processingStatus, setProcessingStatus] = useState<string>('')
   const [contentData, setContentData] = useState<ContentData | null>(null)
+  const [errorCount, setErrorCount] = useState(0)
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
   const [editedContent, setEditedContent] = useState('')
   const [isEditing, setIsEditing] = useState(false)
@@ -78,14 +80,17 @@ export default function OrderContentCreationPage() {
       if (res.data?.code === 200 && res.data.data) {
         const data = res.data.data as any
 
+        // 更新处理状态
+        setProcessingStatus(data.status || '')
+
         if (loading) {
-          console.log('[OrderContentCreation] 首次获取状态成功')
+          console.log('[OrderContentCreation] 首次获取状态成功，状态:', data.status)
           setLoading(false)
         }
 
-        // 只在状态为 completed 时才展示内容
-        // preview 状态表示内容还在生成中，不展示订单需求
-        if (data.status === 'completed' && data.generatedContent) {
+        // 在 preview 或 completed 状态时展示内容
+        // 其他状态（generating, queuing 等）显示加载动画
+        if ((data.status === 'preview' || data.status === 'completed') && data.generatedContent) {
           setContentData(data.generatedContent)
           setEditedContent(data.generatedContent.content || '')
           console.log('[OrderContentCreation] 内容已制作完成，停止轮询')
@@ -94,12 +99,12 @@ export default function OrderContentCreationPage() {
             setPollInterval(null)
           }
         } else {
-          // 其他状态（preview, generating, queuing 等）保持加载状态
+          // 其他状态（generating, queuing 等）显示加载动画
           console.log('[OrderContentCreation] 内容制作中，当前状态:', data.status)
         }
       } else {
         console.error('[OrderContentCreation] 获取状态失败:', res.data?.message)
-        const errorCount = (contentData as any)?.errorCount || 0
+        if (loading) setLoading(false)
         if (errorCount >= 5) {
           if (pollInterval) {
             clearInterval(pollInterval)
@@ -107,12 +112,11 @@ export default function OrderContentCreationPage() {
           }
           showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
         }
-        if (loading) setLoading(false)
-        setContentData({ ...(contentData as any), errorCount: errorCount + 1 } as any)
+        setErrorCount(errorCount + 1)
       }
     } catch (error) {
       console.error('[OrderContentCreation] 请求异常:', error)
-      const errorCount = (contentData as any)?.errorCount || 0
+      if (loading) setLoading(false)
       if (errorCount >= 5) {
         if (pollInterval) {
           clearInterval(pollInterval)
@@ -120,8 +124,7 @@ export default function OrderContentCreationPage() {
         }
         showToast({ title: '网络异常，请刷新页面', icon: 'none' })
       }
-      if (loading) setLoading(false)
-      setContentData({ ...(contentData as any), errorCount: errorCount + 1 } as any)
+      setErrorCount(errorCount + 1)
     }
   }
 
@@ -212,13 +215,15 @@ export default function OrderContentCreationPage() {
           </View>
         )}
 
-        {!loading && contentData && (!contentData.content || contentData.content.length === 0) && (
+        {!loading && (!contentData || !contentData.content || contentData.content.length === 0) && (
           <View className="loading-container">
             <View className="loading-icon">
               <Sparkles size={56} color="#1890ff" />
             </View>
             <Text className="loading-title block">AI正在制作内容</Text>
-            <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
+            <Text className="loading-desc block">
+              {processingStatus === 'generating' ? '内容正在生成中...' : processingStatus === 'preview' ? '内容准备就绪...' : processingStatus === 'queuing' ? '排队中...' : '正在为您的订单生成优质内容...'}
+            </Text>
             <Loader size={28} color="#1890ff" className="loading-spinner" />
           </View>
         )}
