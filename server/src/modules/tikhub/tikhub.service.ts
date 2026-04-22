@@ -21,6 +21,41 @@ export class TikHubService {
   }
 
   /**
+   * 通用 TikHub API 调用方法
+   * @param endpoint API 端点（如 '/douyin/web/handler_user_profile_v2'）
+   * @param params 查询参数
+   * @param method HTTP 方法（默认 GET）
+   * @returns API 响应数据
+   */
+  async callTikHubAPI(endpoint: string, params: any = {}, method: 'GET' | 'POST' = 'GET') {
+    try {
+      console.log(`[TikHubService] 调用 TikHub API: ${endpoint}`, params)
+      console.log('[TikHubService] API Key 是否存在:', !!this.apiKey)
+
+      if (!this.apiKey) {
+        throw new Error('TikHub API Key 未配置')
+      }
+
+      let response
+      if (method === 'GET') {
+        response = await this.axios.get(endpoint, { params })
+      } else {
+        response = await this.axios.post(endpoint, params)
+      }
+
+      console.log(`[TikHubService] TikHub API 响应状态:`, response.status)
+      console.log(`[TikHubService] TikHub API 响应数据:`, JSON.stringify(response.data, null, 2))
+
+      return response.data
+    } catch (error: any) {
+      console.error(`[TikHubService] TikHub API 调用失败 (${endpoint}):`, error)
+      console.error(`[TikHubService] 错误详情:`, error.response?.data || error.message)
+
+      throw new Error(error.response?.data?.message || error.response?.data?.detail || error.message || 'API 调用失败')
+    }
+  }
+
+  /**
    * 根据抖音号获取用户信息
    * @param douyinId 抖音号
    * @returns 用户信息

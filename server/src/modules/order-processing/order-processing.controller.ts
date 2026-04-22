@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Put, Param, Body, Headers, Query } from '@nestjs/common'
 import { OrderProcessingService, ProcessingStatus } from './order-processing.service'
+import { LinkValidationService } from './link-validation.service'
 
 @Controller('order-processing')
 export class OrderProcessingController {
   constructor(
-    private readonly processingService: OrderProcessingService
+    private readonly processingService: OrderProcessingService,
+    private readonly linkValidationService: LinkValidationService
   ) {}
 
   /**
@@ -26,6 +28,31 @@ export class OrderProcessingController {
         code: 500,
         data: null,
         message: error.message || '获取失败'
+      }
+    }
+  }
+
+  /**
+   * 验证链接并获取作品信息
+   */
+  @Post('validate-link')
+  async validateLink(@Body('url') url: string) {
+    try {
+      const result = await this.linkValidationService.validateLink(url)
+      return {
+        code: 200,
+        data: result,
+        message: result.success ? '验证成功' : '验证失败'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: {
+          success: false,
+          platform: 'unknown',
+          error: error.message || '验证失败'
+        },
+        message: error.message || '验证失败'
       }
     }
   }

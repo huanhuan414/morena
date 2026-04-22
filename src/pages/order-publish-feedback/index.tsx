@@ -30,8 +30,9 @@ export default function OrderPublishFeedback() {
   const [submitting, setSubmitting] = useState(false)
   const [publishResults, setPublishResults] = useState<any[]>([])
   const [generatedContent, setGeneratedContent] = useState<any>(null)
-  const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
+  const [feedback, setFeedback] = useState<Record<string, { image: string; link: string; linkInfo?: any }>>({})
   const [contentExpanded, setContentExpanded] = useState(false) // 内容展开状态
+  const [validatingLinks, setValidatingLinks] = useState<Record<string, boolean>>({}) // 验证中状态
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
@@ -217,6 +218,62 @@ export default function OrderPublishFeedback() {
       ...prev,
       [platform]: { ...prev[platform], link: value }
     }))
+  }
+
+  // 验证链接
+  const handleValidateLink = async (platform: string) => {
+    const link = feedback[platform]?.link
+    if (!link) {
+      Taro.showToast({
+        title: '请先输入发布链接',
+        icon: 'none'
+      })
+      return
+    }
+
+    setValidatingLinks(prev => ({ ...prev, [platform]: true }))
+
+    try {
+      const res = await Network.request({
+        url: '/api/order-processing/validate-link',
+        method: 'POST',
+        data: { url: link }
+      })
+
+      console.log('[OrderPublishFeedback] 验证链接响应:', res.data)
+
+      if (res.data?.code === 200 && res.data?.data) {
+        const result = res.data.data
+        if (result.success && result.data) {
+          setFeedback(prev => ({
+            ...prev,
+            [platform]: { ...prev[platform], linkInfo: result.data }
+          }))
+          Taro.showToast({
+            title: `验证成功：${result.data.title}`,
+            icon: 'success'
+          })
+        } else {
+          Taro.showToast({
+            title: result.error || '验证失败',
+            icon: 'none'
+          })
+        }
+      } else {
+        Taro.showToast({
+          title: '验证失败，请稍后重试',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('[OrderPublishFeedback] 验证链接失败:', error)
+      Taro.showToast({
+        title: '验证失败，请检查网络',
+        icon: 'none'
+      })
+    } finally {
+      setValidatingLinks(prev => ({ ...prev, [platform]: false }))
+    }
   }
 
   const handleSubmit = async () => {
@@ -508,14 +565,52 @@ export default function OrderPublishFeedback() {
                   {/* 填写链接 */}
                   <View className="space-y-2">
                     <Label className="text-sm text-gray-700">发布链接</Label>
-                    <View className="bg-gray-50 rounded-lg px-4 py-3">
-                      <Input
-                        className="w-full bg-transparent"
-                        placeholder="请输入发布链接"
-                        value={fb.link}
-                        onInput={(e) => handleLinkChange(platform, e.detail.value)}
-                      />
+                    <View className="flex gap-2">
+                      <View className="flex-1 bg-gray-50 rounded-lg px-4 py-3">
+                        <Input
+                          className="w-full bg-transparent"
+                          placeholder="请输入发布链接"
+                          value={fb.link}
+                          onInput={(e) => handleLinkChange(platform, e.detail.value)}
+                        />
+                      </View>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleValidateLink(platform)}
+                        disabled={validatingLinks[platform]}
+                      >
+                        <Text className="text-sm">
+                          {validatingLinks[platform] ? '验证中...' : '验证'}
+                        </Text>
+                      </Button>
                     </View>
+
+                    {/* 验证结果 */}
+                    {fb.linkInfo && (
+                      <View className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <View className="flex items-start gap-2">
+                          <Text className="block text-xs font-medium text-blue-900">作品信息：</Text>
+                        </View>
+                        {fb.linkInfo.title && (
+                          <Text className="block text-sm text-blue-800 mt-1">
+                            标题：{fb.linkInfo.title}
+                          </Text>
+                        )}
+                        {fb.linkInfo.author && (
+                          <Text className="block text-xs text-blue-700 mt-1">
+                            作者：{fb.linkInfo.author}
+                          </Text>
+                        )}
+                        {fb.linkInfo.cover && (
+                          <Image
+                            src={fb.linkInfo.cover}
+                            className="mt-2 w-20 h-20 rounded object-cover"
+                            mode="aspectFill"
+                          />
+                        )}
+                      </View>
+                    )}
                   </View>
                 </CardContent>
               </Card>
