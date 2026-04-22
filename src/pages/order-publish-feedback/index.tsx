@@ -88,6 +88,68 @@ export default function OrderPublishFeedback() {
   }
 
   const handleChooseImage = (platform: string) => {
+    console.log('[OrderPublishFeedback] ========== 点击上传截图 ==========')
+    console.log('[OrderPublishFeedback] 平台:', platform)
+    console.log('[OrderPublishFeedback] 当前反馈状态:', feedback)
+    console.log('[OrderPublishFeedback] 当前环境:', Taro.getEnv())
+
+    // 检查环境
+    const env = Taro.getEnv()
+    if (env === Taro.ENV_TYPE.WEB) {
+      console.log('[OrderPublishFeedback] H5环境，使用文件选择器')
+      // H5环境下使用文件选择器
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0]
+        if (file) {
+          console.log('[OrderPublishFeedback] 选择文件成功:', file.name)
+          try {
+            // 使用FormData上传
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const response = await fetch(`${window.location.origin}/api/upload/image`, {
+              method: 'POST',
+              body: formData
+            })
+
+            const uploadData = await response.json()
+            console.log('[OrderPublishFeedback] H5上传响应:', uploadData)
+
+            if (uploadData.code === 200 && uploadData.data?.url) {
+              const imageUrl = uploadData.data.url
+              console.log('[OrderPublishFeedback] 更新反馈状态:', { platform, imageUrl })
+              setFeedback(prev => ({
+                ...prev,
+                [platform]: { ...(prev[platform] || {}), image: imageUrl }
+              }))
+              Taro.showToast({
+                title: '上传成功',
+                icon: 'success'
+              })
+            } else {
+              console.error('[OrderPublishFeedback] H5上传失败:', uploadData)
+              Taro.showToast({
+                title: uploadData.message || '上传失败',
+                icon: 'none'
+              })
+            }
+          } catch (error) {
+            console.error('[OrderPublishFeedback] H5上传失败:', error)
+            Taro.showToast({
+              title: '上传失败，请重试',
+              icon: 'none'
+            })
+          }
+        }
+      }
+      input.click()
+      return
+    }
+
+    // 小程序环境
     Taro.chooseImage({
       count: 1,
       sizeType: ['compressed'],
@@ -123,9 +185,10 @@ export default function OrderPublishFeedback() {
 
           if (uploadData.code === 200 && uploadData.data?.url) {
             const imageUrl = uploadData.data.url
+            console.log('[OrderPublishFeedback] 更新反馈状态:', { platform, imageUrl })
             setFeedback(prev => ({
               ...prev,
-              [platform]: { ...prev[platform], image: imageUrl }
+              [platform]: { ...(prev[platform] || {}), image: imageUrl }
             }))
             Taro.showToast({
               title: '上传成功',
