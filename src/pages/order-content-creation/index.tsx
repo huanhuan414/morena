@@ -183,7 +183,7 @@ export default function OrderContentCreationPage() {
     let html = text
 
     // 处理图片：![alt](url)
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img class="md-image" src="$2" alt="$1" style="width: 100%; border-radius: 8px; margin: 12px 0;" />')
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img class="md-image" src="$2" alt="$1" style="width: 100%; border-radius: 0.75rem; margin: 0.75rem 0;" />')
 
     // 处理引用块：> text
     html = html.replace(/^> (.*$)/gim, '<blockquote class="md-blockquote">$1</blockquote>')
@@ -213,7 +213,7 @@ export default function OrderContentCreationPage() {
     <View className="content-creation-page">
       <View
         className="page-header"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem' }}
       >
         <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="#1a1a1a" />
@@ -252,9 +252,9 @@ export default function OrderContentCreationPage() {
             <View className="card order-info-card">
               <View
                 className="card-header"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
               >
-                <View style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <View style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Sparkles size={18} color="#1890ff" />
                   <Text className="card-title block">订单信息</Text>
                 </View>
@@ -280,7 +280,7 @@ export default function OrderContentCreationPage() {
               <View className="card media-card">
                 <View
                   className="card-header"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
                 >
                   <Text className="card-title block">图片展示</Text>
                   <Text className="card-subtitle block">{contentData.images.length}张图片</Text>
@@ -294,7 +294,7 @@ export default function OrderContentCreationPage() {
                   {contentData.images.length > 1 && (
                     <View
                       className="image-indicators"
-                      style={{ display: 'flex', gap: '6px' }}
+                      style={{ display: 'flex', gap: '0.375rem' }}
                     >
                       {contentData.images.map((_, index) => (
                         <View
@@ -313,7 +313,7 @@ export default function OrderContentCreationPage() {
               <View className="card media-card">
                 <View
                   className="card-header"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
                 >
                   <Text className="card-title block">视频展示</Text>
                   <Text className="card-subtitle block">{contentData.videos.length}个视频</Text>
@@ -333,17 +333,17 @@ export default function OrderContentCreationPage() {
             <View className="card content-card">
               <View
                 className="card-header"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
               >
                 <Text className="card-title block">内容预览</Text>
                 <View
                   className="card-actions"
-                  style={{ display: 'flex', gap: '8px' }}
+                  style={{ display: 'flex', gap: '0.5rem' }}
                 >
                   {isEditing ? (
                     <View
                       className="action-buttons"
-                      style={{ display: 'flex', gap: '8px' }}
+                      style={{ display: 'flex', gap: '0.5rem' }}
                     >
                       <Button
                         size="sm"
@@ -394,7 +394,7 @@ export default function OrderContentCreationPage() {
             <View className="publish-section">
               <Button
                 className="publish-btn"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                 onClick={handlePublish}
                 disabled={publishing}
               >
