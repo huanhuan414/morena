@@ -349,7 +349,7 @@ export default function OrderMatchingPage() {
       <View className="matching-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
           <View className="back-btn" onClick={() => navigateBack()}>
-            <ChevronRight size={24} color="#fff" style={{ transform: 'rotate(180deg)' }} />
+            <ChevronRight size={24} color="#334155" style={{ transform: 'rotate(180deg)' }} />
           </View>
           <View className="header-title-wrap">
             <Sparkles size={20} color="#00f5ff" />
