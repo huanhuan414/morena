@@ -347,6 +347,33 @@
   padding: 0 1rem 1.5rem;
 }
 
+.publish-tip {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.publish-tip-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 0.5rem;
+}
+
+.publish-tip-content {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.publish-tip-text {
+  font-size: 0.8125rem;
+  color: #78350f;
+  line-height: 1.6;
+}
+
 .publish-btn {
   width: 100%;
   height: 3.75rem;

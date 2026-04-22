@@ -11,12 +11,16 @@ export interface ProcessingStatus {
   generatedContent?: {
     title: string
     content: string
-    platform: string
+    platforms: string[]
   }
   publishStatus?: {
-    platform: string
-    status: 'pending' | 'success' | 'failed' | 'manual'
-    message?: string
+    platforms: Array<{
+      platform: string
+      status: 'success' | 'failed' | 'manual'
+      message: string
+      publishedAt?: string
+    }>
+    summary: string
   }
 }
 
@@ -275,7 +279,7 @@ export class OrderProcessingService {
       generatedContent: request.generated_content ? {
         title: orderData?.title || '未知订单',
         content: request.generated_content,
-        platform: orderData?.platforms?.[0] || ''
+        platforms: orderData?.platforms || []
       } : undefined,
       publishStatus: request.publish_status
     }
@@ -318,7 +322,7 @@ export class OrderProcessingService {
   /**
    * 发布内容
    */
-  async publishContent(requestId: string) {
+  async publishContent(requestId: string, content?: string) {
     const client = getSupabaseClient()
 
     // 分别查询订单请求、订单和分身信息
@@ -343,64 +347,124 @@ export class OrderProcessingService {
       throw new Error('获取订单信息失败')
     }
 
-    const platform = order.platforms[0]
-    const content = request.confirmed_content || request.generated_content
+    // 使用传递的内容，如果没有则使用已生成的内容
+    const finalContent = content || request.confirmed_content || request.generated_content
+    if (!finalContent) {
+      throw new Error('没有可发布的内容')
+    }
 
-    try {
-      // 根据平台进行发布
-      if (platform === 'wechat_mp') {
-        // 公众号：发布到草稿箱
-        await this.publishToWechatMP(order, content)
-      } else {
-        // 其他平台：检查是否有发布技能
-        const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
+    const platforms = order.platforms || []
+    if (platforms.length === 0) {
+      throw new Error('订单没有指定发布平台')
+    }
 
-        if (hasPublishSkill) {
-          // 自动发布
-          await this.autoPublish(platform, order, content)
-        } else {
-          // 提示手动发布
-          throw new Error('该平台暂未配置发布技能，请手动发布')
-        }
-      }
+    // 发布结果记录
+    const publishResults: Array<{
+      platform: string
+      status: 'success' | 'failed' | 'manual'
+      message: string
+      publishedAt?: string
+    }> = []
 
-      // 更新发布状态
-      await client
-        .from('order_dispatch_requests')
-        .update({
-          status: 'completed',
-          publish_status: {
+    // 遍历所有平台进行发布
+    for (const platform of platforms) {
+      console.log('[OrderProcessing] 开始发布到平台:', { platform, requestId })
+
+      try {
+        if (platform === 'wechat_mp') {
+          // 公众号：发布到草稿箱
+          await this.publishToWechatMP(order, finalContent)
+          publishResults.push({
             platform,
             status: 'success',
-            message: '发布成功'
-          }
-        })
-        .eq('id', requestId)
+            message: '已发布到公众号草稿箱',
+            publishedAt: new Date().toISOString()
+          })
+        } else if (platform === 'wechat_moments') {
+          // 朋友圈：需要手动发布
+          publishResults.push({
+            platform,
+            status: 'manual',
+            message: '朋友圈需要手动发布，请复制内容后发布'
+          })
+        } else if (platform === 'wechat_video') {
+          // 视频号：需要手动发布
+          publishResults.push({
+            platform,
+            status: 'manual',
+            message: '视频号需要手动发布，请复制内容后发布'
+          })
+        } else {
+          // 其他平台：检查是否有发布技能
+          const hasPublishSkill = await this.checkPublishSkill(platform, request.avatar_id)
 
-      // 更新订单状态
+          if (hasPublishSkill) {
+            // 自动发布
+            await this.autoPublish(platform, order, finalContent)
+            publishResults.push({
+              platform,
+              status: 'success',
+              message: '已自动发布',
+              publishedAt: new Date().toISOString()
+            })
+          } else {
+            // 提示手动发布
+            publishResults.push({
+              platform,
+              status: 'manual',
+              message: '该平台暂未配置发布技能，请手动发布'
+            })
+          }
+        }
+      } catch (error: any) {
+        console.error('[OrderProcessing] 平台发布失败:', { platform, error: error.message })
+        publishResults.push({
+          platform,
+          status: 'failed',
+          message: error.message || '发布失败'
+        })
+      }
+    }
+
+    // 检查是否有成功的发布
+    const hasSuccess = publishResults.some(r => r.status === 'success')
+    const hasManual = publishResults.some(r => r.status === 'manual')
+
+    // 更新发布状态
+    await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'completed',
+        confirmed_content: finalContent,
+        publish_status: {
+          platforms: publishResults,
+          summary: hasSuccess
+            ? '部分或全部平台发布成功'
+            : hasManual
+              ? '需要手动发布'
+              : '自动发布失败'
+        }
+      })
+      .eq('id', requestId)
+
+    // 如果有成功的发布，更新订单状态
+    if (hasSuccess) {
       await client
         .from('orders')
         .update({ status: 'completed' })
         .eq('id', request.order_id)
-
-    } catch (error: any) {
-      // 更新发布状态
-      await client
-        .from('order_dispatch_requests')
-        .update({
-          status: 'completed',
-          publish_status: {
-            platform,
-            status: 'manual',
-            message: error.message || '自动发布失败，请手动发布'
-          }
-        })
-        .eq('id', requestId)
-
-      throw error
     }
 
-    return { success: true }
+    return {
+      success: true,
+      publishResults,
+      content: finalContent,
+      summary: hasSuccess
+        ? '部分或全部平台发布成功'
+        : hasManual
+          ? '需要手动发布'
+          : '自动发布失败'
+    }
   }
 
   /**
@@ -482,15 +546,37 @@ export class OrderProcessingService {
    * 发布到公众号草稿箱
    */
   private async publishToWechatMP(order: any, content: string) {
-    // 这里需要调用微信公众号 API
-    // 暂时只记录日志
+    // 解析内容，提取标题和正文
+    const lines = content.split('\n')
+    const title = lines[0] || order.title
+    const body = lines.slice(1).join('\n')
+
+    // TODO: 调用微信公众号 API 发布到草稿箱
+    // 需要配置微信公众号的 appId 和 appSecret
+
     console.log('[OrderProcessing] 发布到公众号草稿箱:', {
       orderId: order.id,
-      title: order.title,
-      contentLength: content.length
+      title: title,
+      contentLength: content.length,
+      bodyLength: body.length,
+      note: '微信公众号 API 未配置，需要手动发布'
     })
 
-    // TODO: 实现真实的公众号草稿箱发布
+    // 暂时只记录日志，实际发布需要微信公众号授权
+    // 实际实现需要：
+    // 1. 获取微信公众号 access_token
+    // 2. 调用草稿箱 API: https://api.weixin.qq.com/cgi-bin/draft/add
+    // 3. 上传图片等资源（如果有）
+    // 4. 创建草稿文章
+
+    console.log('[OrderProcessing] 发布内容预览:', {
+      title,
+      body: body.substring(0, 200) + (body.length > 200 ? '...' : ''),
+      platforms: order.platforms
+    })
+
+    // 暂时抛出异常，提示需要手动发布
+    throw new Error('微信公众号发布功能未配置授权，请手动复制内容发布到公众号草稿箱')
   }
 
   /**

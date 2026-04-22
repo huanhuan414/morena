@@ -19,14 +19,11 @@ const PLATFORM_NAMES: Record<string, string> = {
 }
 
 interface ContentData {
-  id: string
   title: string
   content: string
-  platform: string
+  platforms: string[]
   images: string[]
   videos: string[]
-  status: 'creating' | 'ready' | 'published'
-  created_at: string
 }
 
 export default function OrderContentCreationPage() {
@@ -134,7 +131,7 @@ export default function OrderContentCreationPage() {
 
     Taro.showModal({
       title: '确认发布',
-      content: `确定发布到${PLATFORM_NAMES[contentData.platform] || '目标平台'}吗？`,
+      content: `确定发布内容吗？将发布到所有要求平台。`,
       success: async (res) => {
         if (res.confirm) {
           setPublishing(true)
@@ -144,18 +141,53 @@ export default function OrderContentCreationPage() {
               url: `/api/order-processing/publish/${requestId}`,
               method: 'POST',
               data: {
-                content: finalContent,
-                platform: contentData.platform
+                content: finalContent
               }
             })
 
             console.log('[OrderContentCreation] 发布响应:', publishRes.data)
 
             if (publishRes.data?.code === 200) {
-              Taro.showToast({ title: '发布成功', icon: 'success' })
-              setTimeout(() => {
-                navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
-              }, 1500)
+              const result = publishRes.data.data
+
+              // 检查是否有需要手动发布的平台
+              const manualPlatforms = result.publishResults?.filter(
+                (r: any) => r.status === 'manual'
+              ) || []
+
+              if (manualPlatforms.length > 0) {
+                // 有平台需要手动发布
+                const platformNames = manualPlatforms.map((p: any) => {
+                  return PLATFORM_NAMES[p.platform] || p.platform
+                }).join('、')
+
+                Taro.showModal({
+                  title: '发布成功',
+                  content: `部分平台已自动发布成功，${platformNames} 需要手动发布。是否查看发布详情？`,
+                  confirmText: '查看详情',
+                  cancelText: '返回',
+                  success: (modalRes) => {
+                    if (modalRes.confirm) {
+                      // 显示发布详情
+                      showPublishDetails(result)
+                    } else {
+                      setTimeout(() => {
+                        navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                      }, 500)
+                    }
+                  }
+                })
+              } else {
+                // 全部自动发布成功
+                Taro.showToast({
+                  title: '发布成功',
+                  icon: 'success',
+                  duration: 2000
+                })
+                setTimeout(() => {
+                  navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                }, 2000)
+              }
             } else {
               Taro.showToast({ title: publishRes.data?.message || '发布失败', icon: 'none' })
             }
@@ -166,6 +198,34 @@ export default function OrderContentCreationPage() {
             setPublishing(false)
           }
         }
+      }
+    })
+  }
+
+  const showPublishDetails = (result: any) => {
+    // 构建发布详情消息
+    let message = ''
+
+    if (result.publishResults && result.publishResults.length > 0) {
+      result.publishResults.forEach((r: any) => {
+        const platformName = PLATFORM_NAMES[r.platform] || r.platform
+        message += `\n【${platformName}】\n`
+        message += `状态：${r.status === 'success' ? '✓ 自动发布成功' : r.status === 'manual' ? '⚠ 需要手动发布' : '✗ 发布失败'}\n`
+        message += `说明：${r.message}\n`
+      })
+    }
+
+    message += `\n发布内容：\n${result.content?.substring(0, 200)}${result.content?.length > 200 ? '...' : ''}`
+
+    Taro.showModal({
+      title: '发布详情',
+      content: message,
+      showCancel: false,
+      confirmText: '确定',
+      success: () => {
+        setTimeout(() => {
+          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+        }, 500)
       }
     })
   }
@@ -297,17 +357,32 @@ export default function OrderContentCreationPage() {
               <Text className="info-title block">{contentData.title}</Text>
               <View
                 className="info-meta"
-                style={{ display: 'flex', alignItems: 'center' }}
+                style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}
               >
-                <View
-                  className="info-tag"
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  <Smartphone size={14} color="#3b82f6" />
-                  <Text className="info-tag-text block">
-                    {PLATFORM_NAMES[contentData.platform] || contentData.platform}
-                  </Text>
-                </View>
+                {contentData.platforms && contentData.platforms.length > 0 ? (
+                  contentData.platforms.map((platform: string) => (
+                    <View
+                      key={platform}
+                      className="info-tag"
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      <Smartphone size={14} color="#3b82f6" />
+                      <Text className="info-tag-text block">
+                        {PLATFORM_NAMES[platform] || platform}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <View
+                    className="info-tag"
+                    style={{ display: 'flex', alignItems: 'center' }}
+                  >
+                    <Smartphone size={14} color="#3b82f6" />
+                    <Text className="info-tag-text block">
+                      未指定平台
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -444,6 +519,36 @@ export default function OrderContentCreationPage() {
             </View>
 
             <View className="publish-section">
+              {/* 发布提示 */}
+              {contentData.platforms && contentData.platforms.length > 0 && (
+                <View className="publish-tip">
+                  <Text className="publish-tip-title block">发布说明</Text>
+                  <View className="publish-tip-content">
+                    <Text className="publish-tip-text block">
+                      点击发布后，将尝试自动发布到以下平台：
+                    </Text>
+                    <View style={{ marginTop: '0.5rem' }}>
+                      {contentData.platforms.map((platform: string) => {
+                        const platformName = PLATFORM_NAMES[platform] || platform
+                        const needManual = ['wechat_moments', 'wechat_video'].includes(platform)
+                        return (
+                          <View key={platform} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+                            <Text style={{ fontSize: '0.875rem', color: needManual ? '#f59e0b' : '#3b82f6' }}>
+                              {needManual ? '⚠ ' : '✓ '}{platformName}
+                            </Text>
+                            {needManual && (
+                              <Text style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.25rem' }}>
+                                （需手动发布）
+                              </Text>
+                            )}
+                          </View>
+                        )
+                      })}
+                    </View>
+                  </View>
+                </View>
+              )}
+
               <Button
                 className="publish-btn"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}

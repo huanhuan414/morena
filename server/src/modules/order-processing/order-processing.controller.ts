@@ -59,10 +59,11 @@ export class OrderProcessingController {
    */
   @Post('publish/:requestId')
   async publish(
-    @Param('requestId') requestId: string
+    @Param('requestId') requestId: string,
+    @Body('content') content?: string
   ) {
     try {
-      const result = await this.processingService.publishContent(requestId)
+      const result = await this.processingService.publishContent(requestId, content)
       return {
         code: 200,
         data: result,
