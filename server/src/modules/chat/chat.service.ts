@@ -1,25 +1,17 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common'
-import { LLMClient, Config, HeaderUtils, S3Storage } from 'coze-coding-dev-sdk'
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { AgentService } from '../agent/agent.service'
 import { LearningService } from '../avatar/learning.service'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class ChatService {
-  private storage: S3Storage
-
   constructor(
     @Inject(forwardRef(() => AgentService)) private readonly agentService: AgentService,
-    private readonly learningService: LearningService
+    private readonly learningService: LearningService,
+    private readonly storageService: StorageService
   ) {
-    // 初始化火山引擎CDN存储
-    this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
-      accessKey: process.env.VOLC_ACCESS_KEY || '',
-      secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
-      region: 'cn-guangzhou',
-    })
   }
 
   async createConversation(userId: string, avatarId: string, title?: string) {
@@ -188,6 +180,12 @@ export class ChatService {
 
               // 如果 media 有 key，重新生成签名链接
               if (mediaItem.key) {
+                // 检查是否是 veImageX URL，如果是则不需要重新生成签名链接
+                if (mediaItem.url && (mediaItem.url.includes('ivolces.com') || mediaItem.url.includes('voic.51webjs.com'))) {
+                  console.log('[ChatService] 检测到 veImageX URL，跳过签名链接生成:', mediaItem.url)
+                  return mediaItem
+                }
+
                 try {
                   const newUrl = await this.storage.generatePresignedUrl({ key: mediaItem.key, expireTime: 86400 * 7 })
                   console.log('[ChatService] 重新生成签名链接成功:', mediaItem.key, '->', newUrl)
@@ -606,69 +604,54 @@ export class ChatService {
       // 检测任务类型并生成相应内容
       const taskLower = content.toLowerCase()
       let result: any = { type: 'text', content: '任务已完成' }
-      let mediaKeys: string[] = []
-      
+
       // 生成图片任务
       if (taskLower.includes('画') || taskLower.includes('生成图片') || taskLower.includes('设计')) {
         yield { type: 'task', data: { taskId, status: 'running', progress: 85, message: '正在生成图片...' } }
-        
-        // 这里调用图片生成API，然后上传到CDN
+
+        // 这里调用图片生成API，然后上传到 veImageX
         // 示例：模拟生成图片并上传
         const imageBuffer = Buffer.from('模拟图片数据')
-        const imageKey = await this.storage.uploadFile({
-          fileContent: imageBuffer,
-          fileName: `generated/${taskId}/image_${Date.now()}.png`,
-          contentType: 'image/png'
-        })
-        mediaKeys.push(imageKey)
-        
-        const imageUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 })
-        
+        const imageUrl = await this.storageService.uploadImageFromBuffer(imageBuffer, `generated/${taskId}/image_${Date.now()}.png`)
+
         result = {
           type: 'image',
           url: imageUrl,
-          key: imageKey
+          key: null // veImageX 不返回 key
         }
-        
-        yield { 
-          type: 'media', 
-          data: { 
-            type: 'image', 
+
+        yield {
+          type: 'media',
+          data: {
+            type: 'image',
             url: imageUrl,
-            key: imageKey
-          } 
+            key: null
+          }
         }
       }
-      
+
       // 生成视频任务
       if (taskLower.includes('视频') || taskLower.includes('短片')) {
         yield { type: 'task', data: { taskId, status: 'running', progress: 85, message: '正在生成视频...' } }
-        
-        // 这里调用视频生成API，然后上传到CDN
+
+        // 这里调用视频生成API，然后上传到 veImageX
         // 示例：模拟生成视频并上传
         const videoBuffer = Buffer.from('模拟视频数据')
-        const videoKey = await this.storage.uploadFile({
-          fileContent: videoBuffer,
-          fileName: `generated/${taskId}/video_${Date.now()}.mp4`,
-          contentType: 'video/mp4'
-        })
-        mediaKeys.push(videoKey)
-        
-        const videoUrl = await this.storage.generatePresignedUrl({ key: videoKey, expireTime: 86400 })
-        
+        const videoUrl = await this.storageService.uploadVideo(videoBuffer, `generated/${taskId}/video_${Date.now()}.mp4`)
+
         result = {
           type: 'video',
           url: videoUrl,
-          key: videoKey
+          key: null // veImageX 不返回 key
         }
-        
-        yield { 
-          type: 'media', 
-          data: { 
-            type: 'video', 
+
+        yield {
+          type: 'media',
+          data: {
+            type: 'video',
             url: videoUrl,
-            key: videoKey
-          } 
+            key: null
+          }
         }
       }
       

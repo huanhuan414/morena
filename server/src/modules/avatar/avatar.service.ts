@@ -1,28 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import { LLMClient, Config, ImageGenerationClient, VideoGenerationClient, TTSClient, HeaderUtils } from 'coze-coding-dev-sdk'
-import { S3Storage } from 'coze-coding-dev-sdk'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { SubscriptionService } from '../subscription/subscription.service'
 import { TikHubService } from '../tikhub/tikhub.service'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class AvatarService {
-  private storage: S3Storage
-
   constructor(
     private readonly reverseGeocodingService: ReverseGeocodingService,
     private readonly subscriptionService: SubscriptionService,
-    private readonly tikHubService: TikHubService
+    private readonly tikHubService: TikHubService,
+    private readonly storageService: StorageService
   ) {
-    // 初始化火山引擎CDN存储
-    this.storage = new S3Storage({
-      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
-      accessKey: process.env.VOLC_ACCESS_KEY || '',
-      secretKey: process.env.VOLC_SECRET_KEY || '',
-      bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
-      region: 'cn-guangzhou',
-    })
   }
 
   async createAvatar(userId: string, avatarData: Record<string, any>) {
@@ -230,30 +221,18 @@ export class AvatarService {
    */
   async analyzePhoto(file: Express.Multer.File) {
     console.log('开始分析照片:', file.originalname, file.mimetype, file.size)
-    
-    // 1. 上传照片到对象存储
-    const fileKey = await this.storage.uploadFile({
-      fileContent: file.buffer,
-      fileName: `avatars/${Date.now()}_${file.originalname}`,
-      contentType: file.mimetype || 'image/jpeg',
-    })
-    
-    console.log('照片上传成功, key:', fileKey)
-    
-    // 2. 生成可访问的URL
-    const photoUrl = await this.storage.generatePresignedUrl({
-      key: fileKey,
-      expireTime: 86400 * 30, // 30天有效期
-    })
-    
-    console.log('生成照片URL:', photoUrl)
-    
-    // 3. 使用视觉模型进行深度分析
+
+    // 1. 上传照片到 veImageX
+    const photoUrl = await this.storageService.uploadImage(file)
+
+    console.log('照片上传成功, url:', photoUrl)
+
+    // 2. 使用视觉模型进行深度分析
     const analysis = await this.deepAnalyzePhoto(photoUrl)
-    
+
     return {
       photoUrl,
-      fileKey,
+      fileKey: null, // veImageX 返回的是 URL，不需要 fileKey
       analysis,
     }
   }
@@ -1704,44 +1683,20 @@ export class AvatarService {
       bufferLength: file.buffer?.length
     })
 
-    const { S3Storage, LLMClient, Config } = await import('coze-coding-dev-sdk')
-
-    // 1. 上传图片到 TOS
-    console.log('步骤1: 上传图片到TOS...')
-    const storage = new S3Storage({
-      bucketName: process.env.COZE_BUCKET_NAME,
-      region: 'cn-guangzhou'
-    })
-
-    let fileKey: string
+    // 1. 上传图片到 veImageX
+    console.log('步骤1: 上传图片到 veImageX...')
+    let imageUrl: string
     try {
-      fileKey = await storage.uploadFile({
-        fileContent: file.buffer,
-        fileName: `account-recognition/${Date.now()}-${file.originalname}`,
-        contentType: file.mimetype
-      })
-      console.log('上传成功，fileKey:', fileKey)
+      imageUrl = await this.storageService.uploadImage(file)
+      console.log('上传成功，imageUrl:', imageUrl.substring(0, 100) + '...')
     } catch (error: any) {
-      console.error('上传到TOS失败:', error)
+      console.error('上传到 veImageX 失败:', error)
       throw new Error("Failed to upload image: " + error.message)
     }
 
-    // 2. 生成访问 URL
-    console.log('步骤2: 生成预签名URL...')
-    let imageUrl: string
-    try {
-      imageUrl = await storage.generatePresignedUrl({
-        key: fileKey,
-        expireTime: 86400 // 1天
-      })
-      console.log('生成URL成功:', imageUrl.substring(0, 100) + '...')
-    } catch (error: any) {
-      console.error('生成预签名URL失败:', error)
-      throw new Error("Failed to generate URL: " + error.message)
-    }
-
-    // 3. 使用 LLM 视觉模型识别图片
-    console.log('步骤3: 调用LLM视觉模型...')
+    // 2. 使用 LLM 视觉模型识别图片
+    console.log('步骤2: 调用LLM视觉模型...')
+    const { LLMClient, Config } = await import('coze-coding-dev-sdk')
     const config = new Config()
     const llmClient = new LLMClient(config)
 

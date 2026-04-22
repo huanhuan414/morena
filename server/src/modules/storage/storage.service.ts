@@ -86,15 +86,33 @@ export class StorageService {
   }
 
   /**
-   * 上传视频 - 使用对象存储
+   * 上传视频 - 优先使用 veImageX
    */
   async uploadVideo(videoBuffer: Buffer, fileName: string): Promise<string> {
-    const key = await this.storage.uploadFile({
-      fileContent: videoBuffer,
-      fileName: `videos/${fileName}`,
-      contentType: 'video/mp4'
-    })
-    return key
+    // 创建 Multer.File 对象
+    const file: Express.Multer.File = {
+      buffer: videoBuffer,
+      originalname: fileName,
+      mimetype: 'video/mp4',
+      size: videoBuffer.length,
+      fieldname: 'file',
+      encoding: '7bit'
+    }
+    try {
+      // 优先使用 veImageX 上传
+      const result = await this.volcengineService.uploadVideo(file)
+      this.logger.log(`[StorageService] 使用 veImageX 上传视频成功: ${result.url}`)
+      return result.url
+    } catch (error) {
+      this.logger.warn('[StorageService] veImageX 视频上传失败，降级到对象存储:', error)
+      // 降级到对象存储
+      const key = await this.storage.uploadFile({
+        fileContent: videoBuffer,
+        fileName: `videos/${fileName}`,
+        contentType: 'video/mp4'
+      })
+      return key
+    }
   }
 
   /**
