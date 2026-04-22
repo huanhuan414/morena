@@ -272,16 +272,22 @@ export default function OrderContentCreationPage() {
 
                   Taro.showModal({
                     title: '发布成功',
-                    content: `部分平台已自动发布成功，${platformNames} 需要手动发布。是否查看发布详情？`,
-                    confirmText: '查看详情',
+                    content: `部分平台已自动发布成功，${platformNames} 需要手动发布。请发布后反馈截图和链接。`,
+                    confirmText: '去反馈',
                     cancelText: '返回',
                     success: (modalRes) => {
                       if (modalRes.confirm) {
-                        // 显示发布详情
-                        showPublishDetails(result)
+                        // 跳转到反馈页面
+                        setTimeout(() => {
+                          navigateTo({
+                            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                          })
+                        }, 500)
                       } else {
                         setTimeout(() => {
-                          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                          navigateTo({
+                            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                          })
                         }, 500)
                       }
                     }
@@ -289,12 +295,14 @@ export default function OrderContentCreationPage() {
                 } else {
                   // 全部自动发布成功
                   Taro.showToast({
-                    title: '发布成功',
+                    title: '发布成功，请反馈发布效果',
                     icon: 'success',
                     duration: 2000
                   })
                   setTimeout(() => {
-                    navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+                    navigateTo({
+                      url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                    })
                   }, 2000)
                 }
               } else {
@@ -330,34 +338,6 @@ export default function OrderContentCreationPage() {
         duration: 3000
       })
     }
-  }
-
-  const showPublishDetails = (result: any) => {
-    // 构建发布详情消息
-    let message = ''
-
-    if (result.publishResults && result.publishResults.length > 0) {
-      result.publishResults.forEach((r: any) => {
-        const platformName = PLATFORM_NAMES[r.platform] || r.platform
-        message += `\n【${platformName}】\n`
-        message += `状态：${r.status === 'success' ? '✓ 自动发布成功' : r.status === 'manual' ? '⚠ 需要手动发布' : '✗ 发布失败'}\n`
-        message += `说明：${r.message}\n`
-      })
-    }
-
-    message += `\n发布内容：\n${result.content?.substring(0, 200)}${result.content?.length > 200 ? '...' : ''}`
-
-    Taro.showModal({
-      title: '发布详情',
-      content: message,
-      showCancel: false,
-      confirmText: '确定',
-      success: () => {
-        setTimeout(() => {
-          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
-        }, 500)
-      }
-    })
   }
 
   const handleSaveEdit = () => {

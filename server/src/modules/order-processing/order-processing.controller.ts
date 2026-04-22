@@ -100,4 +100,28 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 提交发布反馈
+   */
+  @Post('feedback/:requestId')
+  async submitFeedback(
+    @Param('requestId') requestId: string,
+    @Body('feedback') feedback: Record<string, { image?: string; link?: string }>
+  ) {
+    try {
+      const result = await this.processingService.submitPublishFeedback(requestId, feedback)
+      return {
+        code: 200,
+        data: result,
+        message: '反馈成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '反馈失败'
+      }
+    }
+  }
 }

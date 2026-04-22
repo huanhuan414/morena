@@ -12,8 +12,8 @@ const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   generating: { label: '生成中', color: '#8b5cf6' },
   preview: { label: '预览中', color: '#f59e0b' },
   publishing: { label: '发布中', color: '#06b6d4' },
-  completed: { label: '已完成', color: '#22c55e' },
-  published: { label: '已发布', color: '#10b981' },
+  published: { label: '待反馈', color: '#f59e0b' },
+  completed: { label: '待验收', color: '#10b981' },
   cancelled: { label: '已取消', color: '#ef4444' }
 }
 
@@ -274,7 +274,19 @@ export default function AvatarOrdersPage() {
                 <View
                   key={item.order_id}
                   className="order-item"
-                  onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${item.order_id}` })}
+                  onClick={() => {
+                    // published 状态跳转到反馈页面
+                    if (item.status === 'published') {
+                      navigateTo({
+                        url: `/pages/order-publish-feedback/index?requestId=${item.id}&orderId=${item.order_id}`
+                      })
+                    } else {
+                      // 其他状态跳转到订单详情页面
+                      navigateTo({
+                        url: `/pages/order-detail/index?id=${item.order_id}`
+                      })
+                    }
+                  }}
                 >
                   <View className="order-main">
                     <Text className="order-title">{item.orders?.title || '未知订单'}</Text>

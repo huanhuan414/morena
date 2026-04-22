@@ -479,27 +479,29 @@ export class OrderProcessingService {
     const hasManual = publishResults.some(r => r.status === 'manual')
 
     // 更新发布状态
+    // 发布完成后的状态应该是 'published'（已发布，待反馈）
+    // 分身需要反馈发布效果（截图、链接）
     await client
       .from('order_dispatch_requests')
       .update({
-        status: 'completed',
+        status: 'published',  // 改为 published，而不是 completed
         confirmed_content: finalContent,
         publish_status: {
           platforms: publishResults,
           summary: hasSuccess
-            ? '部分或全部平台发布成功'
+            ? '部分或全部平台发布成功，请反馈发布效果'
             : hasManual
-              ? '需要手动发布'
+              ? '需要手动发布，请发布后反馈效果'
               : '自动发布失败'
         }
       })
       .eq('id', requestId)
 
-    // 如果有成功的发布，更新订单状态
-    if (hasSuccess) {
+    // 更新订单状态为 published
+    if (hasSuccess || hasManual) {
       await client
         .from('orders')
-        .update({ status: 'completed' })
+        .update({ status: 'published' })  // 改为 published
         .eq('id', request.order_id)
     }
 
@@ -779,6 +781,61 @@ export class OrderProcessingService {
     } catch (error) {
       console.error('[OrderProcessing] 自动发布异常:', error)
       throw error
+    }
+  }
+
+  async submitPublishFeedback(
+    requestId: string,
+    feedback: Record<string, { image?: string; link?: string }>
+  ) {
+    const client = getSupabaseClient()
+
+    console.log('[OrderProcessing] 开始提交发布反馈:', { requestId, feedback })
+
+    // 查询订单请求信息
+    const { data: request, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id, avatar_id, status, publish_status')
+      .eq('id', requestId)
+      .single()
+
+    if (requestError || !request) {
+      throw new Error('获取订单请求失败')
+    }
+
+    console.log('[OrderProcessing] 订单请求信息:', request)
+
+    // 验证状态
+    if (request.status !== 'published') {
+      throw new Error('订单状态不允许提交反馈')
+    }
+
+    // 更新反馈信息
+    const { error: updateError } = await client
+      .from('order_dispatch_requests')
+      .update({
+        publish_feedback: feedback,
+        status: 'completed', // 反馈完成后，订单状态变为 completed，等待验收
+        publish_status: {
+          ...request.publish_status,
+          summary: '已提交发布反馈，等待验收',
+          feedbackSubmittedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+
+    if (updateError) {
+      console.error('[OrderProcessing] 更新反馈失败:', updateError)
+      throw new Error('更新反馈失败')
+    }
+
+    console.log('[OrderProcessing] 提交发布反馈成功')
+
+    return {
+      requestId,
+      feedback,
+      status: 'completed'
     }
   }
 }
