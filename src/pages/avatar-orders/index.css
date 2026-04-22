@@ -163,11 +163,19 @@
 .tabs-scroll {
   white-space: nowrap;
   padding: 0 32rpx 24rpx;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .tabs-container {
   display: flex;
   gap: 16rpx;
+  min-width: max-content;
 }
 
 .tab-item {
