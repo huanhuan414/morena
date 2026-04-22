@@ -731,7 +731,7 @@ export default function OrderDetailPage() {
                                     }}
                                     >
                                       {result.status === 'success' ? '已发布' :
-                                       result.status === 'manual' ? '需手动发布' : '发布失败'}
+                                       result.status === 'manual' ? '需手动发布' : '发布异常'}
                                     </Text>
                                   </View>
                                 </View>

@@ -49,10 +49,24 @@ export default function OrderPublishFeedback() {
         const data = response.data.data
         setOrderData(data)
 
-        // 获取发布结果
-        if (data.publish_status?.platforms) {
-          setPublishResults(data.publish_status.platforms)
-          console.log('[OrderPublishFeedback] 发布结果:', data.publish_status.platforms)
+        // 获取发布结果（兼容驼峰命名和下划线命名）
+        const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
+
+        if (platforms.length > 0) {
+          setPublishResults(platforms)
+          console.log('[OrderPublishFeedback] 发布结果:', platforms)
+        } else {
+          // 如果没有发布结果，但有生成内容，说明是待发布状态
+          if (data.generatedContent?.platforms) {
+            // 根据生成内容的平台创建待发布的平台列表
+            const pendingPlatforms = data.generatedContent.platforms.map((p: string) => ({
+              platform: p,
+              status: 'manual',
+              message: '需要手动发布'
+            }))
+            setPublishResults(pendingPlatforms)
+            console.log('[OrderPublishFeedback] 待发布平台:', pendingPlatforms)
+          }
         }
       } else {
         Taro.showToast({
@@ -265,14 +279,21 @@ export default function OrderPublishFeedback() {
                         }`}
                       >
                         {result.status === 'success' ? '已发布' :
-                         result.status === 'manual' ? '需手动发布' : '发布失败'}
+                         result.status === 'manual' ? '需手动发布' : '发布异常'}
                       </View>
                     </View>
                   </View>
 
                   {/* 发布说明 */}
                   {result.message && (
-                    <Text className="block text-xs text-gray-500">{result.message}</Text>
+                    <View className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <Text className="block text-xs text-orange-800">{result.message}</Text>
+                      {result.status === 'manual' && (
+                        <Text className="block text-xs text-orange-600 mt-2 font-medium">
+                          请在手动发布后，上传截图并填写链接以完成反馈
+                        </Text>
+                      )}
+                    </View>
                   )}
 
                   {/* 上传截图 */}

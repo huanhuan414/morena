@@ -399,7 +399,7 @@ export class OrderProcessingService {
     // 发布结果记录
     const publishResults: Array<{
       platform: string
-      status: 'success' | 'failed' | 'manual'
+      status: 'success' | 'manual'
       message: string
       publishedAt?: string
     }> = []
@@ -476,10 +476,11 @@ export class OrderProcessingService {
         }
       } catch (error: any) {
         console.error('[OrderProcessing] 平台发布失败:', { platform, error: error.message })
+        // 发布失败时，标记为需要手动发布，而不是失败
         publishResults.push({
           platform,
-          status: 'failed',
-          message: error.message || '发布失败'
+          status: 'manual',
+          message: `自动发布失败（${error.message}），请手动发布`
         })
       }
     }
@@ -500,9 +501,7 @@ export class OrderProcessingService {
           platforms: publishResults,
           summary: hasSuccess
             ? '部分或全部平台发布成功，请反馈发布效果'
-            : hasManual
-              ? '需要手动发布，请发布后反馈效果'
-              : '自动发布失败'
+            : '需要手动发布，请发布后反馈效果'
         }
       })
       .eq('id', requestId)
@@ -521,9 +520,7 @@ export class OrderProcessingService {
       content: finalContent,
       summary: hasSuccess
         ? '部分或全部平台发布成功'
-        : hasManual
-          ? '需要手动发布'
-          : '自动发布失败'
+        : '需要手动发布'
     }
   }
 
