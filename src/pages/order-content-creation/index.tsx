@@ -251,7 +251,7 @@ export default function OrderContentCreationPage() {
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem' }}
       >
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="#1a1a1a" />
+          <ArrowLeft size={20} color="#475569" />
         </View>
         <Text className="header-title block">制作内容</Text>
         <View className="header-right" />
@@ -261,24 +261,24 @@ export default function OrderContentCreationPage() {
         {loading && (
           <View className="loading-container">
             <View className="loading-icon">
-              <Sparkles size={56} color="#1890ff" />
+              <Sparkles size={56} color="#3b82f6" />
             </View>
             <Text className="loading-title block">AI正在制作内容</Text>
             <Text className="loading-desc block">正在为您的订单生成优质内容...</Text>
-            <Loader size={28} color="#1890ff" className="loading-spinner" />
+            <Loader size={28} color="#3b82f6" className="loading-spinner" />
           </View>
         )}
 
         {!loading && (!contentData || !contentData.content || contentData.content.length === 0) && (
           <View className="loading-container">
             <View className="loading-icon">
-              <Sparkles size={56} color="#1890ff" />
+              <Sparkles size={56} color="#3b82f6" />
             </View>
-            <Text className="loading-title block">AI正在制作内容</Text>
+            <Text className="loading-title block">AI 正在制作内容</Text>
             <Text className="loading-desc block">
-              {processingStatus === 'generating' ? '内容正在生成中...' : processingStatus === 'preview' ? '内容准备就绪...' : processingStatus === 'queuing' ? '排队中...' : '正在为您的订单生成优质内容...'}
+              {processingStatus === 'generating' ? '内容正在生成中，请稍候...' : processingStatus === 'preview' ? '内容准备就绪，即将展示...' : processingStatus === 'queuing' ? '正在排队处理中...' : '正在为您的订单生成优质内容...'}
             </Text>
-            <Loader size={28} color="#1890ff" className="loading-spinner" />
+            <Loader size={28} color="#3b82f6" className="loading-spinner" />
           </View>
         )}
 
@@ -290,7 +290,7 @@ export default function OrderContentCreationPage() {
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}
               >
                 <View style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Sparkles size={18} color="#1890ff" />
+                  <Sparkles size={18} color="#3b82f6" />
                   <Text className="card-title block">订单信息</Text>
                 </View>
               </View>
@@ -303,7 +303,7 @@ export default function OrderContentCreationPage() {
                   className="info-tag"
                   style={{ display: 'flex', alignItems: 'center' }}
                 >
-                  <Smartphone size={14} color="#1890ff" />
+                  <Smartphone size={14} color="#3b82f6" />
                   <Text className="info-tag-text block">
                     {PLATFORM_NAMES[contentData.platform] || contentData.platform}
                   </Text>
