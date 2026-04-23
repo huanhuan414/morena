@@ -1,4 +1,4 @@
-import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
+import Taro, { useRouter, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import {
@@ -54,14 +54,14 @@ const STATUS_LABELS: Record<string, string> = {
   feedback_submitted: '已提交'
 }
 
-const STATUS_COLORS: Record<string, { bg: string, text: string }> = {
-  pending: { bg: 'rgba(245, 158, 11, 0.2)', text: '#f59e0b' },
-  accepted: { bg: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-  generating: { bg: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-  publishing: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  published: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' },
-  awaiting_acceptance: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  feedback_submitted: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' }
+const STATUS_COLORS: Record<string, { bg: string, text: string, border: string }> = {
+  pending: { bg: '#fef3c7', text: '#d97706', border: '#f59e0b' },
+  accepted: { bg: '#dbeafe', text: '#2563eb', border: '#3b82f6' },
+  generating: { bg: '#dbeafe', text: '#2563eb', border: '#3b82f6' },
+  publishing: { bg: '#ede9fe', text: '#7c3aed', border: '#8b5cf6' },
+  published: { bg: '#dcfce7', text: '#16a34a', border: '#22c55e' },
+  awaiting_acceptance: { bg: '#ede9fe', text: '#7c3aed', border: '#8b5cf6' },
+  feedback_submitted: { bg: '#dcfce7', text: '#16a34a', border: '#22c55e' }
 }
 
 const formatNumber = (num: number): string => {
@@ -82,7 +82,7 @@ export default function OrderStats() {
   const [expandedAvatars, setExpandedAvatars] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<'views' | 'likes' | 'posts'>('views')
 
-  useLoad(() => {
+  Taro.useLoad(() => {
     if (orderId) {
       fetchStats()
     }
@@ -141,10 +141,10 @@ export default function OrderStats() {
   }
 
   if (loading) {
+    Taro.showToast({ title: '加载中...', icon: 'loading' })
     return (
       <View className="stats-page">
         <View className="loading-container">
-          <Text className="loading-text">加载中...</Text>
         </View>
       </View>
     )
@@ -155,14 +155,14 @@ export default function OrderStats() {
       <View className="stats-page">
         <View className="header">
           <View className="header-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#ffffff" />
+            <ArrowLeft size={24} color="#1e293b" />
           </View>
           <Text className="header-title">数据统计</Text>
           <View className="header-right" />
         </View>
 
         <View className="empty-state">
-          <ChartBar size={64} color="rgba(255,255,255,0.2)" />
+          <ChartBar size={64} color="#94a3b8" />
           <Text className="empty-text">暂无统计数据</Text>
         </View>
       </View>
@@ -174,7 +174,7 @@ export default function OrderStats() {
       {/* 头部 */}
       <View className="header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#ffffff" />
+          <ArrowLeft size={24} color="#1e293b" />
         </View>
         <Text className="header-title">数据统计</Text>
         <View className="header-right" />
@@ -185,30 +185,30 @@ export default function OrderStats() {
         {/* 总数据卡片 */}
         <View className="summary-card">
           <View className="summary-header">
-            <TrendingUp size={20} color="#00f5ff" />
+            <TrendingUp size={20} color="#6366f1" />
             <Text className="summary-title">数据总览</Text>
           </View>
 
           <View className="stats-grid">
-            <View className="stat-card stat-cyan">
+            <View className="stat-card stat-purple">
               <View className="stat-icon">
-                <Users size={24} color="#00f5ff" />
+                <Users size={24} color="#6366f1" />
               </View>
               <Text className="stat-value">{stats.totalAvatars}</Text>
               <Text className="stat-label">参与分身</Text>
             </View>
 
-            <View className="stat-card stat-purple">
+            <View className="stat-card stat-blue">
               <View className="stat-icon">
-                <Eye size={24} color="#8b5cf6" />
+                <Eye size={24} color="#3b82f6" />
               </View>
               <Text className="stat-value">{formatNumber(stats.totalViews)}</Text>
               <Text className="stat-label">总浏览量</Text>
             </View>
 
-            <View className="stat-card stat-pink">
+            <View className="stat-card stat-red">
               <View className="stat-icon">
-                <Heart size={24} color="#f43f5e" />
+                <Heart size={24} color="#ef4444" />
               </View>
               <Text className="stat-value">{formatNumber(stats.totalLikes)}</Text>
               <Text className="stat-label">总点赞数</Text>
@@ -237,7 +237,7 @@ export default function OrderStats() {
 
         {/* 排序 */}
         <View className="sort-bar">
-          <Text className="sort-label">排序方式：</Text>
+          <Text className="sort-label">排序：</Text>
           {[
             { key: 'views', label: '按浏览量' },
             { key: 'likes', label: '按点赞数' },
@@ -273,7 +273,10 @@ export default function OrderStats() {
                       <Text className="avatar-name">{avatar.avatarName}</Text>
                       <View
                         className="avatar-status"
-                        style={{ backgroundColor: statusColor.bg }}
+                        style={{
+                          backgroundColor: statusColor.bg,
+                          borderColor: statusColor.border
+                        }}
                       >
                         <Text style={{ color: statusColor.text }}>{STATUS_LABELS[avatar.status]}</Text>
                       </View>
@@ -283,9 +286,9 @@ export default function OrderStats() {
                     </Text>
                   </View>
                   {isExpanded ? (
-                    <ChevronUp size={20} color="rgba(255,255,255,0.4)" />
+                    <ChevronUp size={20} color="#94a3b8" />
                   ) : (
-                    <ChevronDown size={20} color="rgba(255,255,255,0.4)" />
+                    <ChevronDown size={20} color="#94a3b8" />
                   )}
                 </View>
 
@@ -300,7 +303,7 @@ export default function OrderStats() {
                         <Text className="metric-label">浏览</Text>
                       </View>
                       <View className="metric-item">
-                        <Heart size={16} color="#f43f5e" />
+                        <Heart size={16} color="#ef4444" />
                         <Text className="metric-value">{formatNumber(avatar.totalLikes)}</Text>
                         <Text className="metric-label">点赞</Text>
                       </View>
@@ -345,15 +348,15 @@ export default function OrderStats() {
 
                             <View className="post-footer">
                               <View className="post-stat">
-                                <Eye size={12} color="rgba(255,255,255,0.4)" />
+                                <Eye size={12} color="#94a3b8" />
                                 <Text className="post-stat-value">{formatNumber(post.viewsCount)}</Text>
                               </View>
                               <View className="post-stat">
-                                <Heart size={12} color="rgba(255,255,255,0.4)" />
+                                <Heart size={12} color="#94a3b8" />
                                 <Text className="post-stat-value">{formatNumber(post.likesCount)}</Text>
                               </View>
                               <View className="post-stat">
-                                <MessageCircle size={12} color="rgba(255,255,255,0.4)" />
+                                <MessageCircle size={12} color="#94a3b8" />
                                 <Text className="post-stat-value">{formatNumber(post.commentsCount)}</Text>
                               </View>
                               <Text className="post-time">{formatDate(post.createdAt)}</Text>
