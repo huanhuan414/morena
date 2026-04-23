@@ -250,6 +250,33 @@ export class OrderController {
     }
   }
 
+  @Put(':id/avatar/:avatarId/approve')
+  async approveAvatarOrder(
+    @Param('id') orderId: string,
+    @Param('avatarId') avatarId: string
+  ) {
+    const result = await this.orderService.approveAvatarOrder(orderId, avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '分身验收通过'
+    }
+  }
+
+  @Put(':id/avatar/:avatarId/reject')
+  async rejectAvatarOrder(
+    @Param('id') orderId: string,
+    @Param('avatarId') avatarId: string,
+    @Body('reason') reason: string
+  ) {
+    const result = await this.orderService.rejectAvatarOrder(orderId, avatarId, reason)
+    return {
+      code: 200,
+      data: result,
+      message: '分身已驳回'
+    }
+  }
+
   @Put(':id/cancel')
   async cancel(
     @Param('id') orderId: string,

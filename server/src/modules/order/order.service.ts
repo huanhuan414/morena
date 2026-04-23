@@ -1158,4 +1158,83 @@ export class OrderService {
       completionRate: stats.totalOrders > 0 ? (stats.completedOrders / stats.totalOrders * 100) : 0
     }
   }
+
+  /**
+   * 分身验收通过
+   */
+  async approveAvatarOrder(orderId: string, avatarId: string) {
+    const client = getSupabaseClient()
+
+    // 更新分身订单请求状态
+    const { error } = await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'accepted',
+        publish_status: {
+          feedbackSubmittedAt: new Date().toISOString(),
+          status: 'approved'
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId)
+      .eq('avatar_id', avatarId)
+
+    if (error) {
+      throw new Error(`分身验收失败: ${error.message}`)
+    }
+
+    // 检查是否所有分身都已验收，如果是，更新订单状态
+    const { data: requests } = await client
+      .from('order_dispatch_requests')
+      .select('status')
+      .eq('order_id', orderId)
+
+    const allApproved = requests?.every(r => r.status === 'accepted')
+
+    if (allApproved) {
+      await client
+        .from('orders')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+    }
+
+    // 通知分身验收通过
+    await this.notifyAvatarApproval(orderId, avatarId)
+
+    return { success: true }
+  }
+
+  /**
+   * 分身驳回
+   */
+  async rejectAvatarOrder(orderId: string, avatarId: string, reason: string) {
+    const client = getSupabaseClient()
+
+    // 更新分身订单请求状态
+    const { error } = await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'feedback_required',
+        publish_feedback: {
+          ...{ reason },
+          feedbackSubmittedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId)
+      .eq('avatar_id', avatarId)
+
+    if (error) {
+      throw new Error(`分身驳回失败: ${error.message}`)
+    }
+
+    // 通知分身被驳回
+    await this.notifyAvatarRejection(orderId, avatarId, reason)
+
+    return { success: true }
+  }
 }
