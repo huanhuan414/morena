@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
-import { Users, Eye, Heart, MessageCircle, Share2, ChevronDown, ChevronUp } from 'lucide-react-taro'
+import { Users, Eye, Heart, MessageCircle, Share2, ChevronDown, ChevronUp, Funnel, ArrowUpDown } from 'lucide-react-taro'
+import './AvatarStatsPanel.css'
 
 interface Post {
   id: string
@@ -62,15 +63,15 @@ const STATUS_LABELS: Record<string, string> = {
   feedback_submitted: '已提交'
 }
 
-const STATUS_COLORS: Record<string, { bg: string, text: string }> = {
-  pending: { bg: 'rgba(245, 158, 11, 0.2)', text: '#f59e0b' },
-  accepted: { bg: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-  generating: { bg: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-  preview: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  publishing: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  published: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' },
-  awaiting_acceptance: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  feedback_submitted: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' }
+const STATUS_COLORS: Record<string, { bg: string, text: string, border: string }> = {
+  pending: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
+  accepted: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+  generating: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+  preview: { bg: 'rgba(139, 92, 246, 0.15)', text: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+  publishing: { bg: 'rgba(139, 92, 246, 0.15)', text: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+  published: { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
+  awaiting_acceptance: { bg: 'rgba(139, 92, 246, 0.15)', text: '#8b5cf6', border: 'rgba(139, 92, 246, 0.3)' },
+  feedback_submitted: { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' }
 }
 
 const formatNumber = (num: number): string => {
@@ -82,22 +83,6 @@ const formatNumber = (num: number): string => {
   }
   return num.toString()
 }
-
-const StatCard = ({ icon, label, value, color }: any) => (
-  <View style={{
-    padding: '0.75rem',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: '0.5rem',
-    flex: 1
-  }}
-  >
-    <View style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.25rem' }}>
-      {icon}
-      <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>{label}</Text>
-    </View>
-    <Text style={{ fontSize: '1.25rem', fontWeight: 600, color }}>{value}</Text>
-  </View>
-)
 
 export default function AvatarStatsPanel({ stats }: AvatarStatsPanelProps) {
   const [expandedAvatars, setExpandedAvatars] = useState<Set<string>>(new Set())
@@ -153,98 +138,87 @@ export default function AvatarStatsPanel({ stats }: AvatarStatsPanelProps) {
   return (
     <View style={{ padding: '1rem' }}>
       {/* 总数据统计卡片 */}
-      <View className="glass-card" style={{ marginBottom: '1rem', padding: '1rem' }}>
-        <View className="card-header" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '1rem'
-        }}
-        >
+      <View className="stats-card">
+        <View className="card-header">
           <Users size={20} color="#00f5ff" />
-          <Text className="card-title">总数据统计</Text>
+          <Text className="card-header-title">数据概览</Text>
         </View>
 
         {/* 核心数据 */}
-        <View style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '0.75rem',
-          marginBottom: '1rem'
-        }}
-        >
-          <StatCard
-            icon={<Users size={16} color="#00f5ff" />}
-            label="参与分身"
-            value={stats.totalAvatars}
-            color="#00f5ff"
-          />
-          <StatCard
-            icon={<Users size={16} color="#3b82f6" />}
-            label="已发布内容"
-            value={stats.totalPosts}
-            color="#3b82f6"
-          />
-          <StatCard
-            icon={<Eye size={16} color="#22c55e" />}
-            label="总浏览量"
-            value={formatNumber(stats.totalViews)}
-            color="#22c55e"
-          />
-          <StatCard
-            icon={<Heart size={16} color="#f43f5e" />}
-            label="总点赞数"
-            value={formatNumber(stats.totalLikes)}
-            color="#f43f5e"
-          />
-          <StatCard
-            icon={<MessageCircle size={16} color="#f59e0b" />}
-            label="总评论数"
-            value={formatNumber(stats.totalComments)}
-            color="#f59e0b"
-          />
-          <StatCard
-            icon={<Share2 size={16} color="#8b5cf6" />}
-            label="总分享数"
-            value={formatNumber(stats.totalShares)}
-            color="#8b5cf6"
-          />
+        <View className="stats-grid">
+          <View className="stat-item stat-item-primary">
+            <View className="stat-icon stat-icon-cyan">
+              <Users size={18} color="#00f5ff" />
+            </View>
+            <Text className="stat-label">参与分身</Text>
+            <Text className="stat-value">{stats.totalAvatars}</Text>
+          </View>
+
+          <View className="stat-item stat-item-purple">
+            <View className="stat-icon stat-icon-purple">
+              <Eye size={18} color="#8b5cf6" />
+            </View>
+            <Text className="stat-label">已发布内容</Text>
+            <Text className="stat-value">{stats.totalPosts}</Text>
+          </View>
+
+          <View className="stat-item stat-item-green">
+            <View className="stat-icon stat-icon-green">
+              <Eye size={18} color="#22c55e" />
+            </View>
+            <Text className="stat-label">总浏览量</Text>
+            <Text className="stat-value">{formatNumber(stats.totalViews)}</Text>
+          </View>
+
+          <View className="stat-item stat-item-pink">
+            <View className="stat-icon stat-icon-pink">
+              <Heart size={18} color="#f43f5e" />
+            </View>
+            <Text className="stat-label">总点赞数</Text>
+            <Text className="stat-value">{formatNumber(stats.totalLikes)}</Text>
+          </View>
+
+          <View className="stat-item stat-item-yellow">
+            <View className="stat-icon stat-icon-yellow">
+              <MessageCircle size={18} color="#f59e0b" />
+            </View>
+            <Text className="stat-label">总评论数</Text>
+            <Text className="stat-value">{formatNumber(stats.totalComments)}</Text>
+          </View>
+
+          <View className="stat-item stat-item-indigo">
+            <View className="stat-icon stat-icon-indigo">
+              <Share2 size={18} color="#6366f1" />
+            </View>
+            <Text className="stat-label">总分享数</Text>
+            <Text className="stat-value">{formatNumber(stats.totalShares)}</Text>
+          </View>
         </View>
 
         {/* 平台统计 */}
-        <View style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '0.5rem',
-          padding: '0.75rem',
-          backgroundColor: 'rgba(0,0,0,0.2)',
-          borderRadius: '0.5rem'
-        }}
-        >
-          <View style={{ textAlign: 'center' }}>
-            <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>已接单</Text>
-            <Text style={{ fontSize: '1.125rem', fontWeight: 600, color: '#3b82f6' }}>{stats.acceptedAvatars}</Text>
+        <View className="platform-stats">
+          <View className="platform-stat-item">
+            <Text className="platform-stat-label">已接单</Text>
+            <Text className="platform-stat-value platform-stat-value-blue">{stats.acceptedAvatars}</Text>
           </View>
-          <View style={{ textAlign: 'center' }}>
-            <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>已提交</Text>
-            <Text style={{ fontSize: '1.125rem', fontWeight: 600, color: '#22c55e' }}>{stats.submittedAvatars}</Text>
+          <View className="platform-stat-divider" />
+          <View className="platform-stat-item">
+            <Text className="platform-stat-label">已提交</Text>
+            <Text className="platform-stat-value platform-stat-value-green">{stats.submittedAvatars}</Text>
           </View>
-          <View style={{ textAlign: 'center' }}>
-            <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>已发布</Text>
-            <Text style={{ fontSize: '1.125rem', fontWeight: 600, color: '#8b5cf6' }}>{stats.totalPublished}</Text>
+          <View className="platform-stat-divider" />
+          <View className="platform-stat-item">
+            <Text className="platform-stat-label">已发布</Text>
+            <Text className="platform-stat-value platform-stat-value-purple">{stats.totalPublished}</Text>
           </View>
         </View>
       </View>
 
       {/* 筛选和排序 */}
-      <View style={{ marginBottom: '1rem' }}>
-        <View style={{
-          display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '0.75rem',
-          flexWrap: 'wrap'
-        }}
-        >
+      <View className="filter-bar">
+        <View className="filter-section">
+          <Funnel size={14} color="rgba(255,255,255,0.5)" />
+          <Text className="filter-label">筛选</Text>
           {[
             { key: 'all', label: '全部' },
             { key: 'published', label: '已发布' },
@@ -253,278 +227,174 @@ export default function AvatarStatsPanel({ stats }: AvatarStatsPanelProps) {
             <View
               key={filter.key}
               onClick={() => setFilterStatus(filter.key as any)}
-              style={{
-                padding: '0.375rem 0.75rem',
-                borderRadius: '0.375rem',
-                backgroundColor: filterStatus === filter.key ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255,255,255,0.1)',
-                borderWidth: filterStatus === filter.key ? '1px' : '0',
-                borderColor: '#00f5ff'
-              }}
+              className={`filter-chip ${filterStatus === filter.key ? 'filter-chip-active' : ''}`}
             >
-              <Text style={{
-                fontSize: '0.875rem',
-                color: filterStatus === filter.key ? '#00f5ff' : 'rgba(255,255,255,0.7)'
-              }}
-              >{filter.label}</Text>
+              <Text className="filter-chip-text">{filter.label}</Text>
             </View>
           ))}
         </View>
 
-        <View style={{
-          display: 'flex',
-          gap: '0.5rem',
-          flexWrap: 'wrap'
-        }}
-        >
+        <View className="filter-section">
+          <ArrowUpDown size={14} color="rgba(255,255,255,0.5)" />
+          <Text className="filter-label">排序</Text>
           {[
-            { key: 'views', label: '按浏览量' },
-            { key: 'likes', label: '按点赞' },
-            { key: 'comments', label: '按评论' },
-            { key: 'posts', label: '按作品数' }
+            { key: 'views', label: '浏览量' },
+            { key: 'likes', label: '点赞' },
+            { key: 'comments', label: '评论' },
+            { key: 'posts', label: '作品数' }
           ].map(sort => (
             <View
               key={sort.key}
               onClick={() => setSortBy(sort.key as any)}
-              style={{
-                padding: '0.375rem 0.75rem',
-                borderRadius: '0.375rem',
-                backgroundColor: sortBy === sort.key ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.1)',
-                borderWidth: sortBy === sort.key ? '1px' : '0',
-                borderColor: '#8b5cf6'
-              }}
+              className={`filter-chip ${sortBy === sort.key ? 'filter-chip-active' : ''}`}
             >
-              <Text style={{
-                fontSize: '0.875rem',
-                color: sortBy === sort.key ? '#8b5cf6' : 'rgba(255,255,255,0.7)'
-              }}
-              >{sort.label}</Text>
+              <Text className="filter-chip-text">{sort.label}</Text>
             </View>
           ))}
         </View>
       </View>
 
       {/* 分身列表 */}
-      {getSortedAvatars().map((avatarStat) => (
-        <View
-          key={avatarStat.avatarId}
-          style={{
-            marginBottom: '1rem',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            borderRadius: '0.75rem',
-            overflow: 'hidden'
-          }}
-        >
-          {/* 分身头部 */}
-          <View
-            onClick={() => toggleAvatarExpand(avatarStat.avatarId)}
-            style={{
-              padding: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem'
-            }}
-          >
-            <Image
-              src={avatarStat.avatarUrl || 'https://via.placeholder.com/40'}
-              style={{
-                width: '3rem',
-                height: '3rem',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(0,0,0,0.2)'
-              }}
-            />
-            <View style={{ flex: 1 }}>
-              <View style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <Text style={{ fontSize: '1rem', fontWeight: 600 }}>{avatarStat.avatarName}</Text>
-                <View style={{
-                  padding: '0.125rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  backgroundColor: STATUS_COLORS[avatarStat.status]?.bg || 'rgba(107, 114, 128, 0.2)'
-                }}
-                >
-                  <Text style={{
-                    fontSize: '0.75rem',
-                    color: STATUS_COLORS[avatarStat.status]?.text || 'rgba(255,255,255,0.7)'
-                  }}
-                  >
-                    {STATUS_LABELS[avatarStat.status] || avatarStat.status}
-                  </Text>
-                </View>
-              </View>
-              <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                {avatarStat.postCount} 个作品 · {formatNumber(avatarStat.totalViews)} 浏览 · {formatNumber(avatarStat.totalLikes)} 点赞
-              </Text>
-            </View>
-            {expandedAvatars.has(avatarStat.avatarId) ? (
-              <ChevronUp size={20} color="rgba(255,255,255,0.5)" />
-            ) : (
-              <ChevronDown size={20} color="rgba(255,255,255,0.5)" />
-            )}
-          </View>
+      <View className="avatar-list">
+        {getSortedAvatars().map((avatarStat) => {
+          const statusColor = STATUS_COLORS[avatarStat.status] || STATUS_COLORS.pending
+          const isExpanded = expandedAvatars.has(avatarStat.avatarId)
 
-          {/* 分身数据详情 */}
-          {expandedAvatars.has(avatarStat.avatarId) && (
-            <View style={{
-              padding: '0.75rem',
-              borderTop: '1px solid rgba(255,255,255,0.1)'
-            }}
-            >
-              {/* 数据指标 */}
-              <View style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '0.5rem',
-                marginBottom: '1rem',
-                padding: '0.5rem',
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                borderRadius: '0.375rem'
-              }}
-              >
-                <View style={{ textAlign: 'center' }}>
-                  <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.125rem' }}>
-                    <Eye size={14} color="#22c55e" />
-                    <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>浏览</Text>
-                  </View>
-                  <Text style={{ fontSize: '1rem', fontWeight: 600, color: '#22c55e' }}>{formatNumber(avatarStat.totalViews)}</Text>
-                </View>
-                <View style={{ textAlign: 'center' }}>
-                  <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.125rem' }}>
-                    <Heart size={14} color="#f43f5e" />
-                    <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>点赞</Text>
-                  </View>
-                  <Text style={{ fontSize: '1rem', fontWeight: 600, color: '#f43f5e' }}>{formatNumber(avatarStat.totalLikes)}</Text>
-                </View>
-                <View style={{ textAlign: 'center' }}>
-                  <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.125rem' }}>
-                    <MessageCircle size={14} color="#f59e0b" />
-                    <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>评论</Text>
-                  </View>
-                  <Text style={{ fontSize: '1rem', fontWeight: 600, color: '#f59e0b' }}>{formatNumber(avatarStat.totalComments)}</Text>
-                </View>
-                <View style={{ textAlign: 'center' }}>
-                  <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.125rem' }}>
-                    <Share2 size={14} color="#8b5cf6" />
-                    <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>分享</Text>
-                  </View>
-                  <Text style={{ fontSize: '1rem', fontWeight: 600, color: '#8b5cf6' }}>{formatNumber(avatarStat.totalShares)}</Text>
-                </View>
-              </View>
-
-              {/* 作品列表 */}
-              {avatarStat.posts.length > 0 ? (
-                <View>
-                  <Text style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                    作品列表 ({avatarStat.posts.length})
-                  </Text>
-                  {avatarStat.posts.map((post) => (
+          return (
+            <View key={avatarStat.avatarId} className="avatar-card">
+              {/* 分身头部 */}
+              <View className="avatar-header" onClick={() => toggleAvatarExpand(avatarStat.avatarId)}>
+                <Image
+                  src={avatarStat.avatarUrl || 'https://via.placeholder.com/40'}
+                  className="avatar-avatar"
+                  mode="aspectFill"
+                />
+                <View className="avatar-info">
+                  <View className="avatar-name-row">
+                    <Text className="avatar-name">{avatarStat.avatarName}</Text>
                     <View
-                      key={post.id}
+                      className="avatar-status-badge"
                       style={{
-                        marginBottom: '0.75rem',
-                        padding: '0.75rem',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                        borderRadius: '0.375rem'
+                        backgroundColor: statusColor.bg,
+                        borderColor: statusColor.border
                       }}
                     >
-                      <Text style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>{post.content}</Text>
-
-                      {/* 图片展示 */}
-                      {post.images && post.images.length > 0 && (
-                        <View style={{
-                          display: 'flex',
-                          gap: '0.5rem',
-                          marginBottom: '0.5rem',
-                          flexWrap: 'wrap'
-                        }}
-                        >
-                          {post.images.map((img, idx) => (
-                            <Image
-                              key={idx}
-                              src={img}
-                              style={{
-                                width: '6rem',
-                                height: '6rem',
-                                borderRadius: '0.25rem',
-                                objectFit: 'cover'
-                              }}
-                              mode="aspectFill"
-                            />
-                          ))}
-                        </View>
-                      )}
-
-                      {/* 视频展示 */}
-                      {post.videoUrl && (
-                        <View style={{
-                          marginBottom: '0.5rem',
-                          padding: '0.5rem',
-                          backgroundColor: 'rgba(255,255,255,0.05)',
-                          borderRadius: '0.25rem',
-                          textAlign: 'center'
-                        }}
-                        >
-                          <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                            📹 视频内容
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* 互动数据 */}
-                      <View style={{
-                        display: 'flex',
-                        gap: '1rem',
-                        paddingTop: '0.5rem',
-                        borderTop: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                      >
-                        <View style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Eye size={14} color="rgba(255,255,255,0.5)" />
-                          <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                            {formatNumber(post.viewsCount)}
-                          </Text>
-                        </View>
-                        <View style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Heart size={14} color="rgba(255,255,255,0.5)" />
-                          <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                            {formatNumber(post.likesCount)}
-                          </Text>
-                        </View>
-                        <View style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <MessageCircle size={14} color="rgba(255,255,255,0.5)" />
-                          <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                            {formatNumber(post.commentsCount)}
-                          </Text>
-                        </View>
-                        <View style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Share2 size={14} color="rgba(255,255,255,0.5)" />
-                          <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                            {formatNumber(post.sharesCount)}
-                          </Text>
-                        </View>
-                        <Text style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginLeft: 'auto' }}>
-                          {formatDate(post.createdAt)}
-                        </Text>
-                      </View>
+                      <Text className="avatar-status-text" style={{ color: statusColor.text }}>
+                        {STATUS_LABELS[avatarStat.status] || avatarStat.status}
+                      </Text>
                     </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={{
-                  padding: '1rem',
-                  textAlign: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  borderRadius: '0.375rem'
-                }}
-                >
-                  <Text style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
-                    暂无作品
+                  </View>
+                  <Text className="avatar-stats">
+                    {avatarStat.postCount} 作品 · {formatNumber(avatarStat.totalViews)} 浏览 · {formatNumber(avatarStat.totalLikes)} 点赞
                   </Text>
+                </View>
+                <View className="avatar-expand-icon">
+                  {isExpanded ? (
+                    <ChevronUp size={20} color="rgba(255,255,255,0.4)" />
+                  ) : (
+                    <ChevronDown size={20} color="rgba(255,255,255,0.4)" />
+                  )}
+                </View>
+              </View>
+
+              {/* 分身数据详情 */}
+              {isExpanded && (
+                <View className="avatar-detail">
+                  {/* 数据指标 */}
+                  <View className="avatar-metrics">
+                    <View className="avatar-metric">
+                      <View className="avatar-metric-icon">
+                        <Eye size={16} color="#22c55e" />
+                      </View>
+                      <Text className="avatar-metric-value">{formatNumber(avatarStat.totalViews)}</Text>
+                      <Text className="avatar-metric-label">浏览</Text>
+                    </View>
+                    <View className="avatar-metric">
+                      <View className="avatar-metric-icon">
+                        <Heart size={16} color="#f43f5e" />
+                      </View>
+                      <Text className="avatar-metric-value">{formatNumber(avatarStat.totalLikes)}</Text>
+                      <Text className="avatar-metric-label">点赞</Text>
+                    </View>
+                    <View className="avatar-metric">
+                      <View className="avatar-metric-icon">
+                        <MessageCircle size={16} color="#f59e0b" />
+                      </View>
+                      <Text className="avatar-metric-value">{formatNumber(avatarStat.totalComments)}</Text>
+                      <Text className="avatar-metric-label">评论</Text>
+                    </View>
+                    <View className="avatar-metric">
+                      <View className="avatar-metric-icon">
+                        <Share2 size={16} color="#6366f1" />
+                      </View>
+                      <Text className="avatar-metric-value">{formatNumber(avatarStat.totalShares)}</Text>
+                      <Text className="avatar-metric-label">分享</Text>
+                    </View>
+                  </View>
+
+                  {/* 作品列表 */}
+                  {avatarStat.posts.length > 0 ? (
+                    <View className="avatar-posts">
+                      <Text className="avatar-posts-title">作品列表 ({avatarStat.posts.length})</Text>
+                      {avatarStat.posts.map((post) => (
+                        <View key={post.id} className="post-card">
+                          <Text className="post-content">{post.content}</Text>
+
+                          {/* 图片展示 */}
+                          {post.images && post.images.length > 0 && (
+                            <View className="post-images">
+                              {post.images.map((img, idx) => (
+                                <Image
+                                  key={idx}
+                                  src={img}
+                                  className="post-image"
+                                  mode="aspectFill"
+                                />
+                              ))}
+                            </View>
+                          )}
+
+                          {/* 视频展示 */}
+                          {post.videoUrl && (
+                            <View className="post-video">
+                              <Text className="post-video-text">📹 视频内容</Text>
+                            </View>
+                          )}
+
+                          {/* 互动数据 */}
+                          <View className="post-metrics">
+                            <View className="post-metric">
+                              <Eye size={14} color="rgba(255,255,255,0.4)" />
+                              <Text className="post-metric-value">{formatNumber(post.viewsCount)}</Text>
+                            </View>
+                            <View className="post-metric">
+                              <Heart size={14} color="rgba(255,255,255,0.4)" />
+                              <Text className="post-metric-value">{formatNumber(post.likesCount)}</Text>
+                            </View>
+                            <View className="post-metric">
+                              <MessageCircle size={14} color="rgba(255,255,255,0.4)" />
+                              <Text className="post-metric-value">{formatNumber(post.commentsCount)}</Text>
+                            </View>
+                            <View className="post-metric">
+                              <Share2 size={14} color="rgba(255,255,255,0.4)" />
+                              <Text className="post-metric-value">{formatNumber(post.sharesCount)}</Text>
+                            </View>
+                            <Text className="post-time">{formatDate(post.createdAt)}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View className="avatar-empty-posts">
+                      <Text className="avatar-empty-text">暂无作品</Text>
+                    </View>
+                  )}
                 </View>
               )}
             </View>
-          )}
-        </View>
-      ))}
+          )
+        })}
+      </View>
     </View>
   )
 }
