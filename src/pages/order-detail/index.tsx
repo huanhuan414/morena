@@ -1,12 +1,12 @@
-import { useLoad, useRouter, navigateBack, showToast, navigateTo } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   ArrowLeft, Check, X, Star, Loader, Circle,
-  DollarSign, Users, TrendingUp
+  DollarSign, Users, Eye, Heart, MessageCircle, Share2
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -14,6 +14,26 @@ const STATUS_CONFIG: Record<string, any> = {
   reviewing: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   awaiting_acceptance: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   completed: { label: '已完成', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' }
+}
+
+const AVATAR_STATUS_LABELS: Record<string, string> = {
+  pending: '待确认',
+  accepted: '已接单',
+  generating: '生成中',
+  publishing: '发布中',
+  published: '已发布',
+  awaiting_acceptance: '待验收',
+  feedback_submitted: '已提交'
+}
+
+const AVATAR_STATUS_COLORS: Record<string, { bg: string, text: string, border: string }> = {
+  pending: { bg: '#fef3c7', text: '#d97706', border: '#f59e0b' },
+  accepted: { bg: '#dbeafe', text: '#2563eb', border: '#3b82f6' },
+  generating: { bg: '#dbeafe', text: '#2563eb', border: '#3b82f6' },
+  publishing: { bg: '#ede9fe', text: '#7c3aed', border: '#8b5cf6' },
+  published: { bg: '#dcfce7', text: '#16a34a', border: '#22c55e' },
+  awaiting_acceptance: { bg: '#ede9fe', text: '#7c3aed', border: '#8b5cf6' },
+  feedback_submitted: { bg: '#dcfce7', text: '#16a34a', border: '#22c55e' }
 }
 
 interface Order {
@@ -26,6 +46,33 @@ interface Order {
   created_at: string
   dispatch_request_status?: string
   summary_stats?: any
+  dispatch_requests?: any[]
+}
+
+interface Post {
+  id: string
+  content: string
+  images: string[]
+  videoUrl?: string
+  likesCount: number
+  commentsCount: number
+  sharesCount: number
+  viewsCount: number
+  createdAt: string
+  platforms: string[]
+}
+
+interface AvatarStat {
+  avatarId: string
+  avatarName: string
+  avatarUrl: string
+  status: string
+  postCount: number
+  totalViews: number
+  totalLikes: number
+  totalComments: number
+  totalShares: number
+  posts: Post[]
 }
 
 export default function OrderDetail() {
@@ -104,6 +151,28 @@ export default function OrderDetail() {
     }
   }
 
+  const formatNumber = (num: number): string => {
+    if (num >= 10000) {
+      return `${(num / 10000).toFixed(1)}万`
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}k`
+    }
+    return num.toString()
+  }
+
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+    if (days === 0) return '今天'
+    if (days === 1) return '昨天'
+    if (days < 7) return `${days}天前`
+    return date.toLocaleDateString()
+  }
+
   if (loading) {
     return (
       <View className="loading-page">
@@ -178,45 +247,125 @@ export default function OrderDetail() {
 
       {/* 内容区域 */}
       <ScrollView scrollY className="content-scroll">
-        {/* 数据统计入口 */}
-        {order.summary_stats && order.summary_stats.totalAvatars > 0 && (
-          <View
-            className="stats-entrance"
-            onClick={() => navigateTo({ url: `/pages/order-stats/index?orderId=${order.id}` })}
-          >
-            <View className="stats-entrance-left">
-              <View className="stats-icon">
-                <TrendingUp size={24} color="#6366f1" />
-              </View>
-              <View className="stats-entrance-info">
-                <Text className="stats-entrance-title">查看数据统计</Text>
-                <Text className="stats-entrance-desc">
-                  共 {order.summary_stats.totalAvatars} 个分身参与
-                </Text>
-              </View>
-            </View>
-            <ArrowLeft size={20} color="#94a3b8" style={{ transform: 'rotate(180deg)' }} />
+        {/* 分身列表 */}
+        {order.summary_stats?.avatarStats && order.summary_stats.avatarStats.length > 0 ? (
+          <View className="avatar-list">
+            {order.summary_stats.avatarStats.map((avatar: AvatarStat) => {
+              const statusColor = AVATAR_STATUS_COLORS[avatar.status] || AVATAR_STATUS_COLORS.pending
+
+              return (
+                <View key={avatar.avatarId} className="avatar-card">
+                  {/* 分身头部 */}
+                  <View className="avatar-header">
+                    <Image
+                      src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
+                      className="avatar-avatar"
+                      mode="aspectFill"
+                    />
+                    <View className="avatar-info">
+                      <View className="avatar-name-row">
+                        <Text className="avatar-name">{avatar.avatarName}</Text>
+                        <View
+                          className="avatar-status"
+                          style={{
+                            backgroundColor: statusColor.bg,
+                            borderColor: statusColor.border
+                          }}
+                        >
+                          <Text style={{ color: statusColor.text }}>
+                            {AVATAR_STATUS_LABELS[avatar.status]}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="avatar-summary">
+                        {avatar.postCount} 个作品 · {formatNumber(avatar.totalViews)} 浏览 · {formatNumber(avatar.totalLikes)} 点赞
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 数据指标 */}
+                  <View className="metrics-row">
+                    <View className="metric-item">
+                      <Eye size={16} color="#22c55e" />
+                      <Text className="metric-value">{formatNumber(avatar.totalViews)}</Text>
+                      <Text className="metric-label">浏览</Text>
+                    </View>
+                    <View className="metric-item">
+                      <Heart size={16} color="#ef4444" />
+                      <Text className="metric-value">{formatNumber(avatar.totalLikes)}</Text>
+                      <Text className="metric-label">点赞</Text>
+                    </View>
+                    <View className="metric-item">
+                      <MessageCircle size={16} color="#f59e0b" />
+                      <Text className="metric-value">{formatNumber(avatar.totalComments)}</Text>
+                      <Text className="metric-label">评论</Text>
+                    </View>
+                    <View className="metric-item">
+                      <Share2 size={16} color="#6366f1" />
+                      <Text className="metric-value">{formatNumber(avatar.totalShares)}</Text>
+                      <Text className="metric-label">分享</Text>
+                    </View>
+                  </View>
+
+                  {/* 作品列表 */}
+                  {avatar.posts && avatar.posts.length > 0 ? (
+                    <View className="posts-section">
+                      <Text className="posts-title">提交的作品 ({avatar.posts.length})</Text>
+                      {avatar.posts.map((post) => (
+                        <View key={post.id} className="post-card">
+                          <Text className="post-content">{post.content}</Text>
+
+                          {post.images && post.images.length > 0 && (
+                            <View className="post-images">
+                              {post.images.map((img, idx) => (
+                                <Image
+                                  key={idx}
+                                  src={img}
+                                  className="post-image"
+                                  mode="aspectFill"
+                                />
+                              ))}
+                            </View>
+                          )}
+
+                          {post.videoUrl && (
+                            <View className="post-video">
+                              <Text className="post-video-text">📹 视频内容</Text>
+                            </View>
+                          )}
+
+                          <View className="post-footer">
+                            <View className="post-stat">
+                              <Eye size={12} color="#94a3b8" />
+                              <Text className="post-stat-value">{formatNumber(post.viewsCount)}</Text>
+                            </View>
+                            <View className="post-stat">
+                              <Heart size={12} color="#94a3b8" />
+                              <Text className="post-stat-value">{formatNumber(post.likesCount)}</Text>
+                            </View>
+                            <View className="post-stat">
+                              <MessageCircle size={12} color="#94a3b8" />
+                              <Text className="post-stat-value">{formatNumber(post.commentsCount)}</Text>
+                            </View>
+                            <Text className="post-time">{formatDate(post.createdAt)}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View className="empty-posts">
+                      <Text className="empty-posts-text">暂无作品</Text>
+                    </View>
+                  )}
+                </View>
+              )
+            })}
+          </View>
+        ) : (
+          <View className="empty-state">
+            <Text className="empty-state-text">暂无分身参与</Text>
           </View>
         )}
-
-        {/* 验收说明 */}
-        <View className="acceptance-guide">
-          <View className="guide-header">
-            <Circle size={20} color="#6366f1" strokeWidth={2} />
-            <Text className="guide-title">验收说明</Text>
-          </View>
-          <View className="guide-content">
-            <Text className="guide-text">
-              • 请先查看数据统计，了解各分身的发布情况
-            </Text>
-            <Text className="guide-text">
-              • 确认数据达标后，点击「验收通过」完成订单
-            </Text>
-            <Text className="guide-text">
-              • 如有问题，可点击「驳回修改」要求分身重新处理
-            </Text>
-          </View>
-        </View>
       </ScrollView>
 
       {/* 验收按钮 */}

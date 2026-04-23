@@ -174,15 +174,39 @@ export class OrderService {
       // 统计每个分身的作品数据
       const avatarStats = requestsData.map((request: any) => {
         const platforms = request.publish_status?.platforms || []
-        const posts = request.posts || []
+        let posts = request.posts || []
         const avatarData = request.avatars
         const avatarInfo = Array.isArray(avatarData) ? avatarData[0] : avatarData
 
+        // 如果没有posts但有生成内容，创建虚拟的post用于展示
+        if (posts.length === 0 && (request.generated_content || request.confirmed_content)) {
+          const content = request.confirmed_content || request.generated_content
+          // 提取图片链接（Markdown格式：![alt](url)）
+          const imageMatches = content.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || []
+          const images = imageMatches.map((match: string) => {
+            const urlMatch = match.match(/\(([^)]+)\)/)
+            return urlMatch ? urlMatch[1] : ''
+          }).filter((url: string) => url)
+
+          posts = [{
+            id: `temp-${request.id}`,
+            content: content,
+            images: images,
+            videoUrl: '',
+            likesCount: 0,
+            commentsCount: 0,
+            sharesCount: 0,
+            viewsCount: 0,
+            createdAt: request.publish_status?.feedbackSubmittedAt || request.updated_at,
+            platforms: platforms.map((p: any) => p.platform)
+          }]
+        }
+
         // 聚合帖子数据
-        const totalViews = posts.reduce((sum: number, p: any) => sum + (p.views_count || 0), 0)
-        const totalLikes = posts.reduce((sum: number, p: any) => sum + (p.likes_count || 0), 0)
-        const totalComments = posts.reduce((sum: number, p: any) => sum + (p.comments_count || 0), 0)
-        const totalShares = posts.reduce((sum: number, p: any) => sum + (p.shares_count || 0), 0)
+        const totalViews = posts.reduce((sum: number, p: any) => sum + (p.viewsCount || p.views_count || 0), 0)
+        const totalLikes = posts.reduce((sum: number, p: any) => sum + (p.likesCount || p.likes_count || 0), 0)
+        const totalComments = posts.reduce((sum: number, p: any) => sum + (p.commentsCount || p.comments_count || 0), 0)
+        const totalShares = posts.reduce((sum: number, p: any) => sum + (p.sharesCount || p.shares_count || 0), 0)
 
         return {
           avatarId: request.avatar_id,
@@ -202,12 +226,12 @@ export class OrderService {
             id: p.id,
             content: p.content,
             images: p.images,
-            videoUrl: p.video_url,
-            likesCount: p.likes_count,
-            commentsCount: p.comments_count,
-            sharesCount: p.shares_count,
-            viewsCount: p.views_count,
-            createdAt: p.created_at,
+            videoUrl: p.videoUrl || p.video_url,
+            likesCount: p.likesCount || p.likes_count || 0,
+            commentsCount: p.commentsCount || p.comments_count || 0,
+            sharesCount: p.sharesCount || p.shares_count || 0,
+            viewsCount: p.viewsCount || p.views_count || 0,
+            createdAt: p.createdAt || p.created_at,
             platforms: p.platforms
           }))
         }
