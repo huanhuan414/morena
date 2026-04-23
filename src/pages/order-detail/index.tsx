@@ -110,7 +110,7 @@ export default function OrderDetail() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#ffffff" />
+          <ArrowLeft size={20} color="#1e293b" />
         </View>
         <Text className="header-title">订单详情</Text>
         <View className="header-right" />

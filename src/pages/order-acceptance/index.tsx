@@ -137,7 +137,7 @@ export default function OrderAcceptance() {
         {/* 头部 */}
         <View className="page-header">
           <View className="header-btn" onClick={backToList}>
-            <ArrowLeft size={20} color="#ffffff" />
+            <ArrowLeft size={20} color="#1e293b" />
           </View>
           <Text className="header-title">验收详情</Text>
           <View className="header-btn" />
@@ -221,15 +221,15 @@ export default function OrderAcceptance() {
             className="reject-btn-modern"
             onClick={() => setShowReject(true)}
           >
-            <CircleAlert size={18} color="#ef4444" />
-            <Text>驳回修改</Text>
+            <CircleAlert size={16} color="#ef4444" />
+            <Text>驳回</Text>
           </Button>
           <Button
             className="approve-btn-modern"
             onClick={() => setShowApprove(true)}
           >
-            <Check size={18} color="#ffffff" />
-            <Text>验收通过</Text>
+            <Check size={16} color="#ffffff" />
+            <Text>验收</Text>
           </Button>
         </View>
 
@@ -304,7 +304,7 @@ export default function OrderAcceptance() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-btn" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="#ffffff" />
+          <ArrowLeft size={20} color="#1e293b" />
         </View>
         <Text className="header-title">验收中</Text>
         <View className="header-btn" />

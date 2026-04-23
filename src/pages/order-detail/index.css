@@ -15,8 +15,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 1rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: none;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
   z-index: 1000;
 }
 
@@ -30,13 +30,13 @@
 }
 
 .header-left :global([data-lucide-icon]) {
-  color: #ffffff !important;
+  color: #1e293b !important;
 }
 
 .header-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #1e293b;
 }
 
 /* 加载页面 */
