@@ -113,24 +113,47 @@ export class OrderService {
       `)
       .eq('order_id', orderId)
 
-    // 如果有请求记录，查询分身信息
+    // 如果有请求记录，查询分身信息和相关帖子统计
     if (!requestError && requestsData && requestsData.length > 0) {
       const avatarIds = requestsData.map((r: any) => r.avatar_id).filter(Boolean)
 
+      let avatarMap = new Map()
+      let postsMap = new Map()
+
+      // 查询分身信息
       if (avatarIds.length > 0) {
         const { data: avatarsData } = await client
           .from('avatars')
           .select('id, name, avatar_url')
           .in('id', avatarIds)
 
-        // 将分身信息映射到请求记录中
         if (avatarsData) {
-          const avatarMap = new Map(avatarsData.map(a => [a.id, a]))
-          requestsData.forEach((request: any) => {
-            request.avatars = avatarMap.get(request.avatar_id)
+          avatarMap = new Map(avatarsData.map(a => [a.id, a]))
+        }
+
+        // 查询这些分身发布的所有帖子（按订单）
+        const { data: postsData } = await client
+          .from('posts')
+          .select('id, avatar_id, content, images, video_url, likes_count, comments_count, shares_count, views_count, created_at, platforms')
+          .in('avatar_id', avatarIds)
+          .eq('order_id', orderId)
+
+        if (postsData) {
+          // 按分身ID分组帖子
+          postsData.forEach((post: any) => {
+            if (!postsMap.has(post.avatar_id)) {
+              postsMap.set(post.avatar_id, [])
+            }
+            postsMap.get(post.avatar_id).push(post)
           })
         }
       }
+
+      // 将分身信息和帖子映射到请求记录中
+      requestsData.forEach((request: any) => {
+        request.avatars = avatarMap.get(request.avatar_id)
+        request.posts = postsMap.get(request.avatar_id) || []
+      })
 
       // 将所有分身的发布结果和反馈添加到订单数据中
       data.dispatch_requests = requestsData
@@ -145,23 +168,48 @@ export class OrderService {
       data.dispatch_request_status = firstRequest.status
 
       // 计算统计数据
-      const acceptedRequests = requestsData.filter(r => r.status === 'accepted')
-      const submittedRequests = requestsData.filter(r => r.status === 'feedback_submitted' || r.status === 'awaiting_acceptance')
+      const acceptedRequests = requestsData.filter((r: any) => r.status === 'accepted')
+      const submittedRequests = requestsData.filter((r: any) => r.status === 'feedback_submitted' || r.status === 'awaiting_acceptance')
 
       // 统计每个分身的作品数据
       const avatarStats = requestsData.map((request: any) => {
         const platforms = request.publish_status?.platforms || []
+        const posts = request.posts || []
         const avatarData = request.avatars
         const avatarInfo = Array.isArray(avatarData) ? avatarData[0] : avatarData
+
+        // 聚合帖子数据
+        const totalViews = posts.reduce((sum: number, p: any) => sum + (p.views_count || 0), 0)
+        const totalLikes = posts.reduce((sum: number, p: any) => sum + (p.likes_count || 0), 0)
+        const totalComments = posts.reduce((sum: number, p: any) => sum + (p.comments_count || 0), 0)
+        const totalShares = posts.reduce((sum: number, p: any) => sum + (p.shares_count || 0), 0)
+
         return {
           avatarId: request.avatar_id,
           avatarName: avatarInfo?.name || '未知',
           avatarUrl: avatarInfo?.avatar_url || '',
           status: request.status,
+          postCount: posts.length,
           platformCount: platforms.length,
           publishedCount: platforms.filter((p: any) => p.status === 'success').length,
           manualCount: platforms.filter((p: any) => p.status === 'manual').length,
-          feedbackCount: request.publish_feedback ? Object.keys(request.publish_feedback).length : 0
+          feedbackCount: request.publish_feedback ? Object.keys(request.publish_feedback).length : 0,
+          totalViews,
+          totalLikes,
+          totalComments,
+          totalShares,
+          posts: posts.map((p: any) => ({
+            id: p.id,
+            content: p.content,
+            images: p.images,
+            videoUrl: p.video_url,
+            likesCount: p.likes_count,
+            commentsCount: p.comments_count,
+            sharesCount: p.shares_count,
+            viewsCount: p.views_count,
+            createdAt: p.created_at,
+            platforms: p.platforms
+          }))
         }
       })
 
@@ -170,9 +218,14 @@ export class OrderService {
         totalAvatars: requestsData.length,
         acceptedAvatars: acceptedRequests.length,
         submittedAvatars: submittedRequests.length,
-        totalPlatforms: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.length || 0), 0),
-        totalPublished: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.filter(p => p.status === 'success').length || 0), 0),
-        totalManual: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.filter(p => p.status === 'manual').length || 0), 0),
+        totalPosts: requestsData.reduce((sum: number, r: any) => sum + (r.posts?.length || 0), 0),
+        totalPlatforms: requestsData.reduce((sum: number, r: any) => sum + (r.publish_status?.platforms?.length || 0), 0),
+        totalPublished: requestsData.reduce((sum: number, r: any) => sum + (r.publish_status?.platforms?.filter((p: any) => p.status === 'success').length || 0), 0),
+        totalManual: requestsData.reduce((sum: number, r: any) => sum + (r.publish_status?.platforms?.filter((p: any) => p.status === 'manual').length || 0), 0),
+        totalViews: avatarStats.reduce((sum: number, s: any) => sum + (s.totalViews || 0), 0),
+        totalLikes: avatarStats.reduce((sum: number, s: any) => sum + (s.totalLikes || 0), 0),
+        totalComments: avatarStats.reduce((sum: number, s: any) => sum + (s.totalComments || 0), 0),
+        totalShares: avatarStats.reduce((sum: number, s: any) => sum + (s.totalShares || 0), 0),
         avatarStats
       }
 
