@@ -1,7 +1,7 @@
 .stats-page {
   min-height: 100vh;
   background: #f8fafc;
-  padding-top: 44px;
+  padding-top: 48px;
 }
 
 /* 头部 */
@@ -10,7 +10,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,15 +22,15 @@
 
 .header-left,
 .header-right {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .header-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1e293b;
 }
@@ -59,7 +59,7 @@
 
 /* 内容滚动 */
 .content-scroll {
-  height: calc(100vh - 44px);
+  height: calc(100vh - 48px);
   padding: 1rem;
 }
 

@@ -1,7 +1,7 @@
 .order-detail-page {
   min-height: 100vh;
   background: #f8fafc;
-  padding-top: 44px;
+  padding-top: 48px;
 }
 
 /* 头部 */
@@ -10,7 +10,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,8 +22,8 @@
 
 .header-left,
 .header-right {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;

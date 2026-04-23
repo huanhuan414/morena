@@ -1,8 +1,8 @@
 .acceptance-page {
   min-height: 100vh;
   background: #f8fafc;
-  padding-top: 44px;
-  padding-bottom: 76px;
+  padding-top: 48px;
+  padding-bottom: 80px;
 }
 
 /* 头部 */
@@ -11,7 +11,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 44px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22,8 +22,8 @@
 }
 
 .header-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -100,7 +100,7 @@
 
 /* 内容滚动 - 列表页 */
 .content-scroll-list {
-  height: calc(100vh - 44px - 80px);
+  height: calc(100vh - 48px - 80px);
   padding: 0 1rem 1rem;
 }
 
@@ -217,7 +217,7 @@
 
 /* 内容滚动 - 详情页 */
 .content-scroll {
-  height: calc(100vh - 44px - 80px);
+  height: calc(100vh - 48px - 80px);
   padding: 1rem;
 }
 
