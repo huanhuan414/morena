@@ -1,31 +1,30 @@
-import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, navigateTo } from '@tarojs/taro'
 import { useState } from 'react'
-import {
-  ArrowLeft, Package, TrendingUp, Users, Calendar, DollarSign,
-  Check, Clock, X, Star
-} from 'lucide-react-taro'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import AvatarStatsPanel from './AvatarStatsPanel'
+import {
+  Sparkles, ArrowLeft, Check, X, Star,
+  Loader, Circle,
+  Clock, DollarSign, Calendar, Users
+} from 'lucide-react-taro'
 import './index.css'
 
-// 状态配置
 const STATUS_CONFIG: Record<string, any> = {
-  open: { label: '待接单', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: Clock },
-  published: { label: '执行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icon: TrendingUp },
-  published_reviewing: { label: '执行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icon: TrendingUp },
-  reviewing: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', icon: Star },
-  completed: { label: '已完成', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Check },
-  cancelled: { label: '已取消', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', icon: X },
-  rejected: { label: '已拒绝', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', icon: X }
+  open: { label: '待接单', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  published: { label: '执行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+  published_reviewing: { label: '执行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+  reviewing: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+  completed: { label: '已完成', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+  cancelled: { label: '已取消', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+  rejected: { label: '已拒绝', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
 }
 
 const TABS = [
-  { key: 'detail', label: '订单详情', icon: Package },
-  { key: 'progress', label: '执行进度', icon: TrendingUp },
-  { key: 'result', label: '成果展示', icon: Check }
+  { key: 'detail', label: '订单详情' },
+  { key: 'progress', label: '执行进度' },
+  { key: 'result', label: '成果展示' }
 ]
 
 interface Order {
@@ -43,16 +42,62 @@ interface Order {
     expectedResults?: string
     requiredSkills?: string[]
   }
-  created_at: string
+  result?: {
+    content?: {
+      title?: string
+      content: string
+      images?: string[]
+      videos?: string[]
+      platform_results?: Array<{
+        platform: string
+        post_url?: string
+        status: string
+      }>
+    }
+    submitted_at?: string
+  }
+  publish_status?: {
+    platforms?: Array<{
+      platform: string
+      status: string
+      message?: string
+      post_url?: string
+    }>
+    summary?: string
+  }
+  publish_feedback?: Record<string, { image?: string; link?: string }>
+  generated_content?: any
+  confirmed_content?: any
+  dispatch_request_id?: string
   dispatch_request_status?: string
   summary_stats?: any
   dispatch_requests?: any[]
+  rejection?: {
+    reason: string
+    rejected_at: string
+  }
+  rating?: {
+    score: number
+    comment?: string
+  }
+  created_at: string
+  updated_at: string
+  completed_at?: string
+  avatars?: {
+    id: string
+    name: string
+    avatar_url: string
+    level?: number
+  }
+  users?: {
+    nickname: string
+    avatar: string
+  }
 }
 
 export default function OrderDetail() {
   const router = useRouter()
   const { id } = router.params
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [activeTab, setActiveTab] = useState('detail')
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(false)
@@ -63,9 +108,6 @@ export default function OrderDetail() {
   const [rejectReason, setRejectReason] = useState('')
 
   useLoad(() => {
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-
     if (id) {
       fetchOrder()
     }
@@ -148,189 +190,272 @@ export default function OrderDetail() {
     return platformMap[platform] || platform
   }
 
-  if (loading || !order) {
+  if (loading) {
     return (
-      <View className="order-detail-container">
-        <View className="loading-container">
-          <Text>加载中...</Text>
-        </View>
+      <View className="loading-container">
+        <Loader className="loading-icon" size={32} color="#00f5ff" />
+        <Text className="loading-text">加载中...</Text>
       </View>
     )
   }
 
+  if (!order) {
+    return null
+  }
+
   const displayStatus = order.dispatch_request_status || order.status
   const statusConfig = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.open
-  const StatusIcon = statusConfig.icon
 
-  const isReviewing = displayStatus === 'reviewing'
+  // 根据订单状态确定可用的Tab
+  const getAvailableTabs = () => {
+    const tabs = [...TABS]
+    // 只有在特定状态下才显示成果展示
+    if (!['reviewing', 'completed'].includes(displayStatus)) {
+      return tabs.filter(t => t.key !== 'result')
+    }
+    return tabs
+  }
+
+  const availableTabs = getAvailableTabs()
 
   return (
-    <View className="order-detail-container" style={{ paddingTop: `${statusBarHeight + 44}px` }}>
-      {/* 顶部导航栏 */}
-      <View className="navbar" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="navbar-content">
-          <View className="navbar-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#ffffff" />
+    <View className="order-detail-page">
+      {/* 头部导航 */}
+      <View className="page-header">
+        <View className="header-left" onClick={() => navigateBack()}>
+          <ArrowLeft size={24} color="#ffffff" />
+        </View>
+        <Text className="header-title">订单详情</Text>
+        <View className="header-right" />
+      </View>
+
+      {/* 订单基本信息卡片 */}
+      <View className="order-card">
+        <View className="order-header">
+          <Text className="order-title">{order.title}</Text>
+          <View
+            className="order-status"
+            style={{ backgroundColor: statusConfig.bg }}
+          >
+            <Circle size={8} color={statusConfig.color} strokeWidth={3} />
+            <Text className="status-text" style={{ color: statusConfig.color }}>
+              {statusConfig.label}
+            </Text>
           </View>
-          <Text className="navbar-title">订单详情</Text>
-          <View className="navbar-right" />
         </View>
+
+        <View className="order-info">
+          <View className="info-item">
+            <DollarSign size={16} color="#00f5ff" />
+            <Text className="info-label">预算</Text>
+            <Text className="info-value">¥{order.budget}</Text>
+          </View>
+
+          {order.deadline && (
+            <View className="info-item">
+              <Calendar size={16} color="#00f5ff" />
+              <Text className="info-label">截止日期</Text>
+              <Text className="info-value">{formatDate(order.deadline)}</Text>
+            </View>
+          )}
+
+          {order.expected_quantity && (
+            <View className="info-item">
+              <Users size={16} color="#00f5ff" />
+              <Text className="info-label">期望数量</Text>
+              <Text className="info-value">{order.expected_quantity}个分身</Text>
+            </View>
+          )}
+
+          <View className="info-item">
+            <Clock size={16} color="#00f5ff" />
+            <Text className="info-label">发布时间</Text>
+            <Text className="info-value">{formatDate(order.created_at)}</Text>
+          </View>
+        </View>
+
+        <Text className="order-description">{order.description}</Text>
       </View>
 
-      {/* 状态栏 */}
-      <View className="status-bar" style={{ backgroundColor: statusConfig.bg }}>
-        <View className="status-bar-content">
-          <StatusIcon size={20} color={statusConfig.color} />
-          <Text className="status-text" style={{ color: statusConfig.color }}>
-            {statusConfig.label}
-          </Text>
-        </View>
-      </View>
+      {/* 订单要求 */}
+      {order.requirements && (
+        <View className="requirements-card">
+          <Text className="card-title">订单要求</Text>
 
-      {/* Tab 切换 */}
-      <View className="tabs-container">
-        {TABS.map(tab => {
-          const TabIcon = tab.icon
-          return (
+          {order.requirements.contentType && (
+            <View className="requirement-item">
+              <Text className="req-label">内容类型</Text>
+              <Text className="req-value">{order.requirements.contentType}</Text>
+            </View>
+          )}
+
+          {order.requirements.platforms && order.requirements.platforms.length > 0 && (
+            <View className="requirement-item">
+              <Text className="req-label">发布平台</Text>
+              <View className="platform-list">
+                {order.requirements.platforms.map((platform: string, idx: number) => (
+                  <Text key={idx} className="platform-tag">
+                    {getPlatformName(platform)}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {order.requirements.targetAudience && (
+            <View className="requirement-item">
+              <Text className="req-label">目标受众</Text>
+              <Text className="req-value">{order.requirements.targetAudience}</Text>
+            </View>
+          )}
+
+          {order.requirements.expectedResults && (
+            <View className="requirement-item">
+              <Text className="req-label">期望效果</Text>
+              <Text className="req-value">{order.requirements.expectedResults}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Tab切换 */}
+      {availableTabs.length > 0 && (
+        <View className="tabs-container">
+          {availableTabs.map(tab => (
             <View
               key={tab.key}
               className={`tab-item ${activeTab === tab.key ? 'tab-active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
             >
-              <TabIcon
-                size={18}
-                color={activeTab === tab.key ? '#00f5ff' : 'rgba(255,255,255,0.5)'}
-              />
-              <Text className="tab-label">{tab.label}</Text>
+              <Text className="tab-text">{tab.label}</Text>
               {activeTab === tab.key && <View className="tab-indicator" />}
             </View>
-          )
-        })}
-      </View>
+          ))}
+        </View>
+      )}
 
       {/* 内容区域 */}
       <ScrollView scrollY className="content-scroll">
         {/* 订单详情 */}
         {activeTab === 'detail' && (
-          <View className="content-container">
-            {/* 标题卡片 */}
-            <View className="info-card">
-              <Text className="card-title">{order.title}</Text>
-              <Text className="card-description">{order.description}</Text>
-
-              <View className="info-grid">
-                <View className="info-item">
-                  <DollarSign size={16} color="#00f5ff" />
-                  <Text className="info-label">预算</Text>
-                  <Text className="info-value">¥{order.budget}</Text>
-                </View>
-
-                {order.deadline && (
-                  <View className="info-item">
-                    <Calendar size={16} color="#00f5ff" />
-                    <Text className="info-label">截止日期</Text>
-                    <Text className="info-value">{formatDate(order.deadline)}</Text>
-                  </View>
-                )}
-
-                {order.expected_quantity && (
-                  <View className="info-item">
-                    <Users size={16} color="#00f5ff" />
-                    <Text className="info-label">期望数量</Text>
-                    <Text className="info-value">{order.expected_quantity}个分身</Text>
-                  </View>
-                )}
-
-                <View className="info-item">
-                  <Clock size={16} color="#00f5ff" />
-                  <Text className="info-label">发布时间</Text>
-                  <Text className="info-value">{formatDate(order.created_at)}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* 订单要求 */}
-            {order.requirements && (
-              <View className="info-card">
-                <Text className="section-title">订单要求</Text>
-                <View className="requirement-list">
-                  {order.requirements.contentType && (
-                    <View className="requirement-item">
-                      <Text className="requirement-label">内容类型</Text>
-                      <Text className="requirement-value">{order.requirements.contentType}</Text>
-                    </View>
-                  )}
-                  {order.requirements.platforms && order.requirements.platforms.length > 0 && (
-                    <View className="requirement-item">
-                      <Text className="requirement-label">发布平台</Text>
-                      <View className="platform-tags">
-                        {order.requirements.platforms.map((platform: string, idx: number) => (
-                          <Text key={idx} className="platform-tag">
-                            {getPlatformName(platform)}
-                          </Text>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                  {order.requirements.targetAudience && (
-                    <View className="requirement-item">
-                      <Text className="requirement-label">目标受众</Text>
-                      <Text className="requirement-value">{order.requirements.targetAudience}</Text>
-                    </View>
-                  )}
-                  {order.requirements.expectedResults && (
-                    <View className="requirement-item">
-                      <Text className="requirement-label">期望效果</Text>
-                      <Text className="requirement-value">{order.requirements.expectedResults}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
+          <View className="detail-content">
+            <Text className="section-title">订单详情</Text>
+            <Text className="detail-text">订单详情信息...</Text>
           </View>
         )}
 
         {/* 执行进度 */}
         {activeTab === 'progress' && (
-          <View className="content-container">
-            <View className="info-card">
-              <Text className="section-title">执行进度</Text>
-              <Text className="empty-hint">执行进度功能开发中...</Text>
-            </View>
+          <View className="detail-content">
+            <Text className="section-title">执行进度</Text>
+            <Text className="detail-text">执行进度开发中...</Text>
           </View>
         )}
 
         {/* 成果展示 */}
         {activeTab === 'result' && (
-          <View className="content-container result-container">
+          <View className="result-content">
+            {/* 跳转到统计页面 */}
             {order.summary_stats && order.summary_stats.totalAvatars > 0 ? (
-              <AvatarStatsPanel stats={order.summary_stats} />
-            ) : (
-              <View className="info-card">
-                <View className="empty-state">
-                  <Users size={64} color="rgba(255,255,255,0.2)" />
-                  <Text className="empty-text">暂无分身参与数据</Text>
+              <View className="stats-entrance" onClick={() => navigateTo({ url: `/pages/order-stats/index?orderId=${order.id}` })}>
+                <Users size={24} color="#00f5ff" />
+                <View className="stats-entrance-info">
+                  <Text className="stats-entrance-title">查看数据统计</Text>
+                  <Text className="stats-entrance-desc">
+                    共 {order.summary_stats.totalAvatars} 个分身参与
+                  </Text>
                 </View>
+                <ArrowLeft size={20} color="rgba(255,255,255,0.5)" style={{ transform: 'rotate(180deg)' }} />
+              </View>
+            ) : (
+              <View className="empty-state">
+                <Sparkles size={64} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text">暂无成果内容</Text>
+              </View>
+            )}
+
+            {/* 兼容旧版展示 */}
+            {order.publish_status && order.publish_status.platforms && order.publish_status.platforms.length > 0 && (
+              <View className="publish-results">
+                <Text className="section-title">发布结果</Text>
+                {order.publish_status.platforms.map((result: any, idx: number) => {
+                  const platformName = getPlatformName(result.platform)
+                  const feedback = order.publish_feedback?.[result.platform]
+                  return (
+                    <View key={idx} className="platform-result">
+                      <View className="platform-result-header">
+                        <Text className="platform-name">{platformName}</Text>
+                        <View
+                          className="platform-status"
+                          style={{
+                            backgroundColor: result.status === 'success' ? 'rgba(34, 197, 94, 0.2)' :
+                                               result.status === 'manual' ? 'rgba(245, 158, 11, 0.2)' :
+                                               'rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          <Text style={{
+                            color: result.status === 'success' ? '#22c55e' :
+                                   result.status === 'manual' ? '#f59e0b' : '#ef4444'
+                          }}
+                          >
+                            {result.status === 'success' ? '已发布' :
+                             result.status === 'manual' ? '需手动发布' : '发布异常'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {result.message && (
+                        <Text className="platform-message">{result.message}</Text>
+                      )}
+
+                      {result.post_url && (
+                        <View className="platform-url">
+                          <Text className="url-label">发布链接：</Text>
+                          <Text className="url-text" selectable>{result.post_url}</Text>
+                        </View>
+                      )}
+
+                      {feedback && (
+                        <View className="feedback-section">
+                          <Text className="feedback-title">分身反馈</Text>
+                          {feedback.image && (
+                            <Image
+                              src={feedback.image}
+                              className="feedback-image"
+                              mode="aspectFill"
+                            />
+                          )}
+                          {feedback.link && (
+                            <View className="feedback-url">
+                              <Text className="url-label">反馈链接：</Text>
+                              <Text className="url-text" selectable>{feedback.link}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
               </View>
             )}
           </View>
         )}
       </ScrollView>
 
-      {/* 验收按钮（固定底部） */}
-      {isReviewing && (
+      {/* 验收按钮 */}
+      {displayStatus === 'reviewing' && (
         <View className="bottom-actions">
           <Button
             variant="outline"
             onClick={() => setShowReject(true)}
-            className="action-btn action-btn-reject"
+            className="reject-btn"
           >
             <X size={18} color="#ef4444" />
             <Text>驳回修改</Text>
           </Button>
           <Button
             onClick={() => setShowRating(true)}
-            className="action-btn action-btn-approve"
+            className="approve-btn"
           >
             <Check size={18} color="#ffffff" />
             <Text>验收通过</Text>
@@ -350,7 +475,7 @@ export default function OrderDetail() {
                   key={star}
                   size={32}
                   color={star <= rating ? '#f59e0b' : 'rgba(255,255,255,0.3)'}
-                  filled={star <= rating}
+                  strokeWidth={star <= rating ? 0 : 2}
                   onClick={() => setRating(star)}
                 />
               ))}
@@ -371,13 +496,11 @@ export default function OrderDetail() {
               <Button
                 variant="outline"
                 onClick={() => setShowRating(false)}
-                className="modal-btn"
               >
                 取消
               </Button>
               <Button
                 onClick={handleApprove}
-                className="modal-btn modal-btn-confirm"
               >
                 确认验收
               </Button>
@@ -407,13 +530,12 @@ export default function OrderDetail() {
               <Button
                 variant="outline"
                 onClick={() => setShowReject(false)}
-                className="modal-btn"
               >
                 取消
               </Button>
               <Button
                 onClick={handleReject}
-                className="modal-btn modal-btn-reject"
+                className="btn-reject"
               >
                 确认驳回
               </Button>
