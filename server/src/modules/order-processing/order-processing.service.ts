@@ -832,7 +832,7 @@ export class OrderProcessingService {
       .from('order_dispatch_requests')
       .update({
         publish_feedback: feedback,
-        status: 'awaiting_acceptance', // 反馈完成后，订单状态变为 awaiting_acceptance，等待发单者验收
+        status: 'awaiting_acceptance', // 分身请求状态变为 awaiting_acceptance，等待发单者验收
         publish_status: {
           ...request.publish_status,
           summary: '已提交发布反馈，等待发单者验收',
@@ -846,6 +846,22 @@ export class OrderProcessingService {
       console.error('[OrderProcessing] 更新反馈失败:', updateError)
       throw new Error('更新反馈失败')
     }
+
+    // 更新订单状态为 reviewing（待验收）
+    const { error: orderUpdateError } = await client
+      .from('orders')
+      .update({
+        status: 'reviewing', // 订单状态变为 reviewing，等待发单者验收
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', request.order_id)
+
+    if (orderUpdateError) {
+      console.error('[OrderProcessing] 更新订单状态失败:', orderUpdateError)
+      // 不抛出错误，因为反馈已经更新成功
+    }
+
+    console.log('[OrderProcessing] 订单状态已更新为 reviewing')
 
     // 更新 published_works 表中的反馈截图
     for (const [platform, feedbackData] of Object.entries(feedback)) {
