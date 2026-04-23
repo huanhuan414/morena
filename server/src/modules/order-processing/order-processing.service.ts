@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 import { AvatarAgentService } from '../avatar-agent/avatar-agent.service'
+import { LinkValidationService } from './link-validation.service'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface ProcessingStatus {
@@ -227,7 +228,8 @@ export class OrderProcessingService {
 
   constructor(
     private readonly contentGenerationService: ContentGenerationService,
-    private readonly avatarAgentService: AvatarAgentService
+    private readonly avatarAgentService: AvatarAgentService,
+    private readonly linkValidationService: LinkValidationService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)
@@ -827,11 +829,44 @@ export class OrderProcessingService {
       throw new Error('订单状态不允许提交反馈')
     }
 
+    // 对每个平台的链接进行抓取，获取数据统计
+    const enhancedFeedback: Record<string, any> = {}
+    for (const [platform, feedbackData] of Object.entries(feedback)) {
+      enhancedFeedback[platform] = { ...feedbackData }
+
+      if (feedbackData.link) {
+        console.log(`[OrderProcessing] 开始抓取平台 ${platform} 的链接数据: ${feedbackData.link}`)
+        try {
+          const result = await this.linkValidationService.validateLink(
+            feedbackData.link,
+            request.order_id,
+            request.avatar_id
+          )
+
+          if (result.success && result.data) {
+            // 将抓取到的数据添加到 feedback 中
+            enhancedFeedback[platform] = {
+              ...feedbackData,
+              ...result.data
+            }
+            console.log(`[OrderProcessing] 平台 ${platform} 数据抓取成功:`, result.data)
+          } else {
+            console.warn(`[OrderProcessing] 平台 ${platform} 数据抓取失败:`, result.error)
+          }
+        } catch (error: any) {
+          console.error(`[OrderProcessing] 平台 ${platform} 数据抓取异常:`, error)
+          // 即使抓取失败，也保存原有的 feedback 数据
+        }
+      }
+    }
+
+    console.log('[OrderProcessing] 增强后的反馈数据:', enhancedFeedback)
+
     // 更新反馈信息
     const { error: updateError } = await client
       .from('order_dispatch_requests')
       .update({
-        publish_feedback: feedback,
+        publish_feedback: enhancedFeedback,
         status: 'awaiting_acceptance', // 分身请求状态变为 awaiting_acceptance，等待发单者验收
         publish_status: {
           ...request.publish_status,
@@ -864,7 +899,7 @@ export class OrderProcessingService {
     console.log('[OrderProcessing] 订单状态已更新为 reviewing')
 
     // 更新 published_works 表中的反馈截图
-    for (const [platform, feedbackData] of Object.entries(feedback)) {
+    for (const [platform, feedbackData] of Object.entries(enhancedFeedback)) {
       if (feedbackData.image) {
         // 查找已保存的作品记录
         const { data: workData, error: workError } = await client
@@ -892,8 +927,87 @@ export class OrderProcessingService {
 
     return {
       requestId,
-      feedback,
+      feedback: enhancedFeedback,
       status: 'awaiting_acceptance'
+    }
+  }
+
+  /**
+   * 刷新反馈数据（重新抓取链接数据）
+   */
+  async refreshFeedbackData(requestId: string) {
+    const client = getSupabaseClient()
+
+    console.log('[OrderProcessing] 开始刷新反馈数据:', { requestId })
+
+    // 查询订单请求信息
+    const { data: request, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id, avatar_id, status, publish_feedback')
+      .eq('id', requestId)
+      .single()
+
+    if (requestError || !request) {
+      throw new Error('获取订单请求失败')
+    }
+
+    if (!request.publish_feedback) {
+      throw new Error('该订单没有提交反馈')
+    }
+
+    // 对每个平台的链接重新抓取数据
+    const enhancedFeedback: Record<string, any> = {}
+    for (const [platform, feedbackData] of Object.entries(request.publish_feedback)) {
+      const platformFeedback = feedbackData as any
+      enhancedFeedback[platform] = { ...platformFeedback }
+
+      if (platformFeedback.link) {
+        console.log(`[OrderProcessing] 开始抓取平台 ${platform} 的链接数据: ${platformFeedback.link}`)
+        try {
+          const result = await this.linkValidationService.validateLink(
+            platformFeedback.link,
+            request.order_id,
+            request.avatar_id
+          )
+
+          if (result.success && result.data) {
+            // 将抓取到的数据添加到 feedback 中
+            enhancedFeedback[platform] = {
+              ...platformFeedback,
+              ...result.data
+            }
+            console.log(`[OrderProcessing] 平台 ${platform} 数据抓取成功:`, result.data)
+          } else {
+            console.warn(`[OrderProcessing] 平台 ${platform} 数据抓取失败:`, result.error)
+          }
+        } catch (error: any) {
+          console.error(`[OrderProcessing] 平台 ${platform} 数据抓取异常:`, error)
+          // 即使抓取失败，也保留原有的 feedback 数据
+        }
+      }
+    }
+
+    console.log('[OrderProcessing] 刷新后的反馈数据:', enhancedFeedback)
+
+    // 更新反馈信息
+    const { error: updateError } = await client
+      .from('order_dispatch_requests')
+      .update({
+        publish_feedback: enhancedFeedback,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+
+    if (updateError) {
+      console.error('[OrderProcessing] 更新反馈失败:', updateError)
+      throw new Error('更新反馈失败')
+    }
+
+    console.log('[OrderProcessing] 刷新反馈数据成功')
+
+    return {
+      requestId,
+      feedback: enhancedFeedback
     }
   }
 }

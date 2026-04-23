@@ -176,4 +176,27 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 刷新反馈数据（重新抓取链接数据）
+   */
+  @Post('refresh-feedback/:requestId')
+  async refreshFeedback(
+    @Param('requestId') requestId: string
+  ) {
+    try {
+      const result = await this.processingService.refreshFeedbackData(requestId)
+      return {
+        code: 200,
+        data: result,
+        message: '刷新成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '刷新失败'
+      }
+    }
+  }
 }

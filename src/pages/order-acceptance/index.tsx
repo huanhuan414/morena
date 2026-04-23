@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Link2, Image as ImageIcon, ExternalLink,
-  ChevronRight
+  ChevronRight, TrendingUp
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -18,6 +18,21 @@ const AVATAR_STATUS_LABELS: Record<string, string> = {
   published: '已发布',
   awaiting_acceptance: '待验收',
   feedback_submitted: '已提交'
+}
+
+/**
+ * 格式化数字，将大数字转换为更易读的形式
+ * 例如：12345 -> 1.2万
+ */
+function formatNumber(num: number): string {
+  if (num === undefined || num === null) return '0'
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1) + '万'
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k'
+  }
+  return num.toString()
 }
 
 interface AvatarStat {
@@ -205,6 +220,44 @@ export default function OrderAcceptance() {
                           className="screenshot-image"
                           mode="widthFix"
                         />
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 数据统计 */}
+                  {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
+                    <View className="stats-item">
+                      <View className="stats-icon">
+                        <TrendingUp size={16} color="#6366f1" />
+                      </View>
+                      <View className="stats-content">
+                        <Text className="stats-label">数据统计</Text>
+                        <View className="stats-row">
+                          {feedback.views !== undefined && (
+                            <View className="stat-box">
+                              <Text className="stat-value">{formatNumber(feedback.views)}</Text>
+                              <Text className="stat-label">浏览</Text>
+                            </View>
+                          )}
+                          {feedback.likes !== undefined && (
+                            <View className="stat-box">
+                              <Text className="stat-value">{formatNumber(feedback.likes)}</Text>
+                              <Text className="stat-label">点赞</Text>
+                            </View>
+                          )}
+                          {feedback.comments !== undefined && (
+                            <View className="stat-box">
+                              <Text className="stat-value">{formatNumber(feedback.comments)}</Text>
+                              <Text className="stat-label">评论</Text>
+                            </View>
+                          )}
+                          {feedback.shares !== undefined && (
+                            <View className="stat-box">
+                              <Text className="stat-value">{formatNumber(feedback.shares)}</Text>
+                              <Text className="stat-label">分享</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
                   )}

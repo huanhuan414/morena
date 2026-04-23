@@ -11,6 +11,10 @@ export interface ValidateResult {
     cover?: string
     description?: string
     url?: string
+    views?: number
+    likes?: number
+    comments?: number
+    shares?: number
   }
   error?: string
 }
@@ -156,6 +160,8 @@ export class LinkValidationService {
       }
 
       const videoData = response.data
+      const statistics = videoData.statistics || videoData.aweme_stats || {}
+
       return {
         success: true,
         platform: 'douyin',
@@ -164,7 +170,12 @@ export class LinkValidationService {
           author: videoData.author?.nickname || videoData.author?.unique_id || '',
           cover: videoData.cover || videoData.origin_cover || '',
           description: videoData.desc || '',
-          url
+          url,
+          // 数据统计
+          views: statistics.play_count || statistics.views || 0,
+          likes: statistics.digg_count || statistics.likes || 0,
+          comments: statistics.comment_count || statistics.comments || 0,
+          shares: statistics.share_count || statistics.shares || 0
         }
       }
     } catch (error: any) {
@@ -205,6 +216,7 @@ export class LinkValidationService {
 
       // TikHub 返回的数据结构可能是：data.items[0].note_card
       const noteInfo = noteData.items?.[0]?.note_card || noteData
+      const statistics = noteInfo.interact_info || noteInfo.statistics || {}
 
       return {
         success: true,
@@ -214,7 +226,12 @@ export class LinkValidationService {
           author: noteInfo.user?.nickname || noteInfo.author?.nickname || '',
           cover: noteInfo.cover?.url_default || noteInfo.cover?.url || noteInfo.image_list?.[0] || '',
           description: noteInfo.desc || noteInfo.title || '',
-          url
+          url,
+          // 数据统计
+          views: statistics.view_count || statistics.views || 0,
+          likes: statistics.liked_count || statistics.likes || 0,
+          comments: statistics.comment_count || statistics.comments || 0,
+          shares: statistics.share_count || statistics.shares || 0
         }
       }
     } catch (error: any) {
@@ -250,6 +267,7 @@ export class LinkValidationService {
       }
 
       const articleData = response.data
+
       return {
         success: true,
         platform: 'wechat_mp',
@@ -258,7 +276,12 @@ export class LinkValidationService {
           author: articleData.author || articleData.msg_cdn_url || '',
           cover: articleData.cover || articleData.msg_cdn_url || '',
           description: articleData.digest || '',
-          url
+          url,
+          // 数据统计：微信公众号通常有阅读量、点赞数、评论数
+          views: articleData.read_num || articleData.views || 0,
+          likes: articleData.like_num || articleData.likes || 0,
+          comments: articleData.comment_count || articleData.comments || 0,
+          shares: articleData.share_count || articleData.shares || 0
         }
       }
     } catch (error: any) {
