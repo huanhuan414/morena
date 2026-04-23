@@ -72,6 +72,7 @@ interface AvatarStat {
   totalLikes: number
   totalComments: number
   totalShares: number
+  publishFeedback: any
   posts: Post[]
 }
 
@@ -206,7 +207,7 @@ export default function OrderDetail() {
         <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#1e293b" />
         </View>
-        <Text className="header-title">订单验收</Text>
+        <Text className="header-title">验收确认</Text>
         <View className="header-right" />
       </View>
 
@@ -307,10 +308,43 @@ export default function OrderDetail() {
                     </View>
                   </View>
 
-                  {/* 作品列表 */}
-                  {avatar.posts && avatar.posts.length > 0 ? (
+                  {/* 提交的链接和截图 */}
+                  {avatar.publishFeedback && (
+                    <View className="feedback-section">
+                      <Text className="feedback-title">发布提交</Text>
+
+                      {Object.entries(avatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
+                        <View key={platform} className="feedback-card">
+                          <Text className="feedback-platform">{platform === 'wechat_mp' ? '微信公众号' : platform}</Text>
+
+                          {/* 链接 */}
+                          {feedback.link && (
+                            <View className="feedback-link">
+                              <Text className="feedback-link-label">发布链接：</Text>
+                              <Text className="feedback-link-value">{feedback.link}</Text>
+                            </View>
+                          )}
+
+                          {/* 截图 */}
+                          {feedback.image && (
+                            <View className="feedback-image-container">
+                              <Text className="feedback-image-label">发布截图</Text>
+                              <Image
+                                src={feedback.image}
+                                className="feedback-image"
+                                mode="widthFix"
+                              />
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* 作品列表（如果有） */}
+                  {avatar.posts && avatar.posts.length > 0 && (
                     <View className="posts-section">
-                      <Text className="posts-title">提交的作品 ({avatar.posts.length})</Text>
+                      <Text className="posts-title">作品内容 ({avatar.posts.length})</Text>
                       {avatar.posts.map((post) => (
                         <View key={post.id} className="post-card">
                           <Text className="post-content">{post.content}</Text>
@@ -352,9 +386,11 @@ export default function OrderDetail() {
                         </View>
                       ))}
                     </View>
-                  ) : (
+                  )}
+
+                  {!avatar.publishFeedback && (!avatar.posts || avatar.posts.length === 0) && (
                     <View className="empty-posts">
-                      <Text className="empty-posts-text">暂无作品</Text>
+                      <Text className="empty-posts-text">暂无提交内容</Text>
                     </View>
                   )}
                 </View>
@@ -374,14 +410,14 @@ export default function OrderDetail() {
           <Button
             variant="outline"
             onClick={() => setShowReject(true)}
-            className="reject-btn"
+            className="action-btn reject-btn"
           >
             <X size={18} color="#ef4444" />
             <Text>驳回修改</Text>
           </Button>
           <Button
             onClick={() => setShowRating(true)}
-            className="approve-btn"
+            className="action-btn approve-btn"
           >
             <Check size={18} color="#ffffff" />
             <Text>验收通过</Text>

@@ -222,6 +222,7 @@ export class OrderService {
           totalLikes,
           totalComments,
           totalShares,
+          publishFeedback: request.publish_feedback || null,
           posts: posts.map((p: any) => ({
             id: p.id,
             content: p.content,
