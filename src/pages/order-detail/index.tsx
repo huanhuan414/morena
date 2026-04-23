@@ -12,6 +12,7 @@ import './index.css'
 
 const STATUS_CONFIG: Record<string, any> = {
   reviewing: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+  awaiting_acceptance: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   completed: { label: '已完成', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' }
 }
 
@@ -127,7 +128,7 @@ export default function OrderDetail() {
     )
   }
 
-  const isReviewing = displayStatus === 'reviewing'
+  const isReviewing = displayStatus === 'reviewing' || displayStatus === 'awaiting_acceptance'
 
   return (
     <View className="order-detail-page">
