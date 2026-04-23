@@ -170,7 +170,6 @@ export default function LoginPage() {
       <View className="login-card">
         <View className="card-header">
           <Text className="card-title">欢迎回来</Text>
-          <Text className="card-subtitle">登录即代表同意《用户协议》和《隐私政策》</Text>
         </View>
 
         <View className="form-area">
@@ -211,7 +210,7 @@ export default function LoginPage() {
                   onInput={e => setCode(e.detail.value)}
                 />
               </View>
-              <View 
+              <View
                 className={`code-btn ${countdown > 0 || sendingCode ? 'disabled' : ''}`}
                 onClick={countdown > 0 || sendingCode ? undefined : sendCode}
               >
@@ -252,8 +251,13 @@ export default function LoginPage() {
             )}
           </View>
 
+          {/* 用户协议提示 */}
+          <View className="agreement-notice">
+            <Text className="agreement-text">登录即代表同意《用户协议》和《隐私政策》</Text>
+          </View>
+
           {/* 登录按钮 */}
-          <Button 
+          <Button
             className="submit-btn"
             onClick={handleLogin}
             disabled={loading}
