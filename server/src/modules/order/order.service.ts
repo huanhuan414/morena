@@ -97,21 +97,89 @@ export class OrderService {
       throw new Error(`获取订单详情失败: ${error.message}`)
     }
 
-    // 查询订单请求信息（用于获取发布结果和反馈）
-    const { data: requestData, error: requestError } = await client
+    // 查询所有订单请求信息（用于获取所有分身的发布结果和反馈）
+    const { data: requestsData, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, status, publish_status, publish_feedback, generated_content, confirmed_content')
+      .select(`
+        id,
+        status,
+        publish_status,
+        publish_feedback,
+        generated_content,
+        confirmed_content,
+        avatar_id,
+        created_at,
+        updated_at
+      `)
       .eq('order_id', orderId)
-      .maybeSingle()
 
-    if (!requestError && requestData) {
-      // 将发布结果和反馈添加到订单数据中
-      data.publish_status = requestData.publish_status
-      data.publish_feedback = requestData.publish_feedback
-      data.generated_content = requestData.generated_content
-      data.confirmed_content = requestData.confirmed_content
-      data.dispatch_request_id = requestData.id
-      data.dispatch_request_status = requestData.status
+    // 如果有请求记录，查询分身信息
+    if (!requestError && requestsData && requestsData.length > 0) {
+      const avatarIds = requestsData.map((r: any) => r.avatar_id).filter(Boolean)
+
+      if (avatarIds.length > 0) {
+        const { data: avatarsData } = await client
+          .from('avatars')
+          .select('id, name, avatar_url')
+          .in('id', avatarIds)
+
+        // 将分身信息映射到请求记录中
+        if (avatarsData) {
+          const avatarMap = new Map(avatarsData.map(a => [a.id, a]))
+          requestsData.forEach((request: any) => {
+            request.avatars = avatarMap.get(request.avatar_id)
+          })
+        }
+      }
+
+      // 将所有分身的发布结果和反馈添加到订单数据中
+      data.dispatch_requests = requestsData
+
+      // 兼容旧代码，将第一个request的数据也设置到字段中
+      const firstRequest = requestsData[0]
+      data.publish_status = firstRequest.publish_status
+      data.publish_feedback = firstRequest.publish_feedback
+      data.generated_content = firstRequest.generated_content
+      data.confirmed_content = firstRequest.confirmed_content
+      data.dispatch_request_id = firstRequest.id
+      data.dispatch_request_status = firstRequest.status
+
+      // 计算统计数据
+      const acceptedRequests = requestsData.filter(r => r.status === 'accepted')
+      const submittedRequests = requestsData.filter(r => r.status === 'feedback_submitted' || r.status === 'awaiting_acceptance')
+
+      // 统计每个分身的作品数据
+      const avatarStats = requestsData.map((request: any) => {
+        const platforms = request.publish_status?.platforms || []
+        const avatarData = request.avatars
+        const avatarInfo = Array.isArray(avatarData) ? avatarData[0] : avatarData
+        return {
+          avatarId: request.avatar_id,
+          avatarName: avatarInfo?.name || '未知',
+          avatarUrl: avatarInfo?.avatar_url || '',
+          status: request.status,
+          platformCount: platforms.length,
+          publishedCount: platforms.filter((p: any) => p.status === 'success').length,
+          manualCount: platforms.filter((p: any) => p.status === 'manual').length,
+          feedbackCount: request.publish_feedback ? Object.keys(request.publish_feedback).length : 0
+        }
+      })
+
+      // 总计统计
+      const summaryStats = {
+        totalAvatars: requestsData.length,
+        acceptedAvatars: acceptedRequests.length,
+        submittedAvatars: submittedRequests.length,
+        totalPlatforms: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.length || 0), 0),
+        totalPublished: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.filter(p => p.status === 'success').length || 0), 0),
+        totalManual: requestsData.reduce((sum, r) => sum + (r.publish_status?.platforms?.filter(p => p.status === 'manual').length || 0), 0),
+        avatarStats
+      }
+
+      data.summary_stats = summaryStats
+    } else {
+      data.dispatch_requests = []
+      data.summary_stats = null
     }
 
     return data

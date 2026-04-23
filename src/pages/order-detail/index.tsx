@@ -7,7 +7,7 @@ import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
   Loader, Circle, User,
-  Clock, DollarSign, Calendar, Zap, Users
+  Clock, DollarSign, Calendar, Zap, Users, ChartBarIncreasing
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -55,6 +55,48 @@ interface Order {
   confirmed_content?: any
   dispatch_request_id?: string
   dispatch_request_status?: string
+  dispatch_requests?: Array<{
+    id: string
+    status: string
+    publish_status?: {
+      platforms?: Array<{
+        platform: string
+        status: string
+        message?: string
+        post_url?: string
+      }>
+      summary?: string
+    }
+    publish_feedback?: Record<string, { image?: string; link?: string }>
+    generated_content?: any
+    confirmed_content?: any
+    avatar_id: string
+    avatars?: {
+      id: string
+      name: string
+      avatar_url: string
+    }
+    created_at: string
+    updated_at: string
+  }>
+  summary_stats?: {
+    totalAvatars: number
+    acceptedAvatars: number
+    submittedAvatars: number
+    totalPlatforms: number
+    totalPublished: number
+    totalManual: number
+    avatarStats: Array<{
+      avatarId: string
+      avatarName: string
+      avatarUrl: string
+      status: string
+      platformCount: number
+      publishedCount: number
+      manualCount: number
+      feedbackCount: number
+    }>
+  }
   rejection?: {
     reason: string
     rejected_at: string
@@ -748,6 +790,147 @@ export default function OrderDetailPage() {
         {/* 成果展示 */}
         {activeTab === 'result' && (
           <View className="result-panel">
+            {/* 总计数据统计 */}
+            {order.summary_stats && order.summary_stats.totalAvatars > 0 && (
+              <View className="glass-card" style={{ marginBottom: '1rem', padding: '1rem' }}>
+                <View className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <ChartBarIncreasing size={20} color="#00f5ff" />
+                  <Text className="card-title">总计数据统计</Text>
+                </View>
+                <View style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                  <View style={{ padding: '0.75rem', backgroundColor: 'rgba(0, 245, 255, 0.1)', borderRadius: '0.5rem' }}>
+                    <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.25rem' }}>
+                      参与分身
+                    </Text>
+                    <Text className="block" style={{ fontSize: '1.5rem', fontWeight: 600, color: '#00f5ff' }}>
+                      {order.summary_stats.totalAvatars}
+                    </Text>
+                  </View>
+                  <View style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem' }}>
+                    <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.25rem' }}>
+                      已接单
+                    </Text>
+                    <Text className="block" style={{ fontSize: '1.5rem', fontWeight: 600, color: '#3b82f6' }}>
+                      {order.summary_stats.acceptedAvatars}
+                    </Text>
+                  </View>
+                  <View style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.5rem' }}>
+                    <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.25rem' }}>
+                      已提交
+                    </Text>
+                    <Text className="block" style={{ fontSize: '1.5rem', fontWeight: 600, color: '#22c55e' }}>
+                      {order.summary_stats.submittedAvatars}
+                    </Text>
+                  </View>
+                  <View style={{ padding: '0.75rem', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '0.5rem' }}>
+                    <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginBottom: '0.25rem' }}>
+                      已发布平台
+                    </Text>
+                    <Text className="block" style={{ fontSize: '1.5rem', fontWeight: 600, color: '#8b5cf6' }}>
+                      {order.summary_stats.totalPublished}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 分身参与列表 */}
+            {order.dispatch_requests && order.dispatch_requests.length > 0 && (
+              <View className="glass-card" style={{ marginBottom: '1rem', padding: '1rem' }}>
+                <View className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Users size={20} color="#00f5ff" />
+                  <Text className="card-title">分身参与情况</Text>
+                </View>
+                {order.dispatch_requests.map((request, idx) => (
+                  <View key={request.id} style={{
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    borderRadius: '0.5rem',
+                    marginBottom: idx < order.dispatch_requests!.length - 1 ? '0.5rem' : '0'
+                  }}
+                  >
+                    <View style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <Image
+                        src={request.avatars?.avatar_url || 'https://via.placeholder.com/40'}
+                        style={{
+                          width: '2.5rem',
+                          height: '2.5rem',
+                          borderRadius: '50%',
+                          marginRight: '0.5rem'
+                        }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text className="block" style={{ fontSize: '1rem', fontWeight: 600 }}>
+                          {request.avatars?.name || '未知'}
+                        </Text>
+                        <Text className="block" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                          {request.publish_status?.platforms?.length || 0} 个平台 · {request.publish_feedback ? Object.keys(request.publish_feedback).length : 0} 条反馈
+                        </Text>
+                      </View>
+                      <View style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.25rem',
+                        backgroundColor: request.status === 'awaiting_acceptance' ? 'rgba(139, 92, 246, 0.2)' :
+                                       request.status === 'feedback_submitted' ? 'rgba(34, 197, 94, 0.2)' :
+                                       'rgba(107, 114, 128, 0.2)'
+                      }}
+                      >
+                        <Text className="block" style={{
+                          fontSize: '0.75rem',
+                          color: request.status === 'awaiting_acceptance' ? '#8b5cf6' :
+                                 request.status === 'feedback_submitted' ? '#22c55e' :
+                                 'rgba(255,255,255,0.7)'
+                        }}
+                        >
+                          {request.status === 'awaiting_acceptance' ? '待验收' :
+                           request.status === 'feedback_submitted' ? '已提交' :
+                           '进行中'}
+                        </Text>
+                      </View>
+                    </View>
+                    {request.publish_status?.platforms && request.publish_status.platforms.length > 0 && (
+                      <View style={{ marginTop: '0.5rem', padding: '0.5rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '0.25rem' }}>
+                        {request.publish_status.platforms.map((platform, pIdx) => (
+                          <View key={pIdx} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: pIdx < request.publish_status!.platforms!.length - 1 ? '0.25rem' : '0'
+                          }}
+                          >
+                            <Text className="block" style={{ fontSize: '0.875rem' }}>
+                              {getPlatformName(platform.platform)}
+                            </Text>
+                            <View style={{
+                              padding: '0.125rem 0.375rem',
+                              borderRadius: '0.125rem',
+                              backgroundColor: platform.status === 'success' ? 'rgba(34, 197, 94, 0.2)' :
+                                             platform.status === 'manual' ? 'rgba(245, 158, 11, 0.2)' :
+                                             'rgba(239, 68, 68, 0.2)'
+                            }}
+                            >
+                              <Text className="block" style={{
+                                fontSize: '0.75rem',
+                                color: platform.status === 'success' ? '#22c55e' :
+                                       platform.status === 'manual' ? '#f59e0b' :
+                                       '#ef4444'
+                              }}
+                              >
+                                {platform.status === 'success' ? '已发布' :
+                                 platform.status === 'manual' ? '需手动' :
+                                 '失败'}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 旧版展示内容（兼容） */}
             {content || order.publish_status || order.publish_feedback ? (
               <View className="result-content">
                 {content?.title && (
@@ -881,6 +1064,48 @@ export default function OrderDetailPage() {
               <View className="empty-state">
                 <Sparkles size={64} color="rgba(255,255,255,0.2)" />
                 <Text className="empty-text block">暂无成果内容</Text>
+              </View>
+            )}
+
+            {/* 验收按钮 - 仅在待验收状态且在成果展示Tab中显示 */}
+            {displayStatus === 'reviewing' && activeTab === 'result' && (
+              <View style={{
+                position: 'fixed',
+                bottom: '50px',
+                left: 0,
+                right: 0,
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '0.75rem',
+                padding: '0.75rem',
+                backgroundColor: '#0a0a0a',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                zIndex: 100
+              }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowReject(true)}
+                    style={{ width: '100%', height: '2.75rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                  >
+                    <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+                      <X size={18} color="#ef4444" />
+                      <Text style={{ color: '#ef4444' }}>驳回修改</Text>
+                    </View>
+                  </Button>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    onClick={() => setShowRating(true)}
+                    style={{ width: '100%', height: '2.75rem', backgroundColor: '#22c55e' }}
+                  >
+                    <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+                      <Check size={18} color="#fff" />
+                      <Text>验收通过</Text>
+                    </View>
+                  </Button>
+                </View>
               </View>
             )}
           </View>
