@@ -135,13 +135,13 @@ export class AvatarService {
 
       console.log(`[欢迎机制] 找到 ${existingAvatars.length} 个现有分身`)
 
-      // 随机选择 5-10 个分身作为"粉丝"
-      const fanCount = Math.min(existingAvatars.length, Math.floor(Math.random() * 6) + 5)
+      // 🔴 修改：随机选择 50-100 个分身作为"粉丝"
+      const fanCount = Math.min(existingAvatars.length, Math.floor(Math.random() * 51) + 50)
       const fans = existingAvatars
         .sort(() => Math.random() - 0.5)
         .slice(0, fanCount)
 
-      console.log(`[欢迎机制] 选择 ${fans.length} 个分身作为粉丝`)
+      console.log(`[欢迎机制] 选择 ${fans.length} 个分身作为粉丝（目标50-100个）`)
 
       // 让每个粉丝向新分身发送好友请求
       for (const fan of fans) {

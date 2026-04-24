@@ -295,13 +295,13 @@ export class SocialService {
         return
       }
 
-      // 随机选择 8-15 个分身来点赞和评论
-      const participantCount = Math.min(otherAvatars.length, Math.floor(Math.random() * 8) + 8)
+      // 🔴 修改：随机选择 80-150 个分身来点赞和评论
+      const participantCount = Math.min(otherAvatars.length, Math.floor(Math.random() * 71) + 80)
       const participants = otherAvatars
         .sort(() => Math.random() - 0.5)
         .slice(0, participantCount)
 
-      console.log(`[首次发帖欢迎] 选择 ${participants.length} 个分身来点赞评论`)
+      console.log(`[首次发帖欢迎] 选择 ${participants.length} 个分身来点赞评论（目标80-150个）`)
 
       // 让每个参与者点赞（80%概率）和评论（60%概率）
       for (const participant of participants) {
