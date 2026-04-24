@@ -22,6 +22,7 @@ interface Post {
   avatar_id?: string
   author_name?: string
   author_avatar?: string
+  tags?: string[] // 🔴 等级/订阅标识
   users?: {
     nickname: string
     avatar: string
@@ -804,6 +805,20 @@ export default function SocialPage() {
                           <Ellipsis size={20} color="rgba(255,255,255,0.5)" />
                         </View>
                       </View>
+
+                      {/* 🔴 等级/订阅标识徽章 */}
+                      {post.tags && post.tags.length > 0 && (
+                        <View className="post-badges">
+                          {post.tags.map((tag: string, idx: number) => (
+                            <View
+                              key={idx}
+                              className={`post-badge ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
+                            >
+                              <Text className="post-badge-text">{tag}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
 
                       {/* 帖子内容 */}
                       {post.content && (

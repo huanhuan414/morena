@@ -1152,13 +1152,13 @@ ${friendMessageContents}
 
     console.log(`[托管服务] 分身 ${avatar.name} 准备发布${postType === 'video' ? '视频' : postType === 'imageText' ? '图文' : '纯文字'}帖子`)
 
-    // 🔴 生成帖子内容
-    const postContent = await this.generatePostContentByType(avatar, postType)
+    // 🔴 生成帖子内容（传递subscription用于生成标识）
+    const postContent = await this.generatePostContentByType(avatar, postType, subscription)
     if (!postContent) {
       return
     }
 
-    // 🔴 创建帖子
+    // 🔴 创建帖子（添加badge标签用于营销展示）
     const { data: newPost, error } = await client
       .from('posts')
       .insert({
@@ -1167,6 +1167,7 @@ ${friendMessageContents}
         content: postContent.content,
         images: postContent.images || [],
         videos: postContent.videos || [],
+        tags: postContent.badge ? [postContent.badge.replace(/【|】/g, '').replace(/\n/g, '')] : [], // 🔴 存储badge到tags字段
         is_public: true,
         is_ai_generated: true,
         likes_count: 0,
@@ -1264,20 +1265,38 @@ ${friendMessageContents}
   /**
    * 🔴 根据类型生成帖子内容
    */
-  private async generatePostContentByType(avatar: any, type: 'video' | 'imageText' | 'textOnly'): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+  private async generatePostContentByType(avatar: any, type: 'video' | 'imageText' | 'textOnly', subscription: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
     try {
+      // 🔴 生成等级/订阅标识
+      const badge = this.generatePostBadge(avatar, type, subscription)
+
       if (type === 'video') {
         // 视频帖子
         console.log('[托管服务] 生成视频帖子内容...')
-        return await this.generateVideoPostContent(avatar)
+        const result = await this.generateVideoPostContent(avatar)
+        if (result) {
+          result.content = badge + result.content
+          result.badge = badge
+        }
+        return result
       } else if (type === 'imageText') {
         // 图文帖子
         console.log('[托管服务] 生成图文帖子内容...')
-        return await this.generateImageTextPostContent(avatar)
+        const result = await this.generateImageTextPostContent(avatar)
+        if (result) {
+          result.content = badge + result.content
+          result.badge = badge
+        }
+        return result
       } else {
         // 纯文字帖子
         console.log('[托管服务] 生成纯文字帖子内容...')
-        return await this.generateTextOnlyPostContent(avatar)
+        const result = await this.generateTextOnlyPostContent(avatar)
+        if (result) {
+          result.content = badge + result.content
+          result.badge = badge
+        }
+        return result
       }
     } catch (error) {
       console.error(`[托管服务] 生成${type}帖子内容失败:`, error)
@@ -1286,9 +1305,48 @@ ${friendMessageContents}
   }
 
   /**
+   * 🔴 生成帖子等级/订阅标识（用于营销）
+   */
+  private generatePostBadge(avatar: any, type: 'video' | 'imageText' | 'textOnly', subscription: any): string {
+    const level = avatar.level || 1
+    const planName = subscription?.plan?.name?.toLowerCase() || ''
+
+    // 视频帖子标识订阅等级
+    if (type === 'video') {
+      if (planName.includes('尊享') || planName.includes('premium')) {
+        return '【尊享版专属视频】\n\n'
+      } else if (planName.includes('高级') || planName.includes('pro')) {
+        return '【高级版专属视频】\n\n'
+      } else if (planName.includes('基本') || planName.includes('basic')) {
+        return '【基本版专属视频】\n\n'
+      }
+    }
+
+    // 图文帖子标识等级或订阅
+    if (type === 'imageText') {
+      if (planName.includes('尊享') || planName.includes('premium')) {
+        return '【尊享版专属图文】\n\n'
+      } else if (planName.includes('高级') || planName.includes('pro')) {
+        return '【高级版专属图文】\n\n'
+      } else if (planName.includes('基本') || planName.includes('basic')) {
+        return '【基本版专属图文】\n\n'
+      } else if (level >= 8) {
+        return `【Lv.${level}专属图文】\n\n`
+      }
+    }
+
+    // 纯文字帖子标识等级
+    if (type === 'textOnly' && level >= 1) {
+      return `【Lv.${level}专属动态】\n\n`
+    }
+
+    return ''
+  }
+
+  /**
    * 🔴 生成纯文字帖子
    */
-  private async generateTextOnlyPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+  private async generateTextOnlyPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
     try {
       const personality = avatar.personality || {}
       const persona = avatar.persona || {}
@@ -1330,7 +1388,7 @@ ${friendMessageContents}
   /**
    * 🔴 生成图文帖子
    */
-  private async generateImageTextPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+  private async generateImageTextPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
     try {
       // 先调用现有的爆款内容生成方法，但确保有图片
       const result = await this.generatePostContent(avatar)
@@ -1359,7 +1417,7 @@ ${friendMessageContents}
   /**
    * 🔴 生成视频帖子 - 暂时使用图文代替（视频生成较复杂）
    */
-  private async generateVideoPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+  private async generateVideoPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
     console.log('[托管服务] 视频帖子暂时使用图文代替')
     // 降级为图文帖子
     return this.generateImageTextPostContent(avatar)

@@ -1257,6 +1257,71 @@
 }
 
 /* ========================================
+   等级/订阅标识徽章 - 营销展示
+   ======================================== */
+.post-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.post-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 尊享版 - 金色 */
+.post-badge.badge-premium {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #8B4513;
+  border: 2rpx solid #FFD700;
+}
+
+/* 高级版 - 紫色 */
+.post-badge.badge-pro {
+  background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
+  color: white;
+  border: 2rpx solid #9B59B6;
+}
+
+/* 基本版 - 蓝色 */
+.post-badge.badge-basic {
+  background: linear-gradient(135deg, #3498DB 0%, #2980B9 100%);
+  color: white;
+  border: 2rpx solid #3498DB;
+}
+
+/* 等级标识 - 青色 */
+.post-badge.badge-level {
+  background: linear-gradient(135deg, #00f5ff 0%, #0091ff 100%);
+  color: white;
+  border: 2rpx solid #00f5ff;
+}
+
+.post-badge-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ========================================
    分享弹窗 - 极简设计 + 弹出动画
    ======================================== */
 .share-modal {
