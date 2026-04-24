@@ -1553,11 +1553,22 @@ export class AgentService {
           this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
           break
         } else {
-          // 如果只是普通文本（不是短剧任务），可以返回
-          finalAnswer = potentialFinalAnswer
-          // 完成思考，进度到 90%
-          this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
-          break
+          // 🔴 新增：检查是否是"写作并发布"任务，如果只写了没发布，强制继续发布
+          const isWriteAndPublishTask = /写.*并.*发布|写.*然后.*发布|写.*再.*发布|写.*发布到|撰写.*并发布|生成.*并发布/i.test(context.taskDescription)
+          const hasWrittenArticle = steps.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
+          const hasPublished = steps.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
+
+          if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
+            // 🔴 强制继续执行发布
+            console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，强制继续发布...')
+            // 不返回，继续执行下一步（不 break）
+          } else {
+            // 如果只是普通文本（不是短剧任务），可以返回
+            finalAnswer = potentialFinalAnswer
+            // 完成思考，进度到 90%
+            this.emitProgress(userId, 'complete', '思考完成，生成答案中...', {}, 90)
+            break
+          }
         }
       }
 
@@ -1679,7 +1690,17 @@ export class AgentService {
           finalAnswer = `需要配置${PLATFORM_CONFIG_TEMPLATES[configPlatform!]?.platform_name || '平台'}后才能继续执行任务。`
         }
       } else {
-        finalAnswer = await this.summarizeExecution(context, steps)
+        // 🔴 新增：检查是否有发布步骤，优先使用发布结果
+        const publishStep = steps.find(s =>
+          (s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu') &&
+          s.observation?.success
+        )
+        if (publishStep?.observation?.data?.message) {
+          // 使用发布结果的 message 作为 finalAnswer
+          finalAnswer = publishStep.observation.data.message
+        } else {
+          finalAnswer = await this.summarizeExecution(context, steps)
+        }
       }
     }
 
@@ -1727,7 +1748,17 @@ export class AgentService {
     }
 
     // 智能任务理解提示（不包含技能检测，因为已经在前面处理了）
-    const taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history, context)
+    let taskUnderstandingHint = this.getTaskUnderstandingHint(context.taskDescription, history, context)
+
+    // 🔴 新增：检测"写作并发布"任务状态，添加强制提示
+    const isWriteAndPublishTask = /写.*并.*发布|写.*然后.*发布|写.*再.*发布|写.*发布到|撰写.*并发布|生成.*并发布/i.test(context.taskDescription)
+    const hasWrittenArticle = history.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
+    const hasPublished = history.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
+
+    if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
+      console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，添加强制发布提示')
+      taskUnderstandingHint += `\n\n【🔴 强制任务提示】\n用户要求"写作并发布"，文章已经写完，**你现在必须立即调用发布工具**！\n- 如果是公众号文章：调用 publish_wechat_mp\n- 如果是小红书笔记：调用 publish_xiaohongshu\n**不要返回 Final Answer，先执行发布操作！**`
+    }
 
     // 🔴 新增：构建用户上传媒体信息提示
     let mediaInfoText = ''
