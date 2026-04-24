@@ -757,12 +757,15 @@ export class AvatarService {
   async getActiveAvatars(limit: number = 10) {
     const client = getSupabaseClient()
     
-    // 查询所有分身，按更新时间排序
+    console.log('开始查询活跃分身, limit:', limit)
+    
+    // 查询所有分身
     const { data: avatars, error } = await client
       .from('avatars')
-      .select('id, name, avatar_url, updated_at')
-      .order('updated_at', { ascending: false })
+      .select('*')
       .limit(limit)
+    
+    console.log('查询结果:', { avatarsCount: avatars?.length, error })
     
     if (error) {
       console.error('获取活跃分身失败:', error)
@@ -770,11 +773,14 @@ export class AvatarService {
     }
     
     // 简化返回数据
-    return (avatars || []).map((avatar: any) => ({
+    const result = (avatars || []).map((avatar: any) => ({
       id: avatar.id,
       name: avatar.name,
       avatar_url: avatar.avatar_url
     }))
+    
+    console.log('返回活跃分身:', result)
+    return result
   }
 
   /**

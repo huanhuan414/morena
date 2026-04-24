@@ -136,19 +136,28 @@ export default function SocialPage() {
   // 获取活跃分身
   const fetchActiveAvatars = async () => {
     try {
+      console.log('开始获取活跃分身...')
       const res = await Network.request({ url: '/api/avatar/active?limit=10' })
+      console.log('活跃分身接口返回:', res.data)
       if (res.data?.code === 200) {
         const avatars = res.data.data || []
+        console.log('获取到活跃分身数量:', avatars.length)
         const colors = ['#4A90D9', '#E8A838', '#E85D75', '#38B8A8', '#2D2D2D', '#8B5CF6', '#F97316', '#3B82F6', '#10B981', '#EC4899']
-        setActiveAvatars(avatars.map((avatar: any, idx: number) => ({
+        const processedAvatars = avatars.map((avatar: any, idx: number) => ({
           id: avatar.id,
           name: avatar.name?.substring(0, 2) || 'AI',
           avatar_url: avatar.avatar_url,
           color: colors[idx % colors.length]
-        })))
+        }))
+        console.log('处理后的活跃分身:', processedAvatars)
+        setActiveAvatars(processedAvatars)
+      } else {
+        console.error('获取活跃分身失败:', res.data?.message)
+        setActiveAvatars([])
       }
     } catch (error) {
       console.error('获取活跃分身失败:', error)
+      setActiveAvatars([])
     }
   }
 
