@@ -1791,6 +1791,10 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
    - 短剧工具会自动生成剧本、角色形象、场景设计和视频，不需要分步调用多个工具
 
 7. 【公众号文章生成和发布规则（CRITICAL）】
+   - **区分"写作"和"发布"**：
+     - **写作**：用户说"写公众号文章"、"生成公众号图文" → 使用 write_wechat_mp_article 工具
+     - **发布**：用户说"发布到公众号"、"发出去"、"推送"、"发一下" → **只**使用 publish_wechat_mp 工具
+     - **写作+发布**：用户说"写一篇文章并发布" → 先用 write_wechat_mp_article，再用 publish_wechat_mp
    - 当使用 write_wechat_mp_article 工具生成公众号文章后：
      - **如果用户没有明确要求发布**：在 Final Answer 中明确告知"文章已生成，你可以在上方查看完整内容"，并提供如何发布的指引
      - **不要说"已成功保存到公众号草稿箱"**，因为实际上并没有调用发布接口
@@ -1799,7 +1803,10 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
        2. 文章显示在当前对话中（在上方）
        3. 如何发布到公众号：需要绑定微信公众号授权后，可以使用"发布到公众号"功能
      - **示例回复**："✅ 公众号文章已生成！你可以在上方查看完整内容（包含标题、正文和封面图）。如需发布到微信公众号，请先绑定公众号授权，然后发送'发布到公众号'即可。"
-   - **如果用户明确要求"发布到公众号"**：才使用 publish_wechat_mp 工具将文章发布到公众号
+   - **如果用户明确要求"发布到公众号"或类似表述（"发出去"、"发一下"、"推送"）**：
+     - **只使用 publish_wechat_mp 工具**，不要重新调用 write_wechat_mp_article
+     - 如果 publish_wechat_mp 返回 requires_content=true，说明没有可发布的内容，才需要写文章
+     - **不要说"我重新为你写了一篇文章"**，用户只是要发布现有内容！
 
 8. 【视频生成规则（CRITICAL）】
    - 当使用 generate_video 工具生成视频时：
@@ -1974,12 +1981,40 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 - 不要调用 generate_image、generate_video 等工具`)
       return hints.join('\n\n')
     }
+    // 🔴 新增：纯发布任务（优先级高于创作任务）
+    // 当用户说"发布"、"发一下"、"发出去"、"推送"等，且提到平台名称时，优先认为是发布任务
+    else if (
+      lowerTask.match(/发布|发一下|发出去|推送|publish|post/) &&
+      (lowerTask.includes('公众号') || lowerTask.includes('微信')) &&
+      !lowerTask.match(/写|创作|生成|制作|draft|草稿|编辑|修改|润色/)
+    ) {
+      hints.push(`【任务解析】这是一个**纯发布任务**（用户已写好内容，只需发布）：
+1. **只使用 publish_wechat_mp 工具**将内容发布到公众号
+2. **不要**调用 write_wechat_mp_article 工具重新写文章
+3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置
+4. 如果返回 requires_content=true，说明没有可发布的内容，才需要写文章
+
+**注意**：用户明确说"发布"而不是"写"，说明内容已经有了，直接发布即可！`)
+      return hints.join('\n\n')
+    }
     // 5. 微信公众号任务
     else if (lowerTask.includes('公众号') || lowerTask.includes('微信文章') || lowerTask.includes('微信图文')) {
       hints.push(`【任务解析】这是一个微信公众号内容创作任务：
 1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
 2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
 3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
+      return hints.join('\n\n')
+    }
+    // 🔴 新增：小红书纯发布任务
+    else if (
+      lowerTask.match(/发布|发一下|发出去|推送|publish|post/) &&
+      lowerTask.includes('小红书') &&
+      !lowerTask.match(/写|创作|生成|制作|draft|草稿|编辑|修改|润色/)
+    ) {
+      hints.push(`【任务解析】这是一个**小红书纯发布任务**（用户已写好内容，只需发布）：
+1. **只使用 publish_xiaohongshu 工具**发布到小红书
+2. **不要**调用 write_xiaohongshu_note 工具重新写笔记
+3. 如果返回 requires_config=true，说明用户未配置小红书账号`)
       return hints.join('\n\n')
     }
     // 6. 小红书任务
