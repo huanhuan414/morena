@@ -655,34 +655,53 @@ export class PublishWechatMpTool implements ITool {
       return content
     }
 
-    console.log(`文章中共有 ${matches.length} 张图片，正在上传到微信服务器...`)
-    
+    console.log(`[replaceImagesForWechat] 文章中共有 ${matches.length} 张图片，正在上传到微信服务器...`)
+
     let result = content
-    
+    // 🔴 修复：使用 lastIndexOf 而不是 match.index，避免 result 被修改后索引失效
+    const uploadedUrls = new Map<string, string>() // 缓存已上传的图片 URL，避免重复上传
+
     for (let i = matches.length - 1; i >= 0; i--) {
       const match = matches[i]
       const fullMatch = match[0]
       const alt = match[1]
       const tosUrl = match[2]
-      
+
       try {
-        console.log(`上传图片 ${i + 1}/${matches.length}: ${tosUrl.substring(0, 60)}...`)
-        const wechatUrl = await this.uploadArticleImage(accessToken, tosUrl)
-        
+        console.log(`[replaceImagesForWechat] 处理图片 ${i + 1}/${matches.length}: ${tosUrl.substring(0, 60)}...`)
+
+        // 🔴 修复：检查是否已经上传过相同的图片
+        let wechatUrl: string
+        if (uploadedUrls.has(tosUrl)) {
+          wechatUrl = uploadedUrls.get(tosUrl)!
+          console.log(`[replaceImagesForWechat] 图片 ${i + 1} 已在上面的步骤中上传过，使用缓存 URL`)
+        } else {
+          wechatUrl = await this.uploadArticleImage(accessToken, tosUrl)
+          uploadedUrls.set(tosUrl, wechatUrl)
+          console.log(`[replaceImagesForWechat] ✅ 图片 ${i + 1} 上传成功`)
+
+          // 避免频率限制
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+
+        // 🔴 修复：使用 lastIndexOf 找到当前位置
+        const startIndex = result.lastIndexOf(fullMatch)
+        if (startIndex === -1) {
+          console.error(`[replaceImagesForWechat] 警告：找不到图片 ${i + 1} 的匹配位置`)
+          continue
+        }
+
         // 替换为微信图片 URL
         const newImageMarkdown = `![${alt}](${wechatUrl})`
-        const startIndex = match.index!
         result = result.substring(0, startIndex) + newImageMarkdown + result.substring(startIndex + fullMatch.length)
-        
-        console.log(`✅ 图片 ${i + 1} 上传成功`)
-        
-        // 避免频率限制
-        await new Promise(resolve => setTimeout(resolve, 300))
+
       } catch (uploadErr) {
-        console.error(`图片 ${i + 1} 上传失败:`, uploadErr)
+        console.error(`[replaceImagesForWechat] 图片 ${i + 1} 上传失败:`, uploadErr)
         // 上传失败保留原始 TOS URL（公众号可能无法显示，但不会破坏结构）
       }
     }
+
+    console.log(`[replaceImagesForWechat] 图片处理完成，最终结果中的图片数量:`, (result.match(/!\[.*?\]\(.*?\)/g) || []).length)
     
     return result
   }
