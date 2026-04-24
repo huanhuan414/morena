@@ -178,21 +178,23 @@ export default function ProfilePage() {
       {/* 用户信息卡片 */}
       <View className="user-card">
         <View className="user-header">
-          <View className="user-avatar-wrap">
-            {userInfo?.avatar ? (
-              <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
-            ) : (
-              <View className="avatar-placeholder">
-                <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+          <View className="user-header-left">
+            <View className="user-avatar-wrap">
+              {userInfo?.avatar ? (
+                <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+              ) : (
+                <View className="avatar-placeholder">
+                  <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+                </View>
+              )}
+              <View className="level-badge">
+                <Text className="level-text">Lv.{stats.level}</Text>
               </View>
-            )}
-            <View className="level-badge">
-              <Text className="level-text">Lv.{stats.level}</Text>
             </View>
-          </View>
-          <View className="user-info">
-            <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-            <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+            <View className="user-info">
+              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+            </View>
           </View>
           <View className="header-actions">
             <View className="notification-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
