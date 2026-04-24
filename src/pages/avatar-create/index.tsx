@@ -391,14 +391,28 @@ export default function AvatarCreatePage() {
 
       if (responseData?.code === 200) {
         const { photoUrl: url, analysis } = responseData.data
-        const { hasFace } = analysis || {}
+        const { hasFace, faceCount, confidence } = analysis || {}
 
-        console.log('人脸检测结果:', hasFace)
+        console.log('人脸检测结果:', { hasFace, faceCount, confidence, analysis })
 
-        // 检查是否检测到人脸
-        if (hasFace === false) {
+        // 检查是否检测到人脸 - 使用更宽松的判断逻辑
+        // 如果后端明确返回 hasFace === false，或者 faceCount === 0，才认为没有人脸
+        const noFaceDetected = hasFace === false || (faceCount !== undefined && faceCount === 0)
+        
+        if (noFaceDetected) {
           setAnalyzing(false)
-          showToast({ title: '未检测到人脸，请上传清晰正面照片', icon: 'none', duration: 3000 })
+          // 显示警告但仍然允许用户继续
+          showToast({ 
+            title: '未清晰检测到人脸，您仍可继续创建', 
+            icon: 'none', 
+            duration: 3000 
+          })
+          // 延迟一下让用户看到提示，然后继续
+          setTimeout(() => {
+            setPhotoUrl(url)
+            setPhotoAnalysis(analysis)
+            setStep(1)
+          }, 1500)
           return
         }
 
