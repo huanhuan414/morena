@@ -1,4 +1,5 @@
-import { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -135,6 +136,51 @@ export default function OrderAcceptance() {
     setSelectedAvatar(null)
   }
 
+  // 处理链接点击
+  const handleLinkClick = (url: string) => {
+    if (!url) return
+    // 使用 navigateTo 跳转到 webview 页面，或者直接打开
+    // 这里我们使用 Taro 的 webview 路由，跳转到 H5 链接
+    try {
+      // 检查是否是完整URL
+      const isFullUrl = url.startsWith('http://') || url.startsWith('https://')
+      if (isFullUrl) {
+        // 使用 webview 打开链接
+        Taro.navigateTo({
+          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
+        }).catch(() => {
+          // 如果 webview 页面不存在，使用浏览器打开
+          // 小程序环境中复制链接到剪贴板
+          Taro.setClipboardData({
+            data: url,
+            success: () => {
+              showToast({ title: '链接已复制到剪贴板', icon: 'success' })
+            }
+          })
+        })
+      } else {
+        showToast({ title: '链接格式不正确', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('打开链接失败:', error)
+      showToast({ title: '打开链接失败', icon: 'none' })
+    }
+  }
+
+  // 处理图片预览
+  const handleImagePreview = (imageUrl: string) => {
+    if (!imageUrl) return
+    try {
+      previewImage({
+        urls: [imageUrl],
+        current: imageUrl
+      })
+    } catch (error) {
+      console.error('预览图片失败:', error)
+      showToast({ title: '预览图片失败', icon: 'none' })
+    }
+  }
+
   if (loading) {
     return (
       <View className="acceptance-page">
@@ -189,7 +235,8 @@ export default function OrderAcceptance() {
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
-                        <Text className="text-white font-medium">数据统计</Text>
+                        <TrendingUp size={16} color="#0ea5e9" />
+                        <Text className="text-sm font-medium" style={{ color: '#0ea5e9' }}>数据统计</Text>
                       </View>
                       <View className="stats-row">
                         {feedback.views !== undefined && (
@@ -239,7 +286,7 @@ export default function OrderAcceptance() {
 
                   {/* 链接 */}
                   {feedback.link && (
-                    <View className="link-item">
+                    <View className="link-item" onClick={() => handleLinkClick(feedback.link)}>
                       <View className="link-icon">
                         <ExternalLink size={16} color="#6366f1" />
                       </View>
@@ -262,6 +309,7 @@ export default function OrderAcceptance() {
                           src={feedback.image}
                           className="screenshot-image"
                           mode="widthFix"
+                          onClick={() => handleImagePreview(feedback.image)}
                         />
                       </View>
                     </View>
