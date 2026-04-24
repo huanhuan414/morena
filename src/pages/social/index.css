@@ -799,6 +799,8 @@
   line-height: 1.6;
   margin-bottom: 20rpx;
   word-break: break-word;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ========================================
@@ -851,13 +853,32 @@
   flex-direction: column;
   gap: 16rpx;
   margin-bottom: 20rpx;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .post-video {
   width: 100%;
-  height: 480rpx;
-  border-radius: var(--radius-lg);
+  height: 400rpx;
+  max-height: 50vh;
+  border-radius: var(--radius-md);
   background: #000;
+  display: block;
+}
+
+/* 🔴 视频与图片同时存在时的布局 */
+.post-images + .post-videos {
+  margin-top: 16rpx;
+}
+
+/* 🔴 修复：单张图片不应该限制宽度，避免与视频布局冲突 */
+.images-1 {
+  max-width: 100%;
+  margin: 0 0 20rpx 0;
 }
 
 /* ========================================
