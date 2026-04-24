@@ -222,71 +222,131 @@ interface LearningStats {
 
 // 🔴 新增：Agent 步骤名称映射（英文转中文）
 const mapStepDisplayName = (displayName: string, step: any): string => {
-  // 通用步骤映射
-  const commonMapping: Record<string, string> = {
-    'progress': '正在分析任务...',
-    'thinking': '正在思考...',
-    'action': '正在执行任务...',
-    'observation': '正在获取结果...',
-    'final_answer': '任务完成'
+  // 状态映射（小写）
+  const statusMapping: Record<string, string> = {
+    'progress': '📊 正在分析任务...',
+    'thinking': '💭 正在思考...',
+    'action': '🔧 正在执行操作...',
+    'observation': '👁️ 正在获取结果...',
+    'final_answer': '✅ 任务完成',
+    'running': '🔄 正在执行中...',
+    'executing': '⚡ 正在执行中...',
+    'pending': '⏳ 等待中...',
+    'completed': '✅ 已完成',
+    'success': '✅ 执行成功',
+    'failed': '❌ 执行失败',
+    'error': '❌ 执行出错'
   }
 
-  // 如果是短剧制作相关的步骤，使用更详细的映射
+  // 工具名称映射
+  const toolMapping: Record<string, string> = {
+    // 短剧相关
+    'generate_shortdrama_script': '📝 正在生成剧本...',
+    'generate_storyboard': '🎬 正在生成分镜头脚本...',
+    'generate_multi_episode_drama': '📺 正在生成多集短剧...',
+    'generate_drama_voiceover': '🎙️ 正在生成配音...',
+    'edit_shortdrama_video': '✂️ 正在剪辑视频...',
+    'generate_subtitle': '📝 正在生成字幕...',
+    'recommend_bgm': '🎵 正在推荐配乐...',
+    'produce_shortdrama': '🎬 正在制作短剧成品...',
+    // 内容生成
+    'generate-image': '🖼️ 正在生成图片...',
+    'generate_image': '🖼️ 正在生成图片...',
+    'video_generation': '🎥 正在生成视频...',
+    'generate_video': '🎥 正在生成视频...',
+    'content-creation': '✍️ 正在创作内容...',
+    'write_article': '✍️ 正在撰写文章...',
+    'write_wechat_mp_article': '📰 正在撰写公众号文章...',
+    'write_xiaohongshu_note': '📝 正在撰写小红书笔记...',
+    // 应用功能
+    'app_update_avatar': '👤 正在更新分身信息...',
+    'app_create_task': '📋 正在创建任务...',
+    'app_assign_order': '📦 正在分配订单...',
+    'app_subscribe': '💎 正在处理订阅...',
+    'app_get_subscription': '🔍 正在查询订阅状态...',
+    'app_list_avatars': '👥 正在获取分身列表...',
+    'app_add_friend': '👋 正在添加好友...',
+    'app_list_friends': '📋 正在获取好友列表...',
+    // 发布相关
+    'publish_wechat_mp': '🚀 正在发布到公众号...',
+    'publish_xiaohongshu': '🚀 正在发布到小红书...',
+    'publish_weibo': '🚀 正在发布到微博...',
+    // 其他
+    'check_platform_config': '⚙️ 正在检查平台配置...',
+    'list_avatar_accounts': '👤 正在获取账号列表...'
+  }
+
+  // 1. 首先尝试匹配 displayName（状态）
+  const normalizedDisplayName = displayName?.toLowerCase()?.trim()
+  if (normalizedDisplayName && statusMapping[normalizedDisplayName]) {
+    return statusMapping[normalizedDisplayName]
+  }
+
+  // 2. 如果是短剧制作相关的步骤，使用更详细的映射
   if (step.action === 'produce_shortdrama') {
     return '🎬 正在制作短剧...'
   }
 
-  // 如果是其他工具，使用工具名称映射
+  // 3. 如果是其他工具，使用工具名称映射
   if (step.action && typeof step.action === 'string') {
-    const toolMapping: Record<string, string> = {
-      'generate_shortdrama_script': '📝 正在生成剧本...',
-      'generate_storyboard': '🎬 正在生成分镜头脚本...',
-      'generate_multi_episode_drama': '📺 正在生成多集短剧...',
-      'generate_drama_voiceover': '🎙️ 正在生成配音...',
-      'edit_shortdrama_video': '✂️ 正在剪辑视频...',
-      'generate_subtitle': '📝 正在生成字幕...',
-      'recommend_bgm': '🎵 正在推荐配乐...',
-      'produce_shortdrama': '🎬 正在制作短剧成品...',
-      'generate-image': '🖼️ 正在生成图片...',
-      'video_generation': '🎥 正在生成视频...',
-      'content-creation': '✍️ 正在创作内容...',
-      'app_update_avatar': '👤 正在更新分身信息...',
-      'app_create_task': '📋 正在创建任务...'
-    }
+    const normalizedAction = step.action.toLowerCase().trim()
 
-    // 尝试完整匹配
-    if (toolMapping[step.action]) {
-      return toolMapping[step.action]
+    // 尝试完整匹配（不区分大小写）
+    const exactMatch = Object.keys(toolMapping).find(key =>
+      key.toLowerCase() === normalizedAction
+    )
+    if (exactMatch) {
+      return toolMapping[exactMatch]
     }
 
     // 尝试模糊匹配
     const fuzzyMatch = Object.keys(toolMapping).find(key =>
-      step.action.includes(key) || key.includes(step.action)
+      normalizedAction.includes(key.toLowerCase()) ||
+      key.toLowerCase().includes(normalizedAction)
     )
     if (fuzzyMatch) {
       return toolMapping[fuzzyMatch]
     }
 
-    // 如果是工具调用，显示工具名称
+    // 如果是工具调用，显示工具名称（转换为中文描述）
     if (step.action.startsWith('app_')) {
-      return `🔧 正在执行${step.action.replace('app_', '')}...`
+      const actionName = step.action.replace('app_', '').replace(/_/g, '')
+      const actionMap: Record<string, string> = {
+        'updateavatar': '更新分身信息',
+        'createtask': '创建任务',
+        'assigntask': '分配任务',
+        'subscribe': '订阅套餐',
+        'getsubscription': '查询订阅',
+        'listavatars': '获取分身列表',
+        'addfriend': '添加好友',
+        'listfriends': '获取好友列表'
+      }
+      return `🔧 正在${actionMap[actionName] || actionName}...`
     }
 
-    return `⚡ 正在执行${step.action}...`
+    return `⚡ 正在执行: ${step.action}...`
   }
 
-  // 使用通用映射
-  if (commonMapping[displayName]) {
-    return commonMapping[displayName]
+  // 4. 尝试匹配 step.status
+  if (step.status && typeof step.status === 'string') {
+    const normalizedStatus = step.status.toLowerCase().trim()
+    if (statusMapping[normalizedStatus]) {
+      return statusMapping[normalizedStatus]
+    }
   }
 
-  // 如果是数字步骤，显示为"步骤X"
+  // 5. 如果是数字步骤，显示为"步骤X"
   if (/^\d+$/.test(displayName)) {
     return `步骤 ${displayName}`
   }
 
-  // 默认返回原名称
-  return displayName
+  // 6. 如果 displayName 看起来是英文，尝试翻译
+  if (/^[a-zA-Z_]+$/.test(displayName)) {
+    return `🔄 正在${displayName}...`
+  }
+
+  // 7. 默认返回原名称
+  return displayName || '执行中...'
 }
 
 // 工具名称映射（已废弃，移除轮询相关代码）

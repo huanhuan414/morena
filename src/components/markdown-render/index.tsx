@@ -1,9 +1,10 @@
 /**
  * Markdown 渲染组件
  * 将 Markdown 转换为美观的小程序组件
+ * 🔴 新增：支持自动检测和渲染纯图片/视频 URL
  */
 
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Video } from '@tarojs/components'
 import { useMemo } from 'react'
 import Taro from '@tarojs/taro'
 
@@ -13,12 +14,32 @@ interface MarkdownRenderProps {
 }
 
 interface ParsedBlock {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'ul' | 'ol' | 'blockquote' | 'code' | 'hr' | 'image'
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'ul' | 'ol' | 'blockquote' | 'code' | 'hr' | 'image' | 'video'
   content?: string
   items?: string[]
   language?: string
   url?: string
   alt?: string
+}
+
+// 🔴 检测字符串是否是图片 URL
+function isImageUrl(text: string): boolean {
+  const trimmed = text.trim()
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
+  const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+  const hasImageExt = imageExtensions.some(ext => trimmed.toLowerCase().includes(ext))
+  return isUrl && hasImageExt
+}
+
+// 🔴 检测字符串是否是视频 URL
+function isVideoUrl(text: string): boolean {
+  const trimmed = text.trim()
+  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.flv', '.m3u8']
+  const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+  const hasVideoExt = videoExtensions.some(ext => trimmed.toLowerCase().includes(ext))
+  // 也检测视频托管服务
+  const isVideoHost = trimmed.includes('video') || trimmed.includes('vod') || trimmed.includes('media')
+  return isUrl && (hasVideoExt || isVideoHost)
 }
 
 // 解析 Markdown 为块级元素
@@ -81,10 +102,24 @@ function parseMarkdown(markdown: string): ParsedBlock[] {
       continue
     }
     
-    // 图片
+    // 图片 (Markdown 语法)
     const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
     if (imgMatch) {
       blocks.push({ type: 'image', alt: imgMatch[1], url: imgMatch[2] })
+      i++
+      continue
+    }
+
+    // 🔴 新增：检测纯图片 URL 行
+    if (isImageUrl(line)) {
+      blocks.push({ type: 'image', alt: '', url: line.trim() })
+      i++
+      continue
+    }
+
+    // 🔴 新增：检测纯视频 URL 行
+    if (isVideoUrl(line)) {
+      blocks.push({ type: 'video', alt: '', url: line.trim() })
       i++
       continue
     }
@@ -133,11 +168,107 @@ function parseMarkdown(markdown: string): ParsedBlock[] {
 }
 
 // 渲染行内样式（加粗、斜体、代码、链接）
+// 🔴 新增：支持在文本中自动检测和渲染图片/视频 URL
 function renderInlineStyles(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = []
   let remaining = text
   let keyIndex = 0
-  
+
+  while (remaining.length > 0) {
+    // 🔴 新增：优先检测图片 URL（独立成行或段落）
+    const urlRegex = /(https?:\/\/[^\s]+)/
+    const urlMatch = remaining.match(urlRegex)
+
+    if (urlMatch) {
+      const before = remaining.slice(0, urlMatch.index!)
+      const url = urlMatch[1]
+
+      // 处理 URL 前的文本
+      if (before) {
+        // 递归处理 URL 前的文本
+        const beforeParts = renderInlineStylesWithoutUrl(before, keyIndex)
+        parts.push(...beforeParts)
+        keyIndex += beforeParts.length
+      }
+
+      // 🔴 检测是否是图片 URL
+      if (isImageUrl(url)) {
+        parts.push(
+          <View key={keyIndex++} className="my-2">
+            <Image
+              src={url}
+              mode="widthFix"
+              className="w-full rounded-lg"
+              onClick={() => Taro.previewImage({
+                current: url,
+                urls: [url]
+              })}
+            />
+          </View>
+        )
+      }
+      // 🔴 检测是否是视频 URL
+      else if (isVideoUrl(url)) {
+        parts.push(
+          <View key={keyIndex++} className="my-2">
+            {Taro.getEnv() === Taro.ENV_TYPE.WEB ? (
+              <video
+                src={url}
+                className="w-full rounded-lg"
+                controls
+                playsInline
+                webkit-playsinline="true"
+                x5-playsinline="true"
+                preload="metadata"
+                style={{ width: '100%', height: '180px', borderRadius: '8px', backgroundColor: '#000' }}
+              />
+            ) : (
+              <Video
+                src={url}
+                className="w-full rounded-lg"
+                controls
+                showFullscreenBtn
+                showPlayBtn
+                showCenterPlayBtn
+                objectFit="contain"
+                style={{ width: '100%', height: '180px', borderRadius: '8px' }}
+              />
+            )}
+          </View>
+        )
+      }
+      // 普通链接
+      else {
+        parts.push(
+          <Text
+            key={keyIndex++}
+            className="text-blue-500 underline"
+            onClick={() => Taro.setClipboardData({ data: url })}
+          >
+            {url}
+          </Text>
+        )
+      }
+
+      remaining = remaining.slice(urlMatch.index! + urlMatch[0].length)
+      continue
+    }
+
+    // 没有 URL，处理剩余文本
+    const remainingParts = renderInlineStylesWithoutUrl(remaining, keyIndex)
+    parts.push(...remainingParts)
+    break
+  }
+
+  return parts
+}
+
+// 🔴 新增：处理不包含 URL 的行内样式
+function renderInlineStylesWithoutUrl(text: string, startKey: number): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  let remaining = text
+  let keyIndex = startKey
+
   while (remaining.length > 0) {
     // 加粗
     const boldMatch = remaining.match(/\*\*([^*]+)\*\*/)
@@ -148,7 +279,7 @@ function renderInlineStyles(text: string): React.ReactNode[] {
       remaining = remaining.slice(boldMatch.index! + boldMatch[0].length)
       continue
     }
-    
+
     // 斜体
     const italicMatch = remaining.match(/\*([^*]+)\*/)
     if (italicMatch) {
@@ -158,7 +289,7 @@ function renderInlineStyles(text: string): React.ReactNode[] {
       remaining = remaining.slice(italicMatch.index! + italicMatch[0].length)
       continue
     }
-    
+
     // 行内代码
     const codeMatch = remaining.match(/`([^`]+)`/)
     if (codeMatch) {
@@ -172,15 +303,15 @@ function renderInlineStyles(text: string): React.ReactNode[] {
       remaining = remaining.slice(codeMatch.index! + codeMatch[0].length)
       continue
     }
-    
-    // 链接
+
+    // 链接 [text](url)
     const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/)
     if (linkMatch) {
       const before = remaining.slice(0, linkMatch.index!)
       if (before) parts.push(<Text key={keyIndex++}>{before}</Text>)
       parts.push(
-        <Text 
-          key={keyIndex++} 
+        <Text
+          key={keyIndex++}
           className="text-blue-500 underline"
           onClick={() => Taro.setClipboardData({ data: linkMatch[2] })}
         >
@@ -190,12 +321,12 @@ function renderInlineStyles(text: string): React.ReactNode[] {
       remaining = remaining.slice(linkMatch.index! + linkMatch[0].length)
       continue
     }
-    
+
     // 没有特殊格式，添加剩余文本
     parts.push(<Text key={keyIndex++}>{remaining}</Text>)
     break
   }
-  
+
   return parts
 }
 
@@ -296,7 +427,37 @@ function renderBlock(block: ParsedBlock, index: number): React.ReactNode {
           )}
         </View>
       )
-    
+
+    // 🔴 新增：视频渲染
+    case 'video':
+      return (
+        <View key={index} className="my-3">
+          {Taro.getEnv() === Taro.ENV_TYPE.WEB ? (
+            <video
+              src={block.url || ''}
+              className="w-full rounded-lg"
+              controls
+              playsInline
+              webkit-playsinline="true"
+              x5-playsinline="true"
+              preload="metadata"
+              style={{ width: '100%', height: '200px', borderRadius: '8px', backgroundColor: '#000' }}
+            />
+          ) : (
+            <Video
+              src={block.url || ''}
+              className="w-full rounded-lg"
+              controls
+              showFullscreenBtn
+              showPlayBtn
+              showCenterPlayBtn
+              objectFit="contain"
+              style={{ width: '100%', height: '200px', borderRadius: '8px' }}
+            />
+          )}
+        </View>
+      )
+
     default:
       return null
   }
