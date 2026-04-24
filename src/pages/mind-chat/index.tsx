@@ -1396,9 +1396,9 @@ export default function MindChatPage() {
             }
           }
 
-          // 批量添加上传成功的图片
+          // 🔴 修复：使用函数式更新确保状态一致性
           if (newImageUrls.length > 0) {
-            setUploadedImages([...uploadedImages, ...newImageUrls])
+            setUploadedImages(prev => [...prev, ...newImageUrls])
             showToast({
               title: `成功上传 ${newImageUrls.length} 张图片`,
               icon: 'success'
@@ -1472,12 +1472,12 @@ export default function MindChatPage() {
 
   // 🔴 新增：删除上传的图片
   const handleRemoveImage = (index: number) => {
-    setUploadedImages(uploadedImages.filter((_, i) => i !== index))
+    setUploadedImages(prev => prev.filter((_, i) => i !== index))
   }
 
   // 🔴 新增：删除上传的视频
   const handleRemoveVideo = (index: number) => {
-    setUploadedVideos(uploadedVideos.filter((_, i) => i !== index))
+    setUploadedVideos(prev => prev.filter((_, i) => i !== index))
   }
 
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
@@ -4590,8 +4590,15 @@ export default function MindChatPage() {
           <View className="media-preview-bar">
             <ScrollView scrollX className="media-preview-scroll" scrollWithAnimation>
               {uploadedImages.map((imageUrl, idx) => (
-                <View key={`img-${idx}`} className="media-preview-item">
-                  <Image src={imageUrl} className="media-preview-image" mode="aspectFill" />
+                // 🔴 修复：使用 URL 作为 key 而不是索引，避免重复渲染问题
+                <View key={`img-${imageUrl}`} className="media-preview-item">
+                  <Image
+                    src={imageUrl}
+                    className="media-preview-image"
+                    mode="aspectFill"
+                    lazyLoad
+                    onError={() => console.error('[图片预览] 加载失败:', imageUrl)}
+                  />
                   <View className="media-preview-overlay">
                     <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
                       <X size={14} color="#ffffff" />
@@ -4600,12 +4607,14 @@ export default function MindChatPage() {
                 </View>
               ))}
               {uploadedVideos.map((videoUrl, idx) => (
-                <View key={`video-${idx}`} className="media-preview-item">
+                // 🔴 修复：使用 URL 作为 key
+                <View key={`video-${videoUrl}`} className="media-preview-item">
                   <Video
                     src={videoUrl}
                     className="media-preview-video"
                     controls={false}
                     objectFit="cover"
+                    onError={() => console.error('[视频预览] 加载失败:', videoUrl)}
                   />
                   <View className="media-preview-overlay">
                     <View className="media-preview-play-icon">
