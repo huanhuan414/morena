@@ -138,28 +138,49 @@ export default function OrderAcceptance() {
 
   // 处理链接点击
   const handleLinkClick = (url: string) => {
-    if (!url) return
-    // 使用 navigateTo 跳转到 webview 页面，或者直接打开
-    // 这里我们使用 Taro 的 webview 路由，跳转到 H5 链接
+    console.log('点击链接:', url)
+    if (!url) {
+      showToast({ title: '链接为空', icon: 'none' })
+      return
+    }
     try {
       // 检查是否是完整URL
       const isFullUrl = url.startsWith('http://') || url.startsWith('https://')
-      if (isFullUrl) {
-        // 使用 webview 打开链接
-        Taro.navigateTo({
-          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
-        }).catch(() => {
-          // 如果 webview 页面不存在，使用浏览器打开
-          // 小程序环境中复制链接到剪贴板
-          Taro.setClipboardData({
-            data: url,
-            success: () => {
-              showToast({ title: '链接已复制到剪贴板', icon: 'success' })
-            }
-          })
+      if (!isFullUrl) {
+        showToast({ title: '链接格式不正确', icon: 'none' })
+        return
+      }
+
+      // 检测平台
+      const env = Taro.getEnv()
+      console.log('当前环境:', env)
+
+      if (env === Taro.ENV_TYPE.H5) {
+        // H5 环境：直接打开新标签页
+        window.open(url, '_blank')
+        showToast({ title: '正在打开链接...', icon: 'success' })
+      } else if (env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT) {
+        // 小程序环境：复制链接到剪贴板
+        Taro.setClipboardData({
+          data: url,
+          success: () => {
+            showToast({ title: '链接已复制，请在浏览器中打开', icon: 'success', duration: 2000 })
+          },
+          fail: () => {
+            showToast({ title: '复制链接失败', icon: 'none' })
+          }
         })
       } else {
-        showToast({ title: '链接格式不正确', icon: 'none' })
+        // 其他环境：复制链接到剪贴板
+        Taro.setClipboardData({
+          data: url,
+          success: () => {
+            showToast({ title: '链接已复制，请在浏览器中打开', icon: 'success', duration: 2000 })
+          },
+          fail: () => {
+            showToast({ title: '复制链接失败', icon: 'none' })
+          }
+        })
       }
     } catch (error) {
       console.error('打开链接失败:', error)
