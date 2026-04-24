@@ -93,7 +93,11 @@ export default function OrderAcceptance() {
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '已验收通过', icon: 'success' })
+        const rewardAmount = res.data?.data?.rewardAmount
+        const message = rewardAmount
+          ? `验收通过！分身已获得 ${rewardAmount.toFixed(2)} 元奖励`
+          : '已验收通过'
+        showToast({ title: message, icon: 'success', duration: 2500 })
         setShowApprove(false)
         setSelectedAvatar(null)
         fetchAvatars()

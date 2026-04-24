@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common'
 import { getSupabaseClient } from '../../storage/database/supabase-client'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
+import { EarningService } from '../earning/earning.service'
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {}
+  constructor(
+    private readonly reverseGeocodingService: ReverseGeocodingService,
+    private readonly earningService: EarningService
+  ) {}
 
   async createOrder(userId: string, orderData: Record<string, any>) {
     const client = getSupabaseClient()
@@ -1165,6 +1169,33 @@ export class OrderService {
   async approveAvatarOrder(orderId: string, avatarId: string) {
     const client = getSupabaseClient()
 
+    // 获取订单信息和分身信息
+    const { data: order } = await client
+      .from('orders')
+      .select('budget, expected_quantity, title')
+      .eq('id', orderId)
+      .single()
+
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    // 获取分身信息
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('user_id, name')
+      .eq('id', avatarId)
+      .single()
+
+    if (!avatar) {
+      throw new Error('分身不存在')
+    }
+
+    // 计算每个分身应得的金额
+    const rewardAmount = order.budget && order.expected_quantity
+      ? order.budget / order.expected_quantity
+      : 0
+
     // 更新分身订单请求状态
     const { error } = await client
       .from('order_dispatch_requests')
@@ -1181,6 +1212,62 @@ export class OrderService {
 
     if (error) {
       throw new Error(`分身验收失败: ${error.message}`)
+    }
+
+    // 创建收益记录并结算（验收通过后立即到账）
+    if (rewardAmount > 0) {
+      // 获取用户当前余额
+      const { data: user } = await client
+        .from('users')
+        .select('balance, total_earnings')
+        .eq('id', avatar.user_id)
+        .single()
+
+      const currentBalance = Number(user?.balance || 0)
+      const currentTotalEarnings = Number(user?.total_earnings || 0)
+      const newBalance = currentBalance + rewardAmount
+      const newTotalEarnings = currentTotalEarnings + rewardAmount
+
+      // 创建收益记录（已结算状态）
+      await this.earningService.createEarning({
+        userId: avatar.user_id,
+        avatarId: avatarId,
+        orderId: orderId,
+        type: 'order_reward',
+        amount: rewardAmount,
+        description: `完成订单「${order.title}」奖励`
+      })
+
+      // 更新收益记录状态为已结算
+      const { data: earningRecord } = await client
+        .from('earnings')
+        .select('id')
+        .eq('user_id', avatar.user_id)
+        .eq('order_id', orderId)
+        .eq('avatar_id', avatarId)
+        .eq('type', 'order_reward')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (earningRecord) {
+        await client
+          .from('earnings')
+          .update({ status: 'settled' })
+          .eq('id', earningRecord.id)
+      }
+
+      // 更新用户余额
+      await client
+        .from('users')
+        .update({
+          balance: newBalance,
+          total_earnings: newTotalEarnings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', avatar.user_id)
+
+      console.log(`[验收通过] 分身 ${avatar.name} (ID: ${avatarId}) 获得 ${rewardAmount} 元奖励，余额更新为 ${newBalance} 元`)
     }
 
     // 检查是否所有分身都已验收，如果是，更新订单状态
@@ -1205,7 +1292,7 @@ export class OrderService {
     // 通知分身验收通过
     await this.notifyAvatarApproval(orderId, avatarId)
 
-    return { success: true }
+    return { success: true, rewardAmount }
   }
 
   /**
