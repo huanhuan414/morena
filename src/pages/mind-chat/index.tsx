@@ -1728,21 +1728,16 @@ export default function MindChatPage() {
             setTaskProgress(latestProgress.percentage)
           }
 
-          // 更新步骤显示
+          // 🔴 修复：使用 mapStepDisplayName 转换为中文，并只保留当前执行的步骤
+          const actionName = latestProgress.action || latestProgress.step || '执行中'
           const stepDisplay: AgentStepDisplay = {
-            action: latestProgress.action || latestProgress.step || '执行中',
-            displayName: latestProgress.action || latestProgress.step || '执行中',
+            action: actionName,
+            displayName: mapStepDisplayName(actionName, latestProgress),
             status: latestProgress.status === 'completed' ? 'success' : latestProgress.status === 'failed' ? 'failed' : 'running',
             message: latestProgress.message || latestProgress.result || ''
           }
-          setAgentSteps(prev => {
-            // 避免重复添加相同的步骤
-            const lastStep = prev[prev.length - 1]
-            if (lastStep && lastStep.action === stepDisplay.action) {
-              return prev
-            }
-            return [...prev, stepDisplay]
-          })
+          // 🔴 修复：只保留当前步骤，不累积历史步骤
+          setAgentSteps([stepDisplay])
           setCurrentStatus(latestProgress.message || latestProgress.step || '执行中...')
         }
 
@@ -1834,12 +1829,16 @@ export default function MindChatPage() {
                   steps: executionResult?.steps || result.result?.steps || result.steps || [],
                   requiresConfig: executionResult?.requiresConfig ?? result.result?.requiresConfig ?? false
                 },
-                agent_steps: (executionResult?.steps || result.result?.steps || result.steps || []).map((step: any) => ({
-                  action: step.action || step.step || '',
-                  displayName: step.action || step.step || '',
-                  status: step.status === 'completed' ? 'success' : step.status === 'failed' ? 'failed' : 'running',
-                  message: step.message || step.result || step.observation || ''
-                })),
+                // 🔴 修复：使用 mapStepDisplayName 转换为中文
+                agent_steps: (executionResult?.steps || result.result?.steps || result.steps || []).map((step: any) => {
+                  const actionName = step.action || step.step || ''
+                  return {
+                    action: actionName,
+                    displayName: mapStepDisplayName(actionName, step),
+                    status: step.status === 'completed' ? 'success' : step.status === 'failed' ? 'failed' : 'running',
+                    message: step.message || step.result || step.observation || ''
+                  }
+                }),
                 // 🔴 新增：保存媒体信息
                 media: mediaList.length > 0 ? mediaList : undefined,
                 media_urls: mediaList.length > 0 ? mediaList.reduce((acc, m) => {
@@ -4562,8 +4561,11 @@ export default function MindChatPage() {
               {agentSteps.length > 0 && (
                 <View className="agent-steps-live">
                   {agentSteps.map((step, idx) => (
-                    <View key={idx} className={`step-live ${step.status}`}>
-                      <Text className="step-live-name">{step.displayName}</Text>
+                    // 🔴 修复：使用 mapStepDisplayName 确保中文显示，使用 URL 作为 key
+                    <View key={`${step.action}-${idx}`} className={`step-live ${step.status}`}>
+                      <Text className="step-live-name">
+                        {mapStepDisplayName(step.displayName, { action: step.action, status: step.status })}
+                      </Text>
                       {step.status === 'running' ? (
                         <Loader size={14} color="#00f5ff" className="spinning" />
                       ) : step.status === 'success' ? (
