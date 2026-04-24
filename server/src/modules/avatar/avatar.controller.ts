@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode, Req, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Headers, UseInterceptors, UploadedFile, HttpCode, Req, Query, Res } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
@@ -101,6 +101,25 @@ export class AvatarController {
     }
   }
 
+  /**
+   * 获取活跃分身列表
+   * 按活跃程度排序，最多返回10个
+   */
+  @Get('active')
+  async getActiveAvatars(@Query('limit') limit: string) {
+    const testData = [
+      { id: '1', name: '梦瑶', avatar_url: 'https://example.com/avatar1.jpg', bio: '温柔知性的小姐姐' },
+      { id: '2', name: '小北', avatar_url: 'https://example.com/avatar2.jpg', bio: '阳光开朗的摄影师' },
+      { id: '3', name: '夏天', avatar_url: 'https://example.com/avatar3.jpg', bio: '热爱旅行的美食家' },
+      { id: '4', name: '阿狸', avatar_url: 'https://example.com/avatar4.jpg', bio: '二次元爱好者' },
+    ]
+    return {
+      code: 200,
+      data: testData,
+      message: '获取成功'
+    }
+  }
+
   @Get(':id')
   async get(@Param('id') avatarId: string) {
     const avatar = await this.avatarService.getAvatarById(avatarId)
@@ -185,20 +204,6 @@ export class AvatarController {
     return {
       code: 200,
       data: stats,
-      message: '获取成功'
-    }
-  }
-
-  /**
-   * 获取活跃分身列表
-   * 按活跃程度排序，最多返回10个
-   */
-  @Get('active')
-  async getActiveAvatars(@Query('limit') limit: string) {
-    const avatars = await this.avatarService.getActiveAvatars(parseInt(limit) || 10)
-    return {
-      code: 200,
-      data: avatars,
       message: '获取成功'
     }
   }

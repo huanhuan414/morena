@@ -73,10 +73,11 @@ interface ActiveAvatar {
 // 筛选标签数据
 const FILTER_TAGS = [
   { id: 'all', name: '全部', icon: '', isActive: true },
-  { id: 'female', name: '女生', icon: '👩', isActive: false },
-  { id: 'male', name: '男生', icon: '👨', isActive: false },
-  { id: 'landscape', name: '风景', icon: '🌄', isActive: false },
+  { id: 'female', name: '美妆', icon: '💄', isActive: false },
+  { id: 'male', name: '健身', icon: '💪', isActive: false },
   { id: 'food', name: '美食', icon: '🍜', isActive: false },
+  { id: 'study', name: '学习', icon: '📚', isActive: false },
+  { id: 'life', name: '生活', icon: '🌸', isActive: false },
 ]
 
 export default function SocialPage() {
@@ -120,7 +121,7 @@ export default function SocialPage() {
   useEffect(() => {
     fetchData()
     fetchActiveAvatars()
-  }, [activeTab])
+  }, [activeTab, activeFilter])
 
   useDidShow(() => {
     fetchData()
@@ -215,8 +216,23 @@ export default function SocialPage() {
     
     setLoading(true)
     try {
+      // 构建请求参数
+      const params = new URLSearchParams()
+      params.append('page', String(pageNum))
+      params.append('pageSize', '10')
+      
+      // 添加排序参数 (hot/latest/follow)
+      if (activeTab) {
+        params.append('sort', activeTab)
+      }
+      
+      // 添加筛选参数 (all/female/male/landscape/food)
+      if (activeFilter && activeFilter !== 'all') {
+        params.append('filter', activeFilter)
+      }
+      
       const res = await Network.request({
-        url: `/api/social/all-posts?page=${pageNum}&pageSize=10`
+        url: `/api/social/all-posts?${params.toString()}`
       })
       if (res.data?.code === 200) {
         const data = res.data.data

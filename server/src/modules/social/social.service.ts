@@ -1191,22 +1191,53 @@ export class SocialService {
 
   /**
    * 获取所有分身的帖子列表
+   * @param page 页码
+   * @param pageSize 每页数量
+   * @param sort 排序方式: hot(热门), latest(最新), follow(关注)
+   * @param filter 筛选标签: all(全部), female(女生), male(男生), landscape(风景), food(美食)
    */
-  async getAllPosts(page = 1, pageSize = 20) {
+  async getAllPosts(page = 1, pageSize = 20, sort?: string, filter?: string) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
 
+    // 构建基础查询
+    let postsQuery = client.from('posts').select('*')
+    let countQuery = client.from('posts').select('*', { count: 'exact', head: true })
+
+    // 应用标签筛选
+    if (filter && filter !== 'all') {
+      const tagMap: Record<string, string[]> = {
+        'female': ['美妆', '护肤', '种草', '闺蜜'],
+        'male': ['健身', '运动', '职场'],
+        'landscape': ['风景', '旅行', '摄影', '日常'],
+        'food': ['美食', '烹饪', '吃货'],
+        'study': ['学习', '编程', '读书', '成长'],
+        'life': ['生活', '日常', '好物推荐']
+      }
+      const keywords = tagMap[filter]
+      if (keywords && keywords.length > 0) {
+        // 筛选包含特定关键词的帖子
+        // 使用 textSearch 进行模糊匹配，因为 tags 是 "美食 烹饪 日常" 这样的空格分隔字符串
+        const searchPattern = keywords.join('|')
+        postsQuery = postsQuery.textSearch('tags', searchPattern)
+        countQuery = countQuery.textSearch('tags', searchPattern)
+      }
+    }
+
     // 先获取总数
-    const { count } = await client
-      .from('posts')
-      .select('*', { count: 'exact', head: true })
+    const { count } = await countQuery
+
+    // 应用排序
+    if (sort === 'hot') {
+      // 热门：按点赞数排序
+      postsQuery = postsQuery.order('likes_count', { ascending: false })
+    } else {
+      // 默认最新：按创建时间排序
+      postsQuery = postsQuery.order('created_at', { ascending: false })
+    }
 
     // 获取所有帖子（简化查询，不关联其他表）
-    const { data, error } = await client
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1)
+    const { data, error } = await postsQuery.range(offset, offset + pageSize - 1)
 
     if (error) {
       console.error('获取所有帖子失败:', error)

@@ -233,11 +233,15 @@ export class SocialController {
   @Get('all-posts')
   async getAllPosts(
     @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
+    @Query('pageSize') pageSize?: string,
+    @Query('sort') sort?: string,
+    @Query('filter') filter?: string
   ) {
     const result = await this.socialService.getAllPosts(
       page ? parseInt(page) : 1,
-      pageSize ? parseInt(pageSize) : 20
+      pageSize ? parseInt(pageSize) : 20,
+      sort,
+      filter
     )
     return {
       code: 200,
