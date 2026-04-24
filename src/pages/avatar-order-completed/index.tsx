@@ -1,12 +1,11 @@
-import { useLoad, useRouter, navigateBack, showToast, previewImage, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
-import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import { marked } from 'marked'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import * as Network from '@/network'
 import { 
-  ArrowLeft, Check, Award, ExternalLink, Image as ImageIcon, 
-  Video as VideoIcon, Eye, Clock, FileText, Link2,
-  ThumbsUp, MessageCircle, Share2, BadgeCheck
+  ArrowLeft, Check, Award, ExternalLink, 
+  Eye, Clock, FileText, Link2,
+  ThumbsUp, MessageCircle, Share2, BadgeCheck, ImagePlus
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -21,6 +20,9 @@ const PLATFORM_NAMES: Record<string, string> = {
   bilibili: 'B站',
   kuaishou: '快手'
 }
+
+// 平台检测
+const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
 
 export default function AvatarOrderCompletedPage() {
   const router = useRouter()
@@ -53,6 +55,7 @@ export default function AvatarOrderCompletedPage() {
       if (orderRes.data?.code === 200) {
         const orderData = orderRes.data.data
         setOrder(orderData)
+        console.log('订单数据详情:', JSON.stringify(orderData, null, 2))
 
         // 从订单的 dispatch_requests 中找到对应的请求
         const request = orderData.dispatch_requests?.find(
@@ -61,7 +64,7 @@ export default function AvatarOrderCompletedPage() {
 
         if (request) {
           setDispatchRequest(request)
-          console.log('派单请求数据加载成功', request)
+          console.log('派单请求数据加载成功', JSON.stringify(request, null, 2))
         } else {
           console.error('未找到对应的派单请求')
           showToast({ title: '未找到订单数据', icon: 'none' })
@@ -80,6 +83,14 @@ export default function AvatarOrderCompletedPage() {
 
   const handleLinkClick = (url: string) => {
     if (!url) return
+    
+    // H5环境直接用window.open
+    if (!isMiniApp) {
+      window.open(url, '_blank')
+      return
+    }
+    
+    // 小程序用webview
     navigateTo({
       url: `/pages/webview/index?url=${encodeURIComponent(url)}`
     }).catch(() => {
@@ -87,37 +98,18 @@ export default function AvatarOrderCompletedPage() {
     })
   }
 
-  const handleImagePreview = (imageUrl: string, allImages: string[] = []) => {
+  const handleImagePreview = (imageUrl: string) => {
     if (!imageUrl) return
-    previewImage({
-      urls: allImages.length > 0 ? allImages : [imageUrl],
-      current: imageUrl
-    })
-  }
-
-  const handleVideoPreview = (videoUrl: string) => {
-    if (!videoUrl) return
-    showToast({ title: '视频预览功能开发中', icon: 'none' })
-  }
-
-  // 解析Markdown
-  const parseMarkdown = (text: string): string => {
-    if (!text) return ''
-    try {
-      return marked.parse(text, { async: false }) as string
-    } catch (e) {
-      console.error('Markdown解析失败:', e)
-      return text
+    
+    if (isMiniApp) {
+      previewImage({
+        urls: allImages.length > 0 ? allImages : [imageUrl],
+        current: imageUrl
+      })
+    } else {
+      // H5环境直接打开图片
+      window.open(imageUrl, '_blank')
     }
-  }
-
-  // 格式化数字
-  const formatNumber = (num: number): string => {
-    if (num === undefined || num === null) return '0'
-    if (num >= 10000) {
-      return `${(num / 10000).toFixed(1)}w`
-    }
-    return num.toString()
   }
 
   // 格式化时间
@@ -132,9 +124,43 @@ export default function AvatarOrderCompletedPage() {
     return dispatchRequest?.publish_feedback || dispatchRequest?.publishFeedback || {}
   }, [dispatchRequest])
 
-  // 获取平台数据
+  // 获取平台数据 - 从多个可能的路径获取
   const platforms = useMemo(() => {
-    return dispatchRequest?.publish_status?.platforms || {}
+    // 优先从 publish_status.platforms 获取
+    if (dispatchRequest?.publish_status?.platforms) {
+      return dispatchRequest.publish_status.platforms
+    }
+    // 尝试从 submission_results 获取
+    if (dispatchRequest?.submission_results) {
+      const results = dispatchRequest.submission_results
+      if (typeof results === 'object' && !Array.isArray(results)) {
+        return results
+      }
+    }
+    // 尝试从 submitted_links 或 submitted_images 获取
+    if (dispatchRequest?.submitted_links || dispatchRequest?.submitted_images) {
+      const result: any = {}
+      if (dispatchRequest.submitted_links) {
+        const links = Array.isArray(dispatchRequest.submitted_links) 
+          ? dispatchRequest.submitted_links 
+          : [dispatchRequest.submitted_links]
+        links.forEach((link: any, index: number) => {
+          const platformKey = `platform_${index}`
+          result[platformKey] = { link: typeof link === 'string' ? link : link.url }
+        })
+      }
+      if (dispatchRequest.submitted_images) {
+        const images = Array.isArray(dispatchRequest.submitted_images) 
+          ? dispatchRequest.submitted_images 
+          : [dispatchRequest.submitted_images]
+        images.forEach((img: any, index: number) => {
+          const platformKey = `platform_image_${index}`
+          result[platformKey] = { image: typeof img === 'string' ? img : img.url }
+        })
+      }
+      return result
+    }
+    return {}
   }, [dispatchRequest])
 
   // 获取订单奖励金额
@@ -144,6 +170,64 @@ export default function AvatarOrderCompletedPage() {
     const quantity = order.expected_quantity || 1
     return budget / quantity
   }, [order])
+
+  // 获取所有图片列表
+  const allImages = useMemo(() => {
+    const images: string[] = []
+    Object.values(platforms).forEach((data: any) => {
+      if (data?.image && !images.includes(data.image)) {
+        images.push(data.image)
+      }
+    })
+    return images
+  }, [platforms])
+
+  // 获取已提交的链接列表
+  const submittedLinks = useMemo(() => {
+    const links: Array<{url: string, platform?: string}> = []
+    
+    // 从 platforms 中提取
+    Object.entries(platforms).forEach(([platform, data]: [string, any]) => {
+      if (data?.link) {
+        links.push({
+          url: data.link,
+          platform: PLATFORM_NAMES[platform] || platform
+        })
+      }
+    })
+    
+    return links
+  }, [platforms])
+
+  // 获取已提交的截图列表
+  const submittedImages = useMemo(() => {
+    const images: Array<{url: string, platform?: string}> = []
+    
+    // 从 platforms 中提取
+    Object.entries(platforms).forEach(([platform, data]: [string, any]) => {
+      if (data?.image) {
+        images.push({
+          url: data.image,
+          platform: PLATFORM_NAMES[platform] || platform
+        })
+      }
+    })
+    
+    // 也直接从 dispatchRequest 中查找图片字段
+    if (dispatchRequest?.submitted_images) {
+      const imgs = Array.isArray(dispatchRequest.submitted_images) 
+        ? dispatchRequest.submitted_images 
+        : [dispatchRequest.submitted_images]
+      imgs.forEach((img: any) => {
+        const url = typeof img === 'string' ? img : img.url
+        if (url && !images.find(i => i.url === url)) {
+          images.push({ url })
+        }
+      })
+    }
+    
+    return images
+  }, [platforms, dispatchRequest])
 
   // 生成提交记录时间线
   const submissionTimeline = useMemo(() => {
@@ -172,28 +256,28 @@ export default function AvatarOrderCompletedPage() {
     }
     
     // 发布链接提交
-    Object.entries(platforms).forEach(([platform, data]: [string, any]) => {
-      if (data.link) {
+    if (submittedLinks.length > 0) {
+      submittedLinks.forEach(link => {
         timeline.push({
-          time: data.submitted_at || dispatchRequest.updated_at,
+          time: dispatchRequest.updated_at,
           type: 'link_submitted',
-          content: `提交${PLATFORM_NAMES[platform] || platform}发布链接`,
+          content: `提交${link.platform || '平台'}发布链接`,
           status: 'completed'
         })
-      }
-    })
+      })
+    }
     
     // 发布截图提交
-    Object.entries(platforms).forEach(([platform, data]: [string, any]) => {
-      if (data.image) {
+    if (submittedImages.length > 0) {
+      submittedImages.forEach(img => {
         timeline.push({
-          time: data.submitted_at || dispatchRequest.updated_at,
+          time: dispatchRequest.updated_at,
           type: 'image_submitted',
-          content: `提交${PLATFORM_NAMES[platform] || platform}发布截图`,
+          content: `提交${img.platform || '平台'}发布截图`,
           status: 'completed'
         })
-      }
-    })
+      })
+    }
     
     // 任务完成
     if (dispatchRequest.status === 'completed') {
@@ -207,26 +291,53 @@ export default function AvatarOrderCompletedPage() {
     
     // 按时间排序
     return timeline.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-  }, [dispatchRequest, platforms])
+  }, [dispatchRequest, submittedLinks, submittedImages])
 
-  // 获取所有图片列表
-  const allImages = useMemo(() => {
-    const images: string[] = []
+  // 计算发布数据总计
+  const totalStats = useMemo(() => {
+    const total = { views: 0, likes: 0, comments: 0, shares: 0 }
+    
+    // 从 platforms 中汇总
     Object.values(platforms).forEach((data: any) => {
-      if (data.image) images.push(data.image)
-    })
-    // 创作内容中的图片
-    if (dispatchRequest?.generated_content) {
-      const imgRegex = /!\[.*?\]\((.*?)\)/g
-      let match
-      while ((match = imgRegex.exec(dispatchRequest.generated_content)) !== null) {
-        if (!images.includes(match[1])) {
-          images.push(match[1])
-        }
+      if (data?.feedback) {
+        total.views += data.feedback.views || 0
+        total.likes += data.feedback.likes || 0
+        total.comments += data.feedback.comments || 0
+        total.shares += data.feedback.shares || 0
       }
+    })
+    
+    // 也从 publish_feedback 汇总
+    if (publishFeedback?.platforms) {
+      Object.values(publishFeedback.platforms).forEach((data: any) => {
+        total.views += data.views || 0
+        total.likes += data.likes || 0
+        total.comments += data.comments || 0
+        total.shares += data.shares || 0
+      })
     }
-    return images
-  }, [platforms, dispatchRequest])
+    
+    // 直接从 publish_feedback 顶层数据
+    if (publishFeedback?.views) total.views += publishFeedback.views
+    if (publishFeedback?.likes) total.likes += publishFeedback.likes
+    if (publishFeedback?.comments) total.comments += publishFeedback.comments
+    if (publishFeedback?.shares) total.shares += publishFeedback.shares
+    
+    return total
+  }, [platforms, publishFeedback])
+
+  const hasStats = totalStats.views > 0 || totalStats.likes > 0 || totalStats.comments > 0 || totalStats.shares > 0
+
+  // 格式化数字
+  const formatNumber = (num: number): string => {
+    if (num === undefined || num === null || num === 0) return '-'
+    if (num >= 10000) {
+      return `${(num / 10000).toFixed(1)}w`
+    }
+    return num.toLocaleString()
+  }
+
+  const completedTime = dispatchRequest?.updated_at || dispatchRequest?.created_at
 
   if (loading) {
     return (
@@ -251,8 +362,6 @@ export default function AvatarOrderCompletedPage() {
       </View>
     )
   }
-
-  const completedTime = dispatchRequest.updated_at || dispatchRequest.created_at
 
   return (
     <View className="page-container">
@@ -309,38 +418,33 @@ export default function AvatarOrderCompletedPage() {
         </View>
 
         {/* 订单描述 */}
-        {(order.description || dispatchRequest.generated_content) && (
+        {order.description && (
           <View className="section-card">
             <View className="card-header">
               <FileText size={20} color="#8b5cf6" />
-              <Text className="card-title">内容详情</Text>
+              <Text className="card-title">订单描述</Text>
             </View>
-            
-            {/* 订单描述 */}
-            {order.description && (
-              <View className="content-block">
-                <Text className="content-label">订单描述</Text>
-                <View className="markdown-content">
-                  <Text className="markdown-text">{parseMarkdown(order.description)}</Text>
-                </View>
-              </View>
-            )}
-            
-            {/* 创作内容 */}
-            {dispatchRequest.generated_content && (
-              <View className="content-block">
-                <Text className="content-label">创作内容</Text>
-                <View className="markdown-content">
-                  <Text className="markdown-text">{parseMarkdown(dispatchRequest.generated_content)}</Text>
-                </View>
-              </View>
-            )}
+            <View className="description-content">
+              <Text className="description-text">{order.description}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* 创作内容 */}
+        {dispatchRequest.generated_content && (
+          <View className="section-card">
+            <View className="card-header">
+              <FileText size={20} color="#10b981" />
+              <Text className="card-title">创作内容</Text>
+            </View>
+            <View className="description-content">
+              <Text className="description-text">{dispatchRequest.generated_content}</Text>
+            </View>
           </View>
         )}
 
         {/* 发布数据统计 */}
-        {(publishFeedback.views !== undefined || publishFeedback.likes !== undefined ||
-          publishFeedback.comments !== undefined || publishFeedback.shares !== undefined) && (
+        {hasStats && (
           <View className="section-card">
             <View className="card-header">
               <Eye size={20} color="#f59e0b" />
@@ -348,132 +452,106 @@ export default function AvatarOrderCompletedPage() {
             </View>
             
             <View className="stats-grid">
-              {publishFeedback.views !== undefined && (
-                <View className="stat-item">
-                  <View className="stat-icon-wrapper views">
-                    <Eye size={18} color="#6366f1" />
-                  </View>
-                  <View className="stat-info">
-                    <Text className="stat-value">{formatNumber(publishFeedback.views)}</Text>
-                    <Text className="stat-label">浏览</Text>
-                  </View>
+              <View className="stat-item">
+                <View className="stat-icon-wrapper views">
+                  <Eye size={18} color="#6366f1" />
                 </View>
-              )}
+                <View className="stat-info">
+                  <Text className="stat-value">{formatNumber(totalStats.views)}</Text>
+                  <Text className="stat-label">浏览</Text>
+                </View>
+              </View>
               
-              {publishFeedback.likes !== undefined && (
-                <View className="stat-item">
-                  <View className="stat-icon-wrapper likes">
-                    <ThumbsUp size={18} color="#ef4444" />
-                  </View>
-                  <View className="stat-info">
-                    <Text className="stat-value">{formatNumber(publishFeedback.likes)}</Text>
-                    <Text className="stat-label">点赞</Text>
-                  </View>
+              <View className="stat-item">
+                <View className="stat-icon-wrapper likes">
+                  <ThumbsUp size={18} color="#ef4444" />
                 </View>
-              )}
+                <View className="stat-info">
+                  <Text className="stat-value">{formatNumber(totalStats.likes)}</Text>
+                  <Text className="stat-label">点赞</Text>
+                </View>
+              </View>
               
-              {publishFeedback.comments !== undefined && (
-                <View className="stat-item">
-                  <View className="stat-icon-wrapper comments">
-                    <MessageCircle size={18} color="#f59e0b" />
-                  </View>
-                  <View className="stat-info">
-                    <Text className="stat-value">{formatNumber(publishFeedback.comments)}</Text>
-                    <Text className="stat-label">评论</Text>
-                  </View>
+              <View className="stat-item">
+                <View className="stat-icon-wrapper comments">
+                  <MessageCircle size={18} color="#f59e0b" />
                 </View>
-              )}
+                <View className="stat-info">
+                  <Text className="stat-value">{formatNumber(totalStats.comments)}</Text>
+                  <Text className="stat-label">评论</Text>
+                </View>
+              </View>
               
-              {publishFeedback.shares !== undefined && (
-                <View className="stat-item">
-                  <View className="stat-icon-wrapper shares">
-                    <Share2 size={18} color="#10b981" />
-                  </View>
-                  <View className="stat-info">
-                    <Text className="stat-value">{formatNumber(publishFeedback.shares)}</Text>
-                    <Text className="stat-label">分享</Text>
-                  </View>
+              <View className="stat-item">
+                <View className="stat-icon-wrapper shares">
+                  <Share2 size={18} color="#10b981" />
                 </View>
-              )}
+                <View className="stat-info">
+                  <Text className="stat-value">{formatNumber(totalStats.shares)}</Text>
+                  <Text className="stat-label">分享</Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
 
-        {/* 发布内容 */}
-        {Object.keys(platforms).length > 0 && (
+        {/* 发布链接 */}
+        {submittedLinks.length > 0 && (
           <View className="section-card">
             <View className="card-header">
-              <Link2 size={20} color="#10b981" />
-              <Text className="card-title">发布内容</Text>
+              <Link2 size={20} color="#6366f1" />
+              <Text className="card-title">发布链接</Text>
             </View>
             
-            {Object.entries(platforms).map(([platform, data]: [string, any]) => (
-              <View key={platform} className="platform-item">
-                <View className="platform-header">
-                  <Text className="platform-name">{PLATFORM_NAMES[platform] || platform}</Text>
+            {submittedLinks.map((link, index) => (
+              <View 
+                key={`link-${index}`} 
+                className="link-item"
+                onClick={() => handleLinkClick(link.url)}
+              >
+                <View className="link-icon">
+                  <ExternalLink size={18} color="#6366f1" />
                 </View>
-                
-                {/* 发布链接 */}
-                {data.link && (
-                  <View className="link-item" onClick={() => handleLinkClick(data.link)}>
-                    <View className="link-icon">
-                      <ExternalLink size={18} color="#6366f1" />
-                    </View>
-                    <View className="link-info">
-                      <Text className="link-label">发布链接</Text>
-                      <Text className="link-url">{data.link}</Text>
-                    </View>
-                    <View className="link-arrow">
-                      <ExternalLink size={16} color="#9ca3af" />
-                    </View>
-                  </View>
-                )}
-                
-                {/* 发布截图 */}
-                {data.image && (
-                  <View className="media-item">
-                    <View className="media-header">
-                      <ImageIcon size={18} color="#8b5cf6" />
-                      <Text className="media-label">发布截图</Text>
-                    </View>
-                    <View 
-                      className="media-preview"
-                      onClick={() => handleImagePreview(data.image, allImages)}
-                    >
-                      <Image 
-                        src={data.image} 
-                        mode="aspectFill"
-                        className="preview-image" 
-                      />
-                      <View className="preview-overlay">
-                        <ImageIcon size={24} color="#ffffff" />
-                      </View>
-                    </View>
-                  </View>
-                )}
-                
-                {/* 视频 */}
-                {data.video && (
-                  <View className="media-item">
-                    <View className="media-header">
-                      <VideoIcon size={18} color="#ec4899" />
-                      <Text className="media-label">发布视频</Text>
-                    </View>
-                    <View 
-                      className="video-preview"
-                      onClick={() => handleVideoPreview(data.video)}
-                    >
-                      <Video
-                        src={data.video}
-                        className="preview-video"
-                        poster={data.video_poster || ''}
-                        controls
-                      />
-                    </View>
-                  </View>
-                )}
+                <View className="link-info">
+                  <Text className="link-platform">{link.platform || '平台链接'}</Text>
+                  <Text className="link-url">{link.url}</Text>
+                </View>
+                <View className="link-arrow">
+                  <ExternalLink size={16} color="#9ca3af" />
+                </View>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* 发布截图 */}
+        {submittedImages.length > 0 && (
+          <View className="section-card">
+            <View className="card-header">
+              <ImagePlus size={20} color="#8b5cf6" />
+              <Text className="card-title">发布截图</Text>
+            </View>
+            
+            <View className="images-grid">
+              {submittedImages.map((img, index) => (
+                <View 
+                  key={`img-${index}`}
+                  className="image-item"
+                  onClick={() => handleImagePreview(img.url)}
+                >
+                  <Image 
+                    src={img.url}
+                    mode="aspectFill"
+                    className="preview-image"
+                  />
+                  {img.platform && (
+                    <View className="image-platform-tag">
+                      <Text className="image-platform-text">{img.platform}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
