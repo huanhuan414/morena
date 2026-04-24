@@ -301,7 +301,7 @@
 }
 
 .avatar-name-large {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -334,7 +334,7 @@
 }
 
 .avatar-status-text {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
@@ -349,7 +349,7 @@
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
@@ -376,13 +376,19 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  background: var(--bg-primary);
   border-radius: var(--radius-xl);
   margin-bottom: 16px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
   position: relative;
   overflow: hidden;
-  animation: gradient-shift 8s ease infinite;
+  transition: all var(--transition-base);
+}
+
+.stats-item:active {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 @keyframes gradient-shift {
@@ -436,11 +442,11 @@
 }
 
 .stats-label {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   position: relative;
   z-index: 1;
 }
@@ -500,12 +506,9 @@
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-color);
   line-height: 1;
   margin-bottom: 6px;
   position: relative;
@@ -513,7 +516,7 @@
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
@@ -635,15 +638,15 @@
 }
 
 .link-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
 .link-url {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-primary);
   word-break: break-all;
   line-height: 1.6;
@@ -692,11 +695,11 @@
 }
 
 .image-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
 .image-content {
@@ -1161,4 +1164,168 @@
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* ==================== 待验收分身列表 - 现代卡片样式 ==================== */
+
+/* 列表容器 */
+.avatar-list-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+/* 分身卡片 */
+.avatar-card-modern {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-light), var(--primary-color), var(--primary-dark));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-base);
+}
+
+.avatar-card-modern:active {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.avatar-card-modern:active::before {
+  transform: scaleX(1);
+}
+
+/* 卡片左侧 */
+.avatar-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 序号 */
+.avatar-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 卡片头像 */
+.avatar-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  border: 3px solid var(--bg-primary);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.avatar-card-modern:active .avatar-card-avatar {
+  transform: scale(1.05);
+}
+
+/* 卡片信息 */
+.avatar-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 分身名称 */
+.avatar-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* 提示文字 */
+.avatar-card-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ==================== 空状态 - 现代样式 ==================== */
+.empty-state-modern {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 16px;
+}
+
+.empty-state-modern .empty-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(16, 185, 129, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.empty-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.empty-btn {
+  height: 48px;
+  padding: 0 24px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  border-radius: var(--radius-lg);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md), 0 0 20px rgba(37, 99, 235, 0.2);
+  transition: all var(--transition-base);
+}
+
+.empty-btn:active {
+  transform: scale(0.97);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(37, 99, 235, 0.3);
 }
