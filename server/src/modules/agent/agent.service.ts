@@ -1770,7 +1770,7 @@ export class AgentService {
       hasWrittenArticle,
       hasPublished,
       taskDescription: context.taskDescription,
-      historySteps: history.map(s => ({ action: s.action, status: s.status }))
+      historySteps: history.map(s => s.action)
     })
 
     if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
