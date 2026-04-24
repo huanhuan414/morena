@@ -1807,6 +1807,14 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
      - **只使用 publish_wechat_mp 工具**，不要重新调用 write_wechat_mp_article
      - 如果 publish_wechat_mp 返回 requires_content=true，说明没有可发布的内容，才需要写文章
      - **不要说"我重新为你写了一篇文章"**，用户只是要发布现有内容！
+   - **如果用户要求"写作并发布"（如"写公众号文章并发布"、"写一篇文章发布到公众号"）**：
+     - **步骤1**：首先调用 write_wechat_mp_article 生成文章
+     - **步骤2（必须）**：write_wechat_mp_article 成功后，**立即**调用 publish_wechat_mp 发布文章
+     - **步骤3（必须）**：处理 publish_wechat_mp 的返回结果：
+       * 成功(success=true)：告知用户"✅ 文章已成功保存到公众号草稿箱！"
+       * 未配置账号(requires_config=true)：告知用户"文章已生成，但发布失败：未配置公众号账号，请先在设置中绑定公众号"
+       * 失败(error)：告知用户"文章已生成，但发布失败：[具体错误信息]"
+     - **禁止**：只写文章不发布，或发布失败不告知用户！
 
 8. 【视频生成规则（CRITICAL）】
    - 当使用 generate_video 工具生成视频时：
@@ -1824,6 +1832,8 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 - 不要在完成第一个子任务后就返回 Final Answer
 - 不要因为已经生成了部分内容就认为任务完成
 - 只有所有子任务都执行完成后，才能返回 Final Answer
+- **特别重要**：对于"写作并发布"类任务，写作完成后**必须**执行发布操作，不能只写不发！
+- **特别重要**：对于"发布"类任务，如果发布失败（requires_config、error等），**必须**将错误原因明确告知用户，不能假装成功！
 
 【小程序内部功能】
 当用户指令涉及以下关键词时，必须优先调用对应的小程序内部功能工具：
@@ -1997,12 +2007,29 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
 **注意**：用户明确说"发布"而不是"写"，说明内容已经有了，直接发布即可！`)
       return hints.join('\n\n')
     }
-    // 5. 微信公众号任务
+    // 5. 🔴 改进：区分"仅写作"和"写作+发布"
     else if (lowerTask.includes('公众号') || lowerTask.includes('微信文章') || lowerTask.includes('微信图文')) {
-      hints.push(`【任务解析】这是一个微信公众号内容创作任务：
+      // 检测是否同时要求发布
+      const requiresPublish = lowerTask.match(/并.*发布|然后.*发布|再.*发布|.*并.*推送|发布.*到/)
+
+      if (requiresPublish) {
+        hints.push(`【任务解析】这是一个**微信公众号创作+发布任务**（写作后立即发布）：
+**执行顺序（必须严格按此顺序）**：
 1. 首先使用 write_wechat_mp_article 工具生成公众号爆款图文内容
-2. 然后使用 publish_wechat_mp 工具尝试发布到公众号
-3. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置`)
+2. **等待 write_wechat_mp_article 成功返回后**，立即使用 publish_wechat_mp 工具将文章发布到公众号
+3. 调用 publish_wechat_mp 时，参数使用 write_wechat_mp_article 返回的内容
+4. 如果 publish_wechat_mp 返回 requires_config=true，说明用户未配置公众号，需要提示用户配置
+5. 如果 publish_wechat_mp 返回错误，必须将错误信息明确告知用户
+
+**重要**：
+- 用户明确要求"写...并发布"，你必须完成发布操作，不能只写文章不发布！
+- 发布失败时必须告知用户具体错误原因（如：未配置账号、API错误等）`)
+      } else {
+        hints.push(`【任务解析】这是一个微信公众号内容创作任务（仅写作，不自动发布）：
+1. 使用 write_wechat_mp_article 工具生成公众号爆款图文内容
+2. **不要**自动调用 publish_wechat_mp，除非用户明确要求发布
+3. 在最终回复中告知用户：如需发布，请发送"发布到公众号"`)
+      }
       return hints.join('\n\n')
     }
     // 🔴 新增：小红书纯发布任务
