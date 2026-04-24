@@ -183,22 +183,13 @@ export default function OrderAcceptance() {
             <View className="content-section">
               <Text className="section-title">发布提交</Text>
 
+              {/* 数据统计 - 独立卡片，占满宽度 */}
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
-                <View key={platform} className="platform-card">
-                  <View className="platform-header">
-                    <View className="platform-icon">
-                      <Link2 size={20} color="#6366f1" />
-                    </View>
-                    <Text className="platform-name">
-                      {platform === 'wechat_mp' ? '微信公众号' : platform}
-                    </Text>
-                  </View>
-
-                  {/* 数据统计 */}
+                <View key={platform}>
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
-                        <TrendingUp size={20} color="#6366f1" />
+                        <TrendingUp size={20} color="#ffffff" />
                       </View>
                       <View className="stats-content">
                         <Text className="stats-label">数据统计</Text>
@@ -229,6 +220,23 @@ export default function OrderAcceptance() {
                           )}
                         </View>
                       </View>
+                    </View>
+                  )}
+                </View>
+              ))}
+
+              {/* 平台卡片 - 只包含链接和截图 */}
+              {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
+                <View key={platform} className="platform-card">
+                  {/* 只在有内容时才显示头部 */}
+                  {(feedback.link || feedback.image) && (
+                    <View className="platform-header">
+                      <View className="platform-icon">
+                        <Link2 size={20} color="#6366f1" />
+                      </View>
+                      <Text className="platform-name">
+                        {platform === 'wechat_mp' ? '微信公众号' : platform}
+                      </Text>
                     </View>
                   )}
 
