@@ -391,41 +391,25 @@ export default function AvatarCreatePage() {
 
       if (responseData?.code === 200) {
         const { photoUrl: url, analysis } = responseData.data
-        const { hasFace, faceCount, confidence } = analysis || {}
 
-        console.log('人脸检测结果:', { hasFace, faceCount, confidence, analysis })
+        console.log('图片分析结果:', analysis)
 
-        // 检查是否检测到人脸 - 使用更宽松的判断逻辑
-        // 如果后端明确返回 hasFace === false，或者 faceCount === 0，才认为没有人脸
-        const noFaceDetected = hasFace === false || (faceCount !== undefined && faceCount === 0)
-        
-        if (noFaceDetected) {
-          setAnalyzing(false)
-          // 显示警告但仍然允许用户继续
-          showToast({ 
-            title: '未清晰检测到人脸，您仍可继续创建', 
-            icon: 'none', 
-            duration: 3000 
-          })
-          // 延迟一下让用户看到提示，然后继续
-          setTimeout(() => {
-            setPhotoUrl(url)
-            setPhotoAnalysis(analysis)
-            setStep(1)
-          }, 1500)
-          return
+        // 不再拦截人脸检测，无论是否检测到人脸都允许继续创建
+        // 人脸检测结果仅作为提示信息显示
+        if (analysis?.hasFace === false) {
+          console.log('未检测到人脸，但仍允许继续创建')
         }
 
         setPhotoUrl(url)
         setPhotoAnalysis(analysis)
 
         // 如果AI建议了名字，自动填充
-        if (analysis.suggestedName) {
+        if (analysis?.suggestedName) {
           setAvatarName(analysis.suggestedName)
         }
 
         // 如果有推荐的性格类型，自动选择
-        if (analysis.recommendedType) {
+        if (analysis?.recommendedType) {
           setSelectedPersonality(analysis.recommendedType)
         }
 
