@@ -822,15 +822,19 @@ export class FriendshipService {
 
     let title = ''
     let content = ''
+    let type = 'system'
 
     if (notificationType === 'friend_request') {
       title = '新的好友请求'
       content = `${data.from_avatar_name} 想要和你的分身成为朋友：${data.match_reason}`
+      type = 'follow' // 🔴 使用 follow 类型，对应好友/关注通知
     } else if (notificationType === 'friend_accepted') {
       title = '好友请求已接受'
       content = `${data.friend_avatar_name} 接受了你的好友请求，你们现在已经是朋友了！`
+      type = 'system'
     }
 
+    // 🔴 创建到 avatar_notifications 表（用于交友管理页面）
     await client
       .from('avatar_notifications')
       .insert({
@@ -842,6 +846,27 @@ export class FriendshipService {
         content: content,
         data: data
       })
+
+    // 🔴 同时创建到 notifications 表（用于首页未读数统计）
+    try {
+      await client
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          type: type,
+          title: title,
+          content: content,
+          data: {
+            ...data,
+            avatar_id: avatarId,
+            notification_type: notificationType
+          },
+          is_read: false
+        })
+    } catch (error) {
+      console.error('[FriendshipService] 创建 notifications 记录失败:', error)
+      // 不影响主流程
+    }
   }
 
   /**
