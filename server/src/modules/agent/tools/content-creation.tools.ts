@@ -499,6 +499,73 @@ async function smartInsertImagesToArticle(
   return contentWithImages.trim()
 }
 
+/**
+ * 🔴 新增：为文章段落生成 AI 配图
+ * 为没有图片的段落生成配图
+ */
+async function generateAIImagesForArticle(
+  content: string,
+  title: string,
+  uploadedImagePositions: Set<number>, // 已插入用户图片的段落索引
+  imageClient: ImageGenerationClient
+): Promise<string> {
+  console.log(`[AI配图] 为用户图片未覆盖的段落生成 AI 配图`)
+
+  let contentWithImages = content
+  const paragraphs = content.split('\n\n').filter(p => p.trim())
+
+  // 找出需要 AI 配图的段落位置（跳过已有用户图片的段落）
+  const aiImagePositions: { index: number; position: number; text: string }[] = []
+  let currentPos = 0
+  let contentParagraphCount = 0
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    const paragraph = paragraphs[i]
+    const isContentParagraph = !paragraph.startsWith('#') && !paragraph.startsWith('>') && paragraph.length > 20
+
+    if (isContentParagraph) {
+      contentParagraphCount++
+      // 每隔3-4个内容段落插入一张配图，且该段落没有用户上传的图片
+      if (contentParagraphCount % 3 === 0 && !uploadedImagePositions.has(i) && aiImagePositions.length < 3) {
+        aiImagePositions.push({
+          index: i,
+          position: currentPos,
+          text: paragraph.substring(0, 100)
+        })
+      }
+    }
+    currentPos += paragraph.length + 2
+  }
+
+  console.log(`[AI配图] 计划生成 ${aiImagePositions.length} 张 AI 配图`)
+
+  // 为每个位置生成配图
+  for (let i = aiImagePositions.length - 1; i >= 0; i--) {
+    const { position, text } = aiImagePositions[i]
+
+    try {
+      console.log(`[AI配图] 正在生成第 ${i + 1} 张 AI 配图...`)
+      const imgResponse = await imageClient.generate({
+        prompt: `公众号文章配图，${title}相关，抽象概念图，简约现代风格，${text.substring(0, 80)}`,
+        size: '1K',
+        watermark: false
+      })
+      const imgHelper = imageClient.getResponseHelper(imgResponse)
+
+      if (imgHelper.success && imgHelper.imageUrls.length > 0) {
+        const imgUrl = imgHelper.imageUrls[0]
+        const imageMarkdown = `\n\n![AI生成配图](${imgUrl})\n\n`
+        contentWithImages = contentWithImages.slice(0, position) + imageMarkdown + contentWithImages.slice(position)
+        console.log(`[AI配图] 第 ${i + 1} 张 AI 配图插入成功`)
+      }
+    } catch (error) {
+      console.error(`[AI配图] 生成第 ${i + 1} 张配图失败:`, error)
+    }
+  }
+
+  return contentWithImages
+}
+
 async function addImagesToArticleContent(
   content: string,
   title: string,
@@ -510,12 +577,45 @@ async function addImagesToArticleContent(
 
     let contentWithImages = ''
 
-    // 🔴 改进：使用智能配图逻辑
+    // 🔴 改进：如果有用户上传的图片，先插入用户图片，再为其他段落生成 AI 配图
     if (uploadedImages && uploadedImages.length > 0) {
-      console.log(`使用用户上传的 ${uploadedImages.length} 张图片作为文章配图（智能匹配模式）`)
+      console.log(`[文章配图] 用户上传了 ${uploadedImages.length} 张图片，先进行智能匹配`)
 
-      // 使用新的智能配图函数
-      contentWithImages = await smartInsertImagesToArticle(content, title, uploadedImages)
+      // 1. 首先将用户上传的图片智能匹配到相关段落
+      const contentWithUserImages = await smartInsertImagesToArticle(content, title, uploadedImages)
+
+      // 2. 找出已插入用户图片的段落位置
+      const paragraphs = content.split('\n\n').filter(p => p.trim())
+      const uploadedImagePositions = new Set<number>()
+
+      // 通过分析匹配结果，找出哪些段落已插入用户图片
+      const userImageUrls = uploadedImages.map(url => url.split('?')[0]) // 去除时间戳参数
+      const contentParagraphsWithUserImages = contentWithUserImages.split('\n\n')
+
+      for (let i = 0; i < contentParagraphsWithUserImages.length; i++) {
+        const paragraph = contentParagraphsWithUserImages[i]
+        // 检查该段落是否包含用户上传的图片
+        if (userImageUrls.some(url => paragraph.includes(url))) {
+          // 找到原始段落索引
+          const originalIndex = paragraphs.findIndex(p =>
+            paragraph.includes(p.substring(0, Math.min(p.length, 50)))
+          )
+          if (originalIndex >= 0) {
+            uploadedImagePositions.add(originalIndex)
+            console.log(`[文章配图] 段落 ${originalIndex} 已插入用户图片`)
+          }
+        }
+      }
+
+      console.log(`[文章配图] 用户图片覆盖了 ${uploadedImagePositions.size} 个段落，为其他段落生成 AI 配图`)
+
+      // 3. 为没有用户图片的段落生成 AI 配图
+      contentWithImages = await generateAIImagesForArticle(
+        contentWithUserImages,
+        title,
+        uploadedImagePositions,
+        imageClient
+      )
 
       return contentWithImages
     }
