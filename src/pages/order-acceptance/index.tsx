@@ -152,7 +152,7 @@ export default function OrderAcceptance() {
         {/* 头部 */}
         <View className="page-header">
           <View className="header-btn" onClick={backToList}>
-            <ArrowLeft size={20} color="#1e293b" />
+            <ArrowLeft size={22} color="#1e293b" />
           </View>
           <Text className="header-title">验收详情</Text>
           <View className="header-btn" />
@@ -274,14 +274,14 @@ export default function OrderAcceptance() {
             className="reject-btn-modern"
             onClick={() => setShowReject(true)}
           >
-            <CircleAlert size={16} color="#ef4444" />
+            <CircleAlert size={18} color="#ef4444" />
             <Text>驳回</Text>
           </Button>
           <Button
             className="approve-btn-modern"
             onClick={() => setShowApprove(true)}
           >
-            <Check size={16} color="#ffffff" />
+            <Check size={18} color="#ffffff" />
             <Text>验收</Text>
           </Button>
         </View>
@@ -291,7 +291,7 @@ export default function OrderAcceptance() {
           <View className="modal-backdrop" onClick={() => setShowReject(false)}>
             <View className="modal-container" onClick={(e) => e.stopPropagation()}>
               <View className="modal-icon-wrapper">
-                <CircleAlert size={32} color="#ef4444" />
+                <CircleAlert size={36} color="#ef4444" />
               </View>
               <Text className="modal-title-modern">驳回修改</Text>
               <Text className="modal-subtitle">请输入驳回原因</Text>
@@ -326,7 +326,7 @@ export default function OrderAcceptance() {
           <View className="modal-backdrop" onClick={() => setShowApprove(false)}>
             <View className="modal-container" onClick={(e) => e.stopPropagation()}>
               <View className="modal-icon-wrapper modal-icon-success">
-                <Check size={32} color="#22c55e" />
+                <Check size={36} color="#22c55e" />
               </View>
               <Text className="modal-title-modern">确认验收通过？</Text>
               <Text className="modal-subtitle">验收通过后将无法撤回，请仔细检查</Text>
@@ -357,7 +357,7 @@ export default function OrderAcceptance() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-btn" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="#1e293b" />
+          <ArrowLeft size={22} color="#1e293b" />
         </View>
         <Text className="header-title">验收中</Text>
         <View className="header-btn" />
