@@ -164,9 +164,9 @@ export default function AvatarOrdersPage() {
         })
         break
       case 'completed':
-        // 已完成的订单跳转到订单详情查看反馈
+        // 已完成的订单跳转到分身订单完成页面
         navigateTo({
-          url: `/pages/order-detail/index?id=${order.order_id}`
+          url: `/pages/avatar-order-completed/index?orderId=${order.order_id}&avatarId=${order.avatar_id}&requestId=${order.id}`
         })
         break
       case 'published':

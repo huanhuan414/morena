@@ -10,6 +10,7 @@ export default defineAppConfig({
     'pages/avatar-account-add/index',
     'pages/avatar-friends/index',
     'pages/avatar-orders/index',
+    'pages/avatar-order-completed/index',
     'pages/voice-call/index',
     'pages/mind-chat/index',
     'pages/publish-redirect/index',

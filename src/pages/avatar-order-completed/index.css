@@ -1,0 +1,277 @@
+.avatar-order-completed-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.header-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: background-color 0.2s;
+}
+
+.header-btn:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.header-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* 内容区域 */
+.content-scroll {
+  flex: 1;
+  height: calc(100vh - 72px);
+  padding: 16px;
+}
+
+/* 卡片通用样式 */
+.section-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* 订单信息 */
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-row {
+  display: flex;
+  gap: 12px;
+}
+
+.info-item-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 状态标签 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* 奖励卡片 */
+.reward-card {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+.reward-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+}
+
+.reward-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reward-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.reward-amount {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* 数据统计网格 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-value {
+  color: #1e293b;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* 平台内容 */
+.platform-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.platform-header {
+  padding: 0 4px;
+}
+
+.platform-name {
+  color: #1e293b;
+}
+
+.content-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.content-item:active {
+  transform: scale(0.98);
+  background: #f8fafc;
+}
+
+.content-item-image {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.content-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.content-label {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.content-value {
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.content-image {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.content-image:active {
+  transform: scale(0.98);
+}
+
+/* 加载和空状态 */
+.loading-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.loading-text {
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.empty-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
