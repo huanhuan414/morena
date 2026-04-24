@@ -523,38 +523,11 @@ export default function SocialPage() {
 
   return (
     <View className="social-page">
-      {/* Tab切换器 - 放在最顶部 */}
+      {/* 顶部渐变Header - 延伸到状态栏 */}
       <View 
-        className="top-tab-bar"
-        style={{ paddingTop: `${statusBarHeight + 10}px` }}
+        className="social-header-gradient"
+        style={{ paddingTop: `${statusBarHeight + 20}px` }}
       >
-        <View className="top-tab-container">
-          <View 
-            className={`top-tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-            onClick={() => setActiveTab('hot')}
-          >
-            <Text className="top-tab-icon">🔥</Text>
-            <Text className="top-tab-text">热门</Text>
-          </View>
-          <View 
-            className={`top-tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-            onClick={() => setActiveTab('latest')}
-          >
-            <Text className="top-tab-icon">🕐</Text>
-            <Text className="top-tab-text">最新</Text>
-          </View>
-          <View 
-            className={`top-tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-            onClick={() => setActiveTab('follow')}
-          >
-            <Text className="top-tab-icon">👤</Text>
-            <Text className="top-tab-text">关注</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 顶部渐变Header */}
-      <View className="social-header-gradient">
         <View className="header-top-row">
           <View className="header-title-wrap">
             <Text className="header-title">莫瑞娜</Text>
@@ -567,6 +540,33 @@ export default function SocialPage() {
             </View>
             <View className="more-btn-header">
               <Ellipsis size={28} color="#ffffff" />
+            </View>
+          </View>
+        </View>
+
+        {/* Tab切换器 - 在Header内部，覆盖在上面 */}
+        <View className="header-tab-bar">
+          <View className="header-tab-container">
+            <View 
+              className={`header-tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+              onClick={() => setActiveTab('hot')}
+            >
+              <Text className="header-tab-icon">🔥</Text>
+              <Text className="header-tab-text">热门</Text>
+            </View>
+            <View 
+              className={`header-tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+              onClick={() => setActiveTab('latest')}
+            >
+              <Text className="header-tab-icon">🕐</Text>
+              <Text className="header-tab-text">最新</Text>
+            </View>
+            <View 
+              className={`header-tab-item ${activeTab === 'follow' ? 'active' : ''}`}
+              onClick={() => setActiveTab('follow')}
+            >
+              <Text className="header-tab-icon">👤</Text>
+              <Text className="header-tab-text">关注</Text>
             </View>
           </View>
         </View>
