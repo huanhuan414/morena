@@ -140,7 +140,7 @@ export default function OrderAcceptance() {
       <View className="acceptance-page">
         <View className="loading-container">
           <View className="loading-spinner" />
-          <Text className="loading-text">加载中...</Text>
+          <Text className="loading-text text-sm font-medium">加载中...</Text>
         </View>
       </View>
     )
@@ -154,7 +154,7 @@ export default function OrderAcceptance() {
           <View className="header-btn" onClick={backToList}>
             <ArrowLeft size={22} color="#1e293b" />
           </View>
-          <Text className="header-title">验收详情</Text>
+          <Text className="header-title text-base font-semibold">验收详情</Text>
           <View className="header-btn" />
         </View>
 
@@ -168,10 +168,10 @@ export default function OrderAcceptance() {
               mode="aspectFill"
             />
             <View className="avatar-info-large">
-              <Text className="avatar-name-large">{selectedAvatar.avatarName}</Text>
+              <Text className="avatar-name-large text-2xl font-bold">{selectedAvatar.avatarName}</Text>
               <View className="avatar-status-badge">
                 <Check size={14} color="#6366f1" />
-                <Text className="avatar-status-text">
+                <Text className="avatar-status-text text-sm">
                   {AVATAR_STATUS_LABELS[selectedAvatar.status] || '待验收'}
                 </Text>
               </View>
@@ -181,7 +181,7 @@ export default function OrderAcceptance() {
           {/* 发布提交 */}
           {selectedAvatar.publishFeedback && (
             <View className="content-section">
-              <Text className="section-title">发布提交</Text>
+              <Text className="section-title text-lg font-semibold">发布提交</Text>
 
               {/* 数据统计 - 独立卡片，占满宽度 */}
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
@@ -192,30 +192,30 @@ export default function OrderAcceptance() {
                         <TrendingUp size={20} color="#ffffff" />
                       </View>
                       <View className="stats-content">
-                        <Text className="stats-label">数据统计</Text>
+                        <Text className="stats-label text-base font-semibold">数据统计</Text>
                         <View className="stats-row">
                           {feedback.views !== undefined && (
                             <View className="stat-box">
-                              <Text className="stat-value">{formatNumber(feedback.views)}</Text>
-                              <Text className="stat-label">浏览</Text>
+                              <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.views)}</Text>
+                              <Text className="stat-label text-sm">浏览</Text>
                             </View>
                           )}
                           {feedback.likes !== undefined && (
                             <View className="stat-box">
-                              <Text className="stat-value">{formatNumber(feedback.likes)}</Text>
-                              <Text className="stat-label">点赞</Text>
+                              <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.likes)}</Text>
+                              <Text className="stat-label text-sm">点赞</Text>
                             </View>
                           )}
                           {feedback.comments !== undefined && (
                             <View className="stat-box">
-                              <Text className="stat-value">{formatNumber(feedback.comments)}</Text>
-                              <Text className="stat-label">评论</Text>
+                              <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.comments)}</Text>
+                              <Text className="stat-label text-sm">评论</Text>
                             </View>
                           )}
                           {feedback.shares !== undefined && (
                             <View className="stat-box">
-                              <Text className="stat-value">{formatNumber(feedback.shares)}</Text>
-                              <Text className="stat-label">分享</Text>
+                              <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.shares)}</Text>
+                              <Text className="stat-label text-sm">分享</Text>
                             </View>
                           )}
                         </View>
@@ -234,7 +234,7 @@ export default function OrderAcceptance() {
                       <View className="platform-icon">
                         <Link2 size={20} color="#6366f1" />
                       </View>
-                      <Text className="platform-name">
+                      <Text className="platform-name text-base font-semibold">
                         {platform === 'wechat_mp' ? '微信公众号' : platform}
                       </Text>
                     </View>
@@ -247,8 +247,8 @@ export default function OrderAcceptance() {
                         <ExternalLink size={16} color="#6366f1" />
                       </View>
                       <View className="link-content">
-                        <Text className="link-label">发布链接</Text>
-                        <Text className="link-url">{feedback.link}</Text>
+                        <Text className="link-label text-sm font-semibold">发布链接</Text>
+                        <Text className="link-url text-base">{feedback.link}</Text>
                       </View>
                     </View>
                   )}
@@ -260,7 +260,7 @@ export default function OrderAcceptance() {
                         <ImageIcon size={16} color="#6366f1" />
                       </View>
                       <View className="image-content">
-                        <Text className="image-label">发布截图</Text>
+                        <Text className="image-label text-sm font-semibold">发布截图</Text>
                         <Image
                           src={feedback.image}
                           className="screenshot-image"
@@ -301,8 +301,8 @@ export default function OrderAcceptance() {
               <View className="modal-icon-wrapper">
                 <CircleAlert size={36} color="#ef4444" />
               </View>
-              <Text className="modal-title-modern">驳回修改</Text>
-              <Text className="modal-subtitle">请输入驳回原因</Text>
+              <Text className="modal-title-modern text-xl font-bold">驳回修改</Text>
+              <Text className="modal-subtitle text-sm font-normal">请输入驳回原因</Text>
               <Textarea
                 className="modal-textarea-modern"
                 placeholder="请详细描述问题，方便分身修改..."
@@ -336,8 +336,8 @@ export default function OrderAcceptance() {
               <View className="modal-icon-wrapper modal-icon-success">
                 <Check size={36} color="#22c55e" />
               </View>
-              <Text className="modal-title-modern">确认验收通过？</Text>
-              <Text className="modal-subtitle">验收通过后将无法撤回，请仔细检查</Text>
+              <Text className="modal-title-modern text-xl font-bold">确认验收通过？</Text>
+              <Text className="modal-subtitle text-sm font-normal">验收通过后将无法撤回，请仔细检查</Text>
               <View className="modal-footer">
                 <Button
                   variant="outline"
@@ -367,7 +367,7 @@ export default function OrderAcceptance() {
         <View className="header-btn" onClick={() => navigateBack()}>
           <ArrowLeft size={22} color="#1e293b" />
         </View>
-        <Text className="header-title">验收中</Text>
+        <Text className="header-title text-base font-semibold">验收中</Text>
         <View className="header-btn" />
       </View>
 
@@ -379,7 +379,7 @@ export default function OrderAcceptance() {
             style={{ width: `${Math.min((avatars.length / (avatars.length + 0.1)) * 100, 100)}%` }}
           />
         </View>
-        <Text className="progress-text">
+        <Text className="progress-text text-sm font-medium">
           待验收 {avatars.length} 个分身
         </Text>
       </View>
@@ -395,15 +395,15 @@ export default function OrderAcceptance() {
                 onClick={() => openAvatarDetail(avatar)}
               >
                 <View className="avatar-card-left">
-                  <View className="avatar-number">{index + 1}</View>
+                  <View className="avatar-number text-sm font-bold">{index + 1}</View>
                   <Image
                     src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
                     className="avatar-card-avatar"
                     mode="aspectFill"
                   />
                   <View className="avatar-card-info">
-                    <Text className="avatar-card-name">{avatar.avatarName}</Text>
-                    <Text className="avatar-card-hint">
+                    <Text className="avatar-card-name text-base font-semibold">{avatar.avatarName}</Text>
+                    <Text className="avatar-card-hint text-sm font-medium">
                       {avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
                     </Text>
                   </View>
@@ -417,8 +417,8 @@ export default function OrderAcceptance() {
             <View className="empty-icon">
               <Check size={64} color="#22c55e" />
             </View>
-            <Text className="empty-title">全部完成</Text>
-            <Text className="empty-desc">所有分身已验收完成</Text>
+            <Text className="empty-title text-xl font-bold">全部完成</Text>
+            <Text className="empty-desc text-sm font-medium">所有分身已验收完成</Text>
             <Button
               className="empty-btn"
               onClick={() => navigateBack()}

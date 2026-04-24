@@ -90,7 +90,6 @@
 }
 
 .header-title {
-  font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -193,14 +192,12 @@
 }
 
 .avatar-name {
-  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .avatar-status {
-  font-size: 13px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -301,7 +298,6 @@
 }
 
 .avatar-name-large {
-  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -334,7 +330,6 @@
 }
 
 .avatar-status-text {
-  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
@@ -349,7 +344,6 @@
 }
 
 .section-title {
-  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
@@ -442,7 +436,6 @@
 }
 
 .stats-label {
-  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -506,7 +499,6 @@
 }
 
 .stat-value {
-  font-size: 32px;
   font-weight: 700;
   color: var(--primary-color);
   line-height: 1;
@@ -516,7 +508,6 @@
 }
 
 .stat-label {
-  font-size: 14px;
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
@@ -578,7 +569,6 @@
 }
 
 .platform-name {
-  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -638,7 +628,6 @@
 }
 
 .link-label {
-  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
@@ -646,7 +635,6 @@
 }
 
 .link-url {
-  font-size: 15px;
   color: var(--text-primary);
   word-break: break-all;
   line-height: 1.6;
@@ -695,7 +683,6 @@
 }
 
 .image-label {
-  font-size: 14px;
   font-weight: 600;
   color: var(--primary-color);
   text-transform: uppercase;
@@ -751,7 +738,6 @@
   gap: 8px;
   padding: 0 20px;
   transition: all var(--transition-base);
-  font-size: 16px;
   font-weight: 600;
   color: var(--danger-color);
   box-shadow: var(--shadow-sm);
@@ -790,7 +776,6 @@
   gap: 8px;
   padding: 0 20px;
   transition: all var(--transition-base);
-  font-size: 16px;
   font-weight: 600;
   color: #ffffff;
   box-shadow: var(--shadow-md), 0 0 20px rgba(37, 99, 235, 0.3);
@@ -845,7 +830,6 @@
 }
 
 .loading-text {
-  font-size: 15px;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -870,7 +854,6 @@
 }
 
 .empty-text {
-  font-size: 15px;
   color: var(--text-secondary);
   font-weight: 500;
   text-align: center;
@@ -965,7 +948,6 @@
 }
 
 .modal-title-modern {
-  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
   text-align: center;
@@ -974,7 +956,6 @@
 }
 
 .modal-subtitle {
-  font-size: 15px;
   color: var(--text-secondary);
   text-align: center;
   margin-bottom: 24px;
@@ -990,7 +971,6 @@
   border: 2px solid var(--border-color);
   border-radius: var(--radius-lg);
   color: var(--text-primary);
-  font-size: 15px;
   line-height: 1.6;
   margin-bottom: 24px;
   transition: all var(--transition-base);
@@ -1020,7 +1000,6 @@
   background: var(--bg-secondary);
   border: 2px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 16px;
   font-weight: 600;
   transition: all var(--transition-base);
 }
@@ -1038,7 +1017,6 @@
   background: linear-gradient(135deg, var(--danger-color), #dc2626);
   border: none;
   color: #ffffff;
-  font-size: 16px;
   font-weight: 600;
   box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.3);
   transition: all var(--transition-base);
@@ -1074,7 +1052,6 @@
   background: linear-gradient(135deg, var(--success-color), #059669);
   border: none;
   color: #ffffff;
-  font-size: 16px;
   font-weight: 600;
   box-shadow: var(--shadow-md), 0 0 20px rgba(16, 185, 129, 0.3);
   transition: all var(--transition-base);
@@ -1231,7 +1208,6 @@
   justify-content: center;
   background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
   color: #ffffff;
-  font-size: 14px;
   font-weight: 700;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -1261,7 +1237,6 @@
 
 /* 分身名称 */
 .avatar-card-name {
-  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
@@ -1269,7 +1244,6 @@
 
 /* 提示文字 */
 .avatar-card-hint {
-  font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -1297,7 +1271,6 @@
 }
 
 .empty-title {
-  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -1305,7 +1278,6 @@
 }
 
 .empty-desc {
-  font-size: 15px;
   color: var(--text-secondary);
   font-weight: 500;
   text-align: center;
@@ -1319,7 +1291,6 @@
   background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
   border-radius: var(--radius-lg);
   color: #ffffff;
-  font-size: 16px;
   font-weight: 600;
   box-shadow: var(--shadow-md), 0 0 20px rgba(37, 99, 235, 0.2);
   transition: all var(--transition-base);
