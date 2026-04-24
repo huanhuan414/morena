@@ -343,6 +343,162 @@ class VideoPromptOptimizer {
  * 根据文章内容自动添加配图
  * 提取为独立函数，供多个工具使用
  */
+/**
+ * 🔴 新增：使用多模态模型理解图片内容
+ * 分析图片并返回描述
+ */
+async function analyzeImageContent(imageUrl: string): Promise<string> {
+  try {
+    const config = new Config()
+    const client = new LLMClient(config)
+
+    console.log(`[图片理解] 分析图片: ${imageUrl}`)
+
+    const response = await client.invoke([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '请详细描述这张图片的内容，包括：1. 图片主题/场景 2. 主要元素 3. 文字内容（如果有）4. 图片风格/氛围。请用简洁的语言描述，便于与文章段落匹配。' },
+          { type: 'image_url', image_url: { url: imageUrl } }
+        ]
+      }
+    ], {
+      model: 'doubao-vision-pro-251228', // 使用多模态模型
+      temperature: 0.3
+    })
+
+    const description = response.content.trim()
+    console.log(`[图片理解] 图片分析结果: ${description.substring(0, 100)}...`)
+    return description
+  } catch (error) {
+    console.error(`[图片理解] 分析图片失败: ${imageUrl}`, error)
+    return ''
+  }
+}
+
+/**
+ * 🔴 新增：计算文本相似度（简单的关键词匹配）
+ * 返回相似度分数 0-1
+ */
+function calculateSimilarity(text1: string, text2: string): number {
+  const normalize = (text: string) => {
+    return text.toLowerCase()
+      .replace(/[^\u4e00-\u9fa5a-z0-9]/g, ' ') // 只保留中文、英文、数字
+      .split(/\s+/)
+      .filter(w => w.length > 1) // 过滤单字
+  }
+
+  const words1 = normalize(text1)
+  const words2 = normalize(text2)
+
+  if (words1.length === 0 || words2.length === 0) return 0
+
+  // 计算共同词汇
+  const commonWords = words1.filter(w => words2.includes(w))
+  const uniqueWords = [...new Set([...words1, ...words2])]
+
+  return commonWords.length / uniqueWords.length
+}
+
+/**
+ * 🔴 新增：智能匹配图片到文章段落
+ * 根据图片内容理解，将图片插入到最相关的段落位置
+ */
+async function smartInsertImagesToArticle(
+  content: string,
+  title: string,
+  uploadedImages: string[]
+): Promise<string> {
+  console.log(`[智能配图] 开始为文章智能配图，共 ${uploadedImages.length} 张图片`)
+
+  // 1. 分析每张图片的内容
+  const imageAnalyses = await Promise.all(
+    uploadedImages.map(async (url, idx) => {
+      const description = await analyzeImageContent(url)
+      return {
+        url,
+        description,
+        index: idx
+      }
+    })
+  )
+
+  console.log('[智能配图] 图片分析完成:', imageAnalyses.map(img => ({
+    index: img.index,
+    description: img.description.substring(0, 50) + '...'
+  })))
+
+  // 2. 分割文章段落
+  const paragraphs = content.split('\n\n').filter(p => p.trim())
+  console.log(`[智能配图] 文章共 ${paragraphs.length} 个段落`)
+
+  // 3. 为每张图片找到最匹配的段落
+  const imageInsertions: { paragraphIndex: number; imageUrl: string; description: string; score: number }[] = []
+
+  for (const imageAnalysis of imageAnalyses) {
+    let bestMatch = { paragraphIndex: 0, score: 0 }
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const paragraph = paragraphs[i]
+      // 跳过标题、空行等非内容段落
+      if (paragraph.startsWith('#') || paragraph.startsWith('>') || paragraph.length < 20) {
+        continue
+      }
+
+      const score = calculateSimilarity(paragraph, imageAnalysis.description)
+      console.log(`[智能配图] 图片${imageAnalysis.index} 与段落${i} 相似度: ${score.toFixed(3)}`)
+
+      if (score > bestMatch.score) {
+        bestMatch = { paragraphIndex: i, score }
+      }
+    }
+
+    // 如果相似度太低，使用默认位置（均匀分布）
+    if (bestMatch.score < 0.05 && imageAnalyses.length > 0) {
+      bestMatch.paragraphIndex = Math.floor((imageAnalysis.index + 1) * paragraphs.length / (imageAnalyses.length + 1))
+      console.log(`[智能配图] 图片${imageAnalysis.index} 相似度太低，使用默认位置: ${bestMatch.paragraphIndex}`)
+    }
+
+    imageInsertions.push({
+      paragraphIndex: bestMatch.paragraphIndex,
+      imageUrl: imageAnalysis.url,
+      description: imageAnalysis.description,
+      score: bestMatch.score
+    })
+  }
+
+  // 4. 按段落位置排序插入点
+  imageInsertions.sort((a, b) => a.paragraphIndex - b.paragraphIndex)
+  console.log('[智能配图] 插入位置规划:', imageInsertions.map(img => ({
+    paragraphIndex: img.paragraphIndex,
+    score: img.score.toFixed(3)
+  })))
+
+  // 5. 构建带图片的文章
+  let contentWithImages = ''
+  let lastParagraphIndex = 0
+
+  for (const insertion of imageInsertions) {
+    // 添加从上一个插入点到当前插入点的段落
+    for (let i = lastParagraphIndex; i <= insertion.paragraphIndex && i < paragraphs.length; i++) {
+      contentWithImages += paragraphs[i] + '\n\n'
+    }
+
+    // 在段落后插入图片
+    contentWithImages += `\n![${insertion.description.substring(0, 30)}](${insertion.imageUrl})\n\n`
+    console.log(`[智能配图] 已在段落 ${insertion.paragraphIndex} 后插入图片，匹配度: ${insertion.score.toFixed(3)}`)
+
+    lastParagraphIndex = insertion.paragraphIndex + 1
+  }
+
+  // 添加剩余的段落
+  for (let i = lastParagraphIndex; i < paragraphs.length; i++) {
+    contentWithImages += paragraphs[i] + '\n\n'
+  }
+
+  return contentWithImages.trim()
+}
+
 async function addImagesToArticleContent(
   content: string,
   title: string,
@@ -354,39 +510,12 @@ async function addImagesToArticleContent(
 
     let contentWithImages = ''
 
-    // 🔴 新增：优先使用用户上传的图片作为文章配图
+    // 🔴 改进：使用智能配图逻辑
     if (uploadedImages && uploadedImages.length > 0) {
-      console.log(`使用用户上传的 ${uploadedImages.length} 张图片作为文章配图`)
+      console.log(`使用用户上传的 ${uploadedImages.length} 张图片作为文章配图（智能匹配模式）`)
 
-      // 将用户上传的图片插入到文章开头和中间位置
-      const paragraphs = content.split('\n\n').filter(p => p.trim())
-      const imageCount = Math.min(uploadedImages.length, paragraphs.length)
-
-      // 开头插入第一张图片
-      if (uploadedImages.length > 0) {
-        contentWithImages = `![${title}](${uploadedImages[0]})\n\n`
-        console.log('已插入第一张用户上传图片到文章开头')
-      }
-
-      contentWithImages += content
-
-      // 根据段落数量，均匀插入剩余的图片
-      if (imageCount > 1 && paragraphs.length > 1) {
-        const remainingImages = uploadedImages.slice(1)
-        const interval = Math.floor(paragraphs.length / remainingImages.length)
-
-        let insertedCount = 0
-        for (let i = 0; i < remainingImages.length && insertedCount < remainingImages.length; i++) {
-          const insertPos = (i + 1) * interval + insertedCount * 2 // 每次插入后位置偏移
-          if (insertPos < paragraphs.length) {
-            const paragraphsWithImages = contentWithImages.split('\n\n')
-            paragraphsWithImages.splice(insertPos, 0, `\n![配图](${remainingImages[i]})\n`)
-            contentWithImages = paragraphsWithImages.join('\n\n')
-            insertedCount++
-          }
-        }
-        console.log(`已插入 ${insertedCount} 张用户上传图片到文章中`)
-      }
+      // 使用新的智能配图函数
+      contentWithImages = await smartInsertImagesToArticle(content, title, uploadedImages)
 
       return contentWithImages
     }
