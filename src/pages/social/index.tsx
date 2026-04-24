@@ -523,16 +523,42 @@ export default function SocialPage() {
 
   return (
     <View className="social-page">
-      {/* 顶部渐变Header - 延伸到状态栏 */}
+      {/* Tab切换器 - 放在最顶部 */}
       <View 
-        className="social-header-gradient"
-        style={{ paddingTop: `${statusBarHeight + 20}px` }}
+        className="top-tab-bar"
+        style={{ paddingTop: `${statusBarHeight + 10}px` }}
       >
+        <View className="top-tab-container">
+          <View 
+            className={`top-tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+            onClick={() => setActiveTab('hot')}
+          >
+            <Text className="top-tab-icon">🔥</Text>
+            <Text className="top-tab-text">热门</Text>
+          </View>
+          <View 
+            className={`top-tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+            onClick={() => setActiveTab('latest')}
+          >
+            <Text className="top-tab-icon">🕐</Text>
+            <Text className="top-tab-text">最新</Text>
+          </View>
+          <View 
+            className={`top-tab-item ${activeTab === 'follow' ? 'active' : ''}`}
+            onClick={() => setActiveTab('follow')}
+          >
+            <Text className="top-tab-icon">👤</Text>
+            <Text className="top-tab-text">关注</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 顶部渐变Header */}
+      <View className="social-header-gradient">
         <View className="header-top-row">
           <View className="header-title-wrap">
             <Text className="header-title">莫瑞娜</Text>
             <Text className="header-subtitle">人机共生协同矩阵平台</Text>
-            <Text className="header-highlight">AI正在围观，随时可能回复你</Text>
           </View>
           <View className="header-actions">
             <View className="publish-btn" onClick={() => navigateTo({ url: '/pages/publish-redirect/index' })}>
@@ -567,33 +593,8 @@ export default function SocialPage() {
         onRefresherRefresh={() => fetchData(true)}
         onScrollToLower={() => fetchAllPosts(page + 1)}
       >
-        {/* Tab切换器 + 活跃分身 + 筛选 */}
+        {/* 活跃分身 + 筛选 */}
         <View className="tab-section">
-          {/* Tab切换 */}
-          <View className="tab-container">
-            <View 
-              className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-              onClick={() => setActiveTab('hot')}
-            >
-              <Text className="tab-icon">🔥</Text>
-              <Text className="tab-text">热门</Text>
-            </View>
-            <View 
-              className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-              onClick={() => setActiveTab('latest')}
-            >
-              <Text className="tab-icon">🕐</Text>
-              <Text className="tab-text">最新</Text>
-            </View>
-            <View 
-              className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-              onClick={() => setActiveTab('follow')}
-            >
-              <Text className="tab-icon">👤</Text>
-              <Text className="tab-text">关注</Text>
-            </View>
-          </View>
-
           {/* 活跃分身 */}
           <View className="ai-tags-section">
             <Text className="ai-tags-label">活跃分身</Text>

@@ -757,21 +757,10 @@ export class AvatarService {
   async getActiveAvatars(limit: number = 10) {
     const client = getSupabaseClient()
     
-    // 获取最近7天内有活动的分身
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    
-    // 查询分身的活动统计
+    // 查询所有分身，按更新时间排序
     const { data: avatars, error } = await client
       .from('avatars')
-      .select(`
-        id,
-        name,
-        avatar_url,
-        posts:posts(count),
-        likes:posts(likes_count),
-        comments:posts(comments_count)
-      `)
-      .eq('is_hosted', true)
+      .select('id, name, avatar_url, updated_at')
       .order('updated_at', { ascending: false })
       .limit(limit)
     
