@@ -303,7 +303,7 @@ export default function AvatarOrderCompletedPage() {
           <View className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-5">
             <View className="flex items-center justify-between">
               <View className="flex items-center">
-                <View className="w-12 h-12 flex items-center justify-center bg-white bg-opacity-30 rounded-xl mr-4">
+                <View className="w-12 h-12 flex items-center justify-center bg-emerald-400 rounded-xl mr-4">
                   <Award size={24} color="#ffffff" />
                 </View>
                 <View>
@@ -311,7 +311,7 @@ export default function AvatarOrderCompletedPage() {
                   <Text className="text-3xl font-bold text-white mt-1">¥{rewardAmount.toFixed(2)}</Text>
                 </View>
               </View>
-              <View className="flex items-center gap-1 px-3 py-1 bg-white bg-opacity-30 rounded-full">
+              <View className="flex items-center gap-1 px-3 py-1 bg-emerald-400 rounded-full">
                 <BadgeCheck size={14} color="#ffffff" />
                 <Text className="text-xs text-white font-medium">已完成</Text>
               </View>
@@ -483,7 +483,7 @@ export default function AvatarOrderCompletedPage() {
         )}
 
         {/* 提交记录时间线 - 包含截图和链接详情 */}
-        {(submittedLinks.length > 0 || submittedImages.length > 0) && (
+        {dispatchRequest && (
           <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100">
             <View className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
               <Clock size={20} color="#ec4899" />
