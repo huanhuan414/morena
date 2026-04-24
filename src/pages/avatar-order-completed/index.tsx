@@ -51,17 +51,31 @@ export default function AvatarOrderCompletedPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [orderRes, dispatchRes] = await Promise.all([
-        Network.request({ url: `/api/order/${orderId}` }),
-        Network.request({ url: `/api/order-dispatch/request/${requestId}` })
-      ])
+      console.log('正在获取订单数据...', { orderId, requestId })
+
+      const orderRes = await Network.request({ url: `/api/order/${orderId}` })
+
+      console.log('订单响应:', orderRes.data)
 
       if (orderRes.data?.code === 200) {
-        setOrder(orderRes.data.data)
-      }
+        const orderData = orderRes.data.data
+        setOrder(orderData)
 
-      if (dispatchRes.data?.code === 200) {
-        setDispatchRequest(dispatchRes.data.data)
+        // 从订单的 dispatch_requests 中找到对应的请求
+        const request = orderData.dispatch_requests?.find(
+          (req: any) => req.id === requestId
+        )
+
+        if (request) {
+          setDispatchRequest(request)
+          console.log('派单请求数据加载成功', request)
+        } else {
+          console.error('未找到对应的派单请求')
+          showToast({ title: '未找到订单数据', icon: 'none' })
+        }
+      } else {
+        console.error('订单数据返回错误:', orderRes.data)
+        showToast({ title: '订单数据加载失败', icon: 'none' })
       }
     } catch (error) {
       console.error('获取订单数据失败:', error)
@@ -105,18 +119,30 @@ export default function AvatarOrderCompletedPage() {
     )
   }
 
-  if (!order || !dispatchRequest) {
+  if (!order) {
     return (
       <View className="avatar-order-completed-page">
         <View className="empty-container">
-          <Text>订单数据加载失败</Text>
+          <Text>订单不存在</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (!dispatchRequest) {
+    return (
+      <View className="avatar-order-completed-page">
+        <View className="empty-container">
+          <Text>未找到派单请求信息</Text>
         </View>
       </View>
     )
   }
 
   const statusConfig = STATUS_CONFIG[dispatchRequest.status] || STATUS_CONFIG.completed
-  const publishFeedback = dispatchRequest.publish_status?.feedback || {}
+  // 获取发布反馈数据（兼容不同字段名）
+  const publishFeedback = dispatchRequest.publish_feedback || dispatchRequest.publishFeedback || {}
+  const platforms = dispatchRequest.publish_status?.platforms || {}
   const rewardAmount = order.budget && order.expected_quantity
     ? order.budget / order.expected_quantity
     : 0
@@ -168,8 +194,8 @@ export default function AvatarOrderCompletedPage() {
               <View className="info-item-half">
                 <Text className="info-label text-sm font-medium">完成时间</Text>
                 <Text className="info-value text-sm text-gray-500">
-                  {dispatchRequest.publish_status?.feedbackSubmittedAt
-                    ? new Date(dispatchRequest.publish_status.feedbackSubmittedAt).toLocaleDateString('zh-CN')
+                  {dispatchRequest.updated_at || dispatchRequest.created_at
+                    ? new Date(dispatchRequest.updated_at || dispatchRequest.created_at).toLocaleDateString('zh-CN')
                     : '-'}
                 </Text>
               </View>
@@ -248,13 +274,13 @@ export default function AvatarOrderCompletedPage() {
         )}
 
         {/* 发布内容 */}
-        {dispatchRequest.publish_status?.platforms && Object.keys(dispatchRequest.publish_status.platforms).length > 0 && (
+        {Object.keys(platforms).length > 0 && (
           <View className="section-card">
             <View className="section-header">
               <Text className="section-title text-lg font-semibold">发布内容</Text>
             </View>
 
-            {Object.entries(dispatchRequest.publish_status.platforms).map(([platform, data]: [string, any]) => (
+            {Object.entries(platforms).map(([platform, data]: [string, any]) => (
               <View key={platform} className="platform-item">
                 <View className="platform-header">
                   <Text className="platform-name text-base font-semibold">{PLATFORM_NAMES[platform] || platform}</Text>

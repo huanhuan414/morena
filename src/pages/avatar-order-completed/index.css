@@ -1,6 +1,6 @@
 .avatar-order-completed-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
 /* 页面头部 */
@@ -9,9 +9,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .header-btn {
@@ -22,15 +22,16 @@
   justify-content: center;
   border-radius: 12px;
   transition: background-color 0.2s;
+  background: #f9fafb;
 }
 
 .header-btn:active {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: #e5e7eb;
 }
 
 .header-title {
   font-weight: 600;
-  color: #1e293b;
+  color: #1f2937;
 }
 
 /* 内容区域 */
@@ -43,21 +44,22 @@
 /* 卡片通用样式 */
 .section-card {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 20px;
   margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
 }
 
 .section-header {
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f1f5f9;
+  border-bottom: 2px solid #f3f4f6;
 }
 
 .section-title {
   font-weight: 600;
-  color: #1e293b;
+  color: #1f2937;
 }
 
 /* 订单信息 */
@@ -92,7 +94,7 @@
 
 .info-value {
   font-weight: 500;
-  color: #1e293b;
+  color: #1f2937;
 }
 
 .line-clamp-2 {
@@ -115,13 +117,14 @@
 /* 奖励卡片 */
 .reward-card {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 20px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);
+  border: 1px solid #059669;
 }
 
 .reward-icon {
@@ -130,8 +133,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .reward-content {
@@ -163,9 +167,9 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
 }
 
 .stat-content {
@@ -176,7 +180,7 @@
 }
 
 .stat-value {
-  color: #1e293b;
+  color: #1f2937;
 }
 
 .stat-label {
@@ -190,8 +194,9 @@
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  background: #f8fafc;
+  background: #f9fafb;
   border-radius: 12px;
+  border: 1px solid #e5e7eb;
 }
 
 .platform-header {
@@ -199,7 +204,8 @@
 }
 
 .platform-name {
-  color: #1e293b;
+  color: #1f2937;
+  font-weight: 600;
 }
 
 .content-item {
@@ -209,14 +215,14 @@
   padding: 12px;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e7eb;
   transition: all 0.2s;
   cursor: pointer;
 }
 
 .content-item:active {
   transform: scale(0.98);
-  background: #f8fafc;
+  background: #f9fafb;
 }
 
 .content-item-image {
@@ -233,7 +239,7 @@
 }
 
 .content-label {
-  color: #1e293b;
+  color: #1f2937;
   font-weight: 600;
 }
 
@@ -247,6 +253,7 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
+  border: 1px solid #e5e7eb;
 }
 
 .content-image:active {
@@ -264,7 +271,7 @@
 
 .loading-text {
   font-size: 16px;
-  color: #ffffff;
+  color: #6b7280;
   font-weight: 500;
 }
 
@@ -274,4 +281,9 @@
   align-items: center;
   justify-content: center;
   min-height: 60vh;
+}
+
+.empty-container Text {
+  color: #6b7280;
+  font-weight: 500;
 }
