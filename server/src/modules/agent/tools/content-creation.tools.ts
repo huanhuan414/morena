@@ -1280,9 +1280,20 @@ export class GenerateVideoTool implements ITool {
       console.log('Agent工具 - 生成视频开始:', params.prompt?.substring(0, 100))
       console.log('Agent工具 - 视频参数:', { duration: params.duration, ratio: params.ratio })
 
+      // 🔴 修复：检查是否有参考图片，如果有则优化提示词以关联图片内容
+      const hasReferenceImages = params.reference_images && Array.isArray(params.reference_images) && params.reference_images.length > 0
+      let userPrompt = params.prompt
+      if (hasReferenceImages) {
+        // 当用户上传图片时，强调基于图片内容生成视频
+        if (!userPrompt.includes('图片') && !userPrompt.includes('参考') && !userPrompt.includes('基于')) {
+          userPrompt = `基于提供的参考图片，${userPrompt}`
+        }
+        console.log('[ContentCreationTool] 用户上传了参考图片，优化后的提示词:', userPrompt.substring(0, 100))
+      }
+
       // 使用专业提示词优化器
       const optimizedPrompt = VideoPromptOptimizer.optimize(
-        params.prompt,
+        userPrompt,
         params.duration || 5,
         params.ratio || '9:16'
       )
@@ -1298,11 +1309,14 @@ export class GenerateVideoTool implements ITool {
             // 检查是否已经是TOS URL
             if (imgUrl.includes('tos-cn-') && imgUrl.includes('volces.com')) {
               console.log('[ContentCreationTool] 图片已在TOS上，直接使用:', imgUrl.substring(0, 60))
-              content.push({
-                type: 'image_url',
-                image_url: { url: imgUrl },
-                role: 'first_frame'
-              })
+              if (typeof imgUrl === 'string' && imgUrl.length > 0) {
+                content.push({
+                  type: 'image_url',
+                  image_url: { url: imgUrl },
+                  role: 'first_frame'
+                })
+                console.log('[ContentCreationTool] 已添加首帧图片到content:', imgUrl.substring(0, 60))
+              }
             } else {
               // 下载图片并上传到TOS
               console.log('[ContentCreationTool] 下载用户图片并上传到TOS:', imgUrl.substring(0, 60))
@@ -1322,11 +1336,17 @@ export class GenerateVideoTool implements ITool {
                 expireTime: 86400 * 7 // 7天有效期
               })
               console.log('[ContentCreationTool] 图片已上传到TOS:', tosImgUrl.substring(0, 60))
-              content.push({
-                type: 'image_url',
-                image_url: { url: tosImgUrl },
-                role: 'first_frame'
-              })
+              // 🔴 确保URL是字符串且不为空
+              if (typeof tosImgUrl === 'string' && tosImgUrl.length > 0) {
+                content.push({
+                  type: 'image_url',
+                  image_url: { url: tosImgUrl },
+                  role: 'first_frame'
+                })
+                console.log('[ContentCreationTool] 已添加首帧图片到content:', tosImgUrl.substring(0, 60))
+              } else {
+                console.error('[ContentCreationTool] TOS URL无效:', tosImgUrl)
+              }
             }
           } catch (imgError: any) {
             console.error('[ContentCreationTool] 处理参考图片失败:', imgError.message)
@@ -1356,6 +1376,8 @@ export class GenerateVideoTool implements ITool {
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks'
       const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
 
+      // 🔴 调试：打印完整的content数组
+      console.log('Agent工具 - 构建的content数组:', JSON.stringify(content, null, 2))
       console.log('Agent工具 - 调用豆包视频生成 API:', {
         content_count: content.length,
         has_reference_images: params.reference_images?.length || 0,

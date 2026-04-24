@@ -95,6 +95,15 @@ export class GenerateVideoTool implements ITool {
       // 🔴 根据用户是否上传图片来决定是否使用图片
       const content: any[] = []
 
+      // 🔴 修复：如果有首帧图片，优化提示词以关联图片内容
+      let finalPrompt = prompt
+      if (firstFrameUrl) {
+        if (!finalPrompt.includes('图片') && !finalPrompt.includes('参考') && !finalPrompt.includes('基于')) {
+          finalPrompt = `基于提供的首帧图片，${finalPrompt}`
+        }
+        console.log('[GenerateVideoTool] 有首帧图片，优化后的提示词:', finalPrompt.substring(0, 100))
+      }
+
       // 如果用户上传了首帧图片，先下载上传到TOS，再使用（确保视频生成API可以访问）
       if (firstFrameUrl) {
         console.log('[GenerateVideoTool] 处理用户上传的首帧图片:', firstFrameUrl.substring(0, 60))
@@ -138,10 +147,10 @@ export class GenerateVideoTool implements ITool {
         }
       }
 
-      // 添加文本描述
+      // 添加文本描述（使用优化后的提示词）
       content.push({
         type: 'text' as const,
-        text: prompt
+        text: finalPrompt
       })
 
       // 更新进度
