@@ -975,7 +975,23 @@ export class SubscribeTool implements ITool {
         .single()
 
       if (planError || !plan) {
-        return { success: false, error: '套餐不存在' }
+        console.error('[SubscribeTool] 套餐查询失败:', { plan_id: params.plan_id, error: planError })
+        
+        // 查询所有可用套餐供用户选择
+        const { data: availablePlans } = await client
+          .from('subscription_plans')
+          .select('id, name, price, duration_days')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+        
+        const planList = availablePlans?.map(p => 
+          `- ${p.name}(ID: ${p.id}): ¥${p.price}, ${p.duration_days}天`
+        ).join('\n') || '暂无可用套餐'
+        
+        return { 
+          success: false, 
+          error: `套餐不存在或ID无效。传入的套餐ID: "${params.plan_id || '空'}"\n\n可用套餐列表:\n${planList}\n\n请从上方列表中选择一个有效的套餐ID进行订阅。`
+        }
       }
 
       // 计算订阅有效期

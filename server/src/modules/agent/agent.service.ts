@@ -1921,9 +1921,15 @@ ${historyText ? `执行历史：\n${historyText}\n` : ''}
 参数示例：{ "limit": 50 }`)
       return hints.join('\n\n')
     }
-    else if (lowerTask.match(/订阅|升级|开通|购买套餐|套餐/)) {
+    // 订阅任务 - 注意：如果用户提到"公众号"，应该优先匹配公众号任务而不是订阅任务
+    else if (
+      (lowerTask.match(/订阅|升级|购买套餐/) || lowerTask.match(/^开通$/)) && 
+      !lowerTask.includes('公众号') && 
+      !lowerTask.includes('微信')
+    ) {
       hints.push(`【任务解析】这是一个订阅套餐任务：
-请先使用 app_get_subscription 工具查看当前订阅状态，然后根据用户需求使用 app_subscribe 工具订阅套餐。`)
+请先使用 app_get_subscription 工具查看当前订阅状态，然后根据用户需求使用 app_subscribe 工具订阅套餐。
+注意：如果用户想"写公众号文章"或"开通公众号"，这是内容创作任务，请使用 write_wechat_mp_article 工具，不要调用订阅相关工具。`)
       return hints.join('\n\n')
     }
     else if (lowerTask.match(/查看.*账号|我的.*账号|账号.*列表|账号.*配置|绑定.*账号|已绑定.*账号|配置.*平台/)) {
