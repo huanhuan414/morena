@@ -95,14 +95,47 @@ export class GenerateVideoTool implements ITool {
       // 🔴 根据用户是否上传图片来决定是否使用图片
       const content: any[] = []
 
-      // 如果用户上传了首帧图片，添加图片内容（使用 first_frame 角色）
+      // 如果用户上传了首帧图片，先下载上传到TOS，再使用（确保视频生成API可以访问）
       if (firstFrameUrl) {
-        console.log('[GenerateVideoTool] 使用用户上传的首帧图片:', firstFrameUrl.substring(0, 50))
-        content.push({
-          type: 'image_url' as const,
-          image_url: { url: firstFrameUrl },
-          role: 'first_frame' as const // ✅ 使用 first_frame 而不是 reference_image
-        })
+        console.log('[GenerateVideoTool] 处理用户上传的首帧图片:', firstFrameUrl.substring(0, 60))
+        try {
+          // 检查是否已经是TOS URL
+          if (firstFrameUrl.includes('tos-cn-') && firstFrameUrl.includes('volces.com')) {
+            console.log('[GenerateVideoTool] 图片已在TOS上，直接使用')
+            content.push({
+              type: 'image_url' as const,
+              image_url: { url: firstFrameUrl },
+              role: 'first_frame' as const
+            })
+          } else {
+            // 下载图片并上传到TOS
+            console.log('[GenerateVideoTool] 下载图片并上传到TOS...')
+            const imgResponse = await fetch(firstFrameUrl)
+            if (!imgResponse.ok) {
+              throw new Error(`下载图片失败: ${imgResponse.status}`)
+            }
+            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+            const timestamp = Date.now()
+            const imgKey = await this.storage.uploadFile({
+              fileContent: imgBuffer,
+              fileName: `video-first-frame/${timestamp}.jpg`,
+              contentType: 'image/jpeg'
+            })
+            const tosImgUrl = await this.storage.generatePresignedUrl({
+              key: imgKey,
+              expireTime: 86400 * 7 // 7天有效期
+            })
+            console.log('[GenerateVideoTool] 图片已上传到TOS:', tosImgUrl.substring(0, 60))
+            content.push({
+              type: 'image_url' as const,
+              image_url: { url: tosImgUrl },
+              role: 'first_frame' as const
+            })
+          }
+        } catch (imgError: any) {
+          console.error('[GenerateVideoTool] 处理首帧图片失败:', imgError.message)
+          // 图片处理失败不影响视频生成，只是不使用该图片
+        }
       }
 
       // 添加文本描述

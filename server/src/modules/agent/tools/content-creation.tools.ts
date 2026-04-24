@@ -1290,15 +1290,48 @@ export class GenerateVideoTool implements ITool {
       // 构建 content 数组
       const content: any[] = []
 
-      // 🔴 添加参考图片（仅在用户上传时）
+      // 🔴 修复：处理参考图片，先下载再上传到TOS，确保视频生成API可以访问
       if (params.reference_images && Array.isArray(params.reference_images) && params.reference_images.length > 0) {
-        console.log('[ContentCreationTool] 用户上传了参考图片，将作为首帧使用')
+        console.log('[ContentCreationTool] 用户上传了参考图片，需要先上传到TOS以确保可访问')
         for (const imgUrl of params.reference_images) {
-          content.push({
-            type: 'image_url',
-            image_url: { url: imgUrl },
-            role: 'first_frame' // ✅ 使用 first_frame 而不是 reference_image
-          })
+          try {
+            // 检查是否已经是TOS URL
+            if (imgUrl.includes('tos-cn-') && imgUrl.includes('volces.com')) {
+              console.log('[ContentCreationTool] 图片已在TOS上，直接使用:', imgUrl.substring(0, 60))
+              content.push({
+                type: 'image_url',
+                image_url: { url: imgUrl },
+                role: 'first_frame'
+              })
+            } else {
+              // 下载图片并上传到TOS
+              console.log('[ContentCreationTool] 下载用户图片并上传到TOS:', imgUrl.substring(0, 60))
+              const imgResponse = await fetch(imgUrl)
+              if (!imgResponse.ok) {
+                throw new Error(`下载图片失败: ${imgResponse.status}`)
+              }
+              const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+              const timestamp = Date.now()
+              const imgKey = await this.storage.uploadFile({
+                fileContent: imgBuffer,
+                fileName: `video-reference/${timestamp}.jpg`,
+                contentType: 'image/jpeg'
+              })
+              const tosImgUrl = await this.storage.generatePresignedUrl({
+                key: imgKey,
+                expireTime: 86400 * 7 // 7天有效期
+              })
+              console.log('[ContentCreationTool] 图片已上传到TOS:', tosImgUrl.substring(0, 60))
+              content.push({
+                type: 'image_url',
+                image_url: { url: tosImgUrl },
+                role: 'first_frame'
+              })
+            }
+          } catch (imgError: any) {
+            console.error('[ContentCreationTool] 处理参考图片失败:', imgError.message)
+            // 图片处理失败不影响视频生成，只是不使用该图片
+          }
         }
       }
 
