@@ -410,6 +410,19 @@ async function smartInsertImagesToArticle(
   uploadedImages: string[]
 ): Promise<string> {
   console.log(`[智能配图] 开始为文章智能配图，共 ${uploadedImages.length} 张图片`)
+  console.log(`[智能配图] 图片URLs:`, uploadedImages)
+
+  // 🔴 修复：检查文章内容是否为空
+  if (!content || content.trim().length === 0) {
+    console.log('[智能配图] 文章内容为空，直接返回原文')
+    return content
+  }
+
+  // 🔴 修复：如果没有用户上传的图片，直接返回原文
+  if (!uploadedImages || uploadedImages.length === 0) {
+    console.log('[智能配图] 没有用户上传的图片，直接返回原文')
+    return content
+  }
 
   // 1. 分析每张图片的内容
   const imageAnalyses = await Promise.all(
@@ -431,6 +444,16 @@ async function smartInsertImagesToArticle(
   // 2. 分割文章段落
   const paragraphs = content.split('\n\n').filter(p => p.trim())
   console.log(`[智能配图] 文章共 ${paragraphs.length} 个段落`)
+
+  // 🔴 修复：如果文章没有段落，直接在开头插入所有图片
+  if (paragraphs.length === 0) {
+    console.log('[智能配图] 文章没有段落，直接在开头插入所有图片')
+    let contentWithImages = ''
+    for (const imageAnalysis of imageAnalyses) {
+      contentWithImages += `\n![${imageAnalysis.description.substring(0, 30)}](${imageAnalysis.url})\n\n`
+    }
+    return contentWithImages + content
+  }
 
   // 3. 为每张图片找到最匹配的段落
   const imageInsertions: { paragraphIndex: number; imageUrl: string; description: string; score: number }[] = []
@@ -486,7 +509,7 @@ async function smartInsertImagesToArticle(
 
     // 在段落后插入图片
     contentWithImages += `\n![${insertion.description.substring(0, 30)}](${insertion.imageUrl})\n\n`
-    console.log(`[智能配图] 已在段落 ${insertion.paragraphIndex} 后插入图片，匹配度: ${insertion.score.toFixed(3)}`)
+    console.log(`[智能配图] 已在段落 ${insertion.paragraphIndex} 后插入图片，URL: ${insertion.imageUrl.substring(0, 50)}...`)
 
     lastParagraphIndex = insertion.paragraphIndex + 1
   }
@@ -495,6 +518,10 @@ async function smartInsertImagesToArticle(
   for (let i = lastParagraphIndex; i < paragraphs.length; i++) {
     contentWithImages += paragraphs[i] + '\n\n'
   }
+
+  // 🔴 添加最终日志
+  const finalImageMatches = contentWithImages.match(/!\[.*?\]\(.*?\)/g)
+  console.log(`[智能配图] 最终文章中的图片数量:`, finalImageMatches?.length || 0)
 
   return contentWithImages.trim()
 }
@@ -510,9 +537,11 @@ async function generateAIImagesForArticle(
   imageClient: ImageGenerationClient
 ): Promise<string> {
   console.log(`[AI配图] 为用户图片未覆盖的段落生成 AI 配图`)
+  console.log(`[AI配图] 已包含用户图片的段落索引:`, [...uploadedImagePositions])
 
   let contentWithImages = content
   const paragraphs = content.split('\n\n').filter(p => p.trim())
+  console.log(`[AI配图] 总段落数:`, paragraphs.length)
 
   // 找出需要 AI 配图的段落位置（跳过已有用户图片的段落）
   const aiImagePositions: { index: number; position: number; text: string }[] = []
@@ -584,30 +613,36 @@ async function addImagesToArticleContent(
       // 1. 首先将用户上传的图片智能匹配到相关段落
       const contentWithUserImages = await smartInsertImagesToArticle(content, title, uploadedImages)
 
+      // 🔴 修复：添加调试日志
+      console.log('[文章配图] 文章内容前200字符:', content.substring(0, 200))
+      console.log('[文章配图] 配图后的内容前500字符:', contentWithUserImages.substring(0, 500))
+
       // 2. 找出已插入用户图片的段落位置
       const paragraphs = content.split('\n\n').filter(p => p.trim())
       const uploadedImagePositions = new Set<number>()
 
-      // 通过分析匹配结果，找出哪些段落已插入用户图片
-      const userImageUrls = uploadedImages.map(url => url.split('?')[0]) // 去除时间戳参数
+      // 🔴 修复：直接在配图后的内容中查找用户图片 URLs
       const contentParagraphsWithUserImages = contentWithUserImages.split('\n\n')
+      console.log(`[文章配图] 配图后的段落数量:`, contentParagraphsWithUserImages.length)
 
       for (let i = 0; i < contentParagraphsWithUserImages.length; i++) {
         const paragraph = contentParagraphsWithUserImages[i]
-        // 检查该段落是否包含用户上传的图片
-        if (userImageUrls.some(url => paragraph.includes(url))) {
-          // 找到原始段落索引
-          const originalIndex = paragraphs.findIndex(p =>
-            paragraph.includes(p.substring(0, Math.min(p.length, 50)))
-          )
-          if (originalIndex >= 0) {
-            uploadedImagePositions.add(originalIndex)
-            console.log(`[文章配图] 段落 ${originalIndex} 已插入用户图片`)
+        // 🔴 修复：检查该段落是否包含用户上传的图片（使用原始 URL 匹配）
+        const hasUserImage = uploadedImages.some(url => {
+          const isIncluded = paragraph.includes(url)
+          if (isIncluded) {
+            console.log(`[文章配图] 段落 ${i} 包含图片:`, url.substring(0, 50))
           }
+          return isIncluded
+        })
+
+        if (hasUserImage) {
+          uploadedImagePositions.add(i)
+          console.log(`[文章配图] 段落 ${i} 已标记为包含用户图片`)
         }
       }
 
-      console.log(`[文章配图] 用户图片覆盖了 ${uploadedImagePositions.size} 个段落，为其他段落生成 AI 配图`)
+      console.log(`[文章配图] 用户图片覆盖了 ${uploadedImagePositions.size} 个段落，段落索引:`, [...uploadedImagePositions])
 
       // 3. 为没有用户图片的段落生成 AI 配图
       contentWithImages = await generateAIImagesForArticle(
@@ -890,14 +925,22 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
         }
       }
 
+      // 🔴 修复：添加调试日志，检查用户上传的图片
+      console.log('[公众号写作] 用户上传图片数量:', context.uploadedImages?.length || 0)
+      console.log('[公众号写作] 用户上传图片URLs:', context.uploadedImages || [])
+
       // 自动添加文章配图
-      console.log('正在为文章添加配图...')
+      console.log('[公众号写作] 正在为文章添加配图...')
       const contentWithImages = await addImagesToArticleContent(
         mainContent,
         titles[0] || params.topic,
         context.uploadedImages // 新增：传递用户上传的图片
       )
-      console.log('配图后内容长度:', contentWithImages.length)
+      console.log('[公众号写作] 配图后内容长度:', contentWithImages.length)
+      // 🔴 检查内容中是否包含图片
+      const imageMatches = contentWithImages.match(/!\[.*?\]\(.*?\)/g)
+      console.log('[公众号写作] 内容中图片数量:', imageMatches?.length || 0)
+      console.log('[公众号写作] 内容中图片URLs:', imageMatches || [])
 
       // 构建发布参数模板，方便 Agent 直接使用
       const publishParams = {

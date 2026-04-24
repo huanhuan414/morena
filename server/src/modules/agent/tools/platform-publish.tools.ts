@@ -208,6 +208,16 @@ export class PublishWechatMpTool implements ITool {
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
+      // 🔴 添加调试日志
+      console.log('[publish_wechat_mp] 开始执行，参数:')
+      console.log('  - title:', params.title)
+      console.log('  - contentLength:', params.content?.length || 0)
+      console.log('  - imageCount:', params.content ? (params.content.match(/!\[.*?\]\(.*?\)/g) || []).length : 0)
+      console.log('  - cover_url:', params.cover_url)
+      if (params.content) {
+        console.log('  - 内容前800字符:', params.content.substring(0, 800))
+      }
+
       const client = getSupabaseClient()
 
       // 从分身账号配置获取公众号配置
@@ -628,15 +638,23 @@ export class PublishWechatMpTool implements ITool {
    * 用于发布到公众号
    */
   private async replaceImagesForWechat(content: string, accessToken: string): Promise<string> {
+    // 🔴 添加调试日志
+    console.log('[replaceImagesForWechat] 处理前的文章内容前500字符:', content.substring(0, 500))
+
     // 匹配所有 Markdown 图片语法 ![alt](url)
     const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
     const matches = [...content.matchAll(imageRegex)]
-    
+
+    console.log(`[replaceImagesForWechat] 找到 ${matches.length} 张 Markdown 图片`)
+    matches.forEach((m, i) => {
+      console.log(`[replaceImagesForWechat] 图片 ${i + 1}:`, m[2].substring(0, 60))
+    })
+
     if (matches.length === 0) {
       console.log('文章中没有图片需要处理')
       return content
     }
-    
+
     console.log(`文章中共有 ${matches.length} 张图片，正在上传到微信服务器...`)
     
     let result = content
