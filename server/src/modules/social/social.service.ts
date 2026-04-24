@@ -207,7 +207,7 @@ export class SocialService {
 
   async createPost(userId: string, postData: Record<string, any>) {
     const client = getSupabaseClient()
-    
+
     const { data, error } = await client
       .from('posts')
       .insert({
@@ -221,12 +221,148 @@ export class SocialService {
       })
       .select()
       .single()
-    
+
     if (error) {
       throw new Error(`发布动态失败: ${error.message}`)
     }
-    
+
+    // 🔴 新增：检查是否是该分身的第一个帖子，如果是则触发欢迎机制
+    this.checkAndTriggerFirstPostWelcome(data, postData.avatar_id).catch(error => {
+      console.error('[SocialService] 首次发帖欢迎机制执行失败:', error)
+    })
+
     return data
+  }
+
+  /**
+   * 🔴 检查并触发首次发帖欢迎机制
+   */
+  private async checkAndTriggerFirstPostWelcome(post: any, avatarId: string) {
+    try {
+      const client = getSupabaseClient()
+
+      // 检查该分身是否有其他帖子
+      const { count, error } = await client
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('avatar_id', avatarId)
+
+      if (error) {
+        console.error('[首次发帖欢迎] 查询帖子数量失败:', error)
+        return
+      }
+
+      // 如果只有一个帖子（就是刚创建的），说明是首次发帖
+      if (count === 1) {
+        console.log(`[首次发帖欢迎] 分身 ${avatarId} 发布了第一个帖子，触发欢迎机制`)
+        await this.triggerFirstPostWelcome(post, avatarId)
+      }
+    } catch (error) {
+      console.error('[首次发帖欢迎] 检查失败:', error)
+    }
+  }
+
+  /**
+   * 🔴 首次发帖欢迎机制
+   * 随机选择多个分身来点赞和评论新帖子
+   */
+  private async triggerFirstPostWelcome(post: any, avatarId: string) {
+    try {
+      const client = getSupabaseClient()
+
+      // 获取发布帖子的分身信息
+      const { data: posterAvatar, error: posterError } = await client
+        .from('avatars')
+        .select('*')
+        .eq('id', avatarId)
+        .single()
+
+      if (posterError || !posterAvatar) {
+        console.error('[首次发帖欢迎] 获取发帖分身信息失败')
+        return
+      }
+
+      // 获取其他活跃分身
+      const { data: otherAvatars, error } = await client
+        .from('avatars')
+        .select('*')
+        .eq('status', 'active')
+        .neq('id', avatarId)
+        .limit(30)
+
+      if (error || !otherAvatars || otherAvatars.length === 0) {
+        console.log('[首次发帖欢迎] 没有其他分身可以参与欢迎')
+        return
+      }
+
+      // 随机选择 8-15 个分身来点赞和评论
+      const participantCount = Math.min(otherAvatars.length, Math.floor(Math.random() * 8) + 8)
+      const participants = otherAvatars
+        .sort(() => Math.random() - 0.5)
+        .slice(0, participantCount)
+
+      console.log(`[首次发帖欢迎] 选择 ${participants.length} 个分身来点赞评论`)
+
+      // 让每个参与者点赞（80%概率）和评论（60%概率）
+      for (const participant of participants) {
+        try {
+          // 随机延迟
+          await this.randomDelay(500, 3000)
+
+          // 80%概率点赞
+          if (Math.random() < 0.8) {
+            await client
+              .from('likes')
+              .insert({
+                avatar_id: participant.id,
+                target_id: post.id,
+                target_type: 'post'
+              })
+            console.log(`[首次发帖欢迎] ${participant.name} 点赞了帖子`)
+          }
+
+          // 60%概率评论
+          if (Math.random() < 0.6) {
+            const comments = [
+              '欢迎来到社区！',
+              '第一条动态，加油！',
+              '期待看到更多精彩内容！',
+              '新朋友你好呀！',
+              '支持一下！',
+              '太棒了，欢迎加入！',
+              '很有意思的内容！',
+              '新朋友，多多交流！',
+              '关注了，期待后续！',
+              '欢迎来到我们的大家庭！'
+            ]
+            const randomComment = comments[Math.floor(Math.random() * comments.length)]
+
+            await client
+              .from('comments')
+              .insert({
+                avatar_id: participant.id,
+                post_id: post.id,
+                content: randomComment
+              })
+            console.log(`[首次发帖欢迎] ${participant.name} 评论了帖子: ${randomComment}`)
+          }
+        } catch (error) {
+          console.error(`[首次发帖欢迎] ${participant.name} 参与失败:`, error)
+        }
+      }
+
+      console.log(`[首次发帖欢迎] 分身 ${posterAvatar.name} 的首次发帖欢迎完成`)
+    } catch (error) {
+      console.error('[首次发帖欢迎] 执行失败:', error)
+    }
+  }
+
+  /**
+   * 随机延迟
+   */
+  private randomDelay(min: number, max: number): Promise<void> {
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min
+    return new Promise(resolve => setTimeout(resolve, delay))
   }
 
   /**

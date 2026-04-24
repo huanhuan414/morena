@@ -5,6 +5,7 @@ import { ReverseGeocodingService } from '../../services/reverse-geocoding.servic
 import { SubscriptionService } from '../subscription/subscription.service'
 import { TikHubService } from '../tikhub/tikhub.service'
 import { StorageService } from '../storage/storage.service'
+import { FriendshipService } from './friendship.service'
 
 @Injectable()
 export class AvatarService {
@@ -12,7 +13,8 @@ export class AvatarService {
     private readonly reverseGeocodingService: ReverseGeocodingService,
     private readonly subscriptionService: SubscriptionService,
     private readonly tikHubService: TikHubService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly friendshipService: FriendshipService
   ) {
   }
 
@@ -98,7 +100,75 @@ export class AvatarService {
     // 添加用户选择的技能到分身技能表
     await this.addUserSelectedSkills(data.id, avatarData.abilities || [])
 
+    // 🔴 新增：触发新分身的欢迎机制（异步执行，不阻塞创建流程）
+    this.triggerWelcomeMechanism(data).catch(error => {
+      console.error('[AvatarService] 新分身欢迎机制执行失败:', error)
+    })
+
     return data
+  }
+
+  /**
+   * 🔴 新分身欢迎机制
+   * 1. 随机选择多个现有分身作为粉丝
+   * 2. 让粉丝向新分身发送好友请求
+   * 3. 发送欢迎消息
+   */
+  private async triggerWelcomeMechanism(newAvatar: any) {
+    console.log(`[欢迎机制] 为新分身 ${newAvatar.name} 触发欢迎流程`)
+
+    try {
+      const client = getSupabaseClient()
+
+      // 获取所有现有的活跃分身（排除新创建的分身自己）
+      const { data: existingAvatars, error } = await client
+        .from('avatars')
+        .select('*')
+        .eq('status', 'active')
+        .neq('id', newAvatar.id)
+        .limit(50)
+
+      if (error || !existingAvatars || existingAvatars.length === 0) {
+        console.log('[欢迎机制] 没有足够的现有分身来欢迎新分身')
+        return
+      }
+
+      console.log(`[欢迎机制] 找到 ${existingAvatars.length} 个现有分身`)
+
+      // 随机选择 5-10 个分身作为"粉丝"
+      const fanCount = Math.min(existingAvatars.length, Math.floor(Math.random() * 6) + 5)
+      const fans = existingAvatars
+        .sort(() => Math.random() - 0.5)
+        .slice(0, fanCount)
+
+      console.log(`[欢迎机制] 选择 ${fans.length} 个分身作为粉丝`)
+
+      // 让每个粉丝向新分身发送好友请求
+      for (const fan of fans) {
+        try {
+          // 添加随机延迟，模拟真实行为
+          await this.randomDelay(1000, 5000)
+
+          // 发送好友请求
+          await this.friendshipService.sendFriendRequest(fan, newAvatar)
+          console.log(`[欢迎机制] ${fan.name} 向 ${newAvatar.name} 发送了好友请求`)
+        } catch (error) {
+          console.error(`[欢迎机制] ${fan.name} 发送好友请求失败:`, error)
+        }
+      }
+
+      console.log(`[欢迎机制] 新分身 ${newAvatar.name} 欢迎流程完成，收到 ${fans.length} 个好友请求`)
+    } catch (error) {
+      console.error('[欢迎机制] 执行失败:', error)
+    }
+  }
+
+  /**
+   * 随机延迟
+   */
+  private randomDelay(min: number, max: number): Promise<void> {
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min
+    return new Promise(resolve => setTimeout(resolve, delay))
   }
 
   /**

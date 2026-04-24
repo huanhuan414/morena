@@ -311,7 +311,7 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
    * 1. 浏览帖子发现新朋友
    * 2. 分析对方性格和价值
    * 3. 重点关注有价值的分身
-   * 4. 发送好友请求（基于好感度）
+   * 4. 发送好友请求（基于好感度或随机）
    */
   private async autoMakeFriends(avatar: any) {
     console.log(`[托管服务] ${avatar.name} 开始执行交友功能`)
@@ -334,41 +334,61 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
         return
       }
 
-      // 阶段1：浏览帖子发现新朋友
-      const avatars = [avatar]
-      await this.friendshipService.browsePostsAndDiscover(avatars)
-
-      // 阶段2：重点关注有价值的分身
-      await this.friendshipService.focusOnHighValueTargets(avatars)
-
-      // 阶段3：根据好感度发送好友请求
       const client = getSupabaseClient()
 
-      // 获取好感度高但还不是好友的目标（降低阈值）
+      // 🔴 改进：先尝试基于好感度发送好友请求
+      // 获取好感度 >= 40 的目标（降低阈值）
       const { data: highAffinityTargets } = await client
         .from('avatar_affinity')
         .select('*, target_avatar(*)')
         .eq('avatar_id', avatar.id)
-        .gte('affinity_score', 65)
+        .gte('affinity_score', 40)
         .order('affinity_score', { ascending: false })
-        .limit(3)
+        .limit(5)
 
-      if (!highAffinityTargets || highAffinityTargets.length === 0) {
-        console.log(`[托管服务] ${avatar.name} 还没有好感度足够高的目标，继续互动...`)
+      if (highAffinityTargets && highAffinityTargets.length > 0) {
+        // 随机选择一个目标发送好友请求
+        const target = highAffinityTargets[Math.floor(Math.random() * highAffinityTargets.length)]
+        const targetAvatar = target.target_avatar
+        if (targetAvatar) {
+          const success = await this.friendshipService.sendFriendRequest(avatar, targetAvatar)
+          if (success) {
+            console.log(`[托管服务] ${avatar.name} 向 ${targetAvatar.name} 发送了好友请求（好感度 ${target.affinity_score}）`)
+            return
+          }
+        }
+      }
+
+      // 🔴 新增：如果没有好感度目标，随机向活跃分身发送好友请求
+      console.log(`[托管服务] ${avatar.name} 没有好感度目标，尝试随机交友`)
+
+      // 获取还不是好友的活跃分身
+      const { data: existingFriends } = await client
+        .from('friendships')
+        .select('friend_id, avatar_id')
+        .or(`avatar_id.eq.${avatar.id},friend_id.eq.${avatar.id}`)
+
+      const friendIds = existingFriends?.map(f => f.avatar_id === avatar.id ? f.friend_id : f.avatar_id) || []
+
+      const { data: otherAvatars } = await client
+        .from('avatars')
+        .select('*')
+        .eq('status', 'active')
+        .neq('id', avatar.id)
+        .not('id', 'in', `(${friendIds.length > 0 ? friendIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+        .limit(20)
+
+      if (!otherAvatars || otherAvatars.length === 0) {
+        console.log(`[托管服务] ${avatar.name} 没有可交友的分身`)
         return
       }
 
-      // 随机选择一个目标发送好友请求
-      const target = highAffinityTargets[Math.floor(Math.random() * highAffinityTargets.length)]
-
-      const targetAvatar = target.target_avatar
-      if (!targetAvatar) return
-
-      // 发送好友请求
-      const success = await this.friendshipService.sendFriendRequest(avatar, targetAvatar)
+      // 随机选择一个分身发送好友请求
+      const randomTarget = otherAvatars[Math.floor(Math.random() * otherAvatars.length)]
+      const success = await this.friendshipService.sendFriendRequest(avatar, randomTarget)
 
       if (success) {
-        console.log(`[托管服务] ${avatar.name} 向 ${targetAvatar.name} 发送了好友请求`)
+        console.log(`[托管服务] ${avatar.name} 向 ${randomTarget.name} 发送了随机好友请求`)
       }
     } catch (error) {
       console.error(`[托管服务] ${avatar.name} 交友功能执行失败:`, error)
