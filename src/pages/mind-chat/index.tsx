@@ -3579,7 +3579,7 @@ export default function MindChatPage() {
                               objectFit="contain"
                               style={{ width: '100%', height: '180px', borderRadius: '8px' }}
                               onError={() => {
-                                console.error('[上传视频] 播放失败:', videoUrl)
+                                console.error('[上传视频] 播放失败:', uploadedVideoUrl)
                               }}
                             />
                           )}

@@ -655,9 +655,13 @@
 /* 🔴 新增：用户上传的图片显示 */
 .message-uploaded-images {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12rpx;
   margin-bottom: 16rpx;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8rpx;
 }
 
 .message-uploaded-image {
