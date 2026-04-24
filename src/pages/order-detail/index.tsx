@@ -10,11 +10,14 @@ import {
 import './index.css'
 
 const STATUS_CONFIG: Record<string, any> = {
+  open: { label: '待接单', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  pending: { label: '待接单', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  in_progress: { label: '进行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+  active: { label: '进行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
   reviewing: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   awaiting_acceptance: { label: '待验收', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
   completed: { label: '已完成', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
-  pending: { label: '待接单', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-  active: { label: '进行中', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }
+  cancelled: { label: '已取消', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' }
 }
 
 interface Order {
@@ -100,7 +103,7 @@ export default function OrderDetail() {
     )
   }
 
-  const displayStatus = order.dispatch_request_status || order.status
+  const displayStatus = order.status
   const statusConfig = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.pending
   const isReviewing = displayStatus === 'reviewing' || displayStatus === 'awaiting_acceptance'
   const stats = order.summary_stats
