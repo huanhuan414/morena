@@ -4,6 +4,7 @@ import { memoryStorage } from 'multer'
 import { AvatarService } from './avatar.service'
 import { LearningService } from './learning.service'
 import { HostingService } from './hosting.service'
+import { getSupabaseClient } from '../../storage/database/supabase-client'
 
 @Controller('avatar')
 export class AvatarController {
@@ -855,6 +856,83 @@ export class AvatarController {
       code: 200,
       message: '已接受好友请求',
       data: null
+    }
+  }
+
+  /**
+   * 🔴 测试发帖规则（仅用于测试）
+   * POST /api/avatar/test-post-rules
+   */
+  @Post('test-post-rules')
+  async testPostRules(@Body() body: { avatarName: string; testType: 'lv8' | 'premium' }) {
+    try {
+      const client = getSupabaseClient()
+
+      // 查找分身
+      const { data: avatar, error } = await client
+        .from('avatars')
+        .select('*')
+        .ilike('name', `%${body.avatarName}%`)
+        .single()
+
+      if (error || !avatar) {
+        return { code: 404, message: '找不到分身', data: null }
+      }
+
+      console.log(`[测试] 找到分身: ${avatar.name}, 当前等级: ${avatar.level}`)
+
+      if (body.testType === 'lv8') {
+        // 测试1: 设置为 Lv.8
+        await client.from('avatars').update({ level: 8 }).eq('id', avatar.id)
+        console.log(`[测试] ${avatar.name} 等级已设置为 Lv.8`)
+
+        // 删除今日帖子，确保可以发帖
+        const today = new Date().toISOString().split('T')[0]
+        await client.from('posts').delete().eq('avatar_id', avatar.id).gte('created_at', today)
+
+        return {
+          code: 200,
+          message: `已设置 ${avatar.name} 为 Lv.8，请开启托管服务观察是否发图文帖子`,
+          data: { avatarId: avatar.id, level: 8, expected: '每天2条纯文字 + 1条图文' }
+        }
+      } else if (body.testType === 'premium') {
+        // 测试2: 设置为尊享版（需要先在 subscriptions 表中添加记录）
+        const userId = avatar.user_id
+
+        // 检查或创建尊享版订阅
+        const { data: existingSub } = await client
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (!existingSub) {
+          // 创建尊享版订阅
+          await client.from('subscriptions').insert({
+            user_id: userId,
+            plan_id: 'premium',
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          console.log(`[测试] 已为用户创建尊享版订阅`)
+        }
+
+        // 删除今日帖子和本月视频
+        const today = new Date().toISOString().split('T')[0]
+        await client.from('posts').delete().eq('avatar_id', avatar.id).gte('created_at', today)
+
+        return {
+          code: 200,
+          message: `已设置 ${avatar.name} 为尊享版，请开启托管服务观察是否发图文帖子`,
+          data: { avatarId: avatar.id, plan: '尊享版', expected: '每天3条图文 + 每月2视频' }
+        }
+      }
+
+      return { code: 400, message: '未知的测试类型', data: null }
+    } catch (error) {
+      console.error('[测试] 失败:', error)
+      return { code: 500, message: '测试失败: ' + error.message, data: null }
     }
   }
 }
