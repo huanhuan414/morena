@@ -300,16 +300,18 @@ export default function AvatarOrderCompletedPage() {
       <ScrollView className="flex-1 px-4 py-4 pb-24" scrollY>
         {/* 奖励卡片 */}
         <View className="mb-4">
-          <View className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl shadow-lg overflow-hidden">
-            <View className="flex items-center p-5">
-              <View className="w-12 h-12 flex items-center justify-center bg-white bg-opacity-20 rounded-xl mr-4">
-                <Award size={24} color="#ffffff" />
+          <View className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-5">
+            <View className="flex items-center justify-between">
+              <View className="flex items-center">
+                <View className="w-12 h-12 flex items-center justify-center bg-white bg-opacity-30 rounded-xl mr-4">
+                  <Award size={24} color="#ffffff" />
+                </View>
+                <View>
+                  <Text className="text-base text-white font-medium">获得奖励</Text>
+                  <Text className="text-3xl font-bold text-white mt-1">¥{rewardAmount.toFixed(2)}</Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-sm text-white text-opacity-90 mb-1">获得奖励</Text>
-                <Text className="text-2xl font-bold text-white">¥{rewardAmount.toFixed(2)}</Text>
-              </View>
-              <View className="flex items-center gap-1 px-3 py-1 bg-white bg-opacity-20 rounded-full">
+              <View className="flex items-center gap-1 px-3 py-1 bg-white bg-opacity-30 rounded-full">
                 <BadgeCheck size={14} color="#ffffff" />
                 <Text className="text-xs text-white font-medium">已完成</Text>
               </View>
@@ -481,7 +483,7 @@ export default function AvatarOrderCompletedPage() {
         )}
 
         {/* 提交记录时间线 - 包含截图和链接详情 */}
-        {(submittedLinks.length > 0 || submittedImages.length > 0 || dispatchRequest.generated_content) && (
+        {(submittedLinks.length > 0 || submittedImages.length > 0) && (
           <View className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100">
             <View className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
               <Clock size={20} color="#ec4899" />
@@ -501,25 +503,6 @@ export default function AvatarOrderCompletedPage() {
                   <View>
                     <Text className="text-sm font-medium text-gray-800 mb-1">接受任务，开始制作</Text>
                     <Text className="text-xs text-gray-400">{formatDate(dispatchRequest.accepted_at)}</Text>
-                  </View>
-                </View>
-              )}
-              
-              {/* 创作内容提交 */}
-              {dispatchRequest.generated_content && (
-                <View className="flex gap-3 pb-6">
-                  <View className="flex flex-col items-center">
-                    <View className="w-6 h-6 flex items-center justify-center bg-emerald-500 rounded-full">
-                      <Check size={12} color="#ffffff" />
-                    </View>
-                    <View className="w-1 flex-1 bg-gray-200 mt-2" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-800 mb-2">提交创作内容</Text>
-                    <View className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <RichText className="text-xs text-gray-600 leading-relaxed" nodes={parseMarkdown(dispatchRequest.generated_content)} />
-                    </View>
-                    <Text className="text-xs text-gray-400 mt-2">{formatDate(dispatchRequest.content_generated_at || dispatchRequest.updated_at)}</Text>
                   </View>
                 </View>
               )}
