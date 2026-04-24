@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Shield, Info, CircleQuestionMark, Briefcase, Wallet, Gift, Zap, Crown, Box, X } from 'lucide-react-taro'
+import { Settings, ChevronRight, LogOut, Sparkles, Bell, Info, CircleQuestionMark, Briefcase, Wallet, Crown, Box, X } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -76,6 +76,7 @@ export default function ProfilePage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
   const [showPendingDialog, setShowPendingDialog] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useLoad(() => {
     if (!isLoggedIn) {
@@ -90,6 +91,7 @@ export default function ProfilePage() {
     if (isLoggedIn) {
       fetchStats()
       fetchPendingRequests()
+      fetchUnreadCount()
     }
   })
 
@@ -113,6 +115,17 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('获取待确认订单失败:', error)
+    }
+  }
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await Network.request({ url: '/api/notifications/unread-count' })
+      if (res.data?.code === 200) {
+        setUnreadCount(res.data.data.count || 0)
+      }
+    } catch (error) {
+      console.error('获取未读消息数失败:', error)
     }
   }
 
@@ -145,11 +158,7 @@ export default function ProfilePage() {
     { title: '技能广场', icon: Box, desc: '为分身解锁更多能力', color: '#ff6b6b', path: '/pages/skills-square/index' },
     { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', color: '#ffd700', path: '/pages/subscription/index' },
     { title: '订单管理', icon: Briefcase, desc: '查看和管理订单', color: '#00f5ff', path: '/pages/order-list/index' },
-    { title: '任务大厅', icon: Zap, desc: '分身接单赚钱', color: '#bf00ff', path: '/pages/order-list/index?mode=avatar' },
-    { title: '收益中心', icon: Wallet, desc: '查看收益和提现', color: '#00ff88', path: '/pages/earning-center/index' },
-    { title: '邀请返利', icon: Gift, desc: '邀请好友得奖励', color: '#bf00ff', path: '/pages/referral-center/index' },
-    { title: '消息通知', icon: Bell, desc: '接收最新动态', color: '#00ff88', path: '/pages/profile/notifications' },
-    { title: '账户安全', icon: Shield, desc: '隐私与安全设置', color: '#ff6b6b', path: '/pages/profile/security' },
+    { title: '收益中心', icon: Wallet, desc: '查看收益、提现和邀请', color: '#00ff88', path: '/pages/earning-center/index' },
     { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '/pages/profile/help' },
     { title: '关于我们', icon: Info, desc: '版本 v1.0.0', color: '#64748b', path: '/pages/profile/about' }
   ]
@@ -185,8 +194,18 @@ export default function ProfilePage() {
             <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
             <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
           </View>
-          <View className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-            <Settings size={24} color="#ffffff" />
+          <View className="header-actions">
+            <View className="notification-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
+              <Bell size={22} color="#ffffff" />
+              {unreadCount > 0 && (
+                <View className="notification-badge">
+                  <Text className="notification-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
+            <View className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+              <Settings size={24} color="#ffffff" />
+            </View>
           </View>
         </View>
 
