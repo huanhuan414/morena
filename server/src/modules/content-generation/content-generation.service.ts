@@ -130,6 +130,11 @@ export class ContentGenerationService {
       }
     }
 
+    // 如果没有成功生成任何内容，抛出错误
+    if (results.length === 0) {
+      throw new Error('所有平台内容生成失败')
+    }
+
     return results
   }
 

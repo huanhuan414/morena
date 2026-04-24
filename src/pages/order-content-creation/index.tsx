@@ -189,6 +189,16 @@ export default function OrderContentCreationPage() {
       if (res.data?.code === 200 && res.data.data) {
         const data = res.data.data as any
         
+        // 详细调试日志
+        console.log('[OrderContentCreation] 数据结构详情:', {
+          status: data.status,
+          hasGeneratedContent: !!data.generatedContent,
+          generatedContentKeys: data.generatedContent ? Object.keys(data.generatedContent) : null,
+          generatedContent: data.generatedContent,
+          generated_content: data.generated_content,
+          fullData: data
+        })
+        
         // 重置错误计数
         setErrorCount(0)
 
@@ -227,9 +237,11 @@ export default function OrderContentCreationPage() {
         }
 
         // 在 preview 或 completed 状态时展示内容
-        if ((data.status === 'preview' || data.status === 'completed') && data.generatedContent) {
-          setContentData(data.generatedContent)
-          setEditedContent(data.generatedContent.content || '')
+        // 兼容 generatedContent 和 generated_content 两种命名
+        const content = data.generatedContent || data.generated_content
+        if ((data.status === 'preview' || data.status === 'completed') && content) {
+          setContentData(content)
+          setEditedContent(content.content || content || '')
           console.log('[OrderContentCreation] 内容已制作完成，停止轮询')
           stopTimer()
           if (pollInterval) {
