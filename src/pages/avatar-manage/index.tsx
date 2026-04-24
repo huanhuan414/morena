@@ -81,6 +81,7 @@ export default function AvatarManagePage() {
   const [avatarCount, setAvatarCount] = useState(0)
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
+  const [userSubscription, setUserSubscription] = useState<any>(null) // 🔴 用户订阅信息
 
   // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -115,6 +116,7 @@ export default function AvatarManagePage() {
       if (subscriptionRes.data?.data?.plan) {
         const plan = subscriptionRes.data.data.plan
         setMaxAvatars(plan.max_avatars)
+        setUserSubscription(subscriptionRes.data.data) // 🔴 保存订阅信息
         
         // 检查是否可以创建分身
         if (plan.max_avatars !== -1 && currentCount >= plan.max_avatars) {
@@ -125,6 +127,7 @@ export default function AvatarManagePage() {
       } else {
         // 免费用户最多1个分身
         setMaxAvatars(1)
+        setUserSubscription(null) // 🔴 无订阅
         if (currentCount >= 1) {
           setCanCreateAvatar(false)
         } else {
@@ -441,13 +444,44 @@ export default function AvatarManagePage() {
                       {/* 自动功能 - 独立子功能开关 */}
                       <View className="auto-features">
                         <View className="feature-item">
-                          <Text className="feature-text">自动发帖</Text>
+                          <View className="feature-info">
+                            <Text className="feature-text">自动发帖</Text>
+                            {/* 🔴 添加等级/订阅提示 */}
+                            {!userSubscription && (avatar.level || 1) < 8 && (
+                              <Text className="feature-hint">Lv.8开启图文</Text>
+                            )}
+                            {userSubscription && (
+                              <Text className="feature-hint premium">
+                                {userSubscription.plan?.name?.includes('尊享') ? '尊享版' : 
+                                 userSubscription.plan?.name?.includes('高级') ? '高级版' : '基本版'}
+                              </Text>
+                            )}
+                          </View>
                           <Switch
                             checked={avatar.hosting_settings?.auto_post ?? false}
                             onCheckedChange={async (checked) => {
                               if (!avatar.is_hosted) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
                                 return
+                              }
+                              // 🔴 检查发帖权限
+                              if (checked) {
+                                const level = avatar.level || 1
+                                const planName = userSubscription?.plan?.name?.toLowerCase() || ''
+                                
+                                // 无订阅且等级<8，只能发纯文字
+                                if (!userSubscription && level < 8) {
+                                  // 允许开启，但会有限制提示
+                                  showToast({ title: `Lv.${level}每天限1条纯文字`, icon: 'none' })
+                                } else if (level >= 8 && !userSubscription) {
+                                  showToast({ title: `Lv.${level}每天2条文字+1条图文`, icon: 'success' })
+                                } else if (planName.includes('尊享')) {
+                                  showToast({ title: '尊享版：每天3条图文+每月2视频', icon: 'success' })
+                                } else if (planName.includes('高级')) {
+                                  showToast({ title: '高级版：每天2条图文+每月1视频', icon: 'success' })
+                                } else if (planName.includes('基本')) {
+                                  showToast({ title: '基本版：每天1条图文+每月1视频', icon: 'success' })
+                                }
                               }
                               await updateHostingSettings(avatar.id, { auto_post: checked })
                             }}

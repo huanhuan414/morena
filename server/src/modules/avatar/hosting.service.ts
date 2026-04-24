@@ -1150,6 +1150,19 @@ ${friendMessageContents}
       postType = 'imageText'
     }
 
+    // 🔴 关键逻辑：视频帖子只在半夜发布（23:00 - 06:00）
+    if (postType === 'video') {
+      const currentHour = new Date().getHours()
+      const isNightTime = currentHour >= 23 || currentHour < 6
+
+      if (!isNightTime) {
+        console.log(`[托管服务] 当前时间${currentHour}:00不是视频发布时间（23:00-06:00），降级为图文帖子`)
+        postType = 'imageText'
+      } else {
+        console.log(`[托管服务] 当前时间${currentHour}:00是深夜时段，可以发布视频帖子`)
+      }
+    }
+
     console.log(`[托管服务] 分身 ${avatar.name} 准备发布${postType === 'video' ? '视频' : postType === 'imageText' ? '图文' : '纯文字'}帖子`)
 
     // 🔴 生成帖子内容（传递subscription用于生成标识）

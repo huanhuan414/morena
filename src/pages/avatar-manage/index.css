@@ -569,6 +569,25 @@
   font-weight: 600;
 }
 
+/* 🔴 功能项信息容器 */
+.feature-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+/* 🔴 等级/订阅提示 */
+.feature-hint {
+  font-size: 20rpx;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.feature-hint.premium {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
 /* 快速入口区域 */
 .quick-entries {
   margin-top: 24rpx;
