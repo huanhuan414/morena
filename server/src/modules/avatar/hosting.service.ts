@@ -1204,19 +1204,18 @@ ${friendMessageContents}
       .gte('created_at', startOfDay.toISOString())
       .lt('created_at', endOfDay.toISOString())
 
-    // 查询本月已发视频
+    // 查询本月已发视频（检查videos数组非空）
     const { data: monthVideos } = await client
       .from('posts')
-      .select('id')
+      .select('id, videos')
       .eq('avatar_id', avatarId)
       .gte('created_at', startOfMonth.toISOString())
       .lt('created_at', endOfMonth.toISOString())
-      .not('videos', 'is', null)
-      .gt('videos', '[]')
 
     const todayTextOnly = todayPosts?.filter(p => (!p.images || p.images.length === 0) && (!p.videos || p.videos.length === 0)).length || 0
     const todayImageText = todayPosts?.filter(p => p.images && p.images.length > 0).length || 0
-    const monthVideoCount = monthVideos?.length || 0
+    // 🔴 修复：在JS中过滤视频帖子（检查videos数组非空）
+    const monthVideoCount = monthVideos?.filter(p => p.videos && Array.isArray(p.videos) && p.videos.length > 0).length || 0
 
     // 🔴 根据订阅和等级计算配额
     let textOnlyQuota = 0
@@ -1224,6 +1223,10 @@ ${friendMessageContents}
     let videoQuota = 0
 
     const planName = subscription?.plan?.name?.toLowerCase() || ''
+
+    // 🔴 调试日志
+    console.log(`[配额计算] 今日帖子: 纯文字=${todayTextOnly}, 图文=${todayImageText}, 本月视频=${monthVideoCount}`)
+    console.log(`[配额计算] 订阅计划: ${planName || '无订阅'}, 等级: Lv.${level}`)
 
     if (planName.includes('尊享') || planName.includes('premium')) {
       // 尊享版：每天3条图文，每月2个视频
