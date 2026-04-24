@@ -528,6 +528,19 @@ export default function SocialPage() {
         className="social-header-gradient"
         style={{ paddingTop: `${statusBarHeight + 20}px` }}
       >
+        {/* 网格背景 */}
+        <View className="header-grid-bg" />
+        
+        {/* 闪烁星星 */}
+        <View className="header-stars">
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+        </View>
+
         <View className="header-top-row">
           <View className="header-title-wrap">
             <Text className="header-title">莫瑞娜</Text>
@@ -774,6 +787,7 @@ export default function SocialPage() {
                           showCenterPlayBtn
                           enableProgressGesture
                           objectFit="contain"
+                          poster={post.images && post.images.length > 0 ? post.images[0] : ''}
                         />
                       ))}
                     </View>

@@ -12,14 +12,92 @@
 }
 
 /* ========================================
-   顶部渐变Header
+   顶部渐变Header - 带特效
    ======================================== */
 .social-header-gradient {
-  background: linear-gradient(135deg, #7B3FE4 0%, #B47BFF 100%);
+  background: linear-gradient(135deg, #7B3FE4 0%, #B47BFF 50%, #9B59F0 100%);
   padding: 20rpx 32rpx 80rpx;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* 装饰性光晕效果 */
+.social-header-gradient::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: pulse 4s ease-in-out infinite;
+}
+
+.social-header-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 200rpx;
+  height: 200rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: pulse 3s ease-in-out infinite reverse;
+}
+
+/* 动态网格背景 */
+.header-grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.03) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1rpx, transparent 1rpx);
+  background-size: 40rpx 40rpx;
+  pointer-events: none;
+}
+
+/* 闪烁星星效果 */
+.header-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.header-star {
+  position: absolute;
+  width: 4rpx;
+  height: 4rpx;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.header-star:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+.header-star:nth-child(2) { top: 40%; left: 25%; animation-delay: 0.5s; }
+.header-star:nth-child(3) { top: 15%; left: 50%; animation-delay: 1s; }
+.header-star:nth-child(4) { top: 60%; left: 70%; animation-delay: 1.5s; }
+.header-star:nth-child(5) { top: 30%; left: 85%; animation-delay: 2s; }
+.header-star:nth-child(6) { top: 70%; left: 40%; animation-delay: 2.5s; }
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
 .header-top-row {
@@ -499,6 +577,7 @@
   overflow: hidden;
   background: #000000;
   position: relative;
+  min-height: 400rpx;
 }
 
 .post-video-item {
@@ -506,6 +585,8 @@
   height: 400rpx;
   display: block;
   border-radius: 16rpx;
+  position: relative;
+  z-index: 1;
 }
 
 /* 互动按钮 */
