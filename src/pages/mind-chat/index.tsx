@@ -36,8 +36,10 @@ function cleanMessageContent(content: string): string {
   // 移除 Coze 临时文件代理链接
   cleaned = cleaned.replace(/https?:\/\/code\.coze\.cn\/api\/sandbox\/[^\s\n]+/gi, '')
 
-  // 移除所有 TOS 对象存储链接
+  // 移除所有 TOS 对象存储链接（多种格式）
   cleaned = cleaned.replace(/https?:\/\/ark-content-generation-v2[\w-]+\.tos-cn-[\w-]+\.volces\.com\/[^\s\n]*/gi, '')
+  // 🔴 新增：移除用户上传图片的 TOS URL（包含预签名URL）
+  cleaned = cleaned.replace(/https?:\/\/[^\s\n]+\.tos-cn-[\w-]+\.volces\.com\/[^\s\n]*/gi, '')
 
   // 移除"已为您生成.*链接如下："模式
   cleaned = cleaned.replace(/已为您?生成.*?[，,]?\s*链接如下[::：][\s\S]*?(?=\n\n|\n[A-Z\u4e00-\u9fa5]|$)/gi, '')
@@ -3232,13 +3234,23 @@ export default function MindChatPage() {
                 }
 
                 // 视频
-                if (data.video_url && !existingUrls.has(data.video_url)) {
-                  mediaList.push({
-                    type: 'video',
-                    url: data.video_url,
-                    key: data.video_key || data.key // 🔴 保存 key 用于重新生成签名URL
-                  })
-                  existingUrls.add(data.video_url)
+                // 🔴 修复：比较 URL 的基础部分（不包含查询参数）来检测重复
+                if (data.video_url) {
+                  const getBaseVideoUrl = (url: string) => url.split('?')[0]
+                  const baseVideoUrl = getBaseVideoUrl(data.video_url)
+                  const isDuplicateVideo = Array.from(existingUrls).some(url => url && getBaseVideoUrl(url) === baseVideoUrl)
+
+                  if (!isDuplicateVideo) {
+                    mediaList.push({
+                      type: 'video',
+                      url: data.video_url,
+                      key: data.video_key || data.key // 🔴 保存 key 用于重新生成签名URL
+                    })
+                    existingUrls.add(data.video_url)
+                    console.log('[视频提取] 添加视频:', baseVideoUrl.substring(0, 60))
+                  } else {
+                    console.log('[视频提取] 跳过重复视频:', baseVideoUrl.substring(0, 60))
+                  }
                 }
               }
             })
