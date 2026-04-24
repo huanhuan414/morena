@@ -977,26 +977,22 @@
   }
 }
 
-/* 🔴 修复：使用 ScrollView + View 嵌套结构 */
-.media-preview-container {
+/* 🔴 简化结构：移除 ScrollView，使用 flex 布局 */
+.media-preview-wrapper {
   margin-bottom: 14rpx;
   padding-bottom: 14rpx;
   border-bottom: 1rpx solid rgba(255, 255, 255, 0.08);
-  height: 180rpx;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.media-preview-scroll {
-  width: 100%;
-  height: 100%;
-  white-space: nowrap;
-}
-
-.media-preview-inner {
-  display: inline-flex;
+.media-preview-list {
+  display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   gap: 12rpx;
   padding: 4rpx;
+  min-width: min-content;
 }
 
 .media-preview-item {
@@ -1021,10 +1017,20 @@
   }
 }
 
-.media-preview-image,
+.media-preview-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 12rpx;
+  /* 🔴 添加背景色，图片加载前显示占位 */
+  background-color: #f0f0f0;
+}
+
 .media-preview-video {
   width: 100%;
   height: 100%;
+  display: block;
+  border-radius: 12rpx;
 }
 
 .media-preview-overlay {

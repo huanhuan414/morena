@@ -1466,7 +1466,8 @@ export default function MindChatPage() {
           setUploadProgress(100)
 
           if (uploadData.code === 200 && uploadData.data?.url) {
-            setUploadedVideos([...uploadedVideos, uploadData.data.url])
+            // 🔴 修复：使用函数式更新
+            setUploadedVideos(prev => [...prev, uploadData.data.url])
             showToast({ title: '视频上传成功', icon: 'success' })
           } else {
             showToast({ title: uploadData.message || '上传失败', icon: 'none' })
@@ -4605,71 +4606,66 @@ export default function MindChatPage() {
 
       {/* 底部输入栏 */}
       <View className="input-bar">
-        {/* 🔴 重新设计：媒体预览栏 - 修复 ScrollView 渲染问题 */}
+        {/* 🔴 简化设计：媒体预览栏 - 移除 ScrollView 避免渲染问题 */}
         {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
-          <View className="media-preview-container">
-            <ScrollView
-              scrollX
-              className="media-preview-scroll"
-              scrollWithAnimation
-              enhanced
-              showScrollbar
-            >
-              <View className="media-preview-inner">
-                {uploadedImages.map((imageUrl, idx) => {
-                  // 🔴 如果图片加载失败过，添加时间戳强制刷新
-                  const retryCount = imageLoadRetries[idx] || 0
-                  const imageSrc = retryCount > 0
-                    ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_retry=${retryCount}`
-                    : imageUrl
+          <View className="media-preview-wrapper">
+            <View className="media-preview-list">
+              {uploadedImages.map((imageUrl, idx) => {
+                // 🔴 如果图片加载失败过，添加时间戳强制刷新
+                const retryCount = imageLoadRetries[idx] || 0
+                const imageSrc = retryCount > 0
+                  ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_retry=${retryCount}`
+                  : imageUrl
 
-                  return (
-                    <View key={`img-${idx}`} className="media-preview-item">
-                      <Image
-                        src={imageSrc}
-                        className="media-preview-image"
-                        mode="aspectFill"
-                        lazyLoad={false}
-                        showMenuByLongpress={false}
-                        onLoad={() => console.log('[图片预览] 加载成功:', imageUrl.substring(0, 40))}
-                        onError={(e) => {
-                          console.error('[图片预览] 加载失败:', imageUrl.substring(0, 40), e)
-                          // 🔴 自动重试机制
-                          if (retryCount < MAX_IMAGE_RETRY) {
-                            console.log(`[图片预览] 第 ${retryCount + 1} 次重试...`)
-                            setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
-                          }
-                        }}
-                      />
-                      <View className="media-preview-overlay">
-                        <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
-                          <X size={14} color="#ffffff" />
-                        </View>
-                      </View>
-                    </View>
-                  )
-                })}
-                {uploadedVideos.map((videoUrl, idx) => (
-                  <View key={`video-${idx}`} className="media-preview-item">
-                    <Video
-                      src={videoUrl}
-                      className="media-preview-video"
-                      controls={false}
-                      objectFit="cover"
-                      onError={(e) => console.error('[视频预览] 加载失败:', videoUrl.substring(0, 40), e)}
+                // 🔴 关键修复：使用 URL + 索引 + 重试计数作为 key，确保唯一性
+                const uniqueKey = `img-${idx}-${imageUrl.substring(imageUrl.lastIndexOf('/') + 1, imageUrl.lastIndexOf('/') + 20)}-${retryCount}`
+
+                return (
+                  <View key={uniqueKey} className="media-preview-item">
+                    <Image
+                      key={`${uniqueKey}-image`}
+                      src={imageSrc}
+                      className="media-preview-image"
+                      mode="aspectFill"
+                      lazyLoad={false}
+                      showMenuByLongpress={false}
+                      onLoad={() => console.log('[图片预览] 加载成功:', imageUrl.substring(0, 40))}
+                      onError={(e) => {
+                        console.error('[图片预览] 加载失败:', imageUrl.substring(0, 50), e)
+                        // 🔴 自动重试机制
+                        if (retryCount < MAX_IMAGE_RETRY) {
+                          setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
+                        }
+                      }}
                     />
                     <View className="media-preview-overlay">
-                      <View className="media-preview-play-icon">
-                        <Play size={18} color="#ffffff" />
-                      </View>
-                      <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
+                      <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
                         <X size={14} color="#ffffff" />
                       </View>
                     </View>
                   </View>
-                ))}
-              </View>
-            </ScrollView>
+                )
+              })}
+              {uploadedVideos.map((videoUrl, idx) => (
+                <View key={`video-${idx}-${videoUrl.substring(videoUrl.lastIndexOf('/') + 1, videoUrl.lastIndexOf('/') + 20)}`} className="media-preview-item">
+                  <Video
+                    src={videoUrl}
+                    className="media-preview-video"
+                    controls={false}
+                    objectFit="cover"
+                    onError={(e) => console.error('[视频预览] 加载失败:', videoUrl.substring(0, 40), e)}
+                  />
+                  <View className="media-preview-overlay">
+                    <View className="media-preview-play-icon">
+                      <Play size={18} color="#ffffff" />
+                    </View>
+                    <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
+                      <X size={14} color="#ffffff" />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
