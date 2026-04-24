@@ -2214,8 +2214,17 @@ export default function MindChatPage() {
   }
 
   const toggleVoiceMode = () => {
-    setIsVoiceMode(!isVoiceMode)
-    if (isRecording) {
+    const newVoiceMode = !isVoiceMode
+    setIsVoiceMode(newVoiceMode)
+
+    // 🔴 修复：进入语音模式时自动开始录音，退出时停止录音
+    if (newVoiceMode) {
+      // 进入语音模式，自动开始录音
+      setTimeout(() => {
+        startRecording()
+      }, 100)
+    } else if (isRecording) {
+      // 退出语音模式，停止录音
       stopRecording()
     }
   }
