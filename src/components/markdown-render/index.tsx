@@ -25,21 +25,56 @@ interface ParsedBlock {
 // 🔴 检测字符串是否是图片 URL
 function isImageUrl(text: string): boolean {
   const trimmed = text.trim()
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
   const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
-  const hasImageExt = imageExtensions.some(ext => trimmed.toLowerCase().includes(ext))
-  return isUrl && hasImageExt
+  if (!isUrl) return false
+
+  const lowerUrl = trimmed.toLowerCase()
+
+  // 1. 检查文件扩展名
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.ico']
+  const hasImageExt = imageExtensions.some(ext => lowerUrl.includes(ext))
+  if (hasImageExt) return true
+
+  // 2. 检查图片托管服务特征
+  const imageHosts = [
+    'tos-', 'cdn.', 'img.', 'image.', 'pic.', 'photo.',
+    'static.', 'assets.', 'media.', 'file.',
+    '51webjs.com', 'ivolces.com', 'volces.com',
+    'douyinstatic.com', 'bytedance.com',
+    'aliyun', 'qcloud', 'qiniu', 'upyun'
+  ]
+  const isImageHost = imageHosts.some(host => lowerUrl.includes(host))
+
+  // 3. 检查 URL 路径特征（通常是图片上传后的 UUID 格式）
+  // 如: /tos-cn-i-xxx/1777023490389_kdb7mi5t2aa
+  const hasImagePathPattern = /\/\d{10,}_[a-z0-9]+$/i.test(trimmed) ||
+                               /\/[a-f0-9-]{20,}$/i.test(trimmed)
+
+  // 4. 排除明显的视频链接
+  const hasVideoIndicator = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.flv', '.m3u8', 'video', 'vod'].some(ext => lowerUrl.includes(ext))
+  if (hasVideoIndicator) return false
+
+  return isImageHost || hasImagePathPattern
 }
 
 // 🔴 检测字符串是否是视频 URL
 function isVideoUrl(text: string): boolean {
   const trimmed = text.trim()
-  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.flv', '.m3u8']
   const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://')
-  const hasVideoExt = videoExtensions.some(ext => trimmed.toLowerCase().includes(ext))
-  // 也检测视频托管服务
-  const isVideoHost = trimmed.includes('video') || trimmed.includes('vod') || trimmed.includes('media')
-  return isUrl && (hasVideoExt || isVideoHost)
+  if (!isUrl) return false
+
+  const lowerUrl = trimmed.toLowerCase()
+
+  // 1. 检查文件扩展名
+  const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.flv', '.m3u8', '.3gp']
+  const hasVideoExt = videoExtensions.some(ext => lowerUrl.includes(ext))
+  if (hasVideoExt) return true
+
+  // 2. 检查视频托管服务
+  const videoHosts = ['video', 'vod', 'player', 'stream', 'live', 'play']
+  const isVideoHost = videoHosts.some(host => lowerUrl.includes(host))
+
+  return isVideoHost
 }
 
 // 解析 Markdown 为块级元素

@@ -702,7 +702,9 @@ export class AgentService {
         userId,
         avatarId,
         taskDescription,
-        taskId
+        taskId,
+        options?.uploadedImages, // 🔴 新增：传递用户上传的图片
+        options?.uploadedVideos  // 🔴 新增：传递用户上传的视频
       )
     }
 
@@ -780,15 +782,21 @@ export class AgentService {
     userId: string,
     avatarId: string,
     taskDescription: string,
-    taskId: string
+    taskId: string,
+    uploadedImages?: string[], // 🔴 新增：用户上传的图片
+    uploadedVideos?: string[]  // 🔴 新增：用户上传的视频
   ): Promise<void> {
     const client = getSupabaseClient()
 
-    // 保存用户消息
+    // 保存用户消息（包含上传的图片和视频 metadata）
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
-      content: taskDescription
+      content: taskDescription,
+      metadata: {
+        ...(uploadedImages && uploadedImages.length > 0 ? { uploaded_images: uploadedImages } : {}),
+        ...(uploadedVideos && uploadedVideos.length > 0 ? { uploaded_videos: uploadedVideos } : {})
+      }
     })
 
     // 创建初始的 assistant 消息（content 为空，metadata 包含任务状态）
