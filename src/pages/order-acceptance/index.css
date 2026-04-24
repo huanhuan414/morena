@@ -368,68 +368,116 @@
 .stats-item {
   display: flex;
   flex-direction: column;
-  padding: 0;
-  background: transparent;
-  border-radius: 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
   margin-bottom: 20px;
-  box-shadow: none;
-  border: none;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-item::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .stats-icon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 0;
-  margin-bottom: 12px;
-  border-bottom: 2px solid var(--border-color);
+  gap: 8px;
+  padding: 12px 0;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-icon Text {
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .stats-row {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .stat-box {
+  flex: 1;
+  min-width: 45%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: #ffffff;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #667eea, #764ba2);
+}
+
+.stat-box::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.05) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .stat-box:active {
-  transform: translateX(4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  border-color: var(--primary-color);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .stat-value {
   font-weight: 700;
-  color: var(--primary-color);
-  font-size: 28px;
+  color: #667eea;
+  font-size: 36px;
   line-height: 1;
+  margin-bottom: 8px;
+  text-shadow: 0 1px 2px rgba(102, 126, 234, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 .stat-label {
-  color: var(--text-secondary);
+  color: #6b7280;
   font-weight: 500;
+  font-size: 15px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.stat-label::before {
-  content: '';
-  width: 4px;
-  height: 4px;
-  background: var(--primary-color);
-  border-radius: 50%;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  z-index: 1;
 }
 
 /* ==================== 平台卡片 ==================== */

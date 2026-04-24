@@ -251,31 +251,31 @@ export default function OrderAcceptance() {
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
-                        <TrendingUp size={18} color="#6366f1" />
-                        <Text className="text-sm font-medium" style={{ color: '#6366f1' }}>数据统计</Text>
+                        <TrendingUp size={22} color="#ffffff" />
+                        <Text className="text-base font-semibold">数据统计</Text>
                       </View>
                       <View className="stats-row">
                         {feedback.views !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.views)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.views)}</Text>
                             <Text className="stat-label text-sm">浏览</Text>
                           </View>
                         )}
                         {feedback.likes !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.likes)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.likes)}</Text>
                             <Text className="stat-label text-sm">点赞</Text>
                           </View>
                         )}
                         {feedback.comments !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.comments)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.comments)}</Text>
                             <Text className="stat-label text-sm">评论</Text>
                           </View>
                         )}
                         {feedback.shares !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.shares)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.shares)}</Text>
                             <Text className="stat-label text-sm">分享</Text>
                           </View>
                         )}
