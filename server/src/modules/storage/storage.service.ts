@@ -93,36 +93,34 @@ export class StorageService {
    * 上传视频 - 使用对象存储（veImageX不支持视频上传）
    */
   async uploadVideo(videoBuffer: Buffer, fileName: string): Promise<string> {
-    this.logger.log(`[StorageService] 上传视频到对象存储: ${fileName}`)
-    // 创建 Multer.File 对象
-    const file: Express.Multer.File = {
-      buffer: videoBuffer,
-      originalname: fileName,
-      mimetype: 'video/mp4',
-      size: videoBuffer.length,
-      fieldname: 'file',
-      encoding: '7bit',
-      stream: null as any,
-      destination: '',
-      filename: fileName,
-      path: ''
-    }
+    this.logger.log(`[StorageService] 上传视频到对象存储: ${fileName}, 大小: ${videoBuffer.length} bytes`)
 
     try {
-      // veImageX只支持图片上传，不支持视频上传
-      // 视频上传应该使用对象存储
+      // 🔴 修复：添加更详细的日志和错误处理
+      this.logger.log(`[StorageService] 开始上传文件到 TOS...`)
+      this.logger.log(`[StorageService] endpoint: ${process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com'}`)
+      this.logger.log(`[StorageService] bucket: ${process.env.COZE_BUCKET_NAME || 'morena-ai'}`)
+
       const key = await this.storage.uploadFile({
         fileContent: videoBuffer,
         fileName: `videos/${fileName}`,
         contentType: 'video/mp4'
       })
+
+      this.logger.log(`[StorageService] 文件上传成功, key: ${key}`)
+
       // 生成临时URL
+      this.logger.log(`[StorageService] 开始生成预签名URL...`)
       const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
-      this.logger.log(`[StorageService] 视频上传成功: ${url}`)
+      this.logger.log(`[StorageService] 视频上传成功: ${url.substring(0, 80)}...`)
       return url
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('[StorageService] 视频上传失败:', error)
-      throw error
+      this.logger.error('[StorageService] 错误详情:', error.message)
+      if (error.$response) {
+        this.logger.error('[StorageService] 原始响应:', error.$response)
+      }
+      throw new Error(`视频上传到CDN失败: ${error.message}`)
     }
   }
 

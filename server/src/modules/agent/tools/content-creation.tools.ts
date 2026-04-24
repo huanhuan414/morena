@@ -1444,28 +1444,49 @@ export class GenerateVideoTool implements ITool {
       let finalVideoUrl = videoUrl
       let videoKey: string | undefined // 🔴 声明变量
 
-      if (!videoUrl.includes('tos-cn-guangzhou')) {
+      // 🔴 修复：检查是否已经是火山引擎TOS URL（支持多个区域）
+      const isTosUrl = videoUrl.includes('tos-cn-') && videoUrl.includes('volces.com')
+      console.log(`Agent工具 - 检查URL类型: isTosUrl=${isTosUrl}, url=${videoUrl.substring(0, 80)}`)
+
+      if (!isTosUrl) {
         console.log('Agent工具 - 视频需要上传到火山引擎CDN...')
         try {
+          console.log('Agent工具 - 开始下载视频...')
           const response = await fetch(videoUrl)
+          if (!response.ok) {
+            throw new Error(`下载视频失败: ${response.status} ${response.statusText}`)
+          }
           const buffer = Buffer.from(await response.arrayBuffer())
+          console.log(`Agent工具 - 视频下载完成, 大小: ${buffer.length} bytes`)
+
           const timestamp = Date.now()
           const filename = `agent-video-${timestamp}.mp4`
+          console.log(`Agent工具 - 开始上传到TOS: ${filename}`)
+
           videoKey = await this.storage.uploadFile({
             fileContent: buffer,
             fileName: `agent-videos/${filename}`,
             contentType: 'video/mp4'
           })
+          console.log(`Agent工具 - TOS上传成功, key: ${videoKey}`)
+
           // 生成CDN访问URL
+          console.log('Agent工具 - 生成预签名URL...')
           finalVideoUrl = await this.storage.generatePresignedUrl({
             key: videoKey,
             expireTime: 86400 * 30 // 30天有效期
           })
-          console.log('Agent工具 - 视频已上传到CDN:', finalVideoUrl)
-        } catch (uploadErr) {
+          console.log('Agent工具 - 视频已上传到CDN:', finalVideoUrl.substring(0, 80))
+        } catch (uploadErr: any) {
           console.error('Agent工具 - 视频上传失败:', uploadErr)
+          console.error('Agent工具 - 错误堆栈:', uploadErr.stack)
+          if (uploadErr.$response) {
+            console.error('Agent工具 - 原始响应:', uploadErr.$response)
+          }
           return { success: false, error: `视频上传到CDN失败: ${uploadErr.message}` }
         }
+      } else {
+        console.log('Agent工具 - 视频已经在TOS上，跳过上传')
       }
 
       // 🔴 构建返回数据，只在有 videoKey 时才包含该字段

@@ -38,17 +38,22 @@ export class UploadService {
    * 上传视频 - 使用对象存储（veImageX不支持视频）
    */
   async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {
-    this.logger.log(`[UploadService] 上传视频到对象存储: ${file.originalname}`)
+    this.logger.log(`[UploadService] 上传视频到对象存储: ${file.originalname}, 大小: ${file.size} bytes`)
     try {
+      // 🔴 修复：添加文件有效性检查
+      if (!file.buffer || file.buffer.length === 0) {
+        throw new Error('文件内容为空')
+      }
+
       const url = await this.storageService.uploadVideo(
         file.buffer,
         file.originalname
       )
       this.logger.log(`[UploadService] 视频上传成功: ${url.substring(0, 60)}`)
       return { url }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('[UploadService] 视频上传失败:', error)
-      throw error
+      throw new Error(`视频上传失败: ${error.message}`)
     }
   }
 
