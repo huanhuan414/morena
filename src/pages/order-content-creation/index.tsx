@@ -1,5 +1,5 @@
 import Taro, { useLoad, useRouter, navigateBack, navigateTo } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { ArrowLeft, Loader, Check, Sparkles, Smartphone, RefreshCw, Clock } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
@@ -57,6 +57,8 @@ export default function OrderContentCreationPage() {
   const [isTimeout, setIsTimeout] = useState(false) // 是否超时
   const [isRefreshing, setIsRefreshing] = useState(false) // 是否正在刷新
   const [elapsedTimeInterval, setElapsedTimeInterval] = useState<NodeJS.Timeout | null>(null)
+  const pollCountRef = useRef(0) // 使用 ref 存储轮询次数，避免触发重新渲染
+  const MAX_POLL_COUNT = 300 // 最大轮询次数（5分钟）
 
   useLoad(() => {
     console.log('[OrderContentCreation] 页面加载，参数:', { requestId, avatarId, orderId })
@@ -155,6 +157,28 @@ export default function OrderContentCreationPage() {
 
   const fetchContentStatus = async () => {
     try {
+      // 增加轮询计数
+      pollCountRef.current += 1
+      const currentPollCount = pollCountRef.current
+      console.log(`[OrderContentCreation] 第${currentPollCount}次轮询`)
+      
+      // 超过最大轮询次数，提示用户
+      if (currentPollCount >= MAX_POLL_COUNT) {
+        console.log('[OrderContentCreation] 轮询次数超过限制')
+        setIsTimeout(true)
+        stopTimer()
+        if (pollInterval) {
+          clearInterval(pollInterval)
+          setPollInterval(null)
+        }
+        Taro.showToast({
+          title: '生成时间过长，请尝试重新生成',
+          icon: 'none',
+          duration: 3000
+        })
+        return
+      }
+
       console.log('[OrderContentCreation] 获取内容状态:', { requestId })
       const res = await Network.request({
         url: `/api/order-processing/status/${requestId}`
@@ -164,6 +188,9 @@ export default function OrderContentCreationPage() {
 
       if (res.data?.code === 200 && res.data.data) {
         const data = res.data.data as any
+        
+        // 重置错误计数
+        setErrorCount(0)
 
         // 更新步骤信息
         const { stepIndex } = getStepInfo(data.status || '')
@@ -183,8 +210,8 @@ export default function OrderContentCreationPage() {
         }
 
         // 处理失败状态
-        if (data.status === 'failed') {
-          console.log('[OrderContentCreation] 内容生成失败')
+        if (data.status === 'failed' || data.error) {
+          console.log('[OrderContentCreation] 内容生成失败:', data.error)
           setGenerationFailed(true)
           stopTimer()
           if (pollInterval) {
@@ -192,7 +219,7 @@ export default function OrderContentCreationPage() {
             setPollInterval(null)
           }
           Taro.showToast({
-            title: '内容生成失败，请重试',
+            title: data.error || '内容生成失败，请重试',
             icon: 'none',
             duration: 3000
           })
@@ -209,54 +236,55 @@ export default function OrderContentCreationPage() {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
-        } else if (data.status === 'preview' && !data.generatedContent) {
-          // 状态是preview但没有内容，可能是生成还在进行中或数据未同步
-          // 增加重试计数，超过3次才判定为失败
-          console.log('[OrderContentCreation] 状态为preview但无内容，继续等待...')
+        } else if ((data.status === 'preview' || data.status === 'completed') && !data.generatedContent) {
+          // 状态是preview或completed但没有内容，可能是数据未同步
+          console.log('[OrderContentCreation] 状态为', data.status, '但无内容，继续等待...')
           // 不立即判定失败，让轮询继续
-        } else if (data.status === 'failed') {
-          // 明确的失败状态
-          console.log('[OrderContentCreation] 后端返回失败状态')
-          setGenerationFailed(true)
-          stopTimer()
-          if (pollInterval) {
-            clearInterval(pollInterval)
-            setPollInterval(null)
-          }
-          Taro.showToast({
-            title: '内容生成失败，请重新生成',
-            icon: 'none',
-            duration: 3000
-          })
         } else {
-          // 其他状态（generating, queuing 等）显示加载动画
+          // 其他状态（generating, queuing, pending 等）显示加载动画
           console.log('[OrderContentCreation] 内容制作中，当前状态:', data.status)
         }
       } else {
         console.error('[OrderContentCreation] 获取状态失败:', res.data?.message)
         if (loading) setLoading(false)
-        if (errorCount >= 5) {
+        
+        const newErrorCount = errorCount + 1
+        setErrorCount(newErrorCount)
+        
+        if (newErrorCount >= 5) {
           stopTimer()
           if (pollInterval) {
             clearInterval(pollInterval)
             setPollInterval(null)
           }
-          Taro.showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
+          setGenerationFailed(true)
+          Taro.showToast({ 
+            title: '获取状态失败，请点击重新生成', 
+            icon: 'none',
+            duration: 3000
+          })
         }
-        setErrorCount(errorCount + 1)
       }
     } catch (error) {
       console.error('[OrderContentCreation] 请求异常:', error)
       if (loading) setLoading(false)
-      if (errorCount >= 5) {
+      
+      const newErrorCount = errorCount + 1
+      setErrorCount(newErrorCount)
+      
+      if (newErrorCount >= 5) {
         stopTimer()
         if (pollInterval) {
           clearInterval(pollInterval)
           setPollInterval(null)
         }
-        Taro.showToast({ title: '网络异常，请刷新页面', icon: 'none' })
+        setGenerationFailed(true)
+        Taro.showToast({ 
+          title: '网络异常，请点击重新生成', 
+          icon: 'none',
+          duration: 3000
+        })
       }
-      setErrorCount(errorCount + 1)
     }
   }
 
