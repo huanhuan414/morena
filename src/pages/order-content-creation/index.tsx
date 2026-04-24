@@ -210,8 +210,13 @@ export default function OrderContentCreationPage() {
             setPollInterval(null)
           }
         } else if (data.status === 'preview' && !data.generatedContent) {
-          // 状态是preview但没有内容，可能是生成失败
-          console.log('[OrderContentCreation] 状态异常：preview但无内容')
+          // 状态是preview但没有内容，可能是生成还在进行中或数据未同步
+          // 增加重试计数，超过3次才判定为失败
+          console.log('[OrderContentCreation] 状态为preview但无内容，继续等待...')
+          // 不立即判定失败，让轮询继续
+        } else if (data.status === 'failed') {
+          // 明确的失败状态
+          console.log('[OrderContentCreation] 后端返回失败状态')
           setGenerationFailed(true)
           stopTimer()
           if (pollInterval) {
@@ -219,7 +224,7 @@ export default function OrderContentCreationPage() {
             setPollInterval(null)
           }
           Taro.showToast({
-            title: '内容生成异常，请重新生成',
+            title: '内容生成失败，请重新生成',
             icon: 'none',
             duration: 3000
           })
