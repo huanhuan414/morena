@@ -194,41 +194,11 @@ export default function OrderAcceptance() {
                     </Text>
                   </View>
 
-                  {/* 链接 */}
-                  {feedback.link && (
-                    <View className="link-item">
-                      <View className="link-icon">
-                        <ExternalLink size={16} color="#6366f1" />
-                      </View>
-                      <View className="link-content">
-                        <Text className="link-label">发布链接</Text>
-                        <Text className="link-url">{feedback.link}</Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* 截图 */}
-                  {feedback.image && (
-                    <View className="image-item">
-                      <View className="image-icon">
-                        <ImageIcon size={16} color="#6366f1" />
-                      </View>
-                      <View className="image-content">
-                        <Text className="image-label">发布截图</Text>
-                        <Image
-                          src={feedback.image}
-                          className="screenshot-image"
-                          mode="widthFix"
-                        />
-                      </View>
-                    </View>
-                  )}
-
                   {/* 数据统计 */}
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
-                        <TrendingUp size={16} color="#6366f1" />
+                        <TrendingUp size={20} color="#6366f1" />
                       </View>
                       <View className="stats-content">
                         <Text className="stats-label">数据统计</Text>
@@ -258,6 +228,36 @@ export default function OrderAcceptance() {
                             </View>
                           )}
                         </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 链接 */}
+                  {feedback.link && (
+                    <View className="link-item">
+                      <View className="link-icon">
+                        <ExternalLink size={16} color="#6366f1" />
+                      </View>
+                      <View className="link-content">
+                        <Text className="link-label">发布链接</Text>
+                        <Text className="link-url">{feedback.link}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 截图 */}
+                  {feedback.image && (
+                    <View className="image-item">
+                      <View className="image-icon">
+                        <ImageIcon size={16} color="#6366f1" />
+                      </View>
+                      <View className="image-content">
+                        <Text className="image-label">发布截图</Text>
+                        <Image
+                          src={feedback.image}
+                          className="screenshot-image"
+                          mode="widthFix"
+                        />
                       </View>
                     </View>
                   )}
