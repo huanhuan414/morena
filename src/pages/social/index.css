@@ -159,9 +159,9 @@
 }
 
 /* ========================================
-   Tab + 活跃分身 + 筛选卡片 - 覆盖在Header上
+   浮动卡片 - 与Header同级，覆盖在上面
    ======================================== */
-.tab-section {
+.floating-card {
   background: #ffffff;
   margin: -40rpx 24rpx 24rpx;
   border-radius: 24rpx;

@@ -545,6 +545,86 @@ export default function SocialPage() {
         </View>
       </View>
 
+      {/* Tab + 活跃分身 + 筛选 - 覆盖在Header上（与Header同级） */}
+      <View className="floating-card">
+        {/* Tab切换 */}
+        <View className="tab-container">
+          <View 
+            className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+            onClick={() => setActiveTab('hot')}
+          >
+            <Text className="tab-icon">🔥</Text>
+            <Text className="tab-text">热门</Text>
+          </View>
+          <View 
+            className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+            onClick={() => setActiveTab('latest')}
+          >
+            <Text className="tab-icon">🕐</Text>
+            <Text className="tab-text">最新</Text>
+          </View>
+          <View 
+            className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
+            onClick={() => setActiveTab('follow')}
+          >
+            <Text className="tab-icon">👤</Text>
+            <Text className="tab-text">关注</Text>
+          </View>
+        </View>
+
+        {/* 活跃分身 */}
+        <View className="ai-tags-section">
+          <Text className="ai-tags-label">活跃分身</Text>
+          <ScrollView className="ai-tags-scroll" scrollX>
+            <View className="ai-tags-list">
+              {activeAvatars.length > 0 ? (
+                activeAvatars.map((avatar) => (
+                  <View 
+                    key={avatar.id} 
+                    className="ai-avatar-tag"
+                    onClick={() => navigateToAvatarProfile(avatar.id)}
+                  >
+                    {avatar.avatar_url ? (
+                      <Image 
+                        src={avatar.avatar_url} 
+                        className="ai-avatar-img" 
+                        mode="aspectFill"
+                      />
+                    ) : (
+                      <View 
+                        className="ai-avatar-circle" 
+                        style={{ backgroundColor: avatar.color }}
+                      >
+                        <Text>{avatar.name[0]}</Text>
+                      </View>
+                    )}
+                    <Text className="ai-avatar-name">{avatar.name}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ fontSize: '24rpx', color: '#999' }}>暂无活跃分身</Text>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* 筛选标签 */}
+        <ScrollView className="filter-tags-scroll" scrollX>
+          <View className="filter-tags-list">
+            {FILTER_TAGS.map((tag) => (
+              <View 
+                key={tag.id}
+                className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
+                onClick={() => setActiveFilter(tag.id)}
+              >
+                {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
+                <Text className="filter-tag-text">{tag.name}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
       {/* 刷新成功动画 */}
       {refreshSuccess && (
         <View className="refresh-success-overlay">
@@ -566,86 +646,6 @@ export default function SocialPage() {
         onRefresherRefresh={() => fetchData(true)}
         onScrollToLower={() => fetchAllPosts(page + 1)}
       >
-        {/* Tab + 活跃分身 + 筛选 - 同一个卡片覆盖在Header上 */}
-        <View className="tab-section">
-          {/* Tab切换 */}
-          <View className="tab-container">
-            <View 
-              className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-              onClick={() => setActiveTab('hot')}
-            >
-              <Text className="tab-icon">🔥</Text>
-              <Text className="tab-text">热门</Text>
-            </View>
-            <View 
-              className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-              onClick={() => setActiveTab('latest')}
-            >
-              <Text className="tab-icon">🕐</Text>
-              <Text className="tab-text">最新</Text>
-            </View>
-            <View 
-              className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-              onClick={() => setActiveTab('follow')}
-            >
-              <Text className="tab-icon">👤</Text>
-              <Text className="tab-text">关注</Text>
-            </View>
-          </View>
-
-          {/* 活跃分身 */}
-          <View className="ai-tags-section">
-            <Text className="ai-tags-label">活跃分身</Text>
-            <ScrollView className="ai-tags-scroll" scrollX>
-              <View className="ai-tags-list">
-                {activeAvatars.length > 0 ? (
-                  activeAvatars.map((avatar) => (
-                    <View 
-                      key={avatar.id} 
-                      className="ai-avatar-tag"
-                      onClick={() => navigateToAvatarProfile(avatar.id)}
-                    >
-                      {avatar.avatar_url ? (
-                        <Image 
-                          src={avatar.avatar_url} 
-                          className="ai-avatar-img" 
-                          mode="aspectFill"
-                        />
-                      ) : (
-                        <View 
-                          className="ai-avatar-circle" 
-                          style={{ backgroundColor: avatar.color }}
-                        >
-                          <Text>{avatar.name[0]}</Text>
-                        </View>
-                      )}
-                      <Text className="ai-avatar-name">{avatar.name}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={{ fontSize: '24rpx', color: '#999' }}>暂无活跃分身</Text>
-                )}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* 筛选标签 */}
-          <ScrollView className="filter-tags-scroll" scrollX>
-            <View className="filter-tags-list">
-              {FILTER_TAGS.map((tag) => (
-                <View 
-                  key={tag.id}
-                  className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
-                  onClick={() => setActiveFilter(tag.id)}
-                >
-                  {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
-                  <Text className="filter-tag-text">{tag.name}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
         {/* 统计卡片 */}
         {hasAvatars && (
           <View className="stats-section">
