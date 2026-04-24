@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { VolcengineService } from './volcengine.service'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name)
 
-  constructor(private readonly volcengineService: VolcengineService) {
+  constructor(
+    private readonly volcengineService: VolcengineService,
+    private readonly storageService: StorageService
+  ) {
     this.logger.log('初始化上传服务')
   }
 
@@ -31,16 +35,38 @@ export class UploadService {
   }
 
   /**
-   * 上传视频
+   * 上传视频 - 使用对象存储（veImageX不支持视频）
    */
   async uploadVideo(file: Express.Multer.File): Promise<{ url: string }> {
-    return this.volcengineService.uploadVideo(file)
+    this.logger.log(`[UploadService] 上传视频到对象存储: ${file.originalname}`)
+    try {
+      const url = await this.storageService.uploadVideo(
+        file.buffer,
+        file.originalname
+      )
+      this.logger.log(`[UploadService] 视频上传成功: ${url.substring(0, 60)}`)
+      return { url }
+    } catch (error) {
+      this.logger.error('[UploadService] 视频上传失败:', error)
+      throw error
+    }
   }
 
   /**
-   * 上传音频
+   * 上传音频 - 使用对象存储（veImageX不支持音频）
    */
   async uploadAudio(file: Express.Multer.File): Promise<{ url: string }> {
-    return this.volcengineService.uploadAudio(file)
+    this.logger.log(`[UploadService] 上传音频到对象存储: ${file.originalname}`)
+    try {
+      const url = await this.storageService.uploadAudio(
+        file.buffer,
+        file.originalname
+      )
+      this.logger.log(`[UploadService] 音频上传成功: ${url.substring(0, 60)}`)
+      return { url }
+    } catch (error) {
+      this.logger.error('[UploadService] 音频上传失败:', error)
+      throw error
+    }
   }
 }
