@@ -1558,6 +1558,15 @@ export class AgentService {
           const hasWrittenArticle = steps.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
           const hasPublished = steps.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
 
+          // 🔴 添加调试日志
+          console.log('[AgentService] Final Answer 检测:', {
+            isWriteAndPublishTask,
+            hasWrittenArticle,
+            hasPublished,
+            taskDescription: context.taskDescription,
+            steps: steps.map(s => s.action)
+          })
+
           if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
             // 🔴 强制继续执行发布
             console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，强制继续发布...')
@@ -1755,9 +1764,18 @@ export class AgentService {
     const hasWrittenArticle = history.some(s => s.action === 'write_wechat_mp_article' || s.action === 'write_xiaohongshu_note')
     const hasPublished = history.some(s => s.action === 'publish_wechat_mp' || s.action === 'publish_xiaohongshu')
 
+    // 🔴 添加调试日志
+    console.log('[AgentService] think() 方法 - 任务状态检测:', {
+      isWriteAndPublishTask,
+      hasWrittenArticle,
+      hasPublished,
+      taskDescription: context.taskDescription,
+      historySteps: history.map(s => ({ action: s.action, status: s.status }))
+    })
+
     if (isWriteAndPublishTask && hasWrittenArticle && !hasPublished) {
       console.log('[AgentService] 检测到"写作并发布"任务，文章已写完但未发布，添加强制发布提示')
-      taskUnderstandingHint += `\n\n【🔴 强制任务提示】\n用户要求"写作并发布"，文章已经写完，**你现在必须立即调用发布工具**！\n- 如果是公众号文章：调用 publish_wechat_mp\n- 如果是小红书笔记：调用 publish_xiaohongshu\n**不要返回 Final Answer，先执行发布操作！**`
+      taskUnderstandingHint += `\n\n【🔴 强制任务提示 - 必须执行】\n用户要求"写作并发布"，文章已经写完，你现在必须：\n1. 立即调用 publish_wechat_mp 工具发布文章\n2. 使用 write_wechat_mp_article 返回的 title 和 content 作为参数\n3. 等待 publish_wechat_mp 执行完成后再返回结果\n4. 将 publish_wechat_mp 的结果（成功或失败）告知用户\n**严禁：直接返回 Final Answer 而不执行发布！**`
     }
 
     // 🔴 新增：构建用户上传媒体信息提示
@@ -2040,8 +2058,8 @@ style 可选值：realistic（写实）、artistic（艺术）、anime（动漫�
     }
     // 5. 🔴 改进：区分"仅写作"和"写作+发布"
     else if (lowerTask.includes('公众号') || lowerTask.includes('微信文章') || lowerTask.includes('微信图文')) {
-      // 检测是否同时要求发布
-      const requiresPublish = lowerTask.match(/并.*发布|然后.*发布|再.*发布|.*并.*推送|发布.*到/)
+      // 🔴 修复：改进发布检测正则，包含更多情况
+      const requiresPublish = lowerTask.match(/并.*发布|然后.*发布|再.*发布|.*并.*推送|发布.*到|写.*发布|写.*然后.*发|写.*并.*发/)
 
       if (requiresPublish) {
         hints.push(`【任务解析】这是一个**微信公众号创作+发布任务**（写作后立即发布）：
