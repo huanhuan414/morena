@@ -1,5 +1,4 @@
-import { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
-import Taro from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -10,6 +9,9 @@ import {
   ChevronRight, TrendingUp
 } from 'lucide-react-taro'
 import './index.css'
+
+// 检测是否是 H5 环境
+const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
 
 const AVATAR_STATUS_LABELS: Record<string, string> = {
   pending: '待确认',
@@ -155,31 +157,24 @@ export default function OrderAcceptance() {
       const env = Taro.getEnv()
       console.log('当前环境:', env)
 
-      if (env === Taro.ENV_TYPE.H5) {
+      if (isH5) {
         // H5 环境：直接打开新标签页
         window.open(url, '_blank')
-        showToast({ title: '正在打开链接...', icon: 'success' })
       } else if (env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT) {
-        // 小程序环境：复制链接到剪贴板
-        Taro.setClipboardData({
-          data: url,
-          success: () => {
-            showToast({ title: '链接已复制，请在浏览器中打开', icon: 'success', duration: 2000 })
-          },
-          fail: () => {
-            showToast({ title: '复制链接失败', icon: 'none' })
-          }
+        // 小程序环境：使用 webview 页面打开
+        Taro.navigateTo({
+          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
+        }).catch((err) => {
+          console.error('跳转失败:', err)
+          showToast({ title: '打开链接失败', icon: 'none' })
         })
       } else {
-        // 其他环境：复制链接到剪贴板
-        Taro.setClipboardData({
-          data: url,
-          success: () => {
-            showToast({ title: '链接已复制，请在浏览器中打开', icon: 'success', duration: 2000 })
-          },
-          fail: () => {
-            showToast({ title: '复制链接失败', icon: 'none' })
-          }
+        // 其他环境：尝试使用 webview 打开
+        Taro.navigateTo({
+          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
+        }).catch((err) => {
+          console.error('跳转失败:', err)
+          showToast({ title: '打开链接失败', icon: 'none' })
         })
       }
     } catch (error) {
@@ -256,31 +251,31 @@ export default function OrderAcceptance() {
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
-                        <TrendingUp size={16} color="#0ea5e9" />
-                        <Text className="text-sm font-medium" style={{ color: '#0ea5e9' }}>数据统计</Text>
+                        <TrendingUp size={18} color="#6366f1" />
+                        <Text className="text-sm font-medium" style={{ color: '#6366f1' }}>数据统计</Text>
                       </View>
                       <View className="stats-row">
                         {feedback.views !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.views)}</Text>
+                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.views)}</Text>
                             <Text className="stat-label text-sm">浏览</Text>
                           </View>
                         )}
                         {feedback.likes !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.likes)}</Text>
+                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.likes)}</Text>
                             <Text className="stat-label text-sm">点赞</Text>
                           </View>
                         )}
                         {feedback.comments !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.comments)}</Text>
+                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.comments)}</Text>
                             <Text className="stat-label text-sm">评论</Text>
                           </View>
                         )}
                         {feedback.shares !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value text-4xl font-bold">{formatNumber(feedback.shares)}</Text>
+                            <Text className="stat-value text-3xl font-bold">{formatNumber(feedback.shares)}</Text>
                             <Text className="stat-label text-sm">分享</Text>
                           </View>
                         )}

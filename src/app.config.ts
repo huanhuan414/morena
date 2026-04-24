@@ -38,7 +38,8 @@ export default defineAppConfig({
     'pages/referral-center/index',
     'pages/skills-square/index',
     'pages/skill-create/index',
-    'pages/avatar-recommend/index'
+    'pages/avatar-recommend/index',
+    'pages/webview/index'
   ],
   window: {
     backgroundTextStyle: 'light',
