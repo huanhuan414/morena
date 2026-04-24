@@ -826,6 +826,6 @@
   font-weight: 600;
 }
 
-.wechat-config-value:has-text('已验证') {
+.wechat-config-value.verified {
   color: #059669;
 }

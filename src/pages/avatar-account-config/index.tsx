@@ -597,7 +597,7 @@ export default function AvatarAccountConfigPage() {
                       </View>
                       <View className="wechat-config-item">
                         <Text className="wechat-config-label">AppSecret：</Text>
-                        <Text className="wechat-config-value">
+                        <Text className={`wechat-config-value ${account.appkey ? 'verified' : ''}`}>
                           {account.appkey ? '已验证 ✓' : '未验证'}
                         </Text>
                       </View>
