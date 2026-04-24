@@ -1101,65 +1101,64 @@ ${friendMessageContents}
   }
 
   /**
-   * 自动发帖
+   * 🔴 自动发帖 - 根据订阅和等级规则
+   * 规则：
+   * 1. 无订阅：Lv.8以下每天1条纯文字；Lv.8+每天2条纯文字+1条图文
+   * 2. 基本版：每天1条图文；每月1个视频
+   * 3. 高级版：每天2条图文；每月1个视频
+   * 4. 尊享版：每天3条图文；每月2个视频
    */
   private async autoCreatePost(avatar: any, settings: HostingSettings) {
     const client = getSupabaseClient()
 
-    // 检查今天是否已经发帖（使用 UTC 时间避免时区问题）
-    const now = new Date()
-    
-    // 获取今天的 00:00:00（UTC）
-    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
-    
-    // 获取明天的 00:00:00（UTC）
-    const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0))
+    // 🔴 获取订阅信息和等级
+    const subscription = await this.subscriptionService.getUserSubscription(avatar.user_id)
+    const avatarLevel = avatar.level || 1
 
-    console.log(`[托管服务] 检查分身 ${avatar.name} 今天的发帖情况...`)
-    console.log(`[托管服务] 查询范围: ${startOfDay.toISOString()} 到 ${endOfDay.toISOString()}`)
+    console.log(`[托管服务] 分身 ${avatar.name} 等级: Lv.${avatarLevel}, 订阅: ${subscription?.plan?.name || '无订阅'}`)
 
-    const { data: todayPosts } = await client
-      .from('posts')
-      .select('id, created_at')
-      .eq('avatar_id', avatar.id)
-      .gte('created_at', startOfDay.toISOString())
-      .lt('created_at', endOfDay.toISOString())
+    // 🔴 计算发帖配额
+    const quota = await this.calculatePostQuota(avatar.id, avatarLevel, subscription)
+    console.log(`[托管服务] 发帖配额: 纯文字=${quota.textOnly.remaining}/${quota.textOnly.total}, 图文=${quota.imageText.remaining}/${quota.imageText.total}, 视频=${quota.video.remaining}/${quota.video.total}`)
 
-    const todayPostCount = todayPosts?.length || 0
-    console.log(`[托管服务] 分身 ${avatar.name} 今天已发 ${todayPostCount} 篇帖子`)
-
-    if (todayPostCount >= 1) {
-      console.log(`[托管服务] 分身 ${avatar.name} 今天已发帖，每天最多发1篇，跳过`)
+    // 🔴 检查是否还有配额
+    if (quota.textOnly.remaining <= 0 && quota.imageText.remaining <= 0 && quota.video.remaining <= 0) {
+      console.log(`[托管服务] 分身 ${avatar.name} 今日发帖配额已用完`)
       return
     }
 
-    // 根据频率决定是否发帖（如果今天还没发过，则100%发帖）
-    const postProbability = {
-      low: 0.3,    // 30%概率发帖
-      medium: 0.6, // 60%概率发帖
-      high: 0.9    // 90%概率发帖
-    }
-
-    // 如果今天还没发帖，则大幅提高发帖概率
+    // 🔴 根据频率决定是否发帖
+    const postProbability = { low: 0.3, medium: 0.6, high: 0.9 }
     const baseProbability = postProbability[settings.post_frequency || 'medium']
-    const adjustedProbability = todayPostCount === 0 ? Math.min(baseProbability + 0.3, 1.0) : baseProbability
+    const hasQuota = quota.textOnly.remaining > 0 || quota.imageText.remaining > 0 || quota.video.remaining > 0
+    const adjustedProbability = hasQuota ? Math.min(baseProbability + 0.2, 1.0) : baseProbability
 
     if (Math.random() > adjustedProbability) {
       console.log(`[托管服务] 分身 ${avatar.name} 本次未命中发帖概率(${Math.round(adjustedProbability * 100)}%)，跳过`)
       return
     }
 
-    console.log(`[托管服务] 分身 ${avatar.name} 准备发帖(命中概率${Math.round(adjustedProbability * 100)}%)...`)
-    
-    // 使用AI生成帖子内容
-    const postContent = await this.generatePostContent(avatar)
-    
+    // 🔴 决定发帖类型（优先级：视频 > 图文 > 纯文字）
+    let postType: 'video' | 'imageText' | 'textOnly' = 'textOnly'
+    if (quota.video.remaining > 0 && Math.random() < 0.3) {
+      postType = 'video'
+    } else if (quota.imageText.remaining > 0 && (quota.textOnly.remaining <= 0 || Math.random() < 0.7)) {
+      postType = 'imageText'
+    } else if (quota.textOnly.remaining > 0) {
+      postType = 'textOnly'
+    } else if (quota.imageText.remaining > 0) {
+      postType = 'imageText'
+    }
+
+    console.log(`[托管服务] 分身 ${avatar.name} 准备发布${postType === 'video' ? '视频' : postType === 'imageText' ? '图文' : '纯文字'}帖子`)
+
+    // 🔴 生成帖子内容
+    const postContent = await this.generatePostContentByType(avatar, postType)
     if (!postContent) {
       return
     }
 
-    // 创建帖子
-    console.log(`[托管服务] 准备创建帖子: user_id=${avatar.user_id}, avatar_id=${avatar.id}`)
+    // 🔴 创建帖子
     const { data: newPost, error } = await client
       .from('posts')
       .insert({
@@ -1182,7 +1181,218 @@ ${friendMessageContents}
       return
     }
 
-    console.log(`[托管服务] 分身 ${avatar.name} 已发布帖子: ${newPost.id}`)
+    console.log(`[托管服务] 分身 ${avatar.name} 已发布${postType === 'video' ? '视频' : postType === 'imageText' ? '图文' : '纯文字'}帖子: ${newPost.id}`)
+  }
+
+  /**
+   * 🔴 计算发帖配额
+   */
+  private async calculatePostQuota(avatarId: string, level: number, subscription: any) {
+    const client = getSupabaseClient()
+    const now = new Date()
+    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
+    const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0))
+    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
+    const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+
+    // 查询今日已发帖
+    const { data: todayPosts } = await client
+      .from('posts')
+      .select('id, images, videos')
+      .eq('avatar_id', avatarId)
+      .gte('created_at', startOfDay.toISOString())
+      .lt('created_at', endOfDay.toISOString())
+
+    // 查询本月已发视频
+    const { data: monthVideos } = await client
+      .from('posts')
+      .select('id')
+      .eq('avatar_id', avatarId)
+      .gte('created_at', startOfMonth.toISOString())
+      .lt('created_at', endOfMonth.toISOString())
+      .not('videos', 'is', null)
+      .gt('videos', '[]')
+
+    const todayTextOnly = todayPosts?.filter(p => (!p.images || p.images.length === 0) && (!p.videos || p.videos.length === 0)).length || 0
+    const todayImageText = todayPosts?.filter(p => p.images && p.images.length > 0).length || 0
+    const monthVideoCount = monthVideos?.length || 0
+
+    // 🔴 根据订阅和等级计算配额
+    let textOnlyQuota = 0
+    let imageTextQuota = 0
+    let videoQuota = 0
+
+    const planName = subscription?.plan?.name?.toLowerCase() || ''
+
+    if (planName.includes('尊享') || planName.includes('premium')) {
+      // 尊享版：每天3条图文，每月2个视频
+      textOnlyQuota = 0 // 尊享版只发图文
+      imageTextQuota = 3
+      videoQuota = 2
+    } else if (planName.includes('高级') || planName.includes('pro') || planName.includes('advanced')) {
+      // 高级版：每天2条图文，每月1个视频
+      textOnlyQuota = 0
+      imageTextQuota = 2
+      videoQuota = 1
+    } else if (planName.includes('基本') || planName.includes('basic') || planName.includes('standard')) {
+      // 基本版：每天1条图文，每月1个视频
+      textOnlyQuota = 0
+      imageTextQuota = 1
+      videoQuota = 1
+    } else {
+      // 无订阅：根据等级
+      if (level >= 8) {
+        // Lv.8+：每天2条纯文字 + 1条图文
+        textOnlyQuota = 2
+        imageTextQuota = 1
+        videoQuota = 0
+      } else {
+        // Lv.8以下：每天1条纯文字
+        textOnlyQuota = 1
+        imageTextQuota = 0
+        videoQuota = 0
+      }
+    }
+
+    return {
+      textOnly: { total: textOnlyQuota, used: todayTextOnly, remaining: Math.max(0, textOnlyQuota - todayTextOnly) },
+      imageText: { total: imageTextQuota, used: todayImageText, remaining: Math.max(0, imageTextQuota - todayImageText) },
+      video: { total: videoQuota, used: monthVideoCount, remaining: Math.max(0, videoQuota - monthVideoCount) }
+    }
+  }
+
+  /**
+   * 🔴 根据类型生成帖子内容
+   */
+  private async generatePostContentByType(avatar: any, type: 'video' | 'imageText' | 'textOnly'): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+    try {
+      if (type === 'video') {
+        // 视频帖子
+        console.log('[托管服务] 生成视频帖子内容...')
+        return await this.generateVideoPostContent(avatar)
+      } else if (type === 'imageText') {
+        // 图文帖子
+        console.log('[托管服务] 生成图文帖子内容...')
+        return await this.generateImageTextPostContent(avatar)
+      } else {
+        // 纯文字帖子
+        console.log('[托管服务] 生成纯文字帖子内容...')
+        return await this.generateTextOnlyPostContent(avatar)
+      }
+    } catch (error) {
+      console.error(`[托管服务] 生成${type}帖子内容失败:`, error)
+      return null
+    }
+  }
+
+  /**
+   * 🔴 生成纯文字帖子
+   */
+  private async generateTextOnlyPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+    try {
+      const personality = avatar.personality || {}
+      const persona = avatar.persona || {}
+
+      const prompt = `作为${persona.name || '一个'}${persona.identity || ''}，${persona.background || ''}
+
+性格特点：${personality.character || '开朗友善'}
+说话风格：${personality.speaking_style || '亲切自然'}
+口头禅：${personality.catchphrase || ''}
+
+请生成一条适合发朋友圈/社交媒体的纯文字动态（50-150字）：
+1. 内容要真实、有情感、有共鸣
+2. 可以分享日常感悟、心情、观点
+3. 符合人设特点
+4. 不需要图片
+
+直接返回动态内容，不要任何解释。`
+
+      const response = await this.llmClient.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.9
+      })
+
+      const content = response.content?.trim() || ''
+      if (!content) {
+        return null
+      }
+      console.log('[托管服务] 纯文字帖子生成成功:', content.substring(0, 50))
+
+      return { content, images: [], videos: [] }
+    } catch (error) {
+      console.error('[托管服务] 生成纯文字帖子失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 🔴 生成图文帖子
+   */
+  private async generateImageTextPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+    try {
+      // 先调用现有的爆款内容生成方法，但确保有图片
+      const result = await this.generatePostContent(avatar)
+      if (!result) return null
+
+      // 如果已经有图片，直接使用
+      if (result.images && result.images.length > 0) {
+        return result
+      }
+
+      // 如果没有图片，生成一张配图
+      console.log('[托管服务] 为帖子生成配图...')
+      const imageUrl = await this.generatePostImage(avatar, result.content)
+
+      return {
+        content: result.content,
+        images: imageUrl ? [imageUrl] : [],
+        videos: []
+      }
+    } catch (error) {
+      console.error('[托管服务] 生成图文帖子失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 🔴 生成视频帖子 - 暂时使用图文代替（视频生成较复杂）
+   */
+  private async generateVideoPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+    console.log('[托管服务] 视频帖子暂时使用图文代替')
+    // 降级为图文帖子
+    return this.generateImageTextPostContent(avatar)
+  }
+
+  /**
+   * 🔴 生成帖子配图 - 使用现有的generateImageWithRetry方法
+   */
+  private async generatePostImage(avatar: any, content: string): Promise<string | null> {
+    try {
+      const personality = avatar.personality || {}
+      const imagePrompt = `社交媒体配图，主题：${content.substring(0, 100)}，风格：${personality.visual_style || '现代简约'}，高质量，适合分享，温馨美好，${avatar.name}的分享`
+
+      console.log('[托管服务] 生成帖子配图:', imagePrompt.substring(0, 60))
+
+      // 使用现有的图片生成方法
+      const imageUrl = await this.generateImageWithRetry(imagePrompt)
+
+      if (!imageUrl) {
+        console.error('[托管服务] 图片生成失败')
+        return null
+      }
+
+      // 上传到TOS
+      const imageKey = await this.storage.uploadFromUrl({ url: imageUrl, timeout: 30000 })
+      const cdnUrl = await this.storage.generatePresignedUrl({ key: imageKey, expireTime: 86400 * 30 })
+
+      console.log('[托管服务] 配图上传成功')
+      return cdnUrl
+    } catch (error) {
+      console.error('[托管服务] 生成帖子配图失败:', error)
+      return null
+    }
   }
 
   /**
