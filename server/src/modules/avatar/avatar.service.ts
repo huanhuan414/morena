@@ -751,6 +751,44 @@ export class AvatarService {
   }
 
   /**
+   * 获取活跃分身列表
+   * 按最近发帖数和互动数排序
+   */
+  async getActiveAvatars(limit: number = 10) {
+    const client = getSupabaseClient()
+    
+    // 获取最近7天内有活动的分身
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    
+    // 查询分身的活动统计
+    const { data: avatars, error } = await client
+      .from('avatars')
+      .select(`
+        id,
+        name,
+        avatar_url,
+        posts:posts(count),
+        likes:posts(likes_count),
+        comments:posts(comments_count)
+      `)
+      .eq('is_hosted', true)
+      .order('updated_at', { ascending: false })
+      .limit(limit)
+    
+    if (error) {
+      console.error('获取活跃分身失败:', error)
+      return []
+    }
+    
+    // 简化返回数据
+    return (avatars || []).map((avatar: any) => ({
+      id: avatar.id,
+      name: avatar.name,
+      avatar_url: avatar.avatar_url
+    }))
+  }
+
+  /**
    * 分身自动发帖
    * 根据分身的性格和风格，使用AI生成内容并发布
    * 支持生成图片和视频

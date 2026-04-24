@@ -6,33 +6,26 @@
 .social-page {
   min-height: 100vh;
   background: #f5f5f7;
-  overflow: hidden;
   position: relative;
-}
-
-/* 状态栏占位 */
-.status-bar-placeholder {
-  background: transparent;
-  width: 100%;
-  position: relative;
-  z-index: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ========================================
-   顶部渐变Header
+   顶部渐变Header - 延伸到状态栏
    ======================================== */
 .social-header-gradient {
   background: linear-gradient(135deg, #7B3FE4 0%, #B47BFF 100%);
   padding: 20rpx 32rpx 40rpx;
   position: relative;
-  z-index: 1;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .header-top-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 24rpx;
 }
 
 .header-title-wrap {
@@ -64,7 +57,7 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .publish-btn {
@@ -75,12 +68,6 @@
   background: rgba(255, 255, 255, 0.2);
   border-radius: 32rpx;
   backdrop-filter: blur(10rpx);
-  transition: all 0.3s ease;
-}
-
-.publish-btn:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.3);
 }
 
 .publish-text {
@@ -98,25 +85,28 @@
   background: rgba(255, 255, 255, 0.2);
   border-radius: 32rpx;
   backdrop-filter: blur(10rpx);
-  transition: all 0.3s ease;
-}
-
-.more-btn-header:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.3);
 }
 
 /* ========================================
-   Tab切换器 - 圆角卡片风格
+   滚动容器
+   ======================================== */
+.social-scroll {
+  flex: 1;
+  height: 0;
+  background: #f5f5f7;
+}
+
+/* ========================================
+   Tab切换器
    ======================================== */
 .tab-section {
   background: #ffffff;
-  margin: -30rpx 24rpx 0;
+  margin: -30rpx 24rpx 24rpx;
   border-radius: 24rpx;
   padding: 24rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   position: relative;
-  z-index: 2;
+  z-index: 5;
 }
 
 .tab-container {
@@ -132,7 +122,6 @@
   padding: 16rpx 28rpx;
   border-radius: 32rpx;
   background: #f5f5f7;
-  transition: all 0.3s ease;
 }
 
 .tab-item.active {
@@ -147,7 +136,6 @@
   font-size: 28rpx;
   font-weight: 600;
   color: #666666;
-  transition: color 0.3s ease;
 }
 
 .tab-item.active .tab-text {
@@ -155,7 +143,7 @@
 }
 
 /* ========================================
-   常驻AI标签行
+   活跃分身
    ======================================== */
 .ai-tags-section {
   margin-bottom: 24rpx;
@@ -191,9 +179,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.ai-avatar-img {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
 }
 
@@ -226,7 +221,6 @@
   border-radius: 32rpx;
   background: #f5f5f7;
   border: 2rpx solid transparent;
-  transition: all 0.3s ease;
 }
 
 .filter-tag.active {
@@ -253,7 +247,7 @@
    ======================================== */
 .stats-section {
   background: #ffffff;
-  margin: 24rpx;
+  margin: 0 24rpx 24rpx;
   border-radius: 24rpx;
   padding: 32rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
@@ -292,14 +286,11 @@
 /* ========================================
    帖子列表
    ======================================== */
-.social-content {
-  padding: 0 24rpx 140rpx;
-}
-
 .post-list {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  padding: 0 24rpx;
 }
 
 .post-card {
@@ -307,11 +298,6 @@
   border-radius: 24rpx;
   padding: 28rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.post-card:active {
-  transform: scale(0.99);
 }
 
 /* 帖子头部 */
@@ -348,8 +334,8 @@
 }
 
 .post-desc {
-  font-size: 26rpx;
-  color: #666666;
+  font-size: 24rpx;
+  color: #999999;
 }
 
 .more-btn {
@@ -432,6 +418,7 @@
   width: 100%;
   border-radius: 16rpx;
   background: #f5f5f7;
+  display: block;
 }
 
 .images-1 .post-image {
@@ -442,19 +429,21 @@
   aspect-ratio: 1;
 }
 
-/* 视频区域 */
-.post-videos {
+/* 视频区域 - 修复布局问题 */
+.post-video-container {
   width: 100%;
   margin-bottom: 20rpx;
   border-radius: 16rpx;
   overflow: hidden;
+  background: #000000;
+  position: relative;
 }
 
-.post-video {
+.post-video-item {
   width: 100%;
   height: 400rpx;
+  display: block;
   border-radius: 16rpx;
-  background: #000000;
 }
 
 /* 互动按钮 */
@@ -470,11 +459,6 @@
   display: flex;
   align-items: center;
   gap: 8rpx;
-  transition: all 0.3s ease;
-}
-
-.action-btn:active {
-  transform: scale(0.95);
 }
 
 .action-count {
@@ -621,11 +605,6 @@
   border-radius: 40rpx;
   box-shadow: 0 8rpx 24rpx rgba(249, 115, 22, 0.4);
   z-index: 100;
-  transition: all 0.3s ease;
-}
-
-.floating-refresh-btn:active {
-  transform: scale(0.95);
 }
 
 .refresh-icon {
@@ -638,9 +617,7 @@
   color: #ffffff;
 }
 
-/* ========================================
-   空状态
-   ======================================== */
+/* 空状态 */
 .empty-state {
   display: flex;
   flex-direction: column;

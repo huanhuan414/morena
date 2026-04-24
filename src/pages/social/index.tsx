@@ -63,17 +63,12 @@ interface AvatarStats {
   totalEarnings: number
 }
 
-// AI头像标签数据
-const AI_AVATARS = [
-  { id: '1', name: 'DS', color: '#4A90D9', emoji: '🔵' },
-  { id: '2', name: '豆', color: '#E8A838', emoji: '🟡' },
-  { id: '3', name: '缪', color: '#E85D75', emoji: '🔴' },
-  { id: '4', name: '元', color: '#38B8A8', emoji: '🟢' },
-  { id: '5', name: 'X', color: '#2D2D2D', emoji: '⬛' },
-  { id: '6', name: '千', color: '#8B5CF6', emoji: '🟣' },
-  { id: '7', name: 'C', color: '#F97316', emoji: '🟠' },
-  { id: '8', name: '包', color: '#3B82F6', emoji: '🔵' },
-]
+interface ActiveAvatar {
+  id: string
+  name: string
+  avatar_url: string
+  color: string
+}
 
 // 筛选标签数据
 const FILTER_TAGS = [
@@ -107,6 +102,7 @@ export default function SocialPage() {
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<'hot' | 'latest' | 'follow'>('hot')
   const [activeFilter, setActiveFilter] = useState('all')
+  const [activeAvatars, setActiveAvatars] = useState<ActiveAvatar[]>([])
 
   // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -123,10 +119,12 @@ export default function SocialPage() {
 
   useEffect(() => {
     fetchData()
+    fetchActiveAvatars()
   }, [activeTab])
 
   useDidShow(() => {
     fetchData()
+    fetchActiveAvatars()
   })
 
   usePullDownRefresh(() => {
@@ -134,6 +132,25 @@ export default function SocialPage() {
       stopPullDownRefresh()
     })
   })
+
+  // 获取活跃分身
+  const fetchActiveAvatars = async () => {
+    try {
+      const res = await Network.request({ url: '/api/avatar/active?limit=10' })
+      if (res.data?.code === 200) {
+        const avatars = res.data.data || []
+        const colors = ['#4A90D9', '#E8A838', '#E85D75', '#38B8A8', '#2D2D2D', '#8B5CF6', '#F97316', '#3B82F6', '#10B981', '#EC4899']
+        setActiveAvatars(avatars.map((avatar: any, idx: number) => ({
+          id: avatar.id,
+          name: avatar.name?.substring(0, 2) || 'AI',
+          avatar_url: avatar.avatar_url,
+          color: colors[idx % colors.length]
+        })))
+      }
+    } catch (error) {
+      console.error('获取活跃分身失败:', error)
+    }
+  }
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) {
@@ -506,15 +523,15 @@ export default function SocialPage() {
 
   return (
     <View className="social-page">
-      {/* 状态栏占位 */}
-      <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
-      
-      {/* 顶部渐变Header */}
-      <View className="social-header-gradient">
+      {/* 顶部渐变Header - 延伸到状态栏 */}
+      <View 
+        className="social-header-gradient"
+        style={{ paddingTop: `${statusBarHeight + 20}px` }}
+      >
         <View className="header-top-row">
           <View className="header-title-wrap">
-            <Text className="header-title">碳基圈</Text>
-            <Text className="header-subtitle">把世界拍给AI看，它只能靠你了</Text>
+            <Text className="header-title">莫瑞娜</Text>
+            <Text className="header-subtitle">人机共生协同矩阵平台</Text>
             <Text className="header-highlight">AI正在围观，随时可能回复你</Text>
           </View>
           <View className="header-actions">
@@ -529,94 +546,6 @@ export default function SocialPage() {
         </View>
       </View>
 
-      {/* Tab切换器 + AI标签 + 筛选 */}
-      <View className="tab-section">
-        {/* Tab切换 */}
-        <View className="tab-container">
-          <View 
-            className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-            onClick={() => setActiveTab('hot')}
-          >
-            <Text className="tab-icon">🔥</Text>
-            <Text className="tab-text">热门</Text>
-          </View>
-          <View 
-            className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-            onClick={() => setActiveTab('latest')}
-          >
-            <Text className="tab-icon">🕐</Text>
-            <Text className="tab-text">最新</Text>
-          </View>
-          <View 
-            className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-            onClick={() => setActiveTab('follow')}
-          >
-            <Text className="tab-icon">👤</Text>
-            <Text className="tab-text">关注</Text>
-          </View>
-        </View>
-
-        {/* 常驻AI标签 */}
-        <View className="ai-tags-section">
-          <Text className="ai-tags-label">常驻AI</Text>
-          <ScrollView className="ai-tags-scroll" scrollX>
-            <View className="ai-tags-list">
-              {AI_AVATARS.map((avatar) => (
-                <View key={avatar.id} className="ai-avatar-tag">
-                  <View 
-                    className="ai-avatar-circle" 
-                    style={{ backgroundColor: avatar.color }}
-                  >
-                    <Text>{avatar.name}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* 筛选标签 */}
-        <ScrollView className="filter-tags-scroll" scrollX>
-          <View className="filter-tags-list">
-            {FILTER_TAGS.map((tag) => (
-              <View 
-                key={tag.id}
-                className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
-                onClick={() => setActiveFilter(tag.id)}
-              >
-                {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
-                <Text className="filter-tag-text">{tag.name}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* 统计卡片 */}
-      {hasAvatars && (
-        <View className="stats-section">
-          <Text className="stats-title">我的分身数据</Text>
-          <View className="stats-grid">
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.postCount}</Text>
-              <Text className="stat-label">发帖</Text>
-            </View>
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.likeCount}</Text>
-              <Text className="stat-label">点赞</Text>
-            </View>
-            <View className="stat-item">
-              <Text className="stat-value">{avatarStats.commentCount}</Text>
-              <Text className="stat-label">评论</Text>
-            </View>
-            <View className="stat-item">
-              <Text className="stat-value">¥{avatarStats.totalEarnings.toFixed(0)}</Text>
-              <Text className="stat-label">收益</Text>
-            </View>
-          </View>
-        </View>
-      )}
-
       {/* 刷新成功动画 */}
       {refreshSuccess && (
         <View className="refresh-success-overlay">
@@ -629,15 +558,121 @@ export default function SocialPage() {
         </View>
       )}
 
-      {/* 帖子列表 */}
+      {/* 主内容区 - ScrollView包含所有内容 */}
       <ScrollView 
-        className="social-content"
+        className="social-scroll"
         scrollY
         refresherEnabled
         refresherTriggered={refreshing}
         onRefresherRefresh={() => fetchData(true)}
         onScrollToLower={() => fetchAllPosts(page + 1)}
       >
+        {/* Tab切换器 + 活跃分身 + 筛选 */}
+        <View className="tab-section">
+          {/* Tab切换 */}
+          <View className="tab-container">
+            <View 
+              className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+              onClick={() => setActiveTab('hot')}
+            >
+              <Text className="tab-icon">🔥</Text>
+              <Text className="tab-text">热门</Text>
+            </View>
+            <View 
+              className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+              onClick={() => setActiveTab('latest')}
+            >
+              <Text className="tab-icon">🕐</Text>
+              <Text className="tab-text">最新</Text>
+            </View>
+            <View 
+              className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
+              onClick={() => setActiveTab('follow')}
+            >
+              <Text className="tab-icon">👤</Text>
+              <Text className="tab-text">关注</Text>
+            </View>
+          </View>
+
+          {/* 活跃分身 */}
+          <View className="ai-tags-section">
+            <Text className="ai-tags-label">活跃分身</Text>
+            <ScrollView className="ai-tags-scroll" scrollX>
+              <View className="ai-tags-list">
+                {activeAvatars.length > 0 ? (
+                  activeAvatars.map((avatar) => (
+                    <View 
+                      key={avatar.id} 
+                      className="ai-avatar-tag"
+                      onClick={() => navigateToAvatarProfile(avatar.id)}
+                    >
+                      {avatar.avatar_url ? (
+                        <Image 
+                          src={avatar.avatar_url} 
+                          className="ai-avatar-img" 
+                          mode="aspectFill"
+                        />
+                      ) : (
+                        <View 
+                          className="ai-avatar-circle" 
+                          style={{ backgroundColor: avatar.color }}
+                        >
+                          <Text>{avatar.name[0]}</Text>
+                        </View>
+                      )}
+                      <Text className="ai-avatar-name">{avatar.name}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={{ fontSize: '24rpx', color: '#999' }}>暂无活跃分身</Text>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* 筛选标签 */}
+          <ScrollView className="filter-tags-scroll" scrollX>
+            <View className="filter-tags-list">
+              {FILTER_TAGS.map((tag) => (
+                <View 
+                  key={tag.id}
+                  className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
+                  onClick={() => setActiveFilter(tag.id)}
+                >
+                  {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
+                  <Text className="filter-tag-text">{tag.name}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* 统计卡片 */}
+        {hasAvatars && (
+          <View className="stats-section">
+            <Text className="stats-title">我的分身数据</Text>
+            <View className="stats-grid">
+              <View className="stat-item">
+                <Text className="stat-value">{avatarStats.postCount}</Text>
+                <Text className="stat-label">发帖</Text>
+              </View>
+              <View className="stat-item">
+                <Text className="stat-value">{avatarStats.likeCount}</Text>
+                <Text className="stat-label">点赞</Text>
+              </View>
+              <View className="stat-item">
+                <Text className="stat-value">{avatarStats.commentCount}</Text>
+                <Text className="stat-label">评论</Text>
+              </View>
+              <View className="stat-item">
+                <Text className="stat-value">¥{avatarStats.totalEarnings.toFixed(0)}</Text>
+                <Text className="stat-label">收益</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* 帖子列表 */}
         {posts.length === 0 && !loading ? (
           <View className="empty-state">
             {!hasAvatars ? (
@@ -706,7 +741,7 @@ export default function SocialPage() {
                     <Text className="post-content">{post.content}</Text>
                   )}
 
-                  {/* 图片 */}
+                  {/* 图片 - 放在正常文档流中 */}
                   {post.images && post.images.length > 0 && (
                     <View className={`post-images images-${Math.min(post.images.length, 3)}`}>
                       {post.images.slice(0, 3).map((img, idx) => (
@@ -726,14 +761,14 @@ export default function SocialPage() {
                     </View>
                   )}
 
-                  {/* 视频 */}
+                  {/* 视频 - 放在正常文档流中 */}
                   {post.videos && post.videos.length > 0 && (
-                    <View className="post-videos">
+                    <View className="post-video-container">
                       {post.videos.map((video, idx) => (
                         <Video
                           key={idx}
                           src={video}
-                          className="post-video"
+                          className="post-video-item"
                           controls
                           showFullscreenBtn
                           showPlayBtn
@@ -850,6 +885,9 @@ export default function SocialPage() {
             <Text className="loading-text">加载中...</Text>
           </View>
         )}
+
+        {/* 底部留白 */}
+        <View style={{ height: '120rpx' }} />
       </ScrollView>
 
       {/* 悬浮刷新按钮 */}

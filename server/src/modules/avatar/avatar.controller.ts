@@ -190,6 +190,20 @@ export class AvatarController {
   }
 
   /**
+   * 获取活跃分身列表
+   * 按活跃程度排序，最多返回10个
+   */
+  @Get('active')
+  async getActiveAvatars(@Query('limit') limit: string) {
+    const avatars = await this.avatarService.getActiveAvatars(parseInt(limit) || 10)
+    return {
+      code: 200,
+      data: avatars,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 获取分身的学习数据
    * 包含学习进度、风格分析、性格特征等
    */
