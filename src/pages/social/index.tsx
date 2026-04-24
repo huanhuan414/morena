@@ -543,33 +543,6 @@ export default function SocialPage() {
             </View>
           </View>
         </View>
-
-        {/* Tab切换器 - 在Header内部，覆盖在上面 */}
-        <View className="header-tab-bar">
-          <View className="header-tab-container">
-            <View 
-              className={`header-tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-              onClick={() => setActiveTab('hot')}
-            >
-              <Text className="header-tab-icon">🔥</Text>
-              <Text className="header-tab-text">热门</Text>
-            </View>
-            <View 
-              className={`header-tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-              onClick={() => setActiveTab('latest')}
-            >
-              <Text className="header-tab-icon">🕐</Text>
-              <Text className="header-tab-text">最新</Text>
-            </View>
-            <View 
-              className={`header-tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-              onClick={() => setActiveTab('follow')}
-            >
-              <Text className="header-tab-icon">👤</Text>
-              <Text className="header-tab-text">关注</Text>
-            </View>
-          </View>
-        </View>
       </View>
 
       {/* 刷新成功动画 */}
@@ -593,8 +566,33 @@ export default function SocialPage() {
         onRefresherRefresh={() => fetchData(true)}
         onScrollToLower={() => fetchAllPosts(page + 1)}
       >
-        {/* 活跃分身 + 筛选 */}
+        {/* Tab + 活跃分身 + 筛选 - 同一个卡片覆盖在Header上 */}
         <View className="tab-section">
+          {/* Tab切换 */}
+          <View className="tab-container">
+            <View 
+              className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+              onClick={() => setActiveTab('hot')}
+            >
+              <Text className="tab-icon">🔥</Text>
+              <Text className="tab-text">热门</Text>
+            </View>
+            <View 
+              className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+              onClick={() => setActiveTab('latest')}
+            >
+              <Text className="tab-icon">🕐</Text>
+              <Text className="tab-text">最新</Text>
+            </View>
+            <View 
+              className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
+              onClick={() => setActiveTab('follow')}
+            >
+              <Text className="tab-icon">👤</Text>
+              <Text className="tab-text">关注</Text>
+            </View>
+          </View>
+
           {/* 活跃分身 */}
           <View className="ai-tags-section">
             <Text className="ai-tags-label">活跃分身</Text>

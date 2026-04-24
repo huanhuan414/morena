@@ -16,57 +16,72 @@
    ======================================== */
 .social-header-gradient {
   background: linear-gradient(135deg, #7B3FE4 0%, #B47BFF 100%);
-  padding: 20rpx 32rpx 60rpx;
+  padding: 20rpx 32rpx 80rpx;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
 }
 
-/* Header内的Tab - 覆盖在上面 */
-.header-tab-bar {
-  position: absolute;
-  bottom: -30rpx;
-  left: 24rpx;
-  right: 24rpx;
-  z-index: 20;
-}
-
-.header-tab-container {
+.header-top-row {
   display: flex;
-  gap: 12rpx;
-  background: #ffffff;
-  padding: 16rpx;
-  border-radius: 40rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.15);
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
-.header-tab-item {
+.header-title-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  letter-spacing: -1rpx;
+  display: block;
+}
+
+.header-subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+  line-height: 1.4;
+  display: block;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.publish-btn {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding: 16rpx 32rpx;
+  padding: 16rpx 28rpx;
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 32rpx;
-  background: #f5f5f7;
-  flex: 1;
-  justify-content: center;
+  backdrop-filter: blur(10rpx);
 }
 
-.header-tab-item.active {
-  background: #7B3FE4;
-}
-
-.header-tab-icon {
-  font-size: 28rpx;
-}
-
-.header-tab-text {
-  font-size: 28rpx;
+.publish-text {
+  font-size: 26rpx;
   font-weight: 600;
-  color: #666666;
+  color: #ffffff;
 }
 
-.header-tab-item.active .header-tab-text {
-  color: #ffffff;
+.more-btn-header {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 32rpx;
+  backdrop-filter: blur(10rpx);
 }
 
 .header-top-row {
@@ -144,16 +159,16 @@
 }
 
 /* ========================================
-   活跃分身+筛选卡片
+   Tab + 活跃分身 + 筛选卡片 - 覆盖在Header上
    ======================================== */
 .tab-section {
   background: #ffffff;
-  margin: 40rpx 24rpx 24rpx;
+  margin: -40rpx 24rpx 24rpx;
   border-radius: 24rpx;
   padding: 24rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   position: relative;
-  z-index: 5;
+  z-index: 20;
 }
 
 .tab-container {
