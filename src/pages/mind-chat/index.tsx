@@ -1454,13 +1454,33 @@ export default function MindChatPage() {
           })
 
           console.log('[上传视频] 上传结果:', uploadRes)
+          console.log('[上传视频] 响应状态码:', uploadRes.statusCode)
+          console.log('[上传视频] 响应数据类型:', typeof uploadRes.data)
 
-          // 处理响应数据
-          let uploadData
-          if (typeof uploadRes.data === 'string') {
-            uploadData = JSON.parse(uploadRes.data)
-          } else {
-            uploadData = uploadRes.data
+          // 🔴 修复：改进响应解析和错误处理
+          let uploadData: any
+          try {
+            if (typeof uploadRes.data === 'string') {
+              // 🔴 检查是否是 JSON 格式
+              const trimmed = uploadRes.data.trim()
+              console.log('[上传视频] 响应前200字符:', trimmed.substring(0, 200))
+              if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                uploadData = JSON.parse(trimmed)
+              } else if (trimmed.toLowerCase().startsWith('<!doctype') || trimmed.startsWith('<')) {
+                // 🔴 如果是 HTML 错误页面
+                console.error('[上传视频] 服务器返回 HTML 错误页面，可能是 500 错误')
+                throw new Error('服务器错误，请稍后重试')
+              } else {
+                console.error('[上传视频] 服务器返回非 JSON 响应')
+                throw new Error('服务器返回格式错误')
+              }
+            } else {
+              uploadData = uploadRes.data
+            }
+          } catch (parseError: any) {
+            console.error('[上传视频] 解析响应失败:', parseError)
+            console.error('[上传视频] 原始响应:', typeof uploadRes.data === 'string' ? uploadRes.data.substring(0, 500) : uploadRes.data)
+            throw new Error('服务器响应解析失败: ' + parseError.message)
           }
 
           setUploadProgress(100)
@@ -1472,9 +1492,9 @@ export default function MindChatPage() {
           } else {
             showToast({ title: uploadData.message || '上传失败', icon: 'none' })
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('[上传视频] 错误:', error)
-          showToast({ title: '上传失败，请重试', icon: 'none' })
+          showToast({ title: error.message || '上传失败，请重试', icon: 'none' })
         } finally {
           setIsUploadingVideo(false)
           setTimeout(() => setUploadProgress(0), 1000)
@@ -4618,7 +4638,8 @@ export default function MindChatPage() {
                   : imageUrl
 
                 // 🔴 关键修复：使用 URL + 索引 + 重试计数作为 key，确保唯一性
-                const uniqueKey = `img-${idx}-${imageUrl.substring(imageUrl.lastIndexOf('/') + 1, imageUrl.lastIndexOf('/') + 20)}-${retryCount}`
+                const fileName = imageUrl.split('/').pop()?.split('?')[0] || ''
+                const uniqueKey = `img-${idx}-${fileName.substring(0, 20)}-${retryCount}-${imageUrl.length}`
 
                 return (
                   <View key={uniqueKey} className="media-preview-item">
@@ -4629,9 +4650,9 @@ export default function MindChatPage() {
                       mode="aspectFill"
                       lazyLoad={false}
                       showMenuByLongpress={false}
-                      onLoad={() => console.log('[图片预览] 加载成功:', imageUrl.substring(0, 40))}
-                      onError={(e) => {
-                        console.error('[图片预览] 加载失败:', imageUrl.substring(0, 50), e)
+                      onLoad={() => console.log('[图片预览] 加载成功:', idx, imageUrl.substring(0, 40))}
+                      onError={(e: any) => {
+                        console.error('[图片预览] 加载失败:', idx, imageUrl.substring(0, 50), e?.detail?.errMsg || e)
                         // 🔴 自动重试机制
                         if (retryCount < MAX_IMAGE_RETRY) {
                           setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
