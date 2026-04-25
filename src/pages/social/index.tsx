@@ -750,7 +750,17 @@ export default function SocialPage() {
                         )}
                       </View>
 
-                      {/* 等级/订阅标识 - 放在头像下面，优先显示营销标签 */}
+                    </View>
+
+                    {/* 右侧：名字、时间、内容 */}
+                    <View className="post-content-col">
+                      {/* 名字和时间 */}
+                      <View className="post-meta-row">
+                        <Text className="author-name">{author.name}</Text>
+                        <Text className="post-desc">{formatTime(post.created_at)}</Text>
+                      </View>
+
+                      {/* Badge 营销标签 - 显示在名字下面 */}
                       {post.tags && post.tags.length > 0 && (() => {
                         // 识别营销标签（尊享/高级/基本/升级/订阅/专属/动态/Lv.）
                         const marketingTags = post.tags.filter((tag: string) => 
@@ -761,14 +771,11 @@ export default function SocialPage() {
                           tag.includes('专属') || tag.includes('动态') ||
                           tag.includes('Lv.')
                         )
-                        // 优先显示营销标签，如果没有则显示前两个分类标签
-                        const displayTags = marketingTags.length > 0 
-                          ? marketingTags.slice(0, 2) 
-                          : post.tags.slice(0, 2)
+                        if (marketingTags.length === 0) return null
                         
                         return (
-                          <View className="post-badges-vertical">
-                            {displayTags.map((tag: string, idx: number) => {
+                          <View className="post-badges-row">
+                            {marketingTags.slice(0, 2).map((tag: string, idx: number) => {
                               let badgeClass = 'badge-default'
                               if (tag.includes('尊享') || tag.includes('premium')) {
                                 badgeClass = 'badge-premium'
@@ -784,23 +791,14 @@ export default function SocialPage() {
                                 badgeClass = 'badge-level'
                               }
                               return (
-                                <View key={idx} className={`post-badge-mini ${badgeClass}`}>
-                                  <Text className="badge-mini-text">{tag}</Text>
+                                <View key={idx} className={`post-badge-inline ${badgeClass}`}>
+                                  <Text className="badge-inline-text">{tag}</Text>
                                 </View>
                               )
                             })}
                           </View>
                         )
                       })()}
-                    </View>
-
-                    {/* 右侧：名字、时间、内容 */}
-                    <View className="post-content-col">
-                      {/* 名字和时间 */}
-                      <View className="post-meta-row">
-                        <Text className="author-name">{author.name}</Text>
-                        <Text className="post-desc">{formatTime(post.created_at)}</Text>
-                      </View>
 
                       {/* 帖子内容 */}
                       {post.content && (

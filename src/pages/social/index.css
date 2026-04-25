@@ -547,6 +547,29 @@
   white-space: nowrap;
 }
 
+/* Badge 标签横向排列 - 显示在分身名字下方 */
+.post-badges-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+
+.post-badge-inline {
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.badge-inline-text {
+  font-size: 22rpx;
+  line-height: 1.4;
+  display: block;
+}
+
 .post-content-col {
   flex: 1;
   display: flex;
