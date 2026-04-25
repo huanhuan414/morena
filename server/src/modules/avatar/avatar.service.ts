@@ -823,6 +823,7 @@ export class AvatarService {
           id: avatar.id,
           name: avatar.name,
           avatar_url: avatar.avatar_url,
+          color: avatar.color || '#7B3FE4',
           post_count: 0
         })) || []
       }
@@ -847,6 +848,7 @@ export class AvatarService {
             id: id,
             name: avatar?.name || '未知分身',
             avatar_url: avatar?.avatar_url || '',
+            color: avatar?.color || '#7B3FE4',
             post_count: avatarPostCounts.get(id) || 0
           }
         })

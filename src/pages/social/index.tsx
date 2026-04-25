@@ -622,7 +622,7 @@ export default function SocialPage() {
                     ) : (
                       <View 
                         className="ai-avatar-circle" 
-                        style={{ backgroundColor: avatar.color }}
+                        style={{ backgroundColor: avatar.color || '#7B3FE4' }}
                       >
                         <Text>{avatar.name[0]}</Text>
                       </View>

@@ -683,3 +683,106 @@
   font-size: 24rpx;
   color: #cccccc;
 }
+
+/* ========================================
+   点赞和评论区
+   ======================================== */
+
+/* 点赞区域 */
+.likers-section {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  margin-left: 120rpx;
+  padding: 16rpx;
+  background: #f8f8f8;
+  border-radius: 12rpx;
+}
+
+.likers-avatars {
+  display: flex;
+  flex-direction: row;
+}
+
+.liker-avatar-wrap {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2rpx solid #ffffff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.liker-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.likers-text {
+  font-size: 24rpx;
+  color: #666666;
+  flex: 1;
+}
+
+/* 评论区 */
+.comments-section {
+  margin-top: 16rpx;
+  margin-left: 120rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.comment-item {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  align-items: flex-start;
+}
+
+.comment-avatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B47BFF 0%, #7B3FE4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.comment-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  background: #f8f8f8;
+  padding: 16rpx;
+  border-radius: 12rpx;
+}
+
+.comment-author {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #7B3FE4;
+}
+
+.comment-text {
+  font-size: 26rpx;
+  color: #333333;
+  line-height: 1.5;
+}
+
+.more-comments {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0;
+}
+
+.more-comments-text {
+  font-size: 24rpx;
+  color: #999999;
+}

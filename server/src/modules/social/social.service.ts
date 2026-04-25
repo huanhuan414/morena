@@ -1276,10 +1276,40 @@ export class SocialService {
           }
         }
 
+        // 获取点赞用户列表（前3个）
+        const { data: likers } = await client
+          .from('post_likes')
+          .select('user_id, users!inner(nickname, avatar)')
+          .eq('post_id', post.id)
+          .limit(3)
+        
+        const likersList = likers?.map((like: any) => ({
+          user_id: like.user_id,
+          nickname: like.users?.nickname || '用户',
+          avatar: like.users?.avatar || ''
+        })) || []
+        
+        // 获取评论列表（前2条）
+        const { data: comments } = await client
+          .from('post_comments')
+          .select('user_id, content, users!inner(nickname, avatar)')
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: false })
+          .limit(2)
+        
+        const commentsList = comments?.map((comment: any) => ({
+          user_id: comment.user_id,
+          nickname: comment.users?.nickname || '用户',
+          user_avatar: comment.users?.avatar || '',
+          content: comment.content
+        })) || []
+        
         return {
           ...post,
           author_name: authorName,
-          author_avatar: authorAvatar
+          author_avatar: authorAvatar,
+          likers: likersList,
+          comments: commentsList
         }
       })
     )
