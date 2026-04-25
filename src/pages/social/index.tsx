@@ -750,33 +750,48 @@ export default function SocialPage() {
                         )}
                       </View>
 
-                      {/* 等级/订阅标识 - 放在头像下面 */}
-                      {post.tags && post.tags.length > 0 && (
-                        <View className="post-badges-vertical">
-                          {post.tags.slice(0, 2).map((tag: string, idx: number) => {
-                            // 根据标签内容决定样式类
-                            let badgeClass = 'badge-default'
-                            if (tag.includes('尊享') || tag.includes('premium')) {
-                              badgeClass = 'badge-premium'
-                            } else if (tag.includes('高级') || tag.includes('pro')) {
-                              badgeClass = 'badge-pro'
-                            } else if (tag.includes('基本') || tag.includes('basic')) {
-                              badgeClass = 'badge-basic'
-                            } else if (tag.includes('升级') || tag.includes('订阅')) {
-                              badgeClass = 'badge-upgrade'
-                            } else if (tag.includes('专属') || tag.includes('动态')) {
-                              badgeClass = 'badge-post'
-                            } else if (tag.includes('Lv.')) {
-                              badgeClass = 'badge-level'
-                            }
-                            return (
-                              <View key={idx} className={`post-badge-mini ${badgeClass}`}>
-                                <Text className="badge-mini-text">{tag}</Text>
-                              </View>
-                            )
-                          })}
-                        </View>
-                      )}
+                      {/* 等级/订阅标识 - 放在头像下面，优先显示营销标签 */}
+                      {post.tags && post.tags.length > 0 && (() => {
+                        // 识别营销标签（尊享/高级/基本/升级/订阅/专属/动态/Lv.）
+                        const marketingTags = post.tags.filter((tag: string) => 
+                          tag.includes('尊享') || tag.includes('premium') ||
+                          tag.includes('高级') || tag.includes('pro') ||
+                          tag.includes('基本') || tag.includes('basic') ||
+                          tag.includes('升级') || tag.includes('订阅') ||
+                          tag.includes('专属') || tag.includes('动态') ||
+                          tag.includes('Lv.')
+                        )
+                        // 优先显示营销标签，如果没有则显示前两个分类标签
+                        const displayTags = marketingTags.length > 0 
+                          ? marketingTags.slice(0, 2) 
+                          : post.tags.slice(0, 2)
+                        
+                        return (
+                          <View className="post-badges-vertical">
+                            {displayTags.map((tag: string, idx: number) => {
+                              let badgeClass = 'badge-default'
+                              if (tag.includes('尊享') || tag.includes('premium')) {
+                                badgeClass = 'badge-premium'
+                              } else if (tag.includes('高级') || tag.includes('pro')) {
+                                badgeClass = 'badge-pro'
+                              } else if (tag.includes('基本') || tag.includes('basic')) {
+                                badgeClass = 'badge-basic'
+                              } else if (tag.includes('升级') || tag.includes('订阅')) {
+                                badgeClass = 'badge-upgrade'
+                              } else if (tag.includes('专属') || tag.includes('动态')) {
+                                badgeClass = 'badge-post'
+                              } else if (tag.includes('Lv.')) {
+                                badgeClass = 'badge-level'
+                              }
+                              return (
+                                <View key={idx} className={`post-badge-mini ${badgeClass}`}>
+                                  <Text className="badge-mini-text">{tag}</Text>
+                                </View>
+                              )
+                            })}
+                          </View>
+                        )
+                      })()}
                     </View>
 
                     {/* 右侧：名字、时间、内容 */}
