@@ -17,7 +17,7 @@ import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, ChevronUp, User, Wrench,
+  MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
   Play, Video as VideoIcon, Plus, Image as ImageIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
@@ -388,9 +388,6 @@ export default function MindChatPage() {
     newCount: number
     expGained: number
   } | null>(null)
-  const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(true) // 默认折叠
-  const [learnPanelExpanded, setLearnPanelExpanded] = useState(true) // 控制详细内容的展开/折叠，默认展开
-  
   // 经验值飘字特效状态
   const [showExpPopup, setShowExpPopup] = useState(false)
   const [expPopupValue, setExpPopupValue] = useState(0)
@@ -3818,36 +3815,46 @@ export default function MindChatPage() {
         </View>
       </View>
 
+      {/* 成长进度 - 直接显示在面板外 */}
+      <View className="learn-progress-standalone">
+        <View className="learn-progress-header">
+          <Target size={18} color="#7B3FE4" />
+          <Text className="learn-progress-title">成长进度</Text>
+          <Text className="learn-progress-percent">{learningStats.masteryLevel}%</Text>
+        </View>
+        <View className="learn-progress-bar-standalone">
+          <View 
+            className="learn-progress-fill-standalone" 
+            style={{ width: `${learningStats.masteryLevel}%` }}
+          />
+        </View>
+      </View>
+
       {/* 心智成长面板 */}
-      <View className={`learn-panel ${learnPanelCollapsed ? 'collapsed' : ''}`}>
-        <View className="learn-panel-header" onClick={() => setLearnPanelCollapsed(!learnPanelCollapsed)}>
-          <Brain size={20} color="#00f5ff" />
+      <View className="learn-panel">
+        <View className="learn-panel-header">
+          <Brain size={20} color="#7B3FE4" />
           <Text className="learn-panel-title">心智成长</Text>
-          <View className="learn-panel-toggle">
-            {learnPanelCollapsed ? <ChevronDown size={18} color="#00f5ff" /> : <ChevronUp size={18} color="#00f5ff" />}
-          </View>
         </View>
         
-        {!learnPanelCollapsed && (
-        <>
         <View className="learn-stats-row">
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('dialog')}>
-            <MessageCircle size={16} color="#bf00ff" />
+            <MessageCircle size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">{learningStats.messageCount}</Text>
             <Text className="learn-stat-label">对话</Text>
           </View>
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('days')}>
-            <TrendingUp size={16} color="#00ff88" />
+            <TrendingUp size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">{learningStats.learningDays}</Text>
             <Text className="learn-stat-label">天数</Text>
           </View>
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('mastery')}>
-            <Target size={16} color="#ff00aa" />
+            <Target size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
             <Text className="learn-stat-label">掌握</Text>
           </View>
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('level')}>
-            <Award size={16} color="#00f5ff" />
+            <Award size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
             <Text className="learn-stat-label">等级</Text>
           </View>
@@ -3886,25 +3893,8 @@ export default function MindChatPage() {
           </View>
         )}
         
-        {/* 展开/折叠更多按钮 */}
-        <View className="learn-expand-btn" onClick={() => setLearnPanelExpanded(!learnPanelExpanded)}>
-          <Text className="learn-expand-text">{learnPanelExpanded ? '收起详情' : '展开更多'}</Text>
-          {learnPanelExpanded ? <ChevronUp size={16} color="#00f5ff" /> : <ChevronDown size={16} color="#00f5ff" />}
-        </View>
-        
-        {/* 详细内容 - 默认折叠，可滚动 */}
-        {learnPanelExpanded && (
+        {/* 详细内容 - 始终显示 */}
         <ScrollView className="learn-panel-content" scrollY style={{ height: '300rpx' }}>
-        <View className="learn-progress-section clickable" onClick={() => setShowLearningDetail('mastery')}>
-          <Text className="learn-progress-label">成长进度</Text>
-          <View className="learn-progress-bar">
-            <View 
-              className="learn-progress-fill" 
-              style={{ width: `${learningStats.masteryLevel}%` }}
-            />
-          </View>
-
-        </View>
         
         {/* 风格匹配度 */}
         {(learningStats.styleMatch || 0) > 0 && (
@@ -3947,9 +3937,6 @@ export default function MindChatPage() {
         )}
 
         </ScrollView>
-        )}
-        </>
-        )}
       </View>
       
       {/* 学习详情弹窗 - 等级详情使用独立组件 */}
