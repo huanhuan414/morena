@@ -1351,9 +1351,21 @@ ${friendMessageContents}
       }
     }
 
-    // 纯文字帖子标识等级
-    if (type === 'textOnly' && level >= 1) {
-      return `【Lv.${level}专属动态】\n\n`
+    // 纯文字帖子标识
+    if (type === 'textOnly') {
+      // 检查是否有订阅或达到Lv.8
+      const hasSubscription = planName && (planName.includes('尊享') || planName.includes('premium') || 
+                            planName.includes('高级') || planName.includes('pro') || 
+                            planName.includes('基本') || planName.includes('basic'))
+      const hasLevel8 = level >= 8
+      
+      if (hasSubscription || hasLevel8) {
+        // 有资格发图文，但选择了发纯文字
+        return `【Lv.${level}专属动态】\n\n`
+      } else {
+        // 无订阅且等级不足，只能发纯文字，提示升级
+        return '【升级或订阅可发图文帖子】\n\n'
+      }
     }
 
     return ''
