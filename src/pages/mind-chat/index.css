@@ -808,6 +808,11 @@
   padding: var(--space-3) var(--space-8);
   margin-top: var(--space-6);
   box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .empty-desc {

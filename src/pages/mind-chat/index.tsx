@@ -389,7 +389,7 @@ export default function MindChatPage() {
     expGained: number
   } | null>(null)
   const [learnPanelCollapsed, setLearnPanelCollapsed] = useState(true) // 默认折叠
-  const [learnPanelExpanded, setLearnPanelExpanded] = useState(false) // 控制详细内容的展开/折叠
+  const [learnPanelExpanded, setLearnPanelExpanded] = useState(true) // 控制详细内容的展开/折叠，默认展开
   
   // 经验值飘字特效状态
   const [showExpPopup, setShowExpPopup] = useState(false)
@@ -3903,15 +3903,7 @@ export default function MindChatPage() {
               style={{ width: `${learningStats.masteryLevel}%` }}
             />
           </View>
-          <Text className="learn-progress-hint">
-            {learningStats.masteryLevel < 20 
-              ? '继续对话，我会更了解你' 
-              : learningStats.masteryLevel < 50 
-                ? '我已经开始学习你的风格了' 
-                : learningStats.masteryLevel < 80 
-                  ? '越来越像你了！' 
-                  : '我们已经心意相通了 🎉'}
-          </Text>
+
         </View>
         
         {/* 风格匹配度 */}
