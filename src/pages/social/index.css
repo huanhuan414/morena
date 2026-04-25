@@ -448,31 +448,6 @@
   aspect-ratio: 16/9;
 }
 
-/* 操作栏 */
-.post-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: var(--space-3);
-  border-top: 1rpx solid var(--border-light);
-}
-
-.post-action-left {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.post-action-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.post-action-count {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
 /* 评论区 */
 .post-comments {
   margin-top: var(--space-3);
@@ -574,6 +549,20 @@
   font-size: var(--text-base);
   color: var(--text-quaternary);
   margin-top: var(--space-1);
+}
+
+.empty-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.empty-desc {
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-bottom: var(--space-4);
 }
 
 /* 加载更多 */
@@ -821,9 +810,10 @@
   border-radius: 50%;
 }
 
-/* 媒体区域 */
+/* 媒体区域 - 与右侧内容对齐 */
 .post-media-section {
   margin-top: var(--space-3);
+  margin-left: 96rpx; /* 头像宽度80rpx + gap 16rpx */
 }
 
 .post-images-grid {
@@ -873,12 +863,13 @@
   background: #000;
 }
 
-/* 操作按钮 */
+/* 操作按钮 - 与右侧内容对齐 */
 .post-actions {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   margin-top: var(--space-3);
+  margin-left: 96rpx;
   padding-top: var(--space-3);
   border-top: 1rpx solid var(--border-light);
 }
@@ -899,12 +890,13 @@
   color: #ef4444;
 }
 
-/* 点赞区域 */
+/* 点赞区域 - 与右侧内容对齐 */
 .likers-section {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-3);
+  margin-left: 96rpx;
   padding: var(--space-2) var(--space-3);
   background: var(--bg-page);
   border-radius: var(--radius-base);
@@ -939,9 +931,10 @@
   color: var(--text-tertiary);
 }
 
-/* 评论区 */
+/* 评论区 - 与右侧内容对齐 */
 .comments-section {
   margin-top: var(--space-3);
+  margin-left: 96rpx;
   padding: var(--space-3);
   background: var(--bg-page);
   border-radius: var(--radius-base);
