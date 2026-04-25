@@ -789,6 +789,27 @@
   color: var(--text-secondary);
 }
 
+/* 没有分身的空状态容器 */
+.no-avatar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  margin: var(--space-4);
+}
+
+/* 创建按钮 */
+.create-button {
+  background: var(--primary-gradient);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-8);
+  margin-top: var(--space-6);
+  box-shadow: var(--shadow-md);
+}
+
 .empty-desc {
   font-size: var(--text-base);
   color: var(--text-tertiary);
@@ -1544,7 +1565,6 @@
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
-  border: 1rpx solid var(--border-light);
   box-shadow: var(--shadow-sm);
 }
 
