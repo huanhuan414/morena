@@ -11,6 +11,7 @@
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* ========================================
@@ -46,6 +47,51 @@
   height: 250rpx;
   background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
   border-radius: 50%;
+}
+
+/* 网格背景 */
+.header-grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1rpx, transparent 1rpx);
+  background-size: 60rpx 60rpx;
+  pointer-events: none;
+}
+
+/* 闪烁星星 */
+.header-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.header-star {
+  position: absolute;
+  width: 8rpx;
+  height: 8rpx;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.header-star:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+.header-star:nth-child(2) { top: 40%; left: 25%; animation-delay: 0.3s; }
+.header-star:nth-child(3) { top: 15%; left: 50%; animation-delay: 0.6s; }
+.header-star:nth-child(4) { top: 60%; left: 70%; animation-delay: 0.9s; }
+.header-star:nth-child(5) { top: 30%; left: 85%; animation-delay: 1.2s; }
+.header-star:nth-child(6) { top: 50%; left: 90%; animation-delay: 1.5s; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); }
 }
 
 /* 标题区域 */
@@ -280,22 +326,90 @@
   border: 2rpx solid var(--border-light);
 }
 
-.post-author-info {
+.post-author-info,
+.post-content-col {
   flex: 1;
+  min-width: 0;
 }
 
-.post-author-name {
+.post-author-name,
+.author-name {
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-secondary);
   display: block;
 }
 
-.post-time {
+.post-time,
+.post-desc {
   font-size: var(--text-xs);
   color: var(--text-quaternary);
   display: block;
   margin-top: 4rpx;
+}
+
+/* 帖子元数据行 */
+.post-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+/* Badge行 */
+.post-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.post-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+}
+
+.badge-default {
+  background: var(--bg-gray);
+  color: var(--text-tertiary);
+}
+
+.badge-premium {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #fff;
+}
+
+.badge-pro {
+  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  color: #fff;
+}
+
+.badge-basic {
+  background: #E5E7EB;
+  color: #6B7280;
+}
+
+.badge-upgrade {
+  background: rgba(245, 158, 11, 0.15);
+  color: #D97706;
+}
+
+.badge-post {
+  background: rgba(123, 63, 228, 0.15);
+  color: var(--primary);
+}
+
+.badge-level {
+  background: var(--primary-lighter);
+  color: var(--primary);
+}
+
+.badge-inline-text {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
 }
 
 .post-content {
@@ -492,4 +606,63 @@
 
 .fab-btn:active {
   transform: scale(0.95);
+}
+
+/* 刷新成功动画 */
+.refresh-success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.refresh-success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: refreshPop 0.3s ease;
+}
+
+@keyframes refreshPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.refresh-success-icon {
+  width: 120rpx;
+  height: 120rpx;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+  box-shadow: 0 8rpx 32rpx rgba(123, 63, 228, 0.4);
+}
+
+.refresh-success-check {
+  color: #fff;
+  font-size: 60rpx;
+  font-weight: bold;
+}
+
+.refresh-success-text {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: #fff;
 }
