@@ -10,7 +10,8 @@ import {
 } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
-import './index.css'
+import '../../styles/variables.css'
+import './index.css' 
 
 // 平台名称映射
 const PLATFORM_NAMES: Record<string, string> = {

@@ -1,0 +1,291 @@
+/* ========================================
+   莫瑞娜 APP - 统一设计变量
+   所有页面必须遵循此规范
+   ======================================== */
+
+:root, page {
+  /* 主色调 */
+  --primary: #7B3FE4;
+  --primary-light: #9B6EF3;
+  --primary-lighter: #F3E8FF;
+  --primary-dark: #6B2FD4;
+  
+  /* 背景色 */
+  --bg-page: #F8F7FC;
+  --bg-card: #FFFFFF;
+  --bg-gray: #F5F5F7;
+  --bg-hover: #F3E8FF;
+  
+  /* 文字色 */
+  --text-primary: #1A1A2E;
+  --text-secondary: #333333;
+  --text-tertiary: #666666;
+  --text-quaternary: #999999;
+  --text-white: #FFFFFF;
+  
+  /* 边框和分割线 */
+  --border-color: #EEEEEE;
+  --border-light: #F0F0F0;
+  
+  /* 功能色 */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+  
+  /* 字体大小 - 严格层级 */
+  --text-xs: 22rpx;
+  --text-sm: 24rpx;
+  --text-base: 28rpx;
+  --text-lg: 32rpx;
+  --text-xl: 36rpx;
+  --text-2xl: 40rpx;
+  --text-3xl: 48rpx;
+  
+  /* 字体粗细 */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* 间距 - 8rpx倍数 */
+  --space-1: 8rpx;
+  --space-2: 16rpx;
+  --space-3: 24rpx;
+  --space-4: 32rpx;
+  --space-5: 40rpx;
+  --space-6: 48rpx;
+  --space-8: 64rpx;
+  
+  /* 圆角 */
+  --radius-sm: 12rpx;
+  --radius-base: 16rpx;
+  --radius-lg: 24rpx;
+  --radius-xl: 32rpx;
+  --radius-full: 9999rpx;
+  
+  /* 阴影 */
+  --shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  --shadow-base: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8rpx 32rpx rgba(123, 63, 228, 0.12);
+  --shadow-card: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  
+  /* 页面布局 */
+  --header-height: 120rpx;
+  --tabbar-height: 100rpx;
+  --page-padding: 32rpx;
+  --card-padding: 32rpx;
+  
+  /* 动画 */
+  --transition-fast: 0.2s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.4s ease;
+}
+
+/* ========================================
+   公共组件类 - 所有页面共享
+   ======================================== */
+
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+/* 统一Header */
+.unified-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  padding: 0 var(--page-padding);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+}
+
+.unified-header-back {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.unified-header-back:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.unified-header-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-white);
+}
+
+.unified-header-placeholder {
+  width: 72rpx;
+}
+
+/* 统一卡片 */
+.unified-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--card-padding);
+  box-shadow: var(--shadow-card);
+}
+
+/* 统一区域标题 */
+.unified-section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+.unified-section-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-quaternary);
+}
+
+/* 统一按钮样式 */
+.unified-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-base);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  transition: var(--transition-fast);
+}
+
+.unified-btn-primary {
+  background: var(--primary);
+  color: var(--text-white);
+}
+
+.unified-btn-primary:active {
+  background: var(--primary-dark);
+}
+
+/* 统一Tab样式 */
+.unified-tabs {
+  display: flex;
+  background: var(--bg-gray);
+  border-radius: var(--radius-base);
+  padding: var(--space-1);
+}
+
+.unified-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+}
+
+.unified-tab.active {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.unified-tab-text {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-quaternary);
+}
+
+.unified-tab.active .unified-tab-text {
+  color: var(--primary);
+  font-weight: var(--font-semibold);
+}
+
+/* 统一标签 */
+.unified-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--primary-lighter);
+  border-radius: var(--radius-full);
+}
+
+.unified-tag-text {
+  font-size: var(--text-sm);
+  color: var(--primary);
+  font-weight: var(--font-medium);
+}
+
+/* 统一列表项 */
+.unified-list-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border-radius: var(--radius-base);
+}
+
+.unified-list-item:not(:last-child) {
+  margin-bottom: var(--space-2);
+}
+
+/* 统一输入框 */
+.unified-input {
+  height: 80rpx;
+  padding: 0 var(--space-3);
+  background: var(--bg-gray);
+  border-radius: var(--radius-base);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.unified-input::placeholder {
+  color: var(--text-quaternary);
+}
+
+/* 统一空状态 */
+.unified-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+}
+
+.unified-empty-text {
+  font-size: var(--text-base);
+  color: var(--text-quaternary);
+  margin-top: var(--space-3);
+}
+
+/* 统一加载状态 */
+.unified-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.unified-loading-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid var(--primary-lighter);
+  border-top-color: var(--primary);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.unified-loading-text {
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+}

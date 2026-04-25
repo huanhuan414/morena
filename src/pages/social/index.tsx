@@ -5,7 +5,8 @@ import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
-import './index.css'
+import '../../styles/variables.css'
+import './index.css' 
 
 interface Post {
   id: string

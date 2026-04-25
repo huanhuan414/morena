@@ -21,6 +21,7 @@ import {
   Play, Video as VideoIcon, Plus, Image as ImageIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
+import '../../styles/variables.css'
 import "./index.css"
 import "./index-publish-success.css"
 
