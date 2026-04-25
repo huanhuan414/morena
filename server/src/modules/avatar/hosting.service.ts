@@ -1171,14 +1171,20 @@ ${friendMessageContents}
       return
     }
 
-    // 🔴 创建帖子（使用LLM生成的分类标签，如果没有则使用badge）
+    // 🔴 创建帖子（合并LLM分类标签和badge营销标签）
     let postTags: string[] = []
+    
+    // 先添加LLM生成的内容分类标签（如：美食、生活等）
     if (postContent.tags && postContent.tags.length > 0) {
-      // 优先使用LLM生成的内容分类标签
-      postTags = postContent.tags
-    } else if (postContent.badge) {
-      // 如果没有分类标签，使用badge（营销标识）
-      postTags = [postContent.badge.replace(/【|】/g, '').replace(/\n/g, '')]
+      postTags = [...postContent.tags]
+    }
+    
+    // 再添加badge营销标签（如：尊享版专属图文、升级或订阅可发图文帖子等）
+    if (postContent.badge) {
+      const badgeTag = postContent.badge.replace(/【|】/g, '').replace(/\n/g, '')
+      if (badgeTag && !postTags.includes(badgeTag)) {
+        postTags.push(badgeTag)
+      }
     }
     
     const { data: newPost, error } = await client
