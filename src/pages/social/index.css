@@ -503,7 +503,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12rpx;
-  width: 80rpx;
+  width: 120rpx;
   flex-shrink: 0;
 }
 
@@ -512,8 +512,8 @@
 }
 
 .post-avatar-col .author-avatar {
-  width: 80rpx;
-  height: 80rpx;
+  width: 100rpx;
+  height: 100rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #7B3FE4 0%, #B47BFF 100%);
 }
@@ -584,7 +584,7 @@
    图片视频区域 - 9宫格布局
    ======================================== */
 .post-media-section {
-  margin-left: 100rpx; /* 和左侧头像列宽度对齐 */
+  margin-left: 140rpx; /* 和左侧头像列宽度对齐 (120rpx + 20rpx gap) */
   margin-top: 16rpx;
 }
 
