@@ -1171,7 +1171,16 @@ ${friendMessageContents}
       return
     }
 
-    // 🔴 创建帖子（添加badge标签用于营销展示）
+    // 🔴 创建帖子（使用LLM生成的分类标签，如果没有则使用badge）
+    let postTags: string[] = []
+    if (postContent.tags && postContent.tags.length > 0) {
+      // 优先使用LLM生成的内容分类标签
+      postTags = postContent.tags
+    } else if (postContent.badge) {
+      // 如果没有分类标签，使用badge（营销标识）
+      postTags = [postContent.badge.replace(/【|】/g, '').replace(/\n/g, '')]
+    }
+    
     const { data: newPost, error } = await client
       .from('posts')
       .insert({
@@ -1180,7 +1189,7 @@ ${friendMessageContents}
         content: postContent.content,
         images: postContent.images || [],
         videos: postContent.videos || [],
-        tags: postContent.badge ? [postContent.badge.replace(/【|】/g, '').replace(/\n/g, '')] : [], // 🔴 存储badge到tags字段
+        tags: postTags,
         is_public: true,
         is_ai_generated: true,
         likes_count: 0,
@@ -1281,7 +1290,7 @@ ${friendMessageContents}
   /**
    * 🔴 根据类型生成帖子内容
    */
-  private async generatePostContentByType(avatar: any, type: 'video' | 'imageText' | 'textOnly', subscription: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
+  private async generatePostContentByType(avatar: any, type: 'video' | 'imageText' | 'textOnly', subscription: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string; tags?: string[] } | null> {
     try {
       // 🔴 生成等级/订阅标识
       const badge = this.generatePostBadge(avatar, type, subscription)
@@ -1374,7 +1383,7 @@ ${friendMessageContents}
   /**
    * 🔴 生成纯文字帖子
    */
-  private async generateTextOnlyPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
+  private async generateTextOnlyPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string; tags?: string[] } | null> {
     try {
       const personality = avatar.personality || {}
       const persona = avatar.persona || {}
@@ -1385,13 +1394,20 @@ ${friendMessageContents}
 说话风格：${personality.speaking_style || '亲切自然'}
 口头禅：${personality.catchphrase || ''}
 
-请生成一条适合发朋友圈/社交媒体的纯文字动态（50-150字）：
+请生成一条适合发朋友圈/社交媒体的纯文字动态（50-150字），并按以下格式返回：
+
+【内容】
+动态内容文字
+
+【标签】
+从以下分类中选择1-3个最相关的标签（用空格分隔）：美妆、健身、美食、学习、生活、职场、时尚、旅行、读书、日常、情感、观点
+
+要求：
 1. 内容要真实、有情感、有共鸣
 2. 可以分享日常感悟、心情、观点
 3. 符合人设特点
 4. 不需要图片
-
-直接返回动态内容，不要任何解释。`
+5. 标签必须与内容高度相关`
 
       const response = await this.llmClient.invoke([
         { role: 'user', content: prompt }
@@ -1400,13 +1416,22 @@ ${friendMessageContents}
         temperature: 0.9
       })
 
-      const content = response.content?.trim() || ''
-      if (!content) {
+      const rawContent = response.content?.trim() || ''
+      if (!rawContent) {
         return null
       }
-      console.log('[托管服务] 纯文字帖子生成成功:', content.substring(0, 50))
 
-      return { content, images: [], videos: [] }
+      // 解析内容和标签
+      const contentMatch = rawContent.match(/【内容】\s*\n?([\s\S]*?)(?=\n?【标签】|$)/)
+      const tagsMatch = rawContent.match(/【标签】\s*\n?([\s\S]*?)$/)
+
+      const content = contentMatch ? contentMatch[1].trim() : rawContent
+      const tagsText = tagsMatch ? tagsMatch[1].trim() : ''
+      const tags = tagsText ? tagsText.split(/\s+/).filter((t: string) => t.length > 0) : ['日常']
+
+      console.log('[托管服务] 纯文字帖子生成成功:', content.substring(0, 50), '标签:', tags)
+
+      return { content, images: [], videos: [], tags }
     } catch (error) {
       console.error('[托管服务] 生成纯文字帖子失败:', error)
       return null
@@ -1416,7 +1441,7 @@ ${friendMessageContents}
   /**
    * 🔴 生成图文帖子
    */
-  private async generateImageTextPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string } | null> {
+  private async generateImageTextPostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; badge?: string; tags?: string[] } | null> {
     try {
       // 先调用现有的爆款内容生成方法，但确保有图片
       const result = await this.generatePostContent(avatar)
@@ -1434,7 +1459,8 @@ ${friendMessageContents}
       return {
         content: result.content,
         images: imageUrl ? [imageUrl] : [],
-        videos: []
+        videos: [],
+        tags: result.tags
       }
     } catch (error) {
       console.error('[托管服务] 生成图文帖子失败:', error)
@@ -1484,7 +1510,7 @@ ${friendMessageContents}
   /**
    * 使用AI生成爆款帖子内容（结合热点、必须包含配图）
    */
-  private async generatePostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[] } | null> {
+  private async generatePostContent(avatar: any): Promise<{ content: string; images?: string[]; videos?: string[]; tags?: string[] } | null> {
     try {
       // 1. 搜索当前热点话题
       console.log('[托管服务] 正在搜索热点话题...')
@@ -1517,7 +1543,14 @@ ${friendMessageContents}
 7. **字数要求**：100-300字之间
 8. **避免争议**：不发表极端观点，保持积极正面
 
-只输出帖子正文内容，不要包含标题、标签等其他内容。`
+请按以下格式返回：
+
+【内容】
+帖子正文内容
+
+【标签】
+从以下分类中选择1-3个最相关的标签（用空格分隔）：美妆、健身、美食、学习、生活、职场、时尚、旅行、读书、日常、情感、观点
+要求：标签必须与内容高度相关，方便后续分类筛选。`
 
       const response = await this.llmClient.invoke([
         { role: 'user', content: prompt }
@@ -1526,14 +1559,22 @@ ${friendMessageContents}
         temperature: 0.9
       })
 
-      const content = response.content || ''
+      const rawContent = response.content || ''
       
-      if (!content.trim()) {
+      if (!rawContent.trim()) {
         console.log('[托管服务] 生成内容为空，跳过发帖')
         return null
       }
 
-      console.log(`[托管服务] 生成帖子内容: ${content.substring(0, 50)}...`)
+      // 解析内容和标签
+      const contentMatch = rawContent.match(/【内容】\s*\n?([\s\S]*?)(?=\n?【标签】|$)/)
+      const tagsMatch = rawContent.match(/【标签】\s*\n?([\s\S]*?)$/)
+
+      const content = contentMatch ? contentMatch[1].trim() : rawContent
+      const tagsText = tagsMatch ? tagsMatch[1].trim() : ''
+      const tags = tagsText ? tagsText.split(/\s+/).filter((t: string) => t.length > 0) : ['日常']
+
+      console.log(`[托管服务] 生成帖子内容: ${content.substring(0, 50)}... 标签:`, tags)
 
       // 4. 尝试生成图片配图（失败时允许发布纯文字帖子）
       let images: string[] = []
@@ -1570,7 +1611,8 @@ ${friendMessageContents}
       // 即使没有图片也返回内容，让帖子能够发布
       return {
         content: content.trim(),
-        images
+        images,
+        tags
       }
     } catch (error) {
       console.error('[托管服务] 生成帖子内容失败:', error)
