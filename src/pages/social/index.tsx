@@ -644,7 +644,13 @@ export default function SocialPage() {
               <View 
                 key={tag.id}
                 className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
-                onClick={() => setActiveFilter(tag.id)}
+                onClick={() => {
+                  if (activeFilter !== tag.id) {
+                    setActiveFilter(tag.id)
+                    Taro.showLoading({ title: '加载中...' })
+                    setTimeout(() => Taro.hideLoading(), 500)
+                  }
+                }}
               >
                 {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
                 <Text className="filter-tag-text">{tag.name}</Text>
@@ -747,14 +753,28 @@ export default function SocialPage() {
                       {/* 等级/订阅标识 - 放在头像下面 */}
                       {post.tags && post.tags.length > 0 && (
                         <View className="post-badges-vertical">
-                          {post.tags.slice(0, 2).map((tag: string, idx: number) => (
-                            <View
-                              key={idx}
-                              className={`post-badge-mini ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
-                            >
-                              <Text className="badge-mini-text">{tag}</Text>
-                            </View>
-                          ))}
+                          {post.tags.slice(0, 2).map((tag: string, idx: number) => {
+                            // 根据标签内容决定样式类
+                            let badgeClass = 'badge-default'
+                            if (tag.includes('尊享') || tag.includes('premium')) {
+                              badgeClass = 'badge-premium'
+                            } else if (tag.includes('高级') || tag.includes('pro')) {
+                              badgeClass = 'badge-pro'
+                            } else if (tag.includes('基本') || tag.includes('basic')) {
+                              badgeClass = 'badge-basic'
+                            } else if (tag.includes('升级') || tag.includes('订阅')) {
+                              badgeClass = 'badge-upgrade'
+                            } else if (tag.includes('专属') || tag.includes('动态')) {
+                              badgeClass = 'badge-post'
+                            } else if (tag.includes('Lv.')) {
+                              badgeClass = 'badge-level'
+                            }
+                            return (
+                              <View key={idx} className={`post-badge-mini ${badgeClass}`}>
+                                <Text className="badge-mini-text">{tag}</Text>
+                              </View>
+                            )
+                          })}
                         </View>
                       )}
                     </View>

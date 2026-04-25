@@ -103,19 +103,16 @@ export class AvatarController {
 
   /**
    * 获取活跃分身列表
-   * 按活跃程度排序，最多返回10个
+   * 按最近发帖数和互动数排序，返回真实的分身数据
    */
   @Get('active')
   async getActiveAvatars(@Query('limit') limit: string) {
-    const testData = [
-      { id: '1', name: '梦瑶', avatar_url: 'https://example.com/avatar1.jpg', bio: '温柔知性的小姐姐' },
-      { id: '2', name: '小北', avatar_url: 'https://example.com/avatar2.jpg', bio: '阳光开朗的摄影师' },
-      { id: '3', name: '夏天', avatar_url: 'https://example.com/avatar3.jpg', bio: '热爱旅行的美食家' },
-      { id: '4', name: '阿狸', avatar_url: 'https://example.com/avatar4.jpg', bio: '二次元爱好者' },
-    ]
+    const avatars = await this.avatarService.getActiveAvatars(
+      limit ? parseInt(limit) : 10
+    )
     return {
       code: 200,
-      data: testData,
+      data: avatars,
       message: '获取成功'
     }
   }

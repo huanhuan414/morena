@@ -752,44 +752,116 @@ export class AvatarService {
 
   /**
    * 获取活跃分身列表
-   * 按最近发帖数和互动数排序
+   * 按最近7天发帖数量排序，返回最真实的活跃分身
    */
   async getActiveAvatars(limit: number = 10) {
     try {
       const client = getSupabaseClient()
       
-      // 查询所有avatar
-      const { data: avatars, error } = await client
+      // 获取最近7天的日期
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      
+      // 第一步：查询最近7天有发帖的 avatar_id 及其发帖数量
+      const { data: postCounts, error: countError } = await client
+        .from('posts')
+        .select('avatar_id')
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .not('avatar_id', 'is', null)
+      
+      if (countError) {
+        console.error('查询帖子失败:', countError)
+        return []
+      }
+      
+      // 统计每个 avatar_id 的发帖数量
+      const avatarPostCounts = new Map<string, number>()
+      postCounts?.forEach((post: any) => {
+        const avatarId = post.avatar_id
+        if (avatarId) {
+          avatarPostCounts.set(avatarId, (avatarPostCounts.get(avatarId) || 0) + 1)
+        }
+      })
+      
+      // 获取排序后的 avatar_id 列表
+      const sortedAvatarIds = Array.from(avatarPostCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([id]) => id)
+      
+      if (sortedAvatarIds.length === 0) {
+        // 如果没有最近活跃的分身，返回最近创建的有头像的分身
+        const { data: recentAvatars } = await client
+          .from('avatars')
+          .select('id, name, avatar_url')
+          .not('avatar_url', 'is', null)
+          .neq('avatar_url', '')
+          .order('created_at', { ascending: false })
+          .limit(limit)
+        
+        return recentAvatars?.map((avatar: any) => ({
+          id: avatar.id,
+          name: avatar.name,
+          avatar_url: avatar.avatar_url,
+          post_count: 0
+        })) || []
+      }
+      
+      // 第二步：查询这些分身的详细信息
+      const { data: avatars, error: avatarError } = await client
         .from('avatars')
         .select('id, name, avatar_url')
-        .order('created_at', { ascending: false })
-        .limit(limit || 10)
+        .in('id', sortedAvatarIds)
       
-      if (error) {
-        console.error('查询活跃分身失败:', error)
-        // 返回测试数据
-        return [
-          { id: '1', name: '测试分身1', avatar_url: '' },
-          { id: '2', name: '测试分身2', avatar_url: '' }
-        ]
+      if (avatarError) {
+        console.error('查询分身信息失败:', avatarError)
+        return []
       }
       
-      if (!avatars || avatars.length === 0) {
-        // 返回测试数据
-        return [
-          { id: '1', name: '测试分身1', avatar_url: '' },
-          { id: '2', name: '测试分身2', avatar_url: '' }
-        ]
+      // 合并数据并排序
+      const avatarMap = new Map(avatars?.map((a: any) => [a.id, a]))
+      const result = sortedAvatarIds
+        .map(id => {
+          const avatar = avatarMap.get(id)
+          return {
+            id: id,
+            name: avatar?.name || '未知分身',
+            avatar_url: avatar?.avatar_url || '',
+            post_count: avatarPostCounts.get(id) || 0
+          }
+        })
+        .filter(a => a.name !== '未知分身')
+      
+      // 如果活跃分身不足，补充最近创建的有头像的分身
+      if (result.length < limit) {
+        const existingIds = new Set(result.map(a => a.id))
+        const needMore = limit - result.length
+        
+        const { data: recentAvatars } = await client
+          .from('avatars')
+          .select('id, name, avatar_url')
+          .not('id', 'in', Array.from(existingIds))
+          .not('avatar_url', 'is', null)
+          .neq('avatar_url', '')
+          .order('created_at', { ascending: false })
+          .limit(needMore)
+        
+        recentAvatars?.forEach((avatar: any) => {
+          if (!existingIds.has(avatar.id)) {
+            result.push({
+              id: avatar.id,
+              name: avatar.name,
+              avatar_url: avatar.avatar_url,
+              post_count: 0
+            })
+          }
+        })
       }
       
-      return avatars
+      return result.slice(0, limit)
     } catch (err) {
       console.error('获取活跃分身异常:', err)
-      // 返回测试数据
-      return [
-        { id: '1', name: '测试分身1', avatar_url: '' },
-        { id: '2', name: '测试分身2', avatar_url: '' }
-      ]
+      return []
     }
   }
 
