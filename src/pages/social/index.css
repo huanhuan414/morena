@@ -431,13 +431,13 @@
   display: flex;
   flex-direction: column;
   gap: 24rpx;
-  padding: 0 24rpx;
 }
 
 .post-card {
   background: #ffffff;
   border-radius: 24rpx;
-  padding: 28rpx;
+  padding: 24rpx;
+  margin: 0 24rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
 }
 
