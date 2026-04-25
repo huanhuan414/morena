@@ -1255,6 +1255,24 @@
   margin-top: var(--space-1);
 }
 
+/* 快捷提示区域 */
+.empty-hints {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.hint-item {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  background: var(--bg-page);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1rpx solid var(--border-light);
+}
+
 /* ========================================
    学习详情弹窗
    ======================================== */
@@ -1427,36 +1445,6 @@
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   font-style: italic;
-}
-
-/* 能力展示 */
-.learn-capabilities-section {
-  margin-bottom: var(--space-3);
-}
-
-.learn-capabilities-preview {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.capability-item {
-  flex: 1;
-  background: var(--bg-page);
-  padding: var(--space-3);
-  border-radius: var(--radius-base);
-  text-align: center;
-}
-
-.capability-label {
-  font-size: var(--text-xs);
-  color: var(--text-quaternary);
-}
-
-.capability-value {
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
-  color: var(--primary);
-  margin-top: var(--space-1);
 }
 
 /* 展开按钮 */
