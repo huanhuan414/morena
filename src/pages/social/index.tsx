@@ -730,15 +730,31 @@ export default function SocialPage() {
               const author = getAuthorInfo(post)
               return (
                 <View key={post.id} className="post-card">
-                  {/* 两列布局：左侧头像，右侧内容 */}
+                  {/* 两列布局：左侧头像+标签，右侧内容 */}
                   <View className="post-header-row">
-                    {/* 左侧：头像 */}
-                    <View className="post-avatar-col" onClick={() => handleAvatarClick(post)}>
-                      {author.avatar ? (
-                        <Image src={author.avatar} className="author-avatar" mode="aspectFill" />
-                      ) : (
-                        <View className="author-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ color: '#ffffff', fontSize: '32rpx' }}>{author.name[0]}</Text>
+                    {/* 左侧：头像 + 标签 */}
+                    <View className="post-left-col">
+                      <View className="post-avatar-col" onClick={() => handleAvatarClick(post)}>
+                        {author.avatar ? (
+                          <Image src={author.avatar} className="author-avatar" mode="aspectFill" />
+                        ) : (
+                          <View className="author-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: '#ffffff', fontSize: '32rpx' }}>{author.name[0]}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* 等级/订阅标识 - 放在头像下面 */}
+                      {post.tags && post.tags.length > 0 && (
+                        <View className="post-badges-vertical">
+                          {post.tags.slice(0, 2).map((tag: string, idx: number) => (
+                            <View
+                              key={idx}
+                              className={`post-badge-mini ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
+                            >
+                              <Text className="badge-mini-text">{tag}</Text>
+                            </View>
+                          ))}
                         </View>
                       )}
                     </View>
@@ -751,20 +767,6 @@ export default function SocialPage() {
                         <Text className="post-desc">{formatTime(post.created_at)}</Text>
                       </View>
 
-                      {/* 等级/订阅标识 */}
-                      {post.tags && post.tags.length > 0 && (
-                        <View className="post-badges">
-                          {post.tags.slice(0, 2).map((tag: string, idx: number) => (
-                            <View
-                              key={idx}
-                              className={`post-badge ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
-                            >
-                              <Text>{tag}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-
                       {/* 帖子内容 */}
                       {post.content && (
                         <Text className="post-content">{post.content}</Text>
@@ -772,43 +774,47 @@ export default function SocialPage() {
                     </View>
                   </View>
 
-                  {/* 图片 - 放在正常文档流中 */}
+                  {/* 图片 - 9宫格布局，和右侧列对齐 */}
                   {post.images && post.images.length > 0 && (
-                    <View className={`post-images images-${Math.min(post.images.length, 3)}`}>
-                      {post.images.slice(0, 3).map((img, idx) => (
-                        <Image 
-                          key={idx}
-                          src={img} 
-                          className="post-image" 
-                          mode={post.images.length === 1 ? "widthFix" : "aspectFill"}
-                          onClick={() => {
-                            previewImage({
-                              current: img,
-                              urls: post.images
-                            })
-                          }}
-                        />
-                      ))}
+                    <View className="post-media-section">
+                      <View className={`post-images-grid grid-${Math.min(post.images.length, 9)}`}>
+                        {post.images.slice(0, 9).map((img, idx) => (
+                          <Image 
+                            key={idx}
+                            src={img} 
+                            className={`post-image-item ${post.images.length === 1 ? 'single' : ''}`}
+                            mode="aspectFill"
+                            onClick={() => {
+                              previewImage({
+                                current: img,
+                                urls: post.images
+                              })
+                            }}
+                          />
+                        ))}
+                      </View>
                     </View>
                   )}
 
-                  {/* 视频 - 放在正常文档流中 */}
+                  {/* 视频 - 和右侧列对齐 */}
                   {post.videos && post.videos.length > 0 && (
-                    <View className="post-video-container">
-                      {post.videos.map((video, idx) => (
-                        <Video
-                          key={idx}
-                          src={video}
-                          className="post-video-item"
-                          controls
-                          showFullscreenBtn
-                          showPlayBtn
-                          showCenterPlayBtn
-                          enableProgressGesture
-                          objectFit="contain"
-                          poster={post.images && post.images.length > 0 ? post.images[0] : ''}
-                        />
-                      ))}
+                    <View className="post-media-section">
+                      <View className="post-video-grid">
+                        {post.videos.slice(0, 3).map((video, idx) => (
+                          <Video
+                            key={idx}
+                            src={video}
+                            className="post-video-item"
+                            controls
+                            showFullscreenBtn
+                            showPlayBtn
+                            showCenterPlayBtn
+                            enableProgressGesture
+                            objectFit="cover"
+                            poster={post.images && post.images.length > 0 ? post.images[0] : ''}
+                          />
+                        ))}
+                      </View>
                     </View>
                   )}
 
