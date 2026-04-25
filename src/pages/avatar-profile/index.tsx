@@ -40,6 +40,18 @@ const ORDER_STATUS: Record<string, { label: string; color: string }> = {
   'cancelled': { label: '已取消', color: '#9CA3AF' }
 }
 
+// 性格类型映射
+const PERSONALITY_TYPES: Record<string, { icon: string; label: string }> = {
+  'outgoing': { icon: '☀️', label: '外向' },
+  'introverted': { icon: '🌙', label: '内向' },
+  'creative': { icon: '🎨', label: '创意' },
+  'rational': { icon: '🧠', label: '理性' },
+  'friendly': { icon: '😊', label: '友善' },
+  'professional': { icon: '💼', label: '专业' },
+  'humorous': { icon: '😄', label: '幽默' },
+  'gentle': { icon: '🌸', label: '温柔' }
+}
+
 interface AvatarAccount {
   id: string
   platform: string
@@ -77,6 +89,9 @@ interface AvatarProfile {
   level: number
   status: string
   created_at: string
+  personality?: string
+  style?: string
+  skills?: string[]
   accounts?: AvatarAccount[]
 }
 
@@ -142,6 +157,12 @@ export default function AvatarProfilePage() {
     return num.toString()
   }
 
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+  }
+
   const getPlatformIcon = (platform: string): string => {
     return PLATFORM_ICONS[platform] || PLATFORM_ICONS.default
   }
@@ -152,6 +173,10 @@ export default function AvatarProfilePage() {
 
   const getStatusInfo = (status: string) => {
     return ORDER_STATUS[status] || { label: '未知', color: '#999999' }
+  }
+
+  const getPersonalityInfo = (type: string) => {
+    return PERSONALITY_TYPES[type] || { icon: '✨', label: type || '未知' }
   }
 
   if (loading) {
@@ -177,13 +202,15 @@ export default function AvatarProfilePage() {
   }
 
   const accounts = avatarProfile.accounts || []
+  const personality = getPersonalityInfo(avatarProfile.personality || '')
+  const skills = avatarProfile.skills || []
 
   return (
     <View className="avatar-profile-page">
       {/* 顶部导航 */}
       <View className="profile-header">
         <View className="header-back" onClick={() => navigateBack()}>
-          <ArrowLeft size={32} color="#ffffff" />
+          <ArrowLeft size={40} color="#ffffff" />
         </View>
         <Text className="header-title">分身主页</Text>
         <View className="header-placeholder" />
@@ -209,12 +236,51 @@ export default function AvatarProfilePage() {
               <Text className="avatar-level">Lv.{avatarProfile.level}</Text>
             </View>
           </View>
+
+          {/* 分身简介 */}
+          {avatarProfile.description && (
+            <View className="avatar-bio">
+              <Text className="bio-text">{avatarProfile.description}</Text>
+            </View>
+          )}
+
+          {/* 分身属性标签 */}
+          <View className="avatar-details">
+            <View className="detail-tag">
+              <Text className="detail-tag-icon">{personality.icon}</Text>
+              <Text className="detail-tag-text">{personality.label}</Text>
+            </View>
+            {avatarProfile.style && (
+              <View className="detail-tag">
+                <Text className="detail-tag-icon">🎭</Text>
+                <Text className="detail-tag-text">{avatarProfile.style}</Text>
+              </View>
+            )}
+            <View className="detail-tag">
+              <Text className="detail-tag-icon">📅</Text>
+              <Text className="detail-tag-text">{formatDate(avatarProfile.created_at)} 创建</Text>
+            </View>
+          </View>
+
+          {/* 技能标签 */}
+          {skills.length > 0 && (
+            <View className="skills-section">
+              <Text className="skills-title">擅长技能</Text>
+              <View className="skills-list">
+                {skills.map((skill, index) => (
+                  <View key={index} className="skill-tag">
+                    <Text className="skill-tag-text">{skill}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* 收入统计卡 */}
         <View className="earnings-card">
           <View className="earnings-header">
-            <Wallet size={36} color="#7B3FE4" />
+            <Wallet size={48} color="#7B3FE4" />
             <Text className="earnings-title">收入统计</Text>
           </View>
           
@@ -238,7 +304,7 @@ export default function AvatarProfilePage() {
         {accounts.length > 0 && (
           <View className="section-card">
             <View className="section-header">
-              <Link2 size={32} color="#7B3FE4" />
+              <Link2 size={40} color="#7B3FE4" />
               <Text className="section-title">绑定的账号</Text>
               <Text className="section-count">{accounts.length}个</Text>
             </View>
@@ -271,14 +337,14 @@ export default function AvatarProfilePage() {
         {/* 订单列表 */}
         <View className="section-card">
           <View className="section-header">
-            <ShoppingBag size={32} color="#7B3FE4" />
+            <ShoppingBag size={40} color="#7B3FE4" />
             <Text className="section-title">接单记录</Text>
             <Text className="section-count">{orders.length}单</Text>
           </View>
           
           {orders.length === 0 ? (
             <View className="empty-orders">
-              <Package size={64} color="#cccccc" />
+              <Package size={80} color="#cccccc" />
               <Text className="empty-text">暂无订单</Text>
             </View>
           ) : (

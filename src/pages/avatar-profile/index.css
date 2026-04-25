@@ -1,8 +1,8 @@
 /* 页面容器 */
 .avatar-profile-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #7B3FE4 0%, #9B6EF3 120px, #F8F7FC 120px);
-  padding-top: 60px;
+  background: linear-gradient(180deg, #7B3FE4 0%, #9B6EF3 240rpx, #F8F7FC 240rpx);
+  padding-top: 120rpx;
 }
 
 /* 顶部导航 */
@@ -11,19 +11,20 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 120rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 32rpx;
+  padding-top: var(--status-bar-height, 0);
   z-index: 100;
   background: linear-gradient(180deg, rgba(123,63,228,0.95) 0%, rgba(123,63,228,0.8) 100%);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(12rpx);
 }
 
 .header-back {
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,57 +38,57 @@
 }
 
 .header-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 600;
   color: #ffffff;
 }
 
 .header-placeholder {
-  width: 40px;
+  width: 80rpx;
 }
 
 /* 滚动区域 */
 .profile-scroll {
-  height: calc(100vh - 60px);
-  padding: 16px;
+  height: calc(100vh - 120rpx);
+  padding: 32rpx;
 }
 
-/* 头像信息区 */
+/* 头部信息卡 */
 .profile-hero {
   background: #ffffff;
-  border-radius: 20px;
-  padding: 24px 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 20px rgba(123,63,228,0.1);
+  border-radius: 40rpx;
+  padding: 48rpx 40rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 8rpx 40rpx rgba(123,63,228,0.1);
 }
 
 .avatar-main {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .avatar-image {
-  width: 80px;
-  height: 80px;
+  width: 160rpx;
+  height: 160rpx;
   border-radius: 50%;
-  border: 3px solid #7B3FE4;
-  box-shadow: 0 4px 16px rgba(123,63,228,0.25);
+  border: 6rpx solid #7B3FE4;
+  box-shadow: 0 8rpx 32rpx rgba(123,63,228,0.25);
 }
 
 .avatar-fallback {
-  width: 80px;
-  height: 80px;
+  width: 160rpx;
+  height: 160rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #7B3FE4, #9B6EF3);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid rgba(255,255,255,0.3);
+  border: 6rpx solid rgba(255,255,255,0.3);
 }
 
 .avatar-initial {
-  font-size: 36px;
+  font-size: 72rpx;
   font-weight: 700;
   color: #ffffff;
 }
@@ -98,55 +99,125 @@
 
 .avatar-name {
   display: block;
-  font-size: 24px;
+  font-size: 48rpx;
   font-weight: 700;
   color: #1a1a2e;
-  margin-bottom: 6px;
+  margin-bottom: 12rpx;
 }
 
 .avatar-level {
   display: inline-block;
-  font-size: 12px;
+  font-size: 24rpx;
   font-weight: 600;
   color: #7B3FE4;
   background: linear-gradient(135deg, #f3e8ff, #ede9fe);
-  padding: 4px 12px;
-  border-radius: 20px;
+  padding: 8rpx 24rpx;
+  border-radius: 40rpx;
+}
+
+/* 分身简介 */
+.avatar-bio {
+  margin-top: 32rpx;
+  padding-top: 32rpx;
+  border-top: 2rpx solid #f0f0f0;
+}
+
+.bio-text {
+  font-size: 28rpx;
+  color: #666666;
+  line-height: 1.6;
+}
+
+/* 分身详细信息 */
+.avatar-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.detail-tag {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 24rpx;
+  background: #F8F7FC;
+  border-radius: 32rpx;
+}
+
+.detail-tag-icon {
+  font-size: 24rpx;
+}
+
+.detail-tag-text {
+  font-size: 24rpx;
+  color: #666666;
+}
+
+/* 技能标签 */
+.skills-section {
+  margin-top: 24rpx;
+}
+
+.skills-title {
+  font-size: 24rpx;
+  color: #999999;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.skill-tag {
+  padding: 10rpx 24rpx;
+  background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+  border-radius: 32rpx;
+  border: 2rpx solid rgba(123,63,228,0.1);
+}
+
+.skill-tag-text {
+  font-size: 24rpx;
+  color: #7B3FE4;
+  font-weight: 500;
 }
 
 /* 收入卡 */
 .earnings-card {
   background: linear-gradient(135deg, #ffffff 0%, #faf9ff 100%);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 20px rgba(123,63,228,0.08);
-  border: 1px solid rgba(123,63,228,0.08);
+  border-radius: 40rpx;
+  padding: 40rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 8rpx 40rpx rgba(123,63,228,0.08);
+  border: 2rpx solid rgba(123,63,228,0.08);
 }
 
 .earnings-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 20rpx;
+  margin-bottom: 40rpx;
 }
 
 .earnings-title {
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 700;
   color: #1a1a2e;
 }
 
 .earnings-grid {
   display: flex;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .earnings-item {
   flex: 1;
   background: #f8f7fc;
-  border-radius: 16px;
-  padding: 16px 12px;
+  border-radius: 32rpx;
+  padding: 32rpx 24rpx;
   text-align: center;
 }
 
@@ -161,14 +232,14 @@
 
 .earnings-label {
   display: block;
-  font-size: 12px;
+  font-size: 24rpx;
   color: #6b7280;
-  margin-bottom: 8px;
+  margin-bottom: 16rpx;
 }
 
 .earnings-value {
   display: block;
-  font-size: 22px;
+  font-size: 44rpx;
   font-weight: 700;
   color: #1a1a2e;
 }
@@ -176,62 +247,62 @@
 /* 区块卡片 */
 .section-card {
   background: #ffffff;
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  border-radius: 40rpx;
+  padding: 40rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.04);
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
 }
 
 .section-title {
-  font-size: 17px;
+  font-size: 34rpx;
   font-weight: 700;
   color: #1a1a2e;
   flex: 1;
 }
 
 .section-count {
-  font-size: 13px;
+  font-size: 26rpx;
   font-weight: 600;
   color: #7B3FE4;
   background: #f3e8ff;
-  padding: 4px 12px;
-  border-radius: 20px;
+  padding: 8rpx 24rpx;
+  border-radius: 40rpx;
 }
 
 /* 账号列表 */
 .accounts-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .account-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px;
+  gap: 28rpx;
+  padding: 32rpx;
   background: #fafafa;
-  border-radius: 16px;
+  border-radius: 32rpx;
 }
 
 .account-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .account-icon {
-  font-size: 24px;
+  font-size: 48rpx;
 }
 
 .account-info {
@@ -240,15 +311,15 @@
 
 .account-platform {
   display: block;
-  font-size: 13px;
+  font-size: 26rpx;
   font-weight: 600;
   color: #6b7280;
-  margin-bottom: 4px;
+  margin-bottom: 8rpx;
 }
 
 .account-name {
   display: block;
-  font-size: 15px;
+  font-size: 30rpx;
   font-weight: 600;
   color: #1a1a2e;
 }
@@ -259,14 +330,14 @@
 
 .account-stat-value {
   display: block;
-  font-size: 18px;
+  font-size: 36rpx;
   font-weight: 700;
   color: #7B3FE4;
 }
 
 .account-stat-label {
   display: block;
-  font-size: 11px;
+  font-size: 22rpx;
   color: #9ca3af;
 }
 
@@ -274,49 +345,49 @@
 .orders-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .empty-orders {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 20px;
+  padding: 80rpx 40rpx;
 }
 
 .empty-text {
   display: block;
-  font-size: 14px;
+  font-size: 28rpx;
   color: #9ca3af;
-  margin-top: 12px;
+  margin-top: 24rpx;
 }
 
 .order-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 32rpx;
   background: #fafafa;
-  border-radius: 16px;
+  border-radius: 32rpx;
 }
 
 .order-main {
   flex: 1;
   min-width: 0;
-  margin-right: 16px;
+  margin-right: 32rpx;
 }
 
 .order-title {
   display: block;
-  font-size: 15px;
+  font-size: 30rpx;
   font-weight: 600;
   color: #1a1a2e;
-  margin-bottom: 6px;
+  margin-bottom: 12rpx;
 }
 
 .order-desc {
   display: block;
-  font-size: 12px;
+  font-size: 24rpx;
   color: #6b7280;
 }
 
@@ -325,12 +396,12 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .order-price {
   display: block;
-  font-size: 20px;
+  font-size: 40rpx;
   font-weight: 700;
   color: #7B3FE4;
 }
@@ -338,25 +409,25 @@
 .order-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
+  gap: 12rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 40rpx;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 12rpx;
+  height: 12rpx;
   border-radius: 50%;
 }
 
 .status-text {
-  font-size: 11px;
+  font-size: 22rpx;
   font-weight: 600;
 }
 
 /* 底部占位 */
 .bottom-placeholder {
-  height: 40px;
+  height: 80rpx;
 }
 
 /* 加载状态 */
@@ -366,13 +437,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-top: 200px;
+  padding-top: 400rpx;
 }
 
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f4f6;
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #f3f4f6;
   border-top-color: #7B3FE4;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -383,13 +454,13 @@
 }
 
 .loading-text {
-  font-size: 14px;
+  font-size: 28rpx;
   color: #6b7280;
-  margin-top: 16px;
+  margin-top: 32rpx;
 }
 
 .error-text {
-  font-size: 16px;
+  font-size: 32rpx;
   color: #6b7280;
-  margin-bottom: 20px;
+  margin-bottom: 40rpx;
 }
