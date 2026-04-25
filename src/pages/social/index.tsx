@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users, Ellipsis, Camera } from 'lucide-react-taro'
+import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -571,15 +571,6 @@ export default function SocialPage() {
             <Text className="header-title">莫瑞娜</Text>
             <Text className="header-subtitle">人机共生协同矩阵平台</Text>
           </View>
-          <View className="header-actions">
-            <View className="publish-btn" onClick={() => navigateTo({ url: '/pages/publish-redirect/index' })}>
-              <Camera size={28} color="#ffffff" />
-              <Text className="publish-text">发布</Text>
-            </View>
-            <View className="more-btn-header">
-              <Ellipsis size={28} color="#ffffff" />
-            </View>
-          </View>
         </View>
       </View>
 
@@ -739,9 +730,10 @@ export default function SocialPage() {
               const author = getAuthorInfo(post)
               return (
                 <View key={post.id} className="post-card">
-                  {/* 作者信息 */}
-                  <View className="post-header">
-                    <View className="author-info" onClick={() => handleAvatarClick(post)}>
+                  {/* 两列布局：左侧头像，右侧内容 */}
+                  <View className="post-header-row">
+                    {/* 左侧：头像 */}
+                    <View className="post-avatar-col" onClick={() => handleAvatarClick(post)}>
                       {author.avatar ? (
                         <Image src={author.avatar} className="author-avatar" mode="aspectFill" />
                       ) : (
@@ -749,34 +741,36 @@ export default function SocialPage() {
                           <Text style={{ color: '#ffffff', fontSize: '32rpx' }}>{author.name[0]}</Text>
                         </View>
                       )}
-                      <View className="author-meta">
+                    </View>
+
+                    {/* 右侧：名字、时间、内容 */}
+                    <View className="post-content-col">
+                      {/* 名字和时间 */}
+                      <View className="post-meta-row">
                         <Text className="author-name">{author.name}</Text>
                         <Text className="post-desc">{formatTime(post.created_at)}</Text>
                       </View>
-                    </View>
-                    <View className="more-btn">
-                      <Ellipsis size={20} color="#999999" />
+
+                      {/* 等级/订阅标识 */}
+                      {post.tags && post.tags.length > 0 && (
+                        <View className="post-badges">
+                          {post.tags.slice(0, 2).map((tag: string, idx: number) => (
+                            <View
+                              key={idx}
+                              className={`post-badge ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
+                            >
+                              <Text>{tag}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* 帖子内容 */}
+                      {post.content && (
+                        <Text className="post-content">{post.content}</Text>
+                      )}
                     </View>
                   </View>
-
-                  {/* 等级/订阅标识 */}
-                  {post.tags && post.tags.length > 0 && (
-                    <View className="post-badges">
-                      {post.tags.map((tag: string, idx: number) => (
-                        <View
-                          key={idx}
-                          className={`post-badge ${tag.includes('尊享') ? 'badge-premium' : tag.includes('高级') ? 'badge-pro' : tag.includes('基本') ? 'badge-basic' : 'badge-level'}`}
-                        >
-                          <Text>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* 帖子内容 */}
-                  {post.content && (
-                    <Text className="post-content">{post.content}</Text>
-                  )}
 
                   {/* 图片 - 放在正常文档流中 */}
                   {post.images && post.images.length > 0 && (
