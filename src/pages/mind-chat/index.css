@@ -1541,10 +1541,10 @@
 
 /* 输入容器 */
 .input-container {
-  background: rgba(15, 15, 25, 0.95);
+  background: var(--bg-gray);
   border-radius: var(--radius-lg);
   padding: var(--space-3);
-  border: 1rpx solid rgba(123, 63, 228, 0.2);
+  border: 1rpx solid var(--border-light);
 }
 
 /* 文本输入框 */
@@ -1553,7 +1553,7 @@
   min-height: 72rpx;
   max-height: 200rpx;
   font-size: var(--text-base);
-  color: var(--text-white);
+  color: var(--text-secondary);
   line-height: 1.5;
   background: transparent;
   border: none;
@@ -1563,7 +1563,7 @@
 }
 
 .input-placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-quaternary);
   font-size: var(--text-base);
 }
 
@@ -1600,7 +1600,7 @@
   justify-content: space-between;
   margin-top: var(--space-2);
   padding-top: var(--space-2);
-  border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-top: 1rpx solid var(--border-light);
 }
 
 .button-row-left {
@@ -1621,53 +1621,53 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-page);
   transition: var(--transition-fast);
 }
 
 .icon-btn:active {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--primary-lighter);
   transform: scale(0.95);
 }
 
 /* 图片按钮 */
 .image-btn {
-  background: rgba(16, 185, 129, 0.15);
+  background: #D1FAE5;
 }
 
 .image-btn:active {
-  background: rgba(16, 185, 129, 0.25);
+  background: #A7F3D0;
 }
 
 /* 视频按钮 */
 .video-btn {
-  background: rgba(245, 158, 11, 0.15);
+  background: #FEF3C7;
 }
 
 .video-btn:active {
-  background: rgba(245, 158, 11, 0.25);
+  background: #FDE68A;
 }
 
 /* 技能按钮 */
 .skill-btn {
-  background: rgba(139, 92, 246, 0.15);
+  background: var(--primary-lighter);
 }
 
 .skill-btn:active {
-  background: rgba(139, 92, 246, 0.25);
+  background: #E9D5FF;
 }
 
 /* 语音按钮 */
 .voice-btn {
-  background: rgba(6, 182, 212, 0.15);
+  background: #CFFAFE;
 }
 
 .voice-btn.active {
-  background: rgba(239, 68, 68, 0.2);
+  background: #FECACA;
 }
 
 .voice-btn:active {
-  background: rgba(6, 182, 212, 0.25);
+  background: #A5F3FC;
 }
 
 /* 发送按钮 */
@@ -1677,13 +1677,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--primary);
   border-radius: var(--radius-full);
   transition: var(--transition-fast);
 }
 
 .send-btn.active {
-  background: #ffffff;
+  background: var(--primary-dark);
 }
 
 .send-btn:active {
