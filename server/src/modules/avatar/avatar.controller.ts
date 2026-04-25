@@ -120,9 +120,13 @@ export class AvatarController {
   @Get(':id')
   async get(@Param('id') avatarId: string) {
     const avatar = await this.avatarService.getAvatarById(avatarId)
+    const accounts = await this.avatarService.getAvatarAccounts(avatarId)
     return {
       code: 200,
-      data: avatar,
+      data: {
+        ...avatar,
+        accounts
+      },
       message: '获取成功'
     }
   }

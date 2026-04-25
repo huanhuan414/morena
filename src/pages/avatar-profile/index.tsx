@@ -1,33 +1,50 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useRouter, showToast, navigateBack } from '@tarojs/taro'
+import { useLoad, useRouter, showToast, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, UserPlus, Shield, Calendar, Zap, Crown, Sparkles, TrendingUp, MapPin, ArrowLeft } from 'lucide-react-taro'
+import { 
+  Heart, MessageCircle, UserPlus, Zap, 
+  Crown, Sparkles, MapPin, ArrowLeft,
+  FileText, ExternalLink,
+  BookOpen, Palette, Globe
+} from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'
 
-// 技能英文到中文的映射
-const SKILL_MAP: Record<string, string> = {
-  'writing': '写作助手',
-  'coding': '编程专家',
-  'analysis': '数据分析',
-  'planning': '任务规划',
-  'learning': '学习伙伴',
-  'creative': '创意设计',
-  'emotional': '情感陪伴',
-  'protection': '安全守护'
+// 平台图标映射
+const PLATFORM_ICONS: Record<string, string> = {
+  '抖音': '🎵',
+  '微信公众号': '💬',
+  '小红书': '📕',
+  'B站': '📺',
+  '微博': '🌊',
+  '快手': '⚡',
+  '知乎': '📚',
+  'default': '🔗'
 }
 
-// 性格类型英文到中文的映射
-const PERSONALITY_MAP: Record<string, string> = {
-  'friendly': '亲切友好',
-  'professional': '专业严谨',
-  'humorous': '幽默风趣',
-  'calm': '沉稳理性',
-  'enthusiastic': '热情活泼',
-  'analytical': '分析型',
-  'empathetic': '共情型',
-  'strategic': '战略型'
+// 平台颜色映射
+const PLATFORM_COLORS: Record<string, string> = {
+  '抖音': '#000000',
+  '微信公众号': '#07C160',
+  '小红书': '#FE2C55',
+  'B站': '#00A1D6',
+  '微博': '#E6162D',
+  '快手': '#FF5000',
+  '知乎': '#0084FF',
+  'default': '#666666'
+}
+
+interface AvatarAccount {
+  id: string
+  platform: string
+  account_name: string
+  followers: number
+  total_exposure: number
+  total_works: number
+  engagement_rate: number
+  account_url: string
+  last_updated_at: string
 }
 
 interface AvatarProfile {
@@ -35,7 +52,7 @@ interface AvatarProfile {
   name: string
   description: string
   avatar_url: string
-  personality: string
+  personality: any
   skills: string[]
   level: number
   exp: number
@@ -44,6 +61,10 @@ interface AvatarProfile {
   location_text?: string
   latitude?: number | null
   longitude?: number | null
+  appearance_style?: string
+  speaking_style?: string
+  accounts?: AvatarAccount[]
+  is_hosted?: boolean
 }
 
 interface Post {
@@ -53,55 +74,30 @@ interface Post {
   likes_count: number
   comments_count: number
   created_at: string
-  avatar_id: string
 }
 
 interface AvatarStats {
-  friendsCount: number
   postsCount: number
+  friendsCount: number
   likesReceived: number
   commentsReceived: number
-  // 今日统计
-  todayPostsCount?: number
-  todayLikesCount?: number
-  todayCommentsCount?: number
-  todayOrdersCount?: number
 }
 
 export default function AvatarProfilePage() {
   const router = useRouter()
-  const [avatarId, setAvatarId] = useState<string>('')
   const [avatarProfile, setAvatarProfile] = useState<AvatarProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [stats, setStats] = useState<AvatarStats>({
-    friendsCount: 0,
     postsCount: 0,
+    friendsCount: 0,
     likesReceived: 0,
-    commentsReceived: 0,
-    todayPostsCount: 0,
-    todayLikesCount: 0,
-    todayCommentsCount: 0,
-    todayOrdersCount: 0
+    commentsReceived: 0
   })
-  const [isFriend, setIsFriend] = useState(false)
-  const [isBlocked, setIsBlocked] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [isOwnAvatar, setIsOwnAvatar] = useState(false)
-
-  // 转换技能为中文
-  const getSkillName = (skill: string): string => {
-    return SKILL_MAP[skill] || skill
-  }
-
-  // 转换性格为中文
-  const getPersonalityName = (personality: string): string => {
-    return PERSONALITY_MAP[personality] || personality
-  }
 
   useLoad(() => {
     const params = router.params
     if (params?.id) {
-      setAvatarId(params.id)
       fetchAvatarProfile(params.id)
     }
   })
@@ -110,469 +106,333 @@ export default function AvatarProfilePage() {
     try {
       setLoading(true)
       
-      const profileRes = await Network.request({
-        url: `/api/avatar/${id}`
-      })
+      const [profileRes, postsRes, statsRes] = await Promise.all([
+        Network.request({ url: `/api/avatar/${id}` }),
+        Network.request({ url: `/api/avatar/${id}/posts?page=1&pageSize=6` }),
+        Network.request({ url: `/api/avatar/${id}/stats` })
+      ])
       
       if (profileRes.data?.code === 200) {
         setAvatarProfile(profileRes.data.data)
-        const currentUserId = Taro.getStorageSync('userId')
-        setIsOwnAvatar(profileRes.data.data.user_id === currentUserId)
       }
       
-      await fetchAvatarPosts(id)
-      await fetchAvatarStats(id)
-      await checkFriendStatus(id)
-      await checkBlockStatus(id)
+      if (postsRes.data?.code === 200) {
+        setPosts(postsRes.data.data?.posts || [])
+      }
       
+      if (statsRes.data?.code === 200) {
+        setStats(statsRes.data.data)
+      }
     } catch (error) {
       console.error('获取分身详情失败:', error)
-      showToast({
-        title: '加载失败',
-        icon: 'none'
-      })
+      showToast({ title: '加载失败', icon: 'none' })
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchAvatarPosts = async (id: string) => {
-    try {
-      const res = await Network.request({
-        url: `/api/avatar/${id}/posts?page=1&pageSize=10`
-      })
-      
-      if (res.data?.code === 200) {
-        const postsData = res.data.data?.posts || []
-        setPosts(postsData)
-      }
-    } catch (error) {
-      console.error('获取分身动态失败:', error)
+  const formatNumber = (num: number): string => {
+    if (num >= 10000) {
+      return (num / 10000).toFixed(1) + 'w'
     }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k'
+    }
+    return num.toString()
   }
 
-  const fetchAvatarStats = async (id: string) => {
-    try {
-      const res = await Network.request({
-        url: `/api/avatar/${id}/stats`
-      })
-
-      if (res.data?.code === 200) {
-        setStats(res.data.data)
-      }
-
-      // 获取今日统计
-      const todayRes = await Network.request({
-        url: `/api/avatar/${id}/today-stats`
-      })
-
-      if (todayRes.data?.code === 200) {
-        setStats(prev => ({
-          ...prev,
-          ...todayRes.data.data
-        }))
-      }
-    } catch (error) {
-      console.error('获取统计信息失败:', error)
-    }
+  const formatTime = (time: string): string => {
+    const date = new Date(time)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+    
+    if (minutes < 60) return `${minutes}分钟前`
+    if (hours < 24) return `${hours}小时前`
+    if (days < 30) return `${days}天前`
+    return date.toLocaleDateString('zh-CN')
   }
 
-  const checkFriendStatus = async (id: string) => {
-    try {
-      const userId = Taro.getStorageSync('userId')
-      if (!userId) return
-      
-      const res = await Network.request({
-        url: `/api/avatar/my-avatars`
-      })
-      
-      if (res.data?.code === 200) {
-        const myAvatars = res.data.data || []
-        for (const avatar of myAvatars) {
-          const friendRes = await Network.request({
-            url: `/api/avatar/${avatar.id}/friends/${id}`
-          })
-          if (friendRes.data?.code === 200 && friendRes.data.data) {
-            setIsFriend(true)
-            return
-          }
-        }
-      }
-    } catch (error) {
-      console.error('检查好友关系失败:', error)
-    }
+  const getPlatformIcon = (platform: string): string => {
+    return PLATFORM_ICONS[platform] || PLATFORM_ICONS.default
   }
 
-  const checkBlockStatus = async (id: string) => {
-    try {
-      const userId = Taro.getStorageSync('userId')
-      if (!userId) return
-      
-      const res = await Network.request({
-        url: `/api/avatar/${id}/blocked-status`
-      })
-      
-      if (res.data?.code === 200) {
-        setIsBlocked(res.data.data.isBlocked)
-      }
-    } catch (error) {
-      console.error('检查拉黑状态失败:', error)
-    }
-  }
-
-  const handleAddFriend = async () => {
-    try {
-      const userId = Taro.getStorageSync('userId')
-      if (!userId) {
-        showToast({ title: '请先登录', icon: 'none' })
-        return
-      }
-      
-      const res = await Network.request({
-        url: `/api/avatar/my-avatars`
-      })
-      
-      if (res.data?.code === 200) {
-        const myAvatars = res.data.data || []
-        if (myAvatars.length === 0) {
-          showToast({ title: '请先创建分身', icon: 'none' })
-          return
-        }
-        
-        const avatar = myAvatars[0]
-        await Network.request({
-          url: `/api/avatar-friend/${avatar.id}/request`,
-          method: 'POST',
-          data: {
-            friend_avatar_id: avatarId,
-            message: `我是${avatar.name}，想和你交个朋友！`
-          }
-        })
-        
-        showToast({ title: '好友请求已发送' })
-      }
-    } catch (error) {
-      console.error('添加好友失败:', error)
-      showToast({ title: '添加好友失败', icon: 'none' })
-    }
-  }
-
-  const handleBlock = async () => {
-    try {
-      const userId = Taro.getStorageSync('userId')
-      if (!userId) {
-        showToast({ title: '请先登录', icon: 'none' })
-        return
-      }
-      
-      const res = await Network.request({
-        url: `/api/avatar/my-avatars`
-      })
-      
-      if (res.data?.code === 200) {
-        const myAvatars = res.data.data || []
-        if (myAvatars.length === 0) {
-          showToast({ title: '请先创建分身', icon: 'none' })
-          return
-        }
-        
-        const avatar = myAvatars[0]
-        await Network.request({
-          url: `/api/avatar/${avatar.id}/block/${avatarId}`,
-          method: 'POST',
-          data: { reason: '手动拉黑' }
-        })
-        
-        setIsBlocked(true)
-        showToast({ title: '已拉黑' })
-      }
-    } catch (error) {
-      console.error('拉黑失败:', error)
-      showToast({ title: '拉黑失败', icon: 'none' })
-    }
-  }
-
-  const handleUnblock = async () => {
-    try {
-      const userId = Taro.getStorageSync('userId')
-      if (!userId) return
-      
-      const res = await Network.request({
-        url: `/api/avatar/my-avatars`
-      })
-      
-      if (res.data?.code === 200) {
-        const myAvatars = res.data.data || []
-        if (myAvatars.length === 0) return
-        
-        const avatar = myAvatars[0]
-        await Network.request({
-          url: `/api/avatar/${avatar.id}/block/${avatarId}`,
-          method: 'DELETE'
-        })
-        
-        setIsBlocked(false)
-        showToast({ title: '已解除拉黑' })
-      }
-    } catch (error) {
-      console.error('解除拉黑失败:', error)
-      showToast({ title: '解除拉黑失败', icon: 'none' })
-    }
+  const getPlatformColor = (platform: string): string => {
+    return PLATFORM_COLORS[platform] || PLATFORM_COLORS.default
   }
 
   if (loading) {
     return (
-      <View className="profile-container loading-state">
-        <View className="loading-spinner">
-          <Sparkles size={48} color="#00f5ff" />
+      <View className="avatar-profile-page">
+        <View className="loading-container">
+          <View className="loading-spinner" />
+          <Text className="loading-text">加载中...</Text>
         </View>
-        <Text className="loading-text">正在加载...</Text>
       </View>
     )
   }
 
   if (!avatarProfile) {
     return (
-      <View className="profile-container empty-state">
-        <Text className="empty-text">分身不存在</Text>
+      <View className="avatar-profile-page">
+        <View className="error-container">
+          <Text className="error-text">分身不存在</Text>
+          <Button onClick={() => navigateBack()}>返回</Button>
+        </View>
       </View>
     )
   }
 
+  const personality = avatarProfile.personality || {}
+  const accounts = avatarProfile.accounts || []
+
   return (
-    <ScrollView className="profile-container" scrollY>
-      {/* 顶部导航栏 */}
-      <View className="nav-bar">
-        <View className="nav-back" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#fff" />
+    <View className="avatar-profile-page">
+      {/* 顶部导航 */}
+      <View className="profile-header">
+        <View className="header-back" onClick={() => navigateBack()}>
+          <ArrowLeft size={32} color="#ffffff" />
         </View>
+        <Text className="header-title">分身主页</Text>
+        <View className="header-placeholder" />
       </View>
 
-      {/* 动态背景 */}
-      <View className="bg-gradient-1"></View>
-      <View className="bg-gradient-2"></View>
-      
-      {/* 顶部装饰 */}
-      <View className="top-decoration">
-        <Sparkles className="sparkle-1" size={20} color="#00f5ff" />
-        <Sparkles className="sparkle-2" size={16} color="#ff6b9d" />
-        <Sparkles className="sparkle-3" size={24} color="#8b5cf6" />
-      </View>
-
-      {/* 主卡片 */}
-      <View className="main-card glass-effect">
-        {/* 头部信息区 */}
-        <View className="header-section">
-          <View className="avatar-wrapper">
-            <View className="avatar-ring">
-              <Image 
-                src={avatarProfile.avatar_url || '/assets/default-avatar.png'} 
-                className="avatar-image"
-                mode="aspectFill"
-              />
-            </View>
-            <View className="level-badge">
-              <Crown size={14} color="#ffd700" />
-              <Text className="level-text">LV.{avatarProfile.level}</Text>
-            </View>
-          </View>
+      <ScrollView className="profile-scroll" scrollY>
+        {/* 头部信息卡片 */}
+        <View className="profile-hero">
+          <View className="hero-bg" />
           
-          <View className="profile-info">
-            <Text className="profile-name">{avatarProfile.name}</Text>
-            <Text className="profile-tag">
-              <Sparkles size={12} color="#00f5ff" />
-              <Text> AI 分身</Text>
-            </Text>
-            <Text className="profile-desc">{avatarProfile.description}</Text>
-          </View>
-        </View>
+          <View className="profile-main">
+            {/* 头像和状态 */}
+            <View className="avatar-section">
+              <View className="avatar-wrapper">
+                {avatarProfile.avatar_url ? (
+                  <Image 
+                    src={avatarProfile.avatar_url} 
+                    className="avatar-image" 
+                    mode="aspectFill"
+                  />
+                ) : (
+                  <View className="avatar-fallback">
+                    <Text className="avatar-initial">{avatarProfile.name[0]}</Text>
+                  </View>
+                )}
+                {avatarProfile.is_hosted && (
+                  <View className="hosting-badge">
+                    <Zap size={20} color="#ffffff" />
+                  </View>
+                )}
+              </View>
+              
+              <View className="level-badge">
+                <Crown size={20} color="#FFD700" />
+                <Text className="level-text">Lv.{avatarProfile.level}</Text>
+              </View>
+            </View>
 
-        {/* 统计数据 */}
-        <View className="stats-section">
-          <View className="stat-item gradient-purple">
-            <View className="stat-icon">
-              <Heart size={20} color="#fff" />
+            {/* 基本信息 */}
+            <View className="info-section">
+              <View className="name-row">
+                <Text className="avatar-name">{avatarProfile.name}</Text>
+                {avatarProfile.status === 'active' && (
+                  <View className="status-dot" />
+                )}
+              </View>
+              
+              {avatarProfile.location_text && (
+                <View className="location-row">
+                  <MapPin size={24} color="#999999" />
+                  <Text className="location-text">{avatarProfile.location_text}</Text>
+                </View>
+              )}
+
+              <View className="stats-row">
+                <View className="stat-item">
+                  <Text className="stat-value">{formatNumber(stats.postsCount)}</Text>
+                  <Text className="stat-label">帖子</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Text className="stat-value">{formatNumber(stats.friendsCount)}</Text>
+                  <Text className="stat-label">好友</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Text className="stat-value">{formatNumber(stats.likesReceived)}</Text>
+                  <Text className="stat-label">获赞</Text>
+                </View>
+              </View>
             </View>
-            <Text className="stat-value">{stats.friendsCount}</Text>
-            <Text className="stat-label">好友</Text>
           </View>
 
-          <View className="stat-item gradient-blue">
-            <View className="stat-icon">
-              <TrendingUp size={20} color="#fff" />
-            </View>
-            <Text className="stat-value">{stats.postsCount}</Text>
-            <Text className="stat-label">帖子</Text>
-          </View>
-
-          <View className="stat-item gradient-pink">
-            <View className="stat-icon">
-              <MessageCircle size={20} color="#fff" />
-            </View>
-            <Text className="stat-value">{stats.commentsReceived}</Text>
-            <Text className="stat-label">评论</Text>
-          </View>
-
-          <View className="stat-item gradient-orange">
-            <View className="stat-icon">
-              <Zap size={20} color="#fff" />
-            </View>
-            <Text className="stat-value">{stats.likesReceived}</Text>
-            <Text className="stat-label">获赞</Text>
-          </View>
-        </View>
-
-        {/* 今日统计 */}
-        <View className="today-stats-section">
-          <View className="today-stats-header">
-            <Sparkles size={16} color="#00f5ff" />
-            <Text className="today-stats-title">今日统计</Text>
-          </View>
-          <View className="today-stats-grid">
-            <View className="today-stat-item">
-              <Text className="today-stat-value">{stats.todayPostsCount || 0}</Text>
-              <Text className="today-stat-label">今日发帖</Text>
-            </View>
-            <View className="today-stat-item">
-              <Text className="today-stat-value">{stats.todayLikesCount || 0}</Text>
-              <Text className="today-stat-label">今日点赞</Text>
-            </View>
-            <View className="today-stat-item">
-              <Text className="today-stat-value">{stats.todayCommentsCount || 0}</Text>
-              <Text className="today-stat-label">今日评论</Text>
-            </View>
-            <View className="today-stat-item">
-              <Text className="today-stat-value">{stats.todayOrdersCount || 0}</Text>
-              <Text className="today-stat-label">今日接单</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 操作按钮 */}
-        {!isOwnAvatar && (
-          <View className="actions-section">
-            {!isFriend && !isBlocked && (
-              <Button className="action-btn btn-primary" onClick={handleAddFriend}>
-                <UserPlus size={16} color="#fff" />
-                <Text>添加好友</Text>
-              </Button>
-            )}
-            
-            <Button 
-              className={`action-btn ${isBlocked ? 'btn-normal' : 'btn-danger'}`} 
-              onClick={isBlocked ? handleUnblock : handleBlock}
-            >
-              <Shield size={16} color="#fff" />
-              <Text>{isBlocked ? '解除拉黑' : '拉黑'}</Text>
+          {/* 操作按钮 */}
+          <View className="action-buttons">
+            <Button className="action-btn primary">
+              <UserPlus size={28} color="#7B3FE4" />
+              <Text>加好友</Text>
             </Button>
+            <Button className="action-btn secondary">
+              <MessageCircle size={28} color="#ffffff" />
+              <Text>私信</Text>
+            </Button>
+          </View>
+        </View>
+
+        {/* 个人简介 */}
+        {avatarProfile.description && (
+          <View className="section-card">
+            <View className="section-header">
+              <BookOpen size={32} color="#7B3FE4" />
+              <Text className="section-title">个人简介</Text>
+            </View>
+            <Text className="bio-text">{avatarProfile.description}</Text>
           </View>
         )}
 
-        {/* 技能标签 */}
-        {avatarProfile.skills && avatarProfile.skills.length > 0 && (
-          <View className="section">
-            <View className="section-header">
-              <Sparkles size={16} color="#00f5ff" />
-              <Text className="section-title">技能特长</Text>
+        {/* 性格与技能 */}
+        <View className="section-card">
+          <View className="section-header">
+            <Palette size={32} color="#7B3FE4" />
+            <Text className="section-title">性格与技能</Text>
+          </View>
+          
+          {personality.character && (
+            <View className="trait-row">
+              <Text className="trait-label">性格</Text>
+              <Text className="trait-value">{personality.character}</Text>
             </View>
-            <View className="skills-grid">
-              {avatarProfile.skills.map((skill, index) => (
-                <View key={index} className="skill-pill">
-                  <Text>{getSkillName(skill)}</Text>
+          )}
+          
+          {personality.speaking_style && (
+            <View className="trait-row">
+              <Text className="trait-label">说话风格</Text>
+              <Text className="trait-value">{personality.speaking_style}</Text>
+            </View>
+          )}
+          
+          {personality.catchphrase && (
+            <View className="trait-row">
+              <Text className="trait-label">口头禅</Text>
+              <Text className="trait-value catchphrase">&ldquo;{personality.catchphrase}&rdquo;</Text>
+            </View>
+          )}
+
+          {avatarProfile.skills && avatarProfile.skills.length > 0 && (
+            <View className="skills-container">
+              {avatarProfile.skills.map((skill, idx) => (
+                <View key={idx} className="skill-tag">
+                  <Sparkles size={20} color="#7B3FE4" />
+                  <Text className="skill-text">{skill}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* 绑定账号 */}
+        {accounts.length > 0 && (
+          <View className="section-card">
+            <View className="section-header">
+              <Globe size={32} color="#7B3FE4" />
+              <Text className="section-title">绑定的账号</Text>
+              <Text className="section-subtitle">{accounts.length}个平台</Text>
+            </View>
+            
+            <View className="accounts-list">
+              {accounts.map((account) => (
+                <View key={account.id} className="account-item">
+                  <View 
+                    className="account-platform"
+                    style={{ backgroundColor: getPlatformColor(account.platform) + '15' }}
+                  >
+                    <Text className="platform-icon">{getPlatformIcon(account.platform)}</Text>
+                    <Text 
+                      className="platform-name"
+                      style={{ color: getPlatformColor(account.platform) }}
+                    >
+                      {account.platform}
+                    </Text>
+                  </View>
+                  
+                  <View className="account-info">
+                    <Text className="account-name">{account.account_name}</Text>
+                    <View className="account-stats">
+                      <Text className="account-stat">{formatNumber(account.followers)}粉丝</Text>
+                      <Text className="account-stat-dot">·</Text>
+                      <Text className="account-stat">{account.total_works}作品</Text>
+                    </View>
+                  </View>
+                  
+                  {account.account_url && (
+                    <View 
+                      className="account-link"
+                      onClick={() => {
+                        console.log('打开账号链接:', account.account_url)
+                        showToast({ title: '跳转到' + account.platform, icon: 'none' })
+                      }}
+                    >
+                      <ExternalLink size={24} color="#999999" />
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* 性格特征 */}
-        <View className="section">
-          <View className="section-header">
-            <Zap size={16} color="#ff6b9d" />
-            <Text className="section-title">性格特征</Text>
-          </View>
-          <View className="personality-card">
-            <Text className="personality-text">{getPersonalityName(avatarProfile.personality)}</Text>
-          </View>
-        </View>
-
-        {/* 地理位置 */}
-        {avatarProfile.location_text && (
-          <View className="section">
+        {/* 最新动态 */}
+        {posts.length > 0 && (
+          <View className="section-card">
             <View className="section-header">
-              <MapPin size={16} color="#4ade80" />
-              <Text className="section-title">地理位置</Text>
+              <FileText size={32} color="#7B3FE4" />
+              <Text className="section-title">最新动态</Text>
+              <Text className="section-subtitle">{posts.length}条</Text>
             </View>
-            <View className="location-card">
-              <Text className="location-text">{avatarProfile.location_text}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* 创建时间 */}
-        <View className="section meta-section">
-          <View className="meta-item">
-            <Calendar size={14} color="#999" />
-            <Text>创建于 {new Date(avatarProfile.created_at).toLocaleDateString()}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 动态列表 */}
-      <View className="posts-section">
-        <View className="section-header posts-header">
-          <Sparkles size={16} color="#00f5ff" />
-          <Text className="section-title">最新动态</Text>
-          <Text className="posts-count">{posts.length}</Text>
-        </View>
-        
-        {posts.length === 0 ? (
-          <View className="empty-posts">
-            <MessageCircle size={48} color="#666" />
-            <Text className="empty-text">暂无动态</Text>
-          </View>
-        ) : (
-          <View className="posts-list">
-            {posts.map((post, index) => (
-              <View key={post.id} className="post-card glass-effect" style={{ animationDelay: `${index * 0.1}s` }}>
-                <Text className="post-content">{post.content}</Text>
-                
-                {post.images && post.images.length > 0 && (
-                  <ScrollView scrollX className="post-images">
-                    {post.images.map((img, imgIndex) => (
-                      <Image 
-                        key={imgIndex}
-                        src={img}
-                        className="post-image"
-                        mode="aspectFill"
-                      />
-                    ))}
-                  </ScrollView>
-                )}
-                
-                <View className="post-footer">
-                  <View className="post-stats">
-                    <View className="stat-badge">
-                      <Heart size={14} color="#ff6b9d" />
-                      <Text>{post.likes_count}</Text>
+            
+            <View className="posts-list">
+              {posts.map((post) => (
+                <View key={post.id} className="post-item">
+                  <Text className="post-content" numberOfLines={3}>
+                    {post.content}
+                  </Text>
+                  
+                  {post.images && post.images.length > 0 && (
+                    <View className={`post-images count-${Math.min(post.images.length, 3)}`}>
+                      {post.images.slice(0, 3).map((img, idx) => (
+                        <Image 
+                          key={idx}
+                          src={img} 
+                          className="post-thumb"
+                          mode="aspectFill"
+                        />
+                      ))}
                     </View>
-                    <View className="stat-badge">
-                      <MessageCircle size={14} color="#00f5ff" />
-                      <Text>{post.comments_count}</Text>
+                  )}
+                  
+                  <View className="post-footer">
+                    <Text className="post-time">{formatTime(post.created_at)}</Text>
+                    <View className="post-stats">
+                      <View className="post-stat">
+                        <Heart size={20} color="#999999" />
+                        <Text className="post-stat-value">{post.likes_count}</Text>
+                      </View>
+                      <View className="post-stat">
+                        <MessageCircle size={20} color="#999999" />
+                        <Text className="post-stat-value">{post.comments_count}</Text>
+                      </View>
                     </View>
                   </View>
-                  <Text className="post-date">
-                    {new Date(post.created_at).toLocaleDateString()}
-                  </Text>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
-      </View>
 
-      {/* 底部占位 */}
-      <View className="bottom-space"></View>
-    </ScrollView>
+        {/* 底部占位 */}
+        <View className="bottom-placeholder" />
+      </ScrollView>
+    </View>
   )
 }

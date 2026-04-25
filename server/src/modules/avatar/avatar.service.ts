@@ -535,6 +535,26 @@ export class AvatarService {
     return data
   }
 
+  /**
+   * 获取分身绑定的第三方账号
+   */
+  async getAvatarAccounts(avatarId: string) {
+    const client = getSupabaseClient()
+    
+    const { data, error } = await client
+      .from('avatar_accounts')
+      .select('id, platform, account_name, followers, total_exposure, total_works, engagement_rate, account_url, last_updated_at')
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('获取分身账号失败:', error)
+      return []
+    }
+    
+    return data || []
+  }
+
   async updateAvatar(avatarId: string, userId: string, updates: Record<string, any>) {
     const client = getSupabaseClient()
 
