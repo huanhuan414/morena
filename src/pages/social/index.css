@@ -351,7 +351,7 @@
 .filter-tags-list {
   display: inline-flex;
   gap: 16rpx;
-  padding: 4rpx 8rpx;
+  padding: 8rpx 24rpx 8rpx 8rpx;
 }
 
 .filter-tag {
