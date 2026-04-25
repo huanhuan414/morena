@@ -955,4 +955,38 @@ export class AvatarController {
       return { code: 500, message: '测试失败: ' + error.message, data: null }
     }
   }
+
+  /**
+   * 获取分身的订单列表
+   */
+  @Get(':id/orders')
+  async getAvatarOrders(
+    @Param('id') avatarId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    const result = await this.avatarService.getAvatarOrders(
+      avatarId,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 10
+    )
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取分身的收入统计
+   */
+  @Get(':id/earnings')
+  async getAvatarEarnings(@Param('id') avatarId: string) {
+    const result = await this.avatarService.getAvatarEarnings(avatarId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
 }

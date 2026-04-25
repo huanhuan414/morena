@@ -3,10 +3,7 @@ import { useLoad, useRouter, showToast, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
 import { 
-  Heart, MessageCircle, UserPlus, Zap, 
-  Crown, Sparkles, MapPin, ArrowLeft,
-  FileText, ExternalLink,
-  BookOpen, Palette, Globe
+  ArrowLeft, Wallet, ShoppingBag, Link2, Package
 } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
 import './index.css'
@@ -35,6 +32,14 @@ const PLATFORM_COLORS: Record<string, string> = {
   'default': '#666666'
 }
 
+// 订单状态映射
+const ORDER_STATUS: Record<string, { label: string; color: string }> = {
+  'pending': { label: '待处理', color: '#F59E0B' },
+  'processing': { label: '进行中', color: '#3B82F6' },
+  'completed': { label: '已完成', color: '#10B981' },
+  'cancelled': { label: '已取消', color: '#9CA3AF' }
+}
+
 interface AvatarAccount {
   id: string
   platform: string
@@ -47,112 +52,94 @@ interface AvatarAccount {
   last_updated_at: string
 }
 
+interface Order {
+  id: string
+  title: string
+  description: string
+  price: number
+  status: string
+  created_at: string
+  completed_at: string
+}
+
+interface Earnings {
+  totalEarnings: number
+  pendingEarnings: number
+  monthlyEarnings: number
+  totalOrders: number
+}
+
 interface AvatarProfile {
   id: string
   name: string
   description: string
   avatar_url: string
-  personality: any
-  skills: string[]
   level: number
-  exp: number
   status: string
   created_at: string
-  location_text?: string
-  latitude?: number | null
-  longitude?: number | null
-  appearance_style?: string
-  speaking_style?: string
   accounts?: AvatarAccount[]
-  is_hosted?: boolean
-}
-
-interface Post {
-  id: string
-  content: string
-  images: string[]
-  likes_count: number
-  comments_count: number
-  created_at: string
-}
-
-interface AvatarStats {
-  postsCount: number
-  friendsCount: number
-  likesReceived: number
-  commentsReceived: number
 }
 
 export default function AvatarProfilePage() {
   const router = useRouter()
   const [avatarProfile, setAvatarProfile] = useState<AvatarProfile | null>(null)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [stats, setStats] = useState<AvatarStats>({
-    postsCount: 0,
-    friendsCount: 0,
-    likesReceived: 0,
-    commentsReceived: 0
+  const [orders, setOrders] = useState<Order[]>([])
+  const [earnings, setEarnings] = useState<Earnings>({
+    totalEarnings: 0,
+    pendingEarnings: 0,
+    monthlyEarnings: 0,
+    totalOrders: 0
   })
   const [loading, setLoading] = useState(true)
 
   useLoad(() => {
     const params = router.params
     if (params?.id) {
-      fetchAvatarProfile(params.id)
+      fetchData(params.id)
     }
   })
 
-  const fetchAvatarProfile = async (id: string) => {
+  const fetchData = async (id: string) => {
     try {
       setLoading(true)
       
-      const [profileRes, postsRes, statsRes] = await Promise.all([
+      const [profileRes, ordersRes, earningsRes] = await Promise.all([
         Network.request({ url: `/api/avatar/${id}` }),
-        Network.request({ url: `/api/avatar/${id}/posts?page=1&pageSize=6` }),
-        Network.request({ url: `/api/avatar/${id}/stats` })
+        Network.request({ url: `/api/avatar/${id}/orders?page=1&pageSize=5` }),
+        Network.request({ url: `/api/avatar/${id}/earnings` })
       ])
       
       if (profileRes.data?.code === 200) {
         setAvatarProfile(profileRes.data.data)
       }
       
-      if (postsRes.data?.code === 200) {
-        setPosts(postsRes.data.data?.posts || [])
+      if (ordersRes.data?.code === 200) {
+        setOrders(ordersRes.data.data?.orders || [])
       }
       
-      if (statsRes.data?.code === 200) {
-        setStats(statsRes.data.data)
+      if (earningsRes.data?.code === 200) {
+        setEarnings(earningsRes.data.data)
       }
     } catch (error) {
-      console.error('获取分身详情失败:', error)
+      console.error('获取数据失败:', error)
       showToast({ title: '加载失败', icon: 'none' })
     } finally {
       setLoading(false)
     }
   }
 
+  const formatMoney = (amount: number): string => {
+    if (amount >= 10000) {
+      return (amount / 10000).toFixed(1) + '万'
+    }
+    return amount.toFixed(2)
+  }
+
   const formatNumber = (num: number): string => {
     if (num >= 10000) {
       return (num / 10000).toFixed(1) + 'w'
     }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'k'
-    }
     return num.toString()
-  }
-
-  const formatTime = (time: string): string => {
-    const date = new Date(time)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-    
-    if (minutes < 60) return `${minutes}分钟前`
-    if (hours < 24) return `${hours}小时前`
-    if (days < 30) return `${days}天前`
-    return date.toLocaleDateString('zh-CN')
   }
 
   const getPlatformIcon = (platform: string): string => {
@@ -161,6 +148,10 @@ export default function AvatarProfilePage() {
 
   const getPlatformColor = (platform: string): string => {
     return PLATFORM_COLORS[platform] || PLATFORM_COLORS.default
+  }
+
+  const getStatusInfo = (status: string) => {
+    return ORDER_STATUS[status] || { label: '未知', color: '#999999' }
   }
 
   if (loading) {
@@ -185,7 +176,6 @@ export default function AvatarProfilePage() {
     )
   }
 
-  const personality = avatarProfile.personality || {}
   const accounts = avatarProfile.accounts || []
 
   return (
@@ -200,235 +190,133 @@ export default function AvatarProfilePage() {
       </View>
 
       <ScrollView className="profile-scroll" scrollY>
-        {/* 头部信息卡片 */}
+        {/* 头部信息卡 */}
         <View className="profile-hero">
-          <View className="hero-bg" />
-          
-          <View className="profile-main">
-            {/* 头像和状态 */}
-            <View className="avatar-section">
-              <View className="avatar-wrapper">
-                {avatarProfile.avatar_url ? (
-                  <Image 
-                    src={avatarProfile.avatar_url} 
-                    className="avatar-image" 
-                    mode="aspectFill"
-                  />
-                ) : (
-                  <View className="avatar-fallback">
-                    <Text className="avatar-initial">{avatarProfile.name[0]}</Text>
-                  </View>
-                )}
-                {avatarProfile.is_hosted && (
-                  <View className="hosting-badge">
-                    <Zap size={20} color="#ffffff" />
-                  </View>
-                )}
+          <View className="avatar-main">
+            {avatarProfile.avatar_url ? (
+              <Image 
+                src={avatarProfile.avatar_url} 
+                className="avatar-image" 
+                mode="aspectFill"
+              />
+            ) : (
+              <View className="avatar-fallback">
+                <Text className="avatar-initial">{avatarProfile.name[0]}</Text>
               </View>
-              
-              <View className="level-badge">
-                <Crown size={20} color="#FFD700" />
-                <Text className="level-text">Lv.{avatarProfile.level}</Text>
-              </View>
+            )}
+            <View className="avatar-info">
+              <Text className="avatar-name">{avatarProfile.name}</Text>
+              <Text className="avatar-level">Lv.{avatarProfile.level}</Text>
             </View>
-
-            {/* 基本信息 */}
-            <View className="info-section">
-              <View className="name-row">
-                <Text className="avatar-name">{avatarProfile.name}</Text>
-                {avatarProfile.status === 'active' && (
-                  <View className="status-dot" />
-                )}
-              </View>
-              
-              {avatarProfile.location_text && (
-                <View className="location-row">
-                  <MapPin size={24} color="#999999" />
-                  <Text className="location-text">{avatarProfile.location_text}</Text>
-                </View>
-              )}
-
-              <View className="stats-row">
-                <View className="stat-item">
-                  <Text className="stat-value">{formatNumber(stats.postsCount)}</Text>
-                  <Text className="stat-label">帖子</Text>
-                </View>
-                <View className="stat-divider" />
-                <View className="stat-item">
-                  <Text className="stat-value">{formatNumber(stats.friendsCount)}</Text>
-                  <Text className="stat-label">好友</Text>
-                </View>
-                <View className="stat-divider" />
-                <View className="stat-item">
-                  <Text className="stat-value">{formatNumber(stats.likesReceived)}</Text>
-                  <Text className="stat-label">获赞</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* 操作按钮 */}
-          <View className="action-buttons">
-            <Button className="action-btn primary">
-              <UserPlus size={28} color="#7B3FE4" />
-              <Text>加好友</Text>
-            </Button>
-            <Button className="action-btn secondary">
-              <MessageCircle size={28} color="#ffffff" />
-              <Text>私信</Text>
-            </Button>
           </View>
         </View>
 
-        {/* 个人简介 */}
-        {avatarProfile.description && (
-          <View className="section-card">
-            <View className="section-header">
-              <BookOpen size={32} color="#7B3FE4" />
-              <Text className="section-title">个人简介</Text>
-            </View>
-            <Text className="bio-text">{avatarProfile.description}</Text>
-          </View>
-        )}
-
-        {/* 性格与技能 */}
-        <View className="section-card">
-          <View className="section-header">
-            <Palette size={32} color="#7B3FE4" />
-            <Text className="section-title">性格与技能</Text>
+        {/* 收入统计卡 */}
+        <View className="earnings-card">
+          <View className="earnings-header">
+            <Wallet size={36} color="#7B3FE4" />
+            <Text className="earnings-title">收入统计</Text>
           </View>
           
-          {personality.character && (
-            <View className="trait-row">
-              <Text className="trait-label">性格</Text>
-              <Text className="trait-value">{personality.character}</Text>
+          <View className="earnings-grid">
+            <View className="earnings-item primary">
+              <Text className="earnings-label">累计收入</Text>
+              <Text className="earnings-value">¥{formatMoney(earnings.totalEarnings)}</Text>
             </View>
-          )}
-          
-          {personality.speaking_style && (
-            <View className="trait-row">
-              <Text className="trait-label">说话风格</Text>
-              <Text className="trait-value">{personality.speaking_style}</Text>
+            <View className="earnings-item">
+              <Text className="earnings-label">本月收入</Text>
+              <Text className="earnings-value">¥{formatMoney(earnings.monthlyEarnings)}</Text>
             </View>
-          )}
-          
-          {personality.catchphrase && (
-            <View className="trait-row">
-              <Text className="trait-label">口头禅</Text>
-              <Text className="trait-value catchphrase">&ldquo;{personality.catchphrase}&rdquo;</Text>
+            <View className="earnings-item">
+              <Text className="earnings-label">待结算</Text>
+              <Text className="earnings-value">¥{formatMoney(earnings.pendingEarnings)}</Text>
             </View>
-          )}
-
-          {avatarProfile.skills && avatarProfile.skills.length > 0 && (
-            <View className="skills-container">
-              {avatarProfile.skills.map((skill, idx) => (
-                <View key={idx} className="skill-tag">
-                  <Sparkles size={20} color="#7B3FE4" />
-                  <Text className="skill-text">{skill}</Text>
-                </View>
-              ))}
-            </View>
-          )}
+          </View>
         </View>
 
         {/* 绑定账号 */}
         {accounts.length > 0 && (
           <View className="section-card">
             <View className="section-header">
-              <Globe size={32} color="#7B3FE4" />
+              <Link2 size={32} color="#7B3FE4" />
               <Text className="section-title">绑定的账号</Text>
-              <Text className="section-subtitle">{accounts.length}个平台</Text>
+              <Text className="section-count">{accounts.length}个</Text>
             </View>
             
             <View className="accounts-list">
               {accounts.map((account) => (
                 <View key={account.id} className="account-item">
                   <View 
-                    className="account-platform"
+                    className="account-icon-wrap"
                     style={{ backgroundColor: getPlatformColor(account.platform) + '15' }}
                   >
-                    <Text className="platform-icon">{getPlatformIcon(account.platform)}</Text>
-                    <Text 
-                      className="platform-name"
-                      style={{ color: getPlatformColor(account.platform) }}
-                    >
-                      {account.platform}
-                    </Text>
+                    <Text className="account-icon">{getPlatformIcon(account.platform)}</Text>
                   </View>
                   
                   <View className="account-info">
+                    <Text className="account-platform">{account.platform}</Text>
                     <Text className="account-name">{account.account_name}</Text>
-                    <View className="account-stats">
-                      <Text className="account-stat">{formatNumber(account.followers)}粉丝</Text>
-                      <Text className="account-stat-dot">·</Text>
-                      <Text className="account-stat">{account.total_works}作品</Text>
-                    </View>
                   </View>
                   
-                  {account.account_url && (
-                    <View 
-                      className="account-link"
-                      onClick={() => {
-                        console.log('打开账号链接:', account.account_url)
-                        showToast({ title: '跳转到' + account.platform, icon: 'none' })
-                      }}
-                    >
-                      <ExternalLink size={24} color="#999999" />
-                    </View>
-                  )}
+                  <View className="account-stats">
+                    <Text className="account-stat-value">{formatNumber(account.followers)}</Text>
+                    <Text className="account-stat-label">粉丝</Text>
+                  </View>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* 最新动态 */}
-        {posts.length > 0 && (
-          <View className="section-card">
-            <View className="section-header">
-              <FileText size={32} color="#7B3FE4" />
-              <Text className="section-title">最新动态</Text>
-              <Text className="section-subtitle">{posts.length}条</Text>
+        {/* 订单列表 */}
+        <View className="section-card">
+          <View className="section-header">
+            <ShoppingBag size={32} color="#7B3FE4" />
+            <Text className="section-title">接单记录</Text>
+            <Text className="section-count">{orders.length}单</Text>
+          </View>
+          
+          {orders.length === 0 ? (
+            <View className="empty-orders">
+              <Package size={64} color="#cccccc" />
+              <Text className="empty-text">暂无订单</Text>
             </View>
-            
-            <View className="posts-list">
-              {posts.map((post) => (
-                <View key={post.id} className="post-item">
-                  <Text className="post-content" numberOfLines={3}>
-                    {post.content}
-                  </Text>
-                  
-                  {post.images && post.images.length > 0 && (
-                    <View className={`post-images count-${Math.min(post.images.length, 3)}`}>
-                      {post.images.slice(0, 3).map((img, idx) => (
-                        <Image 
-                          key={idx}
-                          src={img} 
-                          className="post-thumb"
-                          mode="aspectFill"
-                        />
-                      ))}
+          ) : (
+            <View className="orders-list">
+              {orders.map((order) => {
+                const statusInfo = getStatusInfo(order.status)
+                return (
+                  <View key={order.id} className="order-item">
+                    <View className="order-main">
+                      <Text className="order-title">{order.title}</Text>
+                      <Text className="order-desc" numberOfLines={1}>
+                        {order.description}
+                      </Text>
                     </View>
-                  )}
-                  
-                  <View className="post-footer">
-                    <Text className="post-time">{formatTime(post.created_at)}</Text>
-                    <View className="post-stats">
-                      <View className="post-stat">
-                        <Heart size={20} color="#999999" />
-                        <Text className="post-stat-value">{post.likes_count}</Text>
-                      </View>
-                      <View className="post-stat">
-                        <MessageCircle size={20} color="#999999" />
-                        <Text className="post-stat-value">{post.comments_count}</Text>
+                    <View className="order-right">
+                      <Text className="order-price">¥{order.price}</Text>
+                      <View 
+                        className="order-status"
+                        style={{ backgroundColor: statusInfo.color + '20' }}
+                      >
+                        <View 
+                          className="status-dot"
+                          style={{ backgroundColor: statusInfo.color }}
+                        />
+                        <Text 
+                          className="status-text"
+                          style={{ color: statusInfo.color }}
+                        >
+                          {statusInfo.label}
+                        </Text>
                       </View>
                     </View>
                   </View>
-                </View>
-              ))}
+                )
+              })}
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* 底部占位 */}
         <View className="bottom-placeholder" />

@@ -889,6 +889,77 @@ export class AvatarService {
   }
 
   /**
+   * 获取分身的订单列表
+   */
+  async getAvatarOrders(avatarId: string, page = 1, pageSize = 10) {
+    const client = getSupabaseClient()
+    const offset = (page - 1) * pageSize
+
+    // 获取订单总数
+    const { count } = await client
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('avatar_id', avatarId)
+
+    // 获取订单列表
+    const { data, error } = await client
+      .from('orders')
+      .select('id, title, description, price, status, created_at, completed_at')
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+
+    if (error) {
+      console.error('获取订单失败:', error)
+      return { orders: [], total: 0 }
+    }
+
+    return {
+      orders: data || [],
+      total: count || 0
+    }
+  }
+
+  /**
+   * 获取分身的收入统计
+   */
+  async getAvatarEarnings(avatarId: string) {
+    const client = getSupabaseClient()
+
+    // 获取总收入
+    const { data: earnings } = await client
+      .from('earnings')
+      .select('amount, status, created_at')
+      .eq('avatar_id', avatarId)
+
+    // 计算统计数据
+    const totalEarnings = earnings
+      ?.filter(e => e.status === 'completed')
+      ?.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) || 0
+
+    const pendingEarnings = earnings
+      ?.filter(e => e.status === 'pending')
+      ?.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) || 0
+
+    const totalOrders = earnings?.length || 0
+
+    // 获取本月收入
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const monthlyEarnings = earnings
+      ?.filter(e => e.status === 'completed')
+      ?.filter(e => new Date(e.created_at) >= new Date(monthStart))
+      ?.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) || 0
+
+    return {
+      totalEarnings: Math.round(totalEarnings * 100) / 100,
+      pendingEarnings: Math.round(pendingEarnings * 100) / 100,
+      monthlyEarnings: Math.round(monthlyEarnings * 100) / 100,
+      totalOrders
+    }
+  }
+
+  /**
    * 分身自动发帖
    * 根据分身的性格和风格，使用AI生成内容并发布
    * 支持生成图片和视频
