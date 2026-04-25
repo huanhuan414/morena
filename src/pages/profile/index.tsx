@@ -4,7 +4,10 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Settings, ChevronRight, LogOut, Sparkles, Bell, Info, CircleQuestionMark, Briefcase, Wallet, Crown, Box, X } from 'lucide-react-taro'
+import { 
+  Settings, ChevronRight, LogOut, Sparkles, Bell, Info, 
+  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X
+} from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -29,9 +32,9 @@ const getPlatformNames = (platforms?: string[]): string => {
 
 interface UserStats {
   avatarCount: number
-  taskCount: number      // B端订单数量
-  postCount: number      // 帖子数量
-  friendCount: number    // 好友数量
+  taskCount: number
+  postCount: number
+  friendCount: number
   totalXp: number
   level: number
 }
@@ -62,6 +65,35 @@ interface PendingRequest {
   expires_at: string
 }
 
+// 菜单项配置
+const menuItems = [
+  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/pages/avatar-manage/index' },
+  { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/pages/skills-square/index' },
+  { title: '订单管理', icon: Briefcase, desc: '查看和管理订单', type: 'info', path: '/pages/order-list/index' },
+  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
+  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
+  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help' },
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/pages/profile/about' }
+]
+
+const typeColorMap: Record<string, string> = {
+  primary: '#7B3FE4',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  info: '#3B82F6',
+  default: '#64748B'
+}
+
+const typeBgMap: Record<string, string> = {
+  primary: '#F3E8FF',
+  success: '#D1FAE5',
+  warning: '#FEF3C7',
+  danger: '#FEE2E2',
+  info: '#E0F2FE',
+  default: '#F1F5F9'
+}
+
 export default function ProfilePage() {
   const { userInfo, logout, isLoggedIn } = useUserStore()
   const [stats, setStats] = useState<UserStats>({
@@ -82,7 +114,6 @@ export default function ProfilePage() {
     if (!isLoggedIn) {
       navigateTo({ url: '/pages/login/index' })
     }
-    // 获取安全区域信息
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
   })
@@ -153,16 +184,6 @@ export default function ProfilePage() {
     })
   }
 
-  const menuItems = [
-    { title: '我的分身', icon: Sparkles, desc: '管理AI分身', color: '#00f5ff', path: '/pages/avatar-manage/index' },
-    { title: '技能广场', icon: Box, desc: '为分身解锁更多能力', color: '#ff6b6b', path: '/pages/skills-square/index' },
-    { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', color: '#ffd700', path: '/pages/subscription/index' },
-    { title: '订单管理', icon: Briefcase, desc: '查看和管理订单', color: '#00f5ff', path: '/pages/order-list/index' },
-    { title: '收益中心', icon: Wallet, desc: '查看收益、提现和邀请', color: '#00ff88', path: '/pages/earning-center/index' },
-    { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', color: '#3b82f6', path: '/pages/profile/help' },
-    { title: '关于我们', icon: Info, desc: '版本 v1.0.0', color: '#64748b', path: '/pages/profile/about' }
-  ]
-
   if (!isLoggedIn) return null
 
   return (
@@ -171,9 +192,7 @@ export default function ProfilePage() {
       <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
       
       {/* 顶部背景 */}
-      <View className="profile-bg">
-        <View className="bg-glow" />
-      </View>
+      <View className="profile-bg" />
 
       {/* 用户信息卡片 */}
       <View className="user-card">
@@ -188,7 +207,7 @@ export default function ProfilePage() {
                 </View>
               )}
               <View className="level-badge">
-                <Text className="level-text">Lv.{stats.level}</Text>
+                <Text className="level-badge-text">Lv.{stats.level}</Text>
               </View>
             </View>
             <View className="user-info">
@@ -198,7 +217,7 @@ export default function ProfilePage() {
           </View>
           <View className="header-actions">
             <View className="notification-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
-              <Bell size={22} color="#ffffff" />
+              <Bell size={32} color="#7B3FE4" />
               {unreadCount > 0 && (
                 <View className="notification-badge">
                   <Text className="notification-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -206,7 +225,7 @@ export default function ProfilePage() {
               )}
             </View>
             <View className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-              <Settings size={24} color="#ffffff" />
+              <Settings size={32} color="#7B3FE4" />
             </View>
           </View>
         </View>
@@ -217,42 +236,18 @@ export default function ProfilePage() {
             <Text className="stat-value">{stats.avatarCount}</Text>
             <Text className="stat-label">AI分身</Text>
           </View>
-          <View className="stat-divider" />
           <View className="stat-item" onClick={() => navigateTo({ url: '/pages/order-list/index?mode=avatar' })}>
             <Text className="stat-value">{stats.taskCount}</Text>
             <Text className="stat-label">任务</Text>
           </View>
-          <View className="stat-divider" />
           <View className="stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
             <Text className="stat-value">{stats.postCount}</Text>
             <Text className="stat-label">动态</Text>
           </View>
-          <View className="stat-divider" />
           <View className="stat-item" onClick={() => navigateTo({ url: '/pages/avatar-friends/index' })}>
             <Text className="stat-value">{stats.friendCount}</Text>
             <Text className="stat-label">好友</Text>
           </View>
-        </View>
-
-        {/* 经验进度 */}
-        <View className="xp-section" onClick={() => setShowLevelDialog(true)}>
-          <View className="xp-header">
-            <Text className="xp-level">Lv.{stats.level}</Text>
-            <Text className="xp-value">
-              {stats.level >= 10 ? '已满' : `${stats.totalXp} / ${stats.level * 100} XP`}
-            </Text>
-          </View>
-          <View className="xp-bar">
-            <View
-              className="xp-fill"
-              style={{
-                width: `${stats.level >= 10 ? 100 : Math.min(100, stats.totalXp - (stats.level - 1) * 100)}%`
-              }}
-            />
-          </View>
-          <Text className="xp-hint">
-            {stats.level >= 10 ? '已达到最高等级' : `距离 Lv.${stats.level + 1} 还需 ${stats.level * 100 - stats.totalXp} XP`}
-          </Text>
         </View>
       </View>
 
@@ -270,11 +265,11 @@ export default function ProfilePage() {
           <View className="pending-dialog" onClick={(e: any) => e.stopPropagation()}>
             <View className="pending-dialog-header">
               <View className="pending-dialog-title-row">
-                <Bell size={20} color="#00f5ff" />
+                <Bell size={40} color="#7B3FE4" />
                 <Text className="pending-dialog-title">新订单分配</Text>
               </View>
               <View className="pending-dialog-close" onClick={handleCloseDialog}>
-                <X size={20} color="rgba(255,255,255,0.5)" />
+                <X size={36} color="#999999" />
               </View>
             </View>
 
@@ -282,7 +277,7 @@ export default function ProfilePage() {
               {pendingRequests.map((request) => (
                 <View key={request.id} className="pending-request-card">
                   <View className="request-header">
-                    <Sparkles size={20} color="#00f5ff" />
+                    <Sparkles size={36} color="#7B3FE4" />
                     <Text className="request-order-title">{request.orders.title}</Text>
                   </View>
 
@@ -292,8 +287,8 @@ export default function ProfilePage() {
                   </View>
 
                   <View className="request-meta">
-                    <Text className="meta-item">📱 {getPlatformNames(request.orders.platforms)}</Text>
-                    <Text className="meta-item">📅 {request.orders.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
+                    <Text className="meta-item">{getPlatformNames(request.orders.platforms)}</Text>
+                    <Text className="meta-item">{request.orders.deadline ? new Date(request.orders.deadline).toLocaleDateString() : '不限'}</Text>
                   </View>
 
                   <Button
@@ -301,7 +296,7 @@ export default function ProfilePage() {
                     onClick={() => handleViewRequest(request)}
                   >
                     <Text className="view-request-text">查看详情并确认</Text>
-                    <ChevronRight size={16} color="#00f5ff" />
+                    <ChevronRight size={32} color="#ffffff" />
                   </Button>
                 </View>
               ))}
@@ -313,37 +308,33 @@ export default function ProfilePage() {
       <ScrollView className="menu-scroll" scrollY>
         {/* 功能菜单 */}
         <View className="menu-section">
-          <View className="menu-grid">
-            {menuItems.map((item, idx) => {
-              const Icon = item.icon
-              return (
-                <View 
-                  key={idx}
-                  className="menu-item"
-                  onClick={() => item.path && navigateTo({ url: item.path })}
-                >
-                  <View className="menu-left">
-                    <View className="menu-icon" style={{ background: `${item.color}15` }}>
-                      <Icon size={22} color={item.color} />
-                    </View>
-                    <View className="menu-text">
-                      <Text className="menu-title">{item.title}</Text>
-                      <Text className="menu-desc">{item.desc}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={18} color="rgba(255,255,255,0.2)" />
+          {menuItems.map((item, idx) => {
+            const Icon = item.icon
+            const iconColor = typeColorMap[item.type]
+            const bgColor = typeBgMap[item.type]
+            return (
+              <View 
+                key={idx}
+                className="menu-item"
+                onClick={() => item.path && navigateTo({ url: item.path })}
+              >
+                <View className="menu-icon-wrap" style={{ backgroundColor: bgColor }}>
+                  <Icon size={36} color={iconColor} />
                 </View>
-              )
-            })}
-          </View>
+                <View className="menu-content">
+                  <Text className="menu-title">{item.title}</Text>
+                  <Text className="menu-desc">{item.desc}</Text>
+                </View>
+                <ChevronRight size={36} color="#cccccc" />
+              </View>
+            )
+          })}
         </View>
 
         {/* 退出按钮 */}
-        <View className="logout-section">
-          <Button className="logout-btn" onClick={handleLogout}>
-            <LogOut size={18} color="rgba(255,255,255,0.5)" />
-            <Text className="logout-text">退出登录</Text>
-          </Button>
+        <View className="logout-btn" onClick={handleLogout}>
+          <LogOut size={36} color="#EF4444" />
+          <Text className="logout-text">退出登录</Text>
         </View>
 
         {/* 版本信息 */}
@@ -352,7 +343,7 @@ export default function ProfilePage() {
           <Text className="version-copyright">AI原生人机共生协同平台</Text>
         </View>
 
-        <View className="bottom-space" />
+        <View className="bottom-placeholder" />
       </ScrollView>
     </View>
   )
