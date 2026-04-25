@@ -224,8 +224,6 @@
   border-radius: 50%;
   border: 3rpx solid #f0f0f0;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-  object-fit: cover;
-  aspect-ratio: 1;
 }
 
 .ai-avatar-circle {
@@ -241,7 +239,6 @@
   font-weight: 700;
   color: #ffffff;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-  aspect-ratio: 1;
   flex-shrink: 0;
 }
 
