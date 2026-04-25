@@ -3815,21 +3815,6 @@ export default function MindChatPage() {
         </View>
       </View>
 
-      {/* 成长进度 - 直接显示在面板外 */}
-      <View className="learn-progress-standalone">
-        <View className="learn-progress-header">
-          <Target size={18} color="#7B3FE4" />
-          <Text className="learn-progress-title">成长进度</Text>
-          <Text className="learn-progress-percent">{learningStats.masteryLevel}%</Text>
-        </View>
-        <View className="learn-progress-bar-standalone">
-          <View 
-            className="learn-progress-fill-standalone" 
-            style={{ width: `${learningStats.masteryLevel}%` }}
-          />
-        </View>
-      </View>
-
       {/* 心智成长面板 */}
       <View className="learn-panel">
         <View className="learn-panel-header">
@@ -3857,6 +3842,16 @@ export default function MindChatPage() {
             <Award size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
             <Text className="learn-stat-label">等级</Text>
+          </View>
+        </View>
+        
+        {/* 成长进度 */}
+        <View className="learn-progress-section">
+          <View className="learn-progress-bar">
+            <View 
+              className="learn-progress-fill" 
+              style={{ width: `${learningStats.masteryLevel}%` }}
+            />
           </View>
         </View>
         
