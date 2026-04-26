@@ -19,36 +19,83 @@
 }
 
 /* ========================================
-   顶部背景 - 紫罗兰渐变
+   顶部背景 - 高级紫罗兰渐变特效
    ======================================== */
 .profile-bg {
   position: relative;
-  height: 200rpx;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  height: 240rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, #A78BFA 100%);
   overflow: hidden;
 }
 
-/* 装饰光晕 */
+/* 动态渐变动画层 */
 .profile-bg::before {
   content: '';
   position: absolute;
-  top: -30%;
-  right: -10%;
-  width: 300rpx;
-  height: 300rpx;
-  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
-  border-radius: 50%;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 40%),
+    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.3) 0%, transparent 60%);
+  animation: bgFloat 8s ease-in-out infinite;
 }
 
+/* 装饰光晕 - 右上角 */
 .profile-bg::after {
   content: '';
   position: absolute;
-  bottom: -40%;
-  left: -5%;
-  width: 250rpx;
-  height: 250rpx;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  top: -20%;
+  right: -10%;
+  width: 400rpx;
+  height: 400rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
   border-radius: 50%;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+/* 浮动动画 */
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, 2%) rotate(1deg); }
+  66% { transform: translate(-1%, 1%) rotate(-1deg); }
+}
+
+/* 光晕脉冲动画 */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* 星星装饰 */
+.profile-stars {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  width: 4rpx;
+  height: 4rpx;
+  background: rgba(255,255,255,0.8);
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.star-1 { top: 20%; left: 10%; animation-delay: 0s; }
+.star-2 { top: 40%; left: 25%; animation-delay: 0.5s; }
+.star-3 { top: 15%; left: 45%; animation-delay: 1s; }
+.star-4 { top: 60%; left: 60%; animation-delay: 1.5s; }
+.star-5 { top: 30%; left: 80%; animation-delay: 2s; }
+.star-6 { top: 70%; left: 85%; animation-delay: 2.5s; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); box-shadow: 0 0 10rpx rgba(255,255,255,0.8); }
 }
 
 /* ========================================

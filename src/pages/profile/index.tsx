@@ -193,7 +193,17 @@ export default function ProfilePage() {
       <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
       
       {/* 顶部背景 */}
-      <View className="profile-bg" />
+      <View className="profile-bg">
+        {/* 星星装饰 */}
+        <View className="profile-stars">
+          <View className="star star-1" />
+          <View className="star star-2" />
+          <View className="star star-3" />
+          <View className="star star-4" />
+          <View className="star star-5" />
+          <View className="star star-6" />
+        </View>
+      </View>
 
       {/* 用户信息卡片 */}
       <View className="user-card">

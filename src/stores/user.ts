@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { setStorageSync, getStorageSync, removeStorageSync } from '@tarojs/taro'
 import * as Network from '@/network'
 
+// 判断是否为 H5 环境
+const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
+
 interface User {
   id: string
   openid?: string
@@ -58,11 +61,13 @@ export const useUserStore = create<UserState>((set, get) => ({
   setDarkMode: (isDark) => {
     setStorageSync('isDarkMode', isDark)
     set({ isDarkMode: isDark })
-    // 设置 CSS 变量
-    if (isDark) {
-      document.body.classList.add('dark')
-    } else {
-      document.body.classList.remove('dark')
+    // 仅在 H5 环境下操作 DOM
+    if (isH5 && typeof document !== 'undefined') {
+      if (isDark) {
+        document.body.classList.add('dark')
+      } else {
+        document.body.classList.remove('dark')
+      }
     }
   },
 
@@ -113,11 +118,13 @@ export const useUserStore = create<UserState>((set, get) => ({
       // 加载主题设置
       if (typeof isDarkMode === 'boolean') {
         set({ isDarkMode })
-        // 应用主题
-        if (isDarkMode) {
-          document.body.classList.add('dark')
-        } else {
-          document.body.classList.remove('dark')
+        // 仅在 H5 环境下操作 DOM
+        if (isH5 && typeof document !== 'undefined') {
+          if (isDarkMode) {
+            document.body.classList.add('dark')
+          } else {
+            document.body.classList.remove('dark')
+          }
         }
       }
     } catch (error) {
