@@ -562,6 +562,12 @@ export default function SocialPage() {
         className="social-header-gradient"
         style={{ paddingTop: `${statusBarHeight + 20}px` }}
       >
+        {/* 流光粒子特效 */}
+        <View className="particle" />
+        <View className="particle" />
+        <View className="particle" />
+        <View className="particle" />
+        
         {/* 网格背景 */}
         <View className="header-grid-bg" />
         

@@ -93,7 +93,7 @@
 }
 
 /* ========================================
-   Header - 紫罗兰渐变
+   Header - 高级流光渐变特效
    ======================================== */
 .chat-header {
   display: flex;
@@ -105,6 +105,60 @@
   z-index: 10;
   flex-shrink: 0;
   min-height: 88rpx;
+  overflow: hidden;
+}
+
+/* 流光动画层 */
+.chat-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 25%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.1) 75%,
+    transparent 100%
+  );
+  animation: lightStreamChat 4s ease-in-out infinite;
+}
+
+/* 脉冲光环 */
+.chat-header::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -100rpx;
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: pulseRing 3s ease-in-out infinite;
+}
+
+/* 动画定义 */
+@keyframes lightStreamChat {
+  0% {
+    transform: translateX(0) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(50%) skewX(-15deg);
+  }
+}
+
+@keyframes pulseRing {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-50%) scale(1.2);
+    opacity: 0.8;
+  }
 }
 
 .header-left {

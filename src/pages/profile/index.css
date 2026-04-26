@@ -53,7 +53,7 @@
 }
 
 /* ========================================
-   顶部渐变Header - 和广场首页一致
+   顶部渐变Header - 高级流光特效
    ======================================== */
 .profile-header-gradient {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -65,27 +65,58 @@
   margin-top: 0;
 }
 
-/* 装饰光晕 */
+/* 流光动画层 */
 .profile-header-gradient::before {
   content: '';
   position: absolute;
-  top: -30%;
-  right: -10%;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 25%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.1) 75%,
+    transparent 100%
+  );
+  animation: lightStreamProfile 5s ease-in-out infinite;
+}
+
+/* 装饰光晕 */
+.profile-header-gradient::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -50rpx;
   width: 300rpx;
   height: 300rpx;
   background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
   border-radius: 50%;
+  transform: translateY(-50%);
+  animation: glowPulse 4s ease-in-out infinite;
 }
 
-.profile-header-gradient::after {
-  content: '';
-  position: absolute;
-  bottom: -40%;
-  left: -5%;
-  width: 250rpx;
-  height: 250rpx;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
-  border-radius: 50%;
+/* 动画定义 */
+@keyframes lightStreamProfile {
+  0% {
+    transform: translateX(0) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(50%) skewX(-15deg);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateY(-50%) scale(1.1);
+  }
 }
 
 /* 网格背景 */
