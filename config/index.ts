@@ -54,7 +54,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       autoAudits: false,
       showShadowRootInWxmlPanel: true,
       scopeDataCheck: false,
-      uglifyFileName: false,
+      uglifyFileName: true,
       checkInvalidKey: true,
       checkSiteMap: true,
       uploadWithSourceMap: false,
