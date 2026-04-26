@@ -1,10 +1,10 @@
-import { useLoad, useDidShow, navigateTo, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link, ArrowLeft } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
@@ -300,6 +300,9 @@ export default function AvatarManagePage() {
       {/* 顶部导航 */}
       <View className="manage-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-left-wrap">
+          <View className="back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={24} color="#fff" />
+          </View>
           <Text className="header-title">我的分身</Text>
           <Button className="create-btn-small" onClick={createNewAvatar}>
             <Plus size={16} color="#00f5ff" />
