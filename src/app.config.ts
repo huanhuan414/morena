@@ -12,7 +12,16 @@ export default defineAppConfig({
     'pages/settings/index',
     'pages/profile/help/index',
     'pages/profile/about/index',
-    'pages/security/index'
+    'pages/security/index',
+    // 分身相关页面
+    'pages/avatar-manage/index',
+    // 订单相关页面
+    'pages/order-list/index',
+    // 技能相关页面
+    'pages/skills-square/index',
+    // 收益和订阅
+    'pages/earning-center/index',
+    'pages/subscription/index'
   ],
   window: {
     backgroundTextStyle: 'light',
