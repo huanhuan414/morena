@@ -1121,3 +1121,34 @@
   color: var(--text-white);
   font-weight: var(--font-medium);
 }
+
+/* 加载动画 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+  gap: var(--space-3);
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid rgba(59, 130, 246, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  font-weight: 500;
+}

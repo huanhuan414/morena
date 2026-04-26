@@ -1001,9 +1001,11 @@ export default function SocialPage() {
           </View>
         )}
 
-        {loading && !refreshing && (
+        {/* 加载状态 - 切换标签或加载更多时显示 */}
+        {loading && posts.length === 0 && (
           <View className="loading-state">
-            <Text className="loading-text">加载中...</Text>
+            <View className="loading-spinner" />
+            <Text className="loading-text">正在加载精彩内容...</Text>
           </View>
         )}
 
