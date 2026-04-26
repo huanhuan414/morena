@@ -3800,9 +3800,7 @@ export default function MindChatPage() {
                         // 图片加载失败时不做处理
                       }}
                     />
-                  ) : (
-                    <Sparkles size={24} color="#00f5ff" />
-                  )}
+                  ) : null}
                 </View>
                 <View className="avatar-text">
                   <Text className="avatar-name">{avatar.name}</Text>
@@ -4587,7 +4585,7 @@ export default function MindChatPage() {
             style={{
               minHeight: '72rpx',
               maxHeight: '200rpx',
-              backgroundColor: 'rgba(15, 15, 25, 0.9)',
+              backgroundColor: '#ffffff',
               border: 'none',
               outline: 'none',
               padding: 0,
