@@ -4274,7 +4274,8 @@ export default function MindChatPage() {
         </View>
       )}
 
-      {/* 消息区域 */}
+      {/* 消息区域 - 有分身时才显示 */}
+      {!hasNoAvatar && (
       <ScrollView
         className="messages-scroll"
         scrollY
@@ -4488,8 +4489,10 @@ export default function MindChatPage() {
         {/* 底部锚点 */}
         <View id="scroll-bottom-anchor" className="messages-bottom" />
       </ScrollView>
+      )}
 
-      {/* 底部输入栏 */}
+      {/* 底部输入栏 - 有分身时才显示 */}
+      {!hasNoAvatar && (
       <View className="input-bar">
         {/* 🔴 简化设计：媒体预览栏 - 移除 ScrollView 避免渲染问题 */}
         {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
@@ -4672,7 +4675,8 @@ export default function MindChatPage() {
           </View>
         </View>
       </View>
-      
+      )}
+
       {/* 平台配置弹窗 */}
       {configPlatform && (
         <PlatformConfigDialog
