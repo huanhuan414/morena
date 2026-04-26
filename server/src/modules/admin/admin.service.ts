@@ -456,96 +456,150 @@ export class AdminService {
 
   // ===== 技能管理 =====
 
-  private skills: Map<string, any> = new Map()
-
   async getSkills(): Promise<any> {
-    const list = Array.from(this.skills.values())
-    return { list, total: list.length }
+    try {
+      const { data, error } = await this.supabase
+        .from('skills')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return { list: data || [], total: data?.length || 0 }
+    } catch (error) {
+      console.error('获取技能列表失败:', error)
+      return { list: [], total: 0 }
+    }
   }
 
   async createSkill(data: any): Promise<{ success: boolean; message: string; data?: any }> {
     try {
-      const id = Date.now().toString()
-      const skill = {
-        id,
-        ...data,
-        order_count: 0,
-        rating: 5.0,
-        status: 'active',
-        created_at: new Date().toISOString()
-      }
-      this.skills.set(id, skill)
+      const { data: skill, error } = await this.supabase
+        .from('skills')
+        .insert([{
+          ...data,
+          order_count: 0,
+          rating: 5.0,
+          status: 'active',
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single()
+      
+      if (error) throw error
       return { success: true, message: '创建成功', data: skill }
     } catch (error) {
+      console.error('创建技能失败:', error)
       return { success: false, message: '创建失败' }
     }
   }
 
   async updateSkill(id: string, data: any): Promise<{ success: boolean; message: string }> {
     try {
-      const skill = this.skills.get(id)
-      if (!skill) return { success: false, message: '技能不存在' }
-      this.skills.set(id, { ...skill, ...data })
+      const { error } = await this.supabase
+        .from('skills')
+        .update(data)
+        .eq('id', id)
+      
+      if (error) throw error
       return { success: true, message: '更新成功' }
     } catch (error) {
+      console.error('更新技能失败:', error)
       return { success: false, message: '更新失败' }
     }
   }
 
   async deleteSkill(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      this.skills.delete(id)
+      const { error } = await this.supabase
+        .from('skills')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
       return { success: true, message: '删除成功' }
     } catch (error) {
+      console.error('删除技能失败:', error)
       return { success: false, message: '删除失败' }
     }
   }
 
   async updateSkillStatus(id: string, status: string): Promise<{ success: boolean; message: string }> {
     try {
-      const skill = this.skills.get(id)
-      if (!skill) return { success: false, message: '技能不存在' }
-      skill.status = status
+      const { error } = await this.supabase
+        .from('skills')
+        .update({ status })
+        .eq('id', id)
+      
+      if (error) throw error
       return { success: true, message: '状态更新成功' }
     } catch (error) {
+      console.error('更新技能状态失败:', error)
       return { success: false, message: '更新失败' }
     }
   }
 
   // ===== 内容管理 =====
 
-  private posts: Map<string, any> = new Map()
-
   async getPosts(status?: string, search?: string): Promise<any> {
-    let list = Array.from(this.posts.values())
-    
-    if (status && status !== 'all') {
-      list = list.filter(p => p.status === status)
-    }
-    
-    if (search) {
-      list = list.filter(p => p.content?.includes(search))
-    }
+    try {
+      let query = this.supabase
+        .from('posts')
+        .select('*, users!inner(nickname, avatar)')
+        .order('created_at', { ascending: false })
 
-    return { list, total: list.length }
+      if (status && status !== 'all') {
+        query = query.eq('status', status)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      // 过滤搜索结果
+      let list = data || []
+      if (search) {
+        list = list.filter((p: any) => p.content?.includes(search))
+      }
+
+      return { 
+        list: list.map((p: any) => ({
+          ...p,
+          nickname: p.users?.nickname,
+          avatar: p.users?.avatar
+        })), 
+        total: list.length 
+      }
+    } catch (error) {
+      console.error('获取帖子列表失败:', error)
+      return { list: [], total: 0 }
+    }
   }
 
   async reviewPost(id: string, status: string): Promise<{ success: boolean; message: string }> {
     try {
-      const post = this.posts.get(id)
-      if (!post) return { success: false, message: '帖子不存在' }
-      post.status = status
+      const { error } = await this.supabase
+        .from('posts')
+        .update({ status })
+        .eq('id', id)
+      
+      if (error) throw error
       return { success: true, message: '审核成功' }
     } catch (error) {
+      console.error('审核帖子失败:', error)
       return { success: false, message: '审核失败' }
     }
   }
 
   async deletePost(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      this.posts.delete(id)
+      const { error } = await this.supabase
+        .from('posts')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
       return { success: true, message: '删除成功' }
     } catch (error) {
+      console.error('删除帖子失败:', error)
       return { success: false, message: '删除失败' }
     }
   }
@@ -553,51 +607,194 @@ export class AdminService {
   // ===== 财务管理 =====
 
   async getFinanceStats(): Promise<any> {
-    return {
-      totalRecharge: 0,
-      totalWithdraw: 0,
-      totalCommission: 0,
-      balance: 0,
-      pendingWithdraw: 0
+    try {
+      // 获取充值总额
+      const { data: rechargeData } = await this.supabase
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'recharge')
+        .eq('status', 'completed')
+      
+      const totalRecharge = rechargeData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
+
+      // 获取提现总额
+      const { data: withdrawData } = await this.supabase
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'withdraw')
+        .eq('status', 'completed')
+      
+      const totalWithdraw = withdrawData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
+
+      // 获取分佣总额
+      const { data: commissionData } = await this.supabase
+        .from('earnings')
+        .select('amount')
+        .eq('type', 'commission')
+      
+      const totalCommission = commissionData?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
+
+      // 获取待审核提现
+      const { data: pendingData } = await this.supabase
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'withdraw')
+        .eq('status', 'pending')
+      
+      const pendingWithdraw = pendingData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
+
+      return {
+        totalRecharge,
+        totalWithdraw,
+        totalCommission,
+        balance: totalRecharge - totalWithdraw,
+        pendingWithdraw
+      }
+    } catch (error) {
+      console.error('获取财务统计失败:', error)
+      return {
+        totalRecharge: 0,
+        totalWithdraw: 0,
+        totalCommission: 0,
+        balance: 0,
+        pendingWithdraw: 0
+      }
     }
   }
 
-  private transactions: any[] = []
-
   async getTransactions(type?: string): Promise<any> {
-    let list = this.transactions
-    if (type && type !== 'all') {
-      list = list.filter(t => t.type === type)
+    try {
+      let query = this.supabase
+        .from('transactions')
+        .select('*, users!inner(nickname)')
+        .order('created_at', { ascending: false })
+
+      if (type && type !== 'all') {
+        query = query.eq('type', type)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      return { 
+        list: data?.map((t: any) => ({
+          ...t,
+          nickname: t.users?.nickname
+        })) || [], 
+        total: data?.length || 0 
+      }
+    } catch (error) {
+      console.error('获取交易记录失败:', error)
+      return { list: [], total: 0 }
     }
-    return { list, total: list.length }
   }
 
   async approveWithdraw(id: string): Promise<{ success: boolean; message: string }> {
-    return { success: true, message: '已通过' }
+    try {
+      const { error } = await this.supabase
+        .from('transactions')
+        .update({ status: 'completed' })
+        .eq('id', id)
+      
+      if (error) throw error
+      return { success: true, message: '已通过' }
+    } catch (error) {
+      console.error('审核提现失败:', error)
+      return { success: false, message: '审核失败' }
+    }
   }
 
   async rejectWithdraw(id: string, reason: string): Promise<{ success: boolean; message: string }> {
-    return { success: true, message: '已驳回' }
+    try {
+      const { error } = await this.supabase
+        .from('transactions')
+        .update({ status: 'rejected', reject_reason: reason })
+        .eq('id', id)
+      
+      if (error) throw error
+      return { success: true, message: '已驳回' }
+    } catch (error) {
+      console.error('驳回提现失败:', error)
+      return { success: false, message: '驳回失败' }
+    }
   }
 
   // ===== 推广管理 =====
 
   async getReferralStats(): Promise<any> {
-    return {
-      totalReferrers: 0,
-      totalReferred: 0,
-      totalCommission: 0,
-      commissionRate: this.config.commissionRate
+    try {
+      // 获取推广员数量
+      const { count: totalReferrers } = await this.supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+
+      // 获取被邀请人数
+      const { data: referredData } = await this.supabase
+        .from('users')
+        .select('referred_by')
+        .not('referred_by', 'is', null)
+
+      const totalReferred = referredData?.length || 0
+
+      // 获取总分佣金额
+      const { data: commissionData } = await this.supabase
+        .from('earnings')
+        .select('amount')
+        .eq('type', 'commission')
+
+      const totalCommission = commissionData?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
+
+      return {
+        totalReferrers: totalReferrers || 0,
+        totalReferred,
+        totalCommission,
+        commissionRate: this.config.commissionRate
+      }
+    } catch (error) {
+      console.error('获取推广统计失败:', error)
+      return {
+        totalReferrers: 0,
+        totalReferred: 0,
+        totalCommission: 0,
+        commissionRate: this.config.commissionRate
+      }
     }
   }
 
   async getReferrers(): Promise<any[]> {
-    return []
+    try {
+      const { data, error } = await this.supabase
+        .from('referrals')
+        .select('*, users!inner(nickname, avatar)')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      return data?.map((r: any) => ({
+        ...r,
+        nickname: r.users?.nickname,
+        avatar: r.users?.avatar
+      })) || []
+    } catch (error) {
+      console.error('获取推广员列表失败:', error)
+      return []
+    }
   }
 
   async updateCommissionRate(rate: number): Promise<{ success: boolean; message: string }> {
-    this.config.commissionRate = rate
-    return { success: true, message: '设置已更新' }
+    try {
+      this.config.commissionRate = rate
+      // 保存到数据库
+      const { error } = await this.supabase
+        .from('settings')
+        .upsert({ key: 'commission_rate', value: rate.toString() })
+      
+      if (error) throw error
+      return { success: true, message: '设置已更新' }
+    } catch (error) {
+      console.error('更新分佣比例失败:', error)
+      return { success: false, message: '更新失败' }
+    }
   }
 
   // ===== 系统设置 =====
