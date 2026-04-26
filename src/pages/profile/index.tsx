@@ -189,24 +189,29 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
-      {/* 统一顶部区域 */}
-      <View className="profile-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        {/* 背景特效 */}
-        <View className="header-bg-effects">
-          <View className="bg-glow" />
-          <View className="bg-stars">
-            <View className="star star-1" />
-            <View className="star star-2" />
-            <View className="star star-3" />
-            <View className="star star-4" />
-            <View className="star star-5" />
-            <View className="star star-6" />
-          </View>
+      {/* 顶部渐变Header - 和广场首页一致 */}
+      <View 
+        className="profile-header-gradient"
+        style={{ paddingTop: `${statusBarHeight + 20}px` }}
+      >
+        {/* 网格背景 */}
+        <View className="header-grid-bg" />
+        
+        {/* 闪烁星星 */}
+        <View className="header-stars">
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
+          <View className="header-star" />
         </View>
 
         {/* 顶部操作栏 */}
-        <View className="header-top-bar">
-          <View className="header-title">个人中心</View>
+        <View className="header-top-row">
+          <View className="header-title-wrap">
+            <Text className="header-title">个人中心</Text>
+          </View>
           <View className="header-actions">
             <View className="action-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
               <Bell size={32} color="#fff" />

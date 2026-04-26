@@ -13,19 +13,56 @@
 }
 
 /* ========================================
-   统一顶部区域 - 视觉一致性
+   顶部渐变Header - 和广场首页一致
    ======================================== */
-.profile-header {
+.profile-header-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  padding: var(--space-3) var(--page-padding) 100rpx;
   position: relative;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, #A78BFA 100%);
+  z-index: 10;
+  flex-shrink: 0;
   overflow: hidden;
-  padding-bottom: 24rpx;
-  margin-bottom: -20rpx;
-  border-radius: 0 0 32rpx 32rpx;
 }
 
-/* 背景特效 */
-.header-bg-effects {
+/* 装饰光晕 */
+.profile-header-gradient::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.profile-header-gradient::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  left: -5%;
+  width: 250rpx;
+  height: 250rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  border-radius: 50%;
+}
+
+/* 网格背景 */
+.header-grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1rpx, transparent 1rpx),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1rpx, transparent 1rpx);
+  background-size: 60rpx 60rpx;
+  pointer-events: none;
+}
+
+/* 闪烁星星 */
+.header-stars {
   position: absolute;
   top: 0;
   left: 0;
@@ -34,63 +71,44 @@
   pointer-events: none;
 }
 
-.bg-glow {
-  position: absolute;
-  top: -100rpx;
-  right: -100rpx;
-  width: 500rpx;
-  height: 500rpx;
-  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
-  border-radius: 50%;
-  animation: glowPulse 4s ease-in-out infinite;
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-
-/* 星星装饰 */
-.bg-stars {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-}
-
-.star {
+.header-star {
   position: absolute;
   width: 4rpx;
   height: 4rpx;
   background: rgba(255,255,255,0.8);
   border-radius: 50%;
-  animation: twinkle 3s ease-in-out infinite;
+  animation: starTwinkle 3s ease-in-out infinite;
 }
 
-.star-1 { top: 20%; left: 10%; animation-delay: 0s; }
-.star-2 { top: 40%; left: 25%; animation-delay: 0.5s; }
-.star-3 { top: 15%; left: 45%; animation-delay: 1s; }
-.star-4 { top: 60%; left: 60%; animation-delay: 1.5s; }
-.star-5 { top: 30%; left: 80%; animation-delay: 2s; }
-.star-6 { top: 70%; left: 85%; animation-delay: 2.5s; }
+.header-star:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+.header-star:nth-child(2) { top: 40%; left: 25%; animation-delay: 0.5s; }
+.header-star:nth-child(3) { top: 15%; left: 45%; animation-delay: 1s; }
+.header-star:nth-child(4) { top: 60%; left: 60%; animation-delay: 1.5s; }
+.header-star:nth-child(5) { top: 30%; left: 80%; animation-delay: 2s; }
+.header-star:nth-child(6) { top: 70%; left: 15%; animation-delay: 2.5s; }
 
-@keyframes twinkle {
+@keyframes starTwinkle {
   0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.5); box-shadow: 0 0 10rpx rgba(255,255,255,0.8); }
+  50% { opacity: 1; transform: scale(1.5); }
 }
 
 /* 顶部操作栏 */
-.header-top-bar {
-  position: relative;
+.header-top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx 32rpx 24rpx;
-  z-index: 10;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 32rpx;
+}
+
+.header-title-wrap {
+  flex: 1;
 }
 
 .header-title {
-  font-size: 36rpx;
-  font-weight: 600;
+  font-size: 40rpx;
+  font-weight: 700;
   color: #fff;
 }
 
