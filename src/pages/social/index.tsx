@@ -653,7 +653,8 @@ export default function SocialPage() {
                       <Image 
                         src={avatar.avatar_url} 
                         className="ai-avatar-img" 
-                        mode="aspectFill"
+                        mode="scaleToFill"
+                        style={{ borderRadius: '50%' }}
                       />
                     ) : (
                       <View 

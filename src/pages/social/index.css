@@ -298,6 +298,8 @@
   box-shadow: var(--shadow-sm);
   object-fit: cover;
   flex-shrink: 0;
+  overflow: hidden;
+  display: block;
 }
 
 .ai-avatar-circle {
