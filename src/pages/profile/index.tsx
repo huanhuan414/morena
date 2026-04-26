@@ -226,7 +226,10 @@ export default function ProfilePage() {
             </View>
           </View>
         </View>
+      </View>
 
+      {/* 白色卡片区域 - 覆盖在header上 */}
+      <View className="profile-floating-card">
         {/* 用户信息 */}
         <View className="header-user-info">
           <View className="user-avatar-wrap">
