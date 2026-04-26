@@ -217,23 +217,23 @@ export default function SocialPage() {
     
     setLoading(true)
     try {
-      // 构建请求参数
-      const params = new URLSearchParams()
-      params.append('page', String(pageNum))
-      params.append('pageSize', '10')
+      // 构建请求参数（兼容微信小程序，不使用 URLSearchParams）
+      const queryParams: string[] = []
+      queryParams.push(`page=${pageNum}`)
+      queryParams.push('pageSize=10')
       
       // 添加排序参数 (hot/latest/follow)
       if (activeTab) {
-        params.append('sort', activeTab)
+        queryParams.push(`sort=${activeTab}`)
       }
       
       // 添加筛选参数 (all/female/male/landscape/food)
       if (activeFilter && activeFilter !== 'all') {
-        params.append('filter', activeFilter)
+        queryParams.push(`filter=${activeFilter}`)
       }
       
       const res = await Network.request({
-        url: `/api/social/all-posts?${params.toString()}`
+        url: `/api/social/all-posts?${queryParams.join('&')}`
       })
       if (res.data?.code === 200) {
         const data = res.data.data
