@@ -9,8 +9,8 @@ export default defineAppConfig({
     'pages/login/index',
     // 个人中心子页面
     'pages/settings/index',
-    'pages/profile/help/index',
-    'pages/profile/about/index',
+    'pages/profile/help',
+    'pages/profile/about',
     'pages/profile/notifications',
     'pages/security/index',
     // 订阅
