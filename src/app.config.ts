@@ -20,9 +20,12 @@ export default defineAppConfig({
     // 技能
     'pages/skills-square/index',
     'pages/skill-create/index',
+    'pages/skill-training/index',
     // 推广收益
     'pages/referral-center/index',
-    'pages/earning-center/index'
+    'pages/earning-center/index',
+    // 订单
+    'pages/order-list/index'
   ],
   window: {
     backgroundTextStyle: 'light',
