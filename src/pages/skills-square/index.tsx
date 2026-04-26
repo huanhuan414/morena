@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
-import Taro, { navigateBack } from '@tarojs/taro'
+import Taro, { navigateBack, getSystemInfoSync } from '@tarojs/taro'
 import { Star, Check, ShoppingCart, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
@@ -256,6 +256,13 @@ export default function SkillsSquare() {
   const [purchasing, setPurchasing] = useState(false)
   const [showKitDialog, setShowKitDialog] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+
+  // 获取状态栏高度
+  useEffect(() => {
+    const systemInfo = getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+  }, [])
 
   // 打印环境信息
   useEffect(() => {
@@ -742,8 +749,8 @@ export default function SkillsSquare() {
 
   return (
     <View className="skills-square-container">
-      {/* 头部 */}
-      <View className="skills-header">
+      {/* 头部 - 适配状态栏 */}
+      <View className="skills-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="back-button" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#1f2937" />
         </View>

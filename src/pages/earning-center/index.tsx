@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign, ArrowLeft } from 'lucide-react-taro'
+import { ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign, ArrowLeft } from 'lucide-react-taro'
 import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 
@@ -169,7 +169,6 @@ export default function EarningCenterPage() {
           <ArrowLeft size={28} color="#00ff88" />
         </View>
         <View className="header-title-wrap">
-          <Wallet size={24} color="#00ff88" />
           <Text className="header-title">收益中心</Text>
         </View>
         <View style={{ width: `${capsuleWidth}rpx` }} />
