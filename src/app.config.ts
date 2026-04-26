@@ -11,7 +11,10 @@ export default defineAppConfig({
     'pages/settings/index',
     'pages/profile/help/index',
     'pages/profile/about/index',
+    'pages/profile/notifications',
     'pages/security/index',
+    // 订阅
+    'pages/subscription/index',
     // 分身相关
     'pages/avatar-manage/index',
     'pages/avatar-friends/index',
