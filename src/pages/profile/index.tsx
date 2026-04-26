@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, navigateTo, navigateBack, reLaunch, showModal, switchTab } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
   Settings, ChevronRight, LogOut, Sparkles, Bell, Info, 
-  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X, ArrowLeft
+  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X
 } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
