@@ -47,7 +47,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       enhance: false,
       compileHotReLoad: false,
       postcss: false,
-      minified: false,
+      minified: true,
       newFeature: true,
       coverView: true,
       nodeModules: false,
