@@ -91,7 +91,7 @@ interface AvatarProfile {
   created_at: string
   personality?: string
   style?: string
-  skills?: string[]
+  skills?: Array<string | { id?: string; tool_name?: string; name?: string }>
   accounts?: AvatarAccount[]
 }
 
@@ -269,7 +269,9 @@ export default function AvatarProfilePage() {
               <View className="skills-list">
                 {skills.map((skill, index) => (
                   <View key={index} className="skill-tag">
-                    <Text className="skill-tag-text">{skill}</Text>
+                    <Text className="skill-tag-text">
+                      {typeof skill === 'string' ? skill : skill.tool_name || skill.name || '未知技能'}
+                    </Text>
                   </View>
                 ))}
               </View>
