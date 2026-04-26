@@ -285,7 +285,14 @@ export class AvatarController {
     }
 
     // 获取订阅信息
-    const subscription = await this.avatarService.getUserSubscription(avatar.user_id)
+    const { data: subscription } = await client
+      .from('user_subscriptions')
+      .select('*, subscription_plans(*)')
+      .eq('user_id', avatar.user_id)
+      .eq('status', 'active')
+      .order('end_date', { ascending: false })
+      .limit(1)
+      .single() as { data: any }
 
     // 计算发帖配额
     const quota = await this.hostingService.calculatePostQuota(avatarId, avatar.level || 1, subscription)
@@ -351,7 +358,7 @@ export class AvatarController {
       }
 
       // 调用发帖服务
-      const post = await this.avatarService.autoCreatePost(avatarId, userId, { force: true })
+      const post = await this.avatarService.autoCreatePost(avatarId, userId, { withImage: true })
 
       if (post) {
         return {
