@@ -32,12 +32,6 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/users-active.png'
       },
       {
-        pagePath: 'pages/avatar-profile/index',
-        text: '分身',
-        iconPath: './assets/tabbar/sparkles.png',
-        selectedIconPath: './assets/tabbar/sparkles-active.png'
-      },
-      {
         pagePath: 'pages/mind-chat/index',
         text: '心智对话',
         iconPath: './assets/tabbar/message-circle.png',
