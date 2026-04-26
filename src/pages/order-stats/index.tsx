@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, TrendingUp, ChartBar
 } from 'lucide-react-taro'
 import * as Network from '@/network'
+import '../profile/index.css'
 import './index.css'
 
 interface Post {
@@ -155,14 +156,14 @@ export default function OrderStats() {
       <View className="stats-page">
         <View className="header">
           <View className="header-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#1e293b" />
+            <ArrowLeft size={36} color="#7B3FE4" />
           </View>
           <Text className="header-title">数据统计</Text>
           <View className="header-right" />
         </View>
 
         <View className="empty-state">
-          <ChartBar size={64} color="#94a3b8" />
+          <ChartBar size={64} color="#7B3FE4" />
           <Text className="empty-text">暂无统计数据</Text>
         </View>
       </View>
@@ -174,7 +175,7 @@ export default function OrderStats() {
       {/* 头部 */}
       <View className="header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#1e293b" />
+          <ArrowLeft size={36} color="#7B3FE4" />
         </View>
         <Text className="header-title">数据统计</Text>
         <View className="header-right" />
@@ -185,38 +186,38 @@ export default function OrderStats() {
         {/* 总数据卡片 */}
         <View className="summary-card">
           <View className="summary-header">
-            <TrendingUp size={20} color="#6366f1" />
+            <TrendingUp size={40} color="#7B3FE4" />
             <Text className="summary-title">数据总览</Text>
           </View>
 
           <View className="stats-grid">
             <View className="stat-card stat-purple">
               <View className="stat-icon">
-                <Users size={24} color="#6366f1" />
+                <Users size={36} color="#7B3FE4" />
               </View>
               <Text className="stat-value">{stats.totalAvatars}</Text>
               <Text className="stat-label">参与分身</Text>
             </View>
 
-            <View className="stat-card stat-blue">
+            <View className="stat-card">
               <View className="stat-icon">
-                <Eye size={24} color="#3b82f6" />
+                <Eye size={36} color="#7B3FE4" />
               </View>
               <Text className="stat-value">{formatNumber(stats.totalViews)}</Text>
               <Text className="stat-label">总浏览量</Text>
             </View>
 
-            <View className="stat-card stat-red">
+            <View className="stat-card">
               <View className="stat-icon">
-                <Heart size={24} color="#ef4444" />
+                <Heart size={36} color="#7B3FE4" />
               </View>
               <Text className="stat-value">{formatNumber(stats.totalLikes)}</Text>
               <Text className="stat-label">总点赞数</Text>
             </View>
 
-            <View className="stat-card stat-green">
+            <View className="stat-card">
               <View className="stat-icon">
-                <MessageCircle size={24} color="#22c55e" />
+                <MessageCircle size={36} color="#7B3FE4" />
               </View>
               <Text className="stat-value">{formatNumber(stats.totalComments)}</Text>
               <Text className="stat-label">总评论数</Text>
@@ -298,22 +299,22 @@ export default function OrderStats() {
                     {/* 数据指标 */}
                     <View className="metrics-row">
                       <View className="metric-item">
-                        <Eye size={16} color="#22c55e" />
+                        <Eye size={32} color="#7B3FE4" />
                         <Text className="metric-value">{formatNumber(avatar.totalViews)}</Text>
                         <Text className="metric-label">浏览</Text>
                       </View>
                       <View className="metric-item">
-                        <Heart size={16} color="#ef4444" />
+                        <Heart size={32} color="#7B3FE4" />
                         <Text className="metric-value">{formatNumber(avatar.totalLikes)}</Text>
                         <Text className="metric-label">点赞</Text>
                       </View>
                       <View className="metric-item">
-                        <MessageCircle size={16} color="#f59e0b" />
+                        <MessageCircle size={32} color="#7B3FE4" />
                         <Text className="metric-value">{formatNumber(avatar.totalComments)}</Text>
                         <Text className="metric-label">评论</Text>
                       </View>
                       <View className="metric-item">
-                        <Share2 size={16} color="#6366f1" />
+                        <Share2 size={32} color="#7B3FE4" />
                         <Text className="metric-value">{formatNumber(avatar.totalShares)}</Text>
                         <Text className="metric-label">分享</Text>
                       </View>
