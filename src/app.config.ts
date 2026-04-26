@@ -39,7 +39,7 @@ export default defineAppConfig({
       },
       {
         pagePath: 'pages/mind-chat/index',
-        text: '谈心',
+        text: '心智对话',
         iconPath: './assets/tabbar/message-circle.png',
         selectedIconPath: './assets/tabbar/message-circle-active.png'
       },
