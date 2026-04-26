@@ -22,6 +22,8 @@ const SKILL_NAME_MAP: Record<string, string> = {
   recommend_bgm: '背景音乐推荐',
   // 分身秩序
   app_assign_order: '分身秩序',
+  // 自动发帖助手
+  auto_post_to_home: '自动发帖助手',
   // 账号管理
   list_avatar_accounts: '账号管理',
   // 个人IP打造套件中的技能
@@ -178,6 +180,30 @@ const PERSONAL_IP_KIT: {
   purchase_count: 666
 }
 
+// 自动发帖助手技能配置
+const AUTO_POST_SKILL = {
+  id: 'auto_post_to_home',
+  name: '自动发帖助手',
+  description: '让分身自动在首页发布动态帖子。系统会根据分身的等级、订阅情况智能分配发帖配额，支持纯文字、图文、视频多种格式。等级越高、订阅越好，发帖权限越大。',
+  icon: '📝',
+  category: '内容创作',
+  tool_name: 'auto_post_to_home',
+  tags: ['自动发帖', '内容创作', '社交', '首页'],
+  rating: 4.8,
+  purchase_count: 256,
+  // 权限配置
+  requirements: {
+    minLevel: 1,
+    needHosting: true,
+    quotaRules: {
+      free: { textOnly: 1, imageText: 0, video: 0, desc: '免费版：每天1条纯文字' },
+      basic: { textOnly: 2, imageText: 1, video: 0, desc: '基础版：每天2条文字+1条图文' },
+      premium: { textOnly: 3, imageText: 3, video: 2, desc: '尊享版：每天3条文字+3条图文+每月2条视频' }
+    },
+    levelBonus: '每升1级增加1条图文配额'
+  }
+}
+
 // 根据 tool_name 获取图标
 const getSkillIcon = (toolName?: string): string => {
   const iconMap: Record<string, string> = {
@@ -190,6 +216,8 @@ const getSkillIcon = (toolName?: string): string => {
     'edit_shortdrama_video': '✂️',
     'generate_subtitle': '💬',
     'recommend_bgm': '🎵',
+    // 自动发帖
+    'auto_post_to_home': '📝',
     // 账号管理
     'list_avatar_accounts': '🔗',
     // 内容创作
@@ -256,6 +284,7 @@ export default function SkillsSquare() {
   const [purchasing, setPurchasing] = useState(false)
   const [showKitDialog, setShowKitDialog] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
+  const [showAutoPostDialog, setShowAutoPostDialog] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   // 获取状态栏高度
@@ -477,6 +506,50 @@ export default function SkillsSquare() {
     } catch (error) {
       console.error('[SkillSquare] 添加技能失败:', error)
       Taro.showToast({ title: '添加失败', icon: 'none' })
+    } finally {
+      setPurchasing(false)
+    }
+  }
+
+  // 添加自动发帖助手技能
+  const handlePurchaseAutoPost = async () => {
+    if (!currentAvatar?.id) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    try {
+      setPurchasing(true)
+      console.log('[SkillSquare] 开始添加自动发帖助手:', {
+        toolName: AUTO_POST_SKILL.tool_name,
+        avatarId: currentAvatar.id
+      })
+
+      // 通过 tool_name 添加技能
+      const res = await Network.request({
+        url: '/api/skills/purchase-by-tool-name',
+        method: 'POST',
+        data: {
+          toolName: AUTO_POST_SKILL.tool_name,
+          avatarId: currentAvatar.id
+        }
+      })
+
+      console.log('[SkillSquare] 添加自动发帖助手响应:', res)
+
+      if (res.data?.code === 200) {
+        Taro.showToast({
+          title: '添加成功！请前往分身托管设置开启自动发帖',
+          icon: 'success'
+        })
+        setShowAutoPostDialog(false)
+        fetchMySkills()
+      } else {
+        Taro.showToast({ title: res.data?.message || '添加失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      console.error('[SkillSquare] 添加自动发帖助手失败:', error)
+      Taro.showToast({ title: '添加失败: ' + (error.message || '未知错误'), icon: 'none' })
     } finally {
       setPurchasing(false)
     }
@@ -1037,7 +1110,12 @@ export default function SkillsSquare() {
                         className="action-btn"
                         onClick={() => {
                           setSelectedSkill(skill)
-                          setShowPurchaseDialog(true)
+                          // 自动发帖助手使用专门的弹窗
+                          if (skill.tool_name === 'auto_post_to_home') {
+                            setShowAutoPostDialog(true)
+                          } else {
+                            setShowPurchaseDialog(true)
+                          }
                         }}
                       >
                         <View className="btn-content">
@@ -1199,6 +1277,91 @@ export default function SkillsSquare() {
             </Button>
             <Button onClick={handleGenerateAgentOrder} disabled={purchasing}>
               <Text>{purchasing ? '添加中...' : '立即体验'}</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 自动发帖助手弹窗 */}
+      <Dialog open={showAutoPostDialog} onOpenChange={setShowAutoPostDialog}>
+        <DialogContent style={{
+          width: 'calc(100vw - 64px)',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        >
+          <DialogHeader style={{ flexShrink: 0, padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#ffffff' }}>
+            <DialogTitle>自动发帖助手</DialogTitle>
+          </DialogHeader>
+          <View style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', maxHeight: 'calc(80vh - 140px)' }}>
+            <View className="dialog-content">
+              <View className="order-preview">
+                <Text className="order-icon">{AUTO_POST_SKILL.icon}</Text>
+                <View className="order-info">
+                  <Text className="order-name">{AUTO_POST_SKILL.name}</Text>
+                  <Text className="order-desc">{AUTO_POST_SKILL.description}</Text>
+                </View>
+              </View>
+
+              {/* 权限要求 */}
+              <View className="order-features">
+                <Text className="order-features-title">权限要求：</Text>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">📊</Text>
+                  <Text className="order-feature-text">分身等级 ≥ Lv.{AUTO_POST_SKILL.requirements.minLevel}</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">🤖</Text>
+                  <Text className="order-feature-text">需开启托管模式</Text>
+                </View>
+              </View>
+
+              {/* 发帖配额 */}
+              <View className="order-features">
+                <Text className="order-features-title">每日发帖配额：</Text>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">🆓</Text>
+                  <Text className="order-feature-text">{AUTO_POST_SKILL.requirements.quotaRules.free.desc}</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">⭐</Text>
+                  <Text className="order-feature-text">{AUTO_POST_SKILL.requirements.quotaRules.basic.desc}</Text>
+                </View>
+                <View className="order-feature-item">
+                  <Text className="order-feature-icon">👑</Text>
+                  <Text className="order-feature-text">{AUTO_POST_SKILL.requirements.quotaRules.premium.desc}</Text>
+                </View>
+              </View>
+
+              {/* 等级加成 */}
+              <View className="order-tip">
+                <Text className="order-tip-text">💡 {AUTO_POST_SKILL.requirements.levelBonus}</Text>
+              </View>
+
+              {/* 支持格式 */}
+              <View className="order-features">
+                <Text className="order-features-title">支持格式：</Text>
+                <View style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap' }}>
+                  <Text style={{ background: 'rgba(123, 63, 228, 0.2)', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', color: '#7B3FE4' }}>纯文字</Text>
+                  <Text style={{ background: 'rgba(123, 63, 228, 0.2)', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', color: '#7B3FE4' }}>图文</Text>
+                  <Text style={{ background: 'rgba(123, 63, 228, 0.2)', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', color: '#7B3FE4' }}>视频</Text>
+                </View>
+              </View>
+
+              <View className="target-avatar">
+                <Text className="target-label">目标分身</Text>
+                <Text className="target-name">{currentAvatar?.name}</Text>
+              </View>
+            </View>
+          </View>
+          <DialogFooter style={{ flexShrink: 0, padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <Button variant="outline" onClick={() => setShowAutoPostDialog(false)}>
+              <Text>取消</Text>
+            </Button>
+            <Button onClick={handlePurchaseAutoPost} disabled={purchasing}>
+              <Text>{purchasing ? '添加中...' : '立即添加'}</Text>
             </Button>
           </DialogFooter>
         </DialogContent>

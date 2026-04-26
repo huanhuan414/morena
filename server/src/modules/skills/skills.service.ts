@@ -32,13 +32,14 @@ export class SkillsService {
    */
   private async initializeEssentialSkills() {
     try {
-      const { data: existingSkill } = await getSupabaseClient()
+      // 初始化分身秩序技能
+      const { data: existingOrderSkill } = await getSupabaseClient()
         .from('skills')
         .select('id')
         .eq('tool_name', 'app_assign_order')
         .single()
 
-      if (!existingSkill) {
+      if (!existingOrderSkill) {
         console.log('[SkillsService] 初始化 app_assign_order 技能...')
 
         await getSupabaseClient()
@@ -65,6 +66,47 @@ export class SkillsService {
           })
 
         console.log('[SkillsService] app_assign_order 技能初始化成功')
+      }
+
+      // 初始化自动发帖技能
+      const { data: existingPostSkill } = await getSupabaseClient()
+        .from('skills')
+        .select('id')
+        .eq('tool_name', 'auto_post_to_home')
+        .single()
+
+      if (!existingPostSkill) {
+        console.log('[SkillsService] 初始化 auto_post_to_home 技能...')
+
+        await getSupabaseClient()
+          .from('skills')
+          .insert({
+            name: '自动发帖助手',
+            description: '让分身自动在首页发布动态帖子。系统会根据分身的等级、订阅情况智能分配发帖配额，支持纯文字、图文、视频多种格式。等级越高、订阅越好，发帖权限越大。',
+            category: '内容创作',
+            price: 0,
+            icon: '📝',
+            tags: ['自动发帖', '内容创作', '社交', '首页'],
+            capabilities: {
+              features: ['自动发帖', '智能配额', '多格式支持', '等级权益'],
+              postTypes: ['纯文字', '图文', '视频'],
+              quotaRules: {
+                free: { textOnly: 1, imageText: 0, video: 0 },
+                basic: { textOnly: 2, imageText: 1, video: 0 },
+                premium: { textOnly: 3, imageText: 3, video: 2 }
+              },
+              levelBonus: '每升1级增加1条图文配额'
+            },
+            requirements: '分身等级≥1，需开启托管模式',
+            status: 'active',
+            rating: 4.8,
+            rating_count: 88,
+            purchase_count: 256,
+            tool_name: 'auto_post_to_home',
+            type: 'prebuilt'
+          })
+
+        console.log('[SkillsService] auto_post_to_home 技能初始化成功')
       }
     } catch (error) {
       console.error('[SkillsService] 初始化必要技能失败:', error)
