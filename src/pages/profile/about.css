@@ -138,6 +138,7 @@
   font-weight: 700;
   color: #fff;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .stat-label {
