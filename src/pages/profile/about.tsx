@@ -49,14 +49,18 @@ export default function AboutPage() {
 
         {/* 数据统计 - 突出显示 */}
         <View className="stats-section">
-          <Text className="section-title">平台数据</Text>
           <View className="stats-card">
-            {stats.map((stat, idx) => (
-              <View key={idx} className="stat-item">
-                <Text className="stat-value">{stat.value}</Text>
-                <Text className="stat-label">{stat.label}</Text>
-              </View>
-            ))}
+            <View className="stats-header">
+              <Text className="stats-title">平台数据</Text>
+            </View>
+            <View className="stats-content">
+              {stats.map((stat, idx) => (
+                <View key={idx} className="stat-item">
+                  <Text className="stat-value">{stat.value}</Text>
+                  <Text className="stat-label">{stat.label}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
