@@ -758,7 +758,6 @@ export default function SkillsSquare() {
 
       {/* 搜索框 */}
       <View className="search-container">
-        <Search size={18} color="rgba(255,255,255,0.5)" />
         <Input
           className="search-input"
           placeholder="搜索技能名称"
