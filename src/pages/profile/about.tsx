@@ -6,7 +6,7 @@ import './about.css'
 export default function AboutPage() {
   const features = [
     { icon: Sparkles, title: 'AI分身', desc: '创建你的数字孪生' },
-    { icon: Zap, title: '自动托管', desc: '让AI帮你处理日常' },
+    { icon: Zap, title: '自动托管', desc: '7*24小时的帮你赚钱、干活' },
     { icon: Heart, title: '心智成长', desc: 'AI越聊越懂你' },
     { icon: Users, title: '社交互动', desc: '连接更多可能' }
   ]
