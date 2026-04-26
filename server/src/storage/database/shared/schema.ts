@@ -1,6 +1,9 @@
 import { pgTable, index, foreignKey, pgPolicy, varchar, text, integer, timestamp, serial, jsonb, unique, numeric, boolean, uuid, uniqueIndex, check } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
+// PostgreSQL gen_random_uuid() function
+const gen_random_uuid = () => sql`gen_random_uuid()`
+
 
 
 export const comments = pgTable("comments", {

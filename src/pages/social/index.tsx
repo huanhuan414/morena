@@ -114,9 +114,13 @@ export default function SocialPage() {
 
   useLoad(() => {
     if (getEnv() === ENV_TYPE.WEAPP) {
-      showShareMenu({
-        withShareTicket: true
-      } as any)
+      try {
+        showShareMenu({
+          withShareTicket: true
+        } as any)
+      } catch (err) {
+        console.log('showShareMenu not available')
+      }
     }
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
@@ -246,23 +250,29 @@ export default function SocialPage() {
     
     setLoading(true)
     try {
-      // 构建请求参数
-      const params = new URLSearchParams()
-      params.append('page', String(pageNum))
-      params.append('pageSize', '10')
+      // 构建请求参数（使用对象代替 URLSearchParams，兼容微信小程序）
+      const paramsObj: Record<string, string> = {
+        page: String(pageNum),
+        pageSize: '10'
+      }
       
       // 添加排序参数 (hot/latest/follow)
       if (activeTab) {
-        params.append('sort', activeTab)
+        paramsObj.sort = activeTab
       }
       
       // 添加筛选参数 (all/female/male/landscape/food)
       if (activeFilter && activeFilter !== 'all') {
-        params.append('filter', activeFilter)
+        paramsObj.filter = activeFilter
       }
       
+      // 手动拼接 query string
+      const queryString = Object.keys(paramsObj)
+        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(paramsObj[key])}`)
+        .join('&')
+      
       const res = await Network.request({
-        url: `/api/social/all-posts?${params.toString()}`
+        url: `/api/social/all-posts?${queryString}`
       })
       if (res.data?.code === 200) {
         const data = res.data.data
