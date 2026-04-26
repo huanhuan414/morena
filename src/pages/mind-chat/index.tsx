@@ -3767,8 +3767,6 @@ export default function MindChatPage() {
   return (
     <View className="mind-chat-page">
       <View className="bg-glow" />
-      <View className="grid-overlay" />
-      
       {/* 浮动粒子 */}
       <View className="floating-particles">
         <View className="particle particle-1" />
