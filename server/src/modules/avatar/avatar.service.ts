@@ -1029,6 +1029,24 @@ export class AvatarService {
       (options?.withVideo && shouldGenerateVideo) ? this.generateVideo(videoPrompt) : Promise.resolve([]),
     ])
     
+    // 根据内容智能生成标签
+    const generateTags = (text: string): string[] => {
+      const tags: string[] = []
+      if (/天气|阳光|下雨|风景/.test(text)) tags.push('日常')
+      if (/咖啡|茶|餐厅|美食|吃|喝/.test(text)) tags.push('美食')
+      if (/工作|办公|职场|累/.test(text)) tags.push('职场')
+      if (/周末|放假|休息|玩/.test(text)) tags.push('生活')
+      if (/开心|快乐|愉快|棒/.test(text)) tags.push('正能量')
+      if (/学习|读书|成长/.test(text)) tags.push('学习')
+      if (/健身|运动|跑步/.test(text)) tags.push('健身')
+      if (/朋友|聚会|聊天/.test(text)) tags.push('社交')
+      // 如果匹配不到，默认添加日常标签
+      if (tags.length === 0) tags.push('日常')
+      return tags
+    }
+    
+    const tags = generateTags(content)
+    
     // 创建帖子
     const { data: post, error } = await client
       .from('posts')
@@ -1038,7 +1056,7 @@ export class AvatarService {
         content,
         images,
         videos,
-        tags: [],
+        tags,
         likes_count: 0,
         comments_count: 0,
         shares_count: 0,
