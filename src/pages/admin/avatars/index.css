@@ -1,0 +1,236 @@
+/* 分身管理页面 */
+.avatars-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 24rpx 32rpx;
+  border-radius: 12rpx;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+  width: 400rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 26rpx;
+  color: #374151;
+}
+
+.header-stats {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.stat-text {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 筛选标签 */
+.filter-tabs {
+  display: flex;
+  gap: 16rpx;
+  background: #fff;
+  padding: 20rpx 32rpx;
+  border-radius: 12rpx;
+}
+
+.filter-tab {
+  padding: 12rpx 24rpx;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+  cursor: pointer;
+}
+
+.filter-tab.active {
+  background: #7B3FE4;
+}
+
+.filter-tab-text {
+  font-size: 26rpx;
+  color: #4b5563;
+}
+
+.filter-tab.active .filter-tab-text {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 数据表格 */
+.data-table {
+  background: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  background: #f9fafb;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.th {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.table-body {
+  max-height: calc(100vh - 400rpx);
+}
+
+.table-row {
+  display: flex;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+  align-items: center;
+}
+
+.table-row:hover {
+  background: #f9fafb;
+}
+
+.td {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* 列宽 */
+.col-avatar { width: 25%; }
+.col-user { width: 15%; }
+.col-price { width: 10%; }
+.col-stats { width: 12%; }
+.col-status { width: 10%; }
+.col-date { width: 15%; }
+.col-action { width: 13%; }
+
+/* 分身信息 */
+.avatar-info {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.avatar-img-sm {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+}
+
+.avatar-placeholder-sm {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7B3FE4 0%, #8B5CF6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-text-sm {
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.avatar-name {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
+}
+
+.public-tag {
+  font-size: 20rpx;
+  color: #7B3FE4;
+  background: rgba(123, 63, 228, 0.1);
+  padding: 2rpx 8rpx;
+  border-radius: 4rpx;
+  align-self: flex-start;
+}
+
+/* 状态标签 */
+.status-badge {
+  display: inline-block;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+}
+
+.status-badge.active {
+  background: #d1fae5;
+}
+
+.status-badge.active .status-text {
+  color: #10b981;
+}
+
+.status-badge.pending_review {
+  background: #fef3c7;
+}
+
+.status-badge.pending_review .status-text {
+  color: #f59e0b;
+}
+
+.status-badge.banned {
+  background: #fee2e2;
+}
+
+.status-badge.banned .status-text {
+  color: #ef4444;
+}
+
+/* 操作按钮 */
+.action-btns {
+  display: flex;
+  gap: 8rpx;
+}
+
+.action-btn {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.action-btn.view {
+  background: #dbeafe;
+}
+
+.action-btn.chat {
+  background: #ede9fe;
+}
+
+.action-btn.ban {
+  background: #fee2e2;
+}
+
+.action-btn.unban {
+  background: #d1fae5;
+}

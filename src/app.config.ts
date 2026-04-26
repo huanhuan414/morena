@@ -1,43 +1,65 @@
 export default defineAppConfig({
   pages: [
-    // 核心Tab页面
     'pages/social/index',
+    'pages/skill-training/index',
     'pages/avatar-profile/index',
-    'pages/avatar-create/index',
-    'pages/mind-chat/index',
-    'pages/profile/index',
-    // 登录
     'pages/login/index',
-    // 个人中心子页面
-    'pages/settings/index',
-    'pages/profile/help/index',
-    'pages/profile/about/index',
-    'pages/security/index',
-    // 分身相关页面
+    'pages/avatar-create/index',
     'pages/avatar-manage/index',
-    // 订单相关页面
+    'pages/avatar-settings/index',
+    'pages/avatar-account-config/index',
+    'pages/avatar-account-add/index',
+    'pages/avatar-friends/index',
+    'pages/avatar-orders/index',
+    'pages/avatar-order-completed/index',
+    'pages/voice-call/index',
+    'pages/mind-chat/index',
+    'pages/publish-redirect/index',
+    'pages/profile/index',
+    'pages/profile/settings',
+    'pages/profile/notifications',
+    'pages/profile/security',
+    'pages/profile/help',
+    'pages/profile/about',
+    'pages/profile/followers',
+    'pages/subscription/index',
+    'pages/task/index',
+    'pages/order-create/index',
     'pages/order-list/index',
-    // 技能相关页面
-    'pages/skills-square/index',
-    // 收益和订阅
+    'pages/order-detail/index',
+    'pages/order-acceptance/index',
+    'pages/order-stats/index',
+    'pages/order-matching/index',
+    'pages/pending-order/index',
+    'pages/order-content-creation/index',
+    'pages/order-publish-feedback/index',
+    'pages/order-processing/index',
+    'pages/order-feedback/index',
+    'pages/generated-content/index',
     'pages/earning-center/index',
-    'pages/subscription/index'
+    'pages/referral-center/index',
+    'pages/skills-square/index',
+    'pages/skill-create/index',
+    'pages/avatar-recommend/index',
+    'pages/webview/index'
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'AI Avatar',
-    navigationBarTextStyle: 'black'
+    navigationBarBackgroundColor: '#ffffff',
+    navigationBarTitleText: '莫瑞娜',
+    navigationBarTextStyle: 'black',
+    backgroundColor: '#f8fafc',
+    navigationStyle: 'custom'
   },
   tabBar: {
-    color: '#999999',
-    selectedColor: '#3b82f6',
+    color: '#64748b',
+    selectedColor: '#7B3FE4',
     backgroundColor: '#ffffff',
-    borderStyle: 'black',
+    borderStyle: 'white',
     list: [
       {
         pagePath: 'pages/social/index',
-        text: '社交',
+        text: '广场',
         iconPath: './assets/tabbar/users.png',
         selectedIconPath: './assets/tabbar/users-active.png'
       },
@@ -54,5 +76,10 @@ export default defineAppConfig({
         selectedIconPath: './assets/tabbar/user-active.png'
       }
     ]
+  },
+  permission: {
+    'scope.userLocation': {
+      desc: '你的位置信息将用于小程序位置接口的效果展示'
+    }
   }
 })

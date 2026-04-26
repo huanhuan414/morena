@@ -1,0 +1,440 @@
+/* Avatar Settings Page - 明亮模式，高端设计 */
+.avatar-settings-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #1e293b;
+  position: relative;
+}
+
+/* 顶部导航 */
+.as-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-bottom: 2rpx solid rgba(6, 182, 212, 0.1);
+  z-index: 100;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.as-header-back {
+  padding: 12rpx 24rpx;
+  background: rgba(6, 182, 212, 0.08);
+  border-radius: 12rpx;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.as-header-back:active {
+  transform: scale(0.95);
+  background: rgba(6, 182, 212, 0.15);
+}
+
+.as-back-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #06b6d4;
+}
+
+.as-header-title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.5rpx;
+}
+
+.as-header-action {
+  padding: 12rpx 28rpx;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  border-radius: 12rpx;
+  border: none;
+  box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
+  transition: all 0.3s ease;
+}
+
+.as-header-action:active {
+  transform: scale(0.95);
+  box-shadow: 0 2rpx 8rpx rgba(6, 182, 212, 0.2);
+}
+
+.as-action-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 滚动容器 */
+.as-scroll {
+  height: 100vh;
+  padding: 160rpx 32rpx 32rpx;
+  box-sizing: border-box;
+}
+
+/* 分身信息区域 */
+.as-avatar-section {
+  margin-bottom: 48rpx;
+}
+
+.as-avatar-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 32rpx;
+  padding: 48rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+  border: 2rpx solid rgba(6, 182, 212, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 卡片背景装饰 */
+.as-avatar-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.as-avatar-header {
+  display: flex;
+  gap: 32rpx;
+  margin-bottom: 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.as-avatar-avatar {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  overflow: hidden;
+  box-shadow: 0 8rpx 24rpx rgba(6, 182, 212, 0.3);
+  border: 4rpx solid #ffffff;
+  flex-shrink: 0;
+}
+
+.as-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.as-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.as-avatar-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.as-avatar-name {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.5rpx;
+}
+
+.as-avatar-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.as-meta-item {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.08);
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.as-avatar-personality {
+  font-size: 28rpx;
+  color: #64748b;
+  line-height: 1.6;
+  padding: 16rpx 20rpx;
+  background: rgba(6, 182, 212, 0.04);
+  border-radius: 16rpx;
+  border-left: 4rpx solid #06b6d4;
+}
+
+/* 编辑表单 */
+.as-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.as-edit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.as-edit-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #334155;
+  margin-left: 4rpx;
+}
+
+.as-edit-input,
+.as-edit-textarea {
+  background: #ffffff;
+  border: 2rpx solid rgba(6, 182, 212, 0.2);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #1e293b;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.as-edit-input:focus,
+.as-edit-textarea:focus {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 4rpx rgba(6, 182, 212, 0.1);
+}
+
+.as-edit-input::placeholder,
+.as-edit-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.as-edit-textarea {
+  min-height: 160rpx;
+  line-height: 1.6;
+}
+
+/* 分区标题 */
+.as-section {
+  margin-bottom: 48rpx;
+}
+
+.as-section-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 24rpx;
+  padding-left: 16rpx;
+  border-left: 4rpx solid #06b6d4;
+  letter-spacing: 0.5rpx;
+}
+
+/* 设置项 */
+.as-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  border: 2rpx solid transparent;
+}
+
+.as-setting-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.as-setting-left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+
+.as-setting-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border: 2rpx solid rgba(6, 182, 212, 0.15);
+}
+
+.as-setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.as-setting-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.as-setting-desc {
+  font-size: 24rpx;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* 位置卡片 */
+.as-location-card {
+  background: linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  border: 2rpx solid rgba(239, 68, 68, 0.15);
+  box-shadow: 0 2rpx 12rpx rgba(239, 68, 68, 0.05);
+  margin-bottom: 24rpx;
+}
+
+.as-location-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.as-location-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2rpx solid rgba(239, 68, 68, 0.2);
+}
+
+.as-location-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  flex: 1;
+}
+
+.as-location-label {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.as-location-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ef4444;
+  line-height: 1.5;
+}
+
+.as-location-placeholder {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+.as-location-btn {
+  width: 100%;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 16rpx;
+  border: none;
+  box-shadow: 0 4rpx 16rpx rgba(239, 68, 68, 0.3);
+  transition: all 0.3s ease;
+}
+
+.as-location-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.2);
+}
+
+.as-location-btn-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 菜单项 */
+.as-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  border: 2rpx solid rgba(6, 182, 212, 0.1);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  margin-bottom: 16rpx;
+  transition: all 0.3s ease;
+}
+
+.as-menu-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+}
+
+.as-menu-left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.as-menu-text {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* 危险区域 */
+.as-danger-section {
+  margin-top: 60rpx;
+  padding-top: 40rpx;
+  border-top: 2rpx solid rgba(239, 68, 68, 0.15);
+}
+
+.as-delete-btn {
+  width: 100%;
+  padding: 32rpx;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(239, 68, 68, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 12rpx rgba(239, 68, 68, 0.08);
+}
+
+.as-delete-btn:active {
+  transform: scale(0.98);
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+
+.as-delete-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+/* 底部空间 */
+.as-bottom-space {
+  height: 120rpx;
+}

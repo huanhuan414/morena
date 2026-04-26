@@ -1,0 +1,200 @@
+/* 订单管理页面 */
+.orders-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 24rpx 32rpx;
+  border-radius: 12rpx;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+  width: 400rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 26rpx;
+  color: #374151;
+}
+
+.stat-text {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 筛选标签 */
+.filter-tabs {
+  display: flex;
+  gap: 16rpx;
+  background: #fff;
+  padding: 20rpx 32rpx;
+  border-radius: 12rpx;
+}
+
+.filter-tab {
+  padding: 12rpx 24rpx;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+  cursor: pointer;
+}
+
+.filter-tab.active {
+  background: #7B3FE4;
+}
+
+.filter-tab-text {
+  font-size: 26rpx;
+  color: #4b5563;
+}
+
+.filter-tab.active .filter-tab-text {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 数据表格 */
+.data-table {
+  background: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  background: #f9fafb;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.th {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.table-body {
+  max-height: calc(100vh - 400rpx);
+}
+
+.table-row {
+  display: flex;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+  align-items: center;
+}
+
+.table-row:hover {
+  background: #f9fafb;
+}
+
+.td {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+/* 列宽 */
+.col-order { width: 22%; }
+.col-customer { width: 14%; }
+.col-avatar { width: 14%; }
+.col-price { width: 10%; }
+.col-status { width: 10%; }
+.col-date { width: 15%; }
+.col-action { width: 15%; }
+
+/* 订单信息 */
+.order-title {
+  display: block;
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
+  margin-bottom: 4rpx;
+}
+
+.order-id {
+  display: block;
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.td.col-price.highlight {
+  color: #7B3FE4;
+  font-weight: 600;
+}
+
+/* 状态标签 */
+.status-badge {
+  display: inline-block;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+}
+
+.status-badge.pending .status-text {
+  color: #f59e0b;
+}
+
+.status-badge.processing {
+  background: #dbeafe;
+}
+
+.status-badge.processing .status-text {
+  color: #3b82f6;
+}
+
+.status-badge.completed {
+  background: #d1fae5;
+}
+
+.status-badge.completed .status-text {
+  color: #10b981;
+}
+
+.status-badge.cancelled {
+  background: #f3f4f6;
+}
+
+.status-badge.cancelled .status-text {
+  color: #6b7280;
+}
+
+/* 操作按钮 */
+.action-btns {
+  display: flex;
+  gap: 8rpx;
+}
+
+.action-btn {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.action-btn.complete {
+  background: #d1fae5;
+}
+
+.action-btn.cancel {
+  background: #fee2e2;
+}

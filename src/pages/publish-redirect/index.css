@@ -1,0 +1,126 @@
+/* Publish Redirect Page */
+.publish-redirect-page {
+  min-height: 100vh;
+  background: var(--background);
+  position: relative;
+  overflow: hidden;
+}
+
+.publish-redirect-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(16, 185, 129, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 80%, rgba(5, 150, 105, 0.07) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 20s ease-in-out infinite;
+}
+
+@keyframes bgBreath {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.status-bar-placeholder {
+  background: var(--background);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+  border-bottom: 1.5rpx solid rgba(16, 185, 129, 0.12);
+  position: relative;
+  z-index: 10;
+  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5rpx;
+}
+
+.scroll-container {
+  flex: 1;
+  padding: 24rpx 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+/* Redirect UI */
+.redirect-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  gap: 32rpx;
+  animation: redirectFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes redirectFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.redirect-loader {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  border: 4rpx solid rgba(16, 185, 129, 0.2);
+  border-top-color: #10b981;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.redirect-status {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.redirect-desc {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.redirect-tips {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.6;
+  padding: 0 40rpx;
+}
+
+/* Bottom Space */
+.bottom-space {
+  height: 32rpx;
+}
+
+[data-theme="dark"] .publish-redirect-page {
+  /* 使用 CSS 变量自动适配 */
+}
