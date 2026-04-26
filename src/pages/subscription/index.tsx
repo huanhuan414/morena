@@ -240,7 +240,7 @@ export default function SubscriptionPage() {
       {/* 顶部导航 - 适配状态栏 */}
       <View className="sub-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="sub-header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#ffffff" />
+          <ArrowLeft size={24} color="#a855f7" />
         </View>
         <Text className="sub-header-title gradient-text">订阅中心</Text>
         <View className="sub-header-right" />
@@ -284,12 +284,12 @@ export default function SubscriptionPage() {
         {!loading && !userSubscription && (
           <View className="sub-current" style={{ border: '2rpx solid rgba(255, 255, 255, 0.1)' }}>
             <View className="sub-current-header">
-              <Crown size={28} color="#64748b" />
-              <Text className="sub-current-title" style={{ color: '#64748b' }}>暂无订阅</Text>
+              <Crown size={28} color="#ffffff" />
+              <Text className="sub-current-title" style={{ color: '#ffffff' }}>暂无订阅</Text>
             </View>
             <View className="sub-current-info">
-              <Text className="sub-current-plan" style={{ color: '#64748b' }}>免费用户</Text>
-              <Text className="sub-current-date" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+              <Text className="sub-current-plan" style={{ color: '#ffffff' }}>免费用户</Text>
+              <Text className="sub-current-date" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                 您可以创建 1 个分身，最多添加 10 个好友
               </Text>
             </View>
