@@ -3819,7 +3819,7 @@ export default function MindChatPage() {
       </View>
 
       {/* 心智成长面板 */}
-      <View className="learn-panel" style={{ '--mastery-level': `${learningStats.masteryLevel}%` } as React.CSSProperties}>
+      <View className="learn-panel" style={{ '--mastery-level': `50%` } as React.CSSProperties}>
         {/* 背景进度填充 */}
         <View className="learn-panel-bg-fill" />
         <View className="learn-panel-header">
@@ -3840,7 +3840,7 @@ export default function MindChatPage() {
           </View>
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('mastery')}>
             <Target size={16} color="#7B3FE4" />
-            <Text className="learn-stat-value">{learningStats.masteryLevel}%</Text>
+            <Text className="learn-stat-value">50%</Text>
             <Text className="learn-stat-label">掌握</Text>
           </View>
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('level')}>
@@ -4026,12 +4026,12 @@ export default function MindChatPage() {
               {showLearningDetail === 'mastery' && (
                 <View className="detail-section">
                   <View className="detail-stat-card large">
-                    <Text className="detail-stat-value">{learningStats.masteryLevel}%</Text>
+                    <Text className="detail-stat-value">50%</Text>
                     <Text className="detail-stat-label">风格掌握度</Text>
                   </View>
                   <View className="detail-progress-section">
                     <View className="detail-progress-bar">
-                      <View className="detail-progress-fill" style={{ width: `${learningStats.masteryLevel}%` }} />
+                      <View className="detail-progress-fill" style={{ width: `50%` }} />
                     </View>
                   </View>
                   <Text className="detail-hint">
