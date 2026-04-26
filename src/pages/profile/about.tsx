@@ -1,9 +1,17 @@
-import { navigateBack } from '@tarojs/taro'
+import { navigateBack, getSystemInfoSync } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
+import { useState, useEffect } from 'react'
 import { Sparkles, Heart, Users, Zap, Shield, Star, ArrowLeft } from 'lucide-react-taro'
 import './about.css'
 
 export default function AboutPage() {
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+
+  useEffect(() => {
+    const systemInfo = getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+  }, [])
+
   const features = [
     { icon: Sparkles, title: 'AI分身', desc: '创建你的数字孪生' },
     { icon: Zap, title: '自动托管', desc: '7*24小时的帮你赚钱、干活' },
@@ -19,8 +27,8 @@ export default function AboutPage() {
 
   return (
     <View className="about-page">
-      {/* 顶部导航 - 统一风格 */}
-      <View className="about-header">
+      {/* 顶部导航 - 适配状态栏 */}
+      <View className="about-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={36} color="#7B3FE4" />
         </View>
