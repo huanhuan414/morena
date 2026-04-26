@@ -189,12 +189,10 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
-      {/* 自定义导航栏 */}
+      {/* 自定义导航栏 - Tab页面不需要返回按钮 */}
       <View className="custom-nav-bar" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="nav-bar-content">
-          <View className="nav-bar-back" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#fff" />
-          </View>
+          <View className="nav-bar-left" />
           <Text className="nav-bar-title">我的</Text>
           <View className="nav-bar-right" />
         </View>
