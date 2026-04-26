@@ -70,7 +70,7 @@ interface PendingRequest {
 const menuItems = [
   { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/pages/avatar-manage/index' },
   { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/pages/skills-square/index' },
-  { title: '我要推广', icon: Briefcase, desc: '分享应用赚取收益', type: 'info', path: '/pages/promote/index' },
+  { title: '我要推广', icon: Briefcase, desc: '订单管理', type: 'info', path: '/pages/order-list/index' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
   { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help' },
