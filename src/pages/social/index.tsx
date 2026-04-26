@@ -865,7 +865,7 @@ export default function SocialPage() {
                     <View className="action-btn" onClick={() => likePost(post.id)}>
                       <Heart 
                         size={20} 
-                        color={post.is_liked ? '#ff6b6b' : '#999999'}
+                        color={post.is_liked ? '#ff6b6b' : '#666666'}
                       />
                       <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
                         {post.likes_count || 0}
@@ -881,11 +881,11 @@ export default function SocialPage() {
                         setActivePostId(activePostId === post.id ? null : post.id)
                       }}
                     >
-                      <MessageCircle size={20} color="#999999" />
+                      <MessageCircle size={20} color="#666666" />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
                     <View className="action-btn" onClick={() => handleShare(post.id)}>
-                      <Share2 size={20} color="#999999" />
+                      <Share2 size={20} color="#666666" />
                       <Text className="action-count">{post.shares_count || 0}</Text>
                     </View>
                   </View>

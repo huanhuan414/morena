@@ -54,7 +54,7 @@
 .back-text {
   font-size: 26rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--text-primary);
 }
 
 .header-title {
@@ -76,7 +76,7 @@
 .action-text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #00f5ff;
+  color: var(--text-primary);
 }
 
 /* Scroll */

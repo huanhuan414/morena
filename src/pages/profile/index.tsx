@@ -198,7 +198,6 @@ export default function ProfilePage() {
         <View className="custom-nav-bar">
           <View className="nav-bar-content">
             <View className="nav-bar-left" />
-            <Text className="nav-bar-title">我的</Text>
             <View className="nav-bar-right" />
           </View>
         </View>
