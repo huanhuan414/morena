@@ -3938,7 +3938,30 @@ export default function MindChatPage() {
 
         </ScrollView>
       </View>
-      
+
+      {/* 没有分身时的提示 - 放在进度条下面，不滚动 */}
+      {hasNoAvatar && (
+        <View className="no-avatar-section">
+          <View className="no-avatar-content">
+            <View className="empty-icon-large">
+              <Sparkles size={64} color="#00f5ff" />
+              <View className="empty-icon-glow" />
+            </View>
+            <Text className="empty-title-large">还没有分身</Text>
+            <Text className="empty-desc">创建你的第一个AI分身，开始智能对话体验</Text>
+            <View
+              className="create-avatar-button"
+              onClick={() => {
+                navigateTo({ url: '/pages/avatar-create/index' })
+              }}
+            >
+              <Plus size={18} color="#0a0a0f" />
+              <Text className="create-button-text">立即创建分身</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* 学习详情弹窗 - 等级详情使用独立组件 */}
       {showLearningDetail && showLearningDetail !== 'level' && (
         <View className="learning-detail-overlay" onClick={() => setShowLearningDetail(null)}>
@@ -4322,23 +4345,8 @@ export default function MindChatPage() {
         {/* 消息列表 */}
         {messages.length === 0 ? (
           hasNoAvatar ? (
-            <View className="no-avatar-empty">
-              <View className="empty-icon-large">
-                <Sparkles size={64} color="#00f5ff" />
-                <View className="empty-icon-glow" />
-              </View>
-              <Text className="empty-title-large">还没有分身</Text>
-              <Text className="empty-desc">创建你的第一个AI分身，开始智能对话体验</Text>
-              <View
-                className="create-avatar-button"
-                onClick={() => {
-                  navigateTo({ url: '/pages/avatar-create/index' })
-                }}
-              >
-                <Plus size={18} color="#0a0a0f" />
-                <Text className="create-button-text">立即创建分身</Text>
-              </View>
-            </View>
+            // 没有分身时的提示已移到 ScrollView 外部，这里显示空占位
+            <View className="empty-placeholder" />
           ) : (
             <View className="empty-chat">
               <View className="empty-icon">

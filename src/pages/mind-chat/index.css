@@ -905,6 +905,30 @@
   margin: var(--space-4);
 }
 
+/* 没有分身时的提示区域 - 放在进度条下方 */
+.no-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-6);
+  margin: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+}
+
+.no-avatar-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 空占位符 */
+.empty-placeholder {
+  height: 1px;
+}
+
 /* 创建按钮 */
 .create-button {
   background: var(--primary-gradient);
