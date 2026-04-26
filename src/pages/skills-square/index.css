@@ -142,7 +142,7 @@
   flex-shrink: 0;
   padding: 16rpx 28rpx;
   background: var(--bg-gray);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-base);
   border: 1rpx solid transparent;
 }
 
