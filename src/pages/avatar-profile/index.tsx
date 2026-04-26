@@ -355,7 +355,7 @@ export default function AvatarProfilePage() {
                   <View key={order.id} className="order-item">
                     <View className="order-main">
                       <Text className="order-title">{order.title}</Text>
-                      <Text className="order-desc" numberOfLines={1}>
+                      <Text className="order-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {order.description}
                       </Text>
                     </View>

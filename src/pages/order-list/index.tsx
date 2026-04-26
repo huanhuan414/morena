@@ -365,7 +365,7 @@ export default function OrderListPage() {
                   
                   {/* 订单描述 */}
                   {order.description && (
-                    <Text className="order-desc" numberOfLines={2}>
+                    <Text className="order-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {order.description}
                     </Text>
                   )}

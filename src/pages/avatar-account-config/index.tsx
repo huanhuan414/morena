@@ -563,7 +563,7 @@ export default function AvatarAccountConfigPage() {
                         <Text className="account-name">{displayName}</Text>
                       </View>
                       {extraInfo.signature && (
-                        <Text className="account-signature" numberOfLines={1}>
+                        <Text className="account-signature" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {extraInfo.signature}
                         </Text>
                       )}

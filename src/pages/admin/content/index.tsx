@@ -189,7 +189,7 @@ export default function ContentManagement() {
                   setShowDetail(true)
                 }}
               >
-                <Text className="content-text" numberOfLines={3}>
+                <Text className="content-text" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
                   {post.content}
                 </Text>
                 
