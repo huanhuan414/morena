@@ -112,37 +112,47 @@ export default function PublishRedirectPage() {
       return
     }
 
-    // 创建隐藏的iframe尝试打开scheme
-    const iframe = document.createElement('iframe')
-    iframe.style.display = 'none'
-    iframe.src = config.scheme
-    document.body.appendChild(iframe)
+    // 只在H5环境下使用iframe尝试打开APP
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
+      // 创建隐藏的iframe尝试打开scheme
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = config.scheme
+      document.body.appendChild(iframe)
 
-    // 设置超时检测
-    const checkTimeout = setTimeout(() => {
-      // 如果页面还在前台，说明打开失败
-      if (document.visibilityState !== 'hidden') {
-        setOpenFailed(true)
-        Taro.showToast({
-          title: '未检测到APP，请手动打开',
-          icon: 'none'
-        })
-      }
-    }, 2000)
+      // 设置超时检测
+      const checkTimeout = setTimeout(() => {
+        // 如果页面还在前台，说明打开失败
+        if (document.visibilityState !== 'hidden') {
+          setOpenFailed(true)
+          Taro.showToast({
+            title: '未检测到APP，请手动打开',
+            icon: 'none'
+          })
+        }
+      }, 2000)
 
-    // 监听页面可见性变化
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        clearTimeout(checkTimeout)
+      // 监听页面可见性变化
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          clearTimeout(checkTimeout)
+        }
       }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(iframe)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }, 3000)
+    } else {
+      // 小程序环境下直接显示打开失败，提示用户手动打开
+      setOpenFailed(true)
+      Taro.showToast({
+        title: '请在浏览器中打开',
+        icon: 'none'
+      })
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    // 清理
-    setTimeout(() => {
-      document.body.removeChild(iframe)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }, 3000)
   }
 
   // 复制内容
@@ -169,7 +179,14 @@ export default function PublishRedirectPage() {
   const handleDownload = () => {
     const config = PLATFORM_CONFIGS[platform]
     if (config.downloadUrl) {
-      window.location.href = config.downloadUrl
+      if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
+        window.location.href = config.downloadUrl
+      } else {
+        // 小程序环境下使用Taro的跳转
+        Taro.navigateTo({
+          url: `/pages/webview/index?url=${encodeURIComponent(config.downloadUrl)}`
+        })
+      }
     }
   }
 

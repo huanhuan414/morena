@@ -1,5 +1,5 @@
 import { Controller, Post, Body } from '@nestjs/common'
-import { SkillTrainingService } from './skill-training.service'
+import { SkillTrainingService, GeneratedSkill } from './skill-training.service'
 
 interface GenerateSkillDto {
   experience: string
@@ -17,7 +17,7 @@ export class SkillTrainingController {
   constructor(private readonly skillTrainingService: SkillTrainingService) {}
 
   @Post('generate')
-  async generateSkill(@Body() dto: GenerateSkillDto) {
+  async generateSkill(@Body() dto: GenerateSkillDto): Promise<{ code: number; msg: string; data: GeneratedSkill }> {
     const result = await this.skillTrainingService.generateSkill(dto.experience, dto.tips)
     return {
       code: 200,

@@ -265,7 +265,7 @@ export default function OrderStats() {
                 {/* 头部 */}
                 <View className="avatar-header" onClick={() => toggleAvatarExpand(avatar.avatarId)}>
                   <Image
-                    src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
+                    src={avatar.avatarUrl || ''}
                     className="avatar-avatar"
                     mode="aspectFill"
                   />

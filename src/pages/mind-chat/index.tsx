@@ -1919,7 +1919,8 @@ export default function MindChatPage() {
       } else {
         // 小程序环境：显示H5链接弹窗
         // 生成H5链接（使用项目域名）
-        const h5Url = `${window.location.origin}/pages/publish-redirect/index?platform=${platform}&content=${encodeURIComponent(publishContent)}&title=${content.title ? encodeURIComponent(content.title) : ''}`
+        const origin = typeof window !== 'undefined' ? window.location.origin : ''
+        const h5Url = `${origin}/pages/publish-redirect/index?platform=${platform}&content=${encodeURIComponent(publishContent)}&title=${content.title ? encodeURIComponent(content.title) : ''}`
         setH5PublishUrl(h5Url)
         setShowH5PublishDialog(true)
       }

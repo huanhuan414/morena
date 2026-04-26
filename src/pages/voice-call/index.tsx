@@ -37,7 +37,10 @@ export default function VoiceCallPage() {
   // 初始化 WebSocket 连接
   const connectWebSocket = () => {
     const userId = Taro.getStorageSync('userId') || 'guest-user'
-    const serverUrl = 'ws://localhost:3000/voice-call'
+    // 使用相对路径，让浏览器自动使用当前域名
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000'
+    const serverUrl = `${protocol}//${host}/voice-call`
     
     console.log('[语音通话] 连接 WebSocket:', serverUrl)
     

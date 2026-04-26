@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
 import Taro, { navigateBack } from '@tarojs/taro'
-import { Star, Check, ShoppingCart, Search, ArrowLeft } from 'lucide-react-taro'
+import { Star, Check, ShoppingCart, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 技能名称中文映射

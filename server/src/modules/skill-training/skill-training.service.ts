@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
-interface GeneratedSkill {
+export interface GeneratedSkill {
   name: string
   description: string
   category: string
@@ -41,7 +41,7 @@ export class SkillTrainingService {
 
 请根据以上内容生成一个独特的技能。`
 
-    const messages = [
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ]

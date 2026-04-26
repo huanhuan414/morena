@@ -10,8 +10,8 @@ import {
 } from 'lucide-react-taro'
 import './index.css'
 
-// 检测是否是 H5 环境
-const isH5 = typeof window !== 'undefined' && typeof document !== 'undefined'
+// 检测平台环境
+const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
 const AVATAR_STATUS_LABELS: Record<string, string> = {
   pending: '待确认',
@@ -229,7 +229,7 @@ export default function OrderAcceptance() {
           {/* 分身信息卡片 */}
           <View className="avatar-header-card">
             <Image
-              src={selectedAvatar.avatarUrl || 'https://via.placeholder.com/64'}
+              src={selectedAvatar.avatarUrl || ''}
               className="avatar-avatar-large"
               mode="aspectFill"
             />
@@ -462,7 +462,7 @@ export default function OrderAcceptance() {
                 <View className="avatar-card-left">
                   <View className="avatar-number text-sm font-bold">{index + 1}</View>
                   <Image
-                    src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
+                    src={avatar.avatarUrl || ''}
                     className="avatar-card-avatar"
                     mode="aspectFill"
                   />
