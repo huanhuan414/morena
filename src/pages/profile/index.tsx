@@ -212,41 +212,46 @@ export default function ProfilePage() {
           <View className="header-title-wrap">
             <Text className="header-title">个人中心</Text>
           </View>
-          <View className="header-actions">
-            <View className="action-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
-              <Bell size={32} color="#fff" />
+        </View>
+      </View>
+
+      {/* 白色卡片区域 - 覆盖在header上 */}
+      <View className="profile-floating-card">
+        {/* 卡片顶部：用户信息和操作按钮 */}
+        <View className="card-top-row">
+          {/* 用户信息 */}
+          <View className="header-user-info">
+            <View className="user-avatar-wrap">
+              {userInfo?.avatar ? (
+                <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+              ) : (
+                <View className="avatar-placeholder">
+                  <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+                </View>
+              )}
+              <View className="level-badge">
+                <Text className="level-badge-text">Lv.{stats.level}</Text>
+              </View>
+            </View>
+            <View className="user-text-info">
+              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+            </View>
+          </View>
+
+          {/* 操作按钮 */}
+          <View className="card-actions">
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
+              <Bell size={28} color="#666" />
               {unreadCount > 0 && (
                 <View className="action-badge">
                   <Text className="action-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
               )}
             </View>
-            <View className="action-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-              <Settings size={32} color="#fff" />
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+              <Settings size={28} color="#666" />
             </View>
-          </View>
-        </View>
-      </View>
-
-      {/* 白色卡片区域 - 覆盖在header上 */}
-      <View className="profile-floating-card">
-        {/* 用户信息 */}
-        <View className="header-user-info">
-          <View className="user-avatar-wrap">
-            {userInfo?.avatar ? (
-              <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
-            ) : (
-              <View className="avatar-placeholder">
-                <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
-              </View>
-            )}
-            <View className="level-badge">
-              <Text className="level-badge-text">Lv.{stats.level}</Text>
-            </View>
-          </View>
-          <View className="user-text-info">
-            <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-            <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
           </View>
         </View>
 

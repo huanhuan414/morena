@@ -123,6 +123,32 @@
   z-index: 20;
 }
 
+/* 卡片顶部行 */
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+}
+
+/* 卡片内操作按钮 */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.action-btn-light {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-gray);
+  border-radius: 50%;
+  position: relative;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -164,12 +190,10 @@
 
 /* 用户信息 */
 .header-user-info {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 24rpx;
-  padding: 24rpx 32rpx;
-  z-index: 10;
+  flex: 1;
 }
 
 .user-avatar-wrap {
@@ -227,25 +251,20 @@
 .user-name {
   font-size: 40rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .user-id {
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
 }
 
 /* 统计数据 */
 .header-stats {
-  position: relative;
   display: flex;
   justify-content: space-around;
-  padding: 32rpx;
-  margin: 0 32rpx;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(12rpx);
-  z-index: 10;
+  padding-top: 32rpx;
+  border-top: 1rpx solid var(--border-light);
 }
 
 .h-stat-item {
@@ -258,12 +277,12 @@
 .h-stat-value {
   font-size: 40rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--primary);
 }
 
 .h-stat-label {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
 }
 
 /* ========================================
