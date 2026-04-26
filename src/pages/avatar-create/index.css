@@ -116,7 +116,7 @@
 .page-header {
   position: relative;
   z-index: 10;
-  padding: 32rpx;
+  padding: 0 32rpx 32rpx;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
   backdrop-filter: blur(20rpx);
 }

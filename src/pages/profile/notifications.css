@@ -30,13 +30,14 @@
 /* Header */
 .notifications-header {
   background: linear-gradient(180deg, rgba(0, 245, 255, 0.08) 0%, transparent 100%);
-  padding: 24rpx 32rpx;
+  padding: 0 32rpx 20rpx;
   position: relative;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 88rpx;
 }
 
 @keyframes headerSlideDown {
