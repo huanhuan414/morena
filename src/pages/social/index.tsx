@@ -688,7 +688,12 @@ export default function SocialPage() {
         refresherEnabled
         refresherTriggered={refreshing}
         onRefresherRefresh={() => fetchData(true)}
-        onScrollToLower={() => fetchAllPosts(page + 1)}
+        onScrollToLower={() => {
+          // 防止重复加载：只有不在加载中且有更多数据时才加载
+          if (!loading && hasMore) {
+            fetchAllPosts(page + 1)
+          }
+        }}
       >
         {/* 统计卡片 */}
         {hasAvatars && (
