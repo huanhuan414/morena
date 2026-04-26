@@ -41,7 +41,17 @@ export default defineAppConfig({
     'pages/skills-square/index',
     'pages/skill-create/index',
     'pages/avatar-recommend/index',
-    'pages/webview/index'
+    'pages/webview/index',
+    'pages/admin/login/index',
+    'pages/admin/dashboard/index',
+    'pages/admin/users/index',
+    'pages/admin/avatars/index',
+    'pages/admin/skills/index',
+    'pages/admin/orders/index',
+    'pages/admin/content/index',
+    'pages/admin/finance/index',
+    'pages/admin/referral/index',
+    'pages/admin/settings/index'
   ],
   window: {
     backgroundTextStyle: 'light',

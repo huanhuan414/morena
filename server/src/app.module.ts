@@ -29,6 +29,7 @@ import { TestModule } from './modules/test/test.module';
 import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
 import { SkillTrainingModule } from './modules/skill-training/skill-training.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -59,7 +60,8 @@ import { SkillTrainingModule } from './modules/skill-training/skill-training.mod
     TestModule,
     TikHubModule,
     OrderProcessingModule,
-    SkillTrainingModule
+    SkillTrainingModule,
+    AdminModule
   ],
   controllers: [AppController],
   providers: [AppService],

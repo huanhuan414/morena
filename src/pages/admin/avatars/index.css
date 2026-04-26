@@ -1,0 +1,11 @@
+.avatars-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400rpx;
+}
+
+.placeholder-text {
+  font-size: 28rpx;
+  color: #9ca3af;
+}
