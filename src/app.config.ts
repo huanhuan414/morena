@@ -25,7 +25,8 @@ export default defineAppConfig({
     'pages/referral-center/index',
     'pages/earning-center/index',
     // 订单
-    'pages/order-list/index'
+    'pages/order-list/index',
+    'pages/avatar-orders/index'
   ],
   window: {
     backgroundTextStyle: 'light',
