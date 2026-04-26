@@ -607,15 +607,6 @@ export class AvatarService {
     return data
   }
 
-  /**
-   * 测试逆地理编码功能（用于调试）
-   */
-  async testReverseGeocoding(latitude: number, longitude: number) {
-    const result = await this.reverseGeocodingService.reverseGeocode(latitude, longitude)
-    console.log('[测试逆地理编码]', result)
-    return result
-  }
-
   async addExperience(avatarId: string, exp: number) {
     const client = getSupabaseClient()
     

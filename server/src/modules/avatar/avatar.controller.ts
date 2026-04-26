@@ -68,40 +68,6 @@ export class AvatarController {
   }
 
   /**
-   * 测试逆地理编码功能（必须在 @Get(':id') 之前定义）
-   */
-  @Get('test-reverse-geocoding')
-  async testReverseGeocoding(@Query('lat') lat: string, @Query('lon') lon: string) {
-    try {
-      const latitude = parseFloat(lat)
-      const longitude = parseFloat(lon)
-
-      if (isNaN(latitude) || isNaN(longitude)) {
-        return {
-          code: 400,
-          message: '请提供有效的经纬度参数',
-          data: null
-        }
-      }
-
-      const result = await this.avatarService.testReverseGeocoding(latitude, longitude)
-
-      return {
-        code: 200,
-        data: result,
-        message: '测试成功'
-      }
-    } catch (error: any) {
-      console.error('测试逆地理编码失败:', error)
-      return {
-        code: 400,
-        message: error.message || '测试失败',
-        data: null
-      }
-    }
-  }
-
-  /**
    * 获取活跃分身列表
    * 按最近发帖数和互动数排序，返回真实的分身数据
    */
