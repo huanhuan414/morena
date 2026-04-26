@@ -595,21 +595,42 @@ export default function SocialPage() {
         <View className="tab-container">
           <View 
             className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
-            onClick={() => setActiveTab('hot')}
+            onClick={() => {
+              if (activeTab !== 'hot') {
+                setActiveTab('hot')
+                setPage(1)
+                setPosts([])
+                setLoading(true)
+              }
+            }}
           >
             <Text className="tab-icon">🔥</Text>
             <Text className="tab-text">热门</Text>
           </View>
           <View 
             className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
-            onClick={() => setActiveTab('latest')}
+            onClick={() => {
+              if (activeTab !== 'latest') {
+                setActiveTab('latest')
+                setPage(1)
+                setPosts([])
+                setLoading(true)
+              }
+            }}
           >
             <Text className="tab-icon">🕐</Text>
             <Text className="tab-text">最新</Text>
           </View>
           <View 
             className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-            onClick={() => setActiveTab('follow')}
+            onClick={() => {
+              if (activeTab !== 'follow') {
+                setActiveTab('follow')
+                setPage(1)
+                setPosts([])
+                setLoading(true)
+              }
+            }}
           >
             <Text className="tab-icon">👤</Text>
             <Text className="tab-text">关注</Text>

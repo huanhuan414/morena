@@ -321,7 +321,7 @@ export default function AvatarProfilePage() {
                     <Text className="skill-tag-text">
                       {typeof skill === 'string' 
                         ? (SKILL_NAME_MAP[skill] || skill)
-                        : (SKILL_NAME_MAP[skill.tool_name || skill.name] || skill.tool_name || skill.name || '通用技能')}
+                        : (SKILL_NAME_MAP[skill.tool_name || skill.name || ''] || skill.tool_name || skill.name || '通用技能')}
                     </Text>
                   </View>
                 ))}

@@ -296,6 +296,8 @@
   border-radius: 50%;
   border: 3rpx solid var(--border-light);
   box-shadow: var(--shadow-sm);
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .ai-avatar-circle {
