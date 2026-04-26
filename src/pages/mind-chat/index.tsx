@@ -16,7 +16,7 @@ import "@/components/exp-popup/index.css"
 import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Send, Sparkles, Bot, Copy, History, X, Brain, TrendingUp, Award, Target,
+  Send, Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
   Play, Video as VideoIcon, Plus, Image as ImageIcon
 } from "lucide-react-taro"
@@ -3784,9 +3784,6 @@ export default function MindChatPage() {
         style={{ paddingTop: `${statusBarHeight}px` }}
       >
         <View className="header-left">
-          <View className="history-btn" onClick={() => setShowHistory(true)}>
-            <History size={22} color="#00f5ff" />
-          </View>
           <View className="avatar-info">
             {avatar ? (
               <>
