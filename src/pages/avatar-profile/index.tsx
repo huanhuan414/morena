@@ -32,6 +32,50 @@ const PLATFORM_COLORS: Record<string, string> = {
   'default': '#666666'
 }
 
+// 技能名称中英文映射
+const SKILL_NAME_MAP: Record<string, string> = {
+  'social_media': '社交媒体',
+  'content_creation': '内容创作',
+  'community_management': '社群管理',
+  'influencer_marketing': '网红营销',
+  'brand_promotion': '品牌推广',
+  'live_streaming': '直播带货',
+  'short_video': '短视频制作',
+  'copywriting': '文案撰写',
+  'image_generation': '图像生成',
+  'video_editing': '视频剪辑',
+  'data_analysis': '数据分析',
+  'translation': '翻译服务',
+  'voice_synthesis': '语音合成',
+  'ocr': '文字识别',
+  'document_processing': '文档处理',
+  'code_assistant': '编程助手',
+  'customer_service': '客户服务',
+  'consulting': '咨询服务',
+  'education': '教育培训',
+  'psychological_counseling': '心理咨询',
+  'financial_advice': '理财建议',
+  'health_consultation': '健康咨询',
+  'travel_planning': '旅行规划',
+  'shopping_guide': '购物导购',
+  'game_companion': '游戏陪玩',
+  'storytelling': '讲故事',
+  'music_recommendation': '音乐推荐',
+  'movie_recommendation': '影视推荐',
+  'horoscope': '星座运势',
+  'jokes': '讲笑话',
+  'roleplay': '角色扮演',
+  'creative_writing': '创意写作',
+  'cooking': '烹饪指导',
+  'fitness': '健身指导',
+  'language_learning': '语言学习',
+  'interview_prep': '面试辅导',
+  'resume_writing': '简历优化',
+  'time_management': '时间管理',
+  'meditation': '冥想引导',
+  'sleep_aid': '助眠服务'
+}
+
 // 订单状态映射
 const ORDER_STATUS: Record<string, { label: string; color: string }> = {
   'pending': { label: '待处理', color: '#F59E0B' },
@@ -275,7 +319,9 @@ export default function AvatarProfilePage() {
                 {skills.map((skill, index) => (
                   <View key={index} className="skill-tag">
                     <Text className="skill-tag-text">
-                      {typeof skill === 'string' ? skill : skill.tool_name || skill.name || '未知技能'}
+                      {typeof skill === 'string' 
+                        ? (SKILL_NAME_MAP[skill] || skill)
+                        : (SKILL_NAME_MAP[skill.tool_name || skill.name] || skill.tool_name || skill.name || '通用技能')}
                     </Text>
                   </View>
                 ))}
