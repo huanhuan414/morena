@@ -28,6 +28,7 @@ import { VideoModule } from './modules/video/video.module';
 import { TestModule } from './modules/test/test.module';
 import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
+import { SkillTrainingModule } from './modules/skill-training/skill-training.module';
 
 @Module({
   imports: [
@@ -57,7 +58,8 @@ import { OrderProcessingModule } from './modules/order-processing/order-processi
     VideoModule,
     TestModule,
     TikHubModule,
-    OrderProcessingModule
+    OrderProcessingModule,
+    SkillTrainingModule
   ],
   controllers: [AppController],
   providers: [AppService],

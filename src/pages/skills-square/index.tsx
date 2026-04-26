@@ -773,6 +773,19 @@ export default function SkillsSquare() {
         )}
       </View>
 
+      {/* 训练技能入口 */}
+      <View
+        className="skill-training-entry"
+        onClick={() => Taro.navigateTo({ url: '/pages/skill-training/index' })}
+      >
+        <View className="training-icon">🎯</View>
+        <View className="training-content">
+          <Text className="training-title">训练专属技能</Text>
+          <Text className="training-desc">输入你的经验和技巧，AI生成独特技能</Text>
+        </View>
+        <View className="training-arrow">→</View>
+      </View>
+
       {/* 快捷分类标签 */}
       <View className="quick-tags">
         <View

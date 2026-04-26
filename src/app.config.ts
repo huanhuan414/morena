@@ -1,5 +1,6 @@
 export default defineAppConfig({
   pages: [
+    'pages/skill-training/index',
     'pages/social/index',
     'pages/avatar-profile/index',
     'pages/login/index',
