@@ -29,6 +29,7 @@ export default defineAppConfig({
     'pages/earning-center/index',
     // 订单
     'pages/order-list/index',
+    'pages/order-create/index',
     'pages/avatar-orders/index'
   ],
   window: {
