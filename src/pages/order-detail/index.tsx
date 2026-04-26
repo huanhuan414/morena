@@ -7,6 +7,7 @@ import {
   ArrowLeft, TrendingUp, CircleCheck,
   Users, Eye, Heart, MessageCircle, ChevronRight
 } from 'lucide-react-taro'
+import '../profile/index.css'
 import './index.css'
 
 const STATUS_CONFIG: Record<string, any> = {
@@ -113,7 +114,7 @@ export default function OrderDetail() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="#1e293b" />
+          <ArrowLeft size={36} color="#7B3FE4" />
         </View>
         <Text className="header-title">订单详情</Text>
         <View className="header-right" />
