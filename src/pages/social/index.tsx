@@ -5,6 +5,7 @@ import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
+import NewUserGuide from '@/components/guide/NewUserGuide'
 import '../../styles/variables.css'
 import './index.css' 
 
@@ -105,6 +106,8 @@ export default function SocialPage() {
   const [activeTab, setActiveTab] = useState<'hot' | 'latest' | 'follow'>('hot')
   const [activeFilter, setActiveFilter] = useState('all')
   const [activeAvatars, setActiveAvatars] = useState<ActiveAvatar[]>([])
+  // 新用户引导
+  const [showGuide, setShowGuide] = useState(false)
 
   // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -117,7 +120,33 @@ export default function SocialPage() {
     }
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
+    
+    // 检查是否需要显示新用户引导
+    checkNewUserGuide()
   })
+
+  // 检查是否需要显示新用户引导
+  const checkNewUserGuide = () => {
+    try {
+      // 从本地存储检查是否已完成引导
+      const guideCompleted = Taro.getStorageSync('new_user_guide_completed')
+      const isNew = Taro.getStorageSync('is_new_user')
+      
+      // 如果是新用户且未完成引导，显示引导
+      if (isNew && !guideCompleted) {
+        setShowGuide(true)
+      }
+    } catch (error) {
+      console.error('检查新用户引导状态失败:', error)
+    }
+  }
+
+  // 引导完成回调
+  const handleGuideComplete = () => {
+    setShowGuide(false)
+    Taro.setStorageSync('new_user_guide_completed', true)
+    Taro.setStorageSync('is_new_user', false)
+  }
 
   useEffect(() => {
     fetchData()
@@ -987,6 +1016,9 @@ export default function SocialPage() {
 
       {/* 分享弹窗 */}
       {renderShareModal()}
+
+      {/* 新用户引导 */}
+      <NewUserGuide visible={showGuide} onClose={handleGuideComplete} />
     </View>
   )
 }

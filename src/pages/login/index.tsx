@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
+import Taro, { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -103,6 +103,12 @@ export default function LoginPage() {
           setToken(token)
         }
         setUserInfo(user)
+        
+        // 保存新用户状态，用于显示引导
+        if (isNewUser) {
+          Taro.setStorageSync('is_new_user', true)
+          Taro.setStorageSync('new_user_guide_completed', false)
+        }
         
         // 显示邀请奖励提示
         if (isNewUser && referralReward) {
