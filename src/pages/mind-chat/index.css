@@ -1618,10 +1618,11 @@
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.5;
-  background: transparent;
-  border: none;
+  background: #FFFFFF;
+  border: 1rpx solid var(--border-light);
+  border-radius: var(--radius-md);
   outline: none;
-  padding: 0;
+  padding: 16rpx 20rpx;
   margin-bottom: var(--space-2);
 }
 
