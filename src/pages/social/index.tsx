@@ -650,12 +650,13 @@ export default function SocialPage() {
                     onClick={() => navigateToAvatarProfile(avatar.id)}
                   >
                     {avatar.avatar_url ? (
-                      <Image 
-                        src={avatar.avatar_url} 
-                        className="ai-avatar-img" 
-                        mode="scaleToFill"
-                        style={{ borderRadius: '50%' }}
-                      />
+                      <View className="ai-avatar-img-wrapper">
+                        <Image 
+                          src={avatar.avatar_url} 
+                          className="ai-avatar-img-inner" 
+                          mode="aspectFill"
+                        />
+                      </View>
                     ) : (
                       <View 
                         className="ai-avatar-circle" 
