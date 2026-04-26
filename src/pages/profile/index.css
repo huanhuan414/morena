@@ -19,12 +19,36 @@
 }
 
 /* ========================================
-   顶部背景 - 简洁纯色
+   顶部背景 - 紫罗兰渐变
    ======================================== */
 .profile-bg {
   position: relative;
-  height: 160rpx;
-  background: var(--primary);
+  height: 200rpx;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  overflow: hidden;
+}
+
+/* 装饰光晕 */
+.profile-bg::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.profile-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  left: -5%;
+  width: 250rpx;
+  height: 250rpx;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+  border-radius: 50%;
 }
 
 /* ========================================
