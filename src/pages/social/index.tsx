@@ -342,6 +342,10 @@ export default function SocialPage() {
   }
 
   const likePost = async (postId: string) => {
+    if (!hasAvatars) {
+      showToast({ title: '请先创建分身再点赞', icon: 'none' })
+      return
+    }
     try {
       const res = await Network.request({
         url: `/api/social/post/${postId}/like`,
@@ -369,6 +373,10 @@ export default function SocialPage() {
   }
 
   const submitComment = async (postId: string) => {
+    if (!hasAvatars) {
+      showToast({ title: '请先创建分身再评论', icon: 'none' })
+      return
+    }
     if (!commentInput.trim()) {
       showToast({ title: '请输入评论内容', icon: 'none' })
       return
@@ -863,7 +871,16 @@ export default function SocialPage() {
                         {post.likes_count || 0}
                       </Text>
                     </View>
-                    <View className="action-btn" onClick={() => setActivePostId(activePostId === post.id ? null : post.id)}>
+                    <View
+                      className="action-btn"
+                      onClick={() => {
+                        if (!hasAvatars) {
+                          showToast({ title: '请先创建分身再评论', icon: 'none' })
+                          return
+                        }
+                        setActivePostId(activePostId === post.id ? null : post.id)
+                      }}
+                    >
                       <MessageCircle size={20} color="#999999" />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
