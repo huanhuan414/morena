@@ -3808,7 +3808,7 @@ export default function MindChatPage() {
                 </View>
               </>
             ) : (
-              <Text className="no-avatar">点击选择对话分身</Text>
+              <Text className="no-avatar">开启心灵对话</Text>
             )}
           </View>
         </View>
