@@ -1079,23 +1079,25 @@ export class AvatarService {
       
       const prompt = 'You are an AI avatar named "' + name + '", your temperament type is "' + temperament + '", you are good at ' + (strengths.join(', ') || 'various topics') + '.\n' +
         '\n' +
-        'Please generate a social media post, including:\n' +
+        'Please generate a SHORT social media post (like WeChat Moments or Weibo), including:\n' +
         '\n' +
-        '1. Post text content (50-150 words)\n' +
-        '2. Suitable for image (true/false) - most posts are suitable for images\n' +
+        '1. Post text content (10-50 Chinese characters, very short and casual, like daily sharing)\n' +
+        '2. Suitable for image (true/false) - about 70% posts are suitable for images\n' +
         '3. Image generation prompt (if suitable for image)\n' +
-        '4. Suitable for video (true/false) - about 30% probability suitable\n' +
+        '4. Suitable for video (true/false) - about 20% probability suitable\n' +
         '5. Video generation prompt (if suitable for video)\n' +
         '\n' +
         'Requirements:\n' +
-        '- Content should be natural and realistic, like a real person sharing\n' +
+        '- Content should be VERY short and casual, like chatting with friends\n' +
+        '- Use emojis naturally (1-2 emojis maximum)\n' +
+        '- Examples: "今天天气真好☀️", "发现一家宝藏餐厅🍜", "工作累了，喝杯咖啡☕"\n' +
         '- Image prompt should be specific, describing a scene suitable for the post topic\n' +
         '- Video prompt should be concise, describing a 5-second dynamic scene\n' +
         '- Image and video prompts should match your personality characteristics\n' +
         '\n' +
         'Please return in JSON format:\n' +
         '{\n' +
-        '  "content": "Post content",\n' +
+        '  "content": "短内容",\n' +
         '  "shouldGenerateImage": true,\n' +
         '  "imagePrompt": "A beautiful image showing...",\n' +
         '  "shouldGenerateVideo": false,\n' +
@@ -1136,11 +1138,11 @@ export class AvatarService {
    */
   private getDefaultPostContent() {
     const defaultPosts = [
-      { content: '今天又是充满能量的一天！☀️', imagePrompt: 'A bright sunny day with blue sky and white clouds', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
-      { content: '发现了一个很有趣的想法，分享给大家~', imagePrompt: 'A lightbulb glowing with creative ideas, modern minimalist style', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
-      { content: '工作中的一些小感悟，记录下来', imagePrompt: 'A clean modern workspace with notebook and coffee', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
-      { content: '生活需要仪式感，今天也要好好生活', imagePrompt: 'Beautiful morning scene with flowers and sunshine', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
-      { content: '最近在思考一个问题，有想法的朋友可以聊聊', imagePrompt: 'Abstract thinking concept with geometric shapes', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '今天天气真好☀️', imagePrompt: 'A bright sunny day with blue sky and white clouds', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '发现一家宝藏餐厅🍜', imagePrompt: 'Delicious food on a table in a cozy restaurant', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '工作累了，喝杯咖啡☕', imagePrompt: 'A cup of coffee on a clean desk', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '周末愉快🎉', imagePrompt: 'Weekend relaxing scene with books and tea', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
+      { content: '新的一周开始啦💪', imagePrompt: 'Monday morning with fresh energy', shouldGenerateImage: true, shouldGenerateVideo: false, videoPrompt: '' },
     ]
     return defaultPosts[Math.floor(Math.random() * defaultPosts.length)]
   }
