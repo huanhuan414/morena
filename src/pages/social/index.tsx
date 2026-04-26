@@ -71,16 +71,6 @@ interface ActiveAvatar {
   color: string
 }
 
-// 筛选标签数据
-const FILTER_TAGS = [
-  { id: 'all', name: '全部', icon: '', isActive: true },
-  { id: 'female', name: '美妆', icon: '💄', isActive: false },
-  { id: 'male', name: '健身', icon: '💪', isActive: false },
-  { id: 'food', name: '美食', icon: '🍜', isActive: false },
-  { id: 'study', name: '学习', icon: '📚', isActive: false },
-  { id: 'life', name: '生活', icon: '🌸', isActive: false },
-]
-
 export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,8 +92,7 @@ export default function SocialPage() {
   const [, setIsUpdating] = useState(false)
   const [refreshSuccess, setRefreshSuccess] = useState(false)
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState<'hot' | 'latest' | 'follow'>('hot')
-  const [activeFilter, setActiveFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState<'related' | 'all'>('related')
   const [activeAvatars, setActiveAvatars] = useState<ActiveAvatar[]>([])
 
   // 安全区域适配
@@ -122,7 +111,7 @@ export default function SocialPage() {
   useEffect(() => {
     fetchData()
     fetchActiveAvatars()
-  }, [activeTab, activeFilter])
+  }, [activeTab])
 
   useDidShow(() => {
     fetchData()
@@ -222,14 +211,9 @@ export default function SocialPage() {
       queryParams.push(`page=${pageNum}`)
       queryParams.push('pageSize=10')
       
-      // 添加排序参数 (hot/latest/follow)
+      // 添加排序参数 (related/all)
       if (activeTab) {
         queryParams.push(`sort=${activeTab}`)
-      }
-      
-      // 添加筛选参数 (all/female/male/landscape/food)
-      if (activeFilter && activeFilter !== 'all') {
-        queryParams.push(`filter=${activeFilter}`)
       }
       
       const res = await Network.request({
@@ -594,46 +578,32 @@ export default function SocialPage() {
         {/* Tab切换 */}
         <View className="tab-container">
           <View 
-            className={`tab-item ${activeTab === 'hot' ? 'active' : ''}`}
+            className={`tab-item ${activeTab === 'related' ? 'active' : ''}`}
             onClick={() => {
-              if (activeTab !== 'hot') {
-                setActiveTab('hot')
+              if (activeTab !== 'related') {
+                setActiveTab('related')
                 setPage(1)
                 setPosts([])
                 setLoading(true)
               }
             }}
           >
-            <Text className="tab-icon">🔥</Text>
-            <Text className="tab-text">热门</Text>
+            <Text className="tab-icon">💌</Text>
+            <Text className="tab-text">与我相关</Text>
           </View>
           <View 
-            className={`tab-item ${activeTab === 'latest' ? 'active' : ''}`}
+            className={`tab-item ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => {
-              if (activeTab !== 'latest') {
-                setActiveTab('latest')
+              if (activeTab !== 'all') {
+                setActiveTab('all')
                 setPage(1)
                 setPosts([])
                 setLoading(true)
               }
             }}
           >
-            <Text className="tab-icon">🕐</Text>
-            <Text className="tab-text">最新</Text>
-          </View>
-          <View 
-            className={`tab-item ${activeTab === 'follow' ? 'active' : ''}`}
-            onClick={() => {
-              if (activeTab !== 'follow') {
-                setActiveTab('follow')
-                setPage(1)
-                setPosts([])
-                setLoading(true)
-              }
-            }}
-          >
-            <Text className="tab-icon">👤</Text>
-            <Text className="tab-text">关注</Text>
+            <Text className="tab-icon">🌐</Text>
+            <Text className="tab-text">所有动态</Text>
           </View>
         </View>
 
@@ -675,27 +645,6 @@ export default function SocialPage() {
           </ScrollView>
         </View>
 
-        {/* 筛选标签 */}
-        <ScrollView className="filter-tags-scroll" scrollX>
-          <View className="filter-tags-list">
-            {FILTER_TAGS.map((tag) => (
-              <View 
-                key={tag.id}
-                className={`filter-tag ${activeFilter === tag.id ? 'active' : ''}`}
-                onClick={() => {
-                  if (activeFilter !== tag.id) {
-                    setActiveFilter(tag.id)
-                    Taro.showLoading({ title: '加载中...' })
-                    setTimeout(() => Taro.hideLoading(), 500)
-                  }
-                }}
-              >
-                {tag.icon && <Text className="filter-tag-icon">{tag.icon}</Text>}
-                <Text className="filter-tag-text">{tag.name}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
       </View>
 
       {/* 刷新成功动画 */}
