@@ -1,5 +1,5 @@
 import { View, Text, ScrollView } from '@tarojs/components'
-import Taro, { useLoad, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useLoad, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
@@ -38,8 +38,13 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
+    // 获取状态栏高度
+    const systemInfo = getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
     fetchPlans()
     fetchUserSubscription()
   })
@@ -232,8 +237,8 @@ export default function SubscriptionPage() {
       {/* 动态背景光点 */}
       <View className="sub-bg-glow" />
 
-      {/* 顶部导航 */}
-      <View className="sub-header">
+      {/* 顶部导航 - 适配状态栏 */}
+      <View className="sub-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="sub-header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={24} color="#ffffff" />
         </View>
