@@ -851,6 +851,7 @@ export default function MindChatPage() {
         const defaultAvatar = res.data.data[0]
         setAvatar(defaultAvatar)
         setAvatarId?.(defaultAvatar.id)  // 更新 store 中的 avatarId
+        setHasNoAvatar(false) // 有分身，设置为 false
         fetchOrCreateConversation(defaultAvatar.id)
       } else {
         console.log('[MindChat] 没有分身')
@@ -867,6 +868,7 @@ export default function MindChatPage() {
       if (res.data?.code === 200) {
         setAvatar(res.data.data)
         setAvatarId?.(targetAvatarId)  // 更新 store 中的 avatarId
+        setHasNoAvatar(false) // 有分身，设置为 false
       }
     } catch (error) {
       console.error('[MindChat] 获取分身失败:', error)
