@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, getSystemInfoSync } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, getSystemInfoSync, navigateBack } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -9,7 +9,7 @@ import {
   Camera, Sparkles, Brain, Palette, Zap, Heart, Target,
   Lightbulb, Shield, Star, ArrowRight, Check, User,
   Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
-  Moon, Sun, Smile, Bot, ChevronRight
+  Moon, Sun, Smile, Bot, ChevronRight, ArrowLeft
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -1124,10 +1124,14 @@ export default function AvatarCreatePage() {
       {/* 头部 - 适配状态栏 */}
       <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
+          <View className="header-back" onClick={() => navigateBack()}>
+            <ArrowLeft size={24} color="#7B3FE4" />
+          </View>
           <View className="header-info">
             <Text className="header-title">创建AI分身</Text>
             <Text className="header-subtitle">上传照片，AI为你生成分身</Text>
           </View>
+          <View className="header-placeholder" />
         </View>
 
         {/* 进度条 */}
