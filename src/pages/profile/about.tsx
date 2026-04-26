@@ -48,8 +48,8 @@ export default function AboutPage() {
         </View>
 
         {/* 数据统计 - 突出显示 */}
+        <Text className="section-title">平台数据</Text>
         <View className="stats-section">
-          <Text className="section-title">平台数据</Text>
           <View className="stats-card">
             {stats.map((stat, idx) => (
               <View key={idx} className="stat-item">
