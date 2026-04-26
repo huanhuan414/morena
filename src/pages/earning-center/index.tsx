@@ -1,9 +1,9 @@
-import Taro, { useDidShow, showToast, navigateTo, useLoad } from '@tarojs/taro'
+import Taro, { useDidShow, showToast, navigateTo, useLoad, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign } from 'lucide-react-taro'
+import { Wallet, ArrowDownToLine, ChevronRight, Gift, Sparkles, Briefcase, CircleCheck, Clock, DollarSign, ArrowLeft } from 'lucide-react-taro'
 import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 
@@ -165,6 +165,9 @@ export default function EarningCenterPage() {
     <View className="earning-page">
       {/* 顶部导航 */}
       <View className="earning-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="header-left" onClick={() => navigateBack()}>
+          <ArrowLeft size={28} color="#00ff88" />
+        </View>
         <View className="header-title-wrap">
           <Wallet size={24} color="#00ff88" />
           <Text className="header-title">收益中心</Text>

@@ -1,4 +1,9 @@
-export default definePageConfig({
-  navigationBarTitleText: '账号绑定',
-  navigationStyle: 'custom'
-})
+export default typeof definePageConfig === 'function'
+  ? definePageConfig({
+      navigationBarTitleText: '添加账号',
+      navigationStyle: 'custom'
+    })
+  : {
+      navigationBarTitleText: '添加账号',
+      navigationStyle: 'custom'
+    }

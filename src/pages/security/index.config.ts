@@ -1,9 +1,9 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '语音通话',
+      navigationBarTitleText: '安全中心',
       navigationStyle: 'custom'
     })
   : {
-      navigationBarTitleText: '语音通话',
+      navigationBarTitleText: '安全中心',
       navigationStyle: 'custom'
     }

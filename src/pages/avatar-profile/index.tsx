@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useLoad, useRouter, showToast, navigateBack } from '@tarojs/taro'
+import { useLoad, useRouter, showToast, navigateBack, getSystemInfoSync } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
 import { 
@@ -106,8 +106,13 @@ export default function AvatarProfilePage() {
     totalOrders: 0
   })
   const [loading, setLoading] = useState(true)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
+    // 获取状态栏高度
+    const systemInfo = getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
     const params = router.params
     if (params?.id) {
       fetchData(params.id)
@@ -207,8 +212,8 @@ export default function AvatarProfilePage() {
 
   return (
     <View className="avatar-profile-page">
-      {/* 顶部导航 */}
-      <View className="profile-header">
+      {/* 顶部导航 - 适配状态栏 */}
+      <View className="profile-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
           <ArrowLeft size={40} color="#ffffff" />
         </View>

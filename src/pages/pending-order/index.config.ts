@@ -1,11 +1,9 @@
-export default definePageConfig
+export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '待确认订单',
-      navigationBarBackgroundColor: '#0a0a0f',
-      navigationBarTextStyle: 'white'
+      navigationBarTitleText: '待处理订单',
+      navigationStyle: 'custom'
     })
   : {
-      navigationBarTitleText: '待确认订单',
-      navigationBarBackgroundColor: '#0a0a0f',
-      navigationBarTextStyle: 'white'
+      navigationBarTitleText: '待处理订单',
+      navigationStyle: 'custom'
     }

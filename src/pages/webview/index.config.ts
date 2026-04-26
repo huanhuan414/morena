@@ -1,11 +1,9 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-    navigationBarTitleText: '浏览器',
-    enableShareAppMessage: false,
-    enableShareTimeline: false
-  })
+      navigationBarTitleText: '',
+      navigationStyle: 'custom'
+    })
   : {
-    navigationBarTitleText: '浏览器',
-    enableShareAppMessage: false,
-    enableShareTimeline: false
-  }
+      navigationBarTitleText: '',
+      navigationStyle: 'custom'
+    }

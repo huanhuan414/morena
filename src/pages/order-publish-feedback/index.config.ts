@@ -1,5 +1,9 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '反馈发布效果'
+      navigationBarTitleText: '发布反馈',
+      navigationStyle: 'custom'
     })
-  : { navigationBarTitleText: '反馈发布效果' }
+  : {
+      navigationBarTitleText: '发布反馈',
+      navigationStyle: 'custom'
+    }

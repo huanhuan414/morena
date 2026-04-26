@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
+import { switchTab, showToast, getCurrentInstance, getSystemInfoSync } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -17,6 +17,13 @@ export default function LoginPage() {
   const [sendingCode, setSendingCode] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [showReferralReward, setShowReferralReward] = useState(false)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+
+  // 获取状态栏高度
+  useEffect(() => {
+    const systemInfo = getSystemInfoSync()
+    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+  }, [])
 
   // 从页面参数中获取邀请码
   useEffect(() => {
@@ -144,7 +151,7 @@ export default function LoginPage() {
   }
 
   return (
-    <View className="login-page">
+    <View className="login-page" style={{ paddingTop: `${statusBarHeight}px` }}>
       {/* 背景效果 */}
       <View className="login-bg">
         <View className="bg-gradient" />
