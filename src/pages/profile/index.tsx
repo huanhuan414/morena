@@ -189,75 +189,76 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
-      {/* 状态栏占位 */}
-      <View className="status-bar-placeholder" style={{ height: `${statusBarHeight}px` }} />
-      
-      {/* 顶部背景 */}
-      <View className="profile-bg">
-        {/* 星星装饰 */}
-        <View className="profile-stars">
-          <View className="star star-1" />
-          <View className="star star-2" />
-          <View className="star star-3" />
-          <View className="star star-4" />
-          <View className="star star-5" />
-          <View className="star star-6" />
+      {/* 统一顶部区域 */}
+      <View className="profile-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        {/* 背景特效 */}
+        <View className="header-bg-effects">
+          <View className="bg-glow" />
+          <View className="bg-stars">
+            <View className="star star-1" />
+            <View className="star star-2" />
+            <View className="star star-3" />
+            <View className="star star-4" />
+            <View className="star star-5" />
+            <View className="star star-6" />
+          </View>
         </View>
-      </View>
 
-      {/* 用户信息卡片 */}
-      <View className="user-card">
-        <View className="user-header">
-          <View className="user-header-left">
-            <View className="user-avatar-wrap">
-              {userInfo?.avatar ? (
-                <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
-              ) : (
-                <View className="avatar-placeholder">
-                  <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+        {/* 顶部操作栏 */}
+        <View className="header-top-bar">
+          <View className="header-title">个人中心</View>
+          <View className="header-actions">
+            <View className="action-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
+              <Bell size={32} color="#fff" />
+              {unreadCount > 0 && (
+                <View className="action-badge">
+                  <Text className="action-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
               )}
-              <View className="level-badge">
-                <Text className="level-badge-text">Lv.{stats.level}</Text>
-              </View>
             </View>
-            <View className="user-info">
-              <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
-              <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
+            <View className="action-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+              <Settings size={32} color="#fff" />
             </View>
           </View>
-          <View className="header-actions">
-            <View className="notification-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
-              <Bell size={32} color="#7B3FE4" />
-              {unreadCount > 0 && (
-                <View className="notification-badge">
-                  <Text className="notification-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              )}
+        </View>
+
+        {/* 用户信息 */}
+        <View className="header-user-info">
+          <View className="user-avatar-wrap">
+            {userInfo?.avatar ? (
+              <Image src={userInfo.avatar} className="user-avatar" mode="aspectFill" />
+            ) : (
+              <View className="avatar-placeholder">
+                <Text className="avatar-text">{userInfo?.nickname?.[0] || 'U'}</Text>
+              </View>
+            )}
+            <View className="level-badge">
+              <Text className="level-badge-text">Lv.{stats.level}</Text>
             </View>
-            <View className="settings-btn" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
-              <Settings size={32} color="#7B3FE4" />
-            </View>
+          </View>
+          <View className="user-text-info">
+            <Text className="user-name">{userInfo?.nickname || '探索者'}</Text>
+            <Text className="user-id">ID: {userInfo?.id?.slice(-8) || 'guest'}</Text>
           </View>
         </View>
 
         {/* 统计数据 */}
-        <View className="stats-row">
-          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/avatar-manage/index' })}>
-            <Text className="stat-value">{stats.avatarCount}</Text>
-            <Text className="stat-label">AI分身</Text>
+        <View className="header-stats">
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar-manage/index' })}>
+            <Text className="h-stat-value">{stats.avatarCount}</Text>
+            <Text className="h-stat-label">AI分身</Text>
           </View>
-          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/order-list/index?mode=avatar' })}>
-            <Text className="stat-value">{stats.taskCount}</Text>
-            <Text className="stat-label">任务</Text>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/order-list/index?mode=avatar' })}>
+            <Text className="h-stat-value">{stats.taskCount}</Text>
+            <Text className="h-stat-label">任务</Text>
           </View>
-          <View className="stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
-            <Text className="stat-value">{stats.postCount}</Text>
-            <Text className="stat-label">动态</Text>
+          <View className="h-stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
+            <Text className="h-stat-value">{stats.postCount}</Text>
+            <Text className="h-stat-label">动态</Text>
           </View>
-          <View className="stat-item" onClick={() => navigateTo({ url: '/pages/avatar-friends/index' })}>
-            <Text className="stat-value">{stats.friendCount}</Text>
-            <Text className="stat-label">好友</Text>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar-friends/index' })}>
+            <Text className="h-stat-value">{stats.friendCount}</Text>
+            <Text className="h-stat-label">好友</Text>
           </View>
         </View>
       </View>
