@@ -30,6 +30,7 @@ export default defineAppConfig({
     // 订单
     'pages/order-list/index',
     'pages/order-create/index',
+    'pages/order-detail/index',
     'pages/avatar-orders/index'
   ],
   window: {
