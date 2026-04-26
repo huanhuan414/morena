@@ -3819,7 +3819,9 @@ export default function MindChatPage() {
       </View>
 
       {/* 心智成长面板 */}
-      <View className="learn-panel">
+      <View className="learn-panel" style={{ '--mastery-level': `${learningStats.masteryLevel}%` } as React.CSSProperties}>
+        {/* 背景进度填充 */}
+        <View className="learn-panel-bg-fill" />
         <View className="learn-panel-header">
           <Brain size={20} color="#7B3FE4" />
           <Text className="learn-panel-title">心智成长</Text>
@@ -3845,16 +3847,6 @@ export default function MindChatPage() {
             <Award size={16} color="#7B3FE4" />
             <Text className="learn-stat-value">Lv.{avatar?.level || 1}</Text>
             <Text className="learn-stat-label">等级</Text>
-          </View>
-        </View>
-        
-        {/* 成长进度 */}
-        <View className="learn-progress-section">
-          <View className="learn-progress-bar">
-            <View 
-              className="learn-progress-fill" 
-              style={{ width: `${learningStats.masteryLevel}%` }}
-            />
           </View>
         </View>
         

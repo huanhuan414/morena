@@ -269,6 +269,35 @@
   background: var(--bg-card);
   border-bottom: 1rpx solid var(--border-light);
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景进度填充 */
+.learn-panel-bg-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(90deg, rgba(123, 63, 228, 0.08) 0%, rgba(155, 110, 243, 0.12) 100%);
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 页面加载时的动画 - 从0%开始增长 */
+.learn-panel .learn-panel-bg-fill {
+  animation: masteryFill 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes masteryFill {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--mastery-level, 0%);
+  }
 }
 
 .learn-panel-header {
@@ -277,6 +306,8 @@
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-3) var(--page-padding);
+  position: relative;
+  z-index: 1;
 }
 
 .learn-panel-title {
@@ -302,6 +333,8 @@
   display: flex;
   gap: var(--space-2);
   padding: 0 var(--page-padding) var(--space-3);
+  position: relative;
+  z-index: 1;
 }
 
 .learn-stat-item {
@@ -1599,6 +1632,8 @@
 /* 面板内容滚动区 */
 .learn-panel-content {
   margin-top: var(--space-2);
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================
