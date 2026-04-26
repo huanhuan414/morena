@@ -3,6 +3,7 @@ export default defineAppConfig({
     // 核心Tab页面
     'pages/social/index',
     'pages/avatar-profile/index',
+    'pages/avatar-create/index',
     'pages/mind-chat/index',
     'pages/profile/index',
     // 登录
