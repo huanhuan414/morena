@@ -263,6 +263,119 @@ export class AvatarController {
   }
 
   /**
+   * 获取分身的发帖配额和托管状态
+   */
+  @Get(':id/posting-quota')
+  async getPostingQuota(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    // 获取分身信息
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('*')
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .single()
+
+    if (!avatar) {
+      return { code: 404, message: '分身不存在', data: null }
+    }
+
+    // 获取订阅信息
+    const subscription = await this.avatarService.getUserSubscription(avatar.user_id)
+
+    // 计算发帖配额
+    const quota = await this.hostingService.calculatePostQuota(avatarId, avatar.level || 1, subscription)
+
+    // 获取托管设置
+    const hostingSettings = avatar.config?.hosting_settings || {}
+
+    // 获取今日已发帖
+    const now = new Date()
+    const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
+    const { data: todayPosts } = await client
+      .from('posts')
+      .select('id, content, created_at')
+      .eq('avatar_id', avatarId)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false })
+
+    return {
+      code: 200,
+      data: {
+        avatar: {
+          id: avatar.id,
+          name: avatar.name,
+          level: avatar.level || 1
+        },
+        subscription: subscription?.plan?.name || '无订阅',
+        quota,
+        hostingSettings: {
+          auto_post: hostingSettings.auto_post !== false,
+          auto_comment: hostingSettings.auto_comment !== false,
+          auto_like: hostingSettings.auto_like !== false,
+          auto_friend: hostingSettings.auto_friend !== false,
+          post_frequency: hostingSettings.post_frequency || 'medium',
+          night_mode: avatar.config?.night_mode ?? true
+        },
+        todayPosts: todayPosts || [],
+        currentHour: new Date().getHours()
+      },
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 手动触发分身发帖
+   */
+  @Post(':id/post-now')
+  async manualCreatePost(
+    @Param('id') avatarId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      // 获取分身信息
+      const client = require('../../storage/database/supabase-client').getSupabaseClient()
+      const { data: avatar } = await client
+        .from('avatars')
+        .select('*')
+        .eq('id', avatarId)
+        .eq('user_id', userId)
+        .single()
+
+      if (!avatar) {
+        return { code: 404, message: '分身不存在', data: null }
+      }
+
+      // 调用发帖服务
+      const post = await this.avatarService.autoCreatePost(avatarId, userId, { force: true })
+
+      if (post) {
+        return {
+          code: 200,
+          data: post,
+          message: '发帖成功'
+        }
+      } else {
+        return {
+          code: 400,
+          message: '发帖失败，可能是配额已用完或生成内容失败',
+          data: null
+        }
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        message: error.message || '发帖失败',
+        data: null
+      }
+    }
+  }
+
+  /**
    * 获取分身的好友列表
    */
   @Get(':id/friends')

@@ -1216,7 +1216,7 @@ ${friendMessageContents}
   /**
    * 🔴 计算发帖配额
    */
-  private async calculatePostQuota(avatarId: string, level: number, subscription: any) {
+  async calculatePostQuota(avatarId: string, level: number, subscription: any) {
     const client = getSupabaseClient()
     const now = new Date()
     const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
