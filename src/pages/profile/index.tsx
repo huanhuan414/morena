@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, navigateBack, reLaunch, showModal, switchTab } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
   Settings, ChevronRight, LogOut, Sparkles, Bell, Info, 
-  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X
+  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X, ArrowLeft
 } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
@@ -189,10 +189,21 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
+      {/* 自定义导航栏 */}
+      <View className="custom-nav-bar" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="nav-bar-content">
+          <View className="nav-bar-back" onClick={() => navigateBack()}>
+            <ArrowLeft size={24} color="#fff" />
+          </View>
+          <Text className="nav-bar-title">我的</Text>
+          <View className="nav-bar-right" />
+        </View>
+      </View>
+
       {/* 顶部渐变Header - 和广场首页一致 */}
       <View 
         className="profile-header-gradient"
-        style={{ paddingTop: `${statusBarHeight + 20}px` }}
+        style={{ paddingTop: `${statusBarHeight + 60}px` }}
       >
         {/* 网格背景 */}
         <View className="header-grid-bg" />

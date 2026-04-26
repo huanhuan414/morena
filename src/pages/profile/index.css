@@ -13,6 +13,49 @@
 }
 
 /* ========================================
+   自定义导航栏
+   ======================================== */
+.custom-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+}
+
+.nav-bar-content {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20rpx;
+}
+
+.nav-bar-back {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.nav-bar-back:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-bar-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.nav-bar-right {
+  width: 72rpx;
+}
+
+/* ========================================
    顶部渐变Header - 和广场首页一致
    ======================================== */
 .profile-header-gradient {
