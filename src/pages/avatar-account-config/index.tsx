@@ -1,6 +1,10 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'   
+
+// 获取状态栏高度
+const systemInfo = getSystemInfoSync()
+const statusBarHeight = systemInfo.statusBarHeight || 0
 import { useState } from 'react'
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -485,8 +489,8 @@ export default function AvatarAccountConfigPage() {
 
   return (
     <View className="page-container">
-      {/* 头部 */}
-      <View className="header">
+      {/* 头部 - 适配状态栏 */}
+      <View className="header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
         <View
           className="header-left"
           onClick={() => {
