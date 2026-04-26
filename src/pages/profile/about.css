@@ -132,10 +132,12 @@
 }
 
 .stat-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12rpx;
+  min-width: 0;
 }
 
 .stat-value {

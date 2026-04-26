@@ -85,6 +85,12 @@ export default function AboutPage() {
           <View className="values-list">
             <View className="value-item">
               <View className="value-icon">
+                <Sparkles size={20} color="#7B3FE4" />
+              </View>
+              <Text className="value-text">利用AI留存人类智慧，让人类实现数字永生</Text>
+            </View>
+            <View className="value-item">
+              <View className="value-icon">
                 <Star size={20} color="#7B3FE4" />
               </View>
               <Text className="value-text">让AI成为每个人的得力助手</Text>
