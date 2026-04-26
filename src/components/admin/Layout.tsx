@@ -6,6 +6,7 @@ import {
   FileText, Wallet, Share2, Settings, LogOut, Menu, X
 } from 'lucide-react-taro'
 import './Layout.css'
+import './Layout.pc.css'
 
 interface LayoutProps {
   children: React.ReactNode

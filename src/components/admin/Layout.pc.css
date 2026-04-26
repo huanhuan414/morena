@@ -1,0 +1,115 @@
+/* PC端管理后台适配样式 */
+/* 在大屏幕下使用固定像素单位 */
+
+@media screen and (min-width: 1024px) {
+  /* 侧边栏 - PC端加宽 */
+  .admin-sidebar {
+    width: 240px !important;
+  }
+  
+  .sidebar-collapsed .admin-sidebar {
+    width: 80px !important;
+  }
+  
+  /* 主内容区 */
+  .admin-main {
+    margin-left: 240px !important;
+  }
+  
+  .sidebar-collapsed .admin-main {
+    margin-left: 80px !important;
+  }
+  
+  /* 顶部栏 */
+  .admin-header {
+    height: 64px !important;
+    padding: 0 24px !important;
+  }
+  
+  /* Logo */
+  .sidebar-logo {
+    font-size: 20px !important;
+  }
+  
+  .sidebar-subtitle {
+    font-size: 12px !important;
+  }
+  
+  /* 菜单 */
+  .menu-item {
+    padding: 12px 16px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .menu-item-text {
+    font-size: 14px !important;
+  }
+  
+  /* 管理员信息 */
+  .admin-name {
+    font-size: 14px !important;
+  }
+  
+  .admin-role {
+    font-size: 12px !important;
+  }
+  
+  .logout-text {
+    font-size: 14px !important;
+  }
+  
+  /* 页面标题 */
+  .header-title {
+    font-size: 18px !important;
+  }
+  
+  /* 内容区 */
+  .admin-content {
+    padding: 24px !important;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* 超大屏幕优化 */
+@media screen and (min-width: 1440px) {
+  .admin-sidebar {
+    width: 260px !important;
+  }
+  
+  .admin-main {
+    margin-left: 260px !important;
+  }
+  
+  .admin-content {
+    padding: 32px !important;
+  }
+}
+
+/* 表格在PC端优化 */
+@media screen and (min-width: 1024px) {
+  .data-table {
+    font-size: 14px;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 16px !important;
+  }
+  
+  /* 卡片网格 */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  
+  .skills-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* PC端隐藏移动端菜单切换按钮 */
+@media screen and (min-width: 1024px) {
+  .menu-toggle {
+    display: none !important;
+  }
+}
