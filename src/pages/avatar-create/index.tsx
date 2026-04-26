@@ -1125,7 +1125,7 @@ export default function AvatarCreatePage() {
       <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-top">
           <View className="header-back" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#7B3FE4" />
+            <ArrowLeft size={24} color="#06b6d4" />
           </View>
           <View className="header-info">
             <Text className="header-title">创建AI分身</Text>
