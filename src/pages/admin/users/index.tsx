@@ -79,6 +79,11 @@ export default function UserManagement() {
     Taro.navigateTo({ url: `/pages/admin/users/detail?id=${userId}` })
   }
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1) return
+    Taro.navigateTo({ url: `/pages/admin/users/index?page=${newPage}` })
+  }
+
   return (
     <AdminLayout title="用户管理">
       <View className="users-page">
@@ -155,6 +160,23 @@ export default function UserManagement() {
               </View>
             ))}
           </ScrollView>
+        </View>
+
+        {/* 分页 */}
+        <View className="pagination">
+          <View 
+            className={`page-btn ${page === 1 ? 'disabled' : ''}`}
+            onClick={() => handlePageChange(page - 1)}
+          >
+            <Text className="page-btn-text">上一页</Text>
+          </View>
+          <Text className="page-info">第 {page} 页</Text>
+          <View 
+            className="page-btn"
+            onClick={() => handlePageChange(page + 1)}
+          >
+            <Text className="page-btn-text">下一页</Text>
+          </View>
         </View>
       </View>
     </AdminLayout>

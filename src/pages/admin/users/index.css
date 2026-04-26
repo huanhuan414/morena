@@ -177,3 +177,37 @@
 .action-btn.unban {
   background: #d1fae5;
 }
+
+/* 分页 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  margin-top: 24rpx;
+}
+
+.page-btn {
+  padding: 16rpx 32rpx;
+  background: #7B3FE4;
+  border-radius: 8rpx;
+}
+
+.page-btn.disabled {
+  background: #d1d5db;
+  opacity: 0.5;
+}
+
+.page-btn-text {
+  font-size: 26rpx;
+  color: #fff;
+  font-weight: 500;
+}
+
+.page-info {
+  font-size: 28rpx;
+  color: #374151;
+}

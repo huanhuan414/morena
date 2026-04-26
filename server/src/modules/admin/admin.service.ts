@@ -206,6 +206,123 @@ export class AdminService {
   }
 
   /**
+   * 获取用户详情
+   */
+  async getUserDetail(userId: string): Promise<any> {
+    try {
+      const { data: user, error } = await this.supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error || !user) return null
+
+      // 获取用户统计
+      const { count: avatarCount } = await this.supabase
+        .from('avatars')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      const { count: orderCount } = await this.supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      const { count: postCount } = await this.supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      const { count: friendCount } = await this.supabase
+        .from('friendships')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+
+      // 获取收益和消费统计
+      const { data: earnings } = await this.supabase
+        .from('earnings')
+        .select('amount')
+        .eq('user_id', userId)
+
+      const { data: transactions } = await this.supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('type', 'expense')
+
+      const totalEarnings = earnings?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0
+      const totalSpent = transactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0
+
+      return {
+        ...user,
+        avatar_count: avatarCount || 0,
+        order_count: orderCount || 0,
+        post_count: postCount || 0,
+        friend_count: friendCount || 0,
+        total_earnings: totalEarnings,
+        total_spent: totalSpent
+      }
+    } catch (error) {
+      console.error('获取用户详情失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 获取用户统计数据
+   */
+  async getUserStats(userId: string): Promise<any> {
+    try {
+      // 获取最近6个月的订单统计
+      const months: { month: string; start: string; end: string }[] = []
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date()
+        date.setMonth(date.getMonth() - i)
+        months.push({
+          month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+          start: new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
+          end: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
+        })
+      }
+
+      const monthlyOrders: { month: string; count: number }[] = []
+      const monthlySpending: { month: string; amount: number }[] = []
+
+      for (const m of months) {
+        const { count } = await this.supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('created_at', m.start)
+          .lte('created_at', m.end)
+
+        const { data: spending } = await this.supabase
+          .from('transactions')
+          .select('amount')
+          .eq('user_id', userId)
+          .eq('type', 'expense')
+          .gte('created_at', m.start)
+          .lte('created_at', m.end)
+
+        monthlyOrders.push({ month: m.month, count: count || 0 })
+        monthlySpending.push({ 
+          month: m.month, 
+          amount: spending?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0 
+        })
+      }
+
+      return {
+        monthlyOrders,
+        monthlySpending
+      }
+    } catch (error) {
+      console.error('获取用户统计失败:', error)
+      return { monthlyOrders: [], monthlySpending: [] }
+    }
+  }
+
+  /**
    * 禁用/解禁用户
    */
   async banUser(userId: string, action: 'ban' | 'unban'): Promise<{ success: boolean; message: string }> {
@@ -223,6 +340,151 @@ export class AdminService {
       }
     } catch (error) {
       console.error('操作用户失败:', error)
+      return { success: false, message: '操作失败' }
+    }
+  }
+
+  /**
+   * 获取分身列表
+   */
+  async getAvatars(page: number, limit: number, keyword?: string, status?: string): Promise<any> {
+    try {
+      let query = this.supabase
+        .from('avatars')
+        .select('*, users!inner(phone)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1)
+
+      if (keyword) {
+        query = query.or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+      }
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status)
+      }
+
+      const { data, count, error } = await query
+
+      if (error) throw error
+
+      // 获取分身的订单数和评分
+      const avatarIds = data?.map(a => a.id) || []
+      
+      const { data: orderStats } = await this.supabase
+        .from('orders')
+        .select('avatar_id, status')
+        .in('avatar_id', avatarIds)
+
+      const orderCountMap = new Map()
+      orderStats?.forEach(o => {
+        orderCountMap.set(o.avatar_id, (orderCountMap.get(o.avatar_id) || 0) + 1)
+      })
+
+      const avatarsWithStats = data?.map(avatar => ({
+        ...avatar,
+        user_phone: avatar.users?.phone,
+        order_count: orderCountMap.get(avatar.id) || 0,
+        rating: 4.5 // 默认评分，可以从评价表计算
+      }))
+
+      return {
+        list: avatarsWithStats || [],
+        total: count || 0,
+        page,
+        limit
+      }
+    } catch (error) {
+      console.error('获取分身列表失败:', error)
+      return { list: [], total: 0, page, limit }
+    }
+  }
+
+  /**
+   * 更新分身状态
+   */
+  async updateAvatarStatus(avatarId: string, status: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { error } = await this.supabase
+        .from('avatars')
+        .update({ status })
+        .eq('id', avatarId)
+
+      if (error) throw error
+
+      return {
+        success: true,
+        message: '状态更新成功'
+      }
+    } catch (error) {
+      console.error('更新分身状态失败:', error)
+      return { success: false, message: '操作失败' }
+    }
+  }
+
+  /**
+   * 获取订单列表
+   */
+  async getOrders(page: number, limit: number, keyword?: string, status?: string): Promise<any> {
+    try {
+      let query = this.supabase
+        .from('orders')
+        .select('*, users!inner(phone), avatars!inner(name)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1)
+
+      if (keyword) {
+        query = query.or(`title.ilike.%${keyword}%`)
+      }
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status)
+      }
+
+      const { data, count, error } = await query
+
+      if (error) throw error
+
+      const ordersWithInfo = data?.map(order => ({
+        ...order,
+        customer_phone: order.users?.phone,
+        avatar_name: order.avatars?.name
+      }))
+
+      return {
+        list: ordersWithInfo || [],
+        total: count || 0,
+        page,
+        limit
+      }
+    } catch (error) {
+      console.error('获取订单列表失败:', error)
+      return { list: [], total: 0, page, limit }
+    }
+  }
+
+  /**
+   * 更新订单状态
+   */
+  async updateOrderStatus(orderId: string, status: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const updates: any = { status }
+      if (status === 'completed') {
+        updates.completed_at = new Date().toISOString()
+      }
+
+      const { error } = await this.supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId)
+
+      if (error) throw error
+
+      return {
+        success: true,
+        message: '订单状态更新成功'
+      }
+    } catch (error) {
+      console.error('更新订单状态失败:', error)
       return { success: false, message: '操作失败' }
     }
   }

@@ -45,6 +45,7 @@ export default defineAppConfig({
     'pages/admin/login/index',
     'pages/admin/dashboard/index',
     'pages/admin/users/index',
+    'pages/admin/users/detail',
     'pages/admin/avatars/index',
     'pages/admin/skills/index',
     'pages/admin/orders/index',
