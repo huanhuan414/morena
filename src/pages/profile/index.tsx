@@ -207,12 +207,6 @@ export default function ProfilePage() {
           <View className="header-star" />
         </View>
 
-        {/* 顶部操作栏 */}
-        <View className="header-top-row">
-          <View className="header-title-wrap">
-            <Text className="header-title">个人中心</Text>
-          </View>
-        </View>
       </View>
 
       {/* 白色卡片区域 - 覆盖在header上 */}
