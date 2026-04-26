@@ -189,20 +189,19 @@ export default function ProfilePage() {
 
   return (
     <View className="profile-page">
-      {/* 自定义导航栏 - Tab页面不需要返回按钮 */}
-      <View className="custom-nav-bar" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="nav-bar-content">
-          <View className="nav-bar-left" />
-          <Text className="nav-bar-title">我的</Text>
-          <View className="nav-bar-right" />
-        </View>
-      </View>
-
-      {/* 顶部渐变Header - 和广场首页一致 */}
+      {/* 顶部渐变Header - 包含导航栏区域 */}
       <View 
         className="profile-header-gradient"
-        style={{ paddingTop: `${statusBarHeight + 60}px` }}
+        style={{ paddingTop: `${statusBarHeight}px` }}
       >
+        {/* 自定义导航栏 - Tab页面不需要返回按钮 */}
+        <View className="custom-nav-bar">
+          <View className="nav-bar-content">
+            <View className="nav-bar-left" />
+            <Text className="nav-bar-title">我的</Text>
+            <View className="nav-bar-right" />
+          </View>
+        </View>
         {/* 网格背景 */}
         <View className="header-grid-bg" />
         

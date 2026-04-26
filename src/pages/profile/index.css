@@ -16,12 +16,9 @@
    自定义导航栏
    ======================================== */
 .custom-nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 100;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  background: transparent;
 }
 
 .nav-bar-content {
@@ -60,11 +57,12 @@
    ======================================== */
 .profile-header-gradient {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  padding: var(--space-3) var(--page-padding) 100rpx;
+  padding: 0 var(--page-padding) 100rpx;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
   overflow: hidden;
+  margin-top: 0;
 }
 
 /* 装饰光晕 */
