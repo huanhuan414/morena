@@ -11,7 +11,18 @@ export default defineAppConfig({
     'pages/settings/index',
     'pages/profile/help/index',
     'pages/profile/about/index',
-    'pages/security/index'
+    'pages/security/index',
+    // 分身相关
+    'pages/avatar-manage/index',
+    'pages/avatar-friends/index',
+    'pages/avatar-create/index',
+    'pages/avatar-settings/index',
+    // 技能
+    'pages/skills-square/index',
+    'pages/skill-create/index',
+    // 推广收益
+    'pages/referral-center/index',
+    'pages/earning-center/index'
   ],
   window: {
     backgroundTextStyle: 'light',
