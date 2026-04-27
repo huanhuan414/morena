@@ -20,7 +20,6 @@ import {
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
   Plus, Camera, Play
 } from "lucide-react-taro"
-import { getSafeArea } from "@/utils/safe-area"
 import '../../styles/variables.css'
 import "./index.css"
 import "./index-publish-success.css"
@@ -379,11 +378,7 @@ export default function MindChatPage() {
     avgMessageLength: 0,
     styleMatch: 0
   })
-  
-  // 安全区域适配
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleHeight, setCapsuleHeight] = useState(32) // 小程序胶囊按钮高度
-  
+
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
   const [learningProgress, setLearningProgress] = useState<{
@@ -538,15 +533,6 @@ export default function MindChatPage() {
   useLoad(() => {
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
-    }
-
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setStatusBarHeight(safeArea.statusBarHeight)
-
-    // 获取胶囊按钮高度
-    if (safeArea.capsuleButtonInfo) {
-      setCapsuleHeight(safeArea.capsuleButtonInfo.height)
     }
   })
 
@@ -3669,10 +3655,6 @@ export default function MindChatPage() {
       {/* 顶部导航 */}
       <View
         className="chat-header"
-        style={{
-          paddingTop: `${statusBarHeight}px`,
-          minHeight: `${statusBarHeight + capsuleHeight + 30}px`
-        }}
       >
         <View className="header-left">
           <View className="avatar-info">
@@ -3705,7 +3687,7 @@ export default function MindChatPage() {
         </View>
         <View className="header-right">
           <View className="agent-badge">
-            <Zap size={20} color="#00ff88" />
+            <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
           </View>
         </View>
@@ -4440,9 +4422,9 @@ export default function MindChatPage() {
           {/* 左侧：相机图标 */}
           <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
             {isUploadingImage ? (
-              <Loader size={22} color="#666666" />
+              <Loader size={20} color="#666666" />
             ) : (
-              <Camera size={22} color="#666666" />
+              <Camera size={20} color="#666666" />
             )}
           </View>
 
@@ -4470,12 +4452,6 @@ export default function MindChatPage() {
             adjustPosition
             autoHeight
             cursorSpacing={80}
-            style={{
-              minHeight: '80rpx',
-              maxHeight: '200rpx',
-              padding: 0,
-              borderRadius: 0
-            }}
           />
 
           {/* 右侧：语音和加号图标 */}
@@ -4505,13 +4481,13 @@ export default function MindChatPage() {
                   <Text className="recording-text">{recordingTime}s</Text>
                 </View>
               ) : (
-                <Mic size={22} color="#666666" />
+                <Mic size={20} color="#666666" />
               )}
             </View>
 
             {/* 加号按钮 - 更多功能 */}
             <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={22} color="#666666" />
+              <Wrench size={20} color="#666666" />
             </View>
           </View>
         </View>
