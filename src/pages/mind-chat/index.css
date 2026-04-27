@@ -2080,23 +2080,23 @@
 /* 文本输入框 */
 .input-textarea {
   flex: 1;
-  min-height: 88rpx;
-  max-height: 240rpx;
-  font-size: 32rpx;
+  min-height: 120rpx;
+  max-height: 300rpx;
+  font-size: 36rpx;
   color: #333333;
   line-height: 1.6;
   background: #F5F5F5;
   border: none;
-  border-radius: 24rpx;
+  border-radius: 28rpx;
   outline: none;
-  padding: 12rpx 20rpx;
+  padding: 16rpx 24rpx;
   margin: 0 16rpx;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .input-placeholder {
   color: #C0C0C0;
-  font-size: 32rpx;
+  font-size: 36rpx;
 }
 
 /* 右侧图标组 */

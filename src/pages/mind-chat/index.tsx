@@ -4462,8 +4462,8 @@ export default function MindChatPage() {
             autoHeight
             cursorSpacing={80}
             style={{
-              minHeight: '88rpx',
-              maxHeight: '240rpx',
+              minHeight: '120rpx',
+              maxHeight: '300rpx',
               padding: 0,
               borderRadius: 0
             }}
