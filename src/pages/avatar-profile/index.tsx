@@ -86,7 +86,10 @@ const SKILL_NAME_MAP: Record<string, string> = {
   'generate_drama_voiceover': '短剧配音生成',
   'edit_shortdrama_video': '短剧视频编辑',
   'generate_subtitle': '字幕生成',
-  'recommend_bgm': '背景音乐推荐'
+  'recommend_bgm': '背景音乐推荐',
+  // 微信公众号相关
+  'write_wechat_mp_article': '写微信公众号文章',
+  'publish_wechat_mp': '发布微信公众号'
 }
 
 // 订单状态映射
