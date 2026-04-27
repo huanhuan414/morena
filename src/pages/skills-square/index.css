@@ -674,32 +674,39 @@
 }
 
 .action-btn {
-  padding: 12rpx 24rpx;
+  min-width: 120rpx;
+  height: 64rpx;
+  padding: 0 24rpx;
   background: var(--primary);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: none;
 }
 
 .action-btn.remove {
   background: var(--bg-gray);
+  border: 1rpx solid var(--border-light);
 }
 
-.action-btn.remove Text {
-  color: var(--text-tertiary);
+.action-btn.remove .btn-content Text {
+  color: var(--text-secondary);
 }
 
 .btn-content {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8rpx;
+  height: 100%;
 }
 
 .btn-content Text {
   font-size: 26rpx;
   font-weight: 600;
   color: #fff;
+  line-height: 1;
 }
 
 /* Dialog Styles */
