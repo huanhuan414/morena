@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
-  Play, Video as VideoIcon, Plus, Image as ImageIcon
+  Video as VideoIcon, Plus, Image as ImageIcon
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import '../../styles/variables.css'
@@ -455,9 +455,6 @@ export default function MindChatPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isUploadingVideo, setIsUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  // 🔴 新增：追踪图片加载失败状态
-  const [imageLoadRetries, setImageLoadRetries] = useState<Record<number, number>>({})
-  const MAX_IMAGE_RETRY = 3
   
   // 发布引导弹窗（用于无 API 的平台）
   const [showPublishGuide, setShowPublishGuide] = useState(false)
@@ -1463,23 +1460,7 @@ export default function MindChatPage() {
 
   // 🔴 新增：删除上传的图片
   const handleRemoveImage = (index: number) => {
-    setUploadedImages(prev => {
-      const newImages = prev.filter((_, i) => i !== index)
-      // 🔴 关键修复：重建重试状态，调整索引
-      setImageLoadRetries(prevRetries => {
-        const newRetries: Record<number, number> = {}
-        newImages.forEach((_, newIdx) => {
-          // 如果原索引小于删除的索引，保持原索引
-          // 如果原索引大于删除的索引，减1
-          const oldIdx = newIdx < index ? newIdx : newIdx + 1
-          if (prevRetries[oldIdx] !== undefined) {
-            newRetries[newIdx] = prevRetries[oldIdx]
-          }
-        })
-        return newRetries
-      })
-      return newImages
-    })
+    setUploadedImages(prev => prev.filter((_, i) => i !== index))
   }
 
   // 🔴 新增：删除上传的视频
@@ -4502,67 +4483,21 @@ export default function MindChatPage() {
       {/* 底部输入栏 - 有分身时才显示 */}
       {!hasNoAvatar && (
       <View className="input-bar">
-        {/* 🔴 简化设计：媒体预览栏 - 移除 ScrollView 避免渲染问题 */}
+        {/* 图片/视频预览 */}
         {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
-          <View className="media-preview-wrapper">
-            <View className="media-preview-list">
-              {uploadedImages.map((imageUrl, idx) => {
-                // 🔴 如果图片加载失败过，添加时间戳强制刷新
-                const retryCount = imageLoadRetries[idx] || 0
-                const imageSrc = retryCount > 0
-                  ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_retry=${retryCount}`
-                  : imageUrl
-
-                // 🔴 关键修复：使用索引 + URL hash + retry count 确保key唯一
-                const urlHash = imageUrl.split('/').pop()?.substring(0, 8) || ''
-                const uniqueKey = `img-preview-${idx}-${urlHash}-${retryCount}`
-
-                return (
-                  <View key={uniqueKey} className="media-preview-item" data-idx={idx}>
-                    <Image
-                      src={imageSrc}
-                      className="media-preview-image"
-                      mode="aspectFill"
-                      lazyLoad={false}
-                      showMenuByLongpress={false}
-                      webp={false}
-                      style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('[图片预览] 加载成功:', idx)}
-                      onError={(e: any) => {
-                        console.error('[图片预览] 加载失败:', idx, e?.detail?.errMsg || e)
-                        if (retryCount < MAX_IMAGE_RETRY) {
-                          setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
-                        }
-                      }}
-                    />
-                    <View className="media-preview-overlay">
-                      <View className="media-preview-remove" onClick={() => handleRemoveImage(idx)}>
-                        <X size={14} color="#ffffff" />
-                      </View>
-                    </View>
-                  </View>
-                )
-              })}
-              {uploadedVideos.map((videoUrl, idx) => (
-                <View key={`video-preview-${idx}-${videoUrl.split('/').pop()?.substring(0, 8)}`} className="media-preview-item" data-idx={idx}>
-                  <Video
-                    src={videoUrl}
-                    className="media-preview-video"
-                    controls={false}
-                    objectFit="cover"
-                    onError={(e) => console.error('[视频预览] 加载失败:', videoUrl.substring(0, 40), e)}
-                  />
-                  <View className="media-preview-overlay">
-                    <View className="media-preview-play-icon">
-                      <Play size={18} color="#ffffff" />
-                    </View>
-                    <View className="media-preview-remove" onClick={() => handleRemoveVideo(idx)}>
-                      <X size={14} color="#ffffff" />
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
+          <View className="simple-preview-wrapper">
+            {uploadedImages.map((url, i) => (
+              <View key={i} className="simple-preview-item">
+                <Image src={url} className="simple-preview-img" mode="aspectFill" />
+                <Text className="simple-preview-remove" onClick={() => handleRemoveImage(i)}>×</Text>
+              </View>
+            ))}
+            {uploadedVideos.map((url, i) => (
+              <View key={`v${i}`} className="simple-preview-item">
+                <Video src={url} className="simple-preview-video" controls={false} objectFit="cover" />
+                <Text className="simple-preview-remove" onClick={() => handleRemoveVideo(i)}>×</Text>
+              </View>
+            ))}
           </View>
         )}
 

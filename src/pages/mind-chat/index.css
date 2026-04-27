@@ -2226,3 +2226,49 @@
 .account-config-btn.cancel .account-config-btn-text {
   color: var(--text-secondary);
 }
+
+/* ========================================
+   简化的图片预览 - 全新设计
+   ======================================== */
+.simple-preview-wrapper {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 24rpx;
+  background: #fff;
+  border-top: 1rpx solid #eee;
+}
+
+.simple-preview-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.simple-preview-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background: #f0f0f0;
+}
+
+.simple-preview-video {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+}
+
+.simple-preview-remove {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 32rpx;
+  height: 32rpx;
+  background: #ff4444;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
