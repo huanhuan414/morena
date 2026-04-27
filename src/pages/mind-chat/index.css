@@ -1489,6 +1489,37 @@
   margin-top: var(--space-1);
 }
 
+/* ========================================
+   空状态聊天区域
+   ======================================== */
+.empty-chat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6);
+  min-height: 60vh;
+}
+
+.empty-avatar-glow {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-lighter) 0%, var(--primary-light) 100%);
+  box-shadow: 0 0 60rpx rgba(123, 63, 228, 0.3);
+}
+
+.empty-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
 /* 快捷提示区域 */
 .empty-hints {
   display: flex;
