@@ -100,24 +100,20 @@ export class VolcengineService {
         throw new Error('上传结果中没有URI');
       }
 
-      // 🔴 修复：URI 已经包含完整路径 (tos-cn-i-699z2ac540/文件名)
-      // 如果URI以 FULL_SERVICE_ID 开头，则去掉前缀
-      let fileName = uri;
-      if (fileName.startsWith(this.FULL_SERVICE_ID + '/')) {
-        fileName = fileName.substring(this.FULL_SERVICE_ID.length + 1);
-      }
-      
-      // 构建正确的访问URL
-      // 格式: https://{domain}/{serviceId}/user%2F{文件名.mf}~tplv-{短ID}-image.{原始扩展名}
-      // 注意：文件名中应该包含 .mf 扩展名，模板参数使用原始文件扩展名
-      const mfFileName = fileName.replace(/\.[^.]+$/, '.mf');
+      // 🔴 修复：使用SDK返回的URI构建URL
+      // SDK返回的URI格式: tos-cn-i-699z2ac540/user/19dccf167f87ef0491d7bdf300000000.png
+      // 需要转换为: https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F19dccf167f87ef0491d7bdf300000000.mf~tplv-699z2ac540-image.png
+      // 注意：
+      // 1. 将 user/ 替换为 user%2F（URL编码）
+      // 2. 将 .png 替换为 .mf（火山引擎内部格式）
+      // 3. 添加模板参数 ~tplv-{短ID}-image.{原始扩展名}
+      const encodedUri = uri.replace('user/', 'user%2F').replace('.png', '.mf');
       const ext = file.originalname.split('.').pop() || 'png';
-      const url = `https://${this.CUSTOM_DOMAIN}/${this.FULL_SERVICE_ID}/user%2F${mfFileName}~tplv-${this.SHORT_ID}-image.${ext}`;
+      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.${ext}`;
       
       this.logger.log(`[VolcengineService] 构建的URL: ${url}`);
       this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
-      this.logger.log(`[VolcengineService] 文件名: ${fileName}`);
-      
+
       // 🔴 打印完整的 result 对象，查看是否有其他字段
       this.logger.log(`[VolcengineService] 完整result:`, JSON.stringify(result, null, 2));
       
@@ -137,12 +133,13 @@ export class VolcengineService {
   }
 
   private generateStoreKey(originalName: string): string {
-    // 🔴 修复：StoreKeys 不支持以/开头，所以去掉 user/ 前缀
-    // 格式：32位随机字符.扩展名（MD5格式）
+    // 🔴 修复：添加 user/ 前缀，确保文件存储在user目录下
+    // 格式：user/{32位十六进制字符}.扩展名
+    // 例如：user/84b63fbc53ab40e6acf2584fdb8c3026.png
     const ext = originalName.split('.').pop() || 'png';
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 18);
+    const timestamp = Date.now().toString(16);
+    const random = Math.random().toString(16).substring(2, 18);
     const hash = (timestamp + random).padEnd(32, '0').substring(0, 32);
-    return `${hash}.${ext}`;
+    return `user/${hash}.${ext}`;
   }
 }
