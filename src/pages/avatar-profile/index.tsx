@@ -259,7 +259,7 @@ export default function AvatarProfilePage() {
       {/* 顶部导航 - 适配状态栏 */}
       <View className="profile-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="header-back" onClick={() => navigateBack()}>
-          <ArrowLeft size={40} color="#ffffff" />
+          <ArrowLeft size={32} color="#ffffff" />
         </View>
         <Text className="header-title">分身主页</Text>
         <View className="header-placeholder" />
