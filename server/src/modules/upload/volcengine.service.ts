@@ -100,16 +100,12 @@ export class VolcengineService {
         throw new Error('上传结果中没有URI');
       }
 
-      // 🔴 修复：使用SDK返回的URI构建URL
+      // 🔴 修复：直接使用原始URI构建URL（不使用模板参数）
       // SDK返回的URI格式: tos-cn-i-699z2ac540/user/19dccf167f87ef0491d7bdf300000000.png
-      // 需要转换为: https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F19dccf167f87ef0491d7bdf300000000.mf~tplv-699z2ac540-image.png
-      // 注意：
-      // 1. 将 user/ 替换为 user%2F（URL编码）
-      // 2. 将 .png 替换为 .mf（火山引擎内部格式）
-      // 3. 添加模板参数 ~tplv-{短ID}-image.{原始扩展名}
-      const encodedUri = uri.replace('user/', 'user%2F').replace('.png', '.mf');
-      const ext = file.originalname.split('.').pop() || 'png';
-      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.${ext}`;
+      // 需要转换为: https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F19dccf167f87ef0491d7bdf300000000.png
+      // 注意：将 user/ 替换为 user%2F（URL编码），保留原始扩展名
+      const encodedUri = uri.replace('user/', 'user%2F');
+      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
       
       this.logger.log(`[VolcengineService] 构建的URL: ${url}`);
       this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
