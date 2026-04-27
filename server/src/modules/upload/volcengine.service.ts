@@ -67,16 +67,29 @@ export class VolcengineService {
       this.logger.log(`[VolcengineService] 确认上传成功:`, JSON.stringify(commitRes, null, 2));
 
       // 4. 获取文件URL
-      // 根据veImageX文档，需要使用服务配置的访问域名
-      // 🔴 修复：使用火山引擎官方默认域名，避免自定义域名配置问题
-      const defaultDomain = 'tos-cn-beijing.ivolces.com';
-      this.logger.log(`[VolcengineService] 使用域名: ${defaultDomain}`);
+      // veImageX URL格式: https://{ServiceId}.{Region}.imagex.volces.com/{Uri}
+      // 🔴 使用环境变量配置的域名，如果没有则使用默认格式
+      const domain = process.env.VOLCENGINE_IMAGE_DOMAIN || `${serviceId}.cn-beijing.imagex.volces.com`;
+      this.logger.log(`[VolcengineService] 使用域名: ${domain}`);
 
       if (commitRes.Result?.Results && commitRes.Result.Results.length > 0) {
-        const uri = commitRes.Result.Results[0].Uri;
-        const url = `https://${defaultDomain}/${uri}`;
-        this.logger.log(`[VolcengineService] 上传成功，URL: ${url}`);
-        return { url };
+        const result = commitRes.Result.Results[0] as any;
+        this.logger.log(`[VolcengineService] 上传结果:`, JSON.stringify(result, null, 2));
+        
+        // 🔴 尝试多种方式获取URL
+        // 1. 优先使用返回的URL字段
+        if (result.Url) {
+          this.logger.log(`[VolcengineService] 使用返回的URL: ${result.Url}`);
+          return { url: result.Url };
+        }
+        
+        // 2. 使用URI构建URL
+        const uri = result.Uri;
+        if (uri) {
+          const url = `https://${domain}/${uri}`;
+          this.logger.log(`[VolcengineService] 使用URI构建URL: ${url}`);
+          return { url };
+        }
       }
 
       throw new Error('无法获取上传后的URL');
