@@ -20,6 +20,8 @@ export default defineAppConfig({
     'pages/avatar-friends/index',
     'pages/avatar-create/index',
     'pages/avatar-settings/index',
+    'pages/avatar-account-config/index',
+    'pages/avatar-account-add/index',
     // 技能
     'pages/skills-square/index',
     'pages/skill-create/index',
