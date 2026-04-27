@@ -772,6 +772,71 @@
 /* ========================================
    输入区域
    ======================================== */
+
+/* 媒体预览 */
+.media-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 0 24rpx 16rpx;
+}
+
+.media-preview-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #F5F5F5;
+}
+
+.media-preview-img,
+.media-preview-video {
+  width: 100%;
+  height: 100%;
+}
+
+.media-preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.media-preview-item:active .media-preview-overlay {
+  opacity: 1;
+}
+
+.media-preview-play-icon {
+  width: 56rpx;
+  height: 56rpx;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-preview-remove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(255, 59, 48, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .input-area {
   background: var(--bg-card);
   border-top: 1rpx solid var(--border-light);
@@ -1984,34 +2049,86 @@
   border-radius: 50%;
 }
 
-/* 输入容器 */
+/* 输入容器 - 一行布局 */
 .input-container {
-  background: #F8F9FA;
-  border-radius: 24rpx;
-  padding: 20rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-  border: 1rpx solid #E9ECEF;
+  display: flex;
+  align-items: center;
+  background: #FFFFFF;
+  border-radius: 40rpx;
+  padding: 12rpx 20rpx;
+  margin: 0 24rpx 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 左侧图标按钮 */
+.left-icon-btn {
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.left-icon-btn:active {
+  background: #F5F5F5;
+  transform: scale(0.95);
 }
 
 /* 文本输入框 */
 .input-textarea {
-  width: 100%;
-  min-height: 80rpx;
-  max-height: 240rpx;
-  font-size: 32rpx;
-  color: #212529;
-  line-height: 1.6;
+  flex: 1;
+  min-height: 72rpx;
+  max-height: 200rpx;
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.5;
   background: transparent;
   border: none;
   outline: none;
-  padding: 0;
-  margin-bottom: var(--space-3);
+  padding: 8rpx 12rpx;
+  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .input-placeholder {
-  color: #ADB5BD;
-  font-size: 32rpx;
+  color: #C0C0C0;
+  font-size: 28rpx;
+}
+
+/* 右侧图标组 */
+.right-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+/* 右侧图标按钮 */
+.right-icon-btn {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.right-icon-btn:active {
+  background: #F5F5F5;
+  transform: scale(0.95);
+}
+
+/* 底部灰色横线 */
+.bottom-indicator {
+  width: 134rpx;
+  height: 8rpx;
+  background: #E5E5E5;
+  border-radius: 4rpx;
+  margin: 0 auto 20rpx;
 }
 
 /* 上传进度条 */

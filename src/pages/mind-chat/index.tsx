@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Send, Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
-  Video as VideoIcon, Plus, Image as ImageIcon
+  Plus, Camera, Play
 } from "lucide-react-taro"
 import { getSafeArea } from "@/utils/safe-area"
 import '../../styles/variables.css'
@@ -367,9 +367,11 @@ export default function MindChatPage() {
   const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
   const [hasNoAvatar, setHasNoAvatar] = useState(false) // 是否没有分身
   const [showHistory, setShowHistory] = useState(false)
-  const [isVoiceMode, setIsVoiceMode] = useState(false)
+  const [isVoiceMode, _setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)  // 录音时间（秒）
+  const [_recordingTime, setRecordingTime] = useState(0)  // 录音时间（秒）
+  const [_isUploadingVideo, _setIsUploadingVideo] = useState(false)
+  const [_uploadProgress, setUploadProgress] = useState(0)
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -453,9 +455,7 @@ export default function MindChatPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploadedVideos, setUploadedVideos] = useState<string[]>([])
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  
+
   // 发布引导弹窗（用于无 API 的平台）
   const [showPublishGuide, setShowPublishGuide] = useState(false)
   const [publishGuideData, setPublishGuideData] = useState<{
@@ -1354,12 +1354,17 @@ export default function MindChatPage() {
             }
           }
 
-          // 🔴 调整：将图片链接添加到输入框中，格式为 Image: [URL]
+          // 恢复：将图片URL添加到状态
           if (newImageUrls.length > 0) {
-            console.log('[上传图片] 准备更新输入框，新图片URLs:', newImageUrls)
-            setInputText(prev => {
-              const imageText = newImageUrls.map(url => `Image: [${url}]`).join('\n')
-              return prev ? `${prev}\n${imageText}` : imageText
+            console.log('[上传图片] 准备更新状态，新图片URLs:', newImageUrls)
+            setUploadedImages(prev => {
+              const newState = [...prev, ...newImageUrls]
+              console.log('[上传图片] 状态已更新:', {
+                prevLength: prev.length,
+                newLength: newState.length,
+                urls: newState
+              })
+              return newState
             })
             showToast({
               title: `成功上传 ${newImageUrls.length} 张图片`,
@@ -1381,81 +1386,6 @@ export default function MindChatPage() {
     })
   }
 
-  // 🔴 修复：上传视频
-  const handleUploadVideo = () => {
-    console.log('[上传视频] 开始选择视频')
-    Taro.chooseVideo({
-      sourceType: ['album', 'camera'],
-      maxDuration: 60,
-      camera: 'back',
-      success: async (res) => {
-        const tempFilePath = res.tempFilePath
-        console.log('[上传视频] 已选择视频:', tempFilePath)
-
-        setIsUploadingVideo(true)
-        setUploadProgress(0)
-
-        try {
-          // 上传视频到 TOS
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload/video',
-            filePath: tempFilePath,
-            name: 'file'
-          })
-
-          console.log('[上传视频] 上传结果:', uploadRes)
-          console.log('[上传视频] 响应状态码:', uploadRes.statusCode)
-          console.log('[上传视频] 响应数据类型:', typeof uploadRes.data)
-
-          // 🔴 修复：改进响应解析和错误处理
-          let uploadData: any
-          try {
-            if (typeof uploadRes.data === 'string') {
-              // 🔴 检查是否是 JSON 格式
-              const trimmed = uploadRes.data.trim()
-              console.log('[上传视频] 响应前200字符:', trimmed.substring(0, 200))
-              if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-                uploadData = JSON.parse(trimmed)
-              } else if (trimmed.toLowerCase().startsWith('<!doctype') || trimmed.startsWith('<')) {
-                // 🔴 如果是 HTML 错误页面
-                console.error('[上传视频] 服务器返回 HTML 错误页面，可能是 500 错误')
-                throw new Error('服务器错误，请稍后重试')
-              } else {
-                console.error('[上传视频] 服务器返回非 JSON 响应')
-                throw new Error('服务器返回格式错误')
-              }
-            } else {
-              uploadData = uploadRes.data
-            }
-          } catch (parseError: any) {
-            console.error('[上传视频] 解析响应失败:', parseError)
-            console.error('[上传视频] 原始响应:', typeof uploadRes.data === 'string' ? uploadRes.data.substring(0, 500) : uploadRes.data)
-            throw new Error('服务器响应解析失败: ' + parseError.message)
-          }
-
-          setUploadProgress(100)
-
-          if (uploadData.code === 200 && uploadData.data?.url) {
-            // 🔴 调整：将视频链接添加到输入框中，格式为 Video: [URL]
-            setInputText(prev => {
-              const videoText = `Video: [${uploadData.data.url}]`
-              return prev ? `${prev}\n${videoText}` : videoText
-            })
-            showToast({ title: '视频上传成功', icon: 'success' })
-          } else {
-            showToast({ title: uploadData.message || '上传失败', icon: 'none' })
-          }
-        } catch (error: any) {
-          console.error('[上传视频] 错误:', error)
-          showToast({ title: error.message || '上传失败，请重试', icon: 'none' })
-        } finally {
-          setIsUploadingVideo(false)
-          setTimeout(() => setUploadProgress(0), 1000)
-        }
-      }
-    })
-  }
-
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
   const sendMessage = async (text?: string) => {
     const messageText = text || inputText
@@ -1472,9 +1402,8 @@ export default function MindChatPage() {
       uploadedVideos
     })
 
-    // 🔴 调整：检查消息是否为空（包含图片/视频链接）
-    const hasImageOrVideo = /Image:\s*\[[^\]]+\]|Video:\s*\[[^\]]+\]/i.test(messageText)
-    if (!messageText.trim() && !hasImageOrVideo) {
+    // 恢复：检查消息是否为空
+    if (!messageText.trim() && uploadedImages.length === 0 && uploadedVideos.length === 0) {
       showToast({ title: '请输入消息或上传图片/视频', icon: 'none' })
       return
     }
@@ -1521,37 +1450,16 @@ export default function MindChatPage() {
     // 发送消息时，确保滚动到底部
     shouldScrollToBottomRef.current = true
 
-    // 🔴 调整：从输入框中提取图片和视频链接
-    // 提取 Image: [URL] 格式的图片链接
-    const imageMatches = messageText.match(/Image:\s*\[([^\]]+)\]/gi) || []
-    const currentUploadedImages = imageMatches.map(match => {
-      const urlMatch = match.match(/Image:\s*\[([^\]]+)\]/i)
-      return urlMatch ? urlMatch[1] : ''
-    }).filter(url => url)
-
-    // 提取 Video: [URL] 格式的视频链接
-    const videoMatches = messageText.match(/Video:\s*\[([^\]]+)\]/gi) || []
-    const currentUploadedVideos = videoMatches.map(match => {
-      const urlMatch = match.match(/Video:\s*\[([^\]]+)\]/i)
-      return urlMatch ? urlMatch[1] : ''
-    }).filter(url => url)
-
-    // 从消息文本中移除 Image: [URL] 和 Video: [URL] 格式的内容
-    const cleanedMessageText = messageText
-      .replace(/Image:\s*\[[^\]]+\]\n?/gi, '')
-      .replace(/Video:\s*\[[^\]]+\]\n?/gi, '')
-      .trim()
-
-    console.log('[MindChat] 提取的图片链接:', currentUploadedImages)
-    console.log('[MindChat] 提取的视频链接:', currentUploadedVideos)
-    console.log('[MindChat] 清理后的消息文本:', cleanedMessageText)
+    // 恢复：使用状态管理的方式
+    const currentUploadedImages = [...uploadedImages]
+    const currentUploadedVideos = [...uploadedVideos]
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: cleanedMessageText,
+      content: messageText,
       created_at: new Date().toISOString(),
-      // 🔴 新增：添加上传的图片和视频
+      // 恢复：添加上传的图片和视频
       metadata: {
         uploaded_images: currentUploadedImages.length > 0 ? currentUploadedImages : undefined,
         uploaded_videos: currentUploadedVideos.length > 0 ? currentUploadedVideos : undefined
@@ -2177,22 +2085,6 @@ export default function MindChatPage() {
     } catch (error) {
       console.error('[MindChat] 处理语音文件失败:', error)
       showToast({ title: '语音处理失败，请重试', icon: 'none' })
-    }
-  }
-
-  const toggleVoiceMode = () => {
-    const newVoiceMode = !isVoiceMode
-    setIsVoiceMode(newVoiceMode)
-
-    // 🔴 修复：进入语音模式时自动开始录音，退出时停止录音
-    if (newVoiceMode) {
-      // 进入语音模式，自动开始录音
-      setTimeout(() => {
-        startRecording()
-      }, 100)
-    } else if (isRecording) {
-      // 退出语音模式，停止录音
-      stopRecording()
     }
   }
 
@@ -4494,14 +4386,72 @@ export default function MindChatPage() {
       {/* 底部输入栏 - 有分身时才显示 */}
       {!hasNoAvatar && (
       <View className="input-bar">
-        {/* 🔴 调整：移除图片预览区域，图片链接显示在输入框中 */}
-        {/* 🔴 重新设计：两行布局 - 输入框在上方，按钮在下方 */}
+        {/* 🔴 图片/视频预览 */}
+        {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
+          <View className="media-preview">
+            {uploadedImages.map((url, i) => (
+              <View key={i} className="media-preview-item">
+                <Image
+                  src={url}
+                  className="media-preview-img"
+                  mode="aspectFill"
+                  onLoad={() => console.log('[图片] 加载成功:', i)}
+                  onError={() => console.error('[图片] 加载失败:', i)}
+                />
+                <View className="media-preview-overlay">
+                  <View
+                    className="media-preview-remove"
+                    onClick={() => {
+                      setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))
+                    }}
+                  >
+                    <X size={20} color="#FFFFFF" />
+                  </View>
+                </View>
+              </View>
+            ))}
+            {uploadedVideos.map((url, i) => (
+              <View key={`v${i}`} className="media-preview-item">
+                <Video
+                  src={url}
+                  className="media-preview-video"
+                  controls={false}
+                  objectFit="cover"
+                />
+                <View className="media-preview-overlay">
+                  <View className="media-preview-play-icon">
+                    <Play size={24} color="#FFFFFF" />
+                  </View>
+                  <View
+                    className="media-preview-remove"
+                    onClick={() => {
+                      setUploadedVideos((prev) => prev.filter((_, idx) => idx !== i))
+                    }}
+                  >
+                    <X size={20} color="#FFFFFF" />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 🔴 一行布局 - 左侧相机图标，中间输入框，右侧语音和加号图标 */}
         <View className="input-container">
-          {/* 第一行：输入框 */}
+          {/* 左侧：相机图标 */}
+          <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
+            {isUploadingImage ? (
+              <Loader size={20} color="#666666" />
+            ) : (
+              <Camera size={20} color="#666666" />
+            )}
+          </View>
+
+          {/* 中间：输入框 */}
           <Textarea
             ref={textareaRef}
             className="input-textarea"
-            placeholder="说点什么..."
+            placeholder="发消息或按住说话..."
             placeholderClass="input-placeholder"
             value={inputText}
             maxlength={1000}
@@ -4532,85 +4482,39 @@ export default function MindChatPage() {
             }}
           />
 
-          {/* 上传进度条 */}
-          {(isUploadingImage || isUploadingVideo) && (
-            <View className="upload-progress-container">
-              <View className="upload-progress-bar">
-                <View
-                  className="upload-progress-fill"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </View>
-              <Text className="upload-progress-text">
-                {isUploadingImage ? '上传图片中...' : '上传视频中...'} {uploadProgress}%
-              </Text>
-            </View>
-          )}
-
-          {/* 第二行：按钮区域 */}
-          <View className="button-row">
-            <View className="button-row-left">
-              <View className="icon-btn image-btn" onClick={handleUploadImage}>
-                {isUploadingImage ? (
-                  <Loader size={20} color="#2196F3" />
-                ) : (
-                  <ImageIcon size={20} color="#2196F3" />
-                )}
-              </View>
-              <View className="icon-btn video-btn" onClick={handleUploadVideo}>
-                {isUploadingVideo ? (
-                  <Loader size={20} color="#FF9800" />
-                ) : (
-                  <VideoIcon size={20} color="#FF9800" />
-                )}
-              </View>
-              <View className="icon-btn skill-btn" onClick={navigateToSkillsSquare}>
-                <Wrench size={20} color="#9C27B0" />
-              </View>
-              <View
-                className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
-                onClick={toggleVoiceMode}
-              >
-                <Mic size={20} color={isVoiceMode ? '#F44336' : '#00BCD4'} />
-              </View>
-            </View>
-
-            <View className="button-row-right">
-              <View
-                className={`send-btn ${inputText && inputText.trim() ? 'active' : ''}`}
-                onClick={() => {
-                  if (isVoiceMode) {
-                    // 语音模式下，切换录音状态
-                    if (isRecording) {
-                      stopRecording()
-                    } else {
-                      startRecording()
-                    }
+          {/* 右侧：语音和加号图标 */}
+          <View className="right-icon-group">
+            <View
+              className={`right-icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
+              onClick={() => {
+                if (isVoiceMode) {
+                  // 语音模式下，切换录音状态
+                  if (isRecording) {
+                    stopRecording()
                   } else {
-                    // 普通模式下，发送消息
-                    sendMessage()
+                    startRecording()
                   }
-                }}
-              >
-                {isVoiceMode ? (
-                  // 语音模式下显示录音状态
-                  <View className="recording-indicator">
-                    {isRecording ? (
-                      <>
-                        <View className="recording-pulse" />
-                        <Text className="recording-text">{recordingTime}s</Text>
-                      </>
-                    ) : (
-                      <Mic size={20} color="rgba(255,255,255,0.6)" />
-                    )}
-                  </View>
-                ) : (
-                  <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
-                )}
-              </View>
+                } else {
+                  // 普通模式下，发送消息
+                  sendMessage()
+                }
+              }}
+            >
+              {isVoiceMode ? (
+                <Mic size={20} color="#666666" />
+              ) : (
+                <Send size={20} color="#666666" />
+              )}
+            </View>
+
+            <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
+              <Wrench size={20} color="#666666" />
             </View>
           </View>
         </View>
+
+        {/* 底部灰色横线 */}
+        <View className="bottom-indicator" />
       </View>
       )}
 

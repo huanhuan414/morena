@@ -25,6 +25,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { AsrModule } from './modules/asr/asr.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { VideoModule } from './modules/video/video.module';
+import { VisionModule } from './modules/vision/vision.module';
 
 import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
@@ -57,6 +58,7 @@ import { AdminModule } from './modules/admin/admin.module';
     AsrModule,
     RecommendationModule,
     VideoModule,
+    VisionModule,
     TikHubModule,
     OrderProcessingModule,
     SkillTrainingModule,
