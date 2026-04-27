@@ -4513,13 +4513,9 @@ export default function MindChatPage() {
                   ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_retry=${retryCount}`
                   : imageUrl
 
-                // 🔴 关键修复：只使用索引作为key，确保稳定性
-                // 使用图片URL的一部分增加唯一性，避免idx冲突
+                // 🔴 关键修复：使用索引 + URL hash + retry count 确保key唯一
                 const urlHash = imageUrl.split('/').pop()?.substring(0, 8) || ''
-                const uniqueKey = `img-${idx}-${urlHash}`
-
-                // 🔴 调试：检查图片URL
-                console.log(`[图片预览] 第${idx}张:`, imageSrc.substring(0, 50), 'key:', uniqueKey)
+                const uniqueKey = `img-preview-${idx}-${urlHash}-${retryCount}`
 
                 return (
                   <View key={uniqueKey} className="media-preview-item" data-idx={idx}>
@@ -4534,7 +4530,6 @@ export default function MindChatPage() {
                       onLoad={() => console.log('[图片预览] 加载成功:', idx)}
                       onError={(e: any) => {
                         console.error('[图片预览] 加载失败:', idx, e?.detail?.errMsg || e)
-                        // 🔴 自动重试机制 - 只更新src，不改变key
                         if (retryCount < MAX_IMAGE_RETRY) {
                           setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
                         }
@@ -4549,7 +4544,7 @@ export default function MindChatPage() {
                 )
               })}
               {uploadedVideos.map((videoUrl, idx) => (
-                <View key={`preview-video-${idx}`} className="media-preview-item" data-idx={idx}>
+                <View key={`video-preview-${idx}-${videoUrl.split('/').pop()?.substring(0, 8)}`} className="media-preview-item" data-idx={idx}>
                   <Video
                     src={videoUrl}
                     className="media-preview-video"
