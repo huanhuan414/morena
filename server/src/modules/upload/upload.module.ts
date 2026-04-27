@@ -15,6 +15,7 @@ import * as multer from 'multer'
         fileSize: 500 * 1024 * 1024, // 500MB（支持视频上传）
       },
       fileFilter: (req, file, callback) => {
+        // 🔴 修复：根据MIME类型判断文件格式，不依赖文件扩展名
         // 允许图片、视频和音频
         const allowedMimes = [
           // 图片
@@ -35,11 +36,15 @@ import * as multer from 'multer'
           'audio/wave',
           'audio/ogg',
           'audio/x-wav',
-          'audio/webm'
+          'audio/webm',
+          // 🔴 添加：允许application/octet-stream类型（某些情况下会被误判）
+          'application/octet-stream'
         ]
+        console.log(`[MulterFileFilter] 检查文件: ${file.originalname}, MIME: ${file.mimetype}`)
         if (allowedMimes.includes(file.mimetype)) {
           callback(null, true)
         } else {
+          console.log(`[MulterFileFilter] 不支持的MIME类型: ${file.mimetype}`)
           callback(new Error('只支持图片、视频和音频格式（jpg, png, gif, webp, mp4, mov, avi, mp3, wav, ogg）'), false)
         }
       }

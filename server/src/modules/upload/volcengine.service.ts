@@ -34,11 +34,20 @@ export class VolcengineService {
   }
 
   async uploadImage(file: Express.Multer.File): Promise<{ url: string }> {
-    this.logger.log(`[VolcengineService] 开始上传图片: ${file.originalname}`);
+    this.logger.log(`[VolcengineService] 开始上传图片: ${file.originalname}, MIME: ${file.mimetype}`);
 
     try {
+      // 🔴 修复：如果文件名不正确（比如.file-xxx），使用默认文件名
+      let originalname = file.originalname;
+      if (!originalname || originalname.startsWith('.') || !originalname.includes('.')) {
+        this.logger.warn(`[VolcengineService] 文件名不正确: ${originalname}, 使用默认文件名`);
+        // 根据MIME类型判断文件扩展名
+        const ext = this.getExtensionFromMime(file.mimetype, originalname);
+        originalname = `image_${Date.now()}.${ext}`;
+      }
+
       // 1. 获取上传凭证
-      const storeKey = this.generateStoreKey(file.originalname);
+      const storeKey = this.generateStoreKey(originalname);
       this.logger.log(`[VolcengineService] StoreKey: ${storeKey}`);
       
       const applyRes = await this.client.ApplyImageUpload({
@@ -137,5 +146,45 @@ export class VolcengineService {
     const random = Math.random().toString(16).substring(2, 18);
     const hash = (timestamp + random).padEnd(32, '0').substring(0, 32);
     return `user/${hash}.${ext}`;
+  }
+
+  /**
+   * 根据MIME类型和文件名获取文件扩展名
+   */
+  private getExtensionFromMime(mimetype?: string, filename?: string): string {
+    // 🔴 优先从文件名中提取扩展名
+    if (filename && filename.includes('.')) {
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+      if (ext && allowedExts.includes(ext)) {
+        return ext;
+      }
+    }
+
+    // 🔴 如果无法从文件名中提取，根据MIME类型判断
+    if (!mimetype) return 'png';
+
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/bmp': 'bmp',
+      'image/svg+xml': 'svg',
+      'video/mp4': 'mp4',
+      'video/mpeg': 'mpeg',
+      'video/quicktime': 'mov',
+      'video/x-msvideo': 'avi',
+      'video/x-ms-wmv': 'wmv',
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav',
+      'audio/wave': 'wav',
+      'audio/ogg': 'ogg',
+      'audio/x-wav': 'wav',
+      'audio/webm': 'webm',
+    };
+
+    return mimeToExt[mimetype] || 'png';
   }
 }
