@@ -1463,12 +1463,22 @@ export default function MindChatPage() {
 
   // 🔴 新增：删除上传的图片
   const handleRemoveImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index))
-    // 🔴 清除该图片的重试状态
-    setImageLoadRetries(prev => {
-      const newState = { ...prev }
-      delete newState[index]
-      return newState
+    setUploadedImages(prev => {
+      const newImages = prev.filter((_, i) => i !== index)
+      // 🔴 关键修复：重建重试状态，调整索引
+      setImageLoadRetries(prevRetries => {
+        const newRetries: Record<number, number> = {}
+        newImages.forEach((_, newIdx) => {
+          // 如果原索引小于删除的索引，保持原索引
+          // 如果原索引大于删除的索引，减1
+          const oldIdx = newIdx < index ? newIdx : newIdx + 1
+          if (prevRetries[oldIdx] !== undefined) {
+            newRetries[newIdx] = prevRetries[oldIdx]
+          }
+        })
+        return newRetries
+      })
+      return newImages
     })
   }
 
@@ -4503,9 +4513,13 @@ export default function MindChatPage() {
                   ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_retry=${retryCount}`
                   : imageUrl
 
-                // 🔴 关键修复：使用索引作为主要标识，确保每张图片都有唯一key
-                // 索引在数组中是稳定的，不受URL内容影响
-                const uniqueKey = `preview-img-${idx}-${retryCount}`
+                // 🔴 关键修复：只使用索引作为key，确保稳定性
+                // 使用图片URL的一部分增加唯一性，避免idx冲突
+                const urlHash = imageUrl.split('/').pop()?.substring(0, 8) || ''
+                const uniqueKey = `img-${idx}-${urlHash}`
+
+                // 🔴 调试：检查图片URL
+                console.log(`[图片预览] 第${idx}张:`, imageSrc.substring(0, 50), 'key:', uniqueKey)
 
                 return (
                   <View key={uniqueKey} className="media-preview-item" data-idx={idx}>
@@ -4515,11 +4529,12 @@ export default function MindChatPage() {
                       mode="aspectFill"
                       lazyLoad={false}
                       showMenuByLongpress={false}
+                      webp={false}
                       style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('[图片预览] 加载成功:', idx, imageUrl.substring(0, 40))}
+                      onLoad={() => console.log('[图片预览] 加载成功:', idx)}
                       onError={(e: any) => {
-                        console.error('[图片预览] 加载失败:', idx, imageUrl.substring(0, 50), e?.detail?.errMsg || e)
-                        // 🔴 自动重试机制
+                        console.error('[图片预览] 加载失败:', idx, e?.detail?.errMsg || e)
+                        // 🔴 自动重试机制 - 只更新src，不改变key
                         if (retryCount < MAX_IMAGE_RETRY) {
                           setImageLoadRetries(prev => ({ ...prev, [idx]: retryCount + 1 }))
                         }
