@@ -106,21 +106,27 @@ export class VolcengineService {
       const result = commitRes.Result.Results[0] as any;
       this.logger.log(`[VolcengineService] 上传结果详情:`, JSON.stringify(result, null, 2));
 
-      // 🔴 优先使用SDK返回的URL（已验证可以访问）
-      if (result.Url) {
-        this.logger.log(`[VolcengineService] 使用SDK返回的URL: ${result.Url}`);
-        return { url: result.Url };
+      // 🔴 检查result中是否有Uri字段
+      if (!result.Uri) {
+        throw new Error('上传结果中没有URI');
       }
 
-      // 🔴 如果SDK没有返回URL，使用URI构建
-      if (result.Uri) {
-        const encodedUri = result.Uri.replace('user/', 'user%2F');
-        const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
-        this.logger.log(`[VolcengineService] 使用URI构建的URL: ${url}`);
-        return { url };
-      }
+      // 🔴 按照用户提供的正确格式构建URL
+      // 用户提供的格式：https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F84b63fbc53ab40e6acf2584fdb8c3026.mf~tplv-699z2ac540-image.png
+      // SDK返回的Uri格式：tos-cn-i-699z2ac540/user/84b63fbc53ab40e6acf2584fdb8c3026.png
+      // 转换步骤：
+      // 1. 将 Uri 中的 user/ 替换为 user%2F（URL编码）
+      // 2. 将 Uri 中的 .png 替换为 .mf（火山引擎内部格式）
+      // 3. 添加模板参数 ~tplv-699z2ac540-image.png（使用原始扩展名）
+      const uri = result.Uri;
+      const encodedUri = uri.replace('user/', 'user%2F').replace('.png', '.mf');
+      const ext = file.originalname.split('.').pop() || 'png';
+      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.${ext}`;
 
-      throw new Error('上传结果中没有URL或URI');
+      this.logger.log(`[VolcengineService] 构建的URL: ${url}`);
+      this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
+
+      return { url };
 
     } catch (error: any) {
       this.logger.error(`[VolcengineService] 上传失败:`, error);
@@ -136,13 +142,18 @@ export class VolcengineService {
   }
 
   private generateStoreKey(originalName: string): string {
-    // 🔴 修复：添加 user/ 前缀，确保文件存储在user目录下
-    // 格式：user/{32位十六进制字符}.扩展名
-    // 例如：user/84b63fbc53ab40e6acf2584fdb8c3026.png
+    // 🔴 修复：生成纯随机的32位16进制字符（不使用padEnd填充0）
+    // 用户提供的文件名示例：84b63fbc53ab40e6acf2584fdb8c3026（32位16进制字符）
+    // 格式：user/{32位纯随机16进制字符}.扩展名
     const ext = originalName.split('.').pop() || 'png';
-    const timestamp = Date.now().toString(16);
-    const random = Math.random().toString(16).substring(2, 18);
-    const hash = (timestamp + random).padEnd(32, '0').substring(0, 32);
+
+    // 生成32位纯随机16进制字符串
+    let hash = '';
+    for (let i = 0; i < 8; i++) {
+      hash += Math.random().toString(16).substring(2, 6);
+    }
+    hash = hash.substring(0, 32);
+
     return `user/${hash}.${ext}`;
   }
 
