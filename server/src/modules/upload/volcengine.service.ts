@@ -68,13 +68,13 @@ export class VolcengineService {
 
       // 4. 获取文件URL
       // 根据veImageX文档，需要使用服务配置的访问域名
-      // 从环境变量获取自定义域名，如果没有配置则使用默认域名
-      const customDomain = process.env.VOLCENGINE_IMAGE_DOMAIN || 'tos-cn-beijing.ivolces.com';
-      this.logger.log(`[VolcengineService] 使用域名: ${customDomain}`);
+      // 🔴 修复：使用火山引擎官方默认域名，避免自定义域名配置问题
+      const defaultDomain = 'tos-cn-beijing.ivolces.com';
+      this.logger.log(`[VolcengineService] 使用域名: ${defaultDomain}`);
 
       if (commitRes.Result?.Results && commitRes.Result.Results.length > 0) {
         const uri = commitRes.Result.Results[0].Uri;
-        const url = `https://${customDomain}/${uri}`;
+        const url = `https://${defaultDomain}/${uri}`;
         this.logger.log(`[VolcengineService] 上传成功，URL: ${url}`);
         return { url };
       }
