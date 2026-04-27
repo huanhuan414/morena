@@ -166,7 +166,7 @@ export function LevelDetailDialog({ open, onClose, currentLevel, currentExp }: L
             <Text className="level-modal-title">等级详情</Text>
           </View>
           <View className="level-modal-close" onClick={onClose}>
-            <X size={20} color="#666" />
+            <X size={20} color="#ffffff" />
           </View>
         </View>
 
