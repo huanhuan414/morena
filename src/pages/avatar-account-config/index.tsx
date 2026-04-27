@@ -1,17 +1,17 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'   
-
-// 获取状态栏高度
-const systemInfo = getSystemInfoSync()
-const statusBarHeight = systemInfo.statusBarHeight || 0
 import { useState } from 'react'
+import { useLoad, useDidShow, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'   
 import { View, Text, ScrollView, Picker, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Save, Trash2, ArrowLeft, Search, Loader, RefreshCw } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
+
+// 获取状态栏高度
+const systemInfo = getSystemInfoSync()
+const statusBarHeight = systemInfo.statusBarHeight || 0
 
 interface AvatarAccount {
   id?: string

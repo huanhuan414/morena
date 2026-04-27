@@ -612,62 +612,6 @@ export default function SkillsSquare() {
     }
   }
 
-  // 一键添加个人IP打造套件
-  const handlePurchasePersonalIpKit = async () => {
-    if (!currentAvatar?.id) {
-      Taro.showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
-
-    try {
-      setPurchasing(true)
-      console.log('[SkillSquare] 开始添加个人IP打造套件:', {
-        skills: PERSONAL_IP_KIT.skills,
-        avatarId: currentAvatar.id
-      })
-
-      // 批量添加技能
-      const results = await Promise.all(
-        PERSONAL_IP_KIT.skills.map(toolName =>
-          Network.request({
-            url: '/api/skills/purchase-by-tool-name',
-            method: 'POST',
-            data: {
-              toolName,
-              avatarId: currentAvatar.id
-            }
-          })
-        )
-      )
-
-      console.log('[SkillSquare] 个人IP打造套件添加结果:', results)
-
-      const successCount = results.filter(r => r.data?.code === 200).length
-      const totalCount = results.length
-
-      if (successCount === totalCount) {
-        Taro.showToast({
-          title: `个人IP打造套件添加成功！已添加 ${totalCount} 个技能`,
-          icon: 'success'
-        })
-      } else if (successCount > 0) {
-        Taro.showToast({
-          title: `部分添加成功（${successCount}/${totalCount}）`,
-          icon: 'none'
-        })
-      } else {
-        Taro.showToast({ title: '添加失败，请重试', icon: 'none' })
-      }
-
-      fetchMySkills()
-    } catch (error: any) {
-      console.error('[SkillSquare] 添加个人IP打造套件失败:', error)
-      Taro.showToast({ title: '添加失败: ' + (error.message || '未知错误'), icon: 'none' })
-    } finally {
-      setPurchasing(false)
-    }
-  }
-
   // 一键生成分身秩序
   const handleGenerateAgentOrder = async () => {
     if (!currentAvatar?.id) {
