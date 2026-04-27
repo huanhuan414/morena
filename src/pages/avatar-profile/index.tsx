@@ -73,7 +73,20 @@ const SKILL_NAME_MAP: Record<string, string> = {
   'resume_writing': '简历优化',
   'time_management': '时间管理',
   'meditation': '冥想引导',
-  'sleep_aid': '助眠服务'
+  'sleep_aid': '助眠服务',
+  // 技能广场技能
+  'auto_post_to_home': '自动发帖助手',
+  'app_assign_order': '分身秩序',
+  'list_avatar_accounts': '账号管理',
+  // 短剧技能
+  'generate_shortdrama_script': '短剧剧本生成',
+  'generate_storyboard': '分镜脚本生成',
+  'produce_shortdrama': '短剧制作',
+  'generate_multi_episode_drama': '多集短剧生成',
+  'generate_drama_voiceover': '短剧配音生成',
+  'edit_shortdrama_video': '短剧视频编辑',
+  'generate_subtitle': '字幕生成',
+  'recommend_bgm': '背景音乐推荐'
 }
 
 // 订单状态映射
