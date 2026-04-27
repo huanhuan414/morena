@@ -2110,3 +2110,61 @@
   color: #ef4444;
   font-weight: var(--font-semibold);
 }
+
+/* ========================================
+   账号绑定弹窗
+   ======================================== */
+.account-config-dialog {
+  width: 85%;
+  max-width: 600rpx;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.account-config-content {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.account-config-tip {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.account-config-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.account-config-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  border: none;
+}
+
+.account-config-btn.cancel {
+  background: var(--bg-gray);
+  border: 1rpx solid var(--border-light);
+}
+
+.account-config-btn-text {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: #fff;
+}
+
+.account-config-btn.cancel .account-config-btn-text {
+  color: var(--text-secondary);
+}
