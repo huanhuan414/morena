@@ -1552,7 +1552,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--bg-page);
+  background: var(--primary);
 }
 
 .learning-detail-content {

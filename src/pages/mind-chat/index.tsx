@@ -3961,7 +3961,7 @@ export default function MindChatPage() {
                 {showLearningDetail === 'phrases' && '常用表达'}
               </Text>
               <View className="learning-detail-close" onClick={() => setShowLearningDetail(null)}>
-                <X size={24} color="rgba(255,255,255,0.6)" />
+                <X size={24} color="#ffffff" />
               </View>
             </View>
             <ScrollView className="learning-detail-content" scrollY>
