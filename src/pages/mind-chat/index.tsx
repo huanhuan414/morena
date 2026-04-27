@@ -4464,9 +4464,6 @@ export default function MindChatPage() {
             style={{
               minHeight: '88rpx',
               maxHeight: '240rpx',
-              backgroundColor: '#ffffff',
-              border: 'none',
-              outline: 'none',
               padding: 0,
               borderRadius: 0
             }}
