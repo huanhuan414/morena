@@ -1306,7 +1306,7 @@ ${friendMessageContents}
         console.log('[托管服务] 生成视频帖子内容...')
         const result = await this.generateVideoPostContent(avatar)
         if (result) {
-          result.content = badge + result.content
+          // badge 只用于 tags，不拼接到 content
           result.badge = badge
         }
         return result
@@ -1315,7 +1315,7 @@ ${friendMessageContents}
         console.log('[托管服务] 生成图文帖子内容...')
         const result = await this.generateImageTextPostContent(avatar)
         if (result) {
-          result.content = badge + result.content
+          // badge 只用于 tags，不拼接到 content
           result.badge = badge
         }
         return result
@@ -1324,7 +1324,7 @@ ${friendMessageContents}
         console.log('[托管服务] 生成纯文字帖子内容...')
         const result = await this.generateTextOnlyPostContent(avatar)
         if (result) {
-          result.content = badge + result.content
+          // badge 只用于 tags，不拼接到 content
           result.badge = badge
         }
         return result
