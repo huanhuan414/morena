@@ -37,11 +37,24 @@ export class VolcengineService {
     this.logger.log(`[VolcengineService] 开始上传图片: ${file.originalname}, MIME: ${file.mimetype}`);
 
     try {
-      // 🔴 尝试使用UploadImages方法（简化的上传方法）
-      const fileBuffer = file.buffer;
+      // 🔴 修复：处理文件名不包含扩展名的情况
+      // 小程序端的临时文件可能不包含正确的文件名（如 file-1777264487371）
+      let ext = 'png';
+      if (file.originalname && file.originalname.includes('.')) {
+        ext = file.originalname.split('.').pop() || 'png';
+      } else if (file.mimetype) {
+        // 根据MIME类型推断扩展名
+        const mimeToExt: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/jpg': 'jpg',
+          'image/png': 'png',
+          'image/gif': 'gif',
+          'image/webp': 'webp',
+        };
+        ext = mimeToExt[file.mimetype] || 'png';
+      }
 
-      // 🔴 按照用户提供的格式生成文件名
-      const ext = file.originalname.split('.').pop() || 'png';
+      // 🔴 按照用户提供的格式生成文件名（32位16进制字符）
       let hash = '';
       for (let i = 0; i < 8; i++) {
         hash += Math.random().toString(16).substring(2, 6);
@@ -49,13 +62,13 @@ export class VolcengineService {
       hash = hash.substring(0, 32);
       const storeKey = `user/${hash}.${ext}`;
 
-      this.logger.log(`[VolcengineService] StoreKey: ${storeKey}`);
+      this.logger.log(`[VolcengineService] StoreKey: ${storeKey}, 扩展名: ${ext}`);
 
       // 🔴 使用UploadImages方法上传
       const uploadRes = await this.client.UploadImages({
         serviceId: this.SHORT_ID,
         fileKeys: [storeKey],
-        files: [fileBuffer]
+        files: [file.buffer]
       });
 
       this.logger.log(`[VolcengineService] UploadImages响应:`, JSON.stringify(uploadRes, null, 2));
@@ -79,7 +92,7 @@ export class VolcengineService {
         urlsToTry.push({ name: '直接URI', url: directUrl });
 
         // 2. 用户提供的格式（带.mf和模板参数）
-        const encodedUri = uri.replace('user/', 'user%2F').replace('.png', '.mf');
+        const encodedUri = uri.replace('user/', 'user%2F').replace(/\.[^.]+$/, '.mf');
         const templateUrl = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.${ext}`;
         urlsToTry.push({ name: '模板URL', url: templateUrl });
 

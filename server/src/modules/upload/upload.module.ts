@@ -42,6 +42,31 @@ import * as multer from 'multer'
         ]
         console.log(`[MulterFileFilter] 检查文件: ${file.originalname}, MIME: ${file.mimetype}`)
         if (allowedMimes.includes(file.mimetype)) {
+          // 🔴 修复：如果文件名不包含扩展名，根据MIME类型添加扩展名
+          if (!file.originalname || !file.originalname.includes('.')) {
+            const mimeToExt: Record<string, string> = {
+              'image/jpeg': 'jpg',
+              'image/jpg': 'jpg',
+              'image/png': 'png',
+              'image/gif': 'gif',
+              'image/webp': 'webp',
+              'image/bmp': 'bmp',
+              'video/mp4': 'mp4',
+              'video/mpeg': 'mpeg',
+              'video/quicktime': 'mov',
+              'video/x-msvideo': 'avi',
+              'video/x-ms-wmv': 'wmv',
+              'audio/mpeg': 'mp3',
+              'audio/wav': 'wav',
+              'audio/wave': 'wav',
+              'audio/ogg': 'ogg',
+              'audio/x-wav': 'wav',
+              'audio/webm': 'webm',
+            }
+            const ext = mimeToExt[file.mimetype] || 'png';
+            file.originalname = `image_${Date.now()}.${ext}`;
+            console.log(`[MulterFileFilter] 修正文件名: ${file.originalname}`)
+          }
           callback(null, true)
         } else {
           console.log(`[MulterFileFilter] 不支持的MIME类型: ${file.mimetype}`)
