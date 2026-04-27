@@ -37,13 +37,15 @@ export class VolcengineService {
     this.logger.log(`[VolcengineService] 开始上传图片: ${file.originalname}, MIME: ${file.mimetype}`);
 
     try {
-      // 🔴 修复：如果文件名不正确（比如.file-xxx），使用默认文件名
+      // 🔴 修复：强制所有文件都使用PNG格式
+      // 因为火山引擎CDN可能只支持PNG格式访问
+      // 根据原始文件名生成新的文件名，但强制使用PNG扩展名
       let originalname = file.originalname;
       if (!originalname || originalname.startsWith('.') || !originalname.includes('.')) {
-        this.logger.warn(`[VolcengineService] 文件名不正确: ${originalname}, 使用默认文件名`);
-        // 根据MIME类型判断文件扩展名
-        const ext = this.getExtensionFromMime(file.mimetype, originalname);
-        originalname = `image_${Date.now()}.${ext}`;
+        originalname = `image_${Date.now()}.png`;
+      } else {
+        // 🔴 将文件扩展名强制改为.png
+        originalname = originalname.replace(/\.[^.]+$/, '.png');
       }
 
       // 1. 获取上传凭证
