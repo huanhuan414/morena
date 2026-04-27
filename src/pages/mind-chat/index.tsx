@@ -382,6 +382,7 @@ export default function MindChatPage() {
   
   // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [capsuleHeight, setCapsuleHeight] = useState(32) // 小程序胶囊按钮高度
   
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
@@ -542,6 +543,11 @@ export default function MindChatPage() {
     // 初始化安全区域信息
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
+
+    // 获取胶囊按钮高度
+    if (safeArea.capsuleButtonInfo) {
+      setCapsuleHeight(safeArea.capsuleButtonInfo.height)
+    }
   })
 
   useDidShow(() => {
@@ -3663,7 +3669,10 @@ export default function MindChatPage() {
       {/* 顶部导航 */}
       <View
         className="chat-header"
-        style={{ paddingTop: `${statusBarHeight}px` }}
+        style={{
+          paddingTop: `${statusBarHeight}px`,
+          minHeight: `${statusBarHeight + capsuleHeight + 30}px`
+        }}
       >
         <View className="header-left">
           <View className="avatar-info">
@@ -3696,7 +3705,7 @@ export default function MindChatPage() {
         </View>
         <View className="header-right">
           <View className="agent-badge">
-            <Zap size={16} color="#00ff88" />
+            <Zap size={20} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
           </View>
         </View>

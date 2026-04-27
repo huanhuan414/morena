@@ -99,12 +99,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx var(--page-padding);
+  padding: 30rpx var(--page-padding);
+  padding-top: calc(30rpx + env(safe-area-inset-top));
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-  min-height: 88rpx;
+  min-height: calc(128rpx + env(safe-area-inset-top) + 60rpx);
   overflow: hidden;
 }
 
@@ -192,10 +193,10 @@
 }
 
 .avatar-avatar {
-  width: 72rpx;
-  height: 72rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
-  border: 2rpx solid rgba(255, 255, 255, 0.3);
+  border: 3rpx solid rgba(255, 255, 255, 0.3);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
@@ -213,7 +214,7 @@
 }
 
 .avatar-name {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-white);
   line-height: 1.2;
@@ -226,14 +227,14 @@
 }
 
 .status-dot {
-  width: 16rpx;
-  height: 16rpx;
+  width: 20rpx;
+  height: 20rpx;
   background: var(--success);
   border-radius: 50%;
 }
 
 .status-text {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -250,14 +251,14 @@
 .agent-badge {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: var(--space-1) var(--space-2);
+  gap: 10rpx;
+  padding: var(--space-2) var(--space-3);
   background: rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-full);
 }
 
 .agent-badge-text {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--text-white);
 }
