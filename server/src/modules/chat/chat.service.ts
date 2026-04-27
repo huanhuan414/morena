@@ -254,6 +254,7 @@ export class ChatService {
     userId: string,
     avatarId: string,
     content: string,
+    metadata?: any,
     headers?: Record<string, string>
   ) {
     const client = getSupabaseClient()
@@ -306,10 +307,12 @@ export class ChatService {
     const privacyMode = avatar?.config?.privacy_mode ?? false
     const userContent = privacyMode ? this.sanitizeMessage(content) : content
     
+    // 🔴 保存用户消息，包含 metadata（上传的图片/视频）
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
-      content: userContent
+      content: userContent,
+      metadata: metadata || null
     })
     
     const messages = [
@@ -418,6 +421,7 @@ export class ChatService {
     userId: string,
     avatarId: string,
     content: string,
+    metadata?: any,
     headers?: Record<string, string>
   ): AsyncGenerator<any> {
     const client = getSupabaseClient()
@@ -439,10 +443,12 @@ export class ChatService {
     
     yield { type: 'status', data: { stage: 'processing', message: '处理请求中...' } }
     
+    // 🔴 保存用户消息，包含 metadata（上传的图片/视频）
     await client.from('messages').insert({
       conversation_id: conversationId,
       role: 'user',
-      content
+      content,
+      metadata: metadata || null
     })
     
     const messages = [

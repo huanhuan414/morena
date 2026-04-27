@@ -1540,6 +1540,10 @@ export default function MindChatPage() {
     // 发送消息时，确保滚动到底部
     shouldScrollToBottomRef.current = true
 
+    // 🔴 修复：先保存上传的文件到本地变量，再清空状态
+    const currentUploadedImages = [...uploadedImages]
+    const currentUploadedVideos = [...uploadedVideos]
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -1547,8 +1551,8 @@ export default function MindChatPage() {
       created_at: new Date().toISOString(),
       // 🔴 新增：添加上传的图片和视频
       metadata: {
-        uploaded_images: uploadedImages.length > 0 ? uploadedImages : undefined,
-        uploaded_videos: uploadedVideos.length > 0 ? uploadedVideos : undefined
+        uploaded_images: currentUploadedImages.length > 0 ? currentUploadedImages : undefined,
+        uploaded_videos: currentUploadedVideos.length > 0 ? currentUploadedVideos : undefined
       }
     }
 
@@ -1571,20 +1575,20 @@ export default function MindChatPage() {
     try {
       // 🔴 新增：构建任务描述，包含上传的图片和视频
       let enhancedTaskDescription = messageText
-      if (uploadedImages.length > 0) {
-        enhancedTaskDescription += `\n[用户上传了 ${uploadedImages.length} 张图片: ${uploadedImages.join(', ')}]`
+      if (currentUploadedImages.length > 0) {
+        enhancedTaskDescription += `\n[用户上传了 ${currentUploadedImages.length} 张图片: ${currentUploadedImages.join(', ')}]`
       }
-      if (uploadedVideos.length > 0) {
-        enhancedTaskDescription += `\n[用户上传了 ${uploadedVideos.length} 个视频: ${uploadedVideos.join(', ')}]`
+      if (currentUploadedVideos.length > 0) {
+        enhancedTaskDescription += `\n[用户上传了 ${currentUploadedVideos.length} 个视频: ${currentUploadedVideos.join(', ')}]`
       }
 
       // 所有消息都通过新的 Avatar Agent 处理（独立智能体模式）
-      await executeAsAgent(enhancedTaskDescription, uploadedImages, uploadedVideos)
+      await executeAsAgent(enhancedTaskDescription, currentUploadedImages, currentUploadedVideos)
       scrollToBottom()
     } catch (error) {
       console.error('[MindChat] Avatar Agent 执行失败:', error)
-      // 降级为普通对话（暂不修改，保持兼容）
-      await fallbackToNormalChat(messageText)
+      // 降级为普通对话，传递已上传的图片和视频（使用之前保存的本地变量）
+      await fallbackToNormalChat(messageText, currentUploadedImages, currentUploadedVideos)
     } finally {
       console.log('[MindChat] 发送消息完成，重置 loading 状态')
       setLoading(false)
@@ -2011,7 +2015,7 @@ export default function MindChatPage() {
   }
 
   // 降级为普通对话
-  const fallbackToNormalChat = async (content: string) => {
+  const fallbackToNormalChat = async (content: string, images?: string[], videos?: string[]) => {
     try {
       const res = await Network.request({
         url: '/api/chat/send',
@@ -2019,7 +2023,11 @@ export default function MindChatPage() {
         data: {
           conversation_id: conversation?.id,
           avatar_id: avatar?.id,
-          content
+          content,
+          metadata: {
+            uploaded_images: images && images.length > 0 ? images : undefined,
+            uploaded_videos: videos && videos.length > 0 ? videos : undefined
+          }
         }
       })
 

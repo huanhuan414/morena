@@ -49,7 +49,7 @@ export class ChatController {
   @Post('send')
   async sendMessage(
     @Headers('x-user-id') userId: string,
-    @Body() body: { conversation_id: string; avatar_id: string; content: string },
+    @Body() body: { conversation_id: string; avatar_id: string; content: string; metadata?: any },
     @Req() req: any
   ) {
     const headers = req.headers
@@ -58,6 +58,7 @@ export class ChatController {
       userId,
       body.avatar_id,
       body.content,
+      body.metadata,
       headers
     )
     return {
@@ -74,7 +75,7 @@ export class ChatController {
   @Sse('stream')
   async streamMessage(
     @Headers('x-user-id') userId: string,
-    @Body() body: { conversation_id: string; avatar_id: string; content: string },
+    @Body() body: { conversation_id: string; avatar_id: string; content: string; metadata?: any },
     @Req() req: any
   ): Promise<Observable<MessageEvent>> {
     const headers = req.headers
@@ -87,6 +88,7 @@ export class ChatController {
             userId,
             body.avatar_id,
             body.content,
+            body.metadata,
             headers
           )
           
