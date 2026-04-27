@@ -4395,7 +4395,7 @@ export default function MindChatPage() {
                       setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={20} color="#FFFFFF" />
+                    <X size={24} color="#FFFFFF" />
                   </View>
                 </View>
               </View>
@@ -4418,7 +4418,7 @@ export default function MindChatPage() {
                       setUploadedVideos((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={20} color="#FFFFFF" />
+                    <X size={24} color="#FFFFFF" />
                   </View>
                 </View>
               </View>
@@ -4431,9 +4431,9 @@ export default function MindChatPage() {
           {/* 左侧：相机图标 */}
           <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
             {isUploadingImage ? (
-              <Loader size={20} color="#666666" />
+              <Loader size={24} color="#666666" />
             ) : (
-              <Camera size={20} color="#666666" />
+              <Camera size={24} color="#666666" />
             )}
           </View>
 
@@ -4462,8 +4462,8 @@ export default function MindChatPage() {
             autoHeight
             cursorSpacing={80}
             style={{
-              minHeight: '72rpx',
-              maxHeight: '200rpx',
+              minHeight: '88rpx',
+              maxHeight: '240rpx',
               backgroundColor: '#ffffff',
               border: 'none',
               outline: 'none',
@@ -4499,13 +4499,13 @@ export default function MindChatPage() {
                   <Text className="recording-text">{recordingTime}s</Text>
                 </View>
               ) : (
-                <Mic size={20} color="#666666" />
+                <Mic size={24} color="#666666" />
               )}
             </View>
 
             {/* 加号按钮 - 更多功能 */}
             <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={20} color="#666666" />
+              <Wrench size={24} color="#666666" />
             </View>
           </View>
         </View>
