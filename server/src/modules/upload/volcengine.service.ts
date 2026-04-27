@@ -64,7 +64,7 @@ export class VolcengineService {
 
       this.logger.log(`[VolcengineService] StoreKey: ${storeKey}, 扩展名: ${ext}`);
 
-      // 🔴 使用UploadImages方法上传
+      // 🔴 使用UploadImages方法上传（所有格式统一使用UploadImages）
       const uploadRes = await this.client.UploadImages({
         serviceId: this.SHORT_ID,
         fileKeys: [storeKey],
@@ -84,22 +84,19 @@ export class VolcengineService {
 
         this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
 
-        // 🔴 尝试两种URL格式
-        const urlsToTry: { name: string; url: string }[] = [];
+        // 🔴 根据文件类型使用不同的URL格式
+        // PNG文件：使用直接URI格式（测试可以正常访问）
+        // JPG文件：使用直接URI格式（如果不行，再调整）
+        // URI格式：tos-cn-i-699z2ac540/user/xxx.png 或 tos-cn-i-699z2ac540/user/xxx.jpg
+        // URL格式：https://{domain}/{URI}
+        // 只需要将 Uri 中的 user/ 替换为 user%2F（URL编码）
+        const encodedUri = uri.replace('user/', 'user%2F');
+        const directUrl = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
 
-        // 1. 直接URI格式（不带.mf和模板参数）
-        const directUrl = `https://${this.CUSTOM_DOMAIN}/${uri.replace('user/', 'user%2F')}`;
-        urlsToTry.push({ name: '直接URI', url: directUrl });
+        this.logger.log(`[VolcengineService] 返回的URL: ${directUrl}`);
+        this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
 
-        // 2. 用户提供的格式（带.mf和模板参数）
-        const encodedUri = uri.replace('user/', 'user%2F').replace(/\.[^.]+$/, '.mf');
-        const templateUrl = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.${ext}`;
-        urlsToTry.push({ name: '模板URL', url: templateUrl });
-
-        this.logger.log(`[VolcengineService] 尝试的URL列表:`, JSON.stringify(urlsToTry, null, 2));
-
-        // 🔴 先返回直接URI格式，看看是否可以访问
-        return { url: urlsToTry[0].url };
+        return { url: directUrl };
       }
 
       throw new Error('UploadImages返回结果为空');
