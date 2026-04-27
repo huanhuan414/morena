@@ -1354,17 +1354,12 @@ export default function MindChatPage() {
             }
           }
 
-          // 🔴 修复：使用函数式更新确保状态一致性
+          // 🔴 调整：将图片链接添加到输入框中，格式为 Image: [URL]
           if (newImageUrls.length > 0) {
-            console.log('[上传图片] 准备更新状态，新图片URLs:', newImageUrls)
-            setUploadedImages(prev => {
-              const newState = [...prev, ...newImageUrls]
-              console.log('[上传图片] 状态已更新:', {
-                prevLength: prev.length,
-                newLength: newState.length,
-                urls: newState
-              })
-              return newState
+            console.log('[上传图片] 准备更新输入框，新图片URLs:', newImageUrls)
+            setInputText(prev => {
+              const imageText = newImageUrls.map(url => `Image: [${url}]`).join('\n')
+              return prev ? `${prev}\n${imageText}` : imageText
             })
             showToast({
               title: `成功上传 ${newImageUrls.length} 张图片`,
@@ -1441,8 +1436,11 @@ export default function MindChatPage() {
           setUploadProgress(100)
 
           if (uploadData.code === 200 && uploadData.data?.url) {
-            // 🔴 修复：使用函数式更新
-            setUploadedVideos(prev => [...prev, uploadData.data.url])
+            // 🔴 调整：将视频链接添加到输入框中，格式为 Video: [URL]
+            setInputText(prev => {
+              const videoText = `Video: [${uploadData.data.url}]`
+              return prev ? `${prev}\n${videoText}` : videoText
+            })
             showToast({ title: '视频上传成功', icon: 'success' })
           } else {
             showToast({ title: uploadData.message || '上传失败', icon: 'none' })
@@ -1456,16 +1454,6 @@ export default function MindChatPage() {
         }
       }
     })
-  }
-
-  // 🔴 新增：删除上传的图片
-  const handleRemoveImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index))
-  }
-
-  // 🔴 新增：删除上传的视频
-  const handleRemoveVideo = (index: number) => {
-    setUploadedVideos(prev => prev.filter((_, i) => i !== index))
   }
 
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
@@ -1484,7 +1472,9 @@ export default function MindChatPage() {
       uploadedVideos
     })
 
-    if (!messageText.trim() && uploadedImages.length === 0 && uploadedVideos.length === 0) {
+    // 🔴 调整：检查消息是否为空（包含图片/视频链接）
+    const hasImageOrVideo = /Image:\s*\[[^\]]+\]|Video:\s*\[[^\]]+\]/i.test(messageText)
+    if (!messageText.trim() && !hasImageOrVideo) {
       showToast({ title: '请输入消息或上传图片/视频', icon: 'none' })
       return
     }
@@ -1531,14 +1521,35 @@ export default function MindChatPage() {
     // 发送消息时，确保滚动到底部
     shouldScrollToBottomRef.current = true
 
-    // 🔴 修复：先保存上传的文件到本地变量，再清空状态
-    const currentUploadedImages = [...uploadedImages]
-    const currentUploadedVideos = [...uploadedVideos]
+    // 🔴 调整：从输入框中提取图片和视频链接
+    // 提取 Image: [URL] 格式的图片链接
+    const imageMatches = messageText.match(/Image:\s*\[([^\]]+)\]/gi) || []
+    const currentUploadedImages = imageMatches.map(match => {
+      const urlMatch = match.match(/Image:\s*\[([^\]]+)\]/i)
+      return urlMatch ? urlMatch[1] : ''
+    }).filter(url => url)
+
+    // 提取 Video: [URL] 格式的视频链接
+    const videoMatches = messageText.match(/Video:\s*\[([^\]]+)\]/gi) || []
+    const currentUploadedVideos = videoMatches.map(match => {
+      const urlMatch = match.match(/Video:\s*\[([^\]]+)\]/i)
+      return urlMatch ? urlMatch[1] : ''
+    }).filter(url => url)
+
+    // 从消息文本中移除 Image: [URL] 和 Video: [URL] 格式的内容
+    const cleanedMessageText = messageText
+      .replace(/Image:\s*\[[^\]]+\]\n?/gi, '')
+      .replace(/Video:\s*\[[^\]]+\]\n?/gi, '')
+      .trim()
+
+    console.log('[MindChat] 提取的图片链接:', currentUploadedImages)
+    console.log('[MindChat] 提取的视频链接:', currentUploadedVideos)
+    console.log('[MindChat] 清理后的消息文本:', cleanedMessageText)
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: messageText,
+      content: cleanedMessageText,
       created_at: new Date().toISOString(),
       // 🔴 新增：添加上传的图片和视频
       metadata: {
@@ -4483,31 +4494,7 @@ export default function MindChatPage() {
       {/* 底部输入栏 - 有分身时才显示 */}
       {!hasNoAvatar && (
       <View className="input-bar">
-        {/* 图片/视频预览 */}
-        {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
-          <View className="simple-preview-wrapper">
-            {uploadedImages.map((url, i) => (
-              <View key={i} className="simple-preview-item" style={{ border: '2rpx solid red' }}>
-                <Image
-                  src={url}
-                  className="simple-preview-img"
-                  mode="aspectFill"
-                  style={{ width: '160rpx', height: '160rpx', backgroundColor: '#e0e0e0' }}
-                  onLoad={() => console.log('[图片] 加载成功:', i, url.substring(0, 40))}
-                  onError={(e) => console.error('[图片] 加载失败:', i, e)}
-                />
-                <Text className="simple-preview-remove" onClick={() => handleRemoveImage(i)}>×</Text>
-              </View>
-            ))}
-            {uploadedVideos.map((url, i) => (
-              <View key={`v${i}`} className="simple-preview-item">
-                <Video src={url} className="simple-preview-video" controls={false} objectFit="cover" />
-                <Text className="simple-preview-remove" onClick={() => handleRemoveVideo(i)}>×</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
+        {/* 🔴 调整：移除图片预览区域，图片链接显示在输入框中 */}
         {/* 🔴 重新设计：两行布局 - 输入框在上方，按钮在下方 */}
         <View className="input-container">
           {/* 第一行：输入框 */}
@@ -4565,26 +4552,26 @@ export default function MindChatPage() {
             <View className="button-row-left">
               <View className="icon-btn image-btn" onClick={handleUploadImage}>
                 {isUploadingImage ? (
-                  <Loader size={18} color="#10b981" />
+                  <Loader size={20} color="#2196F3" />
                 ) : (
-                  <ImageIcon size={18} color="#10b981" />
+                  <ImageIcon size={20} color="#2196F3" />
                 )}
               </View>
               <View className="icon-btn video-btn" onClick={handleUploadVideo}>
                 {isUploadingVideo ? (
-                  <Loader size={18} color="#f59e0b" />
+                  <Loader size={20} color="#FF9800" />
                 ) : (
-                  <VideoIcon size={18} color="#f59e0b" />
+                  <VideoIcon size={20} color="#FF9800" />
                 )}
               </View>
               <View className="icon-btn skill-btn" onClick={navigateToSkillsSquare}>
-                <Wrench size={18} color="#8b5cf6" />
+                <Wrench size={20} color="#9C27B0" />
               </View>
               <View
                 className={`icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
                 onClick={toggleVoiceMode}
               >
-                <Mic size={18} color={isVoiceMode ? '#ef4444' : '#06b6d4'} />
+                <Mic size={20} color={isVoiceMode ? '#F44336' : '#00BCD4'} />
               </View>
             </View>
 
@@ -4614,11 +4601,11 @@ export default function MindChatPage() {
                         <Text className="recording-text">{recordingTime}s</Text>
                       </>
                     ) : (
-                      <Mic size={18} color="rgba(255,255,255,0.6)" />
+                      <Mic size={20} color="rgba(255,255,255,0.6)" />
                     )}
                   </View>
                 ) : (
-                  <Send size={18} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
+                  <Send size={20} color={inputText.trim() ? '#0a0a0f' : 'rgba(255,255,255,0.4)'} />
                 )}
               </View>
             </View>
