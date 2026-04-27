@@ -16,7 +16,7 @@ import "@/components/exp-popup/index.css"
 import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Send, Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
+  Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
   MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
   Plus, Camera, Play
 } from "lucide-react-taro"
@@ -367,11 +367,11 @@ export default function MindChatPage() {
   const loadingRef = useRef(false)  // 用于在闭包中获取最新的 loading 状态
   const [hasNoAvatar, setHasNoAvatar] = useState(false) // 是否没有分身
   const [showHistory, setShowHistory] = useState(false)
-  const [isVoiceMode, _setIsVoiceMode] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [_recordingTime, setRecordingTime] = useState(0)  // 录音时间（秒）
-  const [_isUploadingVideo, _setIsUploadingVideo] = useState(false)
-  const [_uploadProgress, setUploadProgress] = useState(0)
+  const [recordingTime, setRecordingTime] = useState(0)  // 录音时间（秒）
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploadedVideos, setUploadedVideos] = useState<string[]>([])
   const [learningStats, setLearningStats] = useState<LearningStats>({
     messageCount: 0,
     learningDays: 0,
@@ -450,11 +450,6 @@ export default function MindChatPage() {
     }
   } | null>(null)
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
-
-  // 🔴 新增：上传的图片和视频
-  const [uploadedImages, setUploadedImages] = useState<string[]>([])
-  const [uploadedVideos, setUploadedVideos] = useState<string[]>([])
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   // 发布引导弹窗（用于无 API 的平台）
   const [showPublishGuide, setShowPublishGuide] = useState(false)
@@ -1318,7 +1313,6 @@ export default function MindChatPage() {
         console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
 
         setIsUploadingImage(true)
-        setUploadProgress(0)
 
         try {
           // 逐个上传图片
@@ -1326,9 +1320,6 @@ export default function MindChatPage() {
           for (let i = 0; i < tempFilePaths.length; i++) {
             const tempFilePath = tempFilePaths[i]
             console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
-
-            // 更新上传进度
-            setUploadProgress(Math.round(((i + 1) / tempFilePaths.length) * 100))
 
             // 上传图片到 TOS
             const uploadRes = await Network.uploadFile({
@@ -1376,7 +1367,6 @@ export default function MindChatPage() {
           showToast({ title: '上传失败，请重试', icon: 'none' })
         } finally {
           setIsUploadingImage(false)
-          setTimeout(() => setUploadProgress(0), 1000)
         }
       },
       fail: (error) => {
@@ -4484,29 +4474,36 @@ export default function MindChatPage() {
 
           {/* 右侧：语音和加号图标 */}
           <View className="right-icon-group">
+            {/* 语音按钮 - 按住说话 */}
             <View
-              className={`right-icon-btn voice-btn ${isVoiceMode ? 'active' : ''}`}
-              onClick={() => {
-                if (isVoiceMode) {
-                  // 语音模式下，切换录音状态
-                  if (isRecording) {
-                    stopRecording()
-                  } else {
-                    startRecording()
-                  }
-                } else {
-                  // 普通模式下，发送消息
-                  sendMessage()
+              className={`right-icon-btn voice-btn ${isRecording ? 'recording' : ''}`}
+              onTouchStart={() => {
+                if (!isRecording) {
+                  startRecording()
+                }
+              }}
+              onTouchEnd={() => {
+                if (isRecording) {
+                  stopRecording()
+                }
+              }}
+              onTouchCancel={() => {
+                if (isRecording) {
+                  stopRecording()
                 }
               }}
             >
-              {isVoiceMode ? (
-                <Mic size={20} color="#666666" />
+              {isRecording ? (
+                <View className="recording-indicator">
+                  <View className="recording-pulse" />
+                  <Text className="recording-text">{recordingTime}s</Text>
+                </View>
               ) : (
-                <Send size={20} color="#666666" />
+                <Mic size={20} color="#666666" />
               )}
             </View>
 
+            {/* 加号按钮 - 更多功能 */}
             <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
               <Wrench size={20} color="#666666" />
             </View>

@@ -2122,6 +2122,58 @@
   transform: scale(0.95);
 }
 
+/* 语音按钮录音状态 */
+.right-icon-btn.voice-btn.recording {
+  background: rgba(255, 59, 48, 0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 录音指示器 */
+.recording-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.recording-pulse {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  background: #FF3B30;
+  animation: recordingPulse 1s ease-in-out infinite;
+}
+
+@keyframes recordingPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.recording-text {
+  font-size: 20rpx;
+  color: #FF3B30;
+  font-weight: 500;
+}
+
 /* 底部灰色横线 */
 .bottom-indicator {
   width: 134rpx;
@@ -2129,174 +2181,6 @@
   background: #E5E5E5;
   border-radius: 4rpx;
   margin: 0 auto 20rpx;
-}
-
-/* 上传进度条 */
-.upload-progress-container {
-  margin-bottom: var(--space-3);
-  background: #F8F9FA;
-  border-radius: 12rpx;
-  padding: 16rpx;
-}
-
-.upload-progress-bar {
-  height: 6rpx;
-  background: #E9ECEF;
-  border-radius: 3rpx;
-  overflow: hidden;
-  margin-bottom: 8rpx;
-}
-
-.upload-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #667EEA 0%, #764BA2 100%);
-  border-radius: 3rpx;
-  transition: width 0.3s ease;
-}
-
-.upload-progress-text {
-  font-size: 24rpx;
-  color: #6C757D;
-  margin-top: 0;
-  text-align: center;
-}
-
-/* 按钮行 */
-.button-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: var(--space-2);
-  padding-top: 0;
-  border-top: none;
-}
-
-.button-row-left {
-  display: flex;
-  gap: 12rpx;
-}
-
-.button-row-right {
-  display: flex;
-  align-items: center;
-}
-
-/* 图标按钮 */
-.icon-btn {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #FFFFFF;
-  transition: var(--transition-fast);
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-}
-
-.icon-btn:active {
-  background: #F8F9FA;
-  transform: scale(0.95);
-}
-
-/* 图片按钮 */
-.image-btn {
-  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
-  box-shadow: 0 4rpx 12rpx rgba(33, 150, 243, 0.15);
-}
-
-.image-btn:active {
-  background: linear-gradient(135deg, #BBDEFB 0%, #90CAF9 100%);
-}
-
-/* 视频按钮 */
-.video-btn {
-  background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
-  box-shadow: 0 4rpx 12rpx rgba(255, 152, 0, 0.15);
-}
-
-.video-btn:active {
-  background: linear-gradient(135deg, #FFE0B2 0%, #FFCC80 100%);
-}
-
-/* 技能按钮 */
-.skill-btn {
-  background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
-  box-shadow: 0 4rpx 12rpx rgba(156, 39, 176, 0.15);
-}
-
-.skill-btn:active {
-  background: linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%);
-}
-
-/* 语音按钮 */
-.voice-btn {
-  background: linear-gradient(135deg, #E0F7FA 0%, #B2EBF2 100%);
-  box-shadow: 0 4rpx 12rpx rgba(0, 188, 212, 0.15);
-}
-
-.voice-btn.active {
-  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
-  box-shadow: 0 4rpx 12rpx rgba(244, 67, 54, 0.15);
-}
-
-.voice-btn:active {
-  background: linear-gradient(135deg, #B2EBF2 0%, #80DEEA 100%);
-}
-
-/* 发送按钮 */
-.send-btn {
-  width: 112rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
-  border-radius: 36rpx;
-  transition: var(--transition-fast);
-  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
-}
-
-.send-btn.active {
-  background: linear-gradient(135deg, #764BA2 0%, #667EEA 100%);
-  box-shadow: 0 6rpx 16rpx rgba(102, 126, 234, 0.4);
-}
-
-.send-btn:active {
-  transform: scale(0.95);
-}
-
-/* 录音指示器 */
-.recording-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-}
-
-.recording-pulse {
-  width: 16rpx;
-  height: 16rpx;
-  background: #ef4444;
-  border-radius: 50%;
-  animation: recordingPulse 1s ease-in-out infinite;
-}
-
-@keyframes recordingPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.2);
-  }
-}
-
-.recording-text {
-  font-size: var(--text-sm);
-  color: #ef4444;
-  font-weight: var(--font-semibold);
 }
 
 /* ========================================
