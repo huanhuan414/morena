@@ -691,7 +691,7 @@
 }
 
 .action-btn.remove .btn-content Text {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .btn-content {
