@@ -71,6 +71,13 @@ export class VolcengineService {
       const uploadAddress = applyRes.Result.UploadAddress;
 
       // 2. 上传文件
+      // 🔴 修复：确保文件内容存在
+      if (!file.buffer || file.buffer.length === 0) {
+        throw new Error('文件内容为空');
+      }
+
+      this.logger.log(`[VolcengineService] 开始上传文件，大小: ${file.buffer.length} bytes`);
+
       await this.client.DoUpload(
         [file.buffer],
         uploadAddress.UploadHosts[0],
@@ -99,32 +106,21 @@ export class VolcengineService {
       const result = commitRes.Result.Results[0] as any;
       this.logger.log(`[VolcengineService] 上传结果详情:`, JSON.stringify(result, null, 2));
 
-      // 优先使用API返回的URL
+      // 🔴 优先使用SDK返回的URL（已验证可以访问）
       if (result.Url) {
-        this.logger.log(`[VolcengineService] 使用API返回的URL: ${result.Url}`);
+        this.logger.log(`[VolcengineService] 使用SDK返回的URL: ${result.Url}`);
         return { url: result.Url };
       }
 
-      // 使用URI构建URL
-      const uri = result.Uri;
-      if (!uri) {
-        throw new Error('上传结果中没有URI');
+      // 🔴 如果SDK没有返回URL，使用URI构建
+      if (result.Uri) {
+        const encodedUri = result.Uri.replace('user/', 'user%2F');
+        const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
+        this.logger.log(`[VolcengineService] 使用URI构建的URL: ${url}`);
+        return { url };
       }
 
-      // 🔴 修复：直接使用原始URI构建URL（不使用模板参数）
-      // SDK返回的URI格式: tos-cn-i-699z2ac540/user/19dccf167f87ef0491d7bdf300000000.png
-      // 需要转换为: https://voic.51webjs.com/tos-cn-i-699z2ac540/user%2F19dccf167f87ef0491d7bdf300000000.png
-      // 注意：将 user/ 替换为 user%2F（URL编码），保留原始扩展名
-      const encodedUri = uri.replace('user/', 'user%2F');
-      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
-      
-      this.logger.log(`[VolcengineService] 构建的URL: ${url}`);
-      this.logger.log(`[VolcengineService] 原始URI: ${uri}`);
-
-      // 🔴 打印完整的 result 对象，查看是否有其他字段
-      this.logger.log(`[VolcengineService] 完整result:`, JSON.stringify(result, null, 2));
-      
-      return { url };
+      throw new Error('上传结果中没有URL或URI');
 
     } catch (error: any) {
       this.logger.error(`[VolcengineService] 上传失败:`, error);
