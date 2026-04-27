@@ -150,41 +150,11 @@ export class VolcengineService {
 
   /**
    * 根据MIME类型和文件名获取文件扩展名
+   * 🔴 修复：强制使用PNG格式，因为火山引擎CDN可能只支持PNG格式访问
    */
   private getExtensionFromMime(mimetype?: string, filename?: string): string {
-    // 🔴 优先从文件名中提取扩展名
-    if (filename && filename.includes('.')) {
-      const ext = filename.split('.').pop()?.toLowerCase();
-      const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
-      if (ext && allowedExts.includes(ext)) {
-        return ext;
-      }
-    }
-
-    // 🔴 如果无法从文件名中提取，根据MIME类型判断
-    if (!mimetype) return 'png';
-
-    const mimeToExt: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/jpg': 'jpg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/webp': 'webp',
-      'image/bmp': 'bmp',
-      'image/svg+xml': 'svg',
-      'video/mp4': 'mp4',
-      'video/mpeg': 'mpeg',
-      'video/quicktime': 'mov',
-      'video/x-msvideo': 'avi',
-      'video/x-ms-wmv': 'wmv',
-      'audio/mpeg': 'mp3',
-      'audio/wav': 'wav',
-      'audio/wave': 'wav',
-      'audio/ogg': 'ogg',
-      'audio/x-wav': 'wav',
-      'audio/webm': 'webm',
-    };
-
-    return mimeToExt[mimetype] || 'png';
+    // 🔴 无论原格式是什么，都强制使用PNG格式
+    // 因为火山引擎CDN可能只支持PNG格式访问
+    return 'png';
   }
 }
