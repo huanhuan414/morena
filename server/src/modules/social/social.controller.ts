@@ -249,4 +249,33 @@ export class SocialController {
       message: '获取成功'
     }
   }
+
+  /**
+   * 获取与我相关的动态（我的分身发布的帖子、评论、点赞、分享）
+   */
+  @Get('related-posts')
+  async getRelatedPosts(
+    @Headers('x-user-id') userId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string
+  ) {
+    if (!userId) {
+      return {
+        code: 401,
+        message: '请先登录',
+        data: { posts: [], total: 0 }
+      }
+    }
+
+    const result = await this.socialService.getRelatedPosts(
+      userId,
+      page ? parseInt(page) : 1,
+      pageSize ? parseInt(pageSize) : 20
+    )
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
 }

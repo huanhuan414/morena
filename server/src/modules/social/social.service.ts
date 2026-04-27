@@ -1319,4 +1319,156 @@ export class SocialService {
       total: count || 0
     }
   }
+
+  /**
+   * 获取与我相关的动态
+   * 包括：我的分身发布的帖子、评论的帖子、点赞的帖子、分享的帖子
+   */
+  async getRelatedPosts(userId: string, page = 1, pageSize = 20) {
+    const client = getSupabaseClient()
+
+    try {
+      // 1. 获取用户的所有分身ID
+      const { data: userAvatars } = await client
+        .from('avatars')
+        .select('id, name, avatar_url')
+        .eq('user_id', userId)
+
+      const avatarIds = userAvatars?.map(a => a.id) || []
+      
+      if (avatarIds.length === 0) {
+        return { posts: [], total: 0 }
+      }
+
+      // 2. 获取我的分身发布的帖子
+      const { data: myPosts } = await client
+        .from('posts')
+        .select('*')
+        .in('avatar_id', avatarIds)
+        .order('created_at', { ascending: false })
+
+      // 3. 获取我的分身评论过的帖子ID
+      const { data: myComments } = await client
+        .from('post_comments')
+        .select('post_id, content, created_at')
+        .in('avatar_id', avatarIds)
+        .order('created_at', { ascending: false })
+
+      const commentedPostIds = [...new Set(myComments?.map(c => c.post_id) || [])]
+
+      // 4. 获取我的分身点赞过的帖子ID
+      const { data: myLikes } = await client
+        .from('post_likes')
+        .select('post_id, created_at')
+        .in('avatar_id', avatarIds)
+        .order('created_at', { ascending: false })
+
+      const likedPostIds = [...new Set(myLikes?.map(l => l.post_id) || [])]
+
+      // 5. 获取评论和点赞的帖子详情
+      const relatedPostIds = [...new Set([...commentedPostIds, ...likedPostIds])]
+      
+      let relatedPosts: any[] = []
+      if (relatedPostIds.length > 0) {
+        const { data: posts } = await client
+          .from('posts')
+          .select('*')
+          .in('id', relatedPostIds)
+        
+        relatedPosts = posts || []
+      }
+
+      // 6. 合并所有相关动态并添加类型标记
+      const allActivities: any[] = []
+
+      // 添加发布的帖子
+      myPosts?.forEach(post => {
+        allActivities.push({
+          ...post,
+          activity_type: 'published',
+          activity_text: '发布了帖子'
+        })
+      })
+
+      // 添加评论的帖子
+      myComments?.forEach(comment => {
+        const post = relatedPosts.find(p => p.id === comment.post_id)
+        if (post) {
+          allActivities.push({
+            ...post,
+            activity_type: 'commented',
+            activity_text: `评论：${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`,
+            activity_time: comment.created_at
+          })
+        }
+      })
+
+      // 添加点赞的帖子
+      myLikes?.forEach(like => {
+        // 避免重复添加（如果已经评论过同一条帖子）
+        const exists = allActivities.find(a => 
+          a.id === like.post_id && 
+          (a.activity_type === 'commented' || a.activity_type === 'liked')
+        )
+        if (!exists) {
+          const post = relatedPosts.find(p => p.id === like.post_id)
+          if (post) {
+            allActivities.push({
+              ...post,
+              activity_type: 'liked',
+              activity_text: '点赞了帖子',
+              activity_time: like.created_at
+            })
+          }
+        }
+      })
+
+      // 7. 按时间排序
+      allActivities.sort((a, b) => {
+        const timeA = new Date(a.activity_time || a.created_at).getTime()
+        const timeB = new Date(b.activity_time || b.created_at).getTime()
+        return timeB - timeA
+      })
+
+      // 8. 分页
+      const total = allActivities.length
+      const offset = (page - 1) * pageSize
+      const paginatedActivities = allActivities.slice(offset, offset + pageSize)
+
+      // 9. 补充作者信息
+      const postsWithAuthors = await Promise.all(
+        paginatedActivities.map(async (post: any) => {
+          let authorName = '匿名'
+          let authorAvatar = ''
+
+          if (post.avatar_id) {
+            const { data: avatar } = await client
+              .from('avatars')
+              .select('name, avatar_url')
+              .eq('id', post.avatar_id)
+              .single()
+
+            if (avatar) {
+              authorName = avatar.name
+              authorAvatar = avatar.avatar_url
+            }
+          }
+
+          return {
+            ...post,
+            author_name: authorName,
+            author_avatar: authorAvatar
+          }
+        })
+      )
+
+      return {
+        posts: postsWithAuthors,
+        total
+      }
+    } catch (error) {
+      console.error('获取与我相关的动态失败:', error)
+      return { posts: [], total: 0 }
+    }
+  }
 }

@@ -211,13 +211,14 @@ export default function SocialPage() {
       queryParams.push(`page=${pageNum}`)
       queryParams.push('pageSize=10')
       
-      // 添加排序参数 (related/all)
-      if (activeTab) {
-        queryParams.push(`sort=${activeTab}`)
-      }
+      // 根据 tab 选择不同的接口
+      const isRelatedTab = activeTab === 'related'
+      const apiUrl = isRelatedTab 
+        ? '/api/social/related-posts'
+        : '/api/social/all-posts'
       
       const res = await Network.request({
-        url: `/api/social/all-posts?${queryParams.join('&')}`
+        url: `${apiUrl}?${queryParams.join('&')}`
       })
       if (res.data?.code === 200) {
         const data = res.data.data
