@@ -83,10 +83,16 @@ export class VolcengineService {
           return { url: result.Url };
         }
         
-        // 2. 使用URI构建URL
+        // 2. 使用URI构建正确的访问URL
+        // 🔴 修复：正确的格式是 {domain}/{serviceId}/user%2F{file}.mf~tplv-{shortId}-image.png
         const uri = result.Uri;
         if (uri) {
-          const url = `https://${domain}/${uri}`;
+          // 从URI中提取文件名部分
+          const fileName = uri.split('/').pop();
+          // 提取 serviceId 的短ID部分 (如 tos-cn-i-699z2ac540 -> 699z2ac540)
+          const shortId = serviceId.split('-').pop();
+          // 构建正确的访问URL格式
+          const url = `https://${domain}/${serviceId}/user%2F${fileName}.mf~tplv-${shortId}-image.png`;
           this.logger.log(`[VolcengineService] 使用URI构建URL: ${url}`);
           return { url };
         }
