@@ -4487,8 +4487,15 @@ export default function MindChatPage() {
         {(uploadedImages.length > 0 || uploadedVideos.length > 0) && (
           <View className="simple-preview-wrapper">
             {uploadedImages.map((url, i) => (
-              <View key={i} className="simple-preview-item">
-                <Image src={url} className="simple-preview-img" mode="aspectFill" />
+              <View key={i} className="simple-preview-item" style={{ border: '2rpx solid red' }}>
+                <Image
+                  src={url}
+                  className="simple-preview-img"
+                  mode="aspectFill"
+                  style={{ width: '160rpx', height: '160rpx', backgroundColor: '#e0e0e0' }}
+                  onLoad={() => console.log('[图片] 加载成功:', i, url.substring(0, 40))}
+                  onError={(e) => console.error('[图片] 加载失败:', i, e)}
+                />
                 <Text className="simple-preview-remove" onClick={() => handleRemoveImage(i)}>×</Text>
               </View>
             ))}
