@@ -2049,11 +2049,11 @@
   border-radius: 50%;
 }
 
-/* 输入容器 - 一行布局，独立组件，左右对齐 */
+/* 输入容器 - 一行布局，独立组件，左右对齐，占据全屏宽度 */
 .input-container {
   display: flex;
   align-items: center;
-  padding: 16rpx 32rpx;
+  padding: 12rpx 32rpx;
   margin: 0;
   background: transparent;
   border-radius: 0;
@@ -2062,8 +2062,8 @@
 
 /* 左侧图标按钮 */
 .left-icon-btn {
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -2077,27 +2077,26 @@
   transform: scale(0.95);
 }
 
-/* 文本输入框 */
+/* 文本输入框 - 占据全屏宽度 */
 .input-textarea {
   flex: 1;
-  max-width: 800rpx;
-  min-height: 120rpx;
-  max-height: 300rpx;
-  font-size: 36rpx;
+  min-height: 80rpx;
+  max-height: 200rpx;
+  font-size: 32rpx;
   color: #333333;
-  line-height: 1.6;
+  line-height: 1.5;
   background: #F5F5F5;
   border: none;
-  border-radius: 28rpx;
+  border-radius: 20rpx;
   outline: none;
-  padding: 16rpx 24rpx;
+  padding: 14rpx 20rpx;
   margin: 0 16rpx;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .input-placeholder {
   color: #C0C0C0;
-  font-size: 36rpx;
+  font-size: 32rpx;
 }
 
 /* 右侧图标组 */
@@ -2110,8 +2109,8 @@
 
 /* 右侧图标按钮 */
 .right-icon-btn {
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2144,12 +2143,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6rpx;
+  gap: 4rpx;
 }
 
 .recording-pulse {
-  width: 28rpx;
-  height: 28rpx;
+  width: 24rpx;
+  height: 24rpx;
   border-radius: 50%;
   background: #FF3B30;
   animation: recordingPulse 1s ease-in-out infinite;
@@ -2161,7 +2160,7 @@
     opacity: 1;
   }
   50% {
-    transform: scale(1.3);
+    transform: scale(1.25);
     opacity: 0.8;
   }
   100% {
@@ -2171,7 +2170,7 @@
 }
 
 .recording-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #FF3B30;
   font-weight: 500;
 }

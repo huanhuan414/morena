@@ -4431,9 +4431,9 @@ export default function MindChatPage() {
           {/* 左侧：相机图标 */}
           <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
             {isUploadingImage ? (
-              <Loader size={24} color="#666666" />
+              <Loader size={22} color="#666666" />
             ) : (
-              <Camera size={24} color="#666666" />
+              <Camera size={22} color="#666666" />
             )}
           </View>
 
@@ -4462,8 +4462,8 @@ export default function MindChatPage() {
             autoHeight
             cursorSpacing={80}
             style={{
-              minHeight: '120rpx',
-              maxHeight: '300rpx',
+              minHeight: '80rpx',
+              maxHeight: '200rpx',
               padding: 0,
               borderRadius: 0
             }}
@@ -4496,13 +4496,13 @@ export default function MindChatPage() {
                   <Text className="recording-text">{recordingTime}s</Text>
                 </View>
               ) : (
-                <Mic size={24} color="#666666" />
+                <Mic size={22} color="#666666" />
               )}
             </View>
 
             {/* 加号按钮 - 更多功能 */}
             <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={24} color="#666666" />
+              <Wrench size={22} color="#666666" />
             </View>
           </View>
         </View>
