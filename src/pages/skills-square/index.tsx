@@ -914,110 +914,12 @@ export default function SkillsSquare() {
         </View>
       </View>
 
-      {/* 短剧创作套件和分身秩序（只在无搜索时显示） */}
-      {!searchKeyword && (
+      {/* 短剧创作套件和分身秩序（已隐藏） */}
+      {false && !searchKeyword && (
         <View className="special-cards">
-          {/* 短剧创作套件 */}
-          <View className="special-card drama-kit" onClick={() => setShowKitDialog(true)}>
-            <View className="special-header">
-              <View className="special-icon-large">{SHORT_DRAMA_KIT.icon}</View>
-              <View className="special-badge">🔥 热门</View>
-            </View>
-            <View className="special-content">
-              <Text className="special-title">{SHORT_DRAMA_KIT.name}</Text>
-              <Text className="special-desc">{SHORT_DRAMA_KIT.description}</Text>
-              <Text className="special-tip">📌 已包含8个短剧核心技能，无需单独添加</Text>
-              <View className="special-skills">
-                {SHORT_DRAMA_KIT.skills.slice(0, 4).map((skill, idx) => (
-                  <View key={idx} className="mini-skill-tag">
-                    <Text className="mini-skill-text">{skill.replace(/_/g, ' ')}</Text>
-                  </View>
-                ))}
-                {SHORT_DRAMA_KIT.skills.length > 4 && (
-                  <View className="mini-skill-tag more">
-                    <Text className="mini-skill-text">+{SHORT_DRAMA_KIT.skills.length - 4}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <View className="special-footer">
-              <View className="special-stats">
-                <Star size={14} color="#ffb800" />
-                <Text className="special-stat-value">{SHORT_DRAMA_KIT.rating}</Text>
-                <Text className="special-stat-label">({SHORT_DRAMA_KIT.purchase_count}人使用)</Text>
-              </View>
-              <View className="special-action">
-                <Text className="special-action-text">一键添加</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 分身秩序 */}
-          <View className="special-card agent-order" onClick={() => setShowOrderDialog(true)}>
-            <View className="special-header">
-              <View className="special-icon-large">{AGENT_ORDER_SKILL.icon}</View>
-              <View className="special-badge ai">🤖 AI协作</View>
-            </View>
-            <View className="special-content">
-              <Text className="special-title">{AGENT_ORDER_SKILL.name}</Text>
-              <Text className="special-desc">{AGENT_ORDER_SKILL.description}</Text>
-              <View className="special-features">
-                <View className="feature-item">
-                  <Text className="feature-icon">⚡</Text>
-                  <Text className="feature-text">智能编排</Text>
-                </View>
-                <View className="feature-item">
-                  <Text className="feature-icon">🎬</Text>
-                  <Text className="feature-text">一键成品</Text>
-                </View>
-                <View className="feature-item">
-                  <Text className="feature-icon">🤝</Text>
-                  <Text className="feature-text">分身协作</Text>
-                </View>
-              </View>
-            </View>
-            <View className="special-footer">
-              <View className="special-stats">
-                <Star size={14} color="#ffb800" />
-                <Text className="special-stat-value">{AGENT_ORDER_SKILL.rating}</Text>
-                <Text className="special-stat-label">({AGENT_ORDER_SKILL.purchase_count}人使用)</Text>
-              </View>
-              <View className="special-action ai">
-                <Text className="special-action-text">立即体验</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 个人IP打造 */}
-          <View className="special-card personal-ip" onClick={() => handlePurchasePersonalIpKit()}>
-            <View className="special-header">
-              <View className="special-icon-large">{PERSONAL_IP_KIT.icon}</View>
-              <View className="special-badge ip">🌟 个人IP</View>
-            </View>
-            <View className="special-content">
-              <Text className="special-title">{PERSONAL_IP_KIT.name}</Text>
-              <Text className="special-desc">{PERSONAL_IP_KIT.description}</Text>
-              <Text className="special-tip">📌 已包含3个核心技能：视频生成、字幕、背景音乐</Text>
-              <View className="special-skills">
-                {PERSONAL_IP_KIT.skills.map((skill, idx) => (
-                  <View key={idx} className="mini-skill-tag">
-                    <Text className="mini-skill-text">{skill.replace(/_/g, ' ')}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-            <View className="special-footer">
-              <View className="special-stats">
-                <Star size={14} color="#ffb800" />
-                <Text className="special-stat-value">{PERSONAL_IP_KIT.rating}</Text>
-                <Text className="special-stat-label">({PERSONAL_IP_KIT.purchase_count}人使用)</Text>
-              </View>
-              <View className="special-action ip">
-                <Text className="special-action-text">一键添加</Text>
-              </View>
-            </View>
-          </View>
-
+          {/* 短剧创作套件 - 已隐藏 */}
+          {/* 分身秩序 - 已隐藏 */}
+          {/* 个人IP打造 - 已隐藏 */}
         </View>
       )}
 
