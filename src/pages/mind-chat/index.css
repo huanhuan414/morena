@@ -2080,6 +2080,7 @@
 /* 文本输入框 */
 .input-textarea {
   flex: 1;
+  max-width: 800rpx;
   min-height: 120rpx;
   max-height: 300rpx;
   font-size: 36rpx;
