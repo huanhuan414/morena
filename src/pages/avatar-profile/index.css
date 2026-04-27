@@ -1,7 +1,7 @@
 /* 页面容器 */
 .avatar-profile-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, rgba(123,63,228,0.95) 0%, rgba(123,63,228,0.8) 240rpx, #F8F7FC 240rpx);
+  background: linear-gradient(180deg, #7B3FE4 0%, #7B3FE4 240rpx, #F8F7FC 240rpx);
   padding-top: 120rpx;
 }
 
@@ -18,8 +18,7 @@
   padding: 0 32rpx;
   padding-top: var(--status-bar-height, 0);
   z-index: 100;
-  background: linear-gradient(180deg, rgba(123,63,228,0.95) 0%, rgba(123,63,228,0.8) 100%);
-  backdrop-filter: blur(12rpx);
+  background: #7B3FE4;
 }
 
 .header-back {
