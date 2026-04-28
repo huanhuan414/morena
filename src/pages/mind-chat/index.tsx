@@ -3768,7 +3768,7 @@ export default function MindChatPage() {
         )}
         
         {/* 详细内容 - 始终显示 */}
-        <ScrollView className="learn-panel-content" scrollY style={{ height: '300rpx' }}>
+        <ScrollView className="learn-panel-content" scrollY style={{ maxHeight: '200rpx' }}>
         
         {/* 风格匹配度 */}
         {(learningStats.styleMatch || 0) > 0 && (
