@@ -34,6 +34,11 @@ export default defineAppConfig({
     'pages/order-create/index',
     'pages/order-detail/index',
     'pages/order-matching/index',
+    'pages/order-acceptance/index',
+    'pages/order-content-creation/index',
+    'pages/order-feedback/index',
+    'pages/order-processing/index',
+    'pages/order-publish-feedback/index',
     'pages/avatar-orders/index'
   ],
   window: {
