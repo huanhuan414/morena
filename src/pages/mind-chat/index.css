@@ -2059,6 +2059,15 @@
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
+/* 左侧图标组 */
+.left-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+  padding-right: 8rpx;
+}
+
 /* 左侧图标按钮 */
 .left-icon-btn {
   width: 64rpx;
@@ -2093,9 +2102,20 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* 录音时输入框样式 */
+.input-textarea[placeholder*="录音中..."] {
+  color: #FF3B30;
+  font-weight: 500;
+}
+
 .input-placeholder {
   color: #C0C0C0;
   font-size: 32rpx;
+}
+
+.input-placeholder.recording {
+  color: #FF3B30;
+  font-weight: 500;
 }
 
 /* 右侧图标组 */
@@ -2120,6 +2140,22 @@
 .right-icon-btn:active {
   background: #E5E5E5;
   transform: scale(0.95);
+}
+
+/* 发送按钮 */
+.send-btn {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  transition: all 0.2s;
+}
+
+.send-btn:active {
+  transform: scale(0.9);
 }
 
 /* 语音按钮录音状态 */

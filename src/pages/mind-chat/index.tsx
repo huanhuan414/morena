@@ -18,8 +18,8 @@ import { toast } from "@/components/ui/toast"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Sparkles, Bot, Copy, X, Brain, TrendingUp, Award, Target,
-  MessageCircle, Mic, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
-  Plus, Camera, Play
+  MessageCircle, Loader, Zap, Check, Download, ChevronDown, User, Wrench,
+  Plus, Camera, Play, Send
 } from "lucide-react-taro"
 import '../../styles/variables.css'
 import "./index.css"
@@ -4425,23 +4425,28 @@ export default function MindChatPage() {
           </View>
         )}
 
-        {/* 🔴 一行布局 - 左侧相机图标，中间输入框，右侧语音和加号图标 */}
+        {/* 🔴 一行布局 - 左侧相机和技能图标，中间输入框，右侧发送按钮 */}
         <View className="input-container">
-          {/* 左侧：相机图标 */}
-          <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
-            {isUploadingImage ? (
-              <Loader size={20} color="#666666" />
-            ) : (
-              <Camera size={20} color="#666666" />
-            )}
+          {/* 左侧：相机和技能图标 */}
+          <View className="left-icon-group">
+            <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
+              {isUploadingImage ? (
+                <Loader size={20} color="#666666" />
+              ) : (
+                <Camera size={20} color="#666666" />
+              )}
+            </View>
+            <View className="left-icon-btn skill-btn" onClick={navigateToSkillsSquare}>
+              <Wrench size={20} color="#666666" />
+            </View>
           </View>
 
-          {/* 中间：输入框 */}
+          {/* 中间：输入框 - 支持长按录音 */}
           <Textarea
             ref={textareaRef}
             className="input-textarea"
-            placeholder="发消息或按住说话..."
-            placeholderClass="input-placeholder"
+            placeholder={isRecording ? `录音中... ${recordingTime}s` : "发消息或按住说话..."}
+            placeholderClass={`input-placeholder ${isRecording ? 'recording' : ''}`}
             value={inputText}
             maxlength={1000}
             onInput={(e: any) => {
@@ -4460,44 +4465,30 @@ export default function MindChatPage() {
             adjustPosition
             autoHeight
             cursorSpacing={80}
+            onTouchStart={() => {
+              // 只有输入框为空时，长按才触发录音
+              if (!inputText && !isRecording) {
+                startRecording()
+              }
+            }}
+            onTouchEnd={() => {
+              if (isRecording) {
+                stopRecording()
+              }
+            }}
+            onTouchCancel={() => {
+              if (isRecording) {
+                stopRecording()
+              }
+            }}
           />
 
-          {/* 右侧：语音和加号图标 */}
-          <View className="right-icon-group">
-            {/* 语音按钮 - 按住说话 */}
-            <View
-              className={`right-icon-btn voice-btn ${isRecording ? 'recording' : ''}`}
-              onTouchStart={() => {
-                if (!isRecording) {
-                  startRecording()
-                }
-              }}
-              onTouchEnd={() => {
-                if (isRecording) {
-                  stopRecording()
-                }
-              }}
-              onTouchCancel={() => {
-                if (isRecording) {
-                  stopRecording()
-                }
-              }}
-            >
-              {isRecording ? (
-                <View className="recording-indicator">
-                  <View className="recording-pulse" />
-                  <Text className="recording-text">{recordingTime}s</Text>
-                </View>
-              ) : (
-                <Mic size={20} color="#666666" />
-              )}
+          {/* 右侧：发送按钮 */}
+          {inputText.trim() && (
+            <View className="send-btn" onClick={() => sendMessage()}>
+              <Send size={20} color="#6366f1" />
             </View>
-
-            {/* 加号按钮 - 更多功能 */}
-            <View className="right-icon-btn more-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={20} color="#666666" />
-            </View>
-          </View>
+          )}
         </View>
 
         {/* 底部灰色横线 */}
