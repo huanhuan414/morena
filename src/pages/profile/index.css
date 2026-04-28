@@ -507,14 +507,13 @@
 
 .pending-dialog-content {
   max-height: 600rpx;
-  padding: var(--space-3);
 }
 
 .pending-request-card {
   background: var(--bg-page);
   border-radius: var(--radius-base);
   padding: var(--space-4);
-  margin-bottom: var(--space-3);
+  margin: var(--space-3);
 }
 
 .request-header {
