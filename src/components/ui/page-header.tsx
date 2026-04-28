@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './page-header.css'
 
 interface PageHeaderProps {
@@ -30,20 +31,9 @@ export function PageHeader({
   const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   useEffect(() => {
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
-    // 获取胶囊按钮位置信息
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      // 胶囊按钮宽度 = 右侧到屏幕右边缘的距离 * 2 + 胶囊按钮宽度
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
-    } else {
-      // 默认宽度
-      setCapsuleWidth(160)
-    }
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
+    setCapsuleWidth(safeArea.placeholderWidth)
   }, [])
 
   const handleBack = () => {

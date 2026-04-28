@@ -116,6 +116,7 @@ const PopoverContent = React.forwardRef<
                 return { width: window.innerWidth, height: window.innerHeight }
             }
             try {
+                // 在小程序环境中，使用 Taro 的 API
                 const info = Taro.getSystemInfoSync()
                 return { width: info.windowWidth, height: info.windowHeight }
             } catch {

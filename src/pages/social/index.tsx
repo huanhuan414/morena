@@ -98,9 +98,14 @@ export default function SocialPage() {
 
   useLoad(() => {
     if (getEnv() === ENV_TYPE.WEAPP) {
-      showShareMenu({
-        withShareTicket: true
-      } as any)
+      try {
+        showShareMenu({
+          withShareTicket: true
+        } as any)
+      } catch (error) {
+        // showShareMenu 可能因为小程序配置限制而失败，忽略此错误
+        console.log('分享菜单配置失败，不影响其他功能:', error)
+      }
     }
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)

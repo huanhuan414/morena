@@ -1,7 +1,8 @@
 import { View, Text } from '@tarojs/components'
-import { navigateBack, getSystemInfoSync } from '@tarojs/taro'
+import { navigateBack } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface CustomNavBarProps {
@@ -23,8 +24,8 @@ export function CustomNavBar({
   const [capsuleHeight, setCapsuleHeight] = useState(44)
 
   useEffect(() => {
-    const systemInfo = getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
     // 胶囊按钮高度一般为 32px，但在不同平台可能不同
     setCapsuleHeight(44)
   }, [])
