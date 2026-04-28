@@ -3701,14 +3701,14 @@ export default function MindChatPage() {
         </View>
       </View>
 
-      {/* 心智成长面板 - 有分身时才显示 */}
+      {/* 分身成长面板 - 有分身时才显示 */}
       {!hasNoAvatar && (
       <View className="learn-panel" style={{ '--mastery-level': `${learningStats.masteryLevel}%` } as React.CSSProperties}>
         {/* 背景进度填充 */}
         <View className="learn-panel-bg-fill" />
         <View className="learn-panel-header">
           <Brain size={20} color="#7B3FE4" />
-          <Text className="learn-panel-title">心智成长</Text>
+          <Text className="learn-panel-title">分身成长</Text>
         </View>
         
         <View className="learn-stats-row">
