@@ -4,6 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
+import { getSafeArea } from '@/utils/safe-area'
 import { Clock, Loader, Check, X, Smartphone, Sparkles, Zap, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
@@ -51,8 +52,13 @@ export default function OrderProcessingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     if (requestId && avatarId && orderId) {
       console.log('[OrderProcessing] 页面加载，参数:', { requestId, avatarId, orderId })
       startPolling()
@@ -407,7 +413,7 @@ export default function OrderProcessingPage() {
           <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
         <Text className="header-title block">订单处理</Text>
-        <View className="header-right" />
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       <ScrollView className="page-scroll" scrollY>

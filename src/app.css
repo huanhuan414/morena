@@ -330,8 +330,8 @@ input, textarea {
 
 /* ========== 全局页面头部适配 - H5/小程序兼容 ========== */
 
-/* 所有 page-header 适配状态栏和右侧胶囊 */
+/* 所有 page-header 适配状态栏 */
+/* 注意：右侧胶囊避让需要在各个页面中通过 JS 动态计算并设置 padding-right */
 .page-header {
   padding-top: calc(env(safe-area-inset-top) + 40rpx) !important;
-  padding-right: calc(env(safe-area-inset-right) + 32rpx) !important;
 }
