@@ -256,7 +256,7 @@ export default function OrderListPage() {
                 className={`filter-btn ${showFilter ? 'active' : ''}`}
                 onClick={() => setShowFilter(!showFilter)}
               >
-                <SlidersHorizontal size={18} color={showFilter ? '#00f5ff' : '#fff'} />
+                <SlidersHorizontal size={18} color="#fff" />
               </View>
               <View
                 className="add-btn"
