@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Image, Video } from "@tarojs/components"
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, navigateTo } from "@tarojs/taro"
+import { getSafeArea } from '@/utils/safe-area'
 import { useState, useRef, useEffect } from "react"
 import * as Network from "@/network"
 import { useUserStore } from "@/stores/user"
@@ -379,6 +380,9 @@ export default function MindChatPage() {
     styleMatch: 0
   })
 
+  // 安全区域适配
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
   const [learningProgress, setLearningProgress] = useState<{
@@ -531,6 +535,10 @@ export default function MindChatPage() {
   }
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
     }
@@ -3685,7 +3693,7 @@ export default function MindChatPage() {
             )}
           </View>
         </View>
-        <View className="header-right">
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
