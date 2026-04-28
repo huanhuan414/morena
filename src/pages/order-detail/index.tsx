@@ -1,4 +1,5 @@
 import { useLoad, useRouter, navigateBack, showToast, navigateTo } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Badge } from '@/components/ui/badge'
@@ -38,8 +39,13 @@ export default function OrderDetail() {
   const { id } = router.params
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     if (id) {
       fetchOrder()
     }
@@ -117,7 +123,7 @@ export default function OrderDetail() {
           <ArrowLeft size={36} color="#7B3FE4" />
         </View>
         <Text className="header-title">订单详情</Text>
-        <View className="header-right" />
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       {/* 内容区域 */}

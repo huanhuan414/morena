@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, navigateBack } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -81,6 +82,13 @@ export default function AvatarCreatePage() {
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
   const [skillsFromSquare, setSkillsFromSquare] = useState<any[]>([])
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+
+  useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+  })
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -1126,7 +1134,7 @@ export default function AvatarCreatePage() {
             <Text className="header-title">创建AI分身</Text>
             <Text className="header-subtitle">上传照片，AI为你生成分身</Text>
           </View>
-          <View className="header-placeholder" />
+          <View className="header-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
         </View>
 
         {/* 进度条 */}

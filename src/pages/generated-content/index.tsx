@@ -1,4 +1,5 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import { useState } from 'react'
 import { View, Text, ScrollView, RichText } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -60,8 +61,13 @@ export default function GeneratedContentPage() {
   const [selectedContent, setSelectedContent] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState('')
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     if (requestId && avatarId) {
       fetchGeneratedContent()
     } else {
@@ -158,7 +164,7 @@ export default function GeneratedContentPage() {
             <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
           </View>
           <Text className="header-title">生成内容</Text>
-          <View className="header-right" />
+          <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
         </View>
 
         <View className="loading-wrapper">
@@ -182,7 +188,7 @@ export default function GeneratedContentPage() {
           <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
         <Text className="header-title">生成内容</Text>
-        <View className="header-right" />
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       {contents.length === 0 ? (

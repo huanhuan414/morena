@@ -1,4 +1,5 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -56,8 +57,13 @@ export default function OrderAcceptance() {
   const [showApprove, setShowApprove] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     if (orderId) {
       fetchAvatars()
     }
@@ -221,7 +227,7 @@ export default function OrderAcceptance() {
             <ArrowLeft size={22} color="#1e293b" />
           </View>
           <Text className="header-title text-base font-semibold">验收详情</Text>
-          <View className="header-btn" />
+          <View className="header-btn" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
         </View>
 
         {/* 内容 */}
@@ -433,7 +439,7 @@ export default function OrderAcceptance() {
           <ArrowLeft size={22} color="#1e293b" />
         </View>
         <Text className="header-title text-base font-semibold">验收中</Text>
-        <View className="header-btn" />
+        <View className="header-btn" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       {/* 进度指示 */}

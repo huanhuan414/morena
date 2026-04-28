@@ -1,4 +1,5 @@
 import Taro, { useLoad, useRouter, navigateBack, navigateTo } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import { ArrowLeft, Loader, Check, Sparkles, Smartphone, RefreshCw, Clock } from 'lucide-react-taro'
@@ -57,10 +58,15 @@ export default function OrderContentCreationPage() {
   const [isTimeout, setIsTimeout] = useState(false) // 是否超时
   const [isRefreshing, setIsRefreshing] = useState(false) // 是否正在刷新
   const [elapsedTimeInterval, setElapsedTimeInterval] = useState<NodeJS.Timeout | null>(null)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
   const pollCountRef = useRef(0) // 使用 ref 存储轮询次数，避免触发重新渲染
   const MAX_POLL_COUNT = 300 // 最大轮询次数（5分钟）
 
   useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
     console.log('[OrderContentCreation] 页面加载，参数:', { requestId, avatarId, orderId })
     if (!requestId || !avatarId || !orderId) {
       Taro.showToast({ title: '参数错误', icon: 'none' })
@@ -545,7 +551,7 @@ export default function OrderContentCreationPage() {
           <ArrowLeft size={20} color="#475569" />
         </View>
         <Text className="header-title block">制作内容</Text>
-        <View className="header-right" />
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       <ScrollView className="page-scroll" scrollY enableFlex>

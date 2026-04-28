@@ -1,6 +1,7 @@
 import { View, Text, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
-import { navigateBack, showToast } from '@tarojs/taro'
+import { navigateBack, showToast, useLoad } from '@tarojs/taro'
+import { getSafeArea } from '@/utils/safe-area'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -16,6 +17,13 @@ export default function SkillTrainingPage() {
     description: string
     category: string
   } | null>(null)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+
+  useLoad(() => {
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+  })
 
   // 生成技能
   const handleGenerateSkill = async () => {
@@ -90,7 +98,7 @@ export default function SkillTrainingPage() {
           <ArrowLeft size={36} color="#7B3FE4" />
         </View>
         <Text className="header-title">训练专属技能</Text>
-        <View className="header-right" />
+        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
       <ScrollView className="content-scroll" scrollY>
