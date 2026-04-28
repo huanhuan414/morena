@@ -17,7 +17,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 32rpx;
+  padding: 44rpx 32rpx 24rpx;
+  padding-top: calc(44rpx + constant(safe-area-inset-top));
+  padding-top: calc(44rpx + env(safe-area-inset-top));
   background: var(--card);
   border-bottom: 1rpx solid var(--border);
   position: sticky;
