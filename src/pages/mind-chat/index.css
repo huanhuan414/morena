@@ -2052,6 +2052,7 @@
   display: flex;
   align-items: center;
   padding: 16rpx 20rpx;
+  margin: 0 var(--page-padding);
   background: #FFFFFF;
   border-radius: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
