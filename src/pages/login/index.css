@@ -457,6 +457,7 @@
     0 2rpx 8rpx rgba(0, 0, 0, 0.08);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-top: 16rpx;
+  z-index: 1;
 }
 
 .submit-btn:active {
@@ -475,6 +476,8 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transform: translateX(-100%);
   animation: btnShine 2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
 }
 
 @keyframes btnShine {
@@ -482,13 +485,24 @@
   50%, 100% { transform: translateX(100%); }
 }
 
+.btn-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  pointer-events: none;
+}
+
 .btn-text {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   font-size: 32rpx;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5rpx;
+  pointer-events: none;
 }
 
 /* ============================================

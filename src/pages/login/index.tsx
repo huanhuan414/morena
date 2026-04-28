@@ -1,11 +1,12 @@
 import { View, Text } from '@tarojs/components'
 import { useState, useEffect } from 'react'
-import { switchTab, showToast, getCurrentInstance, getSystemInfoSync } from '@tarojs/taro'
+import { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Sparkles, Phone, Shield, ChevronRight, Gift } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 export default function LoginPage() {
@@ -21,8 +22,8 @@ export default function LoginPage() {
 
   // 获取状态栏高度
   useEffect(() => {
-    const systemInfo = getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    const safeArea = getSafeArea()
+    setStatusBarHeight(safeArea.statusBarHeight)
   }, [])
 
   // 从页面参数中获取邀请码
@@ -270,8 +271,10 @@ export default function LoginPage() {
             disabled={loading}
           >
             <View className="btn-bg" />
-            <Text className="btn-text">{loading ? '登录中...' : '登录 / 注册'}</Text>
-            {!loading && <ChevronRight size={20} color="#0a0a0f" />}
+            <View className="btn-content">
+              <Text className="btn-text">{loading ? '登录中...' : '登录 / 注册'}</Text>
+              {!loading && <ChevronRight size={20} color="#0a0a0f" />}
+            </View>
           </Button>
         </View>
 
