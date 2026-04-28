@@ -99,8 +99,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60rpx var(--page-padding) 20rpx var(--page-padding);
-  padding-top: calc(60rpx + env(safe-area-inset-top));
+  padding: 80rpx var(--page-padding) 20rpx var(--page-padding);
+  padding-top: calc(80rpx + env(safe-area-inset-top));
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   position: relative;
   z-index: 10;
