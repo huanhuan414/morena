@@ -501,8 +501,10 @@ export default function SocialPage() {
   }
 
   const handleAvatarClick = (post: Post) => {
-    if (post.avatar_id) {
-      navigateToAvatarProfile(post.avatar_id)
+    // 检查 post.avatar_id 或 post.user_id
+    const avatarId = post.avatar_id || post.user_id
+    if (avatarId) {
+      navigateToAvatarProfile(avatarId)
     }
   }
 
@@ -837,8 +839,8 @@ export default function SocialPage() {
                   {/* 互动按钮 */}
                   <View className="post-actions">
                     <View className="action-btn" onClick={() => likePost(post.id)}>
-                      <Heart 
-                        size={20} 
+                      <Heart
+                        size={28}
                         color={post.is_liked ? '#ff6b6b' : '#666666'}
                       />
                       <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
@@ -855,11 +857,11 @@ export default function SocialPage() {
                         setActivePostId(activePostId === post.id ? null : post.id)
                       }}
                     >
-                      <MessageCircle size={20} color="#666666" />
+                      <MessageCircle size={28} color="#666666" />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
                     <View className="action-btn" onClick={() => handleShare(post.id)}>
-                      <Share2 size={20} color="#666666" />
+                      <Share2 size={28} color="#666666" />
                       <Text className="action-count">{post.shares_count || 0}</Text>
                     </View>
                   </View>
@@ -898,7 +900,14 @@ export default function SocialPage() {
                     <View className="comments-section">
                       {post.comments.map(comment => (
                         <View key={comment.id} className="comment-item">
-                          <View className="comment-avatar">
+                          <View
+                            className="comment-avatar"
+                            onClick={() => {
+                              if (comment.avatar_id) {
+                                navigateToAvatarProfile(comment.avatar_id)
+                              }
+                            }}
+                          >
                             {comment.user_avatar && comment.user_avatar.startsWith('http') ? (
                               <Image src={comment.user_avatar} style={{ width: '100%', height: '100%', borderRadius: '50%' }} mode="aspectFill" />
                             ) : (
