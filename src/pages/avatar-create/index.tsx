@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, getSystemInfoSync, navigateBack } from '@tarojs/taro'
+import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, navigateBack } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
@@ -81,13 +81,8 @@ export default function AvatarCreatePage() {
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
   const [skillsFromSquare, setSkillsFromSquare] = useState<any[]>([])
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useEffect(() => {
-    // 获取状态栏高度
-    const systemInfo = getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-
     if (!isLoggedIn) {
       switchTab({ url: '/pages/social/index' })
       return
@@ -1122,7 +1117,7 @@ export default function AvatarCreatePage() {
       <View className="floating-particle particle-4" />
 
       {/* 头部 - 适配状态栏 */}
-      <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+      <View className="page-header">
         <View className="header-top">
           <View className="header-back" onClick={() => navigateBack()}>
             <ArrowLeft size={24} color="#06b6d4" />

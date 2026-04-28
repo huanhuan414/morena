@@ -101,13 +101,11 @@ export default function OrderListPage() {
   const [orderProgress, setOrderProgress] = useState<Record<string, ExecutionStep[]>>({})
 
   // 安全区域适配
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
     // 初始化安全区域信息
     const safeArea = getSafeArea()
-    setStatusBarHeight(safeArea.statusBarHeight)
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
   })
 
@@ -242,7 +240,7 @@ export default function OrderListPage() {
   return (
     <View className="order-list-page">
       {/* 头部 */}
-      <View className="page-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+      <View className="page-header">
         <View className="header-top">
           <View className="back-button" onClick={() => navigateBack()}>
             <ArrowLeft size={24} color="#1f2937" />
