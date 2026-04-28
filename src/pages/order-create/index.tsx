@@ -224,12 +224,8 @@ export default function OrderCreatePage() {
         platformPrompt = `针对朋友圈：风格要私密、温暖、有故事性，适合个人化表达，不做过分商业化包装，要能引发朋友互动。`
       } else if (form.requirements.platforms.includes('wechat_mp')) {
         platformPrompt = `针对公众号：内容要有深度、专业度，结构清晰、逻辑严密，适合长阅读，要有观点和洞察，注重知识传递。`
-      } else if (form.requirements.platforms.includes('douyin') || form.requirements.platforms.includes('wechat_video')) {
-        platformPrompt = `针对短视频平台（抖音/视频号）：内容要节奏明快、有视觉冲击力，脚本要有悬念和反转，3-5秒内要抓住注意力，注重娱乐性和传播性。`
-      } else if (form.requirements.platforms.includes('bilibili')) {
-        platformPrompt = `针对B站：内容要有趣、有梗，符合二次元文化，可以适当使用网络用语，内容要有梗点和弹幕互动点，注重创意和个性。`
-      } else if (form.requirements.platforms.includes('weibo')) {
-        platformPrompt = `针对微博：内容要有话题性、时效性，适合热点事件，内容要简洁有力，易于转发传播，注重社交属性。`
+      } else if (form.requirements.platforms.includes('douyin')) {
+        platformPrompt = `针对抖音平台：内容要节奏明快、有视觉冲击力，脚本要有悬念和反转，3-5秒内要抓住注意力，注重娱乐性和传播性。`
       }
 
       // 构建内容类型特定的提示词
@@ -240,8 +236,6 @@ export default function OrderCreatePage() {
         contentTypePrompt = `针对视频内容：注重脚本策划、画面表现、节奏把控。要有完整的故事结构（开头、发展、高潮、结尾），画面切换流畅，音乐配乐合适。时长控制在15-60秒最佳，要能在短时间内传递有效信息。`
       } else if (form.requirements.contentType === 'article') {
         contentTypePrompt = `针对图文内容：注重文字表达和逻辑结构。标题要吸引人，开头要有钩子，正文要有层次感，结尾要有行动号召。内容要有价值、有深度，能让用户有所收获。适合用于知识分享、观点表达、品牌故事等。`
-      } else if (form.requirements.contentType === 'mixed') {
-        contentTypePrompt = `针对混合内容：综合考虑图文、视频等多种形式，要根据不同内容的特点进行创作，灵活运用多种表现形式，让内容更加丰富多样，提升用户的参与度和体验感。`
       }
 
       const prompt = `请根据以下订单标题、发布平台和内容类型，生成一份详细的需求描述。
@@ -360,10 +354,6 @@ ${contentTypePrompt}
       case 'article':
         contentPrice = quantityPerAvatar * PRICE_CONFIG.article * avatarCount
         break
-      case 'mixed':
-        // 混合类型，按图文价格计算
-        contentPrice = quantityPerAvatar * PRICE_CONFIG.article * avatarCount
-        break
     }
 
     return {
@@ -376,56 +366,24 @@ ${contentTypePrompt}
   const contentTypes = [
     { value: 'article', label: '图文', icon: FileText, color: '#3b82f6' },
     { value: 'image', label: '图片', icon: Image, color: '#8b5cf6' },
-    { value: 'video', label: '视频', icon: Video, color: '#ec4899' },
-    { value: 'mixed', label: '混合', icon: Sparkles, color: '#22c55e' }
+    { value: 'video', label: '视频', icon: Video, color: '#ec4899' }
   ]
 
   const platforms = [
     { value: 'wechat_moments', label: '朋友圈' },
     { value: 'wechat_mp', label: '公众号' },
     { value: 'xiaohongshu', label: '小红书' },
-    { value: 'douyin', label: '抖音' },
-    { value: 'bilibili', label: 'B站' },
-    { value: 'weibo', label: '微博' },
-    { value: 'wechat_video', label: '视频号' },
-    { value: 'unlimited', label: '不限' }
+    { value: 'douyin', label: '抖音' }
   ]
 
   const togglePlatform = (platform: string) => {
     setForm(prev => {
       const currentPlatforms = prev.requirements.platforms
 
-      // 如果选择的是"不限"
-      if (platform === 'unlimited') {
-        // 如果"不限"已经被选中，取消选中
-        if (currentPlatforms.includes('unlimited')) {
-          return {
-            ...prev,
-            requirements: {
-              ...prev.requirements,
-              platforms: []
-            }
-          }
-        } else {
-          // 如果"不限"未被选中，清空其他平台，只选中"不限"
-          return {
-            ...prev,
-            requirements: {
-              ...prev.requirements,
-              platforms: ['unlimited']
-            }
-          }
-        }
-      }
-
-      // 如果选择的是其他平台
-      // 如果当前选中了"不限"，先清空"不限"
-      const platformsWithoutUnlimited = currentPlatforms.filter(p => p !== 'unlimited')
-
       // 切换平台选中状态
-      const newPlatforms = platformsWithoutUnlimited.includes(platform)
-        ? platformsWithoutUnlimited.filter(p => p !== platform)
-        : [...platformsWithoutUnlimited, platform]
+      const newPlatforms = currentPlatforms.includes(platform)
+        ? currentPlatforms.filter(p => p !== platform)
+        : [...currentPlatforms, platform]
 
       return {
         ...prev,
@@ -734,7 +692,6 @@ ${contentTypePrompt}
   const contentPricePerUnit = selectedType
     ? (form.requirements.contentType === 'image' ? PRICE_CONFIG.image :
        form.requirements.contentType === 'video' ? PRICE_CONFIG.video :
-       form.requirements.contentType === 'article' ? PRICE_CONFIG.article :
        PRICE_CONFIG.article)
     : 0
 
