@@ -2028,9 +2028,9 @@ export default function MindChatPage() {
     try {
       showToast({ title: '正在上传语音...', icon: 'loading' })
 
-      // 上传录音文件到对象存储（使用统一的图片上传接口）
+      // 上传录音文件到对象存储（使用专门的音频上传接口）
       const uploadRes = await Network.uploadFile({
-        url: '/api/upload/image',
+        url: '/api/upload/audio',
         filePath: tempFilePath,
         name: 'file'
       })
