@@ -2054,7 +2054,7 @@
 .input-container {
   display: flex;
   align-items: center;
-  padding: 16rpx 20rpx;
+  padding: 24rpx 20rpx 16rpx 20rpx;
   margin: 0 var(--page-padding);
   background: #FFFFFF;
   border-radius: 24rpx;
