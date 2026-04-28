@@ -261,6 +261,11 @@ image {
   border-color: var(--border);
 }
 
+/* Image 组件默认背景色，避免与页面背景色冲突 */
+image {
+  background-color: #E5E7EB;
+}
+
 ::selection {
   background-color: var(--selection);
   color: var(--selection-foreground);
