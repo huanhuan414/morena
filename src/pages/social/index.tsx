@@ -92,6 +92,7 @@ export default function SocialPage() {
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<'related' | 'all'>('related')
   const [activeAvatars, setActiveAvatars] = useState<ActiveAvatar[]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // 安全区域适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -123,7 +124,7 @@ export default function SocialPage() {
 
   // 上拉加载更多
   useReachBottom(() => {
-    if (!loading && hasMore) {
+    if (!loading && !loadingMore && hasMore) {
       console.log('触底加载更多，当前页码:', page)
       loadMorePosts()
     }
@@ -324,11 +325,16 @@ export default function SocialPage() {
 
   // 加载更多帖子
   const loadMorePosts = async () => {
-    if (loading || !hasMore) return
+    if (loading || loadingMore || !hasMore) return
 
     const nextPage = page + 1
     console.log('加载更多帖子，页码:', nextPage)
-    await fetchAllPosts(nextPage, false)
+    setLoadingMore(true)
+    try {
+      await fetchAllPosts(nextPage, false)
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   const likePost = async (postId: string) => {
@@ -942,6 +948,14 @@ export default function SocialPage() {
           <View className="loading-state">
             <View className="loading-spinner" />
             <Text className="loading-text">正在加载精彩内容...</Text>
+          </View>
+        )}
+
+        {/* 加载更多提示 */}
+        {loadingMore && posts.length > 0 && (
+          <View className="loading-more-tip">
+            <View className="loading-spinner-small" />
+            <Text className="loading-more-text">正在加载更多内容...</Text>
           </View>
         )}
 
