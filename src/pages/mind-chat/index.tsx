@@ -4394,7 +4394,7 @@ export default function MindChatPage() {
                       setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={24} color="#FFFFFF" />
+                    <X size={24} color="#000000" />
                   </View>
                 </View>
               </View>
@@ -4409,7 +4409,7 @@ export default function MindChatPage() {
                 />
                 <View className="media-preview-overlay">
                   <View className="media-preview-play-icon">
-                    <Play size={24} color="#FFFFFF" />
+                    <Play size={24} color="#000000" />
                   </View>
                   <View
                     className="media-preview-remove"
@@ -4417,7 +4417,7 @@ export default function MindChatPage() {
                       setUploadedVideos((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={24} color="#FFFFFF" />
+                    <X size={24} color="#000000" />
                   </View>
                 </View>
               </View>
