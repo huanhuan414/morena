@@ -4390,11 +4390,12 @@ export default function MindChatPage() {
                 <View className="media-preview-overlay">
                   <View
                     className="media-preview-remove"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={24} color="#000000" />
+                    <X size={28} color="#000000" />
                   </View>
                 </View>
               </View>
@@ -4409,15 +4410,16 @@ export default function MindChatPage() {
                 />
                 <View className="media-preview-overlay">
                   <View className="media-preview-play-icon">
-                    <Play size={24} color="#000000" />
+                    <Play size={28} color="#000000" />
                   </View>
                   <View
                     className="media-preview-remove"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setUploadedVideos((prev) => prev.filter((_, idx) => idx !== i))
                     }}
                   >
-                    <X size={24} color="#000000" />
+                    <X size={28} color="#000000" />
                   </View>
                 </View>
               </View>
