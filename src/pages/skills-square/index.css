@@ -9,9 +9,9 @@
 /* Header - 紫罗兰渐变 */
 .skills-header {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  padding: 160rpx 32rpx 80rpx;
-  padding-top: calc(160rpx + constant(safe-area-inset-top));
-  padding-top: calc(160rpx + env(safe-area-inset-top));
+  padding: 200rpx 32rpx 80rpx;
+  padding-top: calc(200rpx + constant(safe-area-inset-top));
+  padding-top: calc(200rpx + env(safe-area-inset-top));
   position: relative;
   display: flex;
   align-items: center;
