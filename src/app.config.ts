@@ -33,6 +33,7 @@ export default defineAppConfig({
     'pages/order-list/index',
     'pages/order-create/index',
     'pages/order-detail/index',
+    'pages/pending-order/index',
     'pages/order-matching/index',
     'pages/order-acceptance/index',
     'pages/order-content-creation/index',
