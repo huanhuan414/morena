@@ -13,8 +13,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 32rpx;
-  padding-top: calc(64rpx + constant(safe-area-inset-top));
-  padding-top: calc(64rpx + env(safe-area-inset-top));
+  padding-top: calc(120rpx + constant(safe-area-inset-top));
+  padding-top: calc(120rpx + env(safe-area-inset-top));
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   position: sticky;
