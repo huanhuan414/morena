@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, usePullDownRefresh, showToast, stopPullDownRefresh, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, useReachBottom, showToast, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import * as Network from '@/network'
 import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users } from 'lucide-react-taro'
@@ -74,7 +74,6 @@ interface ActiveAvatar {
 export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [avatarStats, setAvatarStats] = useState<AvatarStats>(({
     postCount: 0,
     likeCount: 0,
@@ -90,7 +89,6 @@ export default function SocialPage() {
   const [sharePostId, setSharePostId] = useState<string | null>(null)
   const [hasAvatars, setHasAvatars] = useState<boolean | null>(null)
   const [, setIsUpdating] = useState(false)
-  const [refreshSuccess, setRefreshSuccess] = useState(false)
   const [expandedCommentsPosts, setExpandedCommentsPosts] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<'related' | 'all'>('related')
   const [activeAvatars, setActiveAvatars] = useState<ActiveAvatar[]>([])
@@ -118,10 +116,12 @@ export default function SocialPage() {
     fetchActiveAvatars()
   })
 
-  usePullDownRefresh(() => {
-    fetchData(true).finally(() => {
-      stopPullDownRefresh()
-    })
+  // 上拉加载更多
+  useReachBottom(() => {
+    if (!loading && hasMore) {
+      console.log('触底加载更多，当前页码:', page)
+      loadMorePosts()
+    }
   })
 
   // 获取活跃分身
@@ -154,26 +154,17 @@ export default function SocialPage() {
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) {
-      setRefreshing(true)
       setIsUpdating(true)
     }
-    
+
     try {
       await fetchAllPosts(1, isRefresh)
       await checkAvatars()
       await fetchTodayStats()
-      
-      if (isRefresh) {
-        setRefreshSuccess(true)
-        setTimeout(() => {
-          setRefreshSuccess(false)
-        }, 800)
-      }
     } catch (error) {
       console.error('刷新数据失败:', error)
     } finally {
       setLoading(false)
-      setRefreshing(false)
       setTimeout(() => setIsUpdating(false), 1500)
     }
   }
@@ -203,39 +194,39 @@ export default function SocialPage() {
 
   const fetchAllPosts = async (pageNum: number, isRefresh = false) => {
     if (!hasMore && pageNum > 1 && !isRefresh) return
-    
+
     setLoading(true)
     try {
       // 构建请求参数（兼容微信小程序，不使用 URLSearchParams）
       const queryParams: string[] = []
       queryParams.push(`page=${pageNum}`)
       queryParams.push('pageSize=10')
-      
+
       // 根据 tab 选择不同的接口
       const isRelatedTab = activeTab === 'related'
-      const apiUrl = isRelatedTab 
+      const apiUrl = isRelatedTab
         ? '/api/social/related-posts'
         : '/api/social/all-posts'
-      
+
       const res = await Network.request({
         url: `${apiUrl}?${queryParams.join('&')}`
       })
       if (res.data?.code === 200) {
         const data = res.data.data
         const postList = data.posts || []
-        
+
         const postsWithComments = await Promise.all(
           postList.map(async (post: Post) => {
             try {
               let images: string[] = []
               let videos: string[] = []
-              
+
               if (post.images) {
                 if (typeof post.images === 'string') {
                   try {
                     const parsed = JSON.parse(post.images)
                     if (Array.isArray(parsed)) {
-                      images = parsed.map((item: any) => 
+                      images = parsed.map((item: any) =>
                         typeof item === 'string' ? item : (item?.url || item?.src || '')
                       ).filter(Boolean)
                     }
@@ -243,18 +234,18 @@ export default function SocialPage() {
                     images = []
                   }
                 } else if (Array.isArray(post.images)) {
-                  images = post.images.map((item: any) => 
+                  images = post.images.map((item: any) =>
                     typeof item === 'string' ? item : (item?.url || item?.src || '')
                   ).filter(Boolean)
                 }
               }
-              
+
               if (post.videos) {
                 if (typeof post.videos === 'string') {
                   try {
                     const parsed = JSON.parse(post.videos)
                     if (Array.isArray(parsed)) {
-                      videos = parsed.map((item: any) => 
+                      videos = parsed.map((item: any) =>
                         typeof item === 'string' ? item : (item?.url || item?.src || '')
                       ).filter(Boolean)
                     }
@@ -262,21 +253,21 @@ export default function SocialPage() {
                     videos = []
                   }
                 } else if (Array.isArray(post.videos)) {
-                  videos = post.videos.map((item: any) => 
+                  videos = post.videos.map((item: any) =>
                     typeof item === 'string' ? item : (item?.url || item?.src || '')
                   ).filter(Boolean)
                 }
               }
-              
+
               const commentsRes = await Network.request({
                 url: `/api/social/post/${post.id}/comments?page=1&pageSize=3`
               })
-              
+
               const likesRes = await Network.request({
                 url: `/api/social/post/${post.id}/likes?page=1&pageSize=5`
               })
-              
-              const comments = commentsRes.data?.code === 200 
+
+              const comments = commentsRes.data?.code === 200
                 ? (commentsRes.data.data || []).map((c: any) => {
                     const avatar = c.avatars || {}
                     const user = c.users || {}
@@ -292,8 +283,8 @@ export default function SocialPage() {
                     }
                   })
                 : []
-              
-              const likers = likesRes.data?.code === 200 
+
+              const likers = likesRes.data?.code === 200
                 ? (likesRes.data.data || []).map((l: any) => ({
                     id: l.id,
                     user_id: l.user_id,
@@ -303,14 +294,14 @@ export default function SocialPage() {
                     is_ai: l.is_ai
                   }))
                 : []
-              
+
               return { ...post, images, videos, comments, likers }
             } catch {
               return post
             }
           })
         )
-        
+
         if (pageNum === 1 || isRefresh) {
           setPosts(postsWithComments)
         } else {
@@ -324,6 +315,15 @@ export default function SocialPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 加载更多帖子
+  const loadMorePosts = async () => {
+    if (loading || !hasMore) return
+
+    const nextPage = page + 1
+    console.log('加载更多帖子，页码:', nextPage)
+    await fetchAllPosts(nextPage, false)
   }
 
   const likePost = async (postId: string) => {
@@ -648,31 +648,10 @@ export default function SocialPage() {
 
       </View>
 
-      {/* 刷新成功动画 */}
-      {refreshSuccess && (
-        <View className="refresh-success-overlay">
-          <View className="refresh-success-content">
-            <View className="refresh-success-icon">
-              <Text className="refresh-success-check">✓</Text>
-            </View>
-            <Text className="refresh-success-text">数据已更新</Text>
-          </View>
-        </View>
-      )}
-
       {/* 主内容区 - ScrollView包含所有内容 */}
-      <ScrollView 
+      <ScrollView
         className="social-scroll"
         scrollY
-        refresherEnabled
-        refresherTriggered={refreshing}
-        onRefresherRefresh={() => fetchData(true)}
-        onScrollToLower={() => {
-          // 防止重复加载：只有不在加载中且有更多数据时才加载
-          if (!loading && hasMore) {
-            fetchAllPosts(page + 1)
-          }
-        }}
       >
         {/* 统计卡片 */}
         {hasAvatars && (

@@ -4,7 +4,6 @@ export default typeof definePageConfig === 'function'
       navigationStyle: 'custom',
       backgroundColor: '#050508',
       backgroundTextStyle: 'dark',
-      enablePullDownRefresh: true,
       onReachBottomDistance: 100
     })
   : {
@@ -12,6 +11,5 @@ export default typeof definePageConfig === 'function'
       navigationStyle: 'custom',
       backgroundColor: '#050508',
       backgroundTextStyle: 'dark',
-      enablePullDownRefresh: true,
       onReachBottomDistance: 100
     }
