@@ -694,7 +694,9 @@ export default function OrderContentCreationPage() {
                   <Text className="card-title block">订单信息</Text>
                 </View>
               </View>
-              <Text className="info-title block">{contentData.title}</Text>
+              <Text className="info-title block">
+                {contentData.title || '未知订单'}
+              </Text>
               <View
                 className="info-meta"
                 style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}

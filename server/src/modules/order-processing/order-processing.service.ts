@@ -283,12 +283,15 @@ export class OrderProcessingService {
         .from('orders')
         .select('id, title, platforms, content_type, deadline')
         .eq('id', request.order_id)
-        .single()
+        .maybeSingle()
 
       if (orderError) {
         console.warn('[OrderProcessing] 查询订单信息失败:', orderError)
-      } else {
+      } else if (order) {
         orderData = order
+        console.log('[OrderProcessing] 订单信息查询成功:', order)
+      } else {
+        console.warn('[OrderProcessing] 未找到订单信息，order_id:', request.order_id)
       }
     }
 
@@ -333,6 +336,15 @@ export class OrderProcessingService {
       status.queuePosition = position
       status.estimatedTime = estimatedTime
     }
+
+    console.log('[OrderProcessing] 返回状态数据:', {
+      requestId,
+      status: status.status,
+      hasGeneratedContent: !!status.generatedContent,
+      generatedContent: status.generatedContent,
+      orderDataTitle: orderData?.title,
+      orderDataPlatforms: orderData?.platforms
+    })
 
     return status
   }
@@ -745,13 +757,22 @@ export class OrderProcessingService {
 
       console.log('[OrderProcessing] 调用分身发布工具:', { toolName, avatarId, userId })
 
-      // 3. 构建完整的参数
-      const publishParams = {
+      // 3. 构建发布参数（只传递工具需要的参数）
+      let publishParams: any = {
         title: order.title,
-        content,
-        platform,
-        orderId: order.id
+        content
       }
+
+      // 公众号特殊处理
+      if (platform === 'wechat_mp') {
+        publishParams.auto_image = false  // 禁用自动配图，避免内容混乱
+      }
+
+      console.log('[OrderProcessing] 发布参数:', {
+        title: publishParams.title,
+        contentLength: publishParams.content.length,
+        auto_image: publishParams.auto_image
+      })
 
       // 4. 创建 thought 内容
       const thoughtContent = `发布内容到${platform}，标题：${order.title}，内容长度：${content.length}字`
