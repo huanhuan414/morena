@@ -28,9 +28,36 @@ interface SafeArea {
  * @returns {SafeArea} 安全区域信息
  */
 export function getSafeArea(): SafeArea {
-  const systemInfo = Taro.getSystemInfoSync()
-  const screenWidth = systemInfo.screenWidth || 375
-  const statusBarHeight = systemInfo.statusBarHeight || 44
+  let statusBarHeight = 44
+  let screenWidth = 375
+
+  try {
+    // 使用新的 API 替代 getSystemInfoSync
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+      // 小程序环境：使用 wx.getWindowInfo() 和 wx.getDeviceInfo()
+      const windowInfo = Taro.getWindowInfo?.() as any
+      const deviceInfo = Taro.getDeviceInfo?.() as any
+
+      if (windowInfo) {
+        statusBarHeight = windowInfo.statusBarHeight || 44
+        screenWidth = windowInfo.screenWidth || 375
+      }
+
+      if (deviceInfo) {
+        screenWidth = deviceInfo.screenWidth || screenWidth
+      }
+    } else {
+      // 其他环境：使用 Taro.getSystemInfoSync() 作为降级方案
+      const systemInfo = Taro.getSystemInfoSync()
+      statusBarHeight = systemInfo.statusBarHeight || 44
+      screenWidth = systemInfo.screenWidth || 375
+    }
+  } catch (error) {
+    // 出错时使用默认值
+    console.error('[SafeArea] 获取系统信息失败，使用默认值:', error)
+    statusBarHeight = 44
+    screenWidth = 375
+  }
 
   let capsuleButtonInfo: CapsuleButtonInfo | null = null
   let safeWidth = screenWidth
@@ -93,8 +120,26 @@ export function getSafeArea(): SafeArea {
  * @returns {number} 状态栏高度（单位：px）
  */
 export function getStatusBarHeight(): number {
-  const systemInfo = Taro.getSystemInfoSync()
-  return systemInfo.statusBarHeight || 44
+  let statusBarHeight = 44
+
+  try {
+    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+      // 小程序环境：使用 wx.getWindowInfo()
+      const windowInfo = Taro.getWindowInfo?.() as any
+      if (windowInfo) {
+        statusBarHeight = windowInfo.statusBarHeight || 44
+      }
+    } else {
+      // 其他环境：使用 Taro.getSystemInfoSync()
+      const systemInfo = Taro.getSystemInfoSync()
+      statusBarHeight = systemInfo.statusBarHeight || 44
+    }
+  } catch (error) {
+    console.error('[SafeArea] 获取状态栏高度失败，使用默认值:', error)
+    statusBarHeight = 44
+  }
+
+  return statusBarHeight
 }
 
 /**

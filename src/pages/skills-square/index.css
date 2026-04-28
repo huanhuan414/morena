@@ -343,6 +343,7 @@
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+  padding: 0 32rpx;
 }
 
 .skill-card {
@@ -555,7 +556,6 @@
 /* Skills Scroll */
 .skills-scroll {
   flex: 1;
-  padding: 0 32rpx;
 }
 
 .loading-container,
