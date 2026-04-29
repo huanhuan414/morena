@@ -1,243 +1,345 @@
-import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { chooseImage, showToast, showLoading, hideLoading } from '@tarojs/taro'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft, Upload, Sparkles, Download } from 'lucide-react-taro'
+import { View, Text, Image } from '@tarojs/components'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { useState, useRef, useCallback } from 'react'
 import * as Network from '@/network'
+import { ArrowLeft, Upload, RefreshCw, Download, Eye } from 'lucide-react-taro'
 import './index.css'
 
-export default function PalmReadingPage() {
-  const [palmImage, setPalmImage] = useState<string>('')
-  const [generatedImage, setGeneratedImage] = useState<string>('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [previewImageVisible, setPreviewImageVisible] = useState(false)
-  const [previewImageUrl, setPreviewImageUrl] = useState('')
+interface PalmRecord {
+  id: string
+  palm_image_url: string
+  generated_image_url: string | null
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress: string
+  error_message: string | null
+  created_at: string
+}
 
-  // 上传手掌图片
-  const handleChooseImage = () => {
-    chooseImage({
+export default function PalmReading() {
+  const [selectedImage, setSelectedImage] = useState<string>('')
+  const [taskStatus, setTaskStatus] = useState<string>('')
+  const [taskProgress, setTaskProgress] = useState<string>('')
+  const [errorMessage, setErrorMessage] = useState<string>('')
+  const [history, setHistory] = useState<PalmRecord[]>([])
+  const [previewImage, setPreviewImage] = useState<string>('')
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 每次进入页面加载历史
+  useDidShow(() => {
+    loadHistory()
+  })
+
+  // 页面离开时停止轮询
+  Taro.useDidHide(() => {
+    stopPolling()
+  })
+
+  const loadHistory = async () => {
+    try {
+      const res = await Network.request({ url: '/api/palm-reading/history' })
+      const records = res?.data?.data || []
+      setHistory(records)
+
+      // 检查是否有进行中的任务
+      const activeTask = records.find(
+        (r: PalmRecord) => r.status === 'pending' || r.status === 'processing'
+      )
+      if (activeTask) {
+        setTaskStatus(activeTask.status)
+        setTaskProgress(activeTask.progress)
+        startPolling(activeTask.id)
+      }
+    } catch (e) {
+      console.error('加载历史失败:', e)
+    }
+  }
+
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }
+
+  const startPolling = (taskId: string) => {
+    stopPolling()
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await Network.request({ url: `/api/palm-reading/progress/${taskId}` })
+        const data = res?.data?.data
+        if (!data) return
+
+        setTaskStatus(data.status)
+        setTaskProgress(data.progress)
+
+        if (data.status === 'completed') {
+          stopPolling()
+          loadHistory()
+          Taro.showToast({ title: '生成完成', icon: 'success' })
+        } else if (data.status === 'failed') {
+          stopPolling()
+          setErrorMessage(data.error_message || '生成失败')
+          Taro.showToast({ title: '生成失败', icon: 'error' })
+        }
+      } catch (e) {
+        console.error('轮询失败:', e)
+      }
+    }, 3000)
+  }
+
+  const handleChooseImage = useCallback(() => {
+    Taro.chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
-        console.log('[PalmReading] 选择图片成功:', tempFilePath)
-        setPalmImage(tempFilePath)
-        setGeneratedImage('')
-      },
-      fail: (err) => {
-        console.error('[PalmReading] 选择图片失败:', err)
-        showToast({ title: '选择图片失败', icon: 'none' })
-      }
-    })
-  }
+        setErrorMessage('')
 
-  // 生成掌相阅读指南
-  const handleGenerate = async () => {
-    if (!palmImage) {
-      showToast({ title: '请先上传手掌图片', icon: 'none' })
+        // 上传图片到TOS
+        Taro.showLoading({ title: '上传图片中...' })
+        try {
+          let imageUrl = tempFilePath
+          if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload/image',
+              filePath: tempFilePath,
+              name: 'file',
+            })
+            imageUrl = (uploadRes as any)?.data?.data?.url || tempFilePath
+          }
+          setSelectedImage(imageUrl)
+          Taro.hideLoading()
+        } catch (e) {
+          Taro.hideLoading()
+          Taro.showToast({ title: '上传失败', icon: 'error' })
+        }
+      },
+    })
+  }, [])
+
+  const handleGenerate = useCallback(async () => {
+    if (!selectedImage) {
+      Taro.showToast({ title: '请先上传手掌图片', icon: 'none' })
       return
     }
 
     try {
-      setIsGenerating(true)
-      showLoading({ title: 'AI生成中，请耐心等待...', mask: true })
-
-      console.log('[PalmReading] 开始生成掌相阅读指南')
-
-      // 先上传图片到 TOS
-      let uploadedImageUrl = palmImage
-      const isAlreadyUploaded = palmImage.startsWith('http://') || palmImage.startsWith('https://')
-      if (!isAlreadyUploaded) {
-        console.log('[PalmReading] 上传图片到 TOS...', palmImage)
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload/image',
-          filePath: palmImage,
-          name: 'file'
-        })
-
-        console.log('[PalmReading] 上传结果:', uploadRes)
-
-        if (uploadRes.statusCode === 200 && uploadRes.data) {
-          const uploadData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-          if (uploadData.code === 200 && uploadData.data?.url) {
-            uploadedImageUrl = uploadData.data.url
-            console.log('[PalmReading] 图片上传成功:', uploadedImageUrl)
-          }
-        }
-      }
-
-      // 调用掌相阅读生成接口
       const res = await Network.request({
-        url: '/api/palm-reading/generate',
+        url: '/api/palm-reading/create',
         method: 'POST',
-        data: {
-          imageUrl: uploadedImageUrl
+        data: { imageUrl: selectedImage },
+      })
+
+      const data = res?.data?.data
+      if (!data?.id) {
+        Taro.showToast({ title: '创建任务失败', icon: 'error' })
+        return
+      }
+
+      setTaskStatus('pending')
+      setTaskProgress('任务已创建')
+      setErrorMessage('')
+      startPolling(data.id)
+    } catch (e) {
+      Taro.showToast({ title: '请求失败', icon: 'error' })
+    }
+  }, [selectedImage])
+
+  const handlePreview = useCallback((url: string) => {
+    setPreviewImage(url)
+  }, [])
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewImage('')
+  }, [])
+
+  const handleSaveImage = useCallback((url: string) => {
+    Taro.showLoading({ title: '保存中...' })
+    Network.downloadFile({
+      url,
+      success: (downloadRes: any) => {
+        if (downloadRes.statusCode === 200) {
+          Taro.saveImageToPhotosAlbum({
+            filePath: downloadRes.tempFilePath,
+            success: () => {
+              Taro.hideLoading()
+              Taro.showToast({ title: '已保存到相册', icon: 'success' })
+            },
+            fail: () => {
+              Taro.hideLoading()
+              Taro.showToast({ title: '保存失败，请授权相册权限', icon: 'none' })
+            },
+          })
         }
-      })
+      },
+      fail: () => {
+        Taro.hideLoading()
+        Taro.showToast({ title: '下载失败', icon: 'error' })
+      },
+    })
+  }, [])
 
-      console.log('[PalmReading] 生成结果:', res.data)
+  const isProcessing = taskStatus === 'pending' || taskStatus === 'processing'
 
-      if (res.data?.code === 200 && res.data?.data?.generatedImageUrl) {
-        setGeneratedImage(res.data.data.generatedImageUrl)
-        showToast({ title: '生成完成', icon: 'success' })
-      } else {
-        showToast({ title: res.data?.message || '生成失败', icon: 'none' })
-      }
-    } catch (error: any) {
-      console.error('[PalmReading] 生成失败:', error)
-      showToast({ title: `生成失败: ${error.message || '未知错误'}`, icon: 'none' })
-    } finally {
-      setIsGenerating(false)
-      hideLoading()
-    }
-  }
-
-  // 预览图片
-  const handlePreviewImage = (url: string) => {
-    setPreviewImageUrl(url)
-    setPreviewImageVisible(true)
-  }
-
-  // 保存图片
-  const handleSaveImage = async () => {
-    if (!generatedImage) return
-
-    try {
-      showLoading({ title: '保存中...', mask: true })
-      const downloadRes = await Network.downloadFile({
-        url: generatedImage
-      })
-
-      if (downloadRes.statusCode === 200 && downloadRes.tempFilePath) {
-        await Taro.saveImageToPhotosAlbum({
-          filePath: downloadRes.tempFilePath
-        })
-        showToast({ title: '保存成功', icon: 'success' })
-      } else {
-        showToast({ title: '保存失败', icon: 'none' })
-      }
-    } catch (error: any) {
-      console.error('[PalmReading] 保存失败:', error)
-      showToast({ title: '保存失败', icon: 'none' })
-    } finally {
-      hideLoading()
-    }
-  }
+  const completedRecords = history.filter((r) => r.status === 'completed')
+  const processingRecords = history.filter(
+    (r) => r.status === 'pending' || r.status === 'processing'
+  )
+  const failedRecords = history.filter((r) => r.status === 'failed')
 
   return (
-    <View className="palm-reading-container">
-      {/* 头部 */}
-      <View className="header">
-        <View className="back-button" onClick={() => Taro.navigateBack()}>
-          <ArrowLeft size={24} color="#1f2937" />
+    <View className="palm-reading-page">
+      {/* 顶部导航 */}
+      <View className="page-header">
+        <View className="header-left" onClick={() => Taro.navigateBack()}>
+          <ArrowLeft size={20} color="var(--text-primary)" />
         </View>
         <Text className="header-title">掌象阅读</Text>
-        <View className="header-spacer" />
+        <View className="header-right" />
       </View>
 
-      <ScrollView className="content" scrollY>
-        {/* 说明 */}
-        <View className="info-card">
-          <View className="info-header">
-            <Sparkles size={20} color="#8b5cf6" />
-            <Text className="info-title">AI 智能掌相分析</Text>
-          </View>
-          <Text className="info-text">
-            上传您的手掌照片，AI 将识别掌纹并生成专业的掌相解读指南，干净简约，高端大气。
-          </Text>
-        </View>
-
+      <View className="page-content">
         {/* 上传区域 */}
         <View className="upload-section">
-          <Text className="section-title">上传手掌照片</Text>
-          <Text className="section-desc">请确保手掌清晰可见，光线充足</Text>
-
-          {palmImage ? (
-            <View className="image-preview-wrapper">
-              <Image
-                className="preview-image"
-                src={palmImage}
-                mode="aspectFill"
-                onClick={() => handlePreviewImage(palmImage)}
-              />
-              <Button
-                className="change-image-btn"
-                size="sm"
-                onClick={handleChooseImage}
-              >
-                <Upload size={16} color="#fff" />
-                <Text>更换图片</Text>
-              </Button>
+          {selectedImage ? (
+            <View className="selected-image-wrapper" onClick={handleChooseImage}>
+              <Image className="selected-image" src={selectedImage} mode="aspectFit" />
+              <View className="change-image-btn">
+                <RefreshCw size={14} color="#fff" />
+                <Text className="change-text">重新选择</Text>
+              </View>
             </View>
           ) : (
-            <View className="upload-placeholder" onClick={handleChooseImage}>
-              <Upload size={48} color="#9ca3af" />
-              <Text className="upload-text">点击上传手掌照片</Text>
-              <Text className="upload-tip">支持拍照或从相册选择</Text>
+            <View className="upload-area" onClick={handleChooseImage}>
+              <Upload size={40} color="#8b5cf6" />
+              <Text className="upload-title">上传手掌图片</Text>
+              <Text className="upload-desc">请拍摄清晰的手掌正面照片</Text>
             </View>
           )}
+
+          <View
+            className={`generate-btn ${!selectedImage || isProcessing ? 'disabled' : ''}`}
+            onClick={!selectedImage || isProcessing ? undefined : handleGenerate}
+          >
+            <Text className="generate-btn-text">
+              {isProcessing ? taskProgress : '开始解读'}
+            </Text>
+          </View>
         </View>
 
-        {/* 生成按钮 */}
-        {palmImage && (
-          <View className="generate-section">
-            <Button
-              className="generate-btn"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-            >
-              <Sparkles size={20} color="#fff" />
-              <Text>{isGenerating ? 'AI 生成中...' : '开始掌相分析'}</Text>
-            </Button>
+        {/* 进度提示 */}
+        {isProcessing && (
+          <View className="progress-section">
+            <View className="progress-loading">
+              <View className="loading-spinner" />
+              <Text className="progress-text">{taskProgress}</Text>
+            </View>
+            <Text className="progress-hint">AI 正在分析你的手掌并生成解读指南，通常需要1-5分钟</Text>
           </View>
         )}
 
-        {/* 结果展示 */}
-        {generatedImage && (
-          <View className="result-section">
-            <Text className="section-title">掌相解读指南</Text>
-            <View className="result-image-wrapper">
-              <Image
-                className="result-image"
-                src={generatedImage}
-                mode="widthFix"
-                onClick={() => handlePreviewImage(generatedImage)}
-              />
-            </View>
-            <View className="result-actions">
-              <Button
-                className="save-btn"
-                size="sm"
-                onClick={handleSaveImage}
-              >
-                <Download size={18} color="#fff" />
-                <Text>保存到相册</Text>
-              </Button>
+        {/* 失败提示 */}
+        {taskStatus === 'failed' && errorMessage && (
+          <View className="error-section">
+            <Text className="error-text">{errorMessage}</Text>
+            <View className="retry-btn" onClick={handleGenerate}>
+              <Text className="retry-text">重新生成</Text>
             </View>
           </View>
         )}
 
-        {/* 底部说明 */}
-        <View className="tips-section">
-          <Text className="tips-title">使用提示</Text>
-          <Text className="tips-item">• 请确保手掌照片清晰，掌纹可见</Text>
-          <Text className="tips-item">• 避免强光直射，保持光线均匀</Text>
-          <Text className="tips-item">• 建议使用自然光拍摄</Text>
-          <Text className="tips-item">• 生成过程约需1-3分钟，请耐心等待</Text>
-        </View>
-      </ScrollView>
+        {/* 进行中的任务 */}
+        {processingRecords.length > 0 && !isProcessing && (
+          <View className="section">
+            <Text className="section-title">进行中</Text>
+            {processingRecords.map((record) => (
+              <View className="record-card processing" key={record.id}>
+                <View className="record-left">
+                  <Image className="record-thumb" src={record.palm_image_url} mode="aspectFill" />
+                </View>
+                <View className="record-info">
+                  <Text className="record-status-text processing-text">{record.progress}</Text>
+                  <Text className="record-time">
+                    {new Date(record.created_at).toLocaleString('zh-CN')}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
-      {/* 图片预览 */}
-      {previewImageVisible && (
-        <View className="preview-overlay" onClick={() => setPreviewImageVisible(false)}>
-          <Image
-            className="preview-full-image"
-            src={previewImageUrl}
-            mode="aspectFit"
-          />
-          <View className="preview-close">
-            <Text>点击关闭</Text>
+        {/* 已完成的历史记录 */}
+        {completedRecords.length > 0 && (
+          <View className="section">
+            <Text className="section-title">解读记录</Text>
+            {completedRecords.map((record) => (
+              <View className="record-card completed" key={record.id}>
+                <View className="record-images">
+                  <View className="record-image-item" onClick={() => handlePreview(record.palm_image_url)}>
+                    <Image className="record-img" src={record.palm_image_url} mode="aspectFill" />
+                    <Text className="record-img-label">原图</Text>
+                  </View>
+                  <View className="record-image-item" onClick={() => record.generated_image_url && handlePreview(record.generated_image_url)}>
+                    <Image className="record-img" src={record.generated_image_url || ''} mode="aspectFill" />
+                    <Text className="record-img-label">解读</Text>
+                  </View>
+                </View>
+                <View className="record-actions">
+                  <Text className="record-time">
+                    {new Date(record.created_at).toLocaleString('zh-CN')}
+                  </Text>
+                  {record.generated_image_url && (
+                    <View className="record-btns">
+                      <View className="action-btn" onClick={() => handlePreview(record.generated_image_url!)}>
+                        <Eye size={14} color="#8b5cf6" />
+                        <Text className="action-text">查看</Text>
+                      </View>
+                      <View className="action-btn" onClick={() => handleSaveImage(record.generated_image_url!)}>
+                        <Download size={14} color="#8b5cf6" />
+                        <Text className="action-text">保存</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 失败的历史记录 */}
+        {failedRecords.length > 0 && (
+          <View className="section">
+            <Text className="section-title">失败记录</Text>
+            {failedRecords.map((record) => (
+              <View className="record-card failed" key={record.id}>
+                <View className="record-left">
+                  <Image className="record-thumb" src={record.palm_image_url} mode="aspectFill" />
+                </View>
+                <View className="record-info">
+                  <Text className="record-status-text failed-text">
+                    {record.error_message || '生成失败'}
+                  </Text>
+                  <Text className="record-time">
+                    {new Date(record.created_at).toLocaleString('zh-CN')}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* 图片预览弹窗 */}
+      {previewImage && (
+        <View className="preview-overlay" onClick={handleClosePreview}>
+          <Image className="preview-image" src={previewImage} mode="aspectFit" />
+          <View className="preview-close" onClick={handleClosePreview}>
+            <Text className="close-text">关闭</Text>
+          </View>
+          <View className="preview-save" onClick={() => handleSaveImage(previewImage)}>
+            <Download size={16} color="#fff" />
+            <Text className="save-text">保存</Text>
           </View>
         </View>
       )}
