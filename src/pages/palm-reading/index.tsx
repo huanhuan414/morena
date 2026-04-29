@@ -239,7 +239,7 @@ export default function PalmReading() {
         <View className="upload-section">
           {selectedImage ? (
             <View className="selected-image-wrapper" onClick={handleChooseImage}>
-              <Image className="selected-image" src={selectedImage} mode="widthFix" />
+              <Image className="selected-image" src={selectedImage} mode="aspectFill" />
               <View className="change-image-btn">
                 <RefreshCw size={14} color="#fff" />
                 <Text className="change-text">重新选择</Text>
