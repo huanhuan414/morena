@@ -3,10 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { StorageService } from '../storage/storage.service';
 import { LLMClient, Config as LLMConfig, Message } from 'coze-coding-dev-sdk';
 import axios from 'axios';
+import * as FormData from 'form-data';
 
 @Injectable()
 export class PalmReadingService {
-  private readonly imageApiUrl = 'https://api.aaigc.top/v1/images/generations';
+  private readonly imageApiUrl = 'https://api.aaigc.top/v1/images/edits';
   private readonly imageApiKey = 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
 
   constructor(
@@ -75,7 +76,7 @@ export class PalmReadingService {
   }
 
   /**
-   * 第二步：用图片编辑模型基于原图生成标注了掌纹的分析图
+   * 第二步：用图片编辑接口基于原图生成标注了掌纹的分析图
    */
   private async generatePalmImage(imageUrl: string): Promise<string> {
     console.log('[PalmReadingService] 第二步：基于原图生成掌纹标注图...');
@@ -87,26 +88,35 @@ export class PalmReadingService {
 - 用橙色线条标注命运线（如有），旁边写"命运线"
 保持原始手掌照片不变，只在上面叠加标注线条和文字标签。线条要细而清晰。`;
 
-    const requestData = {
-      model: 'qwen-image-edit-2509',
-      prompt: prompt,
-      image: imageUrl,
-      n: 1,
-      size: '1024x1024'
-    };
+    console.log('[PalmReadingService] 下载手掌图片...');
 
-    console.log('[PalmReadingService] 图片编辑请求参数:', {
-      model: requestData.model,
-      promptLength: prompt.length,
-      imageUrl: imageUrl.substring(0, 80) + '...',
+    // 下载手掌图片到buffer
+    const imgResponse = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 60000
     });
+    const imageBuffer = Buffer.from(imgResponse.data, 'binary');
+    console.log('[PalmReadingService] 图片下载完成，大小:', imageBuffer.length, 'bytes');
 
-    const response = await axios.post(this.imageApiUrl, requestData, {
+    // 使用 multipart/form-data 格式发送请求
+    const formData = new FormData();
+    formData.append('model', 'gpt-image-2-all');
+    formData.append('prompt', prompt);
+    formData.append('image', imageBuffer, {
+      filename: 'palm.png',
+      contentType: 'image/png'
+    });
+    formData.append('n', '1');
+    formData.append('size', '1024x1024');
+
+    console.log('[PalmReadingService] 发送图片编辑请求...');
+
+    const response = await axios.post(this.imageApiUrl, formData, {
       headers: {
         'Authorization': `Bearer ${this.imageApiKey}`,
-        'Content-Type': 'application/json'
+        ...formData.getHeaders()
       },
-      timeout: 180000
+      timeout: 300000
     });
 
     console.log('[PalmReadingService] 图片API响应状态:', response.status);
@@ -125,16 +135,14 @@ export class PalmReadingService {
         console.log('[PalmReadingService] 图片上传成功:', tosUrl);
         return tosUrl;
       } else if (imageData.url) {
-        // URL 可能是带签名的临时URL，需要下载后上传到TOS
         console.log('[PalmReadingService] 获取到临时URL，下载并上传到TOS...');
         const timestamp = Date.now();
         const filename = `palm-reading-${timestamp}.png`;
-        // 下载图片
-        const imgResponse = await axios.get(imageData.url, {
+        const tempImgResponse = await axios.get(imageData.url, {
           responseType: 'arraybuffer',
           timeout: 60000
         });
-        const base64 = Buffer.from(imgResponse.data, 'binary').toString('base64');
+        const base64 = Buffer.from(tempImgResponse.data, 'binary').toString('base64');
         const tosUrl = await this.storageService.uploadBase64Image(
           `data:image/png;base64,${base64}`,
           filename
