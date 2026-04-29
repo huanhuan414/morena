@@ -877,33 +877,24 @@ export default function SkillsSquare() {
             <Text className="skill-name">掌象阅读</Text>
             <Text className="skill-description">上传手掌图片，AI智能生成掌相阅读指南</Text>
 
-            <View className="tags-container">
-              <View className="tag">
-                <Text className="tag-text">AI分析</Text>
+            <View className="card-footer">
+              <View className="stats">
+                <View className="stat-item">
+                  <Star size={14} color="#f59e0b" />
+                  <Text className="stat-value">5.0</Text>
+                  <Text className="stat-label">(100)</Text>
+                </View>
+                <View className="stat-item">
+                  <Text className="stat-value">200</Text>
+                  <Text className="stat-label">人使用</Text>
+                </View>
               </View>
-              <View className="tag">
-                <Text className="tag-text">掌相</Text>
-              </View>
+              <Button className="action-btn">
+                <View className="btn-content">
+                  <Text>立即体验</Text>
+                </View>
+              </Button>
             </View>
-          </View>
-
-          <View className="card-footer">
-            <View className="stats">
-              <View className="stat-item">
-                <Star size={14} color="#ffb800" />
-                <Text className="stat-value">5.0</Text>
-                <Text className="stat-label">(100)</Text>
-              </View>
-              <View className="stat-item">
-                <Text className="stat-value">200</Text>
-                <Text className="stat-label">人使用</Text>
-              </View>
-            </View>
-            <Button className="action-btn">
-              <View className="btn-content">
-                <Text>立即体验</Text>
-              </View>
-            </Button>
           </View>
         </View>
       )}
@@ -939,78 +930,65 @@ export default function SkillsSquare() {
               })
               return (
                 <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
-                  {/* 图标和分类 */}
+                  {/* 左侧图标区 */}
                   <View className="card-top">
                     <View className="icon-wrapper">
                       <Text className="skill-icon">{getSkillIcon(skill.tool_name)}</Text>
+                      {owned && (
+                        <View className="owned-badge">
+                          <Check size={12} color="#fff" />
+                          <Text className="owned-text">已添加</Text>
+                        </View>
+                      )}
                     </View>
-                    {owned && (
-                      <View className="owned-badge">
-                        <Check size={14} color="#00ff88" />
-                        <Text className="owned-text">已添加</Text>
-                      </View>
-                    )}
                   </View>
 
-                  {/* 内容 */}
+                  {/* 右侧内容区 */}
                   <View className="card-content">
                     <Text className="category-tag">{skill.category}</Text>
                     <Text className="skill-name">{displayName}</Text>
                     <Text className="skill-description">{skill.description}</Text>
 
-                    {/* 标签 */}
-                    {skill.tags && skill.tags.length > 0 && (
-                      <View className="tags-container">
-                        {skill.tags.slice(0, 2).map((tag, idx) => (
-                          <View key={idx} className="tag">
-                            <Text className="tag-text">{tag}</Text>
+                    <View className="card-footer">
+                      <View className="stats">
+                        <View className="stat-item">
+                          <Star size={14} color="#f59e0b" />
+                          <Text className="stat-value">{skill.rating}</Text>
+                          <Text className="stat-label">({skill.rating_count})</Text>
+                        </View>
+                        <View className="stat-item">
+                          <Text className="stat-value">{skill.purchase_count}</Text>
+                          <Text className="stat-label">人使用</Text>
+                        </View>
+                      </View>
+                      {owned ? (
+                        <Button
+                          className="action-btn remove"
+                          onClick={() => handleRemoveSkill(skill.id, skill.name)}
+                        >
+                          <View className="btn-content">
+                            <Text>移除</Text>
                           </View>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-
-                  {/* 底部 */}
-                  <View className="card-footer">
-                    <View className="stats">
-                      <View className="stat-item">
-                        <Star size={14} color="#ffb800" />
-                        <Text className="stat-value">{skill.rating}</Text>
-                        <Text className="stat-label">({skill.rating_count})</Text>
-                      </View>
-                      <View className="stat-item">
-                        <Text className="stat-value">{skill.purchase_count}</Text>
-                        <Text className="stat-label">人使用</Text>
-                      </View>
+                        </Button>
+                      ) : (
+                        <Button
+                          className="action-btn"
+                          onClick={() => {
+                            setSelectedSkill(skill)
+                            if (skill.tool_name === 'auto_post_to_home') {
+                              setShowAutoPostDialog(true)
+                            } else {
+                              setShowPurchaseDialog(true)
+                            }
+                          }}
+                        >
+                          <View className="btn-content">
+                            <ShoppingCart size={14} color="#fff" />
+                            <Text>添加</Text>
+                          </View>
+                        </Button>
+                      )}
                     </View>
-                    {owned ? (
-                      <Button
-                        className="action-btn remove"
-                        onClick={() => handleRemoveSkill(skill.id, skill.name)}
-                      >
-                        <View className="btn-content">
-                          <Text>移除</Text>
-                        </View>
-                      </Button>
-                    ) : (
-                      <Button
-                        className="action-btn"
-                        onClick={() => {
-                          setSelectedSkill(skill)
-                          // 自动发帖助手使用专门的弹窗
-                          if (skill.tool_name === 'auto_post_to_home') {
-                            setShowAutoPostDialog(true)
-                          } else {
-                            setShowPurchaseDialog(true)
-                          }
-                        }}
-                      >
-                        <View className="btn-content">
-                          <ShoppingCart size={14} color="#fff" />
-                          <Text>添加</Text>
-                        </View>
-                      </Button>
-                    )}
                   </View>
                 </View>
               )
