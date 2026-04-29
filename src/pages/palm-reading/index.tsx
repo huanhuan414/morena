@@ -48,8 +48,18 @@ export default function PalmReading() {
       const records = res?.data?.data || []
       setHistory(records)
 
-      // 不再自动恢复旧任务的轮询
-      // 只有当前会话创建的任务才会轮询
+      // 检查是否有进行中的任务，自动恢复轮询（取最新一个）
+      const processing = records.filter((r) => r.status === 'pending' || r.status === 'processing')
+      if (processing.length > 0 && !isProcessing) {
+        // 取最新创建的任务恢复轮询
+        const latestProcessing = processing.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0]
+        console.log('[PalmReading] 恢复轮询任务:', latestProcessing.id)
+        setTaskStatus(latestProcessing.status)
+        setTaskProgress(latestProcessing.progress || '继续生成中...')
+        startPolling(latestProcessing.id)
+      }
     } catch (e) {
       console.error('加载历史失败:', e)
     }
@@ -284,6 +294,36 @@ export default function PalmReading() {
           </View>
         )}
 
+        {/* 进行中记录 */}
+        {completedRecords.length > 0 && (
+          <View className="section">
+            <Text className="section-title">进行中</Text>
+            {history
+              .filter((r) => r.status === 'pending' || r.status === 'processing')
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map((record) => (
+                <View className="record-card processing" key={record.id}>
+                  <View className="record-images">
+                    <View className="record-image-item">
+                      <Image className="record-img" src={record.palm_image_url} mode="aspectFill" />
+                      <Text className="record-img-label">原图</Text>
+                    </View>
+                    <View className="record-image-item processing-preview">
+                      <View className="processing-placeholder">
+                        <View className="loading-spinner small" />
+                        <Text className="processing-text-sm">生成中...</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="record-actions">
+                    <Text className="record-time">
+                      {new Date(record.created_at).toLocaleString('zh-CN')}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+          </View>
+        )}
 
         {completedRecords.length > 0 && (
           <View className="section">
