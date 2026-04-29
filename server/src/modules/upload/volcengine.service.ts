@@ -116,11 +116,10 @@ export class VolcengineService {
       // SDK返回的Uri格式：tos-cn-i-699z2ac540/user/84b63fbc53ab40e6acf2584fdb8c3026.png
       // 转换步骤：
       // 1. 将 Uri 中的 user/ 替换为 user%2F（URL编码）
-      // 2. 将 Uri 中的 .png 替换为 .mf（火山引擎内部格式）
-      // 3. 🔴 使用直接URI格式（不使用.mf和模板参数）
+      // 2. 添加模板后缀 ~tplv-{短ID}-image.png
       const uri = result.Uri;
       const encodedUri = uri.replace('user/', 'user%2F');
-      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}`;
+      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.SHORT_ID}-image.png`;
 
       this.logger.log(`[VolcengineService] 构建的URL: ${url}`);
       this.logger.log(`[VolcengineService] 原始URI: ${uri}`);

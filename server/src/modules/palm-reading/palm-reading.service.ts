@@ -1,14 +1,17 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { StorageService } from '../storage/storage.service';
 import axios from 'axios';
-import * as FormData from 'form-data';
 
 @Injectable()
 export class PalmReadingService {
   private readonly apiUrl = 'https://api.aaigc.top/v1/images/generations';
   private readonly apiKey = 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private storageService: StorageService
+  ) {}
 
   async generatePalmReading(imageUrl: string): Promise<{ generatedImageUrl: string }> {
     try {
@@ -55,25 +58,25 @@ export class PalmReadingService {
           console.log('[PalmReadingService] 生成成功，图片URL:', imageData.url);
           return { generatedImageUrl: imageData.url };
         } else if (imageData.b64_json) {
-          // 如果是 base64 编码的图片，需要先上传到对象存储
-          console.log('[PalmReadingService] API返回base64编码的图片，开始处理...');
+          // 如果是 base64 编码的图片，上传到对象存储
+          console.log('[PalmReadingService] API返回base64编码的图片，开始上传到TOS...');
 
           try {
-            // 将 base64 转换为 buffer
-            const imageBuffer = Buffer.from(imageData.b64_json, 'base64');
-
-            // 生成临时文件名
+            // 生成文件名
             const timestamp = Date.now();
             const filename = `palm-reading-${timestamp}.png`;
 
-            // TODO: 上传到对象存储获取 URL
-            // 这里先返回一个 data URL 用于测试
-            const dataUrl = `data:image/png;base64,${imageData.b64_json}`;
-            console.log('[PalmReadingService] 生成成功（base64）');
-            return { generatedImageUrl: dataUrl };
+            // 上传到 TOS
+            const imageUrl = await this.storageService.uploadBase64Image(
+              `data:image/png;base64,${imageData.b64_json}`,
+              filename
+            );
+
+            console.log('[PalmReadingService] 图片上传成功:', imageUrl);
+            return { generatedImageUrl: imageUrl };
           } catch (uploadError: any) {
-            console.error('[PalmReadingService] 处理base64图片失败:', uploadError);
-            throw new HttpException('图片处理失败', HttpStatus.INTERNAL_SERVER_ERROR);
+            console.error('[PalmReadingService] 上传图片到TOS失败:', uploadError);
+            throw new HttpException('图片上传失败', HttpStatus.INTERNAL_SERVER_ERROR);
           }
         } else {
           console.error('[PalmReadingService] API响应中无图片数据:', imageData);
