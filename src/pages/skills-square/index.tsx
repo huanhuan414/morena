@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input'
 import { useUserStore } from '@/stores/user'
 import Taro, { navigateBack } from '@tarojs/taro'
-import { Star, Check, ShoppingCart, ArrowLeft } from 'lucide-react-taro'
+import { Star, Check, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 技能名称中文映射
@@ -863,38 +863,18 @@ export default function SkillsSquare() {
       {/* 掌象阅读技能入口 */}
       {!searchKeyword && (
         <View
-          className="skill-card palm-reading-card"
+          className="skill-card-vertical palm-reading-card"
           onClick={() => Taro.navigateTo({ url: '/pages/palm-reading/index' })}
         >
-          <View className="card-top">
-            <View className="icon-wrapper">
-              <Text className="skill-icon">✋</Text>
-            </View>
+          <View className="vertical-icon-area">
+            <Text className="vertical-icon">✋</Text>
           </View>
-
-          <View className="card-content">
-            <Text className="category-tag">AI工具</Text>
-            <Text className="skill-name">掌象阅读</Text>
-            <Text className="skill-description">上传手掌图片，AI智能生成掌相阅读指南</Text>
-
-            <View className="card-footer">
-              <View className="stats">
-                <View className="stat-item">
-                  <Star size={14} color="#f59e0b" />
-                  <Text className="stat-value">5.0</Text>
-                  <Text className="stat-label">(100)</Text>
-                </View>
-                <View className="stat-item">
-                  <Text className="stat-value">200</Text>
-                  <Text className="stat-label">人使用</Text>
-                </View>
-              </View>
-              <Button className="action-btn">
-                <View className="btn-content">
-                  <Text>立即体验</Text>
-                </View>
-              </Button>
-            </View>
+          <View className="vertical-content">
+            <Text className="vertical-name">掌象阅读</Text>
+            <Text className="vertical-desc">上传手掌图片，AI智能生成掌相阅读指南</Text>
+          </View>
+          <View className="vertical-action">
+            <Text className="vertical-action-text">立即体验</Text>
           </View>
         </View>
       )}
@@ -929,66 +909,48 @@ export default function SkillsSquare() {
                 已添加技能列表: mySkills
               })
               return (
-                <View key={skill.id} className={`skill-card ${owned ? 'owned' : ''}`}>
-                  {/* 左侧图标区 */}
-                  <View className="card-top">
-                    <View className="icon-wrapper">
-                      <Text className="skill-icon">{getSkillIcon(skill.tool_name)}</Text>
-                      {owned && (
-                        <View className="owned-badge">
-                          <Check size={12} color="#fff" />
-                          <Text className="owned-text">已添加</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* 右侧内容区 */}
-                  <View className="card-content">
-                    <Text className="category-tag">{skill.category}</Text>
-                    <Text className="skill-name">{displayName}</Text>
-                    <Text className="skill-description">{skill.description}</Text>
-
-                    <View className="card-footer">
-                      <View className="stats">
-                        <View className="stat-item">
-                          <Star size={14} color="#f59e0b" />
-                          <Text className="stat-value">{skill.rating}</Text>
-                          <Text className="stat-label">({skill.rating_count})</Text>
-                        </View>
-                        <View className="stat-item">
-                          <Text className="stat-value">{skill.purchase_count}</Text>
-                          <Text className="stat-label">人使用</Text>
-                        </View>
+                <View
+                  key={skill.id}
+                  className={`skill-card-vertical ${owned ? 'owned' : ''}`}
+                  onClick={() => {
+                    if (owned) {
+                      handleRemoveSkill(skill.id, skill.name)
+                      return
+                    }
+                    setSelectedSkill(skill)
+                    if (skill.tool_name === 'auto_post_to_home') {
+                      setShowAutoPostDialog(true)
+                    } else {
+                      setShowPurchaseDialog(true)
+                    }
+                  }}
+                >
+                  <View className="vertical-icon-area">
+                    <Text className="vertical-icon">{getSkillIcon(skill.tool_name)}</Text>
+                    {owned && (
+                      <View className="vertical-owned-badge">
+                        <Check size={10} color="#fff" />
                       </View>
-                      {owned ? (
-                        <Button
-                          className="action-btn remove"
-                          onClick={() => handleRemoveSkill(skill.id, skill.name)}
-                        >
-                          <View className="btn-content">
-                            <Text>移除</Text>
-                          </View>
-                        </Button>
-                      ) : (
-                        <Button
-                          className="action-btn"
-                          onClick={() => {
-                            setSelectedSkill(skill)
-                            if (skill.tool_name === 'auto_post_to_home') {
-                              setShowAutoPostDialog(true)
-                            } else {
-                              setShowPurchaseDialog(true)
-                            }
-                          }}
-                        >
-                          <View className="btn-content">
-                            <ShoppingCart size={14} color="#fff" />
-                            <Text>添加</Text>
-                          </View>
-                        </Button>
-                      )}
+                    )}
+                  </View>
+                  <View className="vertical-content">
+                    <Text className="vertical-name">{displayName}</Text>
+                    <Text className="vertical-desc">{skill.description}</Text>
+                  </View>
+                  <View className="vertical-bottom">
+                    <View className="vertical-stats">
+                      <Star size={12} color="#f59e0b" />
+                      <Text className="vertical-stat-val">{skill.rating}</Text>
                     </View>
+                    {owned ? (
+                      <View className="vertical-btn owned">
+                        <Text className="vertical-btn-text owned">已添加</Text>
+                      </View>
+                    ) : (
+                      <View className="vertical-btn">
+                        <Text className="vertical-btn-text">添加</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               )

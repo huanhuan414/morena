@@ -1,5 +1,5 @@
 /* ============================================================
-   技能广场页面 - 重新设计
+   技能广场页面 - 双列竖向卡片布局
    ============================================================ */
 
 .skills-square-container {
@@ -168,234 +168,42 @@
   font-weight: 600;
 }
 
-/* ========== Special Cards (hidden) ========== */
-.special-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  padding: 0 32rpx 20rpx;
-}
-
-.special-card {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 28rpx;
-  border: 2rpx solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.special-card.drama-kit {
-  border-color: rgba(251, 191, 36, 0.4);
-  background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);
-}
-
-.special-card.agent-order {
-  border-color: rgba(59, 130, 246, 0.4);
-  background: linear-gradient(135deg, #eff6ff 0%, #fff 100%);
-}
-
-.special-card.personal-ip {
-  border-color: rgba(236, 72, 153, 0.4);
-  background: linear-gradient(135deg, #fdf2f8 0%, #fff 100%);
-}
-
-.special-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20rpx;
-}
-
-.special-icon-large {
-  width: 72rpx;
-  height: 72rpx;
-  font-size: 48rpx;
-  line-height: 72rpx;
-  text-align: center;
-}
-
-.special-badge {
-  padding: 8rpx 16rpx;
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-  border-radius: 8rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.special-badge.ai {
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-}
-
-.special-badge.ip {
-  background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
-}
-
-.special-content {
-  margin-bottom: 20rpx;
-}
-
-.special-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 12rpx;
-  display: block;
-}
-
-.special-desc {
-  font-size: 26rpx;
-  color: #475569;
-  line-height: 1.5;
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.special-tip {
-  font-size: 24rpx;
-  color: #3b82f6;
-  display: block;
-}
-
-.special-skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-
-.mini-skill-tag {
-  padding: 8rpx 16rpx;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 8rpx;
-}
-
-.mini-skill-tag.more {
-  background: rgba(59, 130, 246, 0.1);
-}
-
-.mini-skill-text {
-  font-size: 22rpx;
-  color: #64748b;
-}
-
-.special-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 20rpx;
-  border-top: 1rpx solid #f1f5f9;
-}
-
-.special-stats {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.special-stat-value {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #f59e0b;
-}
-
-.special-card.agent-order .special-stat-value {
-  color: #3b82f6;
-}
-
-.special-card.personal-ip .special-stat-value {
-  color: #ec4899;
-}
-
-.special-stat-label {
-  font-size: 24rpx;
-  color: #94a3b8;
-}
-
-.special-action {
-  padding: 12rpx 24rpx;
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-  border-radius: 12rpx;
-}
-
-.special-card.agent-order .special-action {
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-}
-
-.special-card.personal-ip .special-action {
-  background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
-}
-
-.special-action-text {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-/* ========== 技能列表 ========== */
-.skills-section {
-  padding: 0 32rpx;
-}
-
-.skills-section-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 24rpx;
-}
-
+/* ========== 双列网格 ========== */
 .skills-grid {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 16rpx;
   padding: 0 32rpx 32rpx;
 }
 
-/* ========== 技能卡片 - 核心重设计 ========== */
-.skill-card {
+/* ========== 竖向技能卡片（一排两个） ========== */
+.skill-card-vertical {
+  width: calc(50% - 8rpx);
   background: #fff;
   border-radius: 20rpx;
-  padding: 0;
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  display: flex;
   overflow: hidden;
-  min-height: 180rpx;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
 }
 
-.skill-card:active {
-  transform: scale(0.985);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+.skill-card-vertical:active {
+  transform: scale(0.97);
 }
 
-.skill-card.owned {
-  border: none;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.1);
-}
-
-/* 左侧图标区域 - 用颜色条区分 */
-.card-top {
-  width: 160rpx;
-  min-height: 180rpx;
+/* 图标区域 */
+.vertical-icon-area {
+  width: 100%;
+  height: 160rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  position: relative;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-right: none;
-}
-
-.skill-card.owned .card-top {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-}
-
-.icon-wrapper {
   position: relative;
 }
 
-.skill-icon {
+.vertical-icon {
   width: 88rpx;
   height: 88rpx;
   border-radius: 20rpx;
@@ -405,60 +213,49 @@
   justify-content: center;
   font-size: 44rpx;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  line-height: 88rpx;
 }
 
-.owned-badge {
+/* 已添加角标 */
+.vertical-owned-badge {
   position: absolute;
   top: 12rpx;
-  right: -8rpx;
+  right: 12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #10b981;
   display: flex;
   align-items: center;
-  gap: 4rpx;
-  padding: 4rpx 10rpx;
-  background: #10b981;
-  border-radius: 8rpx;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
 }
 
-.owned-text {
-  font-size: 18rpx;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* 右侧内容区域 */
-.card-content {
+/* 内容区域 */
+.vertical-content {
+  padding: 16rpx 20rpx 12rpx;
   flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 20rpx 24rpx;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
-.category-tag {
-  padding: 4rpx 14rpx;
-  background: #eff6ff;
-  border-radius: 6rpx;
-  font-size: 20rpx;
-  color: #3b82f6;
-  display: inline-block;
-  font-weight: 600;
-  align-self: flex-start;
-  letter-spacing: 0.5rpx;
-}
-
-.skill-name {
-  font-size: 30rpx;
+.vertical-name {
+  font-size: 28rpx;
   font-weight: 600;
   color: #1e293b;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.skill-description {
-  font-size: 24rpx;
-  color: #64748b;
+.vertical-desc {
+  font-size: 22rpx;
+  color: #94a3b8;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -467,152 +264,84 @@
   text-overflow: ellipsis;
 }
 
-.tags-container {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8rpx;
-  margin-top: 4rpx;
-  overflow: hidden;
-  max-height: 44rpx;
-}
-
-.tag {
-  padding: 4rpx 14rpx;
-  background: #f1f5f9;
-  border-radius: 6rpx;
-}
-
-.tag-text {
-  font-size: 20rpx;
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-/* ========== 卡片底部操作区 ========== */
-.card-footer {
+/* 底部操作区 */
+.vertical-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 12rpx;
-  border-top: none;
+  padding: 12rpx 20rpx 16rpx;
+  border-top: 1rpx solid #f1f5f9;
 }
 
-.card-footer .stats {
-  display: flex;
-  gap: 20rpx;
-}
-
-.card-footer .stat-item {
+.vertical-stats {
   display: flex;
   align-items: center;
   gap: 4rpx;
 }
 
-.card-footer .stat-value {
-  font-size: 24rpx;
+.vertical-stat-val {
+  font-size: 22rpx;
   font-weight: 600;
-  color: #1e293b;
+  color: #f59e0b;
 }
 
-.card-footer .stat-label {
-  font-size: 20rpx;
-  color: #94a3b8;
-}
-
-.action-btn {
-  min-width: 112rpx;
-  height: 56rpx;
-  padding: 0 20rpx;
+.vertical-btn {
+  padding: 6rpx 20rpx;
   background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  transition: all 0.2s ease;
+  border-radius: 16rpx;
 }
 
-.action-btn:active {
-  transform: scale(0.95);
+.vertical-btn.owned {
+  background: #f1f5f9;
 }
 
-.action-btn.remove {
-  background: #fff;
-  border: 2rpx solid #e2e8f0;
-  box-shadow: none;
-}
-
-.action-btn.remove .btn-content Text {
-  color: #64748b;
-}
-
-.btn-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6rpx;
-  height: 100%;
-}
-
-.btn-content Text {
-  font-size: 24rpx;
+.vertical-btn-text {
+  font-size: 22rpx;
   font-weight: 600;
   color: #fff;
-  line-height: 1;
+  line-height: 1.5;
+}
+
+.vertical-btn-text.owned {
+  color: #10b981;
+}
+
+/* ========== 已拥有状态 ========== */
+.skill-card-vertical.owned .vertical-icon-area {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
 }
 
 /* ========== 掌象阅读特殊卡片 ========== */
-.palm-reading-card {
-  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 50%, #eef2ff 100%);
-  border: 2rpx solid #c4b5fd;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.1);
-  display: flex;
-  flex-direction: column;
-  padding: 24rpx;
-  min-height: auto;
-  border-radius: 20rpx;
-  overflow: visible;
+.palm-reading-card .vertical-icon-area {
+  background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
 }
 
-.palm-reading-card .card-top {
-  width: auto;
-  min-height: auto;
-  background: transparent;
-  margin-bottom: 12rpx;
-}
-
-.palm-reading-card .skill-icon {
+.palm-reading-card .vertical-icon {
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  color: #fff;
 }
 
-.palm-reading-card .card-content {
-  padding: 0;
-}
-
-.palm-reading-card .category-tag {
-  background: rgba(139, 92, 246, 0.15);
-  color: #7c3aed;
-}
-
-.palm-reading-card .skill-name {
+.palm-reading-card .vertical-name {
   color: #1e293b;
 }
 
-.palm-reading-card .skill-description {
-  color: #64748b;
+.palm-reading-card .vertical-desc {
+  color: #7c3aed;
 }
 
-.palm-reading-card .card-footer {
-  border-top: 1rpx solid rgba(139, 92, 246, 0.15);
-  padding-top: 16rpx;
-  margin-top: 8rpx;
-}
-
-.palm-reading-card .action-btn {
+.palm-reading-card .vertical-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 20rpx;
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.palm-reading-card .vertical-action-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
 }
 
 /* ========== 空状态/加载 ========== */
