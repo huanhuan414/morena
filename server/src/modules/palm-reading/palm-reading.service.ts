@@ -66,25 +66,32 @@ export class PalmReadingService {
       const imageBuffer = await this.downloadAndCompressImage(imageUrl);
       await this.updateTask(taskId, { progress: '图片已就绪，正在生成掌相阅读指南...' });
 
-      const prompt = `根据我的手掌照片，制作一份完整的中文掌相阅读指南海报。
+      const prompt = `Create a comprehensive Chinese palm reading guide poster based on my palm photo.
 
-布局要求：
-- 整体为竖版海报，白色/浅色背景，风格干净简约高端，细线条，圆角卡片
-- 上方居中：标题"掌相阅读指南"，副标题"了解天赋·把握机遇·成就更好的自己"
-- 上方区域：展示我的手掌原图（保持手掌照片原样），旁边标注主要掌纹位置和名称（生命线、感情线、智慧线、命运线、太阳线）
-- 中部左侧：掌型与手指分析卡片（手型特点、拇指/食指/中指/无名指/小指各指含义）
-- 中部右侧：主要掌纹解读卡片（每条掌纹的含义和特征，用小图标标识）
-- 下部左侧：整体掌相总结（性格特点、优势天赋，列出3个核心特点）
-- 下部中间：人生建议（4条简明建议）
-- 下部右侧：适合发展方向和运势评分参考（事业运、财运、感情运、健康运、贵人运）
-- 底部：一句话"命运在你手中，选择与努力让未来更美好"
+LAYOUT (vertical poster, white/light background, minimalist high-end style, fine lines, rounded cards):
 
-内容要求：
-- 所有文字必须用中文
-- 掌纹分析要基于我的真实手掌照片，不要编造
-- 各个板块用细线圆角卡片分隔
-- 用简约的黑白配色，关键信息可用强调色
-- 整体看起来高端专业，像一份精美的设计作品`;
+TOP SECTION:
+- Title "掌相阅读指南" centered, subtitle "了解天赋·把握机遇·成就更好的自己"
+- My ORIGINAL palm photo displayed as-is (do NOT redraw or modify my hand)
+- Next to the photo, annotate the main palm lines with labels: 生命线(Life line), 感情线(Heart line), 智慧线(Head line), 命运线(Fate line), 太阳线(Sun line)
+
+IMPORTANT - PALM LINE DIAGRAM SECTION (must include):
+- Create a clean black-and-white outline drawing of MY palm (based on my actual palm shape and line positions)
+- Draw the main palm lines as distinct colored strokes on the outline: 生命线 in RED, 感情线 in BLUE, 智慧线 in GREEN, 命运线 in ORANGE, 太阳线 in PURPLE
+- Label each line with its Chinese name and a brief 1-line description
+- This diagram should look like an artistic minimalist illustration, NOT a photo
+
+MIDDLE SECTION:
+- Left card: 掌型与手指分析 (hand shape features, thumb/index/middle/ring/little finger meanings)
+- Right card: 主要掌纹解读 (detailed meaning of each palm line with small icons)
+
+BOTTOM SECTION:
+- Left: 整体掌相总结 (3 core personality traits and talents)
+- Center: 人生建议 (4 concise life advice points)
+- Right: 发展方向与运势评分 (career/wealth/love/health/benefactor fortune scores as progress bars or numbers)
+- Bottom line: "命运在你手中，选择与努力让未来更美好"
+
+STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white palette with accent colors. Professional and elegant like a premium design piece.`;
 
       const formData = new FormData();
       formData.append('model', 'gpt-image-2-all');
