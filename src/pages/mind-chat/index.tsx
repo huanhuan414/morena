@@ -1335,14 +1335,19 @@ export default function MindChatPage() {
 
             // 处理响应数据
             let uploadData
-            if (typeof uploadRes.data === 'string') {
-              uploadData = JSON.parse(uploadRes.data)
+            const rawData = (uploadRes as any)?.data
+            if (typeof rawData === 'string') {
+              try {
+                uploadData = JSON.parse(rawData)
+              } catch {
+                uploadData = rawData
+              }
             } else {
-              uploadData = uploadRes.data
+              uploadData = rawData
             }
 
-            if (uploadData.code === 200 && uploadData.data?.url) {
-              newImageUrls.push(uploadData.data.url)
+            if (uploadData.code === 200 && (uploadData.data?.url || uploadData.url)) {
+              newImageUrls.push(uploadData.data?.url || uploadData.url)
             } else {
               throw new Error(uploadData.message || '上传失败')
             }
@@ -1414,6 +1419,8 @@ export default function MindChatPage() {
     const palmKeywords = ['掌象', '掌相', '手相', '看手相', '手掌', '看手']
     const hasPalmKeyword = palmKeywords.some(kw => messageText.includes(kw))
     if (hasPalmKeyword && uploadedImages.length > 0) {
+      // 用 storage 传递图片 URL，避免 URL 编码问题
+      Taro.setStorageSync('__palm_image_url__', uploadedImages[0])
       setPalmDetectImage(uploadedImages[0])
       return
     }
@@ -4690,8 +4697,7 @@ export default function MindChatPage() {
             <View
               className="palm-detect-btn palm-detect-btn-primary"
               onClick={() => {
-                const imageUrl = encodeURIComponent(palmDetectImage)
-                navigateTo({ url: `/pages/palm-reading/index?palmImageUrl=${imageUrl}` })
+                navigateTo({ url: '/pages/palm-reading/index' })
                 setPalmDetectImage('')
               }}
             >
