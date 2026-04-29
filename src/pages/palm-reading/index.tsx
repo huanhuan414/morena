@@ -100,9 +100,13 @@ export default function PalmReading() {
               filePath: tempFilePath,
               name: 'file',
             })
-            console.log('[PalmReading] 上传结果:', JSON.stringify(uploadRes))
-            const resData = (uploadRes as any)?.data
-            imageUrl = resData?.data?.url || resData?.url || tempFilePath
+            console.log('[PalmReading] 上传原始结果:', JSON.stringify(uploadRes))
+            // Taro.uploadFile 返回 data 为 JSON 字符串，需要 parse
+            let parsedData = (uploadRes as any)?.data
+            if (typeof parsedData === 'string') {
+              try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
+            }
+            imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
             console.log('[PalmReading] 解析后URL:', imageUrl)
           }
           // 二次检查：如果imageUrl还不是http开头，说明上传失败
