@@ -40,15 +40,8 @@ export default function PalmReading() {
       const records = res?.data?.data || []
       setHistory(records)
 
-      // 检查是否有进行中的任务
-      const activeTask = records.find(
-        (r: PalmRecord) => r.status === 'pending' || r.status === 'processing'
-      )
-      if (activeTask) {
-        setTaskStatus(activeTask.status)
-        setTaskProgress(activeTask.progress)
-        startPolling(activeTask.id)
-      }
+      // 不再自动恢复旧任务的轮询
+      // 只有当前会话创建的任务才会轮询
     } catch (e) {
       console.error('加载历史失败:', e)
     }
