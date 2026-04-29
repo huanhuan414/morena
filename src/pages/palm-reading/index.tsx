@@ -24,8 +24,19 @@ export default function PalmReading() {
   const [previewImage, setPreviewImage] = useState<string>('')
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 每次进入页面加载历史
+  // 每次进入页面加载历史，并检查是否有外部传入的图片
   useDidShow(() => {
+    // 检查 URL 参数是否有外部传入的手掌图片
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    if (currentPage) {
+      const { palmImageUrl } = (currentPage as any).options || {}
+      if (palmImageUrl && !selectedImage) {
+        const decodedUrl = decodeURIComponent(palmImageUrl)
+        console.log('[PalmReading] 接收外部图片:', decodedUrl)
+        setSelectedImage(decodedUrl)
+      }
+    }
     loadHistory()
   })
 

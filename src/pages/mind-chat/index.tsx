@@ -472,6 +472,9 @@ export default function MindChatPage() {
   const [showAccountConfigDialog, setShowAccountConfigDialog] = useState(false)
   const [requiredPlatform, setRequiredPlatform] = useState<'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null>(null)
 
+  // 手掌图片检测弹窗
+  const [palmDetectImage, setPalmDetectImage] = useState<string>('')
+
   // 检测消息是否涉及第三方平台
   const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null => {
     const lowerMessage = message.toLowerCase()
@@ -1406,6 +1409,14 @@ export default function MindChatPage() {
     // 🔴 新增：检查消息是否涉及第三方平台
     const detectedPlatform = detectPlatformFromMessage(messageText)
     console.log('[MindChat] 检测到平台:', detectedPlatform)
+
+    // 🔴 手掌图片检测：有图片 + 文字含手掌关键词 → 弹窗询问
+    const palmKeywords = ['掌象', '掌相', '手相', '看手相', '手掌', '看手']
+    const hasPalmKeyword = palmKeywords.some(kw => messageText.includes(kw))
+    if (hasPalmKeyword && uploadedImages.length > 0) {
+      setPalmDetectImage(uploadedImages[0])
+      return
+    }
 
     if (detectedPlatform) {
       const hasBinding = await checkAccountBinding(detectedPlatform)
@@ -4658,6 +4669,41 @@ export default function MindChatPage() {
               >
                 <Text className="account-config-btn-text">去绑定账号</Text>
               </Button>
+            </View>
+          </View>
+        </DialogContent>
+      </Dialog>
+
+      {/* 手掌图片检测弹窗 */}
+      <Dialog open={!!palmDetectImage} onOpenChange={(isOpen) => { if (!isOpen) setPalmDetectImage('') }}>
+        <DialogContent className="palm-detect-dialog">
+          <View className="palm-detect-header">
+            <Text className="palm-detect-title">检测到手掌图片</Text>
+            <Text className="palm-detect-desc">是否使用「掌象阅读」技能为您解读掌相？</Text>
+          </View>
+          {palmDetectImage && (
+            <View className="palm-detect-preview">
+              <Image src={palmDetectImage} className="palm-detect-img" mode="aspectFit" />
+            </View>
+          )}
+          <View className="palm-detect-actions">
+            <View
+              className="palm-detect-btn palm-detect-btn-primary"
+              onClick={() => {
+                const imageUrl = encodeURIComponent(palmDetectImage)
+                navigateTo({ url: `/pages/palm-reading/index?palmImageUrl=${imageUrl}` })
+                setPalmDetectImage('')
+              }}
+            >
+              <Text className="palm-detect-btn-text">使用掌象阅读</Text>
+            </View>
+            <View
+              className="palm-detect-btn palm-detect-btn-secondary"
+              onClick={() => {
+                setPalmDetectImage('')
+              }}
+            >
+              <Text className="palm-detect-btn-text-secondary">继续对话</Text>
             </View>
           </View>
         </DialogContent>
