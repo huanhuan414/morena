@@ -9,7 +9,6 @@ import './index.css'
 export default function PalmReadingPage() {
   const [palmImage, setPalmImage] = useState<string>('')
   const [generatedImage, setGeneratedImage] = useState<string>('')
-  const [analysis, setAnalysis] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [previewImageVisible, setPreviewImageVisible] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState('')
@@ -25,7 +24,6 @@ export default function PalmReadingPage() {
         console.log('[PalmReading] 选择图片成功:', tempFilePath)
         setPalmImage(tempFilePath)
         setGeneratedImage('')
-        setAnalysis('')
       },
       fail: (err) => {
         console.error('[PalmReading] 选择图片失败:', err)
@@ -43,7 +41,7 @@ export default function PalmReadingPage() {
 
     try {
       setIsGenerating(true)
-      showLoading({ title: 'AI分析中...', mask: true })
+      showLoading({ title: 'AI生成中，请耐心等待...', mask: true })
 
       console.log('[PalmReading] 开始生成掌相阅读指南')
 
@@ -80,15 +78,9 @@ export default function PalmReadingPage() {
 
       console.log('[PalmReading] 生成结果:', res.data)
 
-      if (res.data?.code === 200 && res.data?.data) {
-        const data = res.data.data
-        if (data.generatedImageUrl) {
-          setGeneratedImage(data.generatedImageUrl)
-        }
-        if (data.analysis) {
-          setAnalysis(data.analysis)
-        }
-        showToast({ title: '分析完成', icon: 'success' })
+      if (res.data?.code === 200 && res.data?.data?.generatedImageUrl) {
+        setGeneratedImage(res.data.data.generatedImageUrl)
+        showToast({ title: '生成完成', icon: 'success' })
       } else {
         showToast({ title: res.data?.message || '生成失败', icon: 'none' })
       }
@@ -133,38 +125,6 @@ export default function PalmReadingPage() {
     }
   }
 
-  // 将分析文本按段落分割渲染
-  const renderAnalysis = () => {
-    if (!analysis) return null
-
-    const sections = analysis.split(/(?=【)/).filter(Boolean)
-
-    return sections.map((section, index) => {
-      const titleMatch = section.match(/【(.+?)】/)
-      const title = titleMatch ? titleMatch[1] : ''
-      const content = titleMatch ? section.replace(/【.+?】\n?/, '') : section
-
-      if (!content.trim()) return null
-
-      return (
-        <View key={index} className="analysis-section">
-          {title && <Text className="analysis-section-title">{title}</Text>}
-          {content.trim().split('\n').map((line, i) => {
-            const trimmedLine = line.trim()
-            if (!trimmedLine) return null
-            // 检测是否是子标题（如 "- 事业运"）
-            const isSubTitle = /^[-•]/.test(trimmedLine)
-            return (
-              <Text key={i} className={`analysis-line ${isSubTitle ? 'sub-title' : ''}`}>
-                {trimmedLine}
-              </Text>
-            )
-          })}
-        </View>
-      )
-    })
-  }
-
   return (
     <View className="palm-reading-container">
       {/* 头部 */}
@@ -184,7 +144,7 @@ export default function PalmReadingPage() {
             <Text className="info-title">AI 智能掌相分析</Text>
           </View>
           <Text className="info-text">
-            上传您的手掌照片，AI 将识别掌纹并生成专业的掌相解读，包括性格分析、运势解读和生活建议。
+            上传您的手掌照片，AI 将识别掌纹并生成专业的掌相解读指南，干净简约，高端大气。
           </Text>
         </View>
 
@@ -228,58 +188,33 @@ export default function PalmReadingPage() {
               disabled={isGenerating}
             >
               <Sparkles size={20} color="#fff" />
-              <Text>{isGenerating ? 'AI 分析中...' : '开始掌相分析'}</Text>
+              <Text>{isGenerating ? 'AI 生成中...' : '开始掌相分析'}</Text>
             </Button>
           </View>
         )}
 
-        {/* 结果展示：掌相分析文字 */}
-        {analysis && (
+        {/* 结果展示 */}
+        {generatedImage && (
           <View className="result-section">
-            <Text className="section-title">掌相解读</Text>
-
-            {/* 原始手掌图 + 生成图并排 */}
-            <View className="image-compare">
-              <View className="compare-item">
-                <Image
-                  className="compare-image"
-                  src={palmImage}
-                  mode="aspectFill"
-                  onClick={() => handlePreviewImage(palmImage)}
-                />
-                <Text className="compare-label">原始手掌</Text>
-              </View>
-              {generatedImage && (
-                <View className="compare-item">
-                  <Image
-                    className="compare-image"
-                    src={generatedImage}
-                    mode="aspectFill"
-                    onClick={() => handlePreviewImage(generatedImage)}
-                  />
-                  <Text className="compare-label">掌相分析图</Text>
-                </View>
-              )}
+            <Text className="section-title">掌相解读指南</Text>
+            <View className="result-image-wrapper">
+              <Image
+                className="result-image"
+                src={generatedImage}
+                mode="widthFix"
+                onClick={() => handlePreviewImage(generatedImage)}
+              />
             </View>
-
-            {/* 文字分析 */}
-            <View className="analysis-card">
-              {renderAnalysis()}
+            <View className="result-actions">
+              <Button
+                className="save-btn"
+                size="sm"
+                onClick={handleSaveImage}
+              >
+                <Download size={18} color="#fff" />
+                <Text>保存到相册</Text>
+              </Button>
             </View>
-
-            {/* 保存按钮 */}
-            {generatedImage && (
-              <View className="result-actions">
-                <Button
-                  className="save-btn"
-                  size="sm"
-                  onClick={handleSaveImage}
-                >
-                  <Download size={18} color="#fff" />
-                  <Text>保存分析图</Text>
-                </Button>
-              </View>
-            )}
           </View>
         )}
 
@@ -289,7 +224,7 @@ export default function PalmReadingPage() {
           <Text className="tips-item">• 请确保手掌照片清晰，掌纹可见</Text>
           <Text className="tips-item">• 避免强光直射，保持光线均匀</Text>
           <Text className="tips-item">• 建议使用自然光拍摄</Text>
-          <Text className="tips-item">• 分析过程约需30秒，请耐心等待</Text>
+          <Text className="tips-item">• 生成过程约需1-3分钟，请耐心等待</Text>
         </View>
       </ScrollView>
 
