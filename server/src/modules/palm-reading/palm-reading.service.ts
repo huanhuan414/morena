@@ -17,8 +17,8 @@ export class PalmReadingService {
     try {
       console.log('[PalmReadingService] 开始生成掌相阅读指南，图片URL:', imageUrl);
 
-      // 固定的提示词
-      const prompt = `根据我的手掌，我想让你制作一个完整的中文掌相阅读指南，分析手掌，指南的风格应该干净而简约，细线条，圆角卡片，整体看起来非常高端。专注于掌相阅读，创建一条简单黑白轮廓图，展示我的主要掌纹，作为一件小艺术品。尽你所能`;
+      // 固定的提示词 - 在用户手掌原图上叠加掌相分析
+      const prompt = `Take my palm photo as the base image. Analyze my palm and overlay a professional palm reading guide directly ON my original palm photo. Draw elegant colored lines tracing my major palm lines (life line, heart line, head line, fate line) directly on my hand with labels in Chinese (生命线、感情线、智慧线、命运线). Add small circular markers at key intersection points. On the right side of the image, add a clean card with Chinese text explaining each palm line's meaning and my personality analysis. Style: premium, minimalist, soft gradient background behind the text card, thin elegant lines, rounded corners. Keep my original palm photo clearly visible as the base.`;
 
       // 构建请求参数
       const requestData = {
