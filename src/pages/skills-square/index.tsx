@@ -860,6 +860,54 @@ export default function SkillsSquare() {
         </View>
       )}
 
+      {/* 掌象阅读技能入口 */}
+      {!searchKeyword && (
+        <View
+          className="skill-card palm-reading-card"
+          onClick={() => Taro.navigateTo({ url: '/pages/palm-reading/index' })}
+        >
+          <View className="card-top">
+            <View className="icon-wrapper">
+              <Text className="skill-icon">✋</Text>
+            </View>
+          </View>
+
+          <View className="card-content">
+            <Text className="category-tag">AI工具</Text>
+            <Text className="skill-name">掌象阅读</Text>
+            <Text className="skill-description">上传手掌图片，AI智能生成掌相阅读指南</Text>
+
+            <View className="tags-container">
+              <View className="tag">
+                <Text className="tag-text">AI分析</Text>
+              </View>
+              <View className="tag">
+                <Text className="tag-text">掌相</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="card-footer">
+            <View className="stats">
+              <View className="stat-item">
+                <Star size={14} color="#ffb800" />
+                <Text className="stat-value">5.0</Text>
+                <Text className="stat-label">(100)</Text>
+              </View>
+              <View className="stat-item">
+                <Text className="stat-value">200</Text>
+                <Text className="stat-label">人使用</Text>
+              </View>
+            </View>
+            <Button className="action-btn">
+              <View className="btn-content">
+                <Text>立即体验</Text>
+              </View>
+            </Button>
+          </View>
+        </View>
+      )}
+
       {/* 技能列表 */}
       <ScrollView className="skills-scroll" scrollY>
         {loading ? (

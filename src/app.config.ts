@@ -26,6 +26,7 @@ export default defineAppConfig({
     'pages/skills-square/index',
     'pages/skill-create/index',
     'pages/skill-training/index',
+    'pages/palm-reading/index',
     // 推广收益
     'pages/referral-center/index',
     'pages/earning-center/index',

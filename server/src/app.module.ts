@@ -31,6 +31,7 @@ import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
 import { SkillTrainingModule } from './modules/skill-training/skill-training.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
 
 @Module({
   imports: [
@@ -62,7 +63,8 @@ import { AdminModule } from './modules/admin/admin.module';
     TikHubModule,
     OrderProcessingModule,
     SkillTrainingModule,
-    AdminModule
+    AdminModule,
+    PalmReadingModule
   ],
   controllers: [AppController],
   providers: [AppService],
