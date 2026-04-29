@@ -21,8 +21,13 @@ export default function PalmReading() {
   const [taskProgress, setTaskProgress] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [history, setHistory] = useState<PalmRecord[]>([])
+  const [failedRecords, setFailedRecords] = useState<PalmRecord[]>([])
   const [previewImage, setPreviewImage] = useState<string>('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  const pollingStartRef = useRef<number>(0) // 记录轮询开始时间，用于超时检测
 
   // 每次进入页面加载历史，并检查是否有外部传入的图片
   useDidShow(() => {
@@ -34,7 +39,7 @@ export default function PalmReading() {
       // 清除 storage，避免下次进入时残留
       Taro.removeStorageSync('__palm_image_url__')
     }
-    loadHistory()
+    loadHistory(true)
   })
 
   // 页面离开时停止轮询
@@ -42,16 +47,36 @@ export default function PalmReading() {
     stopPolling()
   })
 
-  const loadHistory = async () => {
+  // 加载历史记录
+  const loadHistory = async (reset = false) => {
+    const currentPage = reset ? 1 : page
     try {
-      const res = await Network.request({ url: '/api/palm-reading/history' })
-      const records = res?.data?.data || []
-      setHistory(records)
+      const res = await Network.request({
+        url: '/api/palm-reading/history',
+        data: { page: currentPage, limit: 10 },
+      })
+      const result = res?.data?.data
+      const records: PalmRecord[] = result?.records || []
+      const total: number = result?.total || 0
+
+      // 分离成功记录和失败记录
+      const completed = records.filter((r) => r.status === 'completed')
+      const failed = records.filter((r) => r.status === 'failed')
+
+      if (reset) {
+        setHistory(completed)
+        setFailedRecords(failed)
+        setPage(1)
+      } else {
+        setHistory((prev) => [...prev, ...completed])
+        setFailedRecords((prev) => [...prev, ...failed])
+      }
+      setHasMore(completed.length + failed.length < total)
+      setLoadingMore(false)
 
       // 检查是否有进行中的任务，自动恢复轮询（取最新一个）
       const processing = records.filter((r) => r.status === 'pending' || r.status === 'processing')
       if (processing.length > 0 && !isProcessing) {
-        // 取最新创建的任务恢复轮询
         const latestProcessing = processing.sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
@@ -62,7 +87,76 @@ export default function PalmReading() {
       }
     } catch (e) {
       console.error('加载历史失败:', e)
+      setLoadingMore(false)
     }
+  }
+
+  // 加载更多
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    setPage((prev) => prev + 1)
+    loadHistory(false)
+  }
+
+  // 清空全部历史
+  const handleClearHistory = () => {
+    Taro.showModal({
+      title: '确认清空',
+      content: '确定要清空所有解读记录吗？此操作不可恢复。',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({
+              url: '/api/palm-reading',
+              method: 'DELETE',
+            })
+            setHistory([])
+            setFailedRecords([])
+            setHasMore(false)
+            Taro.showToast({ title: '已清空', icon: 'success' })
+          } catch {
+            Taro.showToast({ title: '清空失败', icon: 'error' })
+          }
+        }
+      },
+    })
+  }
+
+  // 删除单条记录
+  const handleDeleteRecord = (id: string) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定要删除这条记录吗？',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({
+              url: `/api/palm-reading/${id}`,
+              method: 'DELETE',
+            })
+            setHistory((prev) => prev.filter((r) => r.id !== id))
+            setFailedRecords((prev) => prev.filter((r) => r.id !== id))
+            Taro.showToast({ title: '已删除', icon: 'success' })
+          } catch {
+            Taro.showToast({ title: '删除失败', icon: 'error' })
+          }
+        }
+      },
+    })
+  }
+
+  // 重试失败任务
+  const handleRetry = (record: PalmRecord) => {
+    setSelectedImage(record.palm_image_url)
+    setTaskStatus('')
+    setTaskProgress('')
+    setErrorMessage('')
+    // 删除旧的失败记录
+    setFailedRecords((prev) => prev.filter((r) => r.id !== record.id))
+    setHistory((prev) => prev.filter((r) => r.id !== record.id))
   }
 
   const stopPolling = () => {
@@ -74,8 +168,19 @@ export default function PalmReading() {
 
   const startPolling = (taskId: string) => {
     stopPolling()
+    pollingStartRef.current = Date.now()
     pollingRef.current = setInterval(async () => {
       try {
+        // 超时检测：超过10分钟自动标记失败
+        const elapsed = (Date.now() - pollingStartRef.current) / 1000
+        if (elapsed > 600) {
+          stopPolling()
+          setTaskStatus('failed')
+          setErrorMessage('生成超时，请重试')
+          Taro.showToast({ title: '生成超时', icon: 'error' })
+          return
+        }
+
         const res = await Network.request({ url: `/api/palm-reading/progress/${taskId}` })
         const data = res?.data?.data
         if (!data) return
@@ -85,7 +190,7 @@ export default function PalmReading() {
 
         if (data.status === 'completed') {
           stopPolling()
-          loadHistory()
+          loadHistory(true)
           Taro.showToast({ title: '生成完成', icon: 'success' })
         } else if (data.status === 'failed') {
           stopPolling()
@@ -232,7 +337,7 @@ export default function PalmReading() {
 
   const isProcessing = taskStatus === 'pending' || taskStatus === 'processing'
 
-  const completedRecords = history.filter((r) => r.status === 'completed')
+  const hasAnyRecords = history.length > 0 || failedRecords.length > 0
 
   return (
     <View className="palm-reading-page">
@@ -294,8 +399,8 @@ export default function PalmReading() {
           </View>
         )}
 
-        {/* 进行中记录 */}
-        {completedRecords.length > 0 && (
+        {/* 进行中记录（仅在有完成记录时展示，方便查看进度） */}
+        {hasAnyRecords && (
           <View className="section">
             <Text className="section-title">进行中</Text>
             {history
@@ -325,10 +430,51 @@ export default function PalmReading() {
           </View>
         )}
 
-        {completedRecords.length > 0 && (
+        {/* 失败记录 */}
+        {failedRecords.length > 0 && (
           <View className="section">
-            <Text className="section-title">解读记录</Text>
-            {completedRecords.map((record) => (
+            <Text className="section-title">生成失败</Text>
+            {failedRecords.map((record) => (
+              <View className="record-card failed" key={record.id}>
+                <View className="record-images">
+                  <View className="record-image-item">
+                    <Image className="record-img" src={record.palm_image_url} mode="aspectFill" />
+                    <Text className="record-img-label">原图</Text>
+                  </View>
+                  <View className="record-image-item failed-preview">
+                    <Text className="failed-icon">✗</Text>
+                    <Text className="failed-text-sm">生成失败</Text>
+                  </View>
+                </View>
+                <View className="record-actions">
+                  <Text className="record-time">
+                    {new Date(record.created_at).toLocaleString('zh-CN')}
+                  </Text>
+                  <View className="record-btns">
+                    <View className="action-btn" onClick={() => handleRetry(record)}>
+                      <RefreshCw size={14} color="#f97316" />
+                      <Text className="action-text orange">重新生成</Text>
+                    </View>
+                    <View className="action-btn" onClick={() => handleDeleteRecord(record.id)}>
+                      <Text className="action-text red">删除</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 解读记录 */}
+        {history.length > 0 && (
+          <View className="section">
+            <View className="section-header">
+              <Text className="section-title">解读记录</Text>
+              <View className="clear-btn" onClick={handleClearHistory}>
+                <Text className="clear-btn-text">清空</Text>
+              </View>
+            </View>
+            {history.map((record) => (
               <View className="record-card completed" key={record.id}>
                 <View className="record-images">
                   <View className="record-image-item" onClick={() => handlePreview(record.palm_image_url)}>
@@ -354,11 +500,20 @@ export default function PalmReading() {
                         <Download size={14} color="#8b5cf6" />
                         <Text className="action-text">保存</Text>
                       </View>
+                      <View className="action-btn" onClick={() => handleDeleteRecord(record.id)}>
+                        <Text className="action-text red">删除</Text>
+                      </View>
                     </View>
                   )}
                 </View>
               </View>
             ))}
+            {/* 加载更多 */}
+            {hasMore && (
+              <View className="load-more-btn" onClick={handleLoadMore}>
+                <Text className="load-more-text">{loadingMore ? '加载中...' : '加载更多'}</Text>
+              </View>
+            )}
           </View>
         )}
 

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Param, Delete } from '@nestjs/common';
 import { PalmReadingService } from './palm-reading.service';
 
 @Controller('palm-reading')
@@ -38,15 +38,47 @@ export class PalmReadingController {
   }
 
   /**
-   * 查询历史记录
+   * 查询历史记录（支持分页）
    */
   @Get('history')
-  async getHistory(@Query('avatarId') avatarId?: string) {
+  async getHistory(
+    @Query('avatarId') avatarId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     try {
-      const records = await this.palmReadingService.getHistory(avatarId);
-      return { code: 200, message: '查询成功', data: records };
+      const pageNum = page ? parseInt(page, 10) : 1;
+      const limitNum = limit ? parseInt(limit, 10) : 10;
+      const result = await this.palmReadingService.getHistory(avatarId, pageNum, limitNum);
+      return { code: 200, message: '查询成功', data: result };
     } catch (error: any) {
       return { code: 500, message: error.message || '查询失败', data: null };
+    }
+  }
+
+  /**
+   * 删除指定记录
+   */
+  @Delete(':id')
+  async deleteRecord(@Param('id') id: string) {
+    try {
+      await this.palmReadingService.deleteRecord(id);
+      return { code: 200, message: '删除成功', data: null };
+    } catch (error: any) {
+      return { code: 500, message: error.message || '删除失败', data: null };
+    }
+  }
+
+  /**
+   * 清空所有历史记录
+   */
+  @Delete()
+  async clearHistory(@Query('avatarId') avatarId?: string) {
+    try {
+      await this.palmReadingService.clearHistory(avatarId);
+      return { code: 200, message: '清空成功', data: null };
+    } catch (error: any) {
+      return { code: 500, message: error.message || '清空失败', data: null };
     }
   }
 }

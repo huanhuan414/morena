@@ -180,24 +180,57 @@ STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white pa
     return data as PalmReadingRecord;
   }
 
-  async getHistory(avatarId?: string): Promise<PalmReadingRecord[]> {
-    let query = this.supabase
+  async getHistory(avatarId?: string, page = 1, limit = 10): Promise<{ records: PalmReadingRecord[]; total: number }> {
+    const offset = (page - 1) * limit;
+
+    // 先查总数
+    let countQuery = this.supabase.from('palm_reading_records').select('*', { count: 'exact', head: true });
+    if (avatarId) {
+      countQuery = countQuery.eq('avatar_id', avatarId);
+    }
+    const { count } = await countQuery;
+
+    // 再查分页数据
+    let dataQuery = this.supabase
       .from('palm_reading_records')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .range(offset, offset + limit - 1);
 
     if (avatarId) {
-      query = query.eq('avatar_id', avatarId);
+      dataQuery = dataQuery.eq('avatar_id', avatarId);
     }
-
-    const { data, error } = await query;
+    const { data, error } = await dataQuery;
 
     if (error) {
       throw new Error(`查询历史失败: ${error.message}`);
     }
 
-    return (data || []) as PalmReadingRecord[];
+    return { records: (data || []) as PalmReadingRecord[], total: count || 0 };
+  }
+
+  /**
+   * 删除指定记录
+   */
+  async deleteRecord(id: string): Promise<void> {
+    const { error } = await this.supabase.from('palm_reading_records').delete().eq('id', id);
+    if (error) {
+      throw new Error(`删除记录失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 清空所有历史记录
+   */
+  async clearHistory(avatarId?: string): Promise<void> {
+    let query = this.supabase.from('palm_reading_records').delete();
+    if (avatarId) {
+      query = query.eq('avatar_id', avatarId);
+    }
+    const { error } = await query;
+    if (error) {
+      throw new Error(`清空历史失败: ${error.message}`);
+    }
   }
 
   private async downloadAndCompressImage(imageUrl: string): Promise<Buffer> {

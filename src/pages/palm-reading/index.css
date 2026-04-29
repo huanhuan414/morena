@@ -324,6 +324,73 @@
   color: #8b5cf6;
 }
 
+.action-text.orange {
+  color: #f97316;
+}
+
+.action-text.red {
+  color: #ef4444;
+}
+
+/* 区块头部（标题+清空） */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+/* 清空按钮 */
+.clear-btn {
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  background: #fef2f2;
+}
+
+.clear-btn-text {
+  font-size: 24rpx;
+  color: #ef4444;
+}
+
+/* 失败卡片 */
+.record-card.failed {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.failed-preview {
+  background: #fee2e2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.failed-icon {
+  font-size: 36rpx;
+  color: #ef4444;
+  margin-bottom: 8rpx;
+}
+
+.failed-text-sm {
+  font-size: 22rpx;
+  color: #ef4444;
+}
+
+/* 加载更多 */
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+  margin-top: 16rpx;
+}
+
+.load-more-text {
+  font-size: 26rpx;
+  color: #8b5cf6;
+}
+
 /* 图片预览 */
 .preview-overlay {
   position: fixed;
