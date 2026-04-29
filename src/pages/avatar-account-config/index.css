@@ -29,27 +29,18 @@
 
 .header-left,
 .header-right {
-  width: 88rpx;
-  height: 88rpx;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--muted);
-  border: 2rpx solid var(--border);
-  transition: all 0.3s ease;
   cursor: pointer;
+  padding: 8rpx;
 }
 
 .header-left:active {
-  background: var(--accent);
-  transform: scale(0.92);
-  border-color: var(--accent);
-}
-
-.header-left:active > * {
-  color: #fff !important;
+  opacity: 0.6;
 }
 
 .header-title {
