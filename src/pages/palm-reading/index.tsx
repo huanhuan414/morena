@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { chooseImage, showToast, showLoading, hideLoading } from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Upload, Sparkles, Download, Share2 } from 'lucide-react-taro'
+import { ArrowLeft, Upload, Sparkles, Download } from 'lucide-react-taro'
 import * as Network from '@/network'
 import './index.css'
 
 export default function PalmReadingPage() {
   const [palmImage, setPalmImage] = useState<string>('')
   const [generatedImage, setGeneratedImage] = useState<string>('')
+  const [analysis, setAnalysis] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [previewImageVisible, setPreviewImageVisible] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState('')
@@ -22,10 +23,9 @@ export default function PalmReadingPage() {
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
         console.log('[PalmReading] 选择图片成功:', tempFilePath)
-
-        // 先展示图片
         setPalmImage(tempFilePath)
         setGeneratedImage('')
+        setAnalysis('')
       },
       fail: (err) => {
         console.error('[PalmReading] 选择图片失败:', err)
@@ -43,14 +43,12 @@ export default function PalmReadingPage() {
 
     try {
       setIsGenerating(true)
-      showLoading({ title: '生成中...', mask: true })
+      showLoading({ title: 'AI分析中...', mask: true })
 
       console.log('[PalmReading] 开始生成掌相阅读指南')
 
-      // 先上传图片到 TOS，确保第三方API能访问
+      // 先上传图片到 TOS
       let uploadedImageUrl = palmImage
-
-      // 只有已经是完整 http(s) URL 的才不需要上传
       const isAlreadyUploaded = palmImage.startsWith('http://') || palmImage.startsWith('https://')
       if (!isAlreadyUploaded) {
         console.log('[PalmReading] 上传图片到 TOS...', palmImage)
@@ -82,9 +80,15 @@ export default function PalmReadingPage() {
 
       console.log('[PalmReading] 生成结果:', res.data)
 
-      if (res.data?.code === 200 && res.data?.data?.generatedImageUrl) {
-        setGeneratedImage(res.data.data.generatedImageUrl)
-        showToast({ title: '生成成功', icon: 'success' })
+      if (res.data?.code === 200 && res.data?.data) {
+        const data = res.data.data
+        if (data.generatedImageUrl) {
+          setGeneratedImage(data.generatedImageUrl)
+        }
+        if (data.analysis) {
+          setAnalysis(data.analysis)
+        }
+        showToast({ title: '分析完成', icon: 'success' })
       } else {
         showToast({ title: res.data?.message || '生成失败', icon: 'none' })
       }
@@ -109,39 +113,56 @@ export default function PalmReadingPage() {
 
     try {
       showLoading({ title: '保存中...', mask: true })
-
-      // 下载图片
       const downloadRes = await Network.downloadFile({
         url: generatedImage
       })
 
-      console.log('[PalmReading] 下载结果:', downloadRes)
-
       if (downloadRes.statusCode === 200 && downloadRes.tempFilePath) {
-        // 保存到相册
-        const saveRes = await Taro.saveImageToPhotosAlbum({
+        await Taro.saveImageToPhotosAlbum({
           filePath: downloadRes.tempFilePath
         })
-
-        console.log('[PalmReading] 保存结果:', saveRes)
-
         showToast({ title: '保存成功', icon: 'success' })
       } else {
         showToast({ title: '保存失败', icon: 'none' })
       }
     } catch (error: any) {
       console.error('[PalmReading] 保存失败:', error)
-      showToast({ title: `保存失败: ${error.message || '未知错误'}`, icon: 'none' })
+      showToast({ title: '保存失败', icon: 'none' })
     } finally {
       hideLoading()
     }
   }
 
-  // 分享图片
-  const handleShareImage = () => {
-    if (!generatedImage) return
+  // 将分析文本按段落分割渲染
+  const renderAnalysis = () => {
+    if (!analysis) return null
 
-    showToast({ title: '请使用系统分享功能', icon: 'none' })
+    const sections = analysis.split(/(?=【)/).filter(Boolean)
+
+    return sections.map((section, index) => {
+      const titleMatch = section.match(/【(.+?)】/)
+      const title = titleMatch ? titleMatch[1] : ''
+      const content = titleMatch ? section.replace(/【.+?】\n?/, '') : section
+
+      if (!content.trim()) return null
+
+      return (
+        <View key={index} className="analysis-section">
+          {title && <Text className="analysis-section-title">{title}</Text>}
+          {content.trim().split('\n').map((line, i) => {
+            const trimmedLine = line.trim()
+            if (!trimmedLine) return null
+            // 检测是否是子标题（如 "- 事业运"）
+            const isSubTitle = /^[-•]/.test(trimmedLine)
+            return (
+              <Text key={i} className={`analysis-line ${isSubTitle ? 'sub-title' : ''}`}>
+                {trimmedLine}
+              </Text>
+            )
+          })}
+        </View>
+      )
+    })
   }
 
   return (
@@ -163,13 +184,13 @@ export default function PalmReadingPage() {
             <Text className="info-title">AI 智能掌相分析</Text>
           </View>
           <Text className="info-text">
-            上传您的手掌照片，AI 将为您生成专业的掌相阅读指南。系统会智能分析掌纹，提供详细的性格解读和人生指引。
+            上传您的手掌照片，AI 将识别掌纹并生成专业的掌相解读，包括性格分析、运势解读和生活建议。
           </Text>
         </View>
 
         {/* 上传区域 */}
         <View className="upload-section">
-          <Text className="section-title">1. 上传手掌照片</Text>
+          <Text className="section-title">上传手掌照片</Text>
           <Text className="section-desc">请确保手掌清晰可见，光线充足</Text>
 
           {palmImage ? (
@@ -198,56 +219,67 @@ export default function PalmReadingPage() {
           )}
         </View>
 
-        {/* 生成区域 */}
+        {/* 生成按钮 */}
         {palmImage && (
           <View className="generate-section">
-            <Text className="section-title">2. 生成掌相指南</Text>
-            <Text className="section-desc">AI 将根据您的手掌照片生成专属指南</Text>
-
             <Button
               className="generate-btn"
               onClick={handleGenerate}
               disabled={isGenerating}
             >
               <Sparkles size={20} color="#fff" />
-              <Text>{isGenerating ? '生成中...' : '开始生成'}</Text>
+              <Text>{isGenerating ? 'AI 分析中...' : '开始掌相分析'}</Text>
             </Button>
           </View>
         )}
 
-        {/* 结果展示 */}
-        {generatedImage && (
+        {/* 结果展示：掌相分析文字 */}
+        {analysis && (
           <View className="result-section">
-            <Text className="section-title">3. 掌相阅读指南</Text>
-            <Text className="section-desc">您的专属掌相分析结果</Text>
+            <Text className="section-title">掌相解读</Text>
 
-            <View className="result-image-wrapper">
-              <Image
-                className="result-image"
-                src={generatedImage}
-                mode="widthFix"
-                onClick={() => handlePreviewImage(generatedImage)}
-              />
+            {/* 原始手掌图 + 生成图并排 */}
+            <View className="image-compare">
+              <View className="compare-item">
+                <Image
+                  className="compare-image"
+                  src={palmImage}
+                  mode="aspectFill"
+                  onClick={() => handlePreviewImage(palmImage)}
+                />
+                <Text className="compare-label">原始手掌</Text>
+              </View>
+              {generatedImage && (
+                <View className="compare-item">
+                  <Image
+                    className="compare-image"
+                    src={generatedImage}
+                    mode="aspectFill"
+                    onClick={() => handlePreviewImage(generatedImage)}
+                  />
+                  <Text className="compare-label">掌相分析图</Text>
+                </View>
+              )}
             </View>
 
-            <View className="result-actions">
-              <Button
-                className="action-btn"
-                size="sm"
-                onClick={handleSaveImage}
-              >
-                <Download size={18} color="#1890ff" />
-                <Text>保存图片</Text>
-              </Button>
-              <Button
-                className="action-btn"
-                size="sm"
-                onClick={handleShareImage}
-              >
-                <Share2 size={18} color="#1890ff" />
-                <Text>分享</Text>
-              </Button>
+            {/* 文字分析 */}
+            <View className="analysis-card">
+              {renderAnalysis()}
             </View>
+
+            {/* 保存按钮 */}
+            {generatedImage && (
+              <View className="result-actions">
+                <Button
+                  className="save-btn"
+                  size="sm"
+                  onClick={handleSaveImage}
+                >
+                  <Download size={18} color="#fff" />
+                  <Text>保存分析图</Text>
+                </Button>
+              </View>
+            )}
           </View>
         )}
 
@@ -257,7 +289,7 @@ export default function PalmReadingPage() {
           <Text className="tips-item">• 请确保手掌照片清晰，掌纹可见</Text>
           <Text className="tips-item">• 避免强光直射，保持光线均匀</Text>
           <Text className="tips-item">• 建议使用自然光拍摄</Text>
-          <Text className="tips-item">• 生成过程可能需要几秒钟，请耐心等待</Text>
+          <Text className="tips-item">• 分析过程约需30秒，请耐心等待</Text>
         </View>
       </ScrollView>
 
