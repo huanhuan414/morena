@@ -4686,7 +4686,7 @@ export default function MindChatPage() {
         <DialogContent className="palm-detect-dialog">
           <View className="palm-detect-header">
             <Text className="palm-detect-title">检测到手掌图片</Text>
-            <Text className="palm-detect-desc">是否使用「掌象阅读」技能为您解读掌相？</Text>
+            <Text className="palm-detect-desc">是否使用「掌相阅读」技能为您解读掌相？</Text>
           </View>
           {palmDetectImage && (
             <View className="palm-detect-preview">
@@ -4701,7 +4701,7 @@ export default function MindChatPage() {
                 setPalmDetectImage('')
               }}
             >
-              <Text className="palm-detect-btn-text">使用掌象阅读</Text>
+              <Text className="palm-detect-btn-text">使用掌相阅读</Text>
             </View>
             <View
               className="palm-detect-btn palm-detect-btn-secondary"

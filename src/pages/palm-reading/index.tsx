@@ -350,7 +350,7 @@ export default function PalmReading() {
         <View className="header-left" onClick={() => Taro.navigateBack()}>
           <ArrowLeft size={20} color="#ffffff" />
         </View>
-        <Text className="header-title">掌象阅读</Text>
+        <Text className="header-title">掌相阅读</Text>
       </View>
 
       <View className="page-content">

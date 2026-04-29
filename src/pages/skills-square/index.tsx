@@ -879,7 +879,7 @@ export default function SkillsSquare() {
           </View>
         ) : (
           <View className="skills-grid">
-            {/* 掌象阅读 */}
+            {/* 掌相阅读 */}
             {!searchKeyword && (
               <View
                 className="skill-card-vertical"
@@ -889,7 +889,7 @@ export default function SkillsSquare() {
                   <Text className="vertical-icon">✋</Text>
                 </View>
                 <View className="vertical-content">
-                  <Text className="vertical-name">掌象阅读</Text>
+                  <Text className="vertical-name">掌相阅读</Text>
                   <Text className="vertical-desc">上传手掌图片，AI智能生成掌相阅读指南</Text>
                 </View>
                 <View className="vertical-bottom">
