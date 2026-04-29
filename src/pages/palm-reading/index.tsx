@@ -162,29 +162,54 @@ export default function PalmReading() {
   }, [])
 
   const handleSaveImage = useCallback((url: string) => {
-    Taro.showLoading({ title: '保存中...' })
-    Network.downloadFile({
-      url,
-      success: (downloadRes: any) => {
-        if (downloadRes.statusCode === 200) {
-          Taro.saveImageToPhotosAlbum({
-            filePath: downloadRes.tempFilePath,
-            success: () => {
-              Taro.hideLoading()
-              Taro.showToast({ title: '已保存到相册', icon: 'success' })
-            },
-            fail: () => {
-              Taro.hideLoading()
-              Taro.showToast({ title: '保存失败，请授权相册权限', icon: 'none' })
-            },
-          })
-        }
-      },
-      fail: () => {
-        Taro.hideLoading()
-        Taro.showToast({ title: '下载失败', icon: 'error' })
-      },
-    })
+    const env = Taro.getEnv()
+    const isMiniApp = env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT
+
+    if (isMiniApp) {
+      // 小程序：下载文件后保存到相册
+      Taro.showLoading({ title: '保存中...' })
+      Network.downloadFile({
+        url,
+        success: (downloadRes: any) => {
+          if (downloadRes.statusCode === 200) {
+            Taro.saveImageToPhotosAlbum({
+              filePath: downloadRes.tempFilePath,
+              success: () => {
+                Taro.hideLoading()
+                Taro.showToast({ title: '已保存到相册', icon: 'success' })
+              },
+              fail: () => {
+                Taro.hideLoading()
+                Taro.showToast({ title: '保存失败，请授权相册权限', icon: 'none' })
+              },
+            })
+          } else {
+            Taro.hideLoading()
+            Taro.showToast({ title: '下载失败', icon: 'error' })
+          }
+        },
+        fail: () => {
+          Taro.hideLoading()
+          Taro.showToast({ title: '下载失败', icon: 'error' })
+        },
+      })
+    } else {
+      // H5：通过 a 标签下载
+      try {
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `palm-reading-${Date.now()}.png`
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        Taro.showToast({ title: '已开始下载', icon: 'success' })
+      } catch {
+        // a 标签下载失败时，尝试新窗口打开
+        window.open(url, '_blank')
+        Taro.showToast({ title: '请在打开的页面中保存图片', icon: 'none' })
+      }
+    }
   }, [])
 
   const isProcessing = taskStatus === 'pending' || taskStatus === 'processing'
