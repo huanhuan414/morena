@@ -311,37 +311,13 @@
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
 }
 
-/* ========== 掌象阅读特殊卡片 ========== */
-.palm-reading-card .vertical-icon-area {
+/* ========== 紫色变体（掌象阅读） ========== */
+.vertical-icon-area.purple {
   background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
 }
 
-.palm-reading-card .vertical-icon {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-  color: #fff;
-}
-
-.palm-reading-card .vertical-name {
-  color: #1e293b;
-}
-
-.palm-reading-card .vertical-desc {
-  color: #7c3aed;
-}
-
-.palm-reading-card .vertical-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14rpx 20rpx;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-}
-
-.palm-reading-card .vertical-action-text {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #fff;
+.purple-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
 }
 
 /* ========== 空状态/加载 ========== */

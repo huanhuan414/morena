@@ -860,25 +860,6 @@ export default function SkillsSquare() {
         </View>
       )}
 
-      {/* 掌象阅读技能入口 */}
-      {!searchKeyword && (
-        <View
-          className="skill-card-vertical palm-reading-card"
-          onClick={() => Taro.navigateTo({ url: '/pages/palm-reading/index' })}
-        >
-          <View className="vertical-icon-area">
-            <Text className="vertical-icon">✋</Text>
-          </View>
-          <View className="vertical-content">
-            <Text className="vertical-name">掌象阅读</Text>
-            <Text className="vertical-desc">上传手掌图片，AI智能生成掌相阅读指南</Text>
-          </View>
-          <View className="vertical-action">
-            <Text className="vertical-action-text">立即体验</Text>
-          </View>
-        </View>
-      )}
-
       {/* 技能列表 */}
       <ScrollView className="skills-scroll" scrollY>
         {loading ? (
@@ -898,6 +879,31 @@ export default function SkillsSquare() {
           </View>
         ) : (
           <View className="skills-grid">
+            {/* 掌象阅读 */}
+            {!searchKeyword && (
+              <View
+                className="skill-card-vertical"
+                onClick={() => Taro.navigateTo({ url: '/pages/palm-reading/index' })}
+              >
+                <View className="vertical-icon-area purple">
+                  <Text className="vertical-icon">✋</Text>
+                </View>
+                <View className="vertical-content">
+                  <Text className="vertical-name">掌象阅读</Text>
+                  <Text className="vertical-desc">上传手掌图片，AI智能生成掌相阅读指南</Text>
+                </View>
+                <View className="vertical-bottom">
+                  <View className="vertical-stats">
+                    <Star size={12} color="#f59e0b" />
+                    <Text className="vertical-stat-val">5.0</Text>
+                  </View>
+                  <View className="vertical-btn purple-btn">
+                    <Text className="vertical-btn-text">体验</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {(!searchKeyword ? filterSkills(skills) : skills).map((skill) => {
               const owned = isOwned(skill.id)
               const displayName = getSkillDisplayName(skill.name, skill.tool_name || '')
