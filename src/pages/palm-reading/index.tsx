@@ -47,14 +47,15 @@ export default function PalmReadingPage() {
 
       console.log('[PalmReading] 开始生成掌相阅读指南')
 
-      // 先上传图片到 TOS
+      // 先上传图片到 TOS，确保第三方API能访问
       let uploadedImageUrl = palmImage
 
-      // 如果是本地临时文件，先上传到 TOS
-      if (palmImage.startsWith('wxfile://') || palmImage.startsWith('http://tmp/') || palmImage.startsWith('/tmp/')) {
-        console.log('[PalmReading] 上传图片到 TOS...')
+      // 只有已经是完整 http(s) URL 的才不需要上传
+      const isAlreadyUploaded = palmImage.startsWith('http://') || palmImage.startsWith('https://')
+      if (!isAlreadyUploaded) {
+        console.log('[PalmReading] 上传图片到 TOS...', palmImage)
         const uploadRes = await Network.uploadFile({
-          url: '/api/upload',
+          url: '/api/upload/image',
           filePath: palmImage,
           name: 'file'
         })
@@ -62,7 +63,7 @@ export default function PalmReadingPage() {
         console.log('[PalmReading] 上传结果:', uploadRes)
 
         if (uploadRes.statusCode === 200 && uploadRes.data) {
-          const uploadData = JSON.parse(uploadRes.data)
+          const uploadData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
           if (uploadData.code === 200 && uploadData.data?.url) {
             uploadedImageUrl = uploadData.data.url
             console.log('[PalmReading] 图片上传成功:', uploadedImageUrl)
