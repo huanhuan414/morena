@@ -40,7 +40,7 @@ export class PalmReadingService {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 120000 // 120秒超时
+        timeout: 180000 // 180秒超时（3分钟）
       });
 
       console.log('[PalmReadingService] API响应状态:', response.status);
@@ -48,9 +48,37 @@ export class PalmReadingService {
 
       // 解析响应
       if (response.data && response.data.data && response.data.data.length > 0) {
-        const generatedImageUrl = response.data.data[0].url;
-        console.log('[PalmReadingService] 生成成功，图片URL:', generatedImageUrl);
-        return { generatedImageUrl };
+        const imageData = response.data.data[0];
+
+        // API 可能返回 b64_json (base64) 或 url
+        if (imageData.url) {
+          console.log('[PalmReadingService] 生成成功，图片URL:', imageData.url);
+          return { generatedImageUrl: imageData.url };
+        } else if (imageData.b64_json) {
+          // 如果是 base64 编码的图片，需要先上传到对象存储
+          console.log('[PalmReadingService] API返回base64编码的图片，开始处理...');
+
+          try {
+            // 将 base64 转换为 buffer
+            const imageBuffer = Buffer.from(imageData.b64_json, 'base64');
+
+            // 生成临时文件名
+            const timestamp = Date.now();
+            const filename = `palm-reading-${timestamp}.png`;
+
+            // TODO: 上传到对象存储获取 URL
+            // 这里先返回一个 data URL 用于测试
+            const dataUrl = `data:image/png;base64,${imageData.b64_json}`;
+            console.log('[PalmReadingService] 生成成功（base64）');
+            return { generatedImageUrl: dataUrl };
+          } catch (uploadError: any) {
+            console.error('[PalmReadingService] 处理base64图片失败:', uploadError);
+            throw new HttpException('图片处理失败', HttpStatus.INTERNAL_SERVER_ERROR);
+          }
+        } else {
+          console.error('[PalmReadingService] API响应中无图片数据:', imageData);
+          throw new HttpException('生成失败，无图片数据返回', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
       } else {
         console.error('[PalmReadingService] 响应格式错误:', response.data);
         throw new HttpException('生成失败，响应格式错误', HttpStatus.INTERNAL_SERVER_ERROR);
