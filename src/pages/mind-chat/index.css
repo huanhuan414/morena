@@ -2067,8 +2067,8 @@
 
 /* 左侧图标按钮 */
 .left-icon-btn {
-  width: 64rpx;
-  height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   flex-shrink: 0;
   display: flex;
   align-items: center;

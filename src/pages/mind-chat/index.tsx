@@ -4433,13 +4433,13 @@ export default function MindChatPage() {
           <View className="left-icon-group">
             <View className="left-icon-btn image-btn" onClick={handleUploadImage}>
               {isUploadingImage ? (
-                <Loader size={20} color="#666666" />
+                <Loader size={24} color="#666666" />
               ) : (
-                <Camera size={20} color="#666666" />
+                <Camera size={24} color="#666666" />
               )}
             </View>
             <View className="left-icon-btn skill-btn" onClick={navigateToSkillsSquare}>
-              <Wrench size={20} color="#666666" />
+              <Wrench size={24} color="#666666" />
             </View>
           </View>
 
@@ -4488,7 +4488,7 @@ export default function MindChatPage() {
           {/* 右侧：发送按钮 */}
           {inputText.trim() && (
             <View className="send-btn" onClick={() => sendMessage()}>
-              <Send size={20} color="#6366f1" />
+              <Send size={24} color="#6366f1" />
             </View>
           )}
         </View>
