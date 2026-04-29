@@ -75,34 +75,30 @@ export class PalmReadingService {
   }
 
   /**
-   * 第二步：用图片生成API生成掌相分析图
+   * 第二步：用图片编辑模型基于原图生成标注了掌纹的分析图
    */
-  private async generatePalmImage(analysis: string): Promise<string> {
-    console.log('[PalmReadingService] 第二步：生成掌相分析图...');
+  private async generatePalmImage(imageUrl: string): Promise<string> {
+    console.log('[PalmReadingService] 第二步：基于原图生成掌纹标注图...');
 
-    // 把分析内容截取关键信息用于图片生成
-    const analysisSummary = analysis.substring(0, 500);
-
-    const prompt = `Create a premium palm reading analysis card image. The image should have:
-- Left side: A realistic open palm with elegantly drawn colored lines tracing palm lines (red for life line 生命线, pink for heart line 感情线, blue for head line 智慧线, gold for fate line 命运线), each line labeled in Chinese
-- Right side: A clean white card with rounded corners containing Chinese text analysis of the palm reading, organized in sections with elegant icons
-- Overall style: minimalist, premium, soft purple-blue gradient background, thin elegant lines, high-end design
-- Text should include key personality traits and fortune analysis in Chinese
-
-Reference analysis: ${analysisSummary}`;
+    const prompt = `请在这张手掌照片上，用彩色线条标注出主要的掌纹，并加上中文标签：
+- 用红色线条标注生命线，旁边写"生命线"
+- 用蓝色线条标注感情线，旁边写"感情线"  
+- 用绿色线条标注智慧线，旁边写"智慧线"
+- 用橙色线条标注命运线（如有），旁边写"命运线"
+保持原始手掌照片不变，只在上面叠加标注线条和文字标签。线条要细而清晰。`;
 
     const requestData = {
-      model: 'gpt-image-2',
+      model: 'qwen-image-edit-2509',
       prompt: prompt,
+      image: imageUrl,
       n: 1,
       size: '1024x1024'
     };
 
-    console.log('[PalmReadingService] 图片生成请求参数:', {
+    console.log('[PalmReadingService] 图片编辑请求参数:', {
       model: requestData.model,
       promptLength: prompt.length,
-      n: requestData.n,
-      size: requestData.size
+      imageUrl: imageUrl.substring(0, 80) + '...',
     });
 
     const response = await axios.post(this.imageApiUrl, requestData, {
@@ -129,8 +125,22 @@ Reference analysis: ${analysisSummary}`;
         console.log('[PalmReadingService] 图片上传成功:', tosUrl);
         return tosUrl;
       } else if (imageData.url) {
-        console.log('[PalmReadingService] 生成成功，图片URL:', imageData.url);
-        return imageData.url;
+        // URL 可能是带签名的临时URL，需要下载后上传到TOS
+        console.log('[PalmReadingService] 获取到临时URL，下载并上传到TOS...');
+        const timestamp = Date.now();
+        const filename = `palm-reading-${timestamp}.png`;
+        // 下载图片
+        const imgResponse = await axios.get(imageData.url, {
+          responseType: 'arraybuffer',
+          timeout: 60000
+        });
+        const base64 = Buffer.from(imgResponse.data, 'binary').toString('base64');
+        const tosUrl = await this.storageService.uploadBase64Image(
+          `data:image/png;base64,${base64}`,
+          filename
+        );
+        console.log('[PalmReadingService] 图片上传成功:', tosUrl);
+        return tosUrl;
       } else {
         throw new HttpException('生成失败，无图片数据返回', HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -159,8 +169,8 @@ Reference analysis: ${analysisSummary}`;
 
       console.log('[PalmReadingService] 掌相分析完成，开始生成图片...');
 
-      // 第二步：生成掌相分析图
-      const generatedImageUrl = await this.generatePalmImage(analysis);
+      // 第二步：基于原图生成掌纹标注图
+      const generatedImageUrl = await this.generatePalmImage(imageUrl);
 
       console.log('[PalmReadingService] ========== 掌相阅读完成 ==========');
 
