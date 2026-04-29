@@ -190,10 +190,6 @@ export default function PalmReading() {
   const isProcessing = taskStatus === 'pending' || taskStatus === 'processing'
 
   const completedRecords = history.filter((r) => r.status === 'completed')
-  const processingRecords = history.filter(
-    (r) => r.status === 'pending' || r.status === 'processing'
-  )
-  const failedRecords = history.filter((r) => r.status === 'failed')
 
   return (
     <View className="palm-reading-page">
@@ -203,7 +199,6 @@ export default function PalmReading() {
           <ArrowLeft size={20} color="#ffffff" />
         </View>
         <Text className="header-title">掌象阅读</Text>
-        <View className="header-right" />
       </View>
 
       <View className="page-content">
@@ -211,7 +206,7 @@ export default function PalmReading() {
         <View className="upload-section">
           {selectedImage ? (
             <View className="selected-image-wrapper" onClick={handleChooseImage}>
-              <Image className="selected-image" src={selectedImage} mode="aspectFit" />
+              <Image className="selected-image" src={selectedImage} mode="widthFix" />
               <View className="change-image-btn">
                 <RefreshCw size={14} color="#fff" />
                 <Text className="change-text">重新选择</Text>
@@ -256,27 +251,7 @@ export default function PalmReading() {
           </View>
         )}
 
-        {/* 进行中的任务 */}
-        {processingRecords.length > 0 && !isProcessing && (
-          <View className="section">
-            <Text className="section-title">进行中</Text>
-            {processingRecords.map((record) => (
-              <View className="record-card processing" key={record.id}>
-                <View className="record-left">
-                  <Image className="record-thumb" src={record.palm_image_url} mode="aspectFill" />
-                </View>
-                <View className="record-info">
-                  <Text className="record-status-text processing-text">{record.progress}</Text>
-                  <Text className="record-time">
-                    {new Date(record.created_at).toLocaleString('zh-CN')}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
 
-        {/* 已完成的历史记录 */}
         {completedRecords.length > 0 && (
           <View className="section">
             <Text className="section-title">解读记录</Text>
@@ -314,27 +289,7 @@ export default function PalmReading() {
           </View>
         )}
 
-        {/* 失败的历史记录 */}
-        {failedRecords.length > 0 && (
-          <View className="section">
-            <Text className="section-title">失败记录</Text>
-            {failedRecords.map((record) => (
-              <View className="record-card failed" key={record.id}>
-                <View className="record-left">
-                  <Image className="record-thumb" src={record.palm_image_url} mode="aspectFill" />
-                </View>
-                <View className="record-info">
-                  <Text className="record-status-text failed-text">
-                    {record.error_message || '生成失败'}
-                  </Text>
-                  <Text className="record-time">
-                    {new Date(record.created_at).toLocaleString('zh-CN')}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
+
       </View>
 
       {/* 图片预览弹窗 */}
