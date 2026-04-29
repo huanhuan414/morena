@@ -437,3 +437,71 @@
   font-size: 28rpx;
   color: #fff;
 }
+
+/* 生成进度卡片 */
+.generating-card {
+  margin-top: 24rpx;
+  padding: 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.generating-failed-card {
+  margin-top: 24rpx;
+  padding: 32rpx;
+  background: #fef2f2;
+  border-radius: 24rpx;
+  border: 2rpx solid #fecaca;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.generating-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.generating-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.generating-title.error-title {
+  color: #dc2626;
+}
+
+.generating-hint {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.generating-hint.error {
+  color: #dc2626;
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.generating-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.btn-primary {
+  background: #8b5cf6 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.btn-ghost {
+  background: transparent !important;
+  color: #6b7280 !important;
+  border: 2rpx solid #e5e7eb !important;
+}

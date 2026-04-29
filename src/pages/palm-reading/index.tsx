@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useRef, useCallback } from 'react'
 import * as Network from '@/network'
 import { ArrowLeft, Upload, RefreshCw, Download, Eye } from 'lucide-react-taro'
+import { Button } from '@/components/ui/button'
 import './index.css'
 
 interface PalmRecord {
@@ -190,10 +191,13 @@ export default function PalmReading() {
 
         if (data.status === 'completed') {
           stopPolling()
+          setTaskStatus('')
           loadHistory(true)
           Taro.showToast({ title: '生成完成', icon: 'success' })
         } else if (data.status === 'failed') {
           stopPolling()
+          // 立即设置 taskStatus='failed'，隐藏"进行中"卡片
+          setTaskStatus('failed')
           setErrorMessage(data.error_message || '生成失败')
           Taro.showToast({ title: '生成失败', icon: 'error' })
         }
@@ -379,23 +383,58 @@ export default function PalmReading() {
         </View>
 
         {/* 进度提示 */}
-        {isProcessing && (
-          <View className="progress-section">
-            <View className="progress-loading">
-              <View className="loading-spinner" />
-              <Text className="progress-text">{taskProgress}</Text>
-            </View>
-            <Text className="progress-hint">AI 正在分析你的手掌并生成解读指南，通常需要1-5分钟</Text>
-          </View>
-        )}
-
-        {/* 失败提示 */}
-        {taskStatus === 'failed' && errorMessage && (
-          <View className="error-section">
-            <Text className="error-text">{errorMessage}</Text>
-            <View className="retry-btn" onClick={handleGenerate}>
-              <Text className="retry-text">重新生成</Text>
-            </View>
+        {/* 生成进度 / 失败状态（taskStatus 非空且未完成时显示） */}
+        {taskStatus && taskStatus !== 'completed' && (
+          <View className="section">
+            {taskStatus === 'failed' ? (
+              <View className="generating-failed-card">
+                <View className="generating-header">
+                  <Text className="generating-title error-title">生成失败</Text>
+                </View>
+                <Text className="generating-hint error">{errorMessage || '生成失败，请重试'}</Text>
+                <View className="generating-actions">
+                  <Button
+                    size="sm"
+                    className="btn-primary"
+                    onClick={() => handleGenerate()}
+                    disabled={!selectedImage}
+                  >
+                    <Text>重新生成</Text>
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="btn-ghost"
+                    onClick={() => {
+                      setTaskStatus('')
+                      setErrorMessage('')
+                    }}
+                  >
+                    <Text>关闭</Text>
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <View className="generating-card">
+                <View className="generating-header">
+                  <View className="loading-spinner" />
+                  <Text className="generating-title">AI正在绘制掌相指南</Text>
+                </View>
+                <Text className="generating-hint">{taskProgress}</Text>
+                <View className="generating-actions">
+                  <Button
+                    size="sm"
+                    className="btn-ghost"
+                    onClick={() => {
+                      stopPolling()
+                      setTaskStatus('')
+                      setTaskProgress('')
+                    }}
+                  >
+                    <Text>取消</Text>
+                  </Button>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
