@@ -25,20 +25,19 @@
   pointer-events: none;
 }
 
-.header-left,
-.header-right {
-  width: 72rpx;
-  height: 72rpx;
+.header-left {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(4px);
+  padding: 12rpx;
 }
 
 .header-left:active {
   opacity: 0.7;
+}
+
+.header-right {
+  width: 44rpx;
 }
 
 .header-title {

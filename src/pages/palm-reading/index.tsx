@@ -93,13 +93,23 @@ export default function PalmReading() {
         Taro.showLoading({ title: '上传图片中...' })
         try {
           let imageUrl = tempFilePath
+          console.log('[PalmReading] 原始路径:', tempFilePath)
           if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
             const uploadRes = await Network.uploadFile({
               url: '/api/upload/image',
               filePath: tempFilePath,
               name: 'file',
             })
-            imageUrl = (uploadRes as any)?.data?.data?.url || tempFilePath
+            console.log('[PalmReading] 上传结果:', JSON.stringify(uploadRes))
+            const resData = (uploadRes as any)?.data
+            imageUrl = resData?.data?.url || resData?.url || tempFilePath
+            console.log('[PalmReading] 解析后URL:', imageUrl)
+          }
+          // 二次检查：如果imageUrl还不是http开头，说明上传失败
+          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            Taro.hideLoading()
+            Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
+            return
           }
           setSelectedImage(imageUrl)
           Taro.hideLoading()
