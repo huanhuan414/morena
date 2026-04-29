@@ -4,6 +4,7 @@ import { StorageService } from '../storage/storage.service';
 import { LLMClient, Config as LLMConfig, Message } from 'coze-coding-dev-sdk';
 import axios from 'axios';
 import * as FormData from 'form-data';
+import * as sharp from 'sharp';
 
 @Injectable()
 export class PalmReadingService {
@@ -16,13 +17,49 @@ export class PalmReadingService {
   ) {}
 
   /**
+   * 下载图片并压缩，返回 base64 和 buffer
+   */
+  private async downloadAndCompressImage(imageUrl: string): Promise<{
+    base64: string;
+    buffer: Buffer;
+  }> {
+    console.log('[PalmReadingService] 下载并压缩图片...', imageUrl);
+
+    const imgResponse = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 60000
+    });
+    const originalBuffer = Buffer.from(imgResponse.data, 'binary');
+    console.log('[PalmReadingService] 原始图片大小:', originalBuffer.length, 'bytes');
+
+    // 压缩图片：最大宽度1024px，质量80%，转为JPEG减小体积
+    let compressedBuffer: Buffer;
+    try {
+      compressedBuffer = await sharp(originalBuffer)
+        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      console.log('[PalmReadingService] 压缩后大小:', compressedBuffer.length, 'bytes');
+    } catch (e) {
+      console.log('[PalmReadingService] sharp压缩失败，使用原图:', e.message);
+      compressedBuffer = originalBuffer;
+    }
+
+    const base64 = compressedBuffer.toString('base64');
+    return { base64, buffer: compressedBuffer };
+  }
+
+  /**
    * 第一步：用视觉模型分析手掌，获取掌纹分析文字
    */
-  private async analyzePalm(imageUrl: string): Promise<string> {
+  private async analyzePalm(imageBase64: string): Promise<string> {
     console.log('[PalmReadingService] 第一步：视觉模型分析手掌...');
 
     const config = new LLMConfig();
     const client = new LLMClient(config);
+
+    // 用 base64 传图，避免视觉模型端下载大文件超时
+    const dataUrl = `data:image/jpeg;base64,${imageBase64}`;
 
     const messages: Message[] = [
       {
@@ -58,7 +95,7 @@ export class PalmReadingService {
           {
             type: 'image_url',
             image_url: {
-              url: imageUrl,
+              url: dataUrl,
               detail: 'high'
             }
           }
@@ -78,7 +115,7 @@ export class PalmReadingService {
   /**
    * 第二步：用图片编辑接口基于原图生成标注了掌纹的分析图
    */
-  private async generatePalmImage(imageUrl: string): Promise<string> {
+  private async generatePalmImage(imageBuffer: Buffer): Promise<string> {
     console.log('[PalmReadingService] 第二步：基于原图生成掌纹标注图...');
 
     const prompt = `请在这张手掌照片上，用彩色线条标注出主要的掌纹，并加上中文标签：
@@ -87,16 +124,6 @@ export class PalmReadingService {
 - 用绿色线条标注智慧线，旁边写"智慧线"
 - 用橙色线条标注命运线（如有），旁边写"命运线"
 保持原始手掌照片不变，只在上面叠加标注线条和文字标签。线条要细而清晰。`;
-
-    console.log('[PalmReadingService] 下载手掌图片...');
-
-    // 下载手掌图片到buffer
-    const imgResponse = await axios.get(imageUrl, {
-      responseType: 'arraybuffer',
-      timeout: 60000
-    });
-    const imageBuffer = Buffer.from(imgResponse.data, 'binary');
-    console.log('[PalmReadingService] 图片下载完成，大小:', imageBuffer.length, 'bytes');
 
     // 使用 multipart/form-data 格式发送请求
     const formData = new FormData();
@@ -168,8 +195,11 @@ export class PalmReadingService {
       console.log('[PalmReadingService] ========== 开始掌相阅读 ==========');
       console.log('[PalmReadingService] 手掌图片URL:', imageUrl);
 
-      // 第一步：视觉模型分析手掌
-      const analysis = await this.analyzePalm(imageUrl);
+      // 先下载并压缩图片（避免后续重复下载，也避免视觉模型下载超时）
+      const { base64, buffer } = await this.downloadAndCompressImage(imageUrl);
+
+      // 第一步：视觉模型分析手掌（用base64传图）
+      const analysis = await this.analyzePalm(base64);
 
       if (!analysis || analysis.length < 50) {
         throw new HttpException('掌相分析失败，请重试', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -177,8 +207,8 @@ export class PalmReadingService {
 
       console.log('[PalmReadingService] 掌相分析完成，开始生成图片...');
 
-      // 第二步：基于原图生成掌纹标注图
-      const generatedImageUrl = await this.generatePalmImage(imageUrl);
+      // 第二步：基于原图生成掌纹标注图（用buffer传图）
+      const generatedImageUrl = await this.generatePalmImage(buffer);
 
       console.log('[PalmReadingService] ========== 掌相阅读完成 ==========');
 
