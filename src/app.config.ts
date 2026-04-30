@@ -32,6 +32,12 @@ export default defineAppConfig({
     'pages/avatar-profile/index',
     'pages/avatar-recommend/index',
     'pages/avatar-order-completed/index',
+    'pages/avatar/avatar-manage/index',
+    'pages/avatar/avatar-create/index',
+    'pages/avatar/avatar-settings/index',
+    'pages/avatar/avatar-account-add/index',
+    'pages/avatar/avatar-account-config/index',
+    'pages/avatar/avatar-friends/index',
     // 功能页面
     'pages/task/index',
     'pages/messages/index',
