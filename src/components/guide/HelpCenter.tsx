@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { ChevronDown, ChevronUp, CircleQuestionMark, BookOpen, Video, MessageCircle } from 'lucide-react-taro'
-import './HelpCenter.css'
+import { ChevronDown, ChevronUp, ChevronRight, CircleQuestionMark, BookOpen, Video, MessageCircle } from 'lucide-react-taro'
 
 interface HelpItem {
   id: string
@@ -74,62 +73,87 @@ export default function HelpCenter() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const filteredItems = activeCategory === 'all' 
-    ? HELP_ITEMS 
+  const filteredItems = activeCategory === 'all'
+    ? HELP_ITEMS
     : HELP_ITEMS.filter(item => item.category === activeCategory)
 
   return (
-    <View className="help-center">
+    <View className="flex flex-col min-h-screen bg-gray-50">
       {/* 顶部标题 */}
-      <View className="help-header">
-        <Text className="help-title">新手指南</Text>
-        <Text className="help-subtitle">快速了解如何创建分身、托管赚钱</Text>
+      <View className="bg-gradient-to-r from-indigo-500 to-purple-500 px-5 pt-8 pb-6">
+        <Text className="block text-2xl font-bold text-white mb-1">新手指南</Text>
+        <Text className="block text-sm text-white opacity-80">快速了解如何创建分身、托管赚钱</Text>
       </View>
 
       {/* 快速入口 */}
-      <View className="quick-links">
+      <View className="flex flex-row gap-2 px-4 py-4 overflow-x-auto bg-white">
         {CATEGORIES.map(cat => (
           <View
             key={cat.key}
-            className={`quick-link ${activeCategory === cat.key ? 'active' : ''}`}
+            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-full flex-shrink-0 ${
+              activeCategory === cat.key
+                ? 'bg-blue-50 border border-blue-200'
+                : 'bg-gray-50 border border-transparent'
+            }`}
             onClick={() => setActiveCategory(cat.key)}
           >
-            <cat.icon size={20} color={activeCategory === cat.key ? '#3b82f6' : '#6b7280'} />
-            <Text className="quick-link-text">{cat.label}</Text>
+            <cat.icon
+              size={22}
+              color={activeCategory === cat.key ? '#3b82f6' : '#6b7280'}
+            />
+            <Text
+              className={`block text-xs whitespace-nowrap ${
+                activeCategory === cat.key
+                  ? 'text-blue-500 font-medium'
+                  : 'text-gray-500'
+              }`}
+            >
+              {cat.label}
+            </Text>
           </View>
         ))}
       </View>
 
       {/* 视频教程入口 */}
-      <View className="video-section">
-        <View className="video-card" onClick={() => Taro.showToast({ title: '视频教程开发中', icon: 'none' })}>
-          <Video size={32} color="#ef4444" />
-          <View className="video-info">
-            <Text className="video-title">视频教程</Text>
-            <Text className="video-desc">3分钟学会所有功能</Text>
+      <View className="px-4 pb-3">
+        <View
+          className="flex flex-row items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-100"
+          onClick={() => Taro.showToast({ title: '视频教程开发中', icon: 'none' })}
+        >
+          <View className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <Video size={24} color="#ef4444" />
           </View>
+          <View className="flex-1">
+            <Text className="block text-base font-semibold text-gray-800">视频教程</Text>
+            <Text className="block text-sm text-gray-500 mt-1">3分钟学会所有功能</Text>
+          </View>
+          <ChevronRight size={18} color="#9ca3af" />
         </View>
       </View>
 
       {/* FAQ列表 */}
-      <ScrollView className="faq-list" scrollY>
-        <Text className="section-title">常见问题</Text>
+      <ScrollView className="flex-1 px-4 pb-6" scrollY>
+        <Text className="block text-base font-semibold text-gray-800 mb-3 mt-1">常见问题</Text>
         {filteredItems.map(item => (
-          <View key={item.id} className="faq-item">
-            <View 
-              className="faq-question"
+          <View key={item.id} className="mb-2 bg-white rounded-xl overflow-hidden shadow-sm">
+            <View
+              className="flex flex-row items-center justify-between px-4 py-3"
               onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
             >
-              <Text className="faq-q-text">{item.question}</Text>
+              <Text className={`block text-base flex-1 pr-3 ${expandedId === item.id ? 'text-blue-500 font-medium' : 'text-gray-800'}`}>
+                {item.question}
+              </Text>
               {expandedId === item.id ? (
-                <ChevronUp size={20} color="#6b7280" />
+                <ChevronUp size={18} color="#6b7280" className="flex-shrink-0" />
               ) : (
-                <ChevronDown size={20} color="#6b7280" />
+                <ChevronDown size={18} color="#6b7280" className="flex-shrink-0" />
               )}
             </View>
             {expandedId === item.id && (
-              <View className="faq-answer">
-                <Text className="faq-a-text">{item.answer}</Text>
+              <View className="px-4 pb-4 border-t border-gray-100">
+                <Text className="block text-sm text-gray-600 leading-relaxed mt-3 whitespace-pre-wrap">
+                  {item.answer}
+                </Text>
               </View>
             )}
           </View>
@@ -137,11 +161,13 @@ export default function HelpCenter() {
       </ScrollView>
 
       {/* 客服入口 */}
-      <View className="help-footer">
-        <Text className="footer-text">还有其他问题？</Text>
-        <View className="contact-btn" onClick={() => Taro.showToast({ title: '客服功能开发中', icon: 'none' })}>
-          <MessageCircle size={16} color="#3b82f6" />
-          <Text className="contact-text">联系客服</Text>
+      <View className="px-4 py-5 bg-white border-t border-gray-100">
+        <View className="flex flex-row items-center justify-center gap-2" onClick={() => Taro.showToast({ title: '客服功能开发中', icon: 'none' })}>
+          <Text className="block text-sm text-gray-500">还有其他问题？</Text>
+          <View className="flex flex-row items-center gap-1">
+            <MessageCircle size={16} color="#3b82f6" />
+            <Text className="block text-sm text-blue-500 font-medium">联系客服</Text>
+          </View>
         </View>
       </View>
     </View>
