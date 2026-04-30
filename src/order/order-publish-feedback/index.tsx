@@ -169,13 +169,12 @@ export default function OrderPublishFeedback() {
       return
     }
 
-    // 小程序环境 — 使用原生 wx.chooseImage 绕过 Taro 的 copyFileToTemp 问题
+    // 小程序环境 — 使用原生 wx.chooseMessageFile 绕过 Taro 的 copyFileToTemp 问题
     // @ts-ignore
-    wx?.chooseImage({
+    wx?.chooseMessageFile({
       count: 1,
-      sourceType: ['album', 'camera'],
       success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0]
+        const tempFilePath = res.tempFiles[0].path
         console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
         console.log('[OrderPublishFeedback] 图片信息:', res.tempFiles?.[0])
 

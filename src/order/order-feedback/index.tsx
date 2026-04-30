@@ -1,6 +1,4 @@
 import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
-// @ts-ignore
-const chooseImage = wx?.chooseImage
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -9,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X, Video, Play } from 'lucide-react-taro'
 import './index.css'
+// @ts-ignore
+const chooseFile = wx?.chooseMessageFile
 
 // 平台名称和类型映射
 const PLATFORM_INFO: Record<string, { name: string; type: 'article' | 'image' | 'video' }> = {
@@ -129,12 +129,11 @@ export default function OrderFeedbackPage() {
   const handleChooseImage = () => {
     console.log('选择图片...')
 
-    chooseImage({
+    chooseFile({
       count: 9 - uploadedImages.length,
-      sourceType: ['album', 'camera'],
       success: async (res) => {
         console.log('图片选择成功:', res)
-        const tempFilePaths = res.tempFilePaths
+        const tempFilePaths = res.tempFiles.map(f => f.path)
         setUploading(true)
 
         try {

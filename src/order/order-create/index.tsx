@@ -1,5 +1,3 @@
-// @ts-ignore
-const chooseImage = wx?.chooseImage
 import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
@@ -28,6 +26,10 @@ interface OrderForm {
     deadline: string
   }
 }
+
+// @ts-ignore
+const chooseFile = wx?.chooseMessageFile
+
 
 interface Attachment {
   id: string
@@ -128,15 +130,14 @@ export default function OrderCreatePage() {
   // 选择图片
   const handleChooseImage = async () => {
     try {
-      const res = await chooseImage({
+      const res = await chooseFile({
         count: 9 - attachments.length,
-        sourceType: ['album', 'camera']
       })
 
-      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+      if (res.tempFiles && res.tempFiles.length > 0) {
         // 上传图片
-        await uploadFiles(res.tempFilePaths.map((path) => ({
-          path,
+        await uploadFiles(res.tempFiles.map((f) => ({
+          path: f.path,
           type: 'image' as const,
           name: `图片_${Date.now()}.jpg`
         })))
@@ -151,7 +152,6 @@ export default function OrderCreatePage() {
   const handleChooseVideo = async () => {
     try {
       const res = await chooseVideo({
-        sourceType: ['album', 'camera'],
         maxDuration: 300 // 5分钟
       })
 

@@ -1,8 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
 import { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
-// @ts-ignore
-const chooseImage = wx?.chooseImage
 import { getSafeArea } from '@/utils/safe-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +13,8 @@ import {
   Moon, Sun, Smile, Bot, ChevronRight, ArrowLeft
 } from 'lucide-react-taro'
 import './index.css'
+// @ts-ignore
+const chooseFile = wx?.chooseMessageFile
 
 interface PhotoAnalysis {
   facialFeatures?: {
@@ -350,14 +350,15 @@ export default function AvatarCreatePage() {
   // 选择照片
   const handleChoosePhoto = async () => {
     try {
-      const res = await chooseImage({
+      const res = await chooseFile({
         count: 1,
-        sourceType: ['album', 'camera']
+        type: 'image'
       })
-      
-      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
-        setPhotoPath(res.tempFilePaths[0])
-        analyzePhoto(res.tempFilePaths[0])
+
+      const paths = res.tempFiles.map((f: any) => f.path)
+      if (paths && paths.length > 0) {
+        setPhotoPath(paths[0])
+        analyzePhoto(paths[0])
       }
     } catch (error) {
       console.error('选择照片失败:', error)

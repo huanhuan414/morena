@@ -1308,11 +1308,11 @@ export default function MindChatPage() {
     }
 
 // @ts-ignore
-    wx?.chooseImage({
+    wx?.chooseMessageFile({
       count: remainingCount,
-      sourceType: ['album', 'camera'],
+      type: 'image',
       success: async (res) => {
-        const tempFilePaths = res.tempFilePaths
+        const tempFilePaths = res.tempFiles.map(f => f.path)
         console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
 
         setIsUploadingImage(true)

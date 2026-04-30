@@ -209,11 +209,11 @@ export default function PalmReading() {
 
   const handleChooseImage = useCallback(() => {
 // @ts-ignore
-    wx?.chooseImage({
+    wx?.chooseMessageFile({
       count: 1,
-      sourceType: ['album', 'camera'],
+      type: 'image',
       success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0]
+        const tempFilePath = res.tempFiles[0].path
         setErrorMessage('')
 
         // 上传图片到TOS
