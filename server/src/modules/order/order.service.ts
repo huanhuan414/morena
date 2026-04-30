@@ -73,7 +73,6 @@ export class OrderService {
     let query = client
       .from('orders')
       .select('*')
-      .eq('user_id', userId)
     
     if (status) {
       query = query.eq('status', status)
@@ -899,30 +898,25 @@ export class OrderService {
     const { count: total } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
 
     const { count: open } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
       .eq('status', 'open')
 
     const { count: inProgress } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
       .eq('status', 'in_progress')
 
     const { count: reviewing } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
       .eq('status', 'reviewing')
 
     const { count: completed } = await client
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
       .eq('status', 'completed')
 
     return {

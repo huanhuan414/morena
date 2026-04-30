@@ -110,7 +110,8 @@ export class OrderController {
 
   @Get('stats')
   async stats(@Headers('x-user-id') userId: string) {
-    const stats = await this.orderService.getOrderStats(userId)
+    console.log('[OrderController] stats 被调用, userId:', userId)
+    const stats = await this.orderService.getOrderStats(userId || '')
     return {
       code: 200,
       data: stats,
