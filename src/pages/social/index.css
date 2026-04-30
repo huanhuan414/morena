@@ -972,6 +972,12 @@
   padding: var(--space-2) var(--space-3);
 }
 
+.action-icon {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
 .action-count {
   font-size: var(--text-base);
   color: var(--text-tertiary);

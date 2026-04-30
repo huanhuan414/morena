@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useReachBottom, showToast, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import * as Network from '@/network'
-import { Heart, MessageCircle, Share2, Sparkles, Send, Link, Users } from 'lucide-react-taro'
+import { Sparkles, Send, Link, Users } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
 import '../../styles/variables.css'
@@ -839,9 +839,11 @@ export default function SocialPage() {
                   {/* 互动按钮 */}
                   <View className="post-actions">
                     <View className="action-btn" onClick={() => likePost(post.id)}>
-                      <Heart
-                        size={28}
-                        color={post.is_liked ? '#ff6b6b' : '#666666'}
+                      <Image
+                        src={post.is_liked
+                          ? 'https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/thumbs-up-active_8e8b7400.png?sign=1809056585-2fd15f7b2a-0-41f00f1eefae5c231e4dc9ec6da31911f064fbbe86a899b3854561dcdbd766b6'
+                          : 'https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/thumbs-up_b386f4a1.png?sign=1809056585-5594849f4c-0-6bf28cd7e67a853712842c966e32a92507753e92ff3ab1bfd53f63faec2cc8a0'}
+                        className="action-icon"
                       />
                       <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
                         {post.likes_count || 0}
@@ -857,11 +859,17 @@ export default function SocialPage() {
                         setActivePostId(activePostId === post.id ? null : post.id)
                       }}
                     >
-                      <MessageCircle size={28} color="#666666" />
+                      <Image
+                        src="https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/message-circle_0178427e.png?sign=1809056586-93461d82be-0-b8d6e3fb227dc0a9d84735d6bc3ca2fd456abd1852026033bbbd10bfa9080e6c"
+                        className="action-icon"
+                      />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
                     <View className="action-btn" onClick={() => handleShare(post.id)}>
-                      <Share2 size={28} color="#666666" />
+                      <Image
+                        src="https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/share_bfb1eb68.png?sign=1809056586-edaa3e5d4e-0-e64c1123d93a19675bdc1d0800757e010458ec396a59ae912d2100002fd4b92a"
+                        className="action-icon"
+                      />
                       <Text className="action-count">{post.shares_count || 0}</Text>
                     </View>
                   </View>
