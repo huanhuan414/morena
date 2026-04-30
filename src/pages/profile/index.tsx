@@ -242,7 +242,7 @@ export default function ProfilePage() {
 
           {/* 操作按钮 */}
           <View className="card-actions">
-            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/notifications' })}>
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/notifications/index' })}>
               <Bell size={28} color="#666" />
               {unreadCount > 0 && (
                 <View className="action-badge">
@@ -250,7 +250,7 @@ export default function ProfilePage() {
                 </View>
               )}
             </View>
-            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/settings' })}>
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/settings/index' })}>
               <Settings size={28} color="#666" />
             </View>
           </View>

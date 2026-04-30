@@ -106,7 +106,7 @@ export default function SettingsPage() {
   }
 
   const menuItems = [
-    { title: '帮助中心', icon: Globe, desc: '常见问题解答', path: '/pages/profile/help' }
+    { title: '帮助中心', icon: Globe, desc: '常见问题解答', path: '/pages/profile/help/index' }
   ]
 
   const [securityStatus, setSecurityStatus] = useState({

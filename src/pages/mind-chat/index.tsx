@@ -4709,7 +4709,7 @@ export default function MindChatPage() {
                   // 跳转到账号配置页面
                   const avatarName = avatar?.name || ''
                   navigateTo({
-                    url: `/avatar/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
+                    url: `/pages/avatar/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
                   })
                 }}
               >
