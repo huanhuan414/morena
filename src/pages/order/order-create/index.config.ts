@@ -1,9 +1,3 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({
-      navigationBarTitleText: '创建订单',
-      navigationStyle: 'custom'
-    })
-  : {
-      navigationBarTitleText: '创建订单',
-      navigationStyle: 'custom'
-    }
+  ? definePageConfig({ navigationBarTitleText: '新建订单' })
+  : { navigationBarTitleText: '新建订单' }

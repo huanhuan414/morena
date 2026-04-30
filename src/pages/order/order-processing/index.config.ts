@@ -1,9 +1,3 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({
-      navigationBarTitleText: '处理订单',
-      navigationStyle: 'custom'
-    })
-  : {
-      navigationBarTitleText: '处理订单',
-      navigationStyle: 'custom'
-    }
+  ? definePageConfig({ navigationBarTitleText: '订单处理' })
+  : { navigationBarTitleText: '订单处理' }
