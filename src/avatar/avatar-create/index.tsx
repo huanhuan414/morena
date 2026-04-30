@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
+import Taro, { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
 import { getSafeArea } from '@/utils/safe-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,8 +13,7 @@ import {
   Moon, Sun, Smile, Bot, ChevronRight, ArrowLeft
 } from 'lucide-react-taro'
 import './index.css'
-// @ts-ignore
-const chooseFile = wx?.chooseMessageFile
+// 跨端兼容：微信/抖音用 Taro.chooseMessageFile，H5 用 Taro.chooseImage
 
 interface PhotoAnalysis {
   facialFeatures?: {
@@ -350,15 +349,22 @@ export default function AvatarCreatePage() {
   // 选择照片
   const handleChoosePhoto = async () => {
     try {
-      const res = await chooseFile({
-        count: 1,
-        type: 'image'
-      })
-
-      const paths = res.tempFiles.map((f: any) => f.path)
-      if (paths && paths.length > 0) {
-        setPhotoPath(paths[0])
-        analyzePhoto(paths[0])
+      const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+      if (isMiniApp) {
+        const res: any = await Taro.chooseMessageFile({ count: 1, type: 'image' })
+        const paths = res.tempFiles.map((f: any) => f.path)
+        if (paths && paths.length > 0) {
+          setPhotoPath(paths[0])
+          analyzePhoto(paths[0])
+        }
+      } else {
+        // H5 端
+        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] })
+        const paths = res.tempFilePaths
+        if (paths && paths.length > 0) {
+          setPhotoPath(paths[0])
+          analyzePhoto(paths[0])
+        }
       }
     } catch (error) {
       console.error('选择照片失败:', error)

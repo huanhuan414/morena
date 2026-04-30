@@ -169,81 +169,123 @@ export default function OrderPublishFeedback() {
       return
     }
 
-    // 小程序环境 — 使用原生 wx.chooseMessageFile 绕过 Taro 的 copyFileToTemp 问题
-    // @ts-ignore
-    wx?.chooseMessageFile({
-      count: 1,
-      success: async (res) => {
-        const tempFilePath = res.tempFiles[0].path
-        console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
-        console.log('[OrderPublishFeedback] 图片信息:', res.tempFiles?.[0])
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    if (isMiniApp) {
+      Taro.chooseMessageFile({
+        count: 1,
+        success: async (res: { tempFiles: Array<{ path: string }> }) => {
+          const tempFilePath = res.tempFiles[0].path
+          console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
+          console.log('[OrderPublishFeedback] 图片信息:', res.tempFiles?.[0])
 
-        try {
-          // 上传图片到服务器
-          console.log('[OrderPublishFeedback] 开始上传图片到服务器')
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload/image',
-            filePath: tempFilePath,
-            name: 'file'
-          })
-
-          console.log('[OrderPublishFeedback] 上传响应:', uploadRes)
-          console.log('[OrderPublishFeedback] 上传响应类型:', typeof uploadRes.data)
-          console.log('[OrderPublishFeedback] 上传响应内容:', uploadRes.data)
-
-          // 解析响应数据（uploadRes.data 可能是字符串或对象）
-          let uploadData
           try {
-            // 如果 data 是字符串，需要 JSON.parse
-            uploadData = typeof uploadRes.data === 'string'
-              ? JSON.parse(uploadRes.data)
-              : uploadRes.data
-            console.log('[OrderPublishFeedback] 解析后的数据:', JSON.stringify(uploadData, null, 2))
-          } catch (parseError) {
-            console.error('[OrderPublishFeedback] 解析响应失败:', parseError)
-            console.error('[OrderPublishFeedback] 原始响应:', uploadRes)
-            throw new Error('服务器返回数据格式错误')
-          }
-
-          console.log('[OrderPublishFeedback] 解析后的数据:', uploadData)
-
-          if (uploadData.code === 200 && uploadData.data?.url) {
-            const imageUrl = uploadData.data.url
-            console.log('[OrderPublishFeedback] 提取到图片URL:', imageUrl)
-            console.log('[OrderPublishFeedback] URL类型:', typeof imageUrl)
-            console.log('[OrderPublishFeedback] 准备更新反馈状态:', { platform, imageUrl })
-            
-            setFeedback(prev => {
-              const newState = {
-                ...prev,
-                [platform]: { ...(prev[platform] || {}), image: imageUrl }
-              }
-              console.log('[OrderPublishFeedback] 更新后的反馈状态:', JSON.stringify(newState, null, 2))
-              return newState
+            // 上传图片到服务器
+            console.log('[OrderPublishFeedback] 开始上传图片到服务器')
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload/image',
+              filePath: tempFilePath,
+              name: 'file'
             })
-            
+
+            console.log('[OrderPublishFeedback] 上传响应:', uploadRes)
+            console.log('[OrderPublishFeedback] 上传响应类型:', typeof uploadRes.data)
+            console.log('[OrderPublishFeedback] 上传响应内容:', uploadRes.data)
+
+            // 解析响应数据（uploadRes.data 可能是字符串或对象）
+            let uploadData
+            try {
+              // 如果 data 是字符串，需要 JSON.parse
+              uploadData = typeof uploadRes.data === 'string'
+                ? JSON.parse(uploadRes.data)
+                : uploadRes.data
+              console.log('[OrderPublishFeedback] 解析后的数据:', JSON.stringify(uploadData, null, 2))
+            } catch (parseError) {
+              console.error('[OrderPublishFeedback] 解析响应失败:', parseError)
+              console.error('[OrderPublishFeedback] 原始响应:', uploadRes)
+              throw new Error('服务器返回数据格式错误')
+            }
+
+            console.log('[OrderPublishFeedback] 解析后的数据:', uploadData)
+
+            if (uploadData.code === 200 && uploadData.data?.url) {
+              const imageUrl = uploadData.data.url
+              console.log('[OrderPublishFeedback] 提取到图片URL:', imageUrl)
+              console.log('[OrderPublishFeedback] URL类型:', typeof imageUrl)
+              console.log('[OrderPublishFeedback] 准备更新反馈状态:', { platform, imageUrl })
+
+              setFeedback(prev => {
+                const newState = {
+                  ...prev,
+                  [platform]: { ...(prev[platform] || {}), image: imageUrl }
+                }
+                console.log('[OrderPublishFeedback] 更新后的反馈状态:', JSON.stringify(newState, null, 2))
+                return newState
+              })
+
+              Taro.showToast({
+                title: '上传成功',
+                icon: 'success'
+              })
+            } else {
+              console.error('[OrderPublishFeedback] 上传失败:', uploadData)
+              console.error('[OrderPublishFeedback] uploadData.code:', uploadData.code)
+              console.error('[OrderPublishFeedback] uploadData.data:', uploadData.data)
+              Taro.showToast({
+                title: uploadData.message || '上传失败',
+                icon: 'none'
+              })
+            }
+          } catch (error) {
+            console.error('[OrderPublishFeedback] 上传图片失败:', error)
             Taro.showToast({
-              title: '上传成功',
-              icon: 'success'
-            })
-          } else {
-            console.error('[OrderPublishFeedback] 上传失败:', uploadData)
-            console.error('[OrderPublishFeedback] uploadData.code:', uploadData.code)
-            console.error('[OrderPublishFeedback] uploadData.data:', uploadData.data)
-            Taro.showToast({
-              title: uploadData.message || '上传失败',
+              title: '上传失败，请重试',
               icon: 'none'
             })
           }
-        } catch (error) {
-          console.error('[OrderPublishFeedback] 上传图片失败:', error)
-          Taro.showToast({
-            title: '上传失败，请重试',
-            icon: 'none'
-          })
         }
-      }
-    })
+      })
+    } else {
+      // H5 端：使用 Taro.chooseImage
+      Taro.chooseImage({
+        count: 1,
+        sourceType: ['album', 'camera'],
+        success: async (res: { tempFilePaths: string[] }) => {
+          const tempFilePath = res.tempFilePaths[0]
+          console.log('[OrderPublishFeedback] H5选择图片:', tempFilePath)
+
+          try {
+            const uploadRes = await Network.uploadFile({
+              url: '/api/upload/image',
+              filePath: tempFilePath,
+              name: 'file'
+            })
+
+            let uploadData
+            try {
+              uploadData = typeof uploadRes.data === 'string'
+                ? JSON.parse(uploadRes.data)
+                : uploadRes.data
+            } catch {
+              throw new Error('服务器返回数据格式错误')
+            }
+
+            if (uploadData.code === 200 && uploadData.data?.url) {
+              const imageUrl = uploadData.data.url
+              setFeedback(prev => ({
+                ...prev,
+                [platform]: { ...(prev[platform] || {}), image: imageUrl }
+              }))
+              Taro.showToast({ title: '上传成功', icon: 'success' })
+            } else {
+              Taro.showToast({ title: uploadData.message || '上传失败', icon: 'none' })
+            }
+          } catch (error) {
+            console.error('[OrderPublishFeedback] H5上传图片失败:', error)
+            Taro.showToast({ title: '上传失败，请重试', icon: 'none' })
+          }
+        },
+      })
+    }
   }
 
   const handleLinkChange = (platform: string, value: string) => {

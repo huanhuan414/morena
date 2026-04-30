@@ -1,4 +1,4 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X, Video, Play } from 'lucide-react-taro'
 import './index.css'
-// @ts-ignore
-const chooseFile = wx?.chooseMessageFile
+// 跨端兼容：微信/抖音用 Taro.chooseMessageFile，H5 用 Taro.chooseImage
 
 // 平台名称和类型映射
 const PLATFORM_INFO: Record<string, { name: string; type: 'article' | 'image' | 'video' }> = {
@@ -128,32 +127,61 @@ export default function OrderFeedbackPage() {
 
   const handleChooseImage = () => {
     console.log('选择图片...')
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
 
-    chooseFile({
-      count: 9 - uploadedImages.length,
-      success: async (res) => {
-        console.log('图片选择成功:', res)
-        const tempFilePaths = res.tempFiles.map(f => f.path)
-        setUploading(true)
+    if (isMiniApp) {
+      Taro.chooseMessageFile({
+        count: 9 - uploadedImages.length,
+        success: async (res: { tempFiles: Array<{ path: string }> }) => {
+          console.log('图片选择成功:', res)
+          const tempFilePaths = res.tempFiles.map(f => f.path)
+          setUploading(true)
 
-        try {
-          for (const filePath of tempFilePaths) {
-            console.log('上传图片:', filePath)
-            await uploadImage(filePath)
+          try {
+            for (const filePath of tempFilePaths) {
+              console.log('上传图片:', filePath)
+              await uploadImage(filePath)
+            }
+            showToast({ title: '上传成功', icon: 'success' })
+          } catch (error) {
+            console.error('上传失败:', error)
+            showToast({ title: `上传失败: ${error.message || '未知错误'}`, icon: 'none' })
+          } finally {
+            setUploading(false)
           }
-          showToast({ title: '上传成功', icon: 'success' })
-        } catch (error) {
-          console.error('上传失败:', error)
-          showToast({ title: `上传失败: ${error.message || '未知错误'}`, icon: 'none' })
-        } finally {
-          setUploading(false)
+        },
+        fail: (error: any) => {
+          console.error('选择图片失败:', error)
+          showToast({ title: '选择图片失败', icon: 'none' })
         }
-      },
-      fail: (error) => {
-        console.error('选择图片失败:', error)
-        showToast({ title: '选择图片失败', icon: 'none' })
-      }
-    })
+      })
+    } else {
+      // H5 端
+      Taro.chooseImage({
+        count: 9 - uploadedImages.length,
+        sourceType: ['album', 'camera'],
+        success: async (res: { tempFilePaths: string[] }) => {
+          console.log('H5图片选择成功:', res)
+          setUploading(true)
+          try {
+            for (const filePath of res.tempFilePaths) {
+              console.log('H5上传图片:', filePath)
+              await uploadImage(filePath)
+            }
+            showToast({ title: '上传成功', icon: 'success' })
+          } catch (error) {
+            console.error('H5上传失败:', error)
+            showToast({ title: '上传失败', icon: 'none' })
+          } finally {
+            setUploading(false)
+          }
+        },
+        fail: (error: any) => {
+          console.error('H5选择图片失败:', error)
+          showToast({ title: '选择图片失败', icon: 'none' })
+        }
+      })
+    }
   }
 
   const uploadImage = async (filePath: string) => {

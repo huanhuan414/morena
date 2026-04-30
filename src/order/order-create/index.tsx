@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseVideo, requestPayment } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -27,8 +27,14 @@ interface OrderForm {
   }
 }
 
-// @ts-ignore
-const chooseFile = wx?.chooseMessageFile
+// 跨端兼容：微信/抖音用 Taro.chooseMessageFile，H5 用 Taro.chooseImage
+const getFilePicker = () => {
+  const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+  if (isMiniApp) {
+    return { type: 'message' as const, api: Taro.chooseMessageFile }
+  }
+  return { type: 'image' as const, api: Taro.chooseImage }
+}
 
 
 interface Attachment {
@@ -130,17 +136,27 @@ export default function OrderCreatePage() {
   // 选择图片
   const handleChooseImage = async () => {
     try {
-      const res = await chooseFile({
-        count: 9 - attachments.length,
-      })
-
-      if (res.tempFiles && res.tempFiles.length > 0) {
-        // 上传图片
-        await uploadFiles(res.tempFiles.map((f) => ({
-          path: f.path,
-          type: 'image' as const,
-          name: `图片_${Date.now()}.jpg`
-        })))
+      const picker = getFilePicker()
+      let res: any
+      if (picker.type === 'message') {
+        res = await picker.api({ count: 9 - attachments.length })
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          await uploadFiles(res.tempFiles.map((f: { path: string }) => ({
+            path: f.path,
+            type: 'image' as const,
+            name: `图片_${Date.now()}.jpg`
+          })))
+        }
+      } else {
+        // H5
+        res = await Taro.chooseImage({ count: 9 - attachments.length, sourceType: ['album', 'camera'] })
+        if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+          await uploadFiles(res.tempFilePaths.map((path: string) => ({
+            path,
+            type: 'image' as const,
+            name: `图片_${Date.now()}.jpg`
+          })))
+        }
       }
     } catch (error) {
       console.error('选择图片失败:', error)
@@ -171,8 +187,13 @@ export default function OrderCreatePage() {
 
   // 选择文档
   const handleChooseDocument = async () => {
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    if (!isMiniApp) {
+      showToast({ title: '文档选择在H5端暂不支持', icon: 'none' })
+      return
+    }
     try {
-      const res = await chooseMessageFile({
+      const res = await Taro.chooseMessageFile({
         count: 9 - attachments.length,
         type: 'file',
         extension: ['doc', 'docx', 'pdf']
@@ -180,7 +201,7 @@ export default function OrderCreatePage() {
 
       if (res.tempFiles && res.tempFiles.length > 0) {
         // 上传文档
-        await uploadFiles(res.tempFiles.map((file) => ({
+        await uploadFiles(res.tempFiles.map((file: { path: string; name: string }) => ({
           path: file.path,
           type: 'document' as const,
           name: file.name

@@ -208,48 +208,90 @@ export default function PalmReading() {
   }
 
   const handleChooseImage = useCallback(() => {
-// @ts-ignore
-    wx?.chooseMessageFile({
-      count: 1,
-      type: 'image',
-      success: async (res) => {
-        const tempFilePath = res.tempFiles[0].path
-        setErrorMessage('')
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    if (isMiniApp) {
+      Taro.chooseMessageFile({
+        count: 1,
+        type: 'image',
+        success: async (res: { tempFiles: Array<{ path: string }> }) => {
+          const tempFilePath = res.tempFiles[0].path
+          setErrorMessage('')
 
-        // 上传图片到TOS
-        Taro.showLoading({ title: '上传图片中...' })
-        try {
-          let imageUrl = tempFilePath
-          console.log('[PalmReading] 原始路径:', tempFilePath)
-          if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
-            const uploadRes = await Network.uploadFile({
-              url: '/api/upload/image',
-              filePath: tempFilePath,
-              name: 'file',
-            })
-            console.log('[PalmReading] 上传原始结果:', JSON.stringify(uploadRes))
-            // Taro.uploadFile 返回 data 为 JSON 字符串，需要 parse
-            let parsedData = (uploadRes as any)?.data
-            if (typeof parsedData === 'string') {
-              try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
+          // 上传图片到TOS
+          Taro.showLoading({ title: '上传图片中...' })
+          try {
+            let imageUrl = tempFilePath
+            console.log('[PalmReading] 原始路径:', tempFilePath)
+            if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
+              const uploadRes = await Network.uploadFile({
+                url: '/api/upload/image',
+                filePath: tempFilePath,
+                name: 'file',
+              })
+              console.log('[PalmReading] 上传原始结果:', JSON.stringify(uploadRes))
+              // Taro.uploadFile 返回 data 为 JSON 字符串，需要 parse
+              let parsedData = (uploadRes as any)?.data
+              if (typeof parsedData === 'string') {
+                try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
+              }
+              imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
+              console.log('[PalmReading] 解析后URL:', imageUrl)
             }
-            imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
-            console.log('[PalmReading] 解析后URL:', imageUrl)
-          }
-          // 二次检查：如果imageUrl还不是http开头，说明上传失败
-          if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+            // 二次检查：如果imageUrl还不是http开头，说明上传失败
+            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+              Taro.hideLoading()
+              Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
+              return
+            }
+            setSelectedImage(imageUrl)
             Taro.hideLoading()
-            Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
-            return
+          } catch (e) {
+            Taro.hideLoading()
+            Taro.showToast({ title: '上传失败', icon: 'error' })
           }
-          setSelectedImage(imageUrl)
-          Taro.hideLoading()
-        } catch (e) {
-          Taro.hideLoading()
-          Taro.showToast({ title: '上传失败', icon: 'error' })
-        }
-      },
-    })
+        },
+      })
+    } else {
+      // H5 端：使用 Taro.chooseImage
+      Taro.chooseImage({
+        count: 1,
+        sourceType: ['album', 'camera'],
+        success: async (res: { tempFilePaths: string[] }) => {
+          const tempFilePath = res.tempFilePaths[0]
+          setErrorMessage('')
+
+          Taro.showLoading({ title: '上传图片中...' })
+          try {
+            let imageUrl = tempFilePath
+            console.log('[PalmReading] H5原始路径:', tempFilePath)
+            if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
+              const uploadRes = await Network.uploadFile({
+                url: '/api/upload/image',
+                filePath: tempFilePath,
+                name: 'file',
+              })
+              console.log('[PalmReading] H5上传原始结果:', JSON.stringify(uploadRes))
+              let parsedData = (uploadRes as any)?.data
+              if (typeof parsedData === 'string') {
+                try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
+              }
+              imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
+              console.log('[PalmReading] H5解析后URL:', imageUrl)
+            }
+            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+              Taro.hideLoading()
+              Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
+              return
+            }
+            setSelectedImage(imageUrl)
+            Taro.hideLoading()
+          } catch (e) {
+            Taro.hideLoading()
+            Taro.showToast({ title: '上传失败', icon: 'error' })
+          }
+        },
+      })
+    }
   }, [])
 
   const handleGenerate = useCallback(async () => {

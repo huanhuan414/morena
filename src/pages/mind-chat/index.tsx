@@ -1307,31 +1307,31 @@ export default function MindChatPage() {
       return
     }
 
-// @ts-ignore
-    wx?.chooseMessageFile({
-      count: remainingCount,
-      type: 'image',
-      success: async (res) => {
-        const tempFilePaths = res.tempFiles.map(f => f.path)
-        console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
+    // 跨端兼容：微信/抖音用 chooseMessageFile，H5 用 chooseImage
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    if (isMiniApp) {
+      Taro.chooseMessageFile({
+        count: remainingCount,
+        type: 'image',
+        success: async (res: { tempFiles: Array<{ path: string }> }) => {
+          const tempFilePaths = res.tempFiles.map(f => f.path)
+          console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
 
-        setIsUploadingImage(true)
+          setIsUploadingImage(true)
 
-        try {
-          // 逐个上传图片
-          const newImageUrls: string[] = []
-          for (let i = 0; i < tempFilePaths.length; i++) {
-            const tempFilePath = tempFilePaths[i]
-            console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
+          try {
+            const newImageUrls: string[] = []
+            for (let i = 0; i < tempFilePaths.length; i++) {
+              const tempFilePath = tempFilePaths[i]
+              console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
 
-            // 上传图片到 TOS
-            const uploadRes = await Network.uploadFile({
-              url: '/api/upload/image',
-              filePath: tempFilePath,
-              name: 'file'
-            })
+              const uploadRes = await Network.uploadFile({
+                url: '/api/upload/image',
+                filePath: tempFilePath,
+                name: 'file'
+              })
 
-            console.log(`[上传图片] 第 ${i + 1} 张图片上传结果:`, uploadRes)
+              console.log(`[上传图片] 第 ${i + 1} 张图片上传结果:`, uploadRes)
 
             // 处理响应数据
             let uploadData
@@ -1382,6 +1382,79 @@ export default function MindChatPage() {
         setIsUploadingImage(false)
       }
     })
+    } else {
+      // H5 端：使用 Taro.chooseImage
+      Taro.chooseImage({
+        count: remainingCount,
+        sourceType: ['album', 'camera'],
+        success: async (res: { tempFilePaths: string[] }) => {
+          const tempFilePaths = res.tempFilePaths
+          console.log('[上传图片] H5已选择图片数量:', tempFilePaths.length)
+
+          setIsUploadingImage(true)
+
+          try {
+            const newImageUrls: string[] = []
+            for (let i = 0; i < tempFilePaths.length; i++) {
+              const tempFilePath = tempFilePaths[i]
+              console.log(`[上传图片] H5正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
+
+              const uploadRes = await Network.uploadFile({
+                url: '/api/upload/image',
+                filePath: tempFilePath,
+                name: 'file'
+              })
+
+              console.log(`[上传图片] H5第 ${i + 1} 张图片上传结果:`, uploadRes)
+
+              let uploadData
+              const rawData = (uploadRes as any)?.data
+              if (typeof rawData === 'string') {
+                try {
+                  uploadData = JSON.parse(rawData)
+                } catch {
+                  uploadData = rawData
+                }
+              } else {
+                uploadData = rawData
+              }
+
+              if (uploadData.code === 200 && (uploadData.data?.url || uploadData.url)) {
+                newImageUrls.push(uploadData.data?.url || uploadData.url)
+              } else {
+                throw new Error(uploadData.message || '上传失败')
+              }
+            }
+
+            if (newImageUrls.length > 0) {
+              console.log('[上传图片] H5准备更新状态，新图片URLs:', newImageUrls)
+              setUploadedImages(prev => {
+                const newState = [...prev, ...newImageUrls]
+                console.log('[上传图片] H5状态已更新:', {
+                  prevLength: prev.length,
+                  newLength: newState.length,
+                  urls: newState
+                })
+                return newState
+              })
+              showToast({
+                title: `成功上传 ${newImageUrls.length} 张图片`,
+                icon: 'success'
+              })
+            }
+          } catch (error) {
+            console.error('[上传图片] H5错误:', error)
+            showToast({ title: '上传失败，请重试', icon: 'none' })
+          } finally {
+            setIsUploadingImage(false)
+          }
+        },
+        fail: (error: any) => {
+          console.error('[上传图片] H5选择图片失败:', error)
+          setIsUploadingImage(false)
+        }
+      })
+    }
   }
 
   // 发送消息 - 使用旧的 Agent 系统（ReAct 模式）
