@@ -16,12 +16,15 @@ export default defineAppConfig({
     'pages/order/order-matching/index',
     'pages/order/order-content-creation/index',
     'pages/order/order-feedback/index',
+    'pages/order/pending-order/index',
     'pages/order-stats/index',
     'pages/pending-order/index',
     // 个人中心
     'pages/settings/index',
     'pages/security/index',
     'pages/feedback/index',
+    'pages/profile/about/index',
+    'pages/profile/help/index',
     // 收益
     'pages/earning-center/index',
     'pages/referral-center/index',
