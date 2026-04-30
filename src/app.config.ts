@@ -93,9 +93,5 @@ export default defineAppConfig({
       desc: '你的位置信息将用于更好的体验',
     },
   },
-  useExtendedLib: {
-    weapp: true,
-    tt: true,
-  },
   lazyCodeLoading: 'requiredComponents',
 })
