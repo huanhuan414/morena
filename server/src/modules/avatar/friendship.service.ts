@@ -588,13 +588,12 @@ export class FriendshipService {
         return false
       }
 
-      // 发送好友请求
+      // 发送好友请求（avatar_friends.id 为 integer auto-increment，不传 id 由数据库自增）
       const matchReason = `我们的性格很匹配（相似度：${this.calculateCompatibility(avatar.personality || '', targetAvatar.personality || '')}），而且有很多共同兴趣，希望能成为朋友！`
 
-      await client
+      const { error: insertError } = await client
         .from('avatar_friends')
         .insert({
-          id: uuidv4(),
           avatar_id: avatar.id,
           friend_avatar_id: targetAvatar.id,
           status: 'pending',
@@ -602,6 +601,11 @@ export class FriendshipService {
           compatibility_score: this.calculateCompatibility(avatar.personality || '', targetAvatar.personality || '') * 100,
           benefits: '可以互相学习，共同成长'
         })
+
+      if (insertError) {
+        console.error('[交友服务] 插入好友请求失败:', insertError)
+        return false
+      }
 
       // 记录到时间线
       await this.recordTimeline(avatar.id, targetAvatar.id, 'friend_request_sent', {

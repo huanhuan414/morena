@@ -113,6 +113,13 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * 执行所有托管任务（供外部调用测试）
+   */
+  async triggerHostingTasks() {
+    await this.executeHostingTasks()
+  }
+
+  /**
    * 执行所有托管任务
    */
   private async executeHostingTasks() {
@@ -336,46 +343,31 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
       const client = getSupabaseClient()
 
-      // 🔴 改进：先尝试基于好感度发送好友请求
-      // 获取好感度 >= 40 的目标（降低阈值）
-      const { data: highAffinityTargets } = await client
-        .from('avatar_affinity')
-        .select('*, target_avatar(*)')
-        .eq('avatar_id', avatar.id)
-        .gte('affinity_score', 40)
-        .order('affinity_score', { ascending: false })
-        .limit(5)
+      // 获取当前分身已有的好友关系和已发送的待处理请求（使用 avatar_friends 表，列名 friend_avatar_id）
+      const { data: existingFriends, error: friendsError } = await client
+        .from('avatar_friends')
+        .select('avatar_id, friend_avatar_id, status')
+        .or(`avatar_id.eq.${avatar.id},friend_avatar_id.eq.${avatar.id}`)
 
-      if (highAffinityTargets && highAffinityTargets.length > 0) {
-        // 随机选择一个目标发送好友请求
-        const target = highAffinityTargets[Math.floor(Math.random() * highAffinityTargets.length)]
-        const targetAvatar = target.target_avatar
-        if (targetAvatar) {
-          const success = await this.friendshipService.sendFriendRequest(avatar, targetAvatar)
-          if (success) {
-            console.log(`[托管服务] ${avatar.name} 向 ${targetAvatar.name} 发送了好友请求（好感度 ${target.affinity_score}）`)
-            return
-          }
-        }
+      if (friendsError) {
+        console.error(`[托管服务] 查询好友关系失败:`, friendsError)
       }
 
-      // 🔴 新增：如果没有好感度目标，随机向活跃分身发送好友请求
-      console.log(`[托管服务] ${avatar.name} 没有好感度目标，尝试随机交友`)
+      // 收集所有已关联的分身ID（好友或已发送待处理请求）
+      const relatedIds = new Set<string>()
+      relatedIds.add(avatar.id)
+      existingFriends?.forEach(f => {
+        relatedIds.add(f.avatar_id)
+        relatedIds.add(f.friend_avatar_id)
+      })
+      const excludeIds = Array.from(relatedIds)
 
-      // 获取还不是好友的活跃分身
-      const { data: existingFriends } = await client
-        .from('friendships')
-        .select('friend_id, avatar_id')
-        .or(`avatar_id.eq.${avatar.id},friend_id.eq.${avatar.id}`)
-
-      const friendIds = existingFriends?.map(f => f.avatar_id === avatar.id ? f.friend_id : f.avatar_id) || []
-
+      // 查询可交友的分身：排除自己、排除已有好友、排除已发送待处理请求
       const { data: otherAvatars } = await client
         .from('avatars')
         .select('*')
         .eq('status', 'active')
-        .neq('id', avatar.id)
-        .not('id', 'in', `(${friendIds.length > 0 ? friendIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+        .not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`)
         .limit(20)
 
       if (!otherAvatars || otherAvatars.length === 0) {
@@ -385,10 +377,14 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
 
       // 随机选择一个分身发送好友请求
       const randomTarget = otherAvatars[Math.floor(Math.random() * otherAvatars.length)]
+      console.log(`[托管服务] ${avatar.name} 准备向 ${randomTarget.name}(${randomTarget.id}) 发送好友请求`)
+
       const success = await this.friendshipService.sendFriendRequest(avatar, randomTarget)
 
       if (success) {
         console.log(`[托管服务] ${avatar.name} 向 ${randomTarget.name} 发送了随机好友请求`)
+      } else {
+        console.log(`[托管服务] ${avatar.name} 发送好友请求失败，可能已是好友或请求已存在`)
       }
     } catch (error) {
       console.error(`[托管服务] ${avatar.name} 交友功能执行失败:`, error)
