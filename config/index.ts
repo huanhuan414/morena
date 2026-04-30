@@ -146,6 +146,8 @@ export default defineConfig<'vite'>(async (merge, _env) => {
     date: '2026-1-13',
     alias: {
       '@': path.resolve(__dirname, '..', 'src'),
+      'taro': path.resolve(__dirname, '..', 'node_modules/@tarojs/taro'),
+      '@tarojs/taro': path.resolve(__dirname, '..', 'node_modules/@tarojs/taro'),
     },
     designWidth: 750,
     deviceRatio: {
