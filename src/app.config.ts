@@ -1,6 +1,5 @@
 export default defineAppConfig({
   pages: [
-    'pages/index/index',
     'pages/social/index',
     'pages/mind-chat/index',
     'pages/profile/index',
