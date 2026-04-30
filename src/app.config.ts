@@ -39,7 +39,6 @@ export default defineAppConfig({
     'pages/avatar/avatar-account-config/index',
     'pages/avatar/avatar-friends/index',
     // 功能页面
-    'pages/tasks/index',
     'pages/messages/index',
     'pages/palm-reading/index',
     'pages/voice-call/index',
