@@ -1317,6 +1317,15 @@ export default function MindChatPage() {
                 // 用户取消选择不报错
                 if (err?.errMsg?.includes('cancel') || err?.errMsg?.includes('取消')) {
                   resolve(null) // 返回 null 表示用户取消
+                } else if (err?.errMsg?.includes('copyFileToTemp')) {
+                  // 微信开发者工具模拟器 3.15.x 的已知 bug，真机上正常
+                  Taro.showModal({
+                    title: '提示',
+                    content: '微信开发者工具模拟器存在文件选择 bug，请使用真机调试。\n\n在「详情→本地设置」中勾选「不校验合法域名」后，真机测试功能正常。',
+                    showCancel: false,
+                    confirmText: '知道了'
+                  })
+                  resolve(null)
                 } else {
                   reject(err)
                 }

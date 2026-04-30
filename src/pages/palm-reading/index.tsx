@@ -214,13 +214,37 @@ export default function PalmReading() {
 
       if (isMiniApp) {
         console.log('[PalmReading] 开始选择图片 (小程序端)...')
-        const chooseRes = await Taro.chooseMessageFile({ count: 1, type: 'image' }) as any
-        console.log('[PalmReading] 选择结果:', JSON.stringify(chooseRes))
-
+        
+        // 使用 promisify 包装以捕获模拟器 bug
+        const chooseRes = await new Promise<any>((resolve, reject) => {
+          Taro.chooseMessageFile({
+            count: 1,
+            type: 'image',
+            success: (res: any) => resolve(res),
+            fail: (err: any) => {
+              if (err?.errMsg?.includes('copyFileToTemp')) {
+                // 微信开发者工具模拟器 3.15.x 的已知 bug，真机上正常
+                Taro.showModal({
+                  title: '提示',
+                  content: '微信开发者工具模拟器存在文件选择 bug，请使用真机调试。\n\n在「详情→本地设置」中勾选「不校验合法域名」后，真机测试功能正常。',
+                  showCancel: false,
+                  confirmText: '知道了'
+                })
+                resolve(null)
+              } else if (err?.errMsg?.includes('cancel') || err?.errMsg?.includes('取消')) {
+                resolve(null)
+              } else {
+                reject(err)
+              }
+            }
+          })
+        })
+        
         if (!chooseRes || !chooseRes.tempFiles || chooseRes.tempFiles.length === 0) {
-          Taro.showToast({ title: '未选择图片', icon: 'none' })
+          // 用户取消
           return
         }
+        console.log('[PalmReading] 选择结果:', JSON.stringify(chooseRes))
         tempFilePath = chooseRes.tempFiles[0].path
       } else {
         const chooseRes = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] }) as any
