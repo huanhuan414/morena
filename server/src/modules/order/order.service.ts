@@ -393,7 +393,164 @@ export class OrderService {
       throw new Error(`接单失败: ${error.message}`)
     }
     
+    // 接单后自动分析并生成内容
+    this.autoGenerateContent(order, avatarId).catch(err => {
+      console.error('[OrderService] 自动生成内容失败:', err.message)
+    })
+    
     return data
+  }
+
+  /**
+   * 自动分析订单需求并生成图片/海报
+   */
+  private async autoGenerateContent(order: any, avatarId: string) {
+    const needsImage = this.checkIfNeedsImage(order)
+    
+    if (!needsImage) {
+      console.log('[OrderService] 订单不需要生成图片，跳过自动生成')
+      return
+    }
+    
+    console.log('[OrderService] 开始自动生成图片/海报...')
+    
+    // 根据订单信息构建图片生成提示词
+    const prompt = this.buildImagePrompt(order)
+    
+    try {
+      // 调用图片生成接口
+      const axios = require('axios')
+      const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
+      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+      
+      const response = await axios.post(apiUrl, {
+        model: 'seedream-4-0',
+        prompt: prompt,
+        size: '1024x1024',
+        style: 'flat_illustration'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': apiKey
+        },
+        timeout: 60000
+      })
+      
+      const imageUrl = response.data?.data?.[0]?.url
+      if (imageUrl) {
+        // 保存生成的图片到订单
+        const client = getSupabaseClient()
+        const updateData: any = {
+          generated_content: `![自动生成图片](${imageUrl})\n\n根据订单需求自动生成的图片/海报。`,
+          updated_at: new Date().toISOString()
+        }
+        
+        // 如果有 images 字段则更新
+        if ('images' in order) {
+          updateData.images = [imageUrl]
+        }
+        
+        await client
+          .from('orders')
+          .update(updateData)
+          .eq('id', order.id)
+        
+        console.log('[OrderService] 图片生成成功:', imageUrl)
+        
+        // 发送通知给用户
+        this.notifyUserAboutGeneratedContent(order.id, imageUrl).catch(err => {
+          console.error('[OrderService] 发送通知失败:', err.message)
+        })
+      }
+    } catch (error: any) {
+      console.error('[OrderService] 图片生成失败:', error.message)
+    }
+  }
+
+  /**
+   * 检测订单是否需要生成图片
+   */
+  private checkIfNeedsImage(order: any): boolean {
+    const text = [
+      order.title || '',
+      order.description || '',
+      JSON.stringify(order.requirements || {})
+    ].join(' ').toLowerCase()
+    
+    // 图片/海报相关关键词
+    const imageKeywords = [
+      '海报', '图片', '封面', 'banner', '宣传图', '配图',
+      '生成图片', '生成海报', '画一张', '创作图片', '制作图片',
+      '宣传海报', '广告图', '素材', '图形', '插画', '设计图'
+    ]
+    
+    // 如果标题或描述包含图片相关关键词，则需要生成
+    return imageKeywords.some(keyword => text.includes(keyword))
+  }
+
+  /**
+   * 构建图片生成提示词
+   */
+  private buildImagePrompt(order: any): string {
+    const parts: string[] = []
+    
+    // 标题
+    if (order.title) {
+      parts.push(`主题: ${order.title}`)
+    }
+    
+    // 描述
+    if (order.description) {
+      parts.push(`内容描述: ${order.description}`)
+    }
+    
+    // 目标受众
+    if (order.target_audience) {
+      parts.push(`目标受众: ${order.target_audience}`)
+    }
+    
+    // 平台要求
+    if (order.platforms && order.platforms.length > 0) {
+      parts.push(`发布平台: ${order.platforms.join(', ')}`)
+    }
+    
+    // 默认提示词
+    const defaultPrompt = '创意海报设计，现代风格，简洁大方，适合社交媒体传播'
+    
+    return parts.length > 0 
+      ? `请根据以下需求生成一张精美的海报/图片：\n${parts.join('\n')}\n\n设计风格：${defaultPrompt}`
+      : defaultPrompt
+  }
+
+  /**
+   * 通知用户内容已生成
+   */
+  private async notifyUserAboutGeneratedContent(orderId: string, imageUrl: string) {
+    const client = getSupabaseClient()
+    
+    // 获取订单信息
+    const { data: order } = await client
+      .from('orders')
+      .select('user_id, title')
+      .eq('id', orderId)
+      .single()
+    
+    if (!order) return
+    
+    // 发送系统通知
+    await client
+      .from('notifications')
+      .insert({
+        user_id: order.user_id,
+        type: 'order_update',
+        title: '订单内容已生成',
+        content: `您的订单"${order.title}"已自动生成图片/海报，请前往查看：${imageUrl}`,
+        metadata: {
+          orderId: orderId,
+          imageUrl: imageUrl,
+          type: 'content_generated'
+        }
+      })
   }
 
   async cancelOrder(orderId: string, userId: string) {
