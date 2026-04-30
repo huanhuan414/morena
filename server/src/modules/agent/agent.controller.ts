@@ -282,4 +282,67 @@ export class AgentController {
       message: result.message || (result.success ? '发布成功' : '发布失败')
     }
   }
+
+  /**
+   * 生成图片
+   * 使用豆包 Seedream 模型生成图片
+   */
+  @Post('images/generations')
+  async generateImage(@Body() body: {
+    prompt: string
+    size?: string
+    style?: string
+  }) {
+    try {
+      const axios = require('axios')
+      const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
+      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+
+      console.log('[AgentController] 生成图片:', {
+        prompt_length: body.prompt?.length,
+        size: body.size || '2K',
+        style: body.style || 'realistic'
+      })
+
+      const response = await axios.post(apiUrl, {
+        model: 'doubao-seedream-4-0-250828',
+        prompt: body.prompt,
+        sequential_image_generation: 'disabled',
+        response_format: 'url',
+        size: body.size || '2K',
+        stream: false,
+        watermark: false
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        timeout: 120000 // 2分钟超时
+      })
+
+      console.log('[AgentController] 图片生成响应:', response.status, response.statusText)
+
+      if (response.status !== 200) {
+        const errorMsg = response.data?.error?.message || response.data?.message || '图片生成失败'
+        return {
+          code: 400,
+          msg: errorMsg
+        }
+      }
+
+      return {
+        code: 200,
+        data: {
+          url: response.data.data?.[0]?.url || response.data.url,
+          revised_prompt: response.data.data?.[0]?.revised_prompt
+        }
+      }
+    } catch (error: any) {
+      console.error('[AgentController] 图片生成失败:', error.message)
+      return {
+        code: 500,
+        msg: `图片生成失败: ${error.message}`
+      }
+    }
+  }
 }
