@@ -75,7 +75,7 @@ export default defineAppConfig({
     list: [
       {
         pagePath: 'pages/social/index',
-        text: '社交',
+        text: '广场',
         iconPath: './assets/tabbar/users.png',
         selectedIconPath: './assets/tabbar/users-active.png',
       },
