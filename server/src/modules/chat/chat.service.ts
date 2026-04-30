@@ -863,8 +863,20 @@ export class ChatService {
     headers?: Record<string, string>
   ) {
     // 使用流式执行
-    for await (const _ of this.executeTaskWithUpdates(taskId, userId, avatarId, content, headers)) {
+    let lastResponse = '任务已完成'
+    for await (const update of this.executeTaskWithUpdates(taskId, userId, avatarId, content, headers)) {
       // 流式更新已通过 SSE 推送
+      // 记录最新的回复内容
+      if (update.type === 'text' && update.data) {
+        lastResponse = update.data
+      }
+    }
+    
+    // 任务完成后调用学习服务
+    try {
+      await this.updateAvatarLearning(avatarId, content, lastResponse)
+    } catch (error) {
+      console.error('[ChatService] executeAgentTaskWithTaskId 中调用 updateAvatarLearning 失败:', error)
     }
   }
 
