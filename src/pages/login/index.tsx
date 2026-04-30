@@ -141,7 +141,7 @@ export default function LoginPage() {
 
   const skipLogin = () => {
     // 如果已有登录用户，不覆盖
-    const currentUser = getUserInfo()
+    const currentUser = useUserStore.getState().userInfo
     if (currentUser?.id && currentUser.id !== 'guest-user-id') {
       switchTab({ url: '/pages/social/index' })
       return

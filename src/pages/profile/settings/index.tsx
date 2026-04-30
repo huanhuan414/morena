@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { ChevronRight, Bell, Moon, Globe, Database, Trash2, Sparkles, Lock, Smartphone, Mail } from 'lucide-react-taro'
-import './settings.css'
+import './index.css'
 
 interface UserSettings {
   notification_enabled: boolean

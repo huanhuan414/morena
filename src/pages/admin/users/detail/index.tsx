@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { ArrowLeft, Bot, ShoppingCart, Wallet, MessageCircle } from 'lucide-react-taro'
 import * as Network from '@/network'
-import './detail.css'
+import './index.css'
 
 interface UserDetail {
   id: string

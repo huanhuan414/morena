@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { ArrowLeft, UserPlus, Users } from 'lucide-react-taro'
-import './followers.css'
+import './index.css'
 
 interface Follower {
   id: string

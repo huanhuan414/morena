@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { Bell, MessageCircle, Heart, UserPlus, Info } from 'lucide-react-taro'
-import './notifications.css'
+import './index.css'
 
 interface NotificationSetting {
   key: string

@@ -17,8 +17,6 @@ export default defineAppConfig({
     'pages/order/order-content-creation/index',
     'pages/order/order-feedback/index',
     'pages/order/pending-order/index',
-    'pages/order-stats/index',
-    'pages/pending-order/index',
     // 个人中心
     'pages/profile/settings/index',
     'pages/profile/security/index',
@@ -41,7 +39,7 @@ export default defineAppConfig({
     'pages/avatar/avatar-account-config/index',
     'pages/avatar/avatar-friends/index',
     // 功能页面
-    'pages/task/index',
+    'pages/tasks/index',
     'pages/messages/index',
     'pages/palm-reading/index',
     'pages/voice-call/index',

@@ -126,7 +126,7 @@ export default function OrderListPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      let url = '/api/order'
+      let url = '/api/order/list'
       let queryParams: Record<string, any> = {}
 
       if (mode === 'avatar') {

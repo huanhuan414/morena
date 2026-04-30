@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Shield, Lock, Smartphone, Mail, ChevronRight, Check } from 'lucide-react-taro'
-import './security.css'
+import './index.css'
 
 interface SecurityStatus {
   hasPassword: boolean
