@@ -169,8 +169,9 @@ export default function OrderPublishFeedback() {
       return
     }
 
-    // 小程序环境
-    Taro.chooseImage({
+    // 小程序环境 — 使用原生 wx.chooseImage 绕过 Taro 的 copyFileToTemp 问题
+    // @ts-ignore
+    wx?.chooseImage({
       count: 1,
       sourceType: ['album', 'camera'],
       success: async (res) => {

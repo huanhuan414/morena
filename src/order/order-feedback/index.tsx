@@ -1,4 +1,6 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal, chooseImage } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal } from '@tarojs/taro'
+// @ts-ignore
+const chooseImage = wx?.chooseImage
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'

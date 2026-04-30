@@ -1,6 +1,8 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import { switchTab, showToast, chooseImage, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
+import { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
+// @ts-ignore
+const chooseImage = wx?.chooseImage
 import { getSafeArea } from '@/utils/safe-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -208,7 +208,8 @@ export default function PalmReading() {
   }
 
   const handleChooseImage = useCallback(() => {
-    Taro.chooseImage({
+// @ts-ignore
+    wx?.chooseImage({
       count: 1,
       sourceType: ['album', 'camera'],
       success: async (res) => {

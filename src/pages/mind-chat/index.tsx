@@ -1307,7 +1307,8 @@ export default function MindChatPage() {
       return
     }
 
-    Taro.chooseImage({
+// @ts-ignore
+    wx?.chooseImage({
       count: remainingCount,
       sourceType: ['album', 'camera'],
       success: async (res) => {

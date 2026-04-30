@@ -1,4 +1,6 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
+// @ts-ignore
+const chooseImage = wx?.chooseImage
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
