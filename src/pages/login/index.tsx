@@ -140,6 +140,12 @@ export default function LoginPage() {
   }
 
   const skipLogin = () => {
+    // 如果已有登录用户，不覆盖
+    const currentUser = getUserInfo()
+    if (currentUser?.id && currentUser.id !== 'guest-user-id') {
+      switchTab({ url: '/pages/social/index' })
+      return
+    }
     setUserInfo({
       id: 'guest-user-id',
       nickname: '游客',
