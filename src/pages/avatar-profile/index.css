@@ -116,6 +116,25 @@
   border-radius: 40rpx;
 }
 
+.location-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 12rpx;
+  padding: 6rpx 16rpx;
+  background: #f0f0f0;
+  border-radius: 20rpx;
+}
+
+.location-badge-icon {
+  font-size: 20rpx;
+  margin-right: 4rpx;
+}
+
+.location-badge-text {
+  font-size: 22rpx;
+  color: #666666;
+}
+
 /* 分身简介 */
 .avatar-bio {
   margin-top: 32rpx;

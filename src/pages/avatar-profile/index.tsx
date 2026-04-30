@@ -153,6 +153,7 @@ interface AvatarProfile {
   style?: string
   skills?: Array<string | { id?: string; tool_name?: string; name?: string }>
   accounts?: AvatarAccount[]
+  location_text?: string
 }
 
 export default function AvatarProfilePage() {
@@ -231,6 +232,19 @@ export default function AvatarProfilePage() {
     return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
   }
 
+  // 提取地理位置的区级信息（如"朝阳区"、"天河区"、"浦东新区"）
+  const getDistrict = (locationText?: string): string => {
+    if (!locationText) return ''
+    // 如果包含"区"字，提取最后一个区级单位
+    const match = locationText.match(/([^省市区县]*?[区市县])/g)
+    if (match) {
+      const last = match[match.length - 1]
+      // 去掉末尾的"市辖区"等，保留真实区名
+      return last.replace(/市辖区$/, '')
+    }
+    return locationText.length > 6 ? locationText.slice(0, 6) + '...' : locationText
+  }
+
   const getPlatformIcon = (platform: string): string => {
     return PLATFORM_ICONS[platform] || PLATFORM_ICONS.default
   }
@@ -302,6 +316,12 @@ export default function AvatarProfilePage() {
             <View className="avatar-info">
               <Text className="avatar-name">{avatarProfile.name}</Text>
               <Text className="avatar-level">Lv.{avatarProfile.level}</Text>
+              {getDistrict(avatarProfile.location_text) && (
+                <View className="location-badge">
+                  <Text className="location-badge-icon">📍</Text>
+                  <Text className="location-badge-text">{getDistrict(avatarProfile.location_text)}</Text>
+                </View>
+              )}
             </View>
           </View>
 
