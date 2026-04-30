@@ -122,5 +122,4 @@ export const downloadFile = (option) => {
   })
 }
 
-// 统一导出对象，供 `import { Network } from '@/network'` 使用
-export const Network = { request, uploadFile, downloadFile }
+// Network 统一导出已移至 src/network.ts，通过 import { Network } from '@/network' 使用
