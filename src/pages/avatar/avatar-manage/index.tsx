@@ -534,7 +534,7 @@ export default function AvatarManagePage() {
                         <View className="quick-entries">
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: '/pages/avatar/avatar-friends/index?avatarId=${avatar.id}' })}
+                            onClick={() => navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
                               <Users size={24} color="#06b6d4" />
@@ -543,7 +543,7 @@ export default function AvatarManagePage() {
                           </View>
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: '/pages/order/avatar-orders/index?avatarId=${avatar.id}' })}
+                            onClick={() => navigateTo({ url: `/pages/avatar-orders/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
                               <Package size={24} color="#06b6d4" />
