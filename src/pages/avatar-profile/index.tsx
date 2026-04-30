@@ -165,17 +165,20 @@ export default function AvatarProfilePage() {
     monthlyEarnings: 0,
     totalOrders: 0
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
     // 获取状态栏高度
     const systemInfo = getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
+
     const params = router.params
     if (params?.id) {
       fetchData(params.id)
+    } else {
+      // 无 id 时直接结束加载状态，避免卡在加载中
+      setLoading(false)
     }
   })
 
