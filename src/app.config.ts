@@ -16,7 +16,7 @@ export default defineAppConfig({
     'pages/order/order-matching/index',
     'pages/order/order-content-creation/index',
     'pages/order/order-feedback/index',
-    'pages/order/pending-order/index',
+    'pages/pending-order/index',
     // 个人中心
     'pages/profile/settings/index',
     'pages/profile/security/index',

@@ -147,7 +147,7 @@ export default function AvatarOrdersPage() {
 
   const handleViewPendingOrder = (request: any) => {
     navigateTo({
-      url: `/pages/order/pending-order/index?requestId=${request.id}`
+      url: `/pages/pending-order/index?requestId=${request.id}`
     })
   }
 
