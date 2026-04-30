@@ -805,6 +805,11 @@
   justify-content: center;
 }
 
+.share-emoji {
+  font-size: 56rpx;
+  line-height: 1;
+}
+
 .share-option-text {
   font-size: var(--text-sm);
   color: var(--text-secondary);
@@ -868,6 +873,14 @@
   padding: var(--space-3) var(--space-6);
   background: var(--primary);
   border-radius: var(--radius-full);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.create-btn-icon {
+  font-size: var(--text-base);
 }
 
 .create-btn-text {

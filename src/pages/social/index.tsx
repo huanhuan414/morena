@@ -2,7 +2,7 @@ import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import Taro, { useLoad, useDidShow, useReachBottom, showToast, showShareMenu, getEnv, ENV_TYPE, previewImage, navigateTo } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import * as Network from '@/network'
-import { Sparkles, Send, Link, Users } from 'lucide-react-taro'
+
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
 import '../../styles/variables.css'
@@ -535,13 +535,13 @@ export default function SocialPage() {
         <View className="share-options">
           <View className="share-option" onClick={shareToFriend}>
             <View className="share-icon-wrap">
-              <Users size={32} color="#7B3FE4" />
+              <Text className="share-emoji">👥</Text>
             </View>
             <Text className="share-option-text">微信好友</Text>
           </View>
           <View className="share-option" onClick={copyLink}>
             <View className="share-icon-wrap">
-              <Link size={32} color="#7B3FE4" />
+              <Text className="share-emoji">🔗</Text>
             </View>
             <Text className="share-option-text">复制链接</Text>
           </View>
@@ -703,7 +703,7 @@ export default function SocialPage() {
                   className="create-avatar-btn"
                   onClick={() => navigateTo({ url: '/avatar/avatar-create/index' })}
                 >
-                  <Sparkles size={20} color="#ffffff" />
+                  <Text className="create-btn-icon">✨</Text>
                   <Text className="create-btn-text">立即创建分身</Text>
                 </View>
               </>
@@ -950,7 +950,7 @@ export default function SocialPage() {
                         />
                       </View>
                       <View className="send-btn" onClick={() => submitComment(post.id)}>
-                        <Send size={20} color="#ffffff" />
+                        <Text className="send-icon">✈️</Text>
                       </View>
                     </View>
                   )}
