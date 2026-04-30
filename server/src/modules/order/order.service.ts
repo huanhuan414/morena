@@ -542,7 +542,7 @@ export class OrderService {
       // 构建视频生成参数
       const videoParams: any = {
         prompt: prompt,
-        duration: 5, // 默认5秒
+        duration: 10, // 支持10秒视频
         ratio: ratio,
         resolution: '720p',
         generateAudio: true,
@@ -599,37 +599,84 @@ export class OrderService {
   private buildVideoPrompt(order: any): string {
     const parts: string[] = []
     
-    // 标题
+    // 标题 - 视频核心主题
     if (order.title) {
-      parts.push(`主题: ${order.title}`)
+      parts.push(`视频主题: ${order.title}`)
     }
     
-    // 描述
+    // 描述 - 这是最重要的需求
     if (order.description) {
-      parts.push(`内容描述: ${order.description}`)
+      parts.push(`内容要求: ${order.description}`)
     }
     
     // 目标受众
     if (order.target_audience) {
-      parts.push(`目标受众: ${order.target_audience}`)
+      parts.push(`目标观众: ${order.target_audience}`)
     }
     
-    // 平台要求
+    // 根据 requirements 提取详细信息
+    const requirements = order.requirements || {}
+    if (requirements.style) {
+      parts.push(`视频风格: ${requirements.style}`)
+    }
+    if (requirements.mood) {
+      parts.push(`整体氛围: ${requirements.mood}`)
+    }
+    if (requirements.duration) {
+      parts.push(`时长要求: ${requirements.duration}`)
+    }
+    
+    // 检测视频类型
+    const text = (order.title || '') + ' ' + (order.description || '')
+    let videoType = '创意短视频'
+    
+    if (text.includes('宣传') || text.includes('广告')) {
+      videoType = '品牌宣传短视频'
+    } else if (text.includes('种草') || text.includes('推荐')) {
+      videoType = '种草推荐视频'
+    } else if (text.includes('教程') || text.includes('教学')) {
+      videoType = '知识教程视频'
+    } else if (text.includes('产品') || text.includes('商品')) {
+      videoType = '产品展示视频'
+    } else if (text.includes('活动') || text.includes('促销')) {
+      videoType = '活动促销视频'
+    } else if (text.includes('故事') || text.includes('剧情')) {
+      videoType = '故事剧情短视频'
+    } else if (text.includes('美食')) {
+      videoType = '美食展示视频'
+    } else if (text.includes('旅游') || text.includes('风景')) {
+      videoType = '风景旅行视频'
+    } else if (text.includes('时尚') || text.includes('穿搭')) {
+      videoType = '时尚穿搭视频'
+    }
+    
+    // 平台要求 - 不同平台风格不同
     if (order.platforms && order.platforms.length > 0) {
-      const platformNames: Record<string, string> = {
-        douyin: '抖音',
-        kuaishou: '快手',
-        bilibili: 'B站',
-        xiaohongshu: '小红书'
+      const platformStyles: Record<string, string> = {
+        douyin: '抖音风格，节奏感强，画面有冲击力，开头抓人眼球',
+        kuaishou: '快手风格，真实接地气，有代入感',
+        xiaohongshu: '小红书风格，画面精致，高质感，有种草感',
+        bilibili: 'B站风格，内容有趣，创意十足',
+        wechat: '微信风格，简洁明了，适合朋友圈传播'
       }
-      const names = order.platforms.map((p: string) => platformNames[p] || p)
-      parts.push(`发布平台: ${names.join(', ')}（适合移动端竖屏浏览）`)
+      const styles = order.platforms.map((p: string) => platformStyles[p] || p)
+      parts.push(`发布平台: ${styles.join('，')}`)
     }
     
-    // 视频风格描述
-    parts.push('视频风格：创意短视频，画面精美，节奏轻快，适合社交媒体传播')
+    // 视频格式说明
+    const ratio = (order.platforms?.includes('douyin') || order.platforms?.includes('kuaishou'))
+      ? '竖屏 9:16' : '横屏 16:9'
+    parts.push(`视频格式: ${ratio}，时长10秒，画面精美流畅`)
     
-    return parts.join('\n')
+    // 构建最终提示词
+    let finalPrompt = `${videoType}，制作要求：\n${parts.join('\n')}\n\n视频效果：画面精美，节奏流畅，适合社交媒体传播`
+    
+    // 如果描述很详细，用描述作为核心提示词
+    if (order.description && order.description.length > 15) {
+      finalPrompt = `请根据以下需求生成一段${videoType}（10秒）：\n\n${order.description}\n\n制作要求：画面精美，节奏流畅，${ratio}格式，适合在${order.platforms?.join('、') || '社交媒体'}上传播`
+    }
+    
+    return finalPrompt
   }
 
   /**
@@ -670,9 +717,9 @@ export class OrderService {
       parts.push(`主题: ${order.title}`)
     }
     
-    // 描述
+    // 描述 - 这是最重要的需求描述
     if (order.description) {
-      parts.push(`内容描述: ${order.description}`)
+      parts.push(`需求描述: ${order.description}`)
     }
     
     // 目标受众
@@ -680,17 +727,62 @@ export class OrderService {
       parts.push(`目标受众: ${order.target_audience}`)
     }
     
-    // 平台要求
+    // 平台要求 - 不同平台风格不同
     if (order.platforms && order.platforms.length > 0) {
-      parts.push(`发布平台: ${order.platforms.join(', ')}`)
+      const platformStyles: Record<string, string> = {
+        douyin: '抖音风格，视觉冲击力强，适合短视频封面',
+        kuaishou: '快手风格，亲民接地气，真实感强',
+        xiaohongshu: '小红书风格，精致美观，高质感',
+        bilibili: 'B站风格，年轻化，有趣创意',
+        wechat: '微信风格，简洁大方，适合朋友圈传播'
+      }
+      const styles = order.platforms.map((p: string) => platformStyles[p] || p)
+      parts.push(`发布平台: ${styles.join('，')}`)
     }
     
-    // 默认提示词
-    const defaultPrompt = '创意海报设计，现代风格，简洁大方，适合社交媒体传播'
+    // 根据 requirements 构建更详细的提示词
+    const requirements = order.requirements || {}
+    if (requirements.style) {
+      parts.push(`设计风格: ${requirements.style}`)
+    }
+    if (requirements.color) {
+      parts.push(`主色调: ${requirements.color}`)
+    }
+    if (requirements.mood) {
+      parts.push(`整体氛围: ${requirements.mood}`)
+    }
     
-    return parts.length > 0 
-      ? `请根据以下需求生成一张精美的海报/图片：\n${parts.join('\n')}\n\n设计风格：${defaultPrompt}`
-      : defaultPrompt
+    // 检测海报类型，添加对应描述
+    const text = (order.title || '') + ' ' + (order.description || '')
+    let imageType = '精美的宣传图片'
+    
+    if (text.includes('海报')) {
+      imageType = '创意宣传海报'
+    } else if (text.includes('封面')) {
+      imageType = '社交媒体封面图'
+    } else if (text.includes('banner')) {
+      imageType = 'Banner广告图'
+    } else if (text.includes('朋友圈')) {
+      imageType = '朋友圈分享图片'
+    } else if (text.includes('头像') || text.includes('logo')) {
+      imageType = '品牌标识图片'
+    } else if (text.includes('商品') || text.includes('产品')) {
+      imageType = '产品展示图片'
+    } else if (text.includes('活动')) {
+      imageType = '活动宣传图'
+    }
+    
+    // 构建最终的提示词
+    let finalPrompt = parts.length > 0 
+      ? `${imageType}，设计要求：\n${parts.join('\n')}\n\n设计风格：现代简洁，视觉精美，适合社交媒体传播`
+      : imageType
+    
+    // 如果描述很详细，直接用描述作为提示词
+    if (order.description && order.description.length > 20) {
+      finalPrompt = `请根据以下需求生成一张${imageType}：\n\n${order.description}\n\n设计要求：现代简洁，视觉精美，适合在${order.platforms?.join('、') || '社交媒体'}上传播`
+    }
+    
+    return finalPrompt
   }
 
   /**
