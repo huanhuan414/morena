@@ -78,11 +78,12 @@ export class OrderController {
     }
   }
 
-  @Get()
+  @Get('list')
   async list(
     @Headers('x-user-id') userId: string,
     @Query('status') status?: string
   ) {
+    console.log('[OrderController] list 被调用, userId:', userId, 'status:', status)
     const orders = await this.orderService.getOrders(userId, status)
     return {
       code: 200,
@@ -119,6 +120,7 @@ export class OrderController {
 
   @Get(':id')
   async get(@Param('id') orderId: string) {
+    console.log('[OrderController] get 被调用, orderId:', orderId)
     const order = await this.orderService.getOrderById(orderId)
     return {
       code: 200,
