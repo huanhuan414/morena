@@ -880,15 +880,15 @@ export class AvatarController {
     if (!userAvatars || userAvatars.length === 0) {
       return {
         code: 200,
-        data: [],
+        data: { received: [], sent: [] },
         message: '获取成功'
       }
     }
 
     const avatarIds = userAvatars.map(a => a.id)
 
-    // 获取这些分身收到的好友请求
-    const { data: requests, error } = await client
+    // 查询收到的请求：别人发给用户分身的请求（用户是被请求方）
+    const { data: received, error1 } = await client
       .from('avatar_friends')
       .select(`
         *,
@@ -902,17 +902,35 @@ export class AvatarController {
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
 
-    if (error) {
+    // 查询发出的请求：用户分身主动发出的请求（用户是主动请求方）
+    const { data: sent, error2 } = await client
+      .from('avatar_friends')
+      .select(`
+        *,
+        to_avatar:avatars!avatar_friends_friend_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        )
+      `)
+      .in('avatar_id', avatarIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (error1 || error2) {
       return {
         code: 400,
-        message: error.message,
+        message: (error1 || error2)?.message || '查询失败',
         data: null
       }
     }
 
     return {
       code: 200,
-      data: requests,
+      data: {
+        received: received || [],
+        sent: sent || []
+      },
       message: '获取成功'
     }
   }
@@ -966,6 +984,32 @@ export class AvatarController {
   }
 
   /**
+   * 撤销发出的好友请求
+   */
+  @Delete('friend-requests/:id')
+  async cancelFriendRequest(@Param('id') requestId: string) {
+    const client = getSupabaseClient()
+
+    const { error } = await client
+      .from('avatar_friends')
+      .delete()
+      .eq('id', requestId)
+      .eq('status', 'pending')
+
+    if (error) {
+      return {
+        code: 400,
+        message: '撤销失败',
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      message: '已撤销好友请求',
+      data: null
+    }
+  }
    * 🔴 测试发帖规则（仅用于测试）
    * POST /api/avatar/test-post-rules
    */

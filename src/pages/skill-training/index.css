@@ -27,7 +27,6 @@
   align-items: center;
   justify-content: center;
   background: var(--bg-card);
-  border-radius: 50%;
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }

@@ -29,14 +29,23 @@ interface FriendRequest {
     name: string
     avatar_url: string
   }
+  to_avatar?: {
+    id: string
+    name: string
+    avatar_url: string
+  }
   // 为了兼容数据库返回的字段名
   from_avatar_name?: string
   from_avatar_avatar_url?: string
+  to_avatar_name?: string
+  to_avatar_avatar_url?: string
 }
 
 export default function FriendshipManagement() {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([])
+  const [receivedRequests, setReceivedRequests] = useState<FriendRequest[]>([])
+  const [sentRequests, setSentRequests] = useState<FriendRequest[]>([])
+  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
   const [stats, setStats] = useState({
     friends_count: 0,
     pending_requests: 0,
@@ -69,7 +78,7 @@ export default function FriendshipManagement() {
     }
   }
 
-  // 获取好友请求
+  // 获取好友请求（同时获取收到的和发出的）
   const fetchFriendRequests = async () => {
     try {
       const userId = getUserId()
@@ -80,7 +89,11 @@ export default function FriendshipManagement() {
       })
 
       if (res.data && res.data.data) {
-        setFriendRequests(res.data.data)
+        setReceivedRequests(res.data.data.received || [])
+        setSentRequests(res.data.data.sent || [])
+        // 更新待处理数量 = 收到的 + 发出的
+        const total = (res.data.data.received?.length || 0) + (res.data.data.sent?.length || 0)
+        setStats(prev => ({ ...prev, pending_requests: total }))
       }
     } catch (error) {
       console.error('获取好友请求失败:', error)
@@ -114,7 +127,7 @@ export default function FriendshipManagement() {
     }
   }
 
-  // 接受好友请求
+  // 接受好友请求（收到的请求）
   const acceptFriendRequest = async (friendRequestId) => {
     try {
       await networkRequest({
@@ -122,20 +135,29 @@ export default function FriendshipManagement() {
         method: 'POST'
       })
 
-      Taro.showToast({
-        title: '已接受好友请求',
-        icon: 'success'
-      })
-
-      // 刷新列表
+      Taro.showToast({ title: '已接受好友请求', icon: 'success' })
       fetchFriendRequests()
       fetchStats()
     } catch (error) {
       console.error('接受好友请求失败:', error)
-      Taro.showToast({
-        title: '操作失败',
-        icon: 'none'
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  // 撤回发出的好友请求
+  const cancelFriendRequest = async (friendRequestId) => {
+    try {
+      await networkRequest({
+        url: `/api/avatar/friend-requests/${friendRequestId}`,
+        method: 'DELETE'
       })
+
+      Taro.showToast({ title: '已撤回请求', icon: 'success' })
+      fetchFriendRequests()
+      fetchStats()
+    } catch (error) {
+      console.error('撤回好友请求失败:', error)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
     }
   }
 
@@ -170,7 +192,7 @@ export default function FriendshipManagement() {
 
   if (loading) {
     return (
-      <View className="friendship-management">
+      <View className="friendship-management-page">
         <View className="loading-container">
           <Text>加载中...</Text>
         </View>
@@ -179,7 +201,7 @@ export default function FriendshipManagement() {
   }
 
   return (
-    <View className="friendship-management">
+    <View className="friendship-management-page">
       {/* 统计卡片 */}
       <View className="stats-section">
         <View className="stats-card">
@@ -224,43 +246,111 @@ export default function FriendshipManagement() {
             </View>
           )}
         </View>
-        {friendRequests.length === 0 ? (
-          <View className="empty-state">
-            <Text>暂无好友请求</Text>
+
+        {/* 标签切换 */}
+        <View className="request-tabs">
+          <View
+            className={`tab-item ${activeTab === 'received' ? 'active' : ''}`}
+            onClick={() => setActiveTab('received')}
+          >
+            <Text>收到的请求</Text>
+            {receivedRequests.length > 0 && (
+              <View className="tab-badge"><Text>{receivedRequests.length}</Text></View>
+            )}
           </View>
-        ) : (
-          <View className="friend-request-list">
-            {friendRequests.map((request) => (
-              <View key={request.id} className="friend-request-item">
-                <View className="request-info">
-                  <Avatar
-                    src={request.from_avatar?.avatar_url || request.from_avatar_avatar_url}
-                    name={request.from_avatar?.name || request.from_avatar_name}
-                    size={100}
-                    className="request-avatar"
-                  />
-                  <View className="request-details">
-                    <Text className="request-name">{request.from_avatar?.name || request.from_avatar_name}</Text>
-                    <Text className="request-reason">{request.match_reason}</Text>
-                    <View className="compatibility-score">
-                      <Text>匹配度: {request.compatibility_score?.toFixed(1)}%</Text>
+          <View
+            className={`tab-item ${activeTab === 'sent' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sent')}
+          >
+            <Text>发出的请求</Text>
+            {sentRequests.length > 0 && (
+              <View className="tab-badge"><Text>{sentRequests.length}</Text></View>
+            )}
+          </View>
+        </View>
+
+        {/* 收到的请求 */}
+        {activeTab === 'received' && (
+          receivedRequests.length === 0 ? (
+            <View className="empty-state">
+              <Text>暂无收到的请求</Text>
+            </View>
+          ) : (
+            <View className="friend-request-list">
+              {receivedRequests.map((request) => (
+                <View key={request.id} className="friend-request-item">
+                  <View className="request-info">
+                    <Avatar
+                      src={request.from_avatar?.avatar_url || request.from_avatar_avatar_url}
+                      name={request.from_avatar?.name || request.from_avatar_name}
+                      size={100}
+                      className="request-avatar"
+                    />
+                    <View className="request-details">
+                      <Text className="request-name">{request.from_avatar?.name || request.from_avatar_name}</Text>
+                      <Text className="request-reason">{request.match_reason}</Text>
+                      <View className="compatibility-score">
+                        <Text>匹配度: {request.compatibility_score?.toFixed(1)}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="request-actions">
+                    <View
+                      className="action-button accept"
+                      onClick={() => acceptFriendRequest(request.id)}
+                    >
+                      <Text>接受</Text>
+                    </View>
+                    <View className="action-button reject">
+                      <Text>拒绝</Text>
                     </View>
                   </View>
                 </View>
-                <View className="request-actions">
-                  <View
-                    className="action-button accept"
-                    onClick={() => acceptFriendRequest(request.id)}
-                  >
-                    <Text>接受</Text>
+              ))}
+            </View>
+          )
+        )}
+
+        {/* 发出的请求 */}
+        {activeTab === 'sent' && (
+          sentRequests.length === 0 ? (
+            <View className="empty-state">
+              <Text>暂无发出的请求</Text>
+            </View>
+          ) : (
+            <View className="friend-request-list">
+              {sentRequests.map((request) => (
+                <View key={request.id} className="friend-request-item sent">
+                  <View className="request-info">
+                    <Avatar
+                      src={request.to_avatar?.avatar_url || request.to_avatar_avatar_url}
+                      name={request.to_avatar?.name || request.to_avatar_name}
+                      size={100}
+                      className="request-avatar"
+                    />
+                    <View className="request-details">
+                      <Text className="request-name">{request.to_avatar?.name || request.to_avatar_name}</Text>
+                      <Text className="request-reason">{request.match_reason}</Text>
+                      <View className="compatibility-score">
+                        <Text>匹配度: {request.compatibility_score?.toFixed(1)}%</Text>
+                      </View>
+                      <View className="sent-status">
+                        <Text className="text-xs text-gray-400">等待对方确认</Text>
+                      </View>
+                    </View>
                   </View>
-                  <View className="action-button reject">
-                    <Text>拒绝</Text>
+                  <View className="request-actions">
+                    <View
+                      className="action-button cancel"
+                      onClick={() => cancelFriendRequest(request.id)}
+                    >
+                      <Text>撤回</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )
         )}
       </View>
 
