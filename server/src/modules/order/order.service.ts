@@ -406,19 +406,80 @@ export class OrderService {
    */
   private async autoGenerateContent(order: any, avatarId: string) {
     const needsImage = this.checkIfNeedsImage(order)
+    const needsVideo = this.checkIfNeedsVideo(order)
     
-    if (!needsImage) {
-      console.log('[OrderService] 订单不需要生成图片，跳过自动生成')
+    if (!needsImage && !needsVideo) {
+      console.log('[OrderService] 订单不需要生成图片或视频，跳过自动生成')
       return
     }
     
-    console.log('[OrderService] 开始自动生成图片/海报...')
+    const generatedItems: string[] = []
+    let imageUrl: string | null = null
+    let videoUrl: string | null = null
     
-    // 根据订单信息构建图片生成提示词
+    // 生成图片
+    if (needsImage) {
+      console.log('[OrderService] 开始自动生成图片/海报...')
+      imageUrl = await this.generateImageForOrder(order)
+      if (imageUrl) {
+        generatedItems.push(`![自动生成图片](${imageUrl})`)
+      }
+    }
+    
+    // 生成视频
+    if (needsVideo) {
+      console.log('[OrderService] 开始自动生成视频...')
+      videoUrl = await this.generateVideoForOrder(order, imageUrl)
+      if (videoUrl) {
+        generatedItems.push(`[自动生成视频](${videoUrl})`)
+      }
+    }
+    
+    // 如果有生成内容，保存到订单
+    if (generatedItems.length > 0) {
+      const client = getSupabaseClient()
+      const updateData: any = {
+        generated_content: generatedItems.join('\n\n') + '\n\n根据订单需求自动生成。',
+        updated_at: new Date().toISOString()
+      }
+      
+      // 如果有 images 字段则更新
+      if ('images' in order && imageUrl) {
+        const existingImages = order.images || []
+        updateData.images = [...existingImages, imageUrl].slice(0, 10)
+      }
+      
+      // 如果有 videos 字段则更新
+      if ('videos' in order && videoUrl) {
+        const existingVideos = order.videos || []
+        updateData.videos = [...existingVideos, videoUrl].slice(0, 10)
+      }
+      
+      await client
+        .from('orders')
+        .update(updateData)
+        .eq('id', order.id)
+      
+      console.log('[OrderService] 内容生成成功，图片:', imageUrl, '视频:', videoUrl)
+      
+      // 发送通知给用户
+      const contentType = needsVideo && needsImage ? '图片和视频' : (needsVideo ? '视频' : '图片')
+      const notifyUrl = imageUrl || videoUrl || ''
+      if (notifyUrl) {
+        this.notifyUserAboutGeneratedContent(order.id, notifyUrl, contentType).catch(err => {
+          console.error('[OrderService] 发送通知失败:', err.message)
+        })
+      }
+    }
+  }
+
+  /**
+   * 为订单生成图片
+   */
+  private async generateImageForOrder(order: any): Promise<string | null> {
     const prompt = this.buildImagePrompt(order)
     
     try {
-      // 调用图片生成接口
       const axios = require('axios')
       const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
       const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
@@ -437,40 +498,150 @@ export class OrderService {
       })
       
       const imageUrl = response.data?.data?.[0]?.url
-      if (imageUrl) {
-        // 保存生成的图片到订单
-        const client = getSupabaseClient()
-        const updateData: any = {
-          generated_content: `![自动生成图片](${imageUrl})\n\n根据订单需求自动生成的图片/海报。`,
-          updated_at: new Date().toISOString()
-        }
-        
-        // 如果有 images 字段则更新
-        if ('images' in order) {
-          updateData.images = [imageUrl]
-        }
-        
-        await client
-          .from('orders')
-          .update(updateData)
-          .eq('id', order.id)
-        
-        console.log('[OrderService] 图片生成成功:', imageUrl)
-        
-        // 发送通知给用户
-        this.notifyUserAboutGeneratedContent(order.id, imageUrl).catch(err => {
-          console.error('[OrderService] 发送通知失败:', err.message)
-        })
-      }
+      console.log('[OrderService] 图片生成成功:', imageUrl)
+      return imageUrl || null
     } catch (error: any) {
       console.error('[OrderService] 图片生成失败:', error.message)
+      return null
     }
+  }
+
+  /**
+   * 为订单生成视频
+   */
+  private async generateVideoForOrder(order: any, imageUrl?: string | null): Promise<string | null> {
+    const prompt = this.buildVideoPrompt(order)
+    
+    try {
+      // 使用 coze-coding-dev-sdk 生成视频
+      const { VideoGenerationClient, Config, S3Storage } = require('coze-coding-dev-sdk')
+      
+      const config = new Config({
+        apiKey: process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47',
+        endpointUrl: process.env.VOLC_VIDEO_API_ENDPOINT || 'https://ark.cn-beijing.volces.com/api/v3',
+      })
+      
+      const storage = new S3Storage({
+        endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL || 'https://tos-cn-guangzhou.volces.com',
+        accessKey: process.env.VOLC_ACCESS_KEY || '',
+        secretKey: process.env.VOLC_SECRET_KEY || '',
+        bucketName: process.env.COZE_BUCKET_NAME || 'morena-ai',
+        region: 'cn-guangzhou',
+      })
+      
+      const client = new VideoGenerationClient(config, storage)
+      
+      // 确定视频比例（根据平台）
+      let ratio = '16:9' // 默认横屏
+      if (order.platforms && order.platforms.length > 0) {
+        if (order.platforms.includes('douyin') || order.platforms.includes('kuaishou')) {
+          ratio = '9:16' // 抖音/快手用竖屏
+        }
+      }
+      
+      // 构建视频生成参数
+      const videoParams: any = {
+        prompt: prompt,
+        duration: 5, // 默认5秒
+        ratio: ratio,
+        resolution: '720p',
+        generateAudio: true,
+      }
+      
+      // 如果有生成的图片，使用图片作为首帧
+      if (imageUrl) {
+        videoParams.firstFrameUrl = imageUrl
+      }
+      
+      console.log('[OrderService] 视频生成参数:', videoParams)
+      
+      // 调用视频生成API
+      const result = await client.generateVideo(videoParams)
+      
+      console.log('[OrderService] 视频生成成功:', result.videoUrl)
+      return result.videoUrl || null
+    } catch (error: any) {
+      console.error('[OrderService] 视频生成失败:', error.message)
+      return null
+    }
+  }
+
+  /**
+   * 检测订单是否需要生成视频
+   */
+  private checkIfNeedsVideo(order: any): boolean {
+    // 检测 content_type 字段
+    const contentType = (order.content_type || '').toLowerCase()
+    if (contentType.includes('video') || contentType.includes('视频')) {
+      return true
+    }
+    
+    const text = [
+      order.title || '',
+      order.description || '',
+      JSON.stringify(order.requirements || {})
+    ].join(' ').toLowerCase()
+    
+    // 视频相关关键词
+    const videoKeywords = [
+      '视频', '短视频', '影片', '短剧', '宣传片', '广告片',
+      '生成视频', '生成短视频', '拍视频', '做视频', '制作视频',
+      '抖音', '快手', '视频号', 'B站', '小红书',
+      '竖屏视频', '横屏视频', '视频素材'
+    ]
+    
+    return videoKeywords.some(keyword => text.includes(keyword))
+  }
+
+  /**
+   * 构建视频生成提示词
+   */
+  private buildVideoPrompt(order: any): string {
+    const parts: string[] = []
+    
+    // 标题
+    if (order.title) {
+      parts.push(`主题: ${order.title}`)
+    }
+    
+    // 描述
+    if (order.description) {
+      parts.push(`内容描述: ${order.description}`)
+    }
+    
+    // 目标受众
+    if (order.target_audience) {
+      parts.push(`目标受众: ${order.target_audience}`)
+    }
+    
+    // 平台要求
+    if (order.platforms && order.platforms.length > 0) {
+      const platformNames: Record<string, string> = {
+        douyin: '抖音',
+        kuaishou: '快手',
+        bilibili: 'B站',
+        xiaohongshu: '小红书'
+      }
+      const names = order.platforms.map((p: string) => platformNames[p] || p)
+      parts.push(`发布平台: ${names.join(', ')}（适合移动端竖屏浏览）`)
+    }
+    
+    // 视频风格描述
+    parts.push('视频风格：创意短视频，画面精美，节奏轻快，适合社交媒体传播')
+    
+    return parts.join('\n')
   }
 
   /**
    * 检测订单是否需要生成图片
    */
   private checkIfNeedsImage(order: any): boolean {
+    // 检测 content_type 字段
+    const contentType = (order.content_type || '').toLowerCase()
+    if (contentType.includes('image') || contentType.includes('图片') || contentType.includes('海报')) {
+      return true
+    }
+    
     const text = [
       order.title || '',
       order.description || '',
@@ -525,7 +696,7 @@ export class OrderService {
   /**
    * 通知用户内容已生成
    */
-  private async notifyUserAboutGeneratedContent(orderId: string, imageUrl: string) {
+  private async notifyUserAboutGeneratedContent(orderId: string, contentUrl: string, contentType: string = '图片') {
     const client = getSupabaseClient()
     
     // 获取订单信息
@@ -544,10 +715,11 @@ export class OrderService {
         user_id: order.user_id,
         type: 'order_update',
         title: '订单内容已生成',
-        content: `您的订单"${order.title}"已自动生成图片/海报，请前往查看：${imageUrl}`,
+        content: `您的订单"${order.title}"已自动生成${contentType}，请前往查看：${contentUrl}`,
         metadata: {
           orderId: orderId,
-          imageUrl: imageUrl,
+          contentUrl: contentUrl,
+          contentType: contentType,
           type: 'content_generated'
         }
       })
