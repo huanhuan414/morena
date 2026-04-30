@@ -2036,33 +2036,16 @@ export class OrderDispatchService {
 
     console.log(`[智能匹配] 有效平台要求: ${validOrderPlatforms.join(', ')}`)
 
-    // 如果订单有明确的平台要求，过滤掉没有绑定对应平台的分身
+    // 移除硬性过滤，不再要求分身必须绑定平台
+    // 平台绑定将作为评分阶段的加分项，而不是必选项
     let filteredAvatars = avatars
     if (validOrderPlatforms.length > 0) {
-      filteredAvatars = avatars.filter(avatar => {
-        const userConfigs = platformConfigMap.get(avatar.user_id) || []
-        const avatarPlatforms = userConfigs.map(c => c.platform_type)
-        console.log(`[智能匹配] 分身 ${avatar.name} (user_id: ${avatar.user_id}) 绑定平台: ${avatarPlatforms.join(', ') || '无'}`)
-
-        // 规范化订单平台名称为平台代码
-        const normalizedOrderPlatforms = validOrderPlatforms.map(p => this.normalizePlatformName(p))
-
-        // 分身必须至少绑定一个订单要求的平台
-        const hasRequiredPlatform = normalizedOrderPlatforms.some(p => avatarPlatforms.includes(p))
-        if (!hasRequiredPlatform) {
-          console.log(`[智能匹配] 过滤分身 ${avatar.name}：未绑定所需平台 ${normalizedOrderPlatforms.join(', ')}`)
-        }
-        return hasRequiredPlatform
-      })
-      console.log(`[智能匹配] 平台匹配过滤后：${avatars.length} -> ${filteredAvatars.length} 个分身`)
+      // 规范化订单平台名称为平台代码
+      const normalizedOrderPlatforms = validOrderPlatforms.map(p => this.normalizePlatformName(p))
+      console.log(`[智能匹配] 有效平台要求: ${normalizedOrderPlatforms.join(', ')}`)
+      console.log(`[智能匹配] 平台绑定作为加分项，不做硬性过滤，所有 ${avatars.length} 个分身参与评分`)
     } else {
-      console.log('[智能匹配] 订单无明确平台要求，跳过平台过滤')
-      filteredAvatars = avatars
-    }
-
-    if (!filteredAvatars || filteredAvatars.length === 0) {
-      console.log('[智能匹配] 经过平台匹配过滤后，无可用分身')
-      return []
+      console.log('[智能匹配] 订单无明确平台要求')
     }
     
     // ========== 第二步半2：不再进行技能过滤，技能匹配将在评分阶段体现 ==========
