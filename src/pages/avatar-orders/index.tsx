@@ -172,7 +172,7 @@ export default function AvatarOrdersPage() {
       case 'published':
         // 待反馈的订单跳转到反馈提交页面
         navigateTo({
-          url: `/pages/order/order-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
       default:
