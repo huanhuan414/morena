@@ -1380,6 +1380,11 @@ export default function MindChatPage() {
       fail: (error) => {
         console.error('[上传图片] 选择图片失败:', error)
         setIsUploadingImage(false)
+        showToast({ title: '未选择图片', icon: 'none' })
+      },
+      complete: () => {
+        // 确保 loading 状态被清除
+        setIsUploadingImage(false)
       }
     })
     } else {
@@ -1451,6 +1456,10 @@ export default function MindChatPage() {
         },
         fail: (error: any) => {
           console.error('[上传图片] H5选择图片失败:', error)
+          setIsUploadingImage(false)
+          showToast({ title: '未选择图片', icon: 'none' })
+        },
+        complete: () => {
           setIsUploadingImage(false)
         }
       })

@@ -5,8 +5,9 @@ import * as Network from '@/network'
 
 import { Input } from '@/components/ui/input'
 import { getSafeArea } from '@/utils/safe-area'
+import { SOCIAL_ICONS } from './icons'
 import '../../styles/variables.css'
-import './index.css' 
+import './index.css'
 
 interface Post {
   id: string
@@ -841,8 +842,8 @@ export default function SocialPage() {
                     <View className="action-btn" onClick={() => likePost(post.id)}>
                       <Image
                         src={post.is_liked
-                          ? '/assets/social/thumbs-up-active.png'
-                          : '/assets/social/thumbs-up.png'}
+                          ? SOCIAL_ICONS.thumbsUpActive
+                          : SOCIAL_ICONS.thumbsUp}
                         className="action-icon"
                       />
                       <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
@@ -860,14 +861,14 @@ export default function SocialPage() {
                       }}
                     >
                       <Image
-                        src="/assets/social/message-circle.png"
+                        src={SOCIAL_ICONS.messageCircle}
                         className="action-icon"
                       />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
                     <View className="action-btn" onClick={() => handleShare(post.id)}>
                       <Image
-                        src="/assets/social/share.png"
+                        src={SOCIAL_ICONS.share}
                         className="action-icon"
                       />
                       <Text className="action-count">{post.shares_count || 0}</Text>

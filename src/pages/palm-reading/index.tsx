@@ -250,6 +250,14 @@ export default function PalmReading() {
             Taro.showToast({ title: '上传失败', icon: 'error' })
           }
         },
+        fail: (error) => {
+          console.error('[PalmReading] 选择图片失败:', error)
+          Taro.hideLoading()
+          Taro.showToast({ title: '未选择图片', icon: 'none' })
+        },
+        complete: () => {
+          Taro.hideLoading()
+        }
       })
     } else {
       // H5 端：使用 Taro.chooseImage
@@ -290,6 +298,14 @@ export default function PalmReading() {
             Taro.showToast({ title: '上传失败', icon: 'error' })
           }
         },
+        fail: (error) => {
+          console.error('[PalmReading] H5选择图片失败:', error)
+          Taro.hideLoading()
+          Taro.showToast({ title: '未选择图片', icon: 'none' })
+        },
+        complete: () => {
+          Taro.hideLoading()
+        }
       })
     }
   }, [])
