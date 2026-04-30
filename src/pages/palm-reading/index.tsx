@@ -207,106 +207,66 @@ export default function PalmReading() {
     }, 3000)
   }
 
-  const handleChooseImage = useCallback(() => {
-    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
-    if (isMiniApp) {
-      Taro.chooseMessageFile({
-        count: 1,
-        type: 'image',
-        success: async (res: { tempFiles: Array<{ path: string }> }) => {
-          const tempFilePath = res.tempFiles[0].path
-          setErrorMessage('')
+  const handleChooseImage = useCallback(async () => {
+    try {
+      const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+      let tempFilePath = ''
 
-          // 上传图片到TOS
-          Taro.showLoading({ title: '上传图片中...' })
-          try {
-            let imageUrl = tempFilePath
-            console.log('[PalmReading] 原始路径:', tempFilePath)
-            if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
-              const uploadRes = await Network.uploadFile({
-                url: '/api/upload/image',
-                filePath: tempFilePath,
-                name: 'file',
-              })
-              console.log('[PalmReading] 上传原始结果:', JSON.stringify(uploadRes))
-              // Taro.uploadFile 返回 data 为 JSON 字符串，需要 parse
-              let parsedData = (uploadRes as any)?.data
-              if (typeof parsedData === 'string') {
-                try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
-              }
-              imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
-              console.log('[PalmReading] 解析后URL:', imageUrl)
-            }
-            // 二次检查：如果imageUrl还不是http开头，说明上传失败
-            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-              Taro.hideLoading()
-              Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
-              return
-            }
-            setSelectedImage(imageUrl)
-            Taro.hideLoading()
-          } catch (e) {
-            Taro.hideLoading()
-            Taro.showToast({ title: '上传失败', icon: 'error' })
-          }
-        },
-        fail: (error) => {
-          console.error('[PalmReading] 选择图片失败:', error)
-          Taro.hideLoading()
-          Taro.showToast({ title: '未选择图片', icon: 'none' })
-        },
-        complete: () => {
-          Taro.hideLoading()
-        }
-      })
-    } else {
-      // H5 端：使用 Taro.chooseImage
-      Taro.chooseImage({
-        count: 1,
-        sourceType: ['album', 'camera'],
-        success: async (res: { tempFilePaths: string[] }) => {
-          const tempFilePath = res.tempFilePaths[0]
-          setErrorMessage('')
+      if (isMiniApp) {
+        console.log('[PalmReading] 开始选择图片 (小程序端)...')
+        const chooseRes = await Taro.chooseMessageFile({ count: 1, type: 'image' }) as any
+        console.log('[PalmReading] 选择结果:', JSON.stringify(chooseRes))
 
-          Taro.showLoading({ title: '上传图片中...' })
-          try {
-            let imageUrl = tempFilePath
-            console.log('[PalmReading] H5原始路径:', tempFilePath)
-            if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
-              const uploadRes = await Network.uploadFile({
-                url: '/api/upload/image',
-                filePath: tempFilePath,
-                name: 'file',
-              })
-              console.log('[PalmReading] H5上传原始结果:', JSON.stringify(uploadRes))
-              let parsedData = (uploadRes as any)?.data
-              if (typeof parsedData === 'string') {
-                try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
-              }
-              imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
-              console.log('[PalmReading] H5解析后URL:', imageUrl)
-            }
-            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-              Taro.hideLoading()
-              Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
-              return
-            }
-            setSelectedImage(imageUrl)
-            Taro.hideLoading()
-          } catch (e) {
-            Taro.hideLoading()
-            Taro.showToast({ title: '上传失败', icon: 'error' })
-          }
-        },
-        fail: (error) => {
-          console.error('[PalmReading] H5选择图片失败:', error)
-          Taro.hideLoading()
+        if (!chooseRes || !chooseRes.tempFiles || chooseRes.tempFiles.length === 0) {
           Taro.showToast({ title: '未选择图片', icon: 'none' })
-        },
-        complete: () => {
-          Taro.hideLoading()
+          return
         }
-      })
+        tempFilePath = chooseRes.tempFiles[0].path
+      } else {
+        const chooseRes = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] }) as any
+        if (!chooseRes || !chooseRes.tempFilePaths || chooseRes.tempFilePaths.length === 0) {
+          Taro.showToast({ title: '未选择图片', icon: 'none' })
+          return
+        }
+        tempFilePath = chooseRes.tempFilePaths[0]
+      }
+
+      setErrorMessage('')
+      Taro.showLoading({ title: '上传图片中...' })
+
+      let imageUrl = tempFilePath
+      if (!tempFilePath.startsWith('http://') && !tempFilePath.startsWith('https://')) {
+        const uploadRes = await Network.uploadFile({
+          url: '/api/upload/image',
+          filePath: tempFilePath,
+          name: 'file',
+        }) as any
+        console.log('[PalmReading] 上传结果:', JSON.stringify(uploadRes))
+
+        let parsedData = uploadRes?.data
+        if (typeof parsedData === 'string') {
+          try { parsedData = JSON.parse(parsedData) } catch (e) { /* ignore */ }
+        }
+        imageUrl = parsedData?.data?.url || parsedData?.url || tempFilePath
+      }
+
+      if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '图片上传失败，请重试', icon: 'error' })
+        return
+      }
+
+      setSelectedImage(imageUrl)
+      Taro.hideLoading()
+    } catch (e: any) {
+      console.error('[PalmReading] 选择或上传图片出错:', e)
+      Taro.hideLoading()
+      const errMsg = e?.errMsg || e?.message || ''
+      if (errMsg.includes('cancel')) {
+        Taro.showToast({ title: '已取消选择', icon: 'none' })
+      } else {
+        Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
+      }
     }
   }, [])
 

@@ -1292,177 +1292,124 @@ export default function MindChatPage() {
   }
 
   // 🔴 修复：上传图片
-  const handleUploadImage = () => {
-    console.log('[上传图片] 开始选择图片')
+  const handleUploadImage = async () => {
+    try {
+      // 检查剩余可上传数量
+      const maxCount = getMaxImageCount(inputText)
+      const remainingCount = maxCount - uploadedImages.length
 
-    // 根据当前输入确定最大图片数量
-    const maxCount = getMaxImageCount(inputText)
-    const remainingCount = maxCount - uploadedImages.length
-
-    if (remainingCount <= 0) {
-      showToast({
-        title: maxCount === 1 ? '只能上传1张图片' : `最多只能上传${maxCount}张图片`,
-        icon: 'none'
-      })
-      return
-    }
-
-    // 跨端兼容：微信/抖音用 chooseMessageFile，H5 用 chooseImage
-    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
-    if (isMiniApp) {
-      Taro.chooseMessageFile({
-        count: remainingCount,
-        type: 'image',
-        success: async (res: { tempFiles: Array<{ path: string }> }) => {
-          const tempFilePaths = res.tempFiles.map(f => f.path)
-          console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
-
-          setIsUploadingImage(true)
-
-          try {
-            const newImageUrls: string[] = []
-            for (let i = 0; i < tempFilePaths.length; i++) {
-              const tempFilePath = tempFilePaths[i]
-              console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
-
-              const uploadRes = await Network.uploadFile({
-                url: '/api/upload/image',
-                filePath: tempFilePath,
-                name: 'file'
-              })
-
-              console.log(`[上传图片] 第 ${i + 1} 张图片上传结果:`, uploadRes)
-
-            // 处理响应数据
-            let uploadData
-            const rawData = (uploadRes as any)?.data
-            if (typeof rawData === 'string') {
-              try {
-                uploadData = JSON.parse(rawData)
-              } catch {
-                uploadData = rawData
-              }
-            } else {
-              uploadData = rawData
-            }
-
-            if (uploadData.code === 200 && (uploadData.data?.url || uploadData.url)) {
-              newImageUrls.push(uploadData.data?.url || uploadData.url)
-            } else {
-              throw new Error(uploadData.message || '上传失败')
-            }
-          }
-
-          // 恢复：将图片URL添加到状态
-          if (newImageUrls.length > 0) {
-            console.log('[上传图片] 准备更新状态，新图片URLs:', newImageUrls)
-            setUploadedImages(prev => {
-              const newState = [...prev, ...newImageUrls]
-              console.log('[上传图片] 状态已更新:', {
-                prevLength: prev.length,
-                newLength: newState.length,
-                urls: newState
-              })
-              return newState
-            })
-            showToast({
-              title: `成功上传 ${newImageUrls.length} 张图片`,
-              icon: 'success'
-            })
-          }
-        } catch (error) {
-          console.error('[上传图片] 错误:', error)
-          showToast({ title: '上传失败，请重试', icon: 'none' })
-        } finally {
-          setIsUploadingImage(false)
-        }
-      },
-      fail: (error) => {
-        console.error('[上传图片] 选择图片失败:', error)
-        setIsUploadingImage(false)
-        showToast({ title: '未选择图片', icon: 'none' })
-      },
-      complete: () => {
-        // 确保 loading 状态被清除
-        setIsUploadingImage(false)
+      if (remainingCount <= 0) {
+        await Taro.showToast({ title: maxCount === 1 ? '只能上传1张图片' : `最多只能上传${maxCount}张图片`, icon: 'none', duration: 1500 })
+        return
       }
-    })
-    } else {
-      // H5 端：使用 Taro.chooseImage
-      Taro.chooseImage({
-        count: remainingCount,
-        sourceType: ['album', 'camera'],
-        success: async (res: { tempFilePaths: string[] }) => {
-          const tempFilePaths = res.tempFilePaths
-          console.log('[上传图片] H5已选择图片数量:', tempFilePaths.length)
 
-          setIsUploadingImage(true)
+      // 跨端兼容：微信/抖音用 chooseMessageFile，H5 用 chooseImage
+      const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
 
-          try {
-            const newImageUrls: string[] = []
-            for (let i = 0; i < tempFilePaths.length; i++) {
-              const tempFilePath = tempFilePaths[i]
-              console.log(`[上传图片] H5正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
-
-              const uploadRes = await Network.uploadFile({
-                url: '/api/upload/image',
-                filePath: tempFilePath,
-                name: 'file'
-              })
-
-              console.log(`[上传图片] H5第 ${i + 1} 张图片上传结果:`, uploadRes)
-
-              let uploadData
-              const rawData = (uploadRes as any)?.data
-              if (typeof rawData === 'string') {
-                try {
-                  uploadData = JSON.parse(rawData)
-                } catch {
-                  uploadData = rawData
+      // 使用 Taro.promisify 包装 API 调用，确保 Promise 化
+      const TaroPromisify = (api: Function) => {
+        return (options: any) => {
+          return new Promise((resolve, reject) => {
+            api({
+              ...options,
+              success: (res: any) => resolve(res),
+              fail: (err: any) => {
+                // 用户取消选择不报错
+                if (err?.errMsg?.includes('cancel') || err?.errMsg?.includes('取消')) {
+                  resolve(null) // 返回 null 表示用户取消
+                } else {
+                  reject(err)
                 }
-              } else {
-                uploadData = rawData
               }
-
-              if (uploadData.code === 200 && (uploadData.data?.url || uploadData.url)) {
-                newImageUrls.push(uploadData.data?.url || uploadData.url)
-              } else {
-                throw new Error(uploadData.message || '上传失败')
-              }
-            }
-
-            if (newImageUrls.length > 0) {
-              console.log('[上传图片] H5准备更新状态，新图片URLs:', newImageUrls)
-              setUploadedImages(prev => {
-                const newState = [...prev, ...newImageUrls]
-                console.log('[上传图片] H5状态已更新:', {
-                  prevLength: prev.length,
-                  newLength: newState.length,
-                  urls: newState
-                })
-                return newState
-              })
-              showToast({
-                title: `成功上传 ${newImageUrls.length} 张图片`,
-                icon: 'success'
-              })
-            }
-          } catch (error) {
-            console.error('[上传图片] H5错误:', error)
-            showToast({ title: '上传失败，请重试', icon: 'none' })
-          } finally {
-            setIsUploadingImage(false)
-          }
-        },
-        fail: (error: any) => {
-          console.error('[上传图片] H5选择图片失败:', error)
-          setIsUploadingImage(false)
-          showToast({ title: '未选择图片', icon: 'none' })
-        },
-        complete: () => {
-          setIsUploadingImage(false)
+            })
+          })
         }
-      })
+      }
+
+      let tempFilePaths: string[] = []
+
+      if (isMiniApp) {
+        const chooseRes: any = await TaroPromisify(Taro.chooseMessageFile)({
+          count: remainingCount,
+          type: 'image'
+        })
+        if (!chooseRes) {
+          // 用户取消了选择
+          return
+        }
+        tempFilePaths = chooseRes.tempFiles.map((f: { path: string }) => f.path)
+      } else {
+        const chooseRes: any = await TaroPromisify(Taro.chooseImage)({
+          count: remainingCount,
+          sourceType: ['album', 'camera']
+        })
+        if (!chooseRes) {
+          return
+        }
+        tempFilePaths = chooseRes.tempFilePaths
+      }
+
+      console.log('[上传图片] 已选择图片数量:', tempFilePaths.length)
+
+      if (tempFilePaths.length === 0) {
+        await Taro.showToast({ title: '未选择图片', icon: 'none', duration: 1500 })
+        return
+      }
+
+      setIsUploadingImage(true)
+
+      const newImageUrls: string[] = []
+      for (let i = 0; i < tempFilePaths.length; i++) {
+        const tempFilePath = tempFilePaths[i]
+        console.log(`[上传图片] 正在上传第 ${i + 1}/${tempFilePaths.length} 张图片:`, tempFilePath)
+
+        const uploadRes: any = await Network.uploadFile({
+          url: '/api/upload/image',
+          filePath: tempFilePath,
+          name: 'file'
+        })
+
+        console.log(`[上传图片] 第 ${i + 1} 张图片上传结果:`, uploadRes)
+
+        // 处理响应数据
+        let uploadData: any
+        const rawData = uploadRes?.data
+        if (typeof rawData === 'string') {
+          try {
+            uploadData = JSON.parse(rawData)
+          } catch {
+            uploadData = rawData
+          }
+        } else {
+          uploadData = rawData
+        }
+
+        if (uploadData.code === 200 && (uploadData.data?.url || uploadData.url)) {
+          newImageUrls.push(uploadData.data?.url || uploadData.url)
+        } else {
+          throw new Error(uploadData.message || '上传失败')
+        }
+      }
+
+      // 更新状态
+      if (newImageUrls.length > 0) {
+        console.log('[上传图片] 准备更新状态，新图片URLs:', newImageUrls)
+        setUploadedImages(prev => {
+          const newState = [...prev, ...newImageUrls]
+          console.log('[上传图片] 状态已更新:', {
+            prevLength: prev.length,
+            newLength: newState.length,
+            urls: newState
+          })
+          return newState
+        })
+        await Taro.showToast({ title: `成功上传 ${newImageUrls.length} 张图片`, icon: 'success', duration: 1500 })
+      }
+    } catch (error) {
+      console.error('[上传图片] 错误:', error)
+      await Taro.showToast({ title: '上传失败，请重试', icon: 'none', duration: 1500 })
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
