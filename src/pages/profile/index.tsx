@@ -73,8 +73,8 @@ const menuItems = [
   { title: '我要推广', icon: Briefcase, desc: '订单管理', type: 'info', path: '/order/order-list/index' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
-  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help' },
-  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/pages/profile/about' }
+  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help/index' },
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/pages/profile/about/index' }
 ]
 
 const typeColorMap: Record<string, string> = {
