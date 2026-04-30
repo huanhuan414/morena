@@ -280,6 +280,7 @@ export default function AvatarOrdersPage() {
 
       {/* 状态Tab栏 */}
       <ScrollView scrollX className="tabs-scroll">
+        <View className="tabs-scroll-inner">
         <View className="tabs-container">
           <View 
             className={`tab-item ${activeTab === 'all' ? 'active' : ''}`}
@@ -304,6 +305,7 @@ export default function AvatarOrdersPage() {
               )}
             </View>
           ))}
+        </View>
         </View>
       </ScrollView>
 

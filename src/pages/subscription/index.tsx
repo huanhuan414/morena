@@ -247,6 +247,7 @@ export default function SubscriptionPage() {
       </View>
 
       <ScrollView className="sub-scroll" scrollY>
+        <View className="sub-scroll-inner">
         {/* 当前订阅状态 */}
         {!loading && userSubscription && userSubscription.plan && (
           <View className="sub-current">
@@ -396,6 +397,7 @@ export default function SubscriptionPage() {
         </View>
 
         <View className="sub-bottom-space" />
+        </View>
       </ScrollView>
     </View>
   )

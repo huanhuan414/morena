@@ -1651,6 +1651,8 @@
 
 .learning-detail-content {
   max-height: 800rpx;
+}
+.learning-detail-inner {
   padding: var(--space-3);
 }
 

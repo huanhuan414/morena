@@ -51,9 +51,10 @@
 /* 滚动区域 */
 .profile-scroll {
   height: calc(100vh - 120rpx);
+}
+.profile-scroll-inner {
   padding: 32rpx;
 }
-
 /* 头部信息卡 */
 .profile-hero {
   background: #ffffff;

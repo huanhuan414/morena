@@ -3874,6 +3874,7 @@ export default function MindChatPage() {
               </View>
             </View>
             <ScrollView className="learning-detail-content" scrollY>
+              <View className="learning-detail-inner">
               {/* 对话统计详情 */}
               {showLearningDetail === 'dialog' && (
                 <View className="detail-section">
@@ -4095,7 +4096,7 @@ export default function MindChatPage() {
                   </Text>
                 </View>
               )}
-
+              </View>
             </ScrollView>
           </View>
         </View>

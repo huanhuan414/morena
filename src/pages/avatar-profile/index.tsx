@@ -299,6 +299,7 @@ export default function AvatarProfilePage() {
       </View>
 
       <ScrollView className="profile-scroll" scrollY>
+        <View className="profile-scroll-inner">
         {/* 头部信息卡 */}
         <View className="profile-hero">
           <View className="avatar-main">
@@ -478,6 +479,7 @@ export default function AvatarProfilePage() {
 
         {/* 底部占位 */}
         <View className="bottom-placeholder" />
+        </View>
       </ScrollView>
     </View>
   )

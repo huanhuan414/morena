@@ -162,10 +162,12 @@
 /* Tab栏 */
 .tabs-scroll {
   white-space: nowrap;
-  padding: 0 32rpx 24rpx;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+}
+.tabs-scroll-inner {
+  padding: 0 32rpx 24rpx;
 }
 
 .tabs-scroll::-webkit-scrollbar {

@@ -507,6 +507,7 @@ export default function AvatarAccountConfigPage() {
       </View>
 
       <ScrollView className="content" scrollY>
+        <View className="content-inner">
         {/* 说明 */}
         <View className="info-card">
           <Text className="info-title">为什么要配置账号数据？</Text>
@@ -640,6 +641,7 @@ export default function AvatarAccountConfigPage() {
             })
           )}
         </View>
+        </View>
       </ScrollView>
 
       {/* 添加/编辑弹窗 */}
@@ -650,6 +652,7 @@ export default function AvatarAccountConfigPage() {
               <Text className="modal-title">{editingAccount ? '编辑账号' : '添加账号'}</Text>
             </View>
             <ScrollView className="modal-body" scrollY>
+              <View className="modal-body-inner">
               <View className="form-item">
                 <Text className="form-label required">平台</Text>
                 <Picker
@@ -923,6 +926,7 @@ export default function AvatarAccountConfigPage() {
                   </View>
                 </>
               )}
+              </View>
             </ScrollView>
             <View className="modal-footer">
               <Button className="modal-btn cancel" onClick={closeModal}>取消</Button>

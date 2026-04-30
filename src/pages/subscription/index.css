@@ -93,9 +93,11 @@
 /* Scroll */
 .sub-scroll {
   flex: 1;
-  padding: 24rpx 32rpx 32rpx;
   position: relative;
   z-index: 1;
+}
+.sub-scroll-inner {
+  padding: 24rpx 32rpx 32rpx;
 }
 
 /* Current Subscription */

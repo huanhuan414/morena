@@ -64,8 +64,10 @@
 /* ========== 内容区 ========== */
 .content {
   flex: 1;
-  padding: 24rpx;
   overflow-y: auto;
+}
+.content-inner {
+  padding: 24rpx;
 }
 
 /* ========== 说明卡片 ========== */
@@ -310,8 +312,10 @@
 
 .modal-body {
   flex: 1;
-  padding: 24rpx;
   overflow-y: auto;
+}
+.modal-body-inner {
+  padding: 24rpx;
 }
 
 .modal-footer {
