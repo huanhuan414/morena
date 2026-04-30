@@ -72,7 +72,7 @@ export class OrderService {
     
     let query = client
       .from('orders')
-      .select('*, avatars(name, avatar_url)')
+      .select('*')
       .eq('user_id', userId)
     
     if (status) {
@@ -85,20 +85,48 @@ export class OrderService {
       throw new Error(`获取订单列表失败: ${error.message}`)
     }
     
-    return data
+    return data || []
   }
 
   async getOrderById(orderId: string) {
     const client = getSupabaseClient()
 
-    const { data, error } = await client
+    // 先查询订单基本信息
+    const { data: ordersData, error: orderError } = await client
       .from('orders')
-      .select('*, users(nickname, avatar), avatars(id, name, avatar_url)')
+      .select('*')
       .eq('id', orderId)
-      .single()
 
-    if (error) {
-      throw new Error(`获取订单详情失败: ${error.message}`)
+    if (orderError) {
+      throw new Error(`获取订单详情失败: ${orderError.message}`)
+    }
+
+    // 确保获取到订单数据
+    const orderData = ordersData && ordersData.length > 0 ? ordersData[0] : null
+    if (!orderData) {
+      throw new Error('订单不存在')
+    }
+
+    // 查询用户信息
+    let userInfo: any = null
+    if (orderData.user_id) {
+      const { data: userData } = await client
+        .from('users')
+        .select('nickname, avatar')
+        .eq('id', orderData.user_id)
+        .maybeSingle()
+      userInfo = userData
+    }
+
+    // 查询分身信息
+    let avatarInfo: any = null
+    if (orderData.avatar_id) {
+      const { data: avatarData } = await client
+        .from('avatars')
+        .select('id, name, avatar_url')
+        .eq('id', orderData.avatar_id)
+        .maybeSingle()
+      avatarInfo = avatarData
     }
 
     // 查询所有订单请求信息（用于获取所有分身的发布结果和反馈）
@@ -160,16 +188,16 @@ export class OrderService {
       })
 
       // 将所有分身的发布结果和反馈添加到订单数据中
-      data.dispatch_requests = requestsData
+      orderData.dispatch_requests = requestsData
 
       // 兼容旧代码，将第一个request的数据也设置到字段中
       const firstRequest = requestsData[0]
-      data.publish_status = firstRequest.publish_status
-      data.publish_feedback = firstRequest.publish_feedback
-      data.generated_content = firstRequest.generated_content
-      data.confirmed_content = firstRequest.confirmed_content
-      data.dispatch_request_id = firstRequest.id
-      data.dispatch_request_status = firstRequest.status
+      orderData.publish_status = firstRequest.publish_status
+      orderData.publish_feedback = firstRequest.publish_feedback
+      orderData.generated_content = firstRequest.generated_content
+      orderData.confirmed_content = firstRequest.confirmed_content
+      orderData.dispatch_request_id = firstRequest.id
+      orderData.dispatch_request_status = firstRequest.status
 
       // 计算统计数据
       const acceptedRequests = requestsData.filter((r: any) => r.status === 'accepted')
@@ -258,13 +286,17 @@ export class OrderService {
         avatarStats
       }
 
-      data.summary_stats = summaryStats
+      orderData.summary_stats = summaryStats
     } else {
-      data.dispatch_requests = []
-      data.summary_stats = null
+      orderData.dispatch_requests = []
+      orderData.summary_stats = null
     }
 
-    return data
+    // 添加用户和分身信息
+    orderData.users = userInfo
+    orderData.avatars = avatarInfo
+
+    return orderData
   }
 
   async updateOrder(orderId: string, updateData: Record<string, any>) {
