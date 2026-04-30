@@ -57,6 +57,74 @@ export class AvatarController {
     }
   }
 
+  /**
+   * 获取好友请求列表
+   */
+  @Get('friend-requests')
+  async getFriendRequests(@Query('user_id') userId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    const { data: userAvatars } = await client
+      .from('avatars')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (!userAvatars || userAvatars.length === 0) {
+      return {
+        code: 200,
+        data: { received: [], sent: [] },
+        message: '获取成功'
+      }
+    }
+
+    const avatarIds = userAvatars.map(a => a.id)
+
+    const { data: received, error1 } = await client
+      .from('avatar_friends')
+      .select(`
+        *,
+        from_avatar:avatars!avatar_friends_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        )
+      `)
+      .in('friend_avatar_id', avatarIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    const { data: sent, error2 } = await client
+      .from('avatar_friends')
+      .select(`
+        *,
+        to_avatar:avatars!avatar_friends_friend_avatar_id_fkey (
+          id,
+          name,
+          avatar_url
+        )
+      `)
+      .in('avatar_id', avatarIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (error1 || error2) {
+      return {
+        code: 400,
+        message: (error1 || error2)?.message || '查询失败',
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      data: {
+        received: received || [],
+        sent: sent || []
+      },
+      message: '获取成功'
+    }
+  }
+
   @Get()
   async list(@Headers('x-user-id') userId: string) {
     const avatars = await this.avatarService.getAvatarsByUser(userId)
@@ -449,6 +517,76 @@ export class AvatarController {
       code: 200,
       data: result,
       message: '通话发起成功'
+    }
+  }
+  @Post('friend-requests/:id/accept')
+  async acceptFriendRequest(@Param('id') requestId: string) {
+    const client = require('../../storage/database/supabase-client').getSupabaseClient()
+
+    const { data: request } = await client
+      .from('avatar_friends')
+      .select('*')
+      .eq('id', requestId)
+      .single()
+
+    if (!request) {
+      return {
+        code: 404,
+        message: '请求不存在',
+        data: null
+      }
+    }
+
+    const { FriendshipService } = await import('./friendship.service')
+    const { HostingService } = await import('./hosting.service')
+    const { SubscriptionService } = await import('../subscription/subscription.service')
+
+    const friendshipService = new FriendshipService()
+    const subscriptionService = new SubscriptionService()
+    const hostingService = new HostingService(subscriptionService, friendshipService)
+
+    const success = await friendshipService.acceptFriendRequest(request.friend_avatar_id, request.avatar_id)
+
+    if (!success) {
+      return {
+        code: 400,
+        message: '接受失败',
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      message: '已接受好友请求',
+      data: null
+    }
+  }
+
+  /**
+   * 撤销发出的好友请求
+   */
+  @Delete('friend-requests/:id')
+  async cancelFriendRequest(@Param('id') requestId: string) {
+    const client = getSupabaseClient()
+
+    const { error } = await client
+      .from('avatar_friends')
+      .delete()
+      .eq('id', requestId)
+      .eq('status', 'pending')
+
+    if (error) {
+      return {
+        code: 400,
+        message: '撤销失败',
+        data: null
+      }
+    }
+
+    return {
+      code: 200,
+      message: '已撤销好友请求',
+      data: null
     }
   }
 
@@ -865,151 +1003,6 @@ export class AvatarController {
   }
 
   /**
-   * 获取好友请求列表
-   */
-  @Get('friend-requests')
-  async getFriendRequests(@Query('user_id') userId: string) {
-    const client = require('../../storage/database/supabase-client').getSupabaseClient()
-
-    // 先获取用户的所有分身
-    const { data: userAvatars } = await client
-      .from('avatars')
-      .select('id')
-      .eq('user_id', userId)
-
-    if (!userAvatars || userAvatars.length === 0) {
-      return {
-        code: 200,
-        data: { received: [], sent: [] },
-        message: '获取成功'
-      }
-    }
-
-    const avatarIds = userAvatars.map(a => a.id)
-
-    // 查询收到的请求：别人发给用户分身的请求（用户是被请求方）
-    const { data: received, error1 } = await client
-      .from('avatar_friends')
-      .select(`
-        *,
-        from_avatar:avatars!avatar_friends_avatar_id_fkey (
-          id,
-          name,
-          avatar_url
-        )
-      `)
-      .in('friend_avatar_id', avatarIds)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-
-    // 查询发出的请求：用户分身主动发出的请求（用户是主动请求方）
-    const { data: sent, error2 } = await client
-      .from('avatar_friends')
-      .select(`
-        *,
-        to_avatar:avatars!avatar_friends_friend_avatar_id_fkey (
-          id,
-          name,
-          avatar_url
-        )
-      `)
-      .in('avatar_id', avatarIds)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-
-    if (error1 || error2) {
-      return {
-        code: 400,
-        message: (error1 || error2)?.message || '查询失败',
-        data: null
-      }
-    }
-
-    return {
-      code: 200,
-      data: {
-        received: received || [],
-        sent: sent || []
-      },
-      message: '获取成功'
-    }
-  }
-
-  /**
-   * 接受好友请求
-   */
-  @Post('friend-requests/:id/accept')
-  async acceptFriendRequest(@Param('id') requestId: string) {
-    const client = require('../../storage/database/supabase-client').getSupabaseClient()
-
-    // 获取请求详情
-    const { data: request } = await client
-      .from('avatar_friends')
-      .select('*')
-      .eq('id', requestId)
-      .single()
-
-    if (!request) {
-      return {
-        code: 404,
-        message: '请求不存在',
-        data: null
-      }
-    }
-
-    const { FriendshipService } = await import('./friendship.service')
-    const { HostingService } = await import('./hosting.service')
-    const { SubscriptionService } = await import('../subscription/subscription.service')
-
-    const friendshipService = new FriendshipService()
-    const subscriptionService = new SubscriptionService()
-    const hostingService = new HostingService(subscriptionService, friendshipService)
-
-    // 接受好友请求
-    const success = await friendshipService.acceptFriendRequest(request.friend_avatar_id, request.avatar_id)
-
-    if (!success) {
-      return {
-        code: 400,
-        message: '接受失败',
-        data: null
-      }
-    }
-
-    return {
-      code: 200,
-      message: '已接受好友请求',
-      data: null
-    }
-  }
-
-  /**
-   * 撤销发出的好友请求
-   */
-  @Delete('friend-requests/:id')
-  async cancelFriendRequest(@Param('id') requestId: string) {
-    const client = getSupabaseClient()
-
-    const { error } = await client
-      .from('avatar_friends')
-      .delete()
-      .eq('id', requestId)
-      .eq('status', 'pending')
-
-    if (error) {
-      return {
-        code: 400,
-        message: '撤销失败',
-        data: null
-      }
-    }
-
-    return {
-      code: 200,
-      message: '已撤销好友请求',
-      data: null
-    }
-  }
    * 🔴 测试发帖规则（仅用于测试）
    * POST /api/avatar/test-post-rules
    */

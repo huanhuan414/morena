@@ -1,7 +1,8 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useRouter, navigateBack, showToast, useUnload } from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff, PhoneOff, Send, Volume2, Loader } from 'lucide-react-taro'
+import { Mic, MicOff, PhoneOff, Send, Volume2, Loader, ArrowLeft } from 'lucide-react-taro'
+import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import './index.css'
 
@@ -24,172 +25,131 @@ export default function VoiceCallPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [inputText, setInputText] = useState('')
   const [duration, setDuration] = useState(0)
-  
-  // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleWidth, setCapsuleWidth] = useState(160)
 
   const socketRef = useRef<Taro.SocketTask | null>(null)
   const recorderManager = useRef<Taro.RecorderManager | null>(null)
   const audioContext = useRef<Taro.InnerAudioContext | null>(null)
-  const durationTimer = useRef<NodeJS.Timeout | null>(null)
+  const durationTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
 
-  // 初始化 WebSocket 连接
-  const connectWebSocket = () => {
-    const userId = Taro.getStorageSync('userId') || 'guest-user'
-    // 使用相对路径，让浏览器自动使用当前域名
-    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000'
-    const serverUrl = `${protocol}//${host}/voice-call`
-    
-    console.log('[语音通话] 连接 WebSocket:', serverUrl)
-    
-    Taro.connectSocket({
-      url: `${serverUrl}?userId=${userId}`,
-      success: () => {
-        console.log('[语音通话] WebSocket 连接成功')
-      },
-      fail: (err) => {
-        console.error('[语音通话] WebSocket 连接失败:', err)
-        showToast({ title: '连接失败', icon: 'none' })
-      }
-    }).then(task => {
-      socketRef.current = task
-      
-      task.onOpen(() => {
-        console.log('[语音通话] WebSocket 已打开')
-        setConnected(true)
-      })
-
-      task.onMessage((res) => {
-        console.log('[语音通话] 收到消息:', res.data)
-        try {
-          const data = JSON.parse(res.data as string)
-          handleSocketMessage(data)
-        } catch (e) {
-          console.error('[语音通话] 解析消息失败:', e)
-        }
-      })
-
-      task.onClose(() => {
-        console.log('[语音通话] WebSocket 关闭')
-        setConnected(false)
-      })
-
-      task.onError((err) => {
-        console.error('[语音通话] WebSocket 错误:', err)
-        showToast({ title: '连接错误', icon: 'none' })
-      })
-    })
-  }
-
-  // 处理 WebSocket 消息
-  const handleSocketMessage = (data: any) => {
-    switch (data.event || data[0]) {
-      case 'call-started':
-        setCallId(data.callId || data[1]?.callId)
-        setCallStatus('active')
-        const startedData = data.callId ? data : data[1]
-        setMessages([{
-          role: 'assistant',
-          content: startedData.greeting,
-          audioUrl: startedData.audioUrl,
-          timestamp: Date.now()
-        }])
-        playAudio(startedData.audioUrl)
-        startDurationTimer()
-        break
-
-      case 'processing':
-        setIsProcessing(true)
-        break
-
-      case 'receive-reply':
-        setIsProcessing(false)
-        const replyData = data.userText ? data : data[1]
-        setMessages(prev => [
-          ...prev,
-          { role: 'user', content: replyData.userText, timestamp: Date.now() },
-          { role: 'assistant', content: replyData.replyText, audioUrl: replyData.audioUrl, timestamp: Date.now() }
-        ])
-        playAudio(replyData.audioUrl)
-        break
-
-      case 'call-ended':
-        setCallStatus('ended')
-        stopDurationTimer()
-        const endedData = data.duration ? data : data[1]
-        showToast({ title: `通话结束，时长 ${Math.floor(endedData.duration / 1000)}秒`, icon: 'none' })
-        break
-    }
-  }
-
-  // 发送 WebSocket 消息
-  const emit = (event: string, data: any) => {
-    if (socketRef.current) {
-      socketRef.current.send({
-        data: JSON.stringify({ event, ...data })
-      })
-    }
-  }
-
-  // 初始化录音管理器
+  // 初始化系统信息
   useEffect(() => {
-    // 初始化状态栏和胶囊按钮信息
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
-    }
-    
-    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+    const info = Taro.getSystemInfoSync()
+    setStatusBarHeight(info.statusBarHeight || 20)
+  }, [])
+
+  // 连接 WebSocket
+  useEffect(() => {
+    if (isMiniApp) {
       recorderManager.current = Taro.getRecorderManager()
-      
       recorderManager.current.onStart(() => {
-        console.log('[录音] 开始录音')
+        console.log('[录音] 开始')
       })
-      
       recorderManager.current.onStop((res) => {
-        console.log('[录音] 录音结束:', res)
         handleRecordingComplete(res.tempFilePath)
       })
-      
       recorderManager.current.onError((err) => {
-        console.error('[录音] 录音错误:', err)
+        console.error('[录音] 错误:', err)
         setIsRecording(false)
-        showToast({ title: '录音失败', icon: 'none' })
       })
     }
 
-    // 连接 WebSocket
-    connectWebSocket()
-
+    connectSocket()
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close({})
-      }
+      if (socketRef.current) socketRef.current.close({})
     }
   }, [])
 
-  // 页面卸载时结束通话
-  useUnload(() => {
-    if (callId) {
-      emit('end-call', { callId })
+  const connectSocket = () => {
+    const userId = Taro.getStorageSync('userId') || 'guest-user'
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000'
+    const serverUrl = `${protocol}//${host}/voice-call`
+
+    console.log('[语音通话] 连接 WebSocket:', serverUrl)
+
+    Taro.connectSocket({ url: `${serverUrl}?userId=${userId}` })
+      .then(task => {
+        socketRef.current = task
+        task.onOpen(() => {
+          console.log('[语音通话] WebSocket 已连接')
+          setConnected(true)
+          startCall()
+        })
+        task.onMessage((res) => {
+          try {
+            const data = JSON.parse(res.data as string)
+            handleSocketMessage(data)
+          } catch (e) {
+            console.error('[语音通话] 解析失败:', e)
+          }
+        })
+        task.onClose(() => {
+          console.log('[语音通话] 连接关闭')
+          setConnected(false)
+        })
+        task.onError((err) => {
+          console.error('[语音通话] 连接错误:', err)
+        })
+      })
+      .catch(err => {
+        console.error('[语音通话] 连接失败:', err)
+      })
+  }
+
+  const handleSocketMessage = (data: any) => {
+    console.log('[语音通话] 收到:', data)
+    const evt = data.event || data.type
+
+    if (evt === 'call-started') {
+      setCallId(data.callId)
+      setCallStatus('active')
+      const greeting = data.greeting || data.replyText || '你好，有什么可以帮你的？'
+      const audioUrl = data.audioUrl
+      setMessages([{ role: 'assistant', content: greeting, audioUrl, timestamp: Date.now() }])
+      if (audioUrl) playAudio(audioUrl)
+      startDurationTimer()
+    } else if (evt === 'processing') {
+      setIsProcessing(true)
+    } else if (evt === 'receive-reply') {
+      setIsProcessing(false)
+      const reply = data.replyText || ''
+      const userText = data.userText || ''
+      const audioUrl = data.audioUrl
+      if (userText) {
+        setMessages(prev => [...prev, { role: 'user', content: userText, timestamp: Date.now() }])
+      }
+      if (reply) {
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, audioUrl, timestamp: Date.now() }])
+        if (audioUrl) playAudio(audioUrl)
+      }
+    } else if (evt === 'call-ended') {
+      setCallStatus('ended')
+      stopDurationTimer()
+      const dur = data.duration || 0
+      showToast({ title: `通话结束 ${Math.floor(dur / 1000)}秒`, icon: 'none' })
+    } else if (evt === 'error') {
+      setCallStatus('idle')
+      setIsProcessing(false)
+      showToast({ title: data.message || '发生错误', icon: 'none' })
     }
-    stopDurationTimer()
+  }
+
+  const emit = (event: string, data: Record<string, unknown>) => {
     if (socketRef.current) {
-      socketRef.current.close({})
+      socketRef.current.send({ data: JSON.stringify({ event, ...data }) })
     }
+  }
+
+  useUnload(() => {
+    if (callId) emit('end-call', { callId })
+    stopDurationTimer()
+    if (socketRef.current) socketRef.current.close({})
   })
 
   const startDurationTimer = () => {
-    durationTimer.current = setInterval(() => {
-      setDuration(prev => prev + 1)
-    }, 1000)
+    durationTimer.current = setInterval(() => setDuration(d => d + 1), 1000)
   }
 
   const stopDurationTimer = () => {
@@ -199,30 +159,20 @@ export default function VoiceCallPage() {
     }
   }
 
-  const playAudio = (audioUrl: string) => {
+  const playAudio = (url: string) => {
     if (!audioContext.current) {
       audioContext.current = Taro.createInnerAudioContext()
     }
-    
-    audioContext.current.src = audioUrl
-    audioContext.current.onPlay(() => {
-      console.log('[音频] 开始播放')
-    })
-    audioContext.current.onError((err) => {
-      console.error('[音频] 播放错误:', err)
-    })
+    audioContext.current.src = url
+    audioContext.current.onPlay(() => console.log('[音频] 播放'))
+    audioContext.current.onError((err) => console.error('[音频] 错误:', err))
     audioContext.current.play()
   }
 
-  const startCall = async () => {
-    if (!connected) {
-      showToast({ title: '未连接到服务器', icon: 'none' })
-      return
-    }
-
+  const startCall = () => {
+    if (!connected) return
     setCallStatus('connecting')
-    console.log('[语音通话] 发起通话:', { avatarId, friendId })
-
+    console.log('[语音通话] 发起:', { avatarId, friendId })
     emit('start-call', {
       avatarId,
       friendAvatarId: friendId,
@@ -231,31 +181,17 @@ export default function VoiceCallPage() {
   }
 
   const endCall = () => {
-    if (callId) {
-      emit('end-call', { callId })
-      stopDurationTimer()
-    }
+    if (callId) emit('end-call', { callId })
+    stopDurationTimer()
+    navigateBack()
   }
 
   const startRecording = () => {
-    if (Taro.getEnv() !== Taro.ENV_TYPE.WEAPP) {
-      showToast({ title: '录音功能仅在小程序中可用', icon: 'none' })
-      return
-    }
-
-    if (!callId || callStatus !== 'active') {
-      showToast({ title: '通话未开始', icon: 'none' })
-      return
-    }
-
+    if (!isMiniApp) { showToast({ title: '录音仅在小程序中可用', icon: 'none' }); return }
+    if (!callId || callStatus !== 'active') return
     if (isRecording) return
-
     setIsRecording(true)
-    recorderManager.current?.start({
-      format: 'mp3',
-      sampleRate: 16000,
-      numberOfChannels: 1
-    })
+    recorderManager.current?.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1 })
   }
 
   const stopRecording = () => {
@@ -265,162 +201,184 @@ export default function VoiceCallPage() {
   }
 
   const handleRecordingComplete = async (tempFilePath: string) => {
-    console.log('[语音通话] 上传录音:', tempFilePath)
-
     try {
-      // 上传音频文件
       const uploadRes = await Network.uploadFile({
         url: '/api/upload/audio',
         filePath: tempFilePath,
         name: 'file'
       })
-
-      console.log('[语音通话] 上传结果:', uploadRes)
-
       const uploadData = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
       if (uploadData?.code === 200) {
-        const audioUrl = uploadData.data.url
-        
-        // 发送语音消息
-        emit('send-audio', {
-          callId,
-          audioUrl
-        })
+        emit('send-audio', { callId, audioUrl: uploadData.data.url })
       } else {
         showToast({ title: '上传失败', icon: 'none' })
       }
-    } catch (error) {
-      console.error('[语音通话] 上传录音失败:', error)
+    } catch (err) {
+      console.error('[上传]', err)
       showToast({ title: '上传失败', icon: 'none' })
     }
   }
 
-  const sendTextMessage = () => {
+  const sendText = () => {
     if (!inputText.trim() || !callId || callStatus !== 'active') return
-
-    emit('send-text', {
-      callId,
-      text: inputText.trim()
-    })
-
+    emit('send-text', { callId, text: inputText.trim() })
     setInputText('')
   }
 
-  const handleInputChange = (e: any) => {
-    setInputText(e.detail.value)
+  const formatDuration = (s: number) => {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
+  const decodedName = decodeURIComponent(friendName || '好友')
 
   return (
     <View className="vc-page">
-      {/* 顶部状态栏 */}
-      <View className="vc-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="vc-header-back" onClick={() => navigateBack()}>
-          <Text className="vc-back-text">返回</Text>
-        </View>
-        <Text className="vc-header-title">{decodeURIComponent(friendName || '语音通话')}</Text>
-        <View style={{ width: `${capsuleWidth}rpx` }}>
-          <Text className="vc-duration">{formatDuration(duration)}</Text>
+      {/* 顶部导航栏 */}
+      <View className="vc-top-bar" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="vc-nav-row">
+          <View className="vc-back" onClick={() => callStatus !== 'idle' ? endCall() : navigateBack()}>
+            <ArrowLeft size={20} color="#1A1A2E" />
+          </View>
+          <View className="vc-nav-center">
+            <Text className="vc-nav-title">{decodedName}</Text>
+            <Text className="vc-nav-subtitle">
+              {callStatus === 'idle' && '准备通话'}
+              {callStatus === 'connecting' && '连接中...'}
+              {callStatus === 'active' && `通话中 · ${formatDuration(duration)}`}
+              {callStatus === 'ended' && '通话已结束'}
+            </Text>
+          </View>
+          {callStatus === 'active' && (
+            <View className="vc-duration-tag">
+              <Text className="vc-duration-tag-text">{formatDuration(duration)}</Text>
+            </View>
+          )}
+          {callStatus !== 'active' && <View className="vc-nav-placeholder" />}
         </View>
       </View>
 
-      {/* 通话状态显示 */}
-      <View className="vc-status-section">
-        {callStatus === 'idle' && (
-          <View className="vc-idle-status">
+      {/* 主体内容 */}
+      <View className="vc-content">
+        {/* 头像区 */}
+        <View className="vc-avatar-zone">
+          <View className={`vc-avatar-ring ${callStatus === 'active' ? 'ring-active' : ''}`}>
             <View className="vc-avatar-circle">
-              <Image 
-                src="https://coze-coding-project.tos.coze.site/default-avatar.png" 
-                className="vc-avatar-img" 
+              <Image
+                src="https://coze-coding-project.tos.coze.site/default-avatar.png"
+                className="vc-avatar-img"
               />
             </View>
-            <Text className="vc-status-text">准备与 {decodeURIComponent(friendName || '好友')} 通话</Text>
-            <View className="vc-start-btn" onClick={startCall}>
-              <PhoneOff size={24} color="#fff" />
-              <Text className="vc-start-btn-text">开始通话</Text>
-            </View>
           </View>
-        )}
+          <Text className="vc-friend-name">{decodedName}</Text>
+          <Text className="vc-friend-desc">
+            {callStatus === 'idle' && '准备好开始语音通话了吗？'}
+            {callStatus === 'connecting' && '正在建立连接，请稍候...'}
+            {callStatus === 'active' && '通话正在进行中'}
+            {callStatus === 'ended' && '本次通话已结束'}
+          </Text>
+        </View>
 
-        {callStatus === 'connecting' && (
-          <View className="vc-connecting-status">
-            <View className="vc-spinning">
-              <Loader size={48} color="#00f5ff" />
-            </View>
-            <Text className="vc-status-text">正在连接...</Text>
-          </View>
-        )}
-
-        {(callStatus === 'active' || callStatus === 'ended') && (
-          <ScrollView className="vc-messages" scrollY scrollIntoView={`msg-${messages.length - 1}`}>
+        {/* 消息气泡 */}
+        {(callStatus === 'active' || callStatus === 'ended') && messages.length > 0 && (
+          <ScrollView className="vc-message-list" scrollY enhanced bounces={false}>
             {messages.map((msg, idx) => (
-              <View key={idx} id={`msg-${idx}`} className={`vc-message vc-message-${msg.role}`}>
-                <View className="vc-message-content">
-                  <Text className="vc-message-text">{msg.content}</Text>
-                </View>
-                {msg.audioUrl && (
-                  <View className="vc-message-audio" onClick={() => playAudio(msg.audioUrl!)}>
-                    <Volume2 size={16} color={msg.role === 'user' ? '#fff' : '#00f5ff'} />
-                    <Text className="vc-audio-text">播放</Text>
+              <View key={idx} className={`vc-msg-row vc-msg-row-${msg.role}`}>
+                {msg.role === 'assistant' && (
+                  <View className="vc-msg-avatar">
+                    <Image src="https://coze-coding-project.tos.coze.site/default-avatar.png" className="vc-msg-avatar-img" />
                   </View>
                 )}
+                <View className={`vc-bubble vc-bubble-${msg.role}`}>
+                  <Text className="vc-bubble-text">{msg.content}</Text>
+                  {msg.audioUrl && (
+                    <View className="vc-bubble-play" onClick={() => playAudio(msg.audioUrl!)}>
+                      <Volume2 size={13} color={msg.role === 'user' ? '#fff' : '#7B3FE4'} />
+                      <Text className="vc-bubble-play-text">播放</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             ))}
             {isProcessing && (
-              <View className="vc-processing">
-                <View className="vc-spinning">
-                  <Loader size={20} color="#00f5ff" />
+              <View className="vc-msg-row vc-msg-row-assistant">
+                <View className="vc-msg-avatar">
+                  <Image src="https://coze-coding-project.tos.coze.site/default-avatar.png" className="vc-msg-avatar-img" />
                 </View>
-                <Text className="vc-processing-text">思考中...</Text>
+                <View className="vc-bubble vc-bubble-assistant">
+                  <View className="vc-thinking">
+                    <Loader size={15} color="#7B3FE4" />
+                    <Text className="vc-thinking-text">思考中...</Text>
+                  </View>
+                </View>
               </View>
             )}
           </ScrollView>
         )}
+
+        {/* 开始通话按钮 */}
+        {callStatus === 'idle' && (
+          <View className="vc-idle-area">
+            <View className="vc-call-main" onClick={startCall}>
+              <View className="vc-call-icon">
+                <PhoneOff size={30} color="#fff" style={{ transform: 'rotate(135deg)' }} />
+              </View>
+              <Text className="vc-call-main-text">发起通话</Text>
+            </View>
+          </View>
+        )}
+
+        {/* 等待连接 */}
+        {callStatus === 'connecting' && (
+          <View className="vc-connecting-area">
+            <View className="vc-spinner">
+              <Loader size={36} color="#7B3FE4" />
+            </View>
+            <Text className="vc-connecting-text">正在连接...</Text>
+          </View>
+        )}
       </View>
 
-      {/* 底部控制区 */}
+      {/* 底部控制栏 */}
       {callStatus === 'active' && (
-        <View className="vc-controls">
-          {/* 文本输入 */}
-          <View className="vc-input-section">
-            <View className="vc-input-wrapper">
-              <input
+        <View className="vc-bottom">
+          {/* 输入区 */}
+          <View className="vc-input-row">
+            <View className="vc-input-box">
+              <Input
                 className="vc-input"
                 placeholder="输入消息..."
                 value={inputText}
-                onInput={handleInputChange}
+                onInput={(e: any) => setInputText(e.detail.value)}
+                onConfirm={sendText}
               />
             </View>
-            <View className="vc-send-btn" onClick={sendTextMessage}>
-              <Send size={20} color="#00f5ff" />
+            <View className="vc-send-btn" onClick={sendText}>
+              <Send size={18} color="#fff" />
             </View>
           </View>
 
-          {/* 语音控制 */}
-          <View className="vc-voice-controls">
-            <View 
-              className={`vc-voice-btn ${isRecording ? 'vc-voice-btn-active' : ''}`}
+          {/* 操作按钮 */}
+          <View className="vc-action-row">
+            <View
+              className={`vc-voice-btn ${isRecording ? 'vc-voice-recording' : ''}`}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
             >
               {isRecording ? (
-                <MicOff size={32} color="#fff" />
+                <MicOff size={22} color="#fff" />
               ) : (
-                <Mic size={32} color="#fff" />
+                <Mic size={22} color="#fff" />
               )}
-              <Text className="vc-voice-btn-text">
-                {isRecording ? '松开发送' : '按住说话'}
-              </Text>
+              <Text className="vc-voice-label">{isRecording ? '松开发送' : '按住说话'}</Text>
             </View>
 
-            <View className="vc-end-btn" onClick={endCall}>
-              <PhoneOff size={24} color="#fff" />
-              <Text className="vc-end-btn-text">结束通话</Text>
+            <View className="vc-hangup" onClick={endCall}>
+              <View className="vc-hangup-icon">
+                <PhoneOff size={22} color="#fff" style={{ transform: 'rotate(135deg)' }} />
+              </View>
+              <Text className="vc-hangup-label">挂断</Text>
             </View>
           </View>
         </View>
