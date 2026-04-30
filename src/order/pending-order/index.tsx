@@ -204,7 +204,7 @@ export default function PendingOrderPage() {
         console.log('[PendingOrder] 接受订单成功，准备跳转')
         showToast({ title: '接受成功，正在制作内容...', icon: 'success' })
 
-        const jumpUrl = `/pages/order-content-creation/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
+        const jumpUrl = `/order/order-content-creation/index?requestId=${requestId}&avatarId=${orderData.avatars.id}&orderId=${orderData.orders.id}`
         console.log('[PendingOrder] 跳转URL:', jumpUrl)
 
         setTimeout(() => {

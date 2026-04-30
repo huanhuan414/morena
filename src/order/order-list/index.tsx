@@ -260,7 +260,7 @@ export default function OrderListPage() {
               </View>
               <View
                 className="add-btn"
-                onClick={() => navigateTo({ url: '/pages/order-create/index' })}
+                onClick={() => navigateTo({ url: '/order/order-create/index' })}
               >
                 <Plus size={18} color="#fff" />
                 <Text className="add-btn-text">新建</Text>
@@ -323,7 +323,7 @@ export default function OrderListPage() {
             {mode !== 'avatar' && (
               <Button 
                 className="mt-4"
-                onClick={() => navigateTo({ url: '/pages/order-create/index' })}
+                onClick={() => navigateTo({ url: '/order/order-create/index' })}
               >
                 <Plus size={16} color="#fff" />
                 <Text>创建订单</Text>
@@ -343,7 +343,7 @@ export default function OrderListPage() {
                 <View 
                   key={order.id}
                   className="order-card"
-                  onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}
+                  onClick={() => navigateTo({ url: `/order/order-detail/index?id=${order.id}` })}
                 >
                   {/* 订单头部 */}
                   <View className="order-header">

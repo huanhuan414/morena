@@ -501,7 +501,7 @@ ${contentTypePrompt}
               showToast({ title: '支付成功', icon: 'success' })
               setTimeout(() => {
                 navigateTo({
-                  url: `/pages/order-matching/index?orderId=${orderId}`
+                  url: `/order/order-matching/index?orderId=${orderId}`
                 })
               }, 1500)
             } else {
@@ -674,7 +674,7 @@ ${contentTypePrompt}
         // 跳转到分身匹配页面
         setTimeout(() => {
           navigateTo({
-            url: `/pages/order-matching/index?orderId=${orderId}`
+            url: `/order/order-matching/index?orderId=${orderId}`
           })
         }, 500)
       } else {

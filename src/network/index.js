@@ -121,3 +121,6 @@ export const downloadFile = (option) => {
     timeout
   })
 }
+
+// 统一导出对象，供 `import { Network } from '@/network'` 使用
+export const Network = { request, uploadFile, downloadFile }

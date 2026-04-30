@@ -234,11 +234,11 @@ export default function AvatarManagePage() {
       navigateTo({ url: '/pages/subscription/index' })
       return
     }
-    navigateTo({ url: '/pages/avatar-create/index' })
+    navigateTo({ url: '/avatar/avatar-create/index' })
   }
 
   const goToSettings = (avatarId: string) => {
-    navigateTo({ url: `/pages/avatar-settings/index?avatarId=${avatarId}` })
+    navigateTo({ url: `/avatar/avatar-settings/index?avatarId=${avatarId}` })
   }
 
   // 打开时间选择弹窗
@@ -534,7 +534,7 @@ export default function AvatarManagePage() {
                         <View className="quick-entries">
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: `/pages/avatar-friends/index?avatarId=${avatar.id}` })}
+                            onClick={() => navigateTo({ url: `/avatar/avatar-friends/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
                               <Users size={24} color="#06b6d4" />
@@ -543,7 +543,7 @@ export default function AvatarManagePage() {
                           </View>
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: `/pages/avatar-orders/index?avatarId=${avatar.id}` })}
+                            onClick={() => navigateTo({ url: `/order/avatar-orders/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
                               <Package size={24} color="#06b6d4" />
@@ -553,7 +553,7 @@ export default function AvatarManagePage() {
                           <View
                             className="quick-entry-btn"
                             onClick={() => {
-                              const targetUrl = `/pages/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}`
+                              const targetUrl = `/avatar/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}`
                               console.log('[AvatarManage] 点击账号绑定按钮')
                               console.log('[AvatarManage] avatarId:', avatar.id)
                               console.log('[AvatarManage] avatarName:', avatar.name)

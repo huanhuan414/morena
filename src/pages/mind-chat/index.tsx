@@ -2651,7 +2651,7 @@ export default function MindChatPage() {
                 <View
                   className="create-avatar-button"
                   onClick={() => {
-                    navigateTo({ url: '/pages/avatar-create/index' })
+                    navigateTo({ url: '/avatar/avatar-create/index' })
                   }}
                 >
                   <Plus size={18} color="#0a0a0f" />
@@ -3845,7 +3845,7 @@ export default function MindChatPage() {
             <View
               className="create-avatar-button"
               onClick={() => {
-                navigateTo({ url: '/pages/avatar-create/index' })
+                navigateTo({ url: '/avatar/avatar-create/index' })
               }}
             >
               <Plus size={18} color="#ffffff" />
@@ -4670,7 +4670,7 @@ export default function MindChatPage() {
                   // 跳转到账号配置页面
                   const avatarName = avatar?.name || ''
                   navigateTo({
-                    url: `/pages/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
+                    url: `/avatar/avatar-account-config/index?avatarId=${avatarId}&avatarName=${encodeURIComponent(avatarName)}`
                   })
                 }}
               >

@@ -160,7 +160,7 @@ export default function AvatarOrdersPage() {
       case 'awaiting_acceptance':
       case 'cancelled':
         navigateTo({
-          url: `/pages/order-detail/index?id=${order.order_id}`
+          url: `/order/order-detail/index?id=${order.order_id}`
         })
         break
       case 'completed':
@@ -172,12 +172,12 @@ export default function AvatarOrdersPage() {
       case 'published':
         // 待反馈的订单跳转到反馈提交页面
         navigateTo({
-          url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/order/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
       default:
         navigateTo({
-          url: `/pages/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+          url: `/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
         })
     }
   }

@@ -1,78 +1,87 @@
 export default defineAppConfig({
   pages: [
-    // 核心Tab页面
-    'pages/social/index',
-    'pages/avatar-profile/index',
+    'pages/index/index',
     'pages/mind-chat/index',
+    'pages/avatar-profile/index',
     'pages/profile/index',
-    // 登录
-    'pages/login/index',
-    // 个人中心子页面
-    'pages/profile/settings',
-    'pages/profile/help',
-    'pages/profile/about',
-    'pages/profile/notifications',
-    'pages/security/index',
-    // 订阅
-    'pages/subscription/index',
-    // 分身相关
-    'pages/avatar-manage/index',
-    'pages/avatar-friends/index',
-    'pages/avatar-create/index',
-    'pages/avatar-settings/index',
-    'pages/avatar-account-config/index',
-    'pages/avatar-account-add/index',
-    // 技能
+    'pages/social/index',
     'pages/skills-square/index',
+    'pages/palm-reading/index',
+    'pages/settings/index',
+    'pages/avatar-order-completed/index',
+    'pages/avatar-recommend/index',
+    'pages/order-stats/index',
+    'pages/security/index',
+    'pages/earning-center/index',
+    'pages/referral-center/index',
     'pages/skill-create/index',
     'pages/skill-training/index',
-    'pages/palm-reading/index',
-    // 推广收益
-    'pages/referral-center/index',
-    'pages/earning-center/index',
-    // 订单
-    'pages/order-list/index',
-    'pages/order-create/index',
-    'pages/order-detail/index',
-    'pages/pending-order/index',
-    'pages/order-matching/index',
-    'pages/order-acceptance/index',
-    'pages/order-content-creation/index',
-    'pages/order-feedback/index',
-    'pages/order-processing/index',
-    'pages/order-publish-feedback/index',
-    'pages/avatar-orders/index'
   ],
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'AI Avatar',
-    navigationBarTextStyle: 'black'
+    navigationBarTitleText: '智能分身',
+    navigationBarTextStyle: 'black',
   },
   tabBar: {
     color: '#999999',
-    selectedColor: '#7B3FE4',
+    selectedColor: '#6366f1',
     backgroundColor: '#ffffff',
     borderStyle: 'black',
     list: [
       {
-        pagePath: 'pages/social/index',
-        text: '社交',
+        pagePath: 'pages/avatar-profile/index',
+        text: '分身',
         iconPath: './assets/tabbar/users.png',
-        selectedIconPath: './assets/tabbar/users-active.png'
+        selectedIconPath: './assets/tabbar/users-active.png',
       },
       {
         pagePath: 'pages/mind-chat/index',
-        text: '心智对话',
+        text: '对话',
         iconPath: './assets/tabbar/message-circle.png',
-        selectedIconPath: './assets/tabbar/message-circle-active.png'
+        selectedIconPath: './assets/tabbar/message-circle-active.png',
+      },
+      {
+        pagePath: 'pages/social/index',
+        text: '广场',
+        iconPath: './assets/tabbar/house.png',
+        selectedIconPath: './assets/tabbar/users-active.png',
       },
       {
         pagePath: 'pages/profile/index',
         text: '我的',
         iconPath: './assets/tabbar/user.png',
-        selectedIconPath: './assets/tabbar/user-active.png'
-      }
-    ]
-  }
+        selectedIconPath: './assets/tabbar/user-active.png',
+      },
+    ],
+  },
+  subPackages: [
+    {
+      root: 'avatar',
+      pages: [
+        'avatar-create/index',
+        'avatar-manage/index',
+        'avatar-friends/index',
+        'avatar-settings/index',
+        'avatar-account-config/index',
+        'avatar-account-add/index',
+      ],
+    },
+    {
+      root: 'order',
+      pages: [
+        'order-create/index',
+        'order-list/index',
+        'order-detail/index',
+        'order-matching/index',
+        'order-acceptance/index',
+        'order-content-creation/index',
+        'order-feedback/index',
+        'order-processing/index',
+        'order-publish-feedback/index',
+        'pending-order/index',
+        'avatar-orders/index',
+      ],
+    },
+  ],
 })

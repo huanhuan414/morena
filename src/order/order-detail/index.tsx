@@ -8,7 +8,6 @@ import {
   ArrowLeft, TrendingUp, CircleCheck,
   Users, Eye, Heart, MessageCircle, ChevronRight
 } from 'lucide-react-taro'
-import '../profile/index.css'
 import './index.css'
 
 const STATUS_CONFIG: Record<string, any> = {
@@ -70,7 +69,7 @@ export default function OrderDetail() {
 
   const goToAcceptance = () => {
     navigateTo({
-      url: `/pages/order-acceptance/index?orderId=${id}`
+      url: `/order/order-acceptance/index?orderId=${id}`
     })
   }
 

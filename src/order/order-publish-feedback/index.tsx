@@ -362,7 +362,7 @@ export default function OrderPublishFeedback() {
 
         setTimeout(() => {
           navigateTo({
-            url: `/pages/order-detail/index?id=${orderId}`
+            url: `/order/order-detail/index?id=${orderId}`
           })
         }, 2000)
       } else {

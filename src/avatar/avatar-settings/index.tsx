@@ -357,7 +357,7 @@ export default function AvatarSettingsPage() {
           
           <View 
             className="as-menu-item"
-            onClick={() => navigateTo({ url: '/pages/avatar-manage/index' })}
+            onClick={() => navigateTo({ url: '/avatar/avatar-manage/index' })}
           >
             <View className="as-menu-left">
               <Settings size={20} color="#00f5ff" />

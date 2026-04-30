@@ -363,13 +363,13 @@ export default function OrderContentCreationPage() {
                         // 跳转到反馈页面
                         setTimeout(() => {
                           navigateTo({
-                            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                            url: `/order/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
                           })
                         }, 500)
                       } else {
                         setTimeout(() => {
                           navigateTo({
-                            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                            url: `/order/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
                           })
                         }, 500)
                       }
@@ -384,7 +384,7 @@ export default function OrderContentCreationPage() {
                   })
                   setTimeout(() => {
                     navigateTo({
-                      url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+                      url: `/order/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
                     })
                   }, 2000)
                 }
