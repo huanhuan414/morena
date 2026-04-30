@@ -147,7 +147,7 @@ export default function AvatarOrdersPage() {
 
   const handleViewPendingOrder = (request: any) => {
     navigateTo({
-      url: `/pages/pending-order/index?requestId=${request.id}`
+      url: `/pages/order/pending-order/index?requestId=${request.id}`
     })
   }
 
@@ -160,24 +160,24 @@ export default function AvatarOrdersPage() {
       case 'awaiting_acceptance':
       case 'cancelled':
         navigateTo({
-          url: `/pages/order-detail/index?id=${order.order_id}`
+          url: `/pages/order/order-detail/index?id=${order.order_id}`
         })
         break
       case 'completed':
         // 已完成的订单跳转到订单详情查看反馈
         navigateTo({
-          url: `/pages/order-detail/index?id=${order.order_id}`
+          url: `/pages/order/order-detail/index?id=${order.order_id}`
         })
         break
       case 'published':
         // 待反馈的订单跳转到反馈提交页面
         navigateTo({
-          url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/pages/order/order-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
       default:
         navigateTo({
-          url: `/pages/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+          url: `/pages/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
         })
     }
   }
