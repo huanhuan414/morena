@@ -172,7 +172,6 @@ export default function OrderPublishFeedback() {
     // 小程序环境
     Taro.chooseImage({
       count: 1,
-      sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]

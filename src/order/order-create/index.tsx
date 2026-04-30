@@ -128,7 +128,6 @@ export default function OrderCreatePage() {
     try {
       const res = await chooseImage({
         count: 9 - attachments.length,
-        sizeType: ['compressed'],
         sourceType: ['album', 'camera']
       })
 

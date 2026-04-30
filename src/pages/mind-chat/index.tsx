@@ -1309,7 +1309,6 @@ export default function MindChatPage() {
 
     Taro.chooseImage({
       count: remainingCount,
-      sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePaths = res.tempFilePaths

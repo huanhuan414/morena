@@ -350,7 +350,6 @@ export default function AvatarCreatePage() {
     try {
       const res = await chooseImage({
         count: 1,
-        sizeType: ['compressed'],
         sourceType: ['album', 'camera']
       })
       

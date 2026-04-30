@@ -129,7 +129,6 @@ export default function OrderFeedbackPage() {
 
     chooseImage({
       count: 9 - uploadedImages.length,
-      sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         console.log('图片选择成功:', res)

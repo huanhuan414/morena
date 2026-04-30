@@ -210,7 +210,6 @@ export default function PalmReading() {
   const handleChooseImage = useCallback(() => {
     Taro.chooseImage({
       count: 1,
-      sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
         const tempFilePath = res.tempFilePaths[0]
