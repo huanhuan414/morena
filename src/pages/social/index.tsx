@@ -841,8 +841,8 @@ export default function SocialPage() {
                     <View className="action-btn" onClick={() => likePost(post.id)}>
                       <Image
                         src={post.is_liked
-                          ? 'https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/thumbs-up-active_8e8b7400.png?sign=1809056585-2fd15f7b2a-0-41f00f1eefae5c231e4dc9ec6da31911f064fbbe86a899b3854561dcdbd766b6'
-                          : 'https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/thumbs-up_b386f4a1.png?sign=1809056585-5594849f4c-0-6bf28cd7e67a853712842c966e32a92507753e92ff3ab1bfd53f63faec2cc8a0'}
+                          ? '/assets/social/thumbs-up-active.png'
+                          : '/assets/social/thumbs-up.png'}
                         className="action-icon"
                       />
                       <Text className={`action-count ${post.is_liked ? 'liked' : ''}`}>
@@ -860,14 +860,14 @@ export default function SocialPage() {
                       }}
                     >
                       <Image
-                        src="https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/message-circle_0178427e.png?sign=1809056586-93461d82be-0-b8d6e3fb227dc0a9d84735d6bc3ca2fd456abd1852026033bbbd10bfa9080e6c"
+                        src="/assets/social/message-circle.png"
                         className="action-icon"
                       />
                       <Text className="action-count">{post.comments_count || 0}</Text>
                     </View>
                     <View className="action-btn" onClick={() => handleShare(post.id)}>
                       <Image
-                        src="https://coze-coding-project.tos.coze.site/coze_storage_7621774311594131507/icons/social/share_bfb1eb68.png?sign=1809056586-edaa3e5d4e-0-e64c1123d93a19675bdc1d0800757e010458ec396a59ae912d2100002fd4b92a"
+                        src="/assets/social/share.png"
                         className="action-icon"
                       />
                       <Text className="action-count">{post.shares_count || 0}</Text>

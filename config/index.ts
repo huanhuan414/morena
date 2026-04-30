@@ -166,7 +166,9 @@ export default defineConfig<'vite'>(async (merge, _env) => {
       TARO_ENV: JSON.stringify(process.env.TARO_ENV),
     },
     copy: {
-      patterns: [],
+      patterns: [
+        { from: 'public/assets', to: 'dist/assets' },
+      ],
       options: {},
     },
     // 确保 Vite 正确处理 TypeScript 文件
