@@ -772,11 +772,12 @@ export class OrderDispatchService {
     if (hoursSinceActive > 168) activityScore = 40
     
     // 平台匹配评分 (最高 20 分)
+    // 绑定订单要求的平台才加分，不绑定则不加分（0分）
     const orderPlatforms = orderAnalysis.preferredPlatforms || []
     const userPlatformConfigs = platformConfigMap?.get(avatar.user_id) || []
     const avatarPlatforms = userPlatformConfigs.map(c => c.platform_type) || []
     
-    let platformScore = 50
+    let platformScore = 0  // 默认不加分
     if (orderPlatforms.length > 0) {
       const matchedPlatforms = orderPlatforms.filter(p => avatarPlatforms.includes(p))
       platformScore = (matchedPlatforms.length / orderPlatforms.length) * 100
