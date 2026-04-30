@@ -869,7 +869,7 @@ export default function SkillsSquare() {
         ) : !currentAvatar ? (
           <View className="empty-container">
             <Text>请先创建分身</Text>
-            <Button onClick={() => Taro.navigateTo({ url: '/avatar/avatar-create/index' })}>
+            <Button onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}>
               创建分身
             </Button>
           </View>

@@ -68,9 +68,9 @@ interface PendingRequest {
 
 // 菜单项配置
 const menuItems = [
-  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/avatar/avatar-manage/index' },
+  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/pages/avatar/avatar-manage/index' },
   { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/pages/skills-square/index' },
-  { title: '我要推广', icon: Briefcase, desc: '订单管理', type: 'info', path: '/order/order-list/index' },
+  { title: '我要推广', icon: Briefcase, desc: '订单管理', type: 'info', path: '/pages/order/order-list/index' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
   { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help/index' },
@@ -258,11 +258,11 @@ export default function ProfilePage() {
 
         {/* 统计数据 */}
         <View className="header-stats">
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/avatar/avatar-manage/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-manage/index' })}>
             <Text className="h-stat-value">{stats.avatarCount}</Text>
             <Text className="h-stat-label">AI分身</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/order/order-list/index?mode=avatar' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/order/order-list/index?mode=avatar' })}>
             <Text className="h-stat-value">{stats.taskCount}</Text>
             <Text className="h-stat-label">任务</Text>
           </View>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
             <Text className="h-stat-value">{stats.postCount}</Text>
             <Text className="h-stat-label">动态</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/avatar/avatar-friends/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-friends/index' })}>
             <Text className="h-stat-value">{stats.friendCount}</Text>
             <Text className="h-stat-label">好友</Text>
           </View>

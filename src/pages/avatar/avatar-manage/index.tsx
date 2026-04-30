@@ -234,7 +234,7 @@ export default function AvatarManagePage() {
       navigateTo({ url: '/pages/subscription/index' })
       return
     }
-    navigateTo({ url: '/avatar/avatar-create/index' })
+    navigateTo({ url: '/pages/avatar/avatar-create/index' })
   }
 
   const goToSettings = (avatarId: string) => {

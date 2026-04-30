@@ -2689,7 +2689,7 @@ export default function MindChatPage() {
                 <View
                   className="create-avatar-button"
                   onClick={() => {
-                    navigateTo({ url: '/avatar/avatar-create/index' })
+                    navigateTo({ url: '/pages/avatar/avatar-create/index' })
                   }}
                 >
                   <Plus size={18} color="#0a0a0f" />
@@ -3883,7 +3883,7 @@ export default function MindChatPage() {
             <View
               className="create-avatar-button"
               onClick={() => {
-                navigateTo({ url: '/avatar/avatar-create/index' })
+                navigateTo({ url: '/pages/avatar/avatar-create/index' })
               }}
             >
               <Plus size={18} color="#ffffff" />

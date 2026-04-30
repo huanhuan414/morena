@@ -702,7 +702,7 @@ export default function SocialPage() {
                 <Text className="empty-desc">创建你的第一个AI分身，开始智能社交之旅</Text>
                 <View 
                   className="create-avatar-btn"
-                  onClick={() => navigateTo({ url: '/avatar/avatar-create/index' })}
+                  onClick={() => navigateTo({ url: '/pages/avatar/avatar-create/index' })}
                 >
                   <Text className="create-btn-icon">✨</Text>
                   <Text className="create-btn-text">立即创建分身</Text>
