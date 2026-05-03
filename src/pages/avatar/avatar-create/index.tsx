@@ -359,7 +359,7 @@ export default function AvatarCreatePage() {
         }
       } else {
         // H5 端
-        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album'] })
+        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] })
         const paths = res.tempFilePaths
         if (paths && paths.length > 0) {
           setPhotoPath(paths[0])

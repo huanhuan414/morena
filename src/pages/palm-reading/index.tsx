@@ -247,7 +247,7 @@ export default function PalmReading() {
         console.log('[PalmReading] 选择结果:', JSON.stringify(chooseRes))
         tempFilePath = chooseRes.tempFiles[0].path
       } else {
-        const chooseRes = await Taro.chooseImage({ count: 1, sourceType: ['album'] }) as any
+        const chooseRes = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] }) as any
         if (!chooseRes || !chooseRes.tempFilePaths || chooseRes.tempFilePaths.length === 0) {
           Taro.showToast({ title: '未选择图片', icon: 'none' })
           return
