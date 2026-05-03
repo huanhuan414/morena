@@ -1350,7 +1350,7 @@ export default function MindChatPage() {
       } else {
         const chooseRes: any = await TaroPromisify(Taro.chooseImage)({
           count: remainingCount,
-          sourceType: ['album', 'camera']
+          sourceType: ['album']
         })
         if (!chooseRes) {
           return
