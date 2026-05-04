@@ -1777,6 +1777,9 @@ export class OrderDispatchService {
   /**
    * 确认订单分配
    */
+  /**
+   * 确认订单分配（分身接受订单）
+   */
   async confirmDispatch(requestId: string, avatarId: string): Promise<boolean> {
     const client = getSupabaseClient()
 
@@ -1808,8 +1811,33 @@ export class OrderDispatchService {
       throw new Error('更新分配状态失败: ' + updateError.message)
     }
 
-    // 分配订单
-    await this.assignOrderToAvatar(request.order_id, avatarId)
+    // 更新订单的已接受分身计数
+    const { data: order } = await client
+      .from('orders')
+      .select('id, expected_quantity, accepted_count')
+      .eq('id', request.order_id)
+      .single()
+
+    if (order) {
+      const newAcceptedCount = (order.accepted_count || 0) + 1
+
+      // 如果订单状态仍是 open，更新为 in_progress
+      const orderUpdate: any = {
+        accepted_count: newAcceptedCount,
+        updated_at: new Date().toISOString()
+      }
+
+      if (order.status === 'open') {
+        orderUpdate.status = 'in_progress'
+      }
+
+      await client
+        .from('orders')
+        .update(orderUpdate)
+        .eq('id', request.order_id)
+
+      console.log(`[订单分配] 订单 ${request.order_id} 已接受，当前接受数: ${newAcceptedCount}/${order.expected_quantity}`)
+    }
 
     // 将任务加入队列
     await this.orderProcessingService.enqueueTask(requestId)
@@ -2410,14 +2438,62 @@ export class OrderDispatchService {
    */
   async updateRequestStatus(requestId: string, status: string): Promise<void> {
     const client = getSupabaseClient()
-    
+
+    // 先获取请求信息
+    const { data: request } = await client
+      .from('order_dispatch_requests')
+      .select('order_id')
+      .eq('id', requestId)
+      .single()
+
     const { error } = await client
       .from('order_dispatch_requests')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', requestId)
-    
+
     if (error) {
       throw new Error(`更新请求状态失败: ${error.message}`)
+    }
+
+    // 如果状态变为 feedback_submitted（分身提交反馈），检查是否所有分身都已提交
+    if (request && status === 'feedback_submitted') {
+      await this.syncOrderStatusAfterFeedback(request.order_id)
+    }
+  }
+
+  /**
+   * 在所有分身提交反馈后同步订单状态
+   */
+  private async syncOrderStatusAfterFeedback(orderId: string): Promise<void> {
+    const client = getSupabaseClient()
+
+    // 获取订单的所有请求
+    const { data: requests } = await client
+      .from('order_dispatch_requests')
+      .select('status')
+      .eq('order_id', orderId)
+
+    if (!requests || requests.length === 0) {
+      return
+    }
+
+    // 检查是否所有已接受的分身都已提交反馈
+    const acceptedRequests = requests.filter(r =>
+      ['accepted', 'generating', 'preview', 'publishing', 'published', 'feedback_submitted', 'awaiting_acceptance'].includes(r.status)
+    )
+    const submittedFeedback = requests.filter(r => r.status === 'feedback_submitted' || r.status === 'awaiting_acceptance')
+
+    // 如果所有已接受的分身都提交了反馈，更新订单状态为 awaiting_acceptance
+    if (acceptedRequests.length > 0 && acceptedRequests.length === submittedFeedback.length) {
+      await client
+        .from('orders')
+        .update({
+          status: 'awaiting_acceptance',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+
+      console.log(`[订单状态同步] 订单 ${orderId} 所有分身已提交反馈，状态更新为 awaiting_acceptance`)
     }
   }
 }

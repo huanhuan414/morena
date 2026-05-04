@@ -18,6 +18,7 @@ interface Order {
   budget: number
   status: string
   expected_quantity?: number
+  accepted_count?: number
   deadline?: string
   requirements: {
     contentType?: string
@@ -61,6 +62,38 @@ interface Order {
     nickname: string
     avatar: string
   }
+  summary_stats?: {
+    totalAvatars: number
+    acceptedAvatars: number
+    submittedAvatars: number
+    totalPosts: number
+    totalPlatforms: number
+    totalPublished: number
+    totalManual: number
+    totalViews: number
+    totalLikes: number
+    totalComments: number
+    totalShares: number
+    avatarStats: AvatarStat[]
+  }
+}
+
+interface AvatarStat {
+  avatarId: string
+  avatarName: string
+  avatarUrl: string
+  status: string
+  postCount: number
+  platformCount: number
+  publishedCount: number
+  manualCount: number
+  feedbackCount: number
+  totalViews: number
+  totalLikes: number
+  totalComments: number
+  totalShares: number
+  publishFeedback: any
+  posts: any[]
 }
 
 interface ExecutionStep {
@@ -559,8 +592,73 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 分身信息 */}
-            {order.avatars && (
+            {/* 分身请求状态统计 */}
+            {order.summary_stats && order.summary_stats.totalAvatars > 0 && (
+              <View className="info-card glass-card avatar-card">
+                <View className="card-header">
+                  <Users size={20} color="#00f5ff" />
+                  <Text className="card-title">分身执行状态</Text>
+                </View>
+                <View className="avatar-stats-summary">
+                  <View className="stat-item">
+                    <Text className="stat-value">{order.summary_stats.totalAvatars}</Text>
+                    <Text className="stat-label block">总分身数</Text>
+                  </View>
+                  <View className="stat-item">
+                    <Text className="stat-value text-green-500">{order.summary_stats.acceptedAvatars}</Text>
+                    <Text className="stat-label block">已接受</Text>
+                  </View>
+                  <View className="stat-item">
+                    <Text className="stat-value text-yellow-500">{order.summary_stats.submittedAvatars}</Text>
+                    <Text className="stat-label block">已提交</Text>
+                  </View>
+                </View>
+                {order.summary_stats.avatarStats && order.summary_stats.avatarStats.length > 0 && (
+                  <View className="avatar-list">
+                    {order.summary_stats.avatarStats.map((stat: any, index: number) => (
+                      <View key={index} className="avatar-item">
+                        <View className="avatar-info-row">
+                          <View className="avatar-mini">
+                            {stat.avatarUrl ? (
+                              <Image src={stat.avatarUrl} className="avatar-mini-image" />
+                            ) : (
+                              <View className="avatar-mini-placeholder">
+                                <User size={16} color="#00f5ff" />
+                              </View>
+                            )}
+                          </View>
+                          <Text className="avatar-item-name">{stat.avatarName}</Text>
+                          <View className={`status-badge ${stat.status}`}>
+                            <Text className="status-badge-text">
+                              {stat.status === 'pending' && '待接受'}
+                              {stat.status === 'accepted' && '制作中'}
+                              {stat.status === 'generating' && '制作中'}
+                              {stat.status === 'preview' && '预览中'}
+                              {stat.status === 'publishing' && '发布中'}
+                              {stat.status === 'published' && '已发布'}
+                              {stat.status === 'feedback_submitted' && '待验收'}
+                              {stat.status === 'awaiting_acceptance' && '待验收'}
+                              {stat.status === 'completed' && '已完成'}
+                              {stat.status === 'rejected' && '已拒绝'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View className="avatar-progress-row">
+                          <Text className="progress-text block">
+                            {stat.postCount > 0 && `${stat.postCount}个作品`}
+                            {stat.feedbackCount > 0 && ` | ${stat.feedbackCount}条反馈`}
+                            {(stat.totalViews > 0 || stat.totalLikes > 0) && ` | 曝光${stat.totalViews} 点赞${stat.totalLikes}`}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 单个分身信息（兼容旧逻辑） */}
+            {order.avatars && !order.summary_stats && (
               <View className="info-card glass-card avatar-card">
                 <View className="card-header">
                   <User size={20} color="#00f5ff" />
