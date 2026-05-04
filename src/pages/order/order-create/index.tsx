@@ -1,4 +1,4 @@
-import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, chooseImage, chooseVideo, chooseMessageFile, requestPayment } from '@tarojs/taro'
+import Taro, { navigateBack, showToast, navigateTo, useLoad, getLocation, requestPayment } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { View, Text, ScrollView, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -42,11 +42,20 @@ const PRICE_CONFIG = {
   article: 3          // 图文（元/篇）
 }
 
+// 计算默认截止日期（当前月份的下一个月）
+const getDefaultDeadline = (): string => {
+  const now = new Date()
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate())
+  const year = nextMonth.getFullYear()
+  const month = String(nextMonth.getMonth() + 1).padStart(2, '0')
+  const day = String(nextMonth.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function OrderCreatePage() {
   const [loading, setLoading] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const [uploading, setUploading] = useState(false)
   const [aiWriting, setAiWriting] = useState(false) // AI帮写状态
 
   const [form, setForm] = useState<OrderForm>({
@@ -59,7 +68,7 @@ export default function OrderCreatePage() {
       platforms: [],
       targetAudience: '',
       expectedResults: '',
-      deadline: ''
+      deadline: getDefaultDeadline()
     }
   })
 
@@ -123,73 +132,73 @@ export default function OrderCreatePage() {
     setShowDatePicker(false)
   }
 
-  // 选择图片
-  const handleChooseImage = async () => {
-    try {
-      const res = await chooseImage({
-        count: 9 - attachments.length,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera']
-      })
+  // 选择图片 - 暂时禁用
+  // const handleChooseImage = async () => {
+  //   try {
+  //     const res = await chooseImage({
+  //       count: 9 - attachments.length,
+  //       sizeType: ['compressed'],
+  //       sourceType: ['album', 'camera']
+  //     })
+  //
+  //     if (res.tempFilePaths && res.tempFilePaths.length > 0) {
+  //       // 上传图片
+  //       await uploadFiles(res.tempFilePaths.map((path) => ({
+  //         path,
+  //         type: 'image' as const,
+  //         name: `图片_${Date.now()}.jpg`
+  //       })))
+  //     }
+  //   } catch (error) {
+  //     console.error('选择图片失败:', error)
+  //     showToast({ title: '选择图片失败', icon: 'none' })
+  //   }
+  // }
 
-      if (res.tempFilePaths && res.tempFilePaths.length > 0) {
-        // 上传图片
-        await uploadFiles(res.tempFilePaths.map((path) => ({
-          path,
-          type: 'image' as const,
-          name: `图片_${Date.now()}.jpg`
-        })))
-      }
-    } catch (error) {
-      console.error('选择图片失败:', error)
-      showToast({ title: '选择图片失败', icon: 'none' })
-    }
-  }
+  // 选择视频 - 暂时禁用
+  // const handleChooseVideo = async () => {
+  //   try {
+  //     const res = await chooseVideo({
+  //       sourceType: ['album', 'camera'],
+  //       maxDuration: 300 // 5分钟
+  //     })
+  //
+  //     if (res.tempFilePath) {
+  //       // 上传视频
+  //       await uploadFiles([{
+  //         path: res.tempFilePath,
+  //         type: 'video' as const,
+  //         name: `视频_${Date.now()}.mp4`
+  //       }])
+  //     }
+  //   } catch (error) {
+  //     console.error('选择视频失败:', error)
+  //     showToast({ title: '选择视频失败', icon: 'none' })
+  //   }
+  // }
 
-  // 选择视频
-  const handleChooseVideo = async () => {
-    try {
-      const res = await chooseVideo({
-        sourceType: ['album', 'camera'],
-        maxDuration: 300 // 5分钟
-      })
-
-      if (res.tempFilePath) {
-        // 上传视频
-        await uploadFiles([{
-          path: res.tempFilePath,
-          type: 'video' as const,
-          name: `视频_${Date.now()}.mp4`
-        }])
-      }
-    } catch (error) {
-      console.error('选择视频失败:', error)
-      showToast({ title: '选择视频失败', icon: 'none' })
-    }
-  }
-
-  // 选择文档
-  const handleChooseDocument = async () => {
-    try {
-      const res = await chooseMessageFile({
-        count: 9 - attachments.length,
-        type: 'file',
-        extension: ['doc', 'docx', 'pdf']
-      })
-
-      if (res.tempFiles && res.tempFiles.length > 0) {
-        // 上传文档
-        await uploadFiles(res.tempFiles.map((file) => ({
-          path: file.path,
-          type: 'document' as const,
-          name: file.name
-        })))
-      }
-    } catch (error) {
-      console.error('选择文档失败:', error)
-      showToast({ title: '选择文档失败', icon: 'none' })
-    }
-  }
+  // 选择文档 - 暂时禁用
+  // const handleChooseDocument = async () => {
+  //   try {
+  //     const res = await chooseMessageFile({
+  //       count: 9 - attachments.length,
+  //       type: 'file',
+  //       extension: ['doc', 'docx', 'pdf']
+  //     })
+  //
+  //     if (res.tempFiles && res.tempFiles.length > 0) {
+  //       // 上传文档
+  //       await uploadFiles(res.tempFiles.map((file) => ({
+  //         path: file.path,
+  //         type: 'document' as const,
+  //         name: file.name
+  //       })))
+  //     }
+  //   } catch (error) {
+  //     console.error('选择文档失败:', error)
+  //     showToast({ title: '选择文档失败', icon: 'none' })
+  //   }
+  // }
 
   // AI帮写需求描述
   const handleAiWrite = async () => {
@@ -287,49 +296,49 @@ ${contentTypePrompt}
     }
   }
 
-  // 上传文件
-  const uploadFiles = async (files: Array<{ path: string; type: 'image' | 'video' | 'document'; name: string }>) => {
-    setUploading(true)
-    try {
-      const uploadPromises = files.map(async (file) => {
-        const uploadRes = await Network.uploadFile({
-          url: '/api/upload/image',
-          filePath: file.path,
-          name: 'file'
-        })
-
-        // 解析响应数据（uploadRes.data 可能是字符串或对象）
-        let data
-        try {
-          data = typeof uploadRes.data === 'string'
-            ? JSON.parse(uploadRes.data)
-            : uploadRes.data
-        } catch (parseError) {
-          console.error('解析上传响应失败:', parseError, uploadRes)
-          throw new Error('服务器返回数据格式错误')
-        }
-
-        if (data.code === 200) {
-          return {
-            id: Date.now().toString() + Math.random(),
-            name: file.name,
-            url: data.data.url,
-            type: file.type
-          }
-        }
-        throw new Error(data.message || '上传失败')
-      })
-
-      const uploadedFiles = await Promise.all(uploadPromises)
-      setAttachments(prev => [...prev, ...uploadedFiles])
-      showToast({ title: '上传成功', icon: 'success' })
-    } catch (error) {
-      console.error('上传失败:', error)
-      showToast({ title: '上传失败', icon: 'none' })
-    } finally {
-      setUploading(false)
-    }
-  }
+  // 上传文件 - 暂时禁用
+  // const uploadFiles = async (files: Array<{ path: string; type: 'image' | 'video' | 'document'; name: string }>) => {
+  //   setUploading(true)
+  //   try {
+  //     const uploadPromises = files.map(async (file) => {
+  //       const uploadRes = await Network.uploadFile({
+  //         url: '/api/upload/image',
+  //         filePath: file.path,
+  //         name: 'file'
+  //       })
+  //
+  //       // 解析响应数据（uploadRes.data 可能是字符串或对象）
+  //       let data
+  //       try {
+  //         data = typeof uploadRes.data === 'string'
+  //           ? JSON.parse(uploadRes.data)
+  //           : uploadRes.data
+  //       } catch (parseError) {
+  //         console.error('解析上传响应失败:', parseError, uploadRes)
+  //         throw new Error('服务器返回数据格式错误')
+  //       }
+  //
+  //       if (data.code === 200) {
+  //         return {
+  //           id: Date.now().toString() + Math.random(),
+  //           name: file.name,
+  //           url: data.data.url,
+  //           type: file.type
+  //         }
+  //       }
+  //       throw new Error(data.message || '上传失败')
+  //     })
+  //
+  //     const uploadedFiles = await Promise.all(uploadPromises)
+  //     setAttachments(prev => [...prev, ...uploadedFiles])
+  //     showToast({ title: '上传成功', icon: 'success' })
+  //   } catch (error) {
+  //     console.error('上传失败:', error)
+  //     showToast({ title: '上传失败', icon: 'none' })
+  //   } finally {
+  //     setUploading(false)
+  //   }
+  // }
 
   // 删除附件
   const handleRemoveAttachment = (id: string) => {
@@ -501,7 +510,7 @@ ${contentTypePrompt}
               showToast({ title: '支付成功', icon: 'success' })
               setTimeout(() => {
                 navigateTo({
-                  url: `/pages/order-matching/index?orderId=${orderId}`
+                  url: `/pages/order/order-matching/index?orderId=${orderId}`
                 })
               }, 1500)
             } else {
@@ -674,7 +683,7 @@ ${contentTypePrompt}
         // 跳转到分身匹配页面
         setTimeout(() => {
           navigateTo({
-            url: `/pages/order-matching/index?orderId=${orderId}`
+            url: `/pages/order/order-matching/index?orderId=${orderId}`
           })
         }, 500)
       } else {
@@ -802,37 +811,35 @@ ${contentTypePrompt}
           />
           <Text className="char-count">{form.description.length}/500</Text>
 
-          {/* 附件上传 */}
-          <View className="attachment-section">
+          {/* 附件上传 - 暂时禁用 */}
+          <View className="attachment-section" style={{ opacity: 0.5 }}>
             <Text className="attachment-title">添加附件</Text>
+            <Text className="text-gray-500 text-sm">（暂不支持）</Text>
 
             {/* 上传按钮 */}
             <View className="upload-buttons">
               <Button
-                className={`upload-btn ${uploading ? 'disabled' : ''}`}
-                onClick={handleChooseImage}
-                disabled={uploading || attachments.length >= 9}
+                className="upload-btn disabled"
+                disabled
                 size="sm"
               >
-                <Image size={16} color="#3b82f6" />
+                <Image size={16} color="#9ca3af" />
                 <Text>图片</Text>
               </Button>
               <Button
-                className={`upload-btn ${uploading ? 'disabled' : ''}`}
-                onClick={handleChooseVideo}
-                disabled={uploading}
+                className="upload-btn disabled"
+                disabled
                 size="sm"
               >
-                <Video size={16} color="#ec4899" />
+                <Video size={16} color="#9ca3af" />
                 <Text>视频</Text>
               </Button>
               <Button
-                className={`upload-btn ${uploading ? 'disabled' : ''}`}
-                onClick={handleChooseDocument}
-                disabled={uploading || attachments.length >= 9}
+                className="upload-btn disabled"
+                disabled
                 size="sm"
               >
-                <FileText size={16} color="#8b5cf6" />
+                <FileText size={16} color="#9ca3af" />
                 <Text>文档</Text>
               </Button>
             </View>
@@ -858,10 +865,6 @@ ${contentTypePrompt}
                   </View>
                 ))}
               </View>
-            )}
-
-            {uploading && (
-              <Text className="uploading-text">上传中...</Text>
             )}
           </View>
         </View>
