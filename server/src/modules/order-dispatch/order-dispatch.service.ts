@@ -1769,10 +1769,15 @@ export class OrderDispatchService {
     }
 
     // 更新请求状态
-    await client
+    const { error: updateError } = await client
       .from('order_dispatch_requests')
       .update({ status: 'accepted' })
       .eq('id', requestId)
+
+    if (updateError) {
+      console.error('[confirmDispatch] 更新状态失败:', updateError)
+      throw new Error('更新分配状态失败: ' + updateError.message)
+    }
 
     // 分配订单
     await this.assignOrderToAvatar(request.order_id, avatarId)
