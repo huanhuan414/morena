@@ -162,8 +162,13 @@ export default function ProfilePage() {
   }
 
   const handleViewRequest = (request: PendingRequest) => {
+    console.log('handleViewRequest called, request.id:', request.id)
     navigateTo({
-      url: `/pages/order/pending-order/index?requestId=${request.id}`
+      url: `/pages/pending-order/index?requestId=${request.id}`
+    }).then(() => {
+      console.log('navigateTo success')
+    }).catch((err) => {
+      console.log('navigateTo error:', err)
     })
   }
 
