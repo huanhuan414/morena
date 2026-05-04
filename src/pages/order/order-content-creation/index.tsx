@@ -1,4 +1,4 @@
-import Taro, { useLoad, useRouter, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, showToast, navigateTo } from '@tarojs/taro'
 import { getSafeArea } from '@/utils/safe-area'
 import { useState, useRef } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import { 
-  ArrowLeft, Send, Image as ImageIcon, Sparkles, Loader, Copy, Download
+  ArrowLeft, Send, Image as ImageIcon, Sparkles, Loader, Copy, Download, Check
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -25,6 +25,7 @@ interface OrderInfo {
   budget: number
   deadline: string
   platforms: string[]
+  dispatch_request_status?: string
 }
 
 export default function OrderContentCreationPage() {
@@ -38,6 +39,9 @@ export default function OrderContentCreationPage() {
   const [generatingImage, setGeneratingImage] = useState(false)
   const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
   const [generatedImages, setGeneratedImages] = useState<Array<{url: string, prompt: string}>>([])
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [submitContent, setSubmitContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const scrollRef = useRef<any>(null)
 
   useLoad(() => {
@@ -210,6 +214,74 @@ export default function OrderContentCreationPage() {
     }, 100)
   }
 
+  // 打开提交内容弹窗
+  const openSubmitModal = () => {
+    // 汇总所有对话和图片
+    const allContent = messages
+      .filter(m => m.role === 'assistant')
+      .map(m => m.content)
+      .join('\n\n')
+    
+    // 添加图片链接
+    const imageLinks = generatedImages
+      .map(img => `![生成图片](${img.url})`)
+      .join('\n\n')
+    
+    setSubmitContent(allContent + (imageLinks ? '\n\n' + imageLinks : ''))
+    setShowSubmitModal(true)
+  }
+
+  // 提交内容
+  const handleSubmitContent = async () => {
+    if (!submitContent.trim()) {
+      showToast({ title: '请输入提交内容', icon: 'none' })
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      // 提取图片链接
+      const imageMatches = submitContent.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || []
+      const images = imageMatches.map((match: string) => {
+        const urlMatch = match.match(/\(([^)]+)\)/)
+        return urlMatch ? urlMatch[1] : ''
+      }).filter((url: string) => url)
+
+      // 构建提交数据
+      const submitData = {
+        avatarId,
+        content: {
+          content: submitContent,
+          images: images.length > 0 ? images : undefined
+        }
+      }
+
+      const res = await Network.request({
+        url: `/api/order/${orderId}/submit-content`,
+        method: 'POST',
+        data: submitData
+      })
+
+      if (res.data?.code === 200) {
+        showToast({ title: '提交成功，等待验收', icon: 'success' })
+        setShowSubmitModal(false)
+        
+        // 跳转到发布反馈页面
+        setTimeout(() => {
+          navigateTo({
+            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
+          })
+        }, 1500)
+      } else {
+        throw new Error(res.data?.msg || '提交失败')
+      }
+    } catch (error: any) {
+      showToast({ title: error.message || '提交失败', icon: 'none' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleGenerateImageDirectly = async () => {
     if (!inputText.trim()) {
       showToast({ title: '请输入图片描述', icon: 'none' })
@@ -339,6 +411,18 @@ export default function OrderContentCreationPage() {
         </View>
       )}
 
+      {/* 提交按钮区域 */}
+      <View className="submit-action-area">
+        <Button 
+          className="submit-btn"
+          onClick={openSubmitModal}
+          disabled={messages.length <= 1}
+        >
+          <Check size={18} color="#fff" />
+          <Text>提交内容</Text>
+        </Button>
+      </View>
+
       {/* 输入区域 */}
       <View className="input-area">
         <View className="input-wrapper">
@@ -373,6 +457,43 @@ export default function OrderContentCreationPage() {
           </View>
         </View>
       </View>
+
+      {/* 提交内容弹窗 */}
+      {showSubmitModal && (
+        <View className="modal-overlay">
+          <View className="modal-content">
+            <View className="modal-header">
+              <Text className="modal-title block">提交内容</Text>
+              <View className="modal-close" onClick={() => setShowSubmitModal(false)}>
+                <Text>✕</Text>
+              </View>
+            </View>
+            <View className="modal-body">
+              <Text className="block text-sm text-gray-600 mb-2">请确认提交的内容：</Text>
+              <Textarea
+                className="submit-textarea"
+                value={submitContent}
+                onInput={(e: any) => setSubmitContent(e.detail.value)}
+                placeholder="汇总的内容将显示在这里..."
+                maxlength={5000}
+                autoHeight
+              />
+            </View>
+            <View className="modal-footer">
+              <Button variant="outline" onClick={() => setShowSubmitModal(false)} className="modal-btn">
+                <Text>取消</Text>
+              </Button>
+              <Button onClick={handleSubmitContent} disabled={submitting} className="modal-btn primary">
+                {submitting ? (
+                  <Loader size={16} color="#fff" />
+                ) : (
+                  <Text>确认提交</Text>
+                )}
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
