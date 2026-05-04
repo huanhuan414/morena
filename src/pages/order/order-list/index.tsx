@@ -19,6 +19,7 @@ interface Order {
   status: string
   created_at: string
   updated_at: string
+  request_id?: string
   avatars?: {
     id: string
     name: string
@@ -226,6 +227,46 @@ export default function OrderListPage() {
     }
   }
 
+  // 根据订单状态跳转到不同页面
+  const handleOrderClick = (order: Order) => {
+    const status = order.status
+    
+    // 根据不同状态跳转到不同页面
+    switch (status) {
+      case 'open':
+        // 待接单 - 跳转到订单详情（可接单）
+        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+        break
+      case 'pending_payment':
+        // 待支付 - 跳转到订单详情（可支付）
+        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+        break
+      case 'in_progress':
+        // 进行中 - 跳转到内容创作页面
+        navigateTo({ url: `/pages/order/order-content-creation/index?id=${order.id}` })
+        break
+      case 'awaiting_acceptance':
+        // 待验收 - 跳转到订单详情（待验收确认）
+        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+        break
+      case 'completed':
+        // 已完成 - 跳转到订单反馈页面
+        navigateTo({ url: `/pages/order/order-feedback/index?id=${order.id}&requestId=${order.request_id}` })
+        break
+      case 'cancelled':
+        // 已取消 - 跳转到订单详情
+        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+        break
+      case 'published':
+        // 已发布待反馈 - 跳转到发布反馈页面
+        navigateTo({ url: `/pages/order/order-publish-feedback/index?id=${order.id}&requestId=${order.request_id}` })
+        break
+      default:
+        // 默认跳转到订单详情
+        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+    }
+  }
+
   const getProgressPercent = (steps: ExecutionStep[]) => {
     if (!steps || steps.length === 0) return 0
     const completed = steps.filter(s => s.status === 'completed').length
@@ -343,7 +384,7 @@ export default function OrderListPage() {
                 <View 
                   key={order.id}
                   className="order-card"
-                  onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${order.id}` })}
+                  onClick={() => handleOrderClick(order)}
                 >
                   {/* 订单头部 */}
                   <View className="order-header">
