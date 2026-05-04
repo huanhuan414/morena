@@ -355,7 +355,7 @@ export default function OrderDetailPage() {
 
   const handleRetryDispatch = () => {
     navigateTo({
-      url: `/pages/order-matching/index?orderId=${id}`
+      url: `/pages/order/order-matching/index?orderId=${id}`
     })
   }
 
