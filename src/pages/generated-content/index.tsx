@@ -152,6 +152,27 @@ export default function GeneratedContentPage() {
     })
   }
 
+  const handlePublish = async () => {
+    if (!selectedContent || !requestId) return
+
+    try {
+      // 先更新订单状态为 published，这样才能提交发布反馈
+      await Network.request({
+        url: `/api/order-dispatch/request/${requestId}/status`,
+        method: 'PUT',
+        data: { status: 'published' }
+      })
+
+      // 跳转到发布反馈页面
+      Taro.navigateTo({
+        url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${selectedContent.order_id || requestId}`
+      })
+    } catch (error) {
+      console.error('更新状态失败:', error)
+      showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
   if (loading) {
     return (
       <View className="generated-content-page">
@@ -347,7 +368,7 @@ export default function GeneratedContentPage() {
                       </>
                     )}
                     {selectedContent.status === 'approved' && (
-                      <Button className="action-btn publish-btn">
+                      <Button className="action-btn publish-btn" onClick={handlePublish}>
                         <Share2 size={18} color="#fff" />
                         <Text className="btn-text">准备发布</Text>
                       </Button>

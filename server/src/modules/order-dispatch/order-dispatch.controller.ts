@@ -186,4 +186,19 @@ export class OrderDispatchController {
       message: '更新成功'
     }
   }
+
+  /**
+   * 更新订单分发请求状态
+   */
+  @Put('request/:requestId/status')
+  async updateRequestStatus(
+    @Param('requestId') requestId: string,
+    @Body('status') status: string
+  ) {
+    await this.dispatchService.updateRequestStatus(requestId, status)
+    return {
+      code: 200,
+      message: '状态更新成功'
+    }
+  }
 }

@@ -2375,4 +2375,20 @@ export class OrderDispatchService {
       throw error
     }
   }
+
+  /**
+   * 更新订单分发请求状态
+   */
+  async updateRequestStatus(requestId: string, status: string): Promise<void> {
+    const client = getSupabaseClient()
+    
+    const { error } = await client
+      .from('order_dispatch_requests')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', requestId)
+    
+    if (error) {
+      throw new Error(`更新请求状态失败: ${error.message}`)
+    }
+  }
 }
