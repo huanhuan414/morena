@@ -69,15 +69,74 @@ export default function OrderContentCreationPage() {
       console.error('获取订单信息失败:', error)
     }
 
-    // 添加欢迎消息
-    setMessages([
-      {
+    // 获取分发请求详情，加载已生成的内容
+    try {
+      const dispatchRes = await Network.request({
+        url: `/api/order-dispatch/request/${requestId}`
+      })
+      
+      if (dispatchRes.data?.code === 200) {
+        const dispatchData = dispatchRes.data.data
+        
+        // 如果已有生成内容，加载显示
+        if (dispatchData.generated_content) {
+          const content = dispatchData.generated_content
+          const loadedMessages: Message[] = []
+          
+          // 添加欢迎消息
+          loadedMessages.push({
+            id: 'welcome',
+            role: 'assistant',
+            content: '您好！我是您的内容创作助手。之前已生成的内容如下：',
+            timestamp: Date.now() - 1000
+          })
+          
+          // 添加生成的内容
+          if (typeof content === 'string') {
+            loadedMessages.push({
+              id: 'generated-content',
+              role: 'assistant',
+              content: content,
+              timestamp: Date.now()
+            })
+          } else if (content?.content) {
+            loadedMessages.push({
+              id: 'generated-content',
+              role: 'assistant',
+              content: content.content,
+              timestamp: Date.now()
+            })
+          }
+          
+          // 添加图片
+          if (content?.images && content.images.length > 0) {
+            setGeneratedImages(content.images.map((url: string, idx: number) => ({
+              url,
+              prompt: `生成图片 ${idx + 1}`
+            })))
+          }
+          
+          setMessages(loadedMessages)
+        } else {
+          // 没有已生成内容，显示欢迎消息
+          setMessages([{
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: '您好！我是您的内容创作助手。请问您需要我帮您创作什么内容呢？如果需要生成海报或图片，请告诉我您的需求，我会为您生成精美的图片。',
+            timestamp: Date.now()
+          }])
+        }
+      }
+    } catch (error) {
+      console.error('获取分发请求失败:', error)
+      // 即使失败也显示欢迎消息
+      setMessages([{
         id: Date.now().toString(),
         role: 'assistant',
-        content: '您好！我是您的内容创作助手。请问您需要我帮您创作什么内容呢？如果需要生成海报或图片，请告诉我您的需求，我会为您生成精美的图片。',
+        content: '您好！我是您的内容创作助手。请问您需要我帮您创作什么内容呢？',
         timestamp: Date.now()
-      }
-    ])
+      }])
+    }
   }
 
   const handleSend = async () => {

@@ -64,6 +64,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 获取单个分发请求详情
+   */
+  @Get('request/:requestId')
+  async getRequest(@Param('requestId') requestId: string) {
+    const result = await this.dispatchService.getRequestById(requestId)
+    return {
+      code: 200,
+      data: result,
+      message: '获取成功'
+    }
+  }
+
+  /**
    * 手动分配订单给指定分身
    */
   @Post(':orderId/dispatch-avatar')

@@ -1647,6 +1647,46 @@ export class OrderDispatchService {
   }
 
   /**
+   * 获取单个分发请求详情
+   */
+  async getRequestById(requestId: string): Promise<any> {
+    const client = getSupabaseClient()
+
+    try {
+      // 先获取请求数据
+      const { data, error } = await client
+        .from('order_dispatch_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single()
+
+      if (error) {
+        console.error('获取分发请求详情失败:', error)
+        return null
+      }
+
+      // 如果有 avatar_id，获取对应的 avatar 信息
+      if (data?.avatar_id) {
+        const { data: avatarData } = await client
+          .from('avatars')
+          .select('*')
+          .eq('id', data.avatar_id)
+          .single()
+        
+        return {
+          ...data,
+          avatars: avatarData
+        }
+      }
+
+      return data
+    } catch (error) {
+      console.error('获取分发请求详情失败:', error)
+      return null
+    }
+  }
+
+  /**
    * 获取分身已接受的订单列表
    */
   async getAvatarAcceptedOrders(avatarId: string): Promise<any[]> {
