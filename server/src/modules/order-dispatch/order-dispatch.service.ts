@@ -1814,7 +1814,7 @@ export class OrderDispatchService {
     // 更新订单的已接受分身计数
     const { data: order } = await client
       .from('orders')
-      .select('id, expected_quantity, accepted_count')
+      .select('id, expected_quantity, accepted_count, status')
       .eq('id', request.order_id)
       .single()
 
