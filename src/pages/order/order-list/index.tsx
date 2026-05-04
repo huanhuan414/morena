@@ -126,7 +126,7 @@ export default function OrderListPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      let url = '/api/order'
+      let url = '/api/order/list'
       let queryParams: Record<string, any> = {}
 
       if (mode === 'avatar') {
@@ -260,7 +260,7 @@ export default function OrderListPage() {
               </View>
               <View
                 className="add-btn"
-                onClick={() => navigateTo({ url: '/pages/order-create/index' })}
+                onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
               >
                 <Plus size={18} color="#fff" />
                 <Text className="add-btn-text">新建</Text>
@@ -323,7 +323,7 @@ export default function OrderListPage() {
             {mode !== 'avatar' && (
               <Button 
                 className="mt-4"
-                onClick={() => navigateTo({ url: '/pages/order-create/index' })}
+                onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
               >
                 <Plus size={16} color="#fff" />
                 <Text>创建订单</Text>
