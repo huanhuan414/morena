@@ -164,7 +164,7 @@ export default function ProfilePage() {
   const handleViewRequest = (request: PendingRequest) => {
     setShowPendingDialog(false)
     navigateTo({
-      url: `/order/pending-order/index?requestId=${request.id}`
+      url: `/pages/order/pending-order/index?requestId=${request.id}`
     })
   }
 
