@@ -251,7 +251,7 @@ export default function OrderListPage() {
         break
       case 'completed':
         // 已完成 - 跳转到订单反馈页面
-        navigateTo({ url: `/pages/order/order-feedback/index?id=${order.id}&requestId=${order.request_id}` })
+        navigateTo({ url: `/pages/order-feedback/index?id=${order.id}&requestId=${order.request_id}` })
         break
       case 'cancelled':
         // 已取消 - 跳转到订单详情

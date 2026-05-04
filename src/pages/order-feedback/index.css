@@ -1,0 +1,303 @@
+/* Order Feedback / Pending Order / Friendship Management / Generated Content / Voice Call / Publish Redirect Pages */
+.order-feedback-page,
+.pending-order-page,
+.friendship-management-page,
+.generated-content-page,
+.voice-call-page,
+.publish-redirect-page {
+  min-height: 100vh;
+  background: var(--background);
+  position: relative;
+  overflow: hidden;
+}
+
+.order-feedback-page::before,
+.pending-order-page::before,
+.publish-redirect-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(16, 185, 129, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 80%, rgba(5, 150, 105, 0.07) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 20s ease-in-out infinite;
+}
+
+.friendship-management-page::before,
+.generated-content-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(244, 63, 94, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.07) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgBreath 22s ease-in-out infinite;
+}
+
+.voice-call-page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes bgBreath {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.status-bar-placeholder {
+  background: var(--background);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+  border-bottom: 1.5rpx solid rgba(16, 185, 129, 0.12);
+  position: relative;
+  z-index: 10;
+  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.friendship-management-page .header,
+.generated-content-page .header {
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.1) 0%, transparent 100%);
+  border-color: rgba(244, 63, 94, 0.12);
+}
+
+.voice-call-page .header {
+  background: transparent;
+  border-color: transparent;
+}
+
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5rpx;
+}
+
+.scroll-container {
+  flex: 1;
+  padding: 24rpx 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+/* Feedback Form */
+.feedback-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.rating-section {
+  display: flex;
+  justify-content: center;
+  gap: 20rpx;
+  padding: 20rpx 0;
+}
+
+.rating-star {
+  font-size: 64rpx;
+  opacity: 0.3;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rating-star.active {
+  opacity: 1;
+  color: #f59e0b;
+  text-shadow: 0 0 16rpx rgba(245, 158, 11, 0.5);
+}
+
+.rating-star:active {
+  transform: scale(1.2);
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  padding: 20rpx;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1.5rpx solid rgba(16, 185, 129, 0.15);
+  font-size: 28rpx;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-textarea:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.15);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.submit-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 4rpx 16rpx rgba(16, 185, 129, 0.5);
+}
+
+.btn-text {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Pending Order List */
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.pending-item {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 24rpx;
+  border: 1.5rpx solid rgba(16, 185, 129, 0.1);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  animation: pendingFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.pending-item:nth-child(1) { animation-delay: 0.1s; }
+.pending-item:nth-child(2) { animation-delay: 0.15s; }
+.pending-item:nth-child(3) { animation-delay: 0.2s; }
+
+@keyframes pendingFadeIn {
+  from { opacity: 0; transform: translateY(16rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pending-item:active {
+  transform: scale(0.98);
+}
+
+.pending-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.pending-id {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pending-time {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.pending-body {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.pending-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 2rpx solid rgba(16, 185, 129, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pending-info {
+  flex: 1;
+}
+
+.pending-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4rpx;
+}
+
+.pending-desc {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.pending-actions {
+  display: flex;
+  gap: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.pending-btn {
+  flex: 1;
+  padding: 18rpx;
+  background: rgba(16, 185, 129, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #10b981;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pending-btn:active {
+  transform: scale(0.97);
+  background: rgba(16, 185, 129, 0.25);
+}
+
+/* Bottom Space */
+.bottom-space {
+  height: 32rpx;
+}
+
+[data-theme="dark"] .order-feedback-page,
+[data-theme="dark"] .pending-order-page,
+[data-theme="dark"] .friendship-management-page,
+[data-theme="dark"] .generated-content-page,
+[data-theme="dark"] .voice-call-page,
+[data-theme="dark"] .publish-redirect-page {
+  /* 使用 CSS 变量自动适配 */
+}
