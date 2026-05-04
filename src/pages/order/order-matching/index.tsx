@@ -271,9 +271,18 @@ export default function OrderMatchingPage() {
       } else {
         showToast({ title: res.data?.message || '分配失败', icon: 'none' })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
+      // 尝试从错误响应中提取后端返回的错误信息
+      let errorMsg = '分配失败'
+      if (error?.response?.data?.message) {
+        errorMsg = error.response.data.message
+      } else if (error?.data?.message) {
+        errorMsg = error.data.message
+      } else if (error?.message) {
+        errorMsg = error.message
+      }
+      showToast({ title: errorMsg, icon: 'none' })
     }
   }
 
@@ -296,8 +305,17 @@ export default function OrderMatchingPage() {
           if (res.data?.code === 200) {
             successCount++
           }
-        } catch {
-          // 忽略单个失败，继续分配其他分身
+        } catch (error: any) {
+          // 忽略单个失败，继续分配其他分身，但记录错误信息用于最后提示
+          let errorMsg = '分配失败'
+          if (error?.response?.data?.message) {
+            errorMsg = error.response.data.message
+          } else if (error?.data?.message) {
+            errorMsg = error.data.message
+          } else if (error?.message) {
+            errorMsg = error.message
+          }
+          console.error(`分配给 ${avatar.name} 失败:`, errorMsg)
         }
       }
 
@@ -309,9 +327,17 @@ export default function OrderMatchingPage() {
       } else {
         showToast({ title: '分配失败', icon: 'none' })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('批量分配失败:', error)
-      showToast({ title: '分配失败', icon: 'none' })
+      let errorMsg = '分配失败'
+      if (error?.response?.data?.message) {
+        errorMsg = error.response.data.message
+      } else if (error?.data?.message) {
+        errorMsg = error.data.message
+      } else if (error?.message) {
+        errorMsg = error.message
+      }
+      showToast({ title: errorMsg, icon: 'none' })
     } finally {
       setDispatching(false)
     }
