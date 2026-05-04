@@ -1653,15 +1653,44 @@ export class OrderDispatchService {
     const client = getSupabaseClient()
 
     try {
-      // 查询该分身已接受的订单
-      // 支持两种格式的 avatar_id：字符串格式 (avatar-1) 和 UUID 格式
-      const { data: requests, error } = await client
+      // 支持三种查询方式：
+      // 1. 直接通过 avatar_id 匹配（字符串格式如 avatar-4）
+      // 2. 通过 avatar 的 name 匹配（如 e精灵）
+      // 3. 通过 avatar 的 id 匹配（UUID 格式）
+
+      // 先尝试直接匹配
+      let { data: requests, error } = await client
         .from('order_dispatch_requests')
         .select('*')
         .eq('avatar_id', avatarId)
         .in('status', ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'])
         .order('updated_at', { ascending: false })
         .limit(50)
+
+      // 如果直接匹配没有结果，尝试通过 avatar name 查询
+      if ((!requests || requests.length === 0) && !error) {
+        // 查询 avatar name 对应的 avatar id
+        const { data: avatarData } = await client
+          .from('avatars')
+          .select('id')
+          .eq('name', avatarId)
+          .single()
+
+        if (avatarData?.id) {
+          // 通过 avatar id 查询
+          const { data: nameRequests, error: nameError } = await client
+            .from('order_dispatch_requests')
+            .select('*')
+            .eq('avatar_id', avatarData.id)
+            .in('status', ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'])
+            .order('updated_at', { ascending: false })
+            .limit(50)
+
+          if (!nameError && nameRequests) {
+            requests = nameRequests
+          }
+        }
+      }
 
       if (error) {
         console.error('[getAvatarAcceptedOrders] 查询失败:', error)
