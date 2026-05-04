@@ -11,7 +11,8 @@ const PLATFORM_TOOL_MAPPING: Record<string, string> = {
   douyin: 'generate_video',
   weibo: 'write_wechat_mp_article', // 微博使用文章工具，后续可以优化
   bilibili: 'generate_video', // B站使用视频工具
-  kuaishou: 'generate_video' // 快手使用视频工具
+  kuaishou: 'generate_video', // 快手使用视频工具
+  wechat_moments: 'write_xiaohongshu_note' // 微信朋友圈使用图文笔记工具
 }
 
 // 平台名称映射
@@ -21,7 +22,8 @@ const PLATFORM_NAMES: Record<string, string> = {
   douyin: '抖音',
   weibo: '微博',
   bilibili: 'B站',
-  kuaishou: '快手'
+  kuaishou: '快手',
+  wechat_moments: '微信朋友圈'
 }
 
 interface GenerateContentInput {
@@ -330,16 +332,29 @@ export class ContentGenerationService {
 
   /**
    * 获取分身生成的内容
+   * 支持字符串格式（如 avatar-6）和 UUID 格式（如 6ca9e8af-5951-478e-b36a-c7d51b9d80f2）的 avatarId
    */
   async getGeneratedContent(requestId: string, avatarId: string): Promise<GeneratedContent[]> {
     const client = getSupabaseClient()
 
-    // 使用 RPC 函数绕过 schema cache 问题
-    const { data, error } = await client
-      .rpc('get_generated_content', {
-        p_request_id: requestId,
-        p_avatar_id: avatarId
-      })
+    // 判断传入的 avatarId 格式，并同时查询两种可能的值
+    const isUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(avatarId)
+    
+    let query = client
+      .from('generated_content')
+      .select('*')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true })
+
+    // 如果是 UUID 格式，同时查询 UUID 和字符串格式（用于兼容旧数据）
+    if (isUuidFormat) {
+      // 使用 or 查询同时匹配两种格式
+      query = query.or(`avatar_id.eq.${avatarId},avatar_id.eq.${avatarId.replace(/-/g, '')}`)
+    } else {
+      query = query.eq('avatar_id', avatarId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       this.logger.error('获取内容失败:', error)
