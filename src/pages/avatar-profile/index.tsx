@@ -98,9 +98,9 @@ export default function AvatarProfilePage() {
           </View>
         ) : profile ? (
           <View className="profile-content">
-            {/* 头像区域 - 卡片式设计 */}
-            <View className="avatar-card">
-              <View className="avatar-main">
+            {/* 头像区域 */}
+            <View className="avatar-section">
+              <View className="avatar-wrapper">
                 {profile.avatar_url ? (
                   <Image 
                     src={profile.avatar_url} 
@@ -113,26 +113,24 @@ export default function AvatarProfilePage() {
                   </View>
                 )}
                 <View className="level-badge">
-                  <Star size={14} color="#f59e0b" />
+                  <Star size={12} color="#fff" />
                   <Text className="level-text">Lv.{profile.level}</Text>
                 </View>
               </View>
               
-              <View className="avatar-info">
+              <View className="info-wrapper">
                 <Text className="avatar-name">{profile.name}</Text>
-                <View className="personality-tag">
-                  <Text className="personality-text">
-                    {getPersonalityText(profile.personality)}
-                  </Text>
-                </View>
-                
-                {/* 地理位置 */}
-                {profile.location && (
-                  <View className="location-row">
-                    <MapPin size={14} color="#999" />
-                    <Text className="location-text">{profile.location}</Text>
+                <View className="tag-row">
+                  <View className="personality-tag">
+                    <Text className="personality-text">{getPersonalityText(profile.personality)}</Text>
                   </View>
-                )}
+                  {profile.location && (
+                    <View className="location-tag">
+                      <MapPin size={12} color="#666" />
+                      <Text className="location-text">{profile.location}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
 
