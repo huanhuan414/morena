@@ -42,7 +42,7 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
-  ({ className, variant, size, asChild = false, disabled, onClick, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, disabled, onClick, children, ...props }, ref) => {
     const tabIndex = (props as { tabIndex?: number }).tabIndex ?? (disabled ? -1 : 0)
     return (
       <View
@@ -59,7 +59,9 @@ const Button = React.forwardRef<React.ElementRef<typeof View>, ButtonProps>(
         }
         onClick={disabled ? undefined : onClick}
         {...props}
-      />
+      >
+        {children}
+      </View>
     )
   }
 )
