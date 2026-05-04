@@ -1488,15 +1488,23 @@ export class OrderDispatchService {
       .single()
 
     // 创建待确认的分配记录
-    console.log(`[dispatchToAvatar] 开始创建分配记录，order_id=${orderId}, avatar_id=${avatarId}`)
-    const { data: request, error } = await client.rpc('create_dispatch_request', {
-      p_order_id: orderId,
-      p_avatar_id: avatarId,
-      p_user_id: avatar.user_id,
-      p_score: 85,
-      p_match_reasons: ['手动分配'],
-      p_expires_hours: 24
-    })
+    // 使用 avatar.id（字符串格式）作为 avatar_id
+    console.log(`[dispatchToAvatar] 开始创建分配记录，order_id=${orderId}, avatar_id=${avatarId}, avatar.id=${avatar.id}`)
+    
+    // 直接插入记录，而不是使用 RPC 函数
+    const { data: request, error } = await client
+      .from('order_dispatch_requests')
+      .insert({
+        order_id: orderId,
+        avatar_id: avatar.id,  // 使用 avatars 表中的 id
+        user_id: avatar.user_id,
+        status: 'pending',
+        score: 85,
+        match_reasons: ['手动分配'],
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error(`[dispatchToAvatar] 创建分配记录失败:`, error)
@@ -1550,7 +1558,7 @@ export class OrderDispatchService {
 
       const avatarIds = avatars.map(a => a.id)
 
-      // 2. 查询这些分身的待确认订单请求（不关联 orders）
+      // 2. 查询这些分身的待确认订单请求
       const { data: requests, error: requestsError } = await client
         .from('order_dispatch_requests')
         .select('*')
@@ -1571,7 +1579,7 @@ export class OrderDispatchService {
       // 3. 关联分身信息和订单信息
       const requestsWithDetails = await Promise.all(
         requests.map(async (request: any) => {
-          // 查询分身信息 - 使用可能返回多条记录的方式
+          // 查询分身信息 - 使用 avatar_id::text 进行类型转换
           const { data: avatar, error: avatarError } = await client
             .from('avatars')
             .select('id, name, avatar_url, level, completion_rate, avg_rating, is_hosted')
@@ -1645,8 +1653,8 @@ export class OrderDispatchService {
     const client = getSupabaseClient()
 
     try {
-      // 查询该分身已接受的订单（状态为 accepted, generating, preview, publishing, published, awaiting_acceptance, completed）
-      // 包含所有已接受和已完成的订单
+      // 查询该分身已接受的订单
+      // 支持两种格式的 avatar_id：字符串格式 (avatar-1) 和 UUID 格式
       const { data: requests, error } = await client
         .from('order_dispatch_requests')
         .select('*')
