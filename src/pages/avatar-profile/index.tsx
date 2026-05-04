@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
-import { ArrowLeft, MapPin, Star, Sparkles, Users, Calendar } from 'lucide-react-taro'
+import { ArrowLeft, MapPin, Star, Sparkles, Users, Calendar, BookOpen, Heart, Eye } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
@@ -20,6 +20,9 @@ interface AvatarProfile {
   followers_count?: number
   location?: string
   created_at?: string
+  views_count?: number
+  likes_count?: number
+  shares_count?: number
 }
 
 const PERSONALITY_MAP: Record<string, string> = {
@@ -80,9 +83,9 @@ export default function AvatarProfilePage() {
             style={{ width: `${capsulePlaceholderWidth}rpx` }}
             onClick={() => navigateBack()}
           >
-            <ArrowLeft size={24} color="#fff" />
+            <ArrowLeft size={24} color="#333" />
           </View>
-          <Text className="page-title">分身资料</Text>
+          <Text className="page-title">分身主页</Text>
           <View style={{ width: `${capsulePlaceholderWidth}rpx` }} />
         </View>
       </View>
@@ -90,14 +93,14 @@ export default function AvatarProfilePage() {
       <ScrollView scrollY className="profile-scroll">
         {loading ? (
           <View className="loading-state">
-            <Sparkles size={32} color="#00f5ff" className="animate-spin" />
+            <Sparkles size={32} color="#666" className="animate-spin" />
             <Text className="loading-text">加载中...</Text>
           </View>
         ) : profile ? (
           <View className="profile-content">
-            {/* 头像区域 */}
-            <View className="avatar-section">
-              <View className="avatar-wrapper">
+            {/* 头像区域 - 卡片式设计 */}
+            <View className="avatar-card">
+              <View className="avatar-main">
                 {profile.avatar_url ? (
                   <Image 
                     src={profile.avatar_url} 
@@ -106,45 +109,68 @@ export default function AvatarProfilePage() {
                   />
                 ) : (
                   <View className="avatar-placeholder">
-                    <Sparkles size={48} color="#00f5ff" />
+                    <Sparkles size={64} color="#999" />
                   </View>
                 )}
                 <View className="level-badge">
-                  <View style={{ color: '#fbbf24' }}>
-                    <Star size={12} color="#fbbf24" />
-                  </View>
+                  <Star size={14} color="#f59e0b" />
                   <Text className="level-text">Lv.{profile.level}</Text>
                 </View>
               </View>
-              <Text className="avatar-name">{profile.name}</Text>
-              <View className="personality-tag">
-                <Text className="personality-text">
-                  {getPersonalityText(profile.personality)}
-                </Text>
+              
+              <View className="avatar-info">
+                <Text className="avatar-name">{profile.name}</Text>
+                <View className="personality-tag">
+                  <Text className="personality-text">
+                    {getPersonalityText(profile.personality)}
+                  </Text>
+                </View>
+                
+                {/* 地理位置 */}
+                {profile.location && (
+                  <View className="location-row">
+                    <MapPin size={14} color="#999" />
+                    <Text className="location-text">{profile.location}</Text>
+                  </View>
+                )}
               </View>
             </View>
 
-            {/* 统计信息 */}
-            <View className="stats-section">
+            {/* 数据统计 - 横向卡片 */}
+            <View className="stats-card">
               <View className="stat-item">
+                <View className="stat-icon">
+                  <BookOpen size={18} color="#667eea" />
+                </View>
                 <Text className="stat-value">{profile.post_count || 0}</Text>
-                <Text className="stat-label">发布数</Text>
+                <Text className="stat-label">发布</Text>
               </View>
-              <View className="stat-divider" />
               <View className="stat-item">
+                <View className="stat-icon">
+                  <Eye size={18} color="#10b981" />
+                </View>
+                <Text className="stat-value">{profile.views_count || 0}</Text>
+                <Text className="stat-label">浏览</Text>
+              </View>
+              <View className="stat-item">
+                <View className="stat-icon">
+                  <Heart size={18} color="#f43f5e" />
+                </View>
+                <Text className="stat-value">{profile.likes_count || 0}</Text>
+                <Text className="stat-label">获赞</Text>
+              </View>
+              <View className="stat-item">
+                <View className="stat-icon">
+                  <Users size={18} color="#8b5cf6" />
+                </View>
                 <Text className="stat-value">{profile.followers_count || 0}</Text>
                 <Text className="stat-label">粉丝</Text>
-              </View>
-              <View className="stat-divider" />
-              <View className="stat-item">
-                <Text className="stat-value">{profile.exp || 0}</Text>
-                <Text className="stat-label">经验值</Text>
               </View>
             </View>
 
             {/* 简介 */}
-            <View className="info-section">
-              <Text className="section-title">简介</Text>
+            <View className="section-card">
+              <Text className="section-title">个人简介</Text>
               <Text className="section-content">
                 {profile.description || '暂无简介'}
               </Text>
@@ -152,8 +178,8 @@ export default function AvatarProfilePage() {
 
             {/* 能力标签 */}
             {profile.abilities && profile.abilities.length > 0 && (
-              <View className="info-section">
-                <Text className="section-title">能力</Text>
+              <View className="section-card">
+                <Text className="section-title">擅长领域</Text>
                 <View className="abilities-list">
                   {profile.abilities.map((ability, index) => (
                     <View key={index} className="ability-tag">
@@ -164,31 +190,19 @@ export default function AvatarProfilePage() {
               </View>
             )}
 
-            {/* 位置信息 */}
-            {profile.location && (
-              <View className="info-section">
-                <View className="info-row">
-                  <MapPin size={16} color="#999" />
-                  <Text className="info-text">{profile.location}</Text>
-                </View>
-              </View>
-            )}
-
-            {/* 创建时间 */}
+            {/* 入驻时间 */}
             {profile.created_at && (
-              <View className="info-section">
-                <View className="info-row">
-                  <Calendar size={16} color="#999" />
-                  <Text className="info-text">
-                    创建于 {new Date(profile.created_at).toLocaleDateString()}
-                  </Text>
-                </View>
+              <View className="time-card">
+                <Calendar size={16} color="#999" />
+                <Text className="time-text">
+                  于 {new Date(profile.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })} 入驻
+                </Text>
               </View>
             )}
           </View>
         ) : (
           <View className="empty-state">
-            <Users size={64} color="rgba(255,255,255,0.2)" />
+            <Users size={64} color="#ddd" />
             <Text className="empty-text">未找到分身资料</Text>
           </View>
         )}
