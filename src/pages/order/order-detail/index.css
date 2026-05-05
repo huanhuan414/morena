@@ -136,15 +136,15 @@
 }
 
 /* ============================================
-   状态卡片 - 明亮清爽
+   状态卡片 - 现代设计 V4.0
    ============================================ */
 .status-card {
   background: #ffffff;
-  border-radius: 32rpx;
-  margin: 32rpx 32rpx;
-  padding: 48rpx;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.06);
+  border-radius: 28rpx;
+  margin: 24rpx 32rpx;
+  padding: 36rpx 40rpx;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -155,7 +155,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4rpx;
+  height: 6rpx;
   background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
 }
 
@@ -276,8 +276,86 @@
 }
 
 /* ============================================
-   Tab 切换 - 明亮简约
+   Tab 切换 - 现代分段式设计 V4.0
    ============================================ */
+.tab-container {
+  padding: 0 32rpx 24rpx;
+  background: transparent;
+}
+
+.tab-bar-new {
+  display: flex;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 8rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 6rpx;
+}
+
+.tab-item-new {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 24rpx 16rpx;
+  border-radius: 18rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-item-new::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tab-item-new.active::before {
+  opacity: 1;
+}
+
+.tab-icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 10rpx;
+  background: rgba(99, 102, 241, 0.1);
+  transition: all 0.3s ease;
+}
+
+.tab-item-new.active .tab-icon-wrap {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.tab-text-new {
+  position: relative;
+  z-index: 1;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s ease;
+}
+
+.tab-item-new.active .tab-text-new {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* 旧 Tab 样式保留兼容 */
 .tab-bar {
   display: flex;
   background: #ffffff;
@@ -318,30 +396,58 @@
 }
 
 /* ============================================
-   内容卡片 - 纯净明亮（优化版）
+   内容卡片 - 纯净明亮（优化版 V4.0）
    ============================================ */
 .glass-card {
   background: #ffffff;
-  border-radius: 20rpx;
-  margin: 0 32rpx 20rpx;
-  padding: 32rpx;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
-  transition: all 0.2s ease;
+  border-radius: 24rpx;
+  margin: 0 32rpx 24rpx;
+  padding: 28rpx 32rpx;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6rpx;
+  height: 100%;
+  background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .glass-card:active {
-  transform: scale(0.995);
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  transform: scale(0.998);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.glass-card:active::before {
+  opacity: 1;
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  margin-bottom: 20rpx;
-  padding-bottom: 16rpx;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card-header-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 14rpx;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-title {
@@ -766,49 +872,74 @@
 }
 
 /* ============================================
-   成果展示
+   成果展示 - 现代卡片设计 V4.0
    ============================================ */
+.result-panel {
+  padding: 0;
+}
+
 .result-content {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 20rpx;
 }
 
 .result-title-card {
-  background: linear-gradient(135deg, #e0e7ff 0%, #fae8ff 100%);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.result-title-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
 }
 
 .result-title-text {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1.6;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.5;
   letter-spacing: 0.5rpx;
 }
 
 .result-body-card {
   background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .result-body-text {
   font-size: 28rpx;
   color: #475569;
-  line-height: 1.8;
-  letter-spacing: 0.5rpx;
+  line-height: 1.9;
+  letter-spacing: 0.3rpx;
 }
 
 .result-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  padding: 0 32rpx;
+  margin-top: 8rpx;
 }
 
 .result-image {
-  width: 200rpx;
-  height: 200rpx;
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.result-image:active {
+  transform: scale(0.98);
 }
 
 /* ============================================
@@ -1311,27 +1442,31 @@
 
 .avatar-exec-details {
   flex: 1;
+  min-width: 0;
 }
 
 .avatar-exec-name {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: #1e293b;
   margin-bottom: 6rpx;
+  letter-spacing: 0.3rpx;
 }
 
 .avatar-exec-meta {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   gap: 12rpx;
+  flex-wrap: wrap;
 }
 
 .avatar-exec-meta-item {
   display: flex;
   align-items: center;
   gap: 4rpx;
+  color: #64748b;
 }
 
 .avatar-status-badge {
@@ -1375,35 +1510,39 @@
   color: #dc2626;
 }
 
-/* 待验收按钮 */
+/* 待验收按钮 - 现代设计 */
 .avatar-pending-btn {
-  background: #fff7e6;
-  color: #fa8c16;
-  border: 1rpx solid #fa8c16;
-  padding: 8rpx 16rpx;
-  border-radius: 8rpx;
-  font-size: 22rpx;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  color: #ea580c;
+  border: 1.5rpx solid rgba(234, 88, 12, 0.3);
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(234, 88, 12, 0.15);
+  flex-shrink: 0;
 }
 
-/* 已完成徽章 */
+/* 已完成徽章 - 现代设计 */
 .avatar-completed-badge {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  gap: 8rpx;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   color: #ffffff;
-  padding: 10rpx 20rpx;
-  border-radius: 20rpx;
-  font-size: 22rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
   font-weight: 600;
-  box-shadow: 0 2rpx 8rpx rgba(82, 196, 26, 0.3);
+  box-shadow: 0 4rpx 12rpx rgba(34, 197, 94, 0.3);
+  flex-shrink: 0;
 }
 
 .avatar-completed-badge text {
   color: #ffffff;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 600;
 }
 

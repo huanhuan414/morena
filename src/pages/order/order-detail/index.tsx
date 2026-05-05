@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
-  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users
+  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users, FileText, TrendingUp
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -515,22 +515,37 @@ export default function OrderDetailPage() {
         </View>
       </View>
 
-      {/* Tab切换 */}
-      <View className="tab-bar">
-        {['detail', 'progress', 'result'].map((tab) => (
+      {/* Tab切换 - 现代分段式设计 */}
+      <View className="tab-container">
+        <View className="tab-bar-new">
           <View
-            key={tab}
-            className={`tab-item ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab as any)}
+            className={`tab-item-new ${activeTab === 'detail' ? 'active' : ''}`}
+            onClick={() => setActiveTab('detail')}
           >
-            <Text className="tab-text">
-              {tab === 'detail' && '订单详情'}
-              {tab === 'progress' && '执行进度'}
-              {tab === 'result' && '成果展示'}
-            </Text>
-            {activeTab === tab && <View className="tab-indicator"></View>}
+            <View className="tab-icon-wrap">
+              <FileText size={18} color={activeTab === 'detail' ? '#ffffff' : '#64748b'} />
+            </View>
+            <Text className="tab-text-new">订单详情</Text>
           </View>
-        ))}
+          <View
+            className={`tab-item-new ${activeTab === 'progress' ? 'active' : ''}`}
+            onClick={() => setActiveTab('progress')}
+          >
+            <View className="tab-icon-wrap">
+              <Users size={18} color={activeTab === 'progress' ? '#ffffff' : '#64748b'} />
+            </View>
+            <Text className="tab-text-new">执行进度</Text>
+          </View>
+          <View
+            className={`tab-item-new ${activeTab === 'result' ? 'active' : ''}`}
+            onClick={() => setActiveTab('result')}
+          >
+            <View className="tab-icon-wrap">
+              <TrendingUp size={18} color={activeTab === 'result' ? '#ffffff' : '#64748b'} />
+            </View>
+            <Text className="tab-text-new">成果展示</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView className="content-scroll" scrollY>
@@ -540,7 +555,9 @@ export default function OrderDetailPage() {
             {/* 描述卡片 */}
             <View className="info-card glass-card">
               <View className="card-header">
-                <Sparkles size={20} color="#00f5ff" />
+                <View className="card-header-icon">
+                  <Sparkles size={18} color="#6366f1" />
+                </View>
                 <Text className="card-title">订单描述</Text>
               </View>
               {editing ? (
@@ -561,7 +578,9 @@ export default function OrderDetailPage() {
             {order.requirements && (
               <View className="info-card glass-card">
                 <View className="card-header">
-                  <Zap size={20} color="#00f5ff" />
+                  <View className="card-header-icon">
+                    <Zap size={18} color="#6366f1" />
+                  </View>
                   <Text className="card-title">详细需求</Text>
                 </View>
                 <View className="requirement-list">
@@ -614,7 +633,9 @@ export default function OrderDetailPage() {
             {order.avatars && !order.summary_stats && (
               <View className="info-card glass-card avatar-card">
                 <View className="card-header">
-                  <User size={20} color="#00f5ff" />
+                  <View className="card-header-icon">
+                    <User size={18} color="#6366f1" />
+                  </View>
                   <Text className="card-title">执行分身</Text>
                 </View>
                 <View className="avatar-display">
@@ -623,7 +644,7 @@ export default function OrderDetailPage() {
                       <Image src={order.avatars.avatar_url} className="avatar-image" />
                     ) : (
                       <View className="avatar-placeholder">
-                        <Sparkles size={32} color="#00f5ff" />
+                        <Sparkles size={32} color="#6366f1" />
                       </View>
                     )}
                   </View>
