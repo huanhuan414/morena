@@ -486,19 +486,34 @@ export default function OrderDetailPage() {
               className={`tab-item ${activeTab === 'detail' ? 'tab-item-active' : ''}`}
               onClick={() => setActiveTab('detail')}
             >
-              <Text className="block">订单详情</Text>
+              <FileText 
+                size={36} 
+                color={activeTab === 'detail' ? '#FFFFFF' : '#7B3FE4'} 
+                className="tab-item-icon"
+              />
+              <Text className="tab-item-text block">订单详情</Text>
             </View>
             <View
               className={`tab-item ${activeTab === 'progress' ? 'tab-item-active' : ''}`}
               onClick={() => setActiveTab('progress')}
             >
-              <Text className="block">执行进度</Text>
+              <Users 
+                size={36} 
+                color={activeTab === 'progress' ? '#FFFFFF' : '#7B3FE4'} 
+                className="tab-item-icon"
+              />
+              <Text className="tab-item-text block">执行进度</Text>
             </View>
             <View
               className={`tab-item ${activeTab === 'result' ? 'tab-item-active' : ''}`}
               onClick={() => setActiveTab('result')}
             >
-              <Text className="block">成果展示</Text>
+              <Sparkles 
+                size={36} 
+                color={activeTab === 'result' ? '#FFFFFF' : '#7B3FE4'} 
+                className="tab-item-icon"
+              />
+              <Text className="tab-item-text block">成果展示</Text>
             </View>
           </View>
         </View>

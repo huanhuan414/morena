@@ -178,38 +178,63 @@
 
 /* Tab 切换器 */
 .tab-container {
-  margin: 0 32rpx 24rpx;
-  background: linear-gradient(135deg, #EDE9FE 0%, #F3E8FF 100%);
-  border-radius: 24rpx;
-  padding: 10rpx;
-  box-shadow: inset 0 2rpx 8rpx rgba(123, 63, 228, 0.1);
+  margin: 0 32rpx 32rpx;
+  background: #FFFFFF;
+  border-radius: 32rpx;
+  padding: 12rpx;
+  box-shadow: 0 4rpx 24rpx rgba(123, 63, 228, 0.1);
 }
 
 .tab-list {
   display: flex;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 20rpx;
-  padding: 6rpx;
+  background: #F8F7FC;
+  border-radius: 28rpx;
+  padding: 8rpx;
+  gap: 8rpx;
 }
 
 .tab-item {
   flex: 1;
-  padding: 24rpx 0;
+  padding: 28rpx 16rpx;
   text-align: center;
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   font-size: 30rpx;
   font-weight: 500;
   color: #666666;
   transition: all 0.3s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 100rpx;
+}
+
+.tab-item-icon {
+  opacity: 0.5;
+  transition: all 0.3s ease;
 }
 
 .tab-item-active {
   background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
   color: #FFFFFF;
   font-weight: 600;
-  box-shadow: 0 4rpx 16rpx rgba(123, 63, 228, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(123, 63, 228, 0.35);
   transform: scale(1.02);
+}
+
+.tab-item-active .tab-item-icon {
+  opacity: 1;
+}
+
+.tab-item-text {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.tab-item-active .tab-item-text {
+  font-weight: 600;
 }
 
 /* 内容区域 */
