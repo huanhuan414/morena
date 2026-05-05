@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck } from 'lucide-react-taro'
+import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck, Check } from 'lucide-react-taro'
 import './index.css'
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -61,6 +61,26 @@ export default function OrderPublishFeedback() {
   const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
   const [contentType, setContentType] = useState<string>('')
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
+  
+  // 用户角色判断
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+  const [issuerId, setIssuerId] = useState<string>('')
+  const [isIssuer, setIsIssuer] = useState(false)  // true=发单者，false=接单者(分身)
+  
+  // 获取当前用户信息
+  useEffect(() => {
+    const userInfo = Taro.getStorageSync('userInfo')
+    if (userInfo?.id) {
+      setCurrentUserId(userInfo.id)
+    }
+  }, [])
+  
+  // 判断用户角色
+  useEffect(() => {
+    if (currentUserId && issuerId) {
+      setIsIssuer(currentUserId === issuerId)
+    }
+  }, [currentUserId, issuerId])
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
@@ -81,6 +101,7 @@ export default function OrderPublishFeedback() {
         setGeneratedContent(data.generatedContent)
         setContentType(data.contentType || 'image')
         setCurrentPlatform(data.generatedContent?.platforms?.[0] || '')
+        setIssuerId(data.issuerId || '')  // 保存发单者ID
 
         // 获取发布结果
         const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
@@ -223,6 +244,45 @@ export default function OrderPublishFeedback() {
       }
     } catch (error) {
       console.error('[OrderPublishFeedback] 提交反馈失败:', error)
+      Taro.showToast({
+        title: '网络异常，请重试',
+        icon: 'none'
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // 发单者验收
+  const handleAccept = async () => {
+    setSubmitting(true)
+    try {
+      console.log('[OrderPublishFeedback] 发单者验收')
+      const response = await Network.request({
+        url: `/api/order-processing/accept/${requestId}`,
+        method: 'POST'
+      })
+
+      console.log('[OrderPublishFeedback] 验收响应:', response.data)
+
+      if (response.data?.code === 200) {
+        Taro.showToast({
+          title: '验收成功',
+          icon: 'success',
+          duration: 2000
+        })
+
+        setTimeout(() => {
+          navigateBack()
+        }, 2000)
+      } else {
+        Taro.showToast({
+          title: response.data?.message || '验收失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('[OrderPublishFeedback] 验收失败:', error)
       Taro.showToast({
         title: '网络异常，请重试',
         icon: 'none'
@@ -592,15 +652,33 @@ export default function OrderPublishFeedback() {
         </View>
       </View>
 
-      {/* 固定底部提交按钮 */}
+      {/* 固定底部按钮 - 根据角色显示不同内容 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
-        <Button
-          className="w-full submit-button"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? '提交中...' : '提交反馈'}
-        </Button>
+        {isIssuer ? (
+          // 发单者视角：验收按钮
+          <View>
+            <Text className="block text-center text-sm text-gray-500 mb-2">
+              验收通过后订单将完成
+            </Text>
+            <Button
+              className="w-full bg-green-500 hover:bg-green-600 text-white"
+              onClick={() => handleAccept()}
+              disabled={submitting}
+            >
+              <Check size={18} color="#ffffff" className="mr-2" />
+              {submitting ? '验收中...' : '验收通过'}
+            </Button>
+          </View>
+        ) : (
+          // 接单者视角：提交反馈按钮
+          <Button
+            className="w-full submit-button"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? '提交中...' : '提交反馈'}
+          </Button>
+        )}
       </View>
 
       {/* 图片预览弹窗 */}

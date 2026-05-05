@@ -199,4 +199,29 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 发单者验收分身发布的內容
+   */
+  @Post('accept/:requestId')
+  async acceptContent(
+    @Param('requestId') requestId: string
+  ) {
+    try {
+      console.log('[OrderProcessing] 发单者验收:', { requestId })
+      const result = await this.processingService.acceptContent(requestId)
+      return {
+        code: 200,
+        data: result,
+        message: '验收成功'
+      }
+    } catch (error: any) {
+      console.error('[OrderProcessing] 验收失败:', error)
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '验收失败'
+      }
+    }
+  }
 }

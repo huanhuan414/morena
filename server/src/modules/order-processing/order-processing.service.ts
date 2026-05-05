@@ -7,6 +7,8 @@ import { LLMClient, Config } from 'coze-coding-dev-sdk'
 
 export interface ProcessingStatus {
   requestId: string
+  orderId?: string
+  issuerId?: string  // 发单者ID
   status: 'queuing' | 'generating' | 'preview' | 'publishing' | 'completed' | 'failed'
   queuePosition?: number
   estimatedTime?: number
@@ -265,7 +267,7 @@ export class OrderProcessingService {
     // 分别查询订单请求、订单和分身信息（因为可能没有外键关系）
     const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, order_id, avatar_id, status, generated_content, publish_status, confirmed_content')
+      .select('id, order_id, avatar_id, issuer_id, status, generated_content, publish_status, confirmed_content')
       .eq('id', requestId)
       .single()
 
@@ -357,6 +359,8 @@ export class OrderProcessingService {
 
     const status: ProcessingStatus = {
       requestId,
+      orderId: request.order_id,
+      issuerId: request.issuer_id,  // 添加发单者ID
       status: request.status as any,
       generatedContent: request.generated_content ? {
         title: orderData?.title || '未知订单',
@@ -1088,6 +1092,75 @@ export class OrderProcessingService {
     return {
       requestId,
       feedback: enhancedFeedback
+    }
+  }
+
+  /**
+   * 发单者验收分身发布的內容
+   * 将分身请求状态改为 completed，主订单状态也改为 completed
+   */
+  async acceptContent(requestId: string): Promise<{ requestId: string; status: string }> {
+    const client = getSupabaseClient()
+
+    console.log('[OrderProcessing] 发单者验收:', { requestId })
+
+    // 查询分身请求
+    const { data: request, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id, status')
+      .eq('id', requestId)
+      .single()
+
+    if (requestError || !request) {
+      console.error('[OrderProcessing] 查询分身请求失败:', requestError)
+      throw new Error('分身请求不存在')
+    }
+
+    // 检查状态是否为待验收
+    if (request.status !== 'awaiting_acceptance') {
+      console.warn('[OrderProcessing] 当前状态不允许验收:', request.status)
+      throw new Error(`当前状态不允许验收，当前状态: ${request.status}`)
+    }
+
+    // 更新分身请求状态为 completed
+    const { error: updateError } = await client
+      .from('order_dispatch_requests')
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requestId)
+
+    if (updateError) {
+      console.error('[OrderProcessing] 更新分身请求状态失败:', updateError)
+      throw new Error('验收失败')
+    }
+
+    // 检查该订单下是否还有其他未完成的分身请求
+    const { data: otherRequests } = await client
+      .from('order_dispatch_requests')
+      .select('id, status')
+      .eq('order_id', request.order_id)
+      .neq('status', 'completed')
+
+    // 如果没有其他未完成请求，更新主订单状态为 completed
+    if (!otherRequests || otherRequests.length === 0) {
+      await client
+        .from('orders')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.order_id)
+
+      console.log('[OrderProcessing] 主订单状态更新为 completed')
+    }
+
+    console.log('[OrderProcessing] 验收成功')
+
+    return {
+      requestId,
+      status: 'completed'
     }
   }
 }
