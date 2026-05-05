@@ -4499,15 +4499,37 @@ export default function MindChatPage() {
                 <Camera size={24} color="#666666" />
               )}
             </View>
-            <View className="left-icon-btn skill-btn" onClick={() => {
+            <View
+              className="left-icon-btn"
+              style={{ position: 'relative' }}
+              onClick={() => {
                 navigateToSkillsSquare()
                 setShowNewSkillTip(false)
               }}
             >
               <Wrench size={24} color="#666666" />
               {showNewSkillTip && (
-                <View className="skill-new-tag">
-                  <Text className="skill-new-tag-text">{NEW_SKILL_TIP}</Text>
+                <View
+                  className="skill-new-tag"
+                  style={{
+                    position: 'absolute',
+                    top: '-12rpx',
+                    right: '-12rpx',
+                    background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)',
+                    borderRadius: '20rpx',
+                    padding: '4rpx 10rpx',
+                    minWidth: '56rpx',
+                    height: '32rpx',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4rpx 12rpx rgba(255, 71, 87, 0.4)',
+                    zIndex: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: '18rpx', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap' }}>
+                    {NEW_SKILL_TIP}
+                  </Text>
                 </View>
               )}
             </View>
