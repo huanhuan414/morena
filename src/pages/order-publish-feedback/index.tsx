@@ -82,7 +82,7 @@ export default function OrderPublishFeedback() {
       setLoading(true)
       
       const res = await Network.request({
-        url: `/order-processing/status/${requestId}`
+        url: `/api/order-processing/status/${requestId}`
       })
       
       console.log('发布反馈页面数据:', res.data)
@@ -142,7 +142,7 @@ export default function OrderPublishFeedback() {
     try {
       setSubmitting(true)
       const res = await Network.request({
-        url: `/order-processing/feedback/${requestId}`,
+        url: `/api/order-processing/feedback/${requestId}`,
         method: 'POST',
         data: {
           feedbackLink: feedbackLink.trim(),
@@ -170,7 +170,7 @@ export default function OrderPublishFeedback() {
     try {
       setAccepting(true)
       const res = await Network.request({
-        url: `/order-processing/accept/${requestId}`,
+        url: `/api/order-processing/accept/${requestId}`,
         method: 'POST'
       })
       
