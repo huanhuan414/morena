@@ -179,31 +179,37 @@
 /* Tab 切换器 */
 .tab-container {
   margin: 0 32rpx 24rpx;
-  background: #F5F5F7;
-  border-radius: 20rpx;
-  padding: 8rpx;
+  background: linear-gradient(135deg, #EDE9FE 0%, #F3E8FF 100%);
+  border-radius: 24rpx;
+  padding: 10rpx;
+  box-shadow: inset 0 2rpx 8rpx rgba(123, 63, 228, 0.1);
 }
 
 .tab-list {
   display: flex;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 20rpx;
+  padding: 6rpx;
 }
 
 .tab-item {
   flex: 1;
-  padding: 20rpx 0;
+  padding: 24rpx 0;
   text-align: center;
   border-radius: 16rpx;
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 500;
   color: #666666;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .tab-item-active {
-  background: #FFFFFF;
-  color: #7B3FE4;
+  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  color: #FFFFFF;
   font-weight: 600;
-  box-shadow: 0 2rpx 12rpx rgba(123, 63, 228, 0.12);
+  box-shadow: 0 4rpx 16rpx rgba(123, 63, 228, 0.3);
+  transform: scale(1.02);
 }
 
 /* 内容区域 */
@@ -728,4 +734,85 @@
 .status-cancelled {
   background: #F5F5F7;
   color: #999999;
+}
+
+/* Markdown 内容样式 */
+.markdown-content {
+  line-height: 1.8;
+}
+
+.markdown-h1 {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 24rpx 0 16rpx;
+  line-height: 1.4;
+}
+
+.markdown-h2 {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333333;
+  margin: 20rpx 0 12rpx;
+  line-height: 1.4;
+}
+
+.markdown-h3 {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #444444;
+  margin: 16rpx 0 8rpx;
+  line-height: 1.4;
+}
+
+.markdown-paragraph {
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.8;
+  margin: 12rpx 0;
+}
+
+.markdown-list {
+  margin: 16rpx 0;
+  padding-left: 0;
+}
+
+.markdown-list-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin: 12rpx 0;
+}
+
+.markdown-bullet {
+  font-size: 28rpx;
+  color: #7B3FE4;
+  width: 40rpx;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.markdown-list-text {
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.markdown-image-wrapper {
+  margin: 20rpx 0;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #F5F5F7;
+}
+
+.markdown-image {
+  width: 100%;
+  border-radius: 16rpx;
+}
+
+.detail-value-empty {
+  font-size: 28rpx;
+  color: #999999;
+  font-style: italic;
 }

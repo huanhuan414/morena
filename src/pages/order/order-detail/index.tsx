@@ -130,6 +130,94 @@ const AVATAR_STATUS_CONFIG: Record<string, { label: string; className: string }>
   completed: { label: '已完成', className: 'avatar-status-completed' }
 }
 
+// Markdown 解析函数
+const parseContent = (content: string) => {
+  if (!content) return []
+  
+  const lines = content.split('\n')
+  const result: Array<{ type: string; content?: string; level?: number; items?: string[]; alt?: string; url?: string }> = []
+  
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    
+    // 图片 ![alt](url)
+    const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)/)
+    if (imgMatch) {
+      result.push({ type: 'image', alt: imgMatch[1], url: imgMatch[2] })
+      i++
+      continue
+    }
+    
+    // 标题
+    const h3Match = line.match(/^###\s+(.+)/)
+    if (h3Match) {
+      result.push({ type: 'heading', content: h3Match[1], level: 3 })
+      i++
+      continue
+    }
+    
+    const h2Match = line.match(/^##\s+(.+)/)
+    if (h2Match) {
+      result.push({ type: 'heading', content: h2Match[1], level: 2 })
+      i++
+      continue
+    }
+    
+    const h1Match = line.match(/^#\s+(.+)/)
+    if (h1Match) {
+      result.push({ type: 'heading', content: h1Match[1], level: 1 })
+      i++
+      continue
+    }
+    
+    // 无序列表
+    const ulMatch = line.match(/^[-*]\s+(.+)/)
+    if (ulMatch) {
+      const items = [ulMatch[1]]
+      i++
+      while (i < lines.length) {
+        const nextMatch = lines[i].match(/^[-*]\s+(.+)/)
+        if (nextMatch) {
+          items.push(nextMatch[1])
+          i++
+        } else {
+          break
+        }
+      }
+      result.push({ type: 'list', items, content: '' })
+      continue
+    }
+    
+    // 有序列表
+    const olMatch = line.match(/^\d+\.\s+(.+)/)
+    if (olMatch) {
+      const items = [olMatch[1]]
+      i++
+      while (i < lines.length) {
+        const nextMatch = lines[i].match(/^\d+\.\s+(.+)/)
+        if (nextMatch) {
+          items.push(nextMatch[1])
+          i++
+        } else {
+          break
+        }
+      }
+      result.push({ type: 'olist', items, content: '' })
+      continue
+    }
+    
+    // 普通段落
+    if (line.trim()) {
+      result.push({ type: 'paragraph', content: line })
+    }
+    
+    i++
+  }
+  
+  return result
+}
+
 export default function OrderDetailPage() {
   const router = useRouter()
   const { id } = router.params
@@ -434,7 +522,55 @@ export default function OrderDetailPage() {
                   className="edit-textarea"
                 />
               ) : (
-                <Text className="detail-value block">{order.description || '暂无描述'}</Text>
+                <View className="markdown-content">
+                  {order.description ? (
+                    parseContent(order.description).map((block, idx) => {
+                      if (block.type === 'heading') {
+                        return (
+                          <Text key={idx} className={`block markdown-h${block.level}`}>
+                            {block.content}
+                          </Text>
+                        )
+                      }
+                      if (block.type === 'paragraph') {
+                        return (
+                          <Text key={idx} className="block markdown-paragraph">
+                            {block.content}
+                          </Text>
+                        )
+                      }
+                      if (block.type === 'list' || block.type === 'olist') {
+                        return (
+                          <View key={idx} className="markdown-list">
+                            {block.items?.map((item, i) => (
+                              <View key={i} className="markdown-list-item">
+                                <Text className="block markdown-bullet">{block.type === 'olist' ? `${i + 1}.` : '•'}</Text>
+                                <Text className="block markdown-list-text">{item}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )
+                      }
+                      if (block.type === 'image' && block.url) {
+                        return (
+                          <View key={idx} className="markdown-image-wrapper">
+                            <Image
+                              className="markdown-image"
+                              src={block.url}
+                              mode="widthFix"
+                              onClick={() => {
+                                Taro.previewImage({ current: block.url, urls: [block.url!] })
+                              }}
+                            />
+                          </View>
+                        )
+                      }
+                      return null
+                    })
+                  ) : (
+                    <Text className="block detail-value-empty">暂无描述</Text>
+                  )}
+                </View>
               )}
             </View>
 
