@@ -81,6 +81,11 @@ export default function OrderCompletedPage() {
     if (!text) return []
     const lines = text.split('\n').filter(line => line.trim())
     return lines.map((line, idx) => {
+      // 处理图片 ![alt](url)
+      const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
+      if (imgMatch) {
+        return { type: 'image', alt: imgMatch[1], url: imgMatch[2], key: idx }
+      }
       if (line.startsWith('# ')) {
         return { type: 'h1', text: line.slice(2), key: idx }
       }
@@ -204,6 +209,17 @@ export default function OrderCompletedPage() {
                   {generatedContent.content && (
                     <View className="px-6 pb-6 bg-white">
                       {parseContent(generatedContent.content).map((item) => {
+                        if (item.type === 'image' && item.url) {
+                          return (
+                            <Image
+                              key={item.key}
+                              src={item.url}
+                              className="w-full rounded-lg mb-4"
+                              mode="widthFix"
+                              onClick={() => Taro.previewImage({ urls: [item.url!], current: item.url! })}
+                            />
+                          )
+                        }
                         if (item.type === 'h1') {
                           return <Text key={item.key} className="block text-xl font-bold text-gray-800 mb-4">{item.text}</Text>
                         }
@@ -222,10 +238,12 @@ export default function OrderCompletedPage() {
                           )
                         }
                         if (item.type === 'ordered-list') {
-                          const orderedParsed = parseContent(generatedContent.content)
+                          const allItems = parseContent(generatedContent.content)
+                          const orderedItems = allItems.filter((i: any) => i.type === 'ordered-list')
+                          const orderIndex = orderedItems.indexOf(item) + 1
                           return (
                             <View key={item.key} className="flex flex-row items-start mb-2">
-                              <Text className="text-red-400 mr-2 font-bold">{orderedParsed.indexOf(item) + 1}.</Text>
+                              <Text className="text-red-400 mr-2 font-bold">{orderIndex}.</Text>
                               <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
                             </View>
                           )
@@ -241,6 +259,17 @@ export default function OrderCompletedPage() {
               {generatedContent.content && contentType !== 'article' && (
                 <View className="bg-gradient-to-br from-orange-50 to-amber-50 p-8 rounded-3xl mt-4 border border-orange-100">
                   {parsedContent.map((item) => {
+                    if (item.type === 'image' && item.url) {
+                      return (
+                        <Image
+                          key={item.key}
+                          src={item.url}
+                          className="w-full rounded-lg mb-4"
+                          mode="widthFix"
+                          onClick={() => Taro.previewImage({ urls: [item.url!], current: item.url! })}
+                        />
+                      )
+                    }
                     if (item.type === 'h1') {
                       return <Text key={item.key} className="block text-xl font-bold text-gray-800 mb-4 leading-relaxed">{item.text}</Text>
                     }
@@ -259,9 +288,11 @@ export default function OrderCompletedPage() {
                       )
                     }
                     if (item.type === 'ordered-list') {
+                      const orderedItems = parsedContent.filter((i: any) => i.type === 'ordered-list')
+                      const orderIndex = orderedItems.indexOf(item) + 1
                       return (
                         <View key={item.key} className="flex flex-row items-start mb-2 pl-2">
-                          <Text className="text-red-400 mr-3 font-bold text-base">{parsedContent.indexOf(item) + 1}.</Text>
+                          <Text className="text-red-400 mr-3 font-bold text-base">{orderIndex}.</Text>
                           <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
                         </View>
                       )
