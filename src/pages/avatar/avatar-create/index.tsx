@@ -393,7 +393,7 @@ export default function AvatarCreatePage() {
     // 小程序端显示操作菜单
     const options = ['从相册选择', '拍照']
     if (isWeapp) {
-      options.push('从微信选择')
+      options.push('从微信聊天记录选择')
     }
 
     showActionSheet({
