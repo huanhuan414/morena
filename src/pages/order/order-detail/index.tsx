@@ -592,31 +592,6 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 分身请求状态统计 */}
-            {order.summary_stats && order.summary_stats.totalAvatars > 0 && (
-              <View className="info-card glass-card avatar-card">
-                <View className="card-header">
-                  <Users size={20} color="#00f5ff" />
-                  <Text className="card-title">分身执行状态</Text>
-                </View>
-                <View className="avatar-stats-summary">
-                  <View className="stat-item">
-                    <Text className="stat-value">{order.summary_stats.totalAvatars}</Text>
-                    <Text className="stat-label block">总分身数</Text>
-                  </View>
-                  <View className="stat-item">
-                    <Text className="stat-value text-green-500">{order.summary_stats.acceptedAvatars}</Text>
-                    <Text className="stat-label block">已接受</Text>
-                  </View>
-                  <View className="stat-item">
-                    <Text className="stat-value text-yellow-500">{order.summary_stats.submittedAvatars}</Text>
-                    <Text className="stat-label block">已提交</Text>
-                  </View>
-                </View>
-
-              </View>
-            )}
-
             {/* 单个分身信息（兼容旧逻辑） */}
             {order.avatars && !order.summary_stats && (
               <View className="info-card glass-card avatar-card">
