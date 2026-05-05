@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Textarea } from '@/components/ui/textarea'
 import Taro from '@tarojs/taro'
-import { RefreshCw, Send, Check, CircleAlert, Loader, ChevronLeft } from 'lucide-react-taro'
+import { RefreshCw, Send, Check, CircleAlert, Loader, ChevronLeft, Search } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -119,26 +119,36 @@ export default function OrderContentCreation() {
     }
   }
 
+  // 图片预览
+  const handlePreviewImage = (currentIndex: number) => {
+    const images = generatedContent?.images || []
+    if (images.length > 0) {
+      Taro.previewImage({
+        current: images[currentIndex],
+        urls: images
+      })
+    }
+  }
+
+  // 跳转到发布引导页面
+  const handleGoToPublishGuide = () => {
+    const platforms = generatedContent?.platforms || []
+    const content = editedContent || generatedContent?.content || ''
+    const title = generatedContent?.title || ''
+    const images = generatedContent?.images || []
+
+    Taro.navigateTo({
+      url: `/pages/order/order-publish-guide/index?platforms=${platforms.join(',')}&content=${encodeURIComponent(content)}&title=${encodeURIComponent(title)}&images=${images.join(',')}&requestId=${requestId || ''}`
+    })
+  }
+
+  // 确认发布
   const handleConfirmPublish = async () => {
     if (!requestId) return
-    try {
-      const res = await Network.request({
-        url: '/api/order-processing/confirm/' + requestId,
-        method: 'POST',
-        data: {
-          content: editedContent
-        }
-      })
-      if (res.data.code === 200) {
-        Taro.showToast({ title: '发布成功', icon: 'success' })
-        setShowConfirm(false)
-        fetchOrderStatus(requestId)
-      } else {
-        Taro.showToast({ title: res.data.message || '发布失败', icon: 'none' })
-      }
-    } catch (err) {
-      Taro.showToast({ title: '网络错误', icon: 'none' })
-    }
+    setShowConfirm(false)
+    
+    // 由于没有自动发布接口，跳转到发布引导页面
+    handleGoToPublishGuide()
   }
 
   const handleBack = () => {
@@ -284,9 +294,12 @@ export default function OrderContentCreation() {
                 <ScrollView className="images-scroll" scrollX>
                   <View className="images-row">
                     {generatedContent.images.map((img, idx) => (
-                      <View key={idx} className="image-item">
+                      <View key={idx} className="image-item" onClick={() => handlePreviewImage(idx)}>
                         {/* @ts-ignore */}
                         <Image src={img} mode="aspectFill" className="preview-image" />
+                        <View className="image-preview-icon">
+                          <Search size={14} color="#ffffff" />
+                        </View>
                       </View>
                     ))}
                   </View>

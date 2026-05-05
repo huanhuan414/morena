@@ -225,6 +225,24 @@
   border: 1px solid #e2e8f0;
 }
 
+.image-item {
+  position: relative;
+  cursor: pointer;
+}
+
+.image-preview-icon {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 内容编辑器 */
 .content-editor {
   margin-top: 24px;
