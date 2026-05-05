@@ -3751,14 +3751,14 @@ export default function MindChatPage() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: '8rpx',
-              background: 'linear-gradient(135deg, #FF6B6B 0%, #FF4757 100%)',
-              borderRadius: '24rpx',
-              padding: '8rpx 16rpx',
-              boxShadow: '0 2rpx 8rpx rgba(255, 71, 87, 0.4)',
+              background: 'rgba(123, 63, 228, 0.1)',
+              border: '1.5rpx solid rgba(123, 63, 228, 0.3)',
+              borderRadius: '20rpx',
+              padding: '6rpx 14rpx',
             }}
           >
-            <Sparkles size={18} color="#FFFFFF" />
-            <Text style={{ fontSize: '20rpx', fontWeight: 600, color: '#FFFFFF' }}>新技能</Text>
+            <Sparkles size={14} color="#7B3FE4" />
+            <Text style={{ fontSize: '18rpx', fontWeight: 500, color: '#7B3FE4' }}>新技能</Text>
           </View>
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
