@@ -278,13 +278,79 @@ export default function OrderPublishFeedback() {
       )
     }
 
+    const images = generatedContent.images || []
+    
+    // 小红书风格：左侧大图 + 右侧小图列表
+    if (currentPlatform === 'xiaohongshu') {
+      return (
+        <View className="image-gallery">
+          <View className="xhs-layout">
+            {/* 左侧大图 */}
+            <View className="xhs-main-image" onClick={() => {
+              if (images[0]) {
+                setPreviewImage(images[0])
+                setPreviewVisible(true)
+              }
+            }}>
+              <Image
+                src={images[0]}
+                className="xhs-main-img"
+                mode="aspectFill"
+              />
+              {images.length > 1 && (
+                <View className="xhs-more-badge">
+                  <Text className="block text-white text-xs">+{images.length - 1}</Text>
+                </View>
+              )}
+            </View>
+            {/* 右侧缩略图列表 */}
+            {images.length > 1 && (
+              <View className="xhs-thumb-list">
+                {images.slice(1, 4).map((img, index) => (
+                  <View 
+                    key={index}
+                    className="xhs-thumb-item"
+                    onClick={() => {
+                      setPreviewImage(img)
+                      setPreviewVisible(true)
+                    }}
+                  >
+                    <Image
+                      src={img}
+                      className="xhs-thumb-img"
+                      mode="aspectFill"
+                    />
+                    {images.length > 4 && index === 2 && (
+                      <View className="xhs-more-overlay">
+                        <Text className="block text-white text-xs font-medium">+{images.length - 4}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+          
+          {/* 文案内容 */}
+          {generatedContent?.content && (
+            <View className="xhs-caption">
+              <Text className="block text-gray-800 whitespace-pre-wrap text-sm leading-relaxed">
+                {generatedContent.content}
+              </Text>
+            </View>
+          )}
+        </View>
+      )
+    }
+
+    // 普通图片布局：网格展示
     return (
       <View className="image-gallery">
         <View className="flex justify-between items-center mb-3">
-          <Text className="block text-base font-medium text-gray-700">生成图片 ({generatedContent.images.length}张)</Text>
+          <Text className="block text-base font-medium text-gray-700">生成图片 ({images.length}张)</Text>
         </View>
         <View className="image-grid">
-          {generatedContent.images.map((img, index) => (
+          {images.map((img, index) => (
             <View 
               key={index} 
               className="image-item"
@@ -304,6 +370,13 @@ export default function OrderPublishFeedback() {
             </View>
           ))}
         </View>
+        {generatedContent?.content && (
+          <View className="mt-3 p-3 bg-gray-50 rounded-lg">
+            <Text className="block text-gray-700 text-sm whitespace-pre-wrap">
+              {generatedContent.content}
+            </Text>
+          </View>
+        )}
         <Text className="block text-xs text-gray-500 mt-2">点击图片可预览大图</Text>
       </View>
     )
