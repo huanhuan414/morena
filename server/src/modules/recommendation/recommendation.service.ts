@@ -124,14 +124,7 @@ export class RecommendationService {
       // 获取其他用户的公开分身
       const { data: otherAvatars, error: avatarsError } = await client
         .from('avatars')
-        .select(`
-          *,
-          user (
-            id,
-            latitude,
-            longitude
-          )
-        `)
+        .select('*')
         .neq('user_id', userId)
         .eq('is_public', true)
         .eq('status', 'active')
@@ -150,6 +143,15 @@ export class RecommendationService {
         return []
       }
 
+      // 获取这些分身对应的用户信息（获取所有用户ID）
+      const userIds = [...new Set(otherAvatars.map(a => a.user_id))]
+      const { data: users } = await client
+        .from('users')
+        .select('id, latitude, longitude')
+        .in('id', userIds)
+      
+      const userMap = new Map(users?.map(u => [u.id, u]) || [])
+
       // 为每个分身计算推荐分数
       const scoredAvatars = otherAvatars.map(avatar => {
       let matchScore = 50 // 基础分
@@ -162,12 +164,13 @@ export class RecommendationService {
 
       // 2. 地理位置得分（占25%）
       let distance: number | undefined
-      if (location?.latitude && location?.longitude && avatar.user.latitude && avatar.user.longitude) {
+      const user = userMap.get(avatar.user_id)
+      if (location?.latitude && location?.longitude && user?.latitude && user?.longitude) {
         distance = this.calculateDistance(
           location.latitude,
           location.longitude,
-          avatar.user.latitude,
-          avatar.user.longitude
+          user.latitude,
+          user.longitude
         )
         const distanceScore = Math.max(25 - distance * 0.5, 0) // 距离越近得分越高，最高25分
         matchScore += distanceScore
@@ -213,7 +216,7 @@ export class RecommendationService {
         return {
           id: avatar.id,
           name: avatar.name,
-          avatar_url: avatar.avatarUrl,
+          avatar_url: avatar.avatar_url,
           level: avatar.level,
           personality: avatar.personality,
           abilities,
@@ -221,9 +224,9 @@ export class RecommendationService {
           distance: avatar.distance,
           matchScore: avatar.matchScore,
           description: avatar.description || `一个${avatar.personality}的AI分身`,
-          location: avatar.user.latitude && avatar.user.longitude ? {
-            latitude: avatar.user.latitude,
-            longitude: avatar.user.longitude
+          location: user?.latitude && user?.longitude ? {
+            latitude: user.latitude,
+            longitude: user.longitude
           } : undefined
         }
       })
