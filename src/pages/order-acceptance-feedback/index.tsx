@@ -219,44 +219,73 @@ export default function OrderAcceptanceFeedback() {
               {contentType === 'article' && (
                 <View className="article-preview">
                   {generatedContent.title && (
-                    <Text className="block article-title">{generatedContent.title}</Text>
+                    <Text className="block text-xl font-bold text-gray-800 p-6 bg-white">{generatedContent.title}</Text>
                   )}
                   {generatedContent.content && (
-                    <Text className="block article-content">{generatedContent.content}</Text>
+                    <View className="px-6 pb-6 bg-white">
+                      {parseContent(generatedContent.content).map((item) => {
+                        if (item.type === 'h1') {
+                          return <Text key={item.key} className="block text-xl font-bold text-gray-800 mb-4">{item.text}</Text>
+                        }
+                        if (item.type === 'h2') {
+                          return <Text key={item.key} className="block text-lg font-semibold text-gray-700 mt-4 mb-2">{item.text}</Text>
+                        }
+                        if (item.type === 'h3') {
+                          return <Text key={item.key} className="block text-base font-semibold text-gray-600 mt-3 mb-2">{item.text}</Text>
+                        }
+                        if (item.type === 'list') {
+                          return (
+                            <View key={item.key} className="flex flex-row items-start mb-2">
+                              <Text className="text-red-400 mr-2 font-bold">•</Text>
+                              <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
+                            </View>
+                          )
+                        }
+                        if (item.type === 'ordered-list') {
+                          return (
+                            <View key={item.key} className="flex flex-row items-start mb-2">
+                              <Text className="text-red-400 mr-2 font-bold">{parsedContent.indexOf(item) + 1}.</Text>
+                              <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
+                            </View>
+                          )
+                        }
+                        return <Text key={item.key} className="block text-sm text-gray-600 leading-relaxed mb-2">{item.text}</Text>
+                      })}
+                    </View>
                   )}
                 </View>
               )}
 
               {/* 文案内容 - 美化展示 */}
               {generatedContent.content && contentType !== 'article' && (
-                <View className="content-text-box">
+                <View className="bg-gradient-to-br from-orange-50 to-amber-50 p-8 rounded-3xl mt-4 border border-orange-100">
                   {parsedContent.map((item) => {
                     if (item.type === 'h1') {
-                      return <Text key={item.key} className="block content-h1">{item.text}</Text>
+                      return <Text key={item.key} className="block text-xl font-bold text-gray-800 mb-4 leading-relaxed">{item.text}</Text>
                     }
                     if (item.type === 'h2') {
-                      return <Text key={item.key} className="block content-h2">{item.text}</Text>
+                      return <Text key={item.key} className="block text-lg font-semibold text-gray-700 mt-4 mb-2 leading-relaxed">{item.text}</Text>
                     }
                     if (item.type === 'h3') {
-                      return <Text key={item.key} className="block content-h3">{item.text}</Text>
+                      return <Text key={item.key} className="block text-base font-semibold text-gray-600 mt-3 mb-2 leading-relaxed">{item.text}</Text>
                     }
                     if (item.type === 'list') {
                       return (
-                        <View key={item.key} className="content-list-item">
-                          <Text className="block content-bullet">•</Text>
-                          <Text className="block content-list-text">{item.text}</Text>
+                        <View key={item.key} className="flex flex-row items-start mb-2 pl-2">
+                          <Text className="text-red-400 mr-3 font-bold text-base">•</Text>
+                          <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
                         </View>
                       )
                     }
                     if (item.type === 'ordered-list') {
                       return (
-                        <View key={item.key} className="content-list-item">
-                          <Text className="block content-bullet">{parsedContent.indexOf(item) + 1}.</Text>
-                          <Text className="block content-list-text">{item.text}</Text>
+                        <View key={item.key} className="flex flex-row items-start mb-2 pl-2">
+                          <Text className="text-red-400 mr-3 font-bold text-base">{parsedContent.indexOf(item) + 1}.</Text>
+                          <Text className="flex-1 text-sm text-gray-600 leading-relaxed">{item.text}</Text>
                         </View>
                       )
                     }
-                    return <Text key={item.key} className="block content-paragraph">{item.text}</Text>
+                    return <Text key={item.key} className="block text-sm text-gray-600 leading-relaxed mb-2 pl-2">{item.text}</Text>
                   })}
                 </View>
               )}
