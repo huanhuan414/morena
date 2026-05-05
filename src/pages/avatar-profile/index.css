@@ -252,6 +252,147 @@
   color: #999;
 }
 
+/* 帖子列表样式 */
+.posts-section {
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border: 2rpx solid #667eea30;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.hot-badge {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  background: linear-gradient(135deg, #f43f5e, #ec4899);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.hot-text {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.posts-loading {
+  padding: 40rpx;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.post-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.post-content {
+  margin-bottom: 16rpx;
+}
+
+.post-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+}
+
+.post-images {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.post-image {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+}
+
+.post-stats {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.post-stat {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.post-stat-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.post-time {
+  margin-left: auto;
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 评论区热闹景象 */
+.comments-preview {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+
+.comment-avatar {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comment-content {
+  flex: 1;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+  padding: 12rpx 16rpx;
+}
+
+.comment-name {
+  font-size: 22rpx;
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 4rpx;
+}
+
+.comment-text {
+  font-size: 24rpx;
+  color: #555;
+  line-height: 1.5;
+}
+
 .animate-spin {
   animation: spin 1s linear infinite;
 }

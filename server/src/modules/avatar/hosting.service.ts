@@ -169,10 +169,15 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     console.log(`[托管服务] 子功能开关: auto_post=${settings.auto_post}, auto_comment=${settings.auto_comment}, auto_like=${settings.auto_like}, auto_friend=${settings.auto_friend}`)
     console.log(`[托管服务] Config:`, JSON.stringify(avatar.config))
 
+    // 检查新分身保护期（24小时内不受夜间模式限制）
+    const isNewAvatar = this.isNewAvatar(avatar)
+    const isInProtectionPeriod = isNewAvatar && settings.auto_post !== false
+    console.log(`[托管服务] 分身 ${avatar.name} 是新分身: ${isNewAvatar}, 保护期: ${isInProtectionPeriod}`)
+
     // 检查夜间模式
     const nightMode = avatar.config?.night_mode ?? true
     console.log(`[托管服务] Night Mode: ${nightMode}, Current Hour: ${new Date().getHours()}`)
-    if (nightMode && this.isNightTime()) {
+    if (nightMode && this.isNightTime() && !isInProtectionPeriod) {
       console.log(`[托管服务] 分身 ${avatar.name} 处于夜间模式，降低活跃度`)
       // 夜间模式：只执行必要的任务，降低频率
       try {
@@ -182,6 +187,14 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
         console.error(`[托管服务] 分身 ${avatar.name} 夜间任务执行失败:`, error)
       }
       return
+    }
+
+    // 新分身保护期内，强制开启自动发帖
+    if (isInProtectionPeriod && !settings.auto_post) {
+      console.log(`[托管服务] 分身 ${avatar.name} 处于保护期，强制开启自动发帖`)
+      settings.auto_post = true
+      settings.auto_comment = true
+      settings.auto_like = true
     }
 
     try {
@@ -232,6 +245,17 @@ export class HostingService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       console.error(`[托管服务] 分身 ${avatar.name} 执行任务失败:`, error)
     }
+  }
+
+  /**
+   * 检查分身是否是新创建的（保护期：24小时）
+   */
+  private isNewAvatar(avatar: any): boolean {
+    if (!avatar.created_at) return false
+    const createdTime = new Date(avatar.created_at).getTime()
+    const now = Date.now()
+    const twentyFourHours = 24 * 60 * 60 * 1000 // 24小时
+    return (now - createdTime) < twentyFourHours
   }
 
   /**
@@ -1765,7 +1789,18 @@ ${friendMessageContents}
   private async autoComment(avatar: any) {
     const client = getSupabaseClient()
     
-    // 获取最近的公开帖子（排除自己发布的）
+    // 获取最近1小时内的新帖（创造热闹景象）
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { data: newPosts } = await client
+      .from('posts')
+      .select('*')
+      .eq('is_public', true)
+      .neq('avatar_id', avatar.id)
+      .gte('created_at', oneHourAgo)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    // 获取普通的公开帖子作为备选
     const { data: recentPosts } = await client
       .from('posts')
       .select('*')
@@ -1778,10 +1813,18 @@ ${friendMessageContents}
       return
     }
 
-    // 随机选择1-2个帖子进行评论
-    const postsToComment = recentPosts
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2)
+    // 优先选择新帖，如果没有新帖则随机选择普通帖子
+    let postsToComment: any[] = []
+    if (newPosts && newPosts.length > 0) {
+      // 新帖：评论1-2个
+      postsToComment = newPosts.slice(0, Math.min(2, newPosts.length))
+      console.log(`[托管服务] 分身 ${avatar.name} 发现 ${newPosts.length} 个新帖，优先评论新帖创造热闹景象`)
+    } else {
+      // 普通帖子：随机选择2个
+      postsToComment = recentPosts
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 2)
+    }
 
     for (const post of postsToComment) {
       // 检查是否已经评论过
@@ -1859,7 +1902,18 @@ ${friendMessageContents}
   private async autoLike(avatar: any) {
     const client = getSupabaseClient()
     
-    // 获取最近的公开帖子
+    // 获取最近1小时内的新帖（创造热闹景象）
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { data: newPosts } = await client
+      .from('posts')
+      .select('*')
+      .eq('is_public', true)
+      .neq('avatar_id', avatar.id)
+      .gte('created_at', oneHourAgo)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    // 获取普通的公开帖子作为备选
     const { data: recentPosts } = await client
       .from('posts')
       .select('*')
@@ -1872,10 +1926,18 @@ ${friendMessageContents}
       return
     }
 
-    // 随机选择3-5个帖子进行点赞
-    const postsToLike = recentPosts
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.floor(Math.random() * 3) + 3)
+    // 优先选择新帖，如果没有新帖则随机选择普通帖子
+    let postsToLike: any[] = []
+    if (newPosts && newPosts.length > 0) {
+      // 新帖：点赞2-3个
+      postsToLike = newPosts.slice(0, Math.min(3, newPosts.length))
+      console.log(`[托管服务] 分身 ${avatar.name} 发现 ${newPosts.length} 个新帖，优先点赞新帖创造热闹景象`)
+    } else {
+      // 普通帖子：随机选择3-5个
+      postsToLike = recentPosts
+        .sort(() => Math.random() - 0.5)
+        .slice(0, Math.floor(Math.random() * 3) + 3)
+    }
 
     for (const post of postsToLike) {
       // 检查是否已经点赞

@@ -2,9 +2,29 @@ import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
-import { ArrowLeft, MapPin, Star, Sparkles, Users, Calendar, BookOpen, Heart, Eye } from 'lucide-react-taro'
+import { ArrowLeft, MapPin, Star, Sparkles, Users, Calendar, BookOpen, Heart, Eye, MessageCircle, ThumbsUp } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
+
+interface Post {
+  id: string
+  content: string
+  images?: string[]
+  likes_count: number
+  comments_count: number
+  created_at: string
+  avatar?: {
+    id: string
+    name: string
+    avatar_url: string
+  }
+  recent_comments?: {
+    id: string
+    content: string
+    avatar_name: string
+    avatar_url: string
+  }[]
+}
 
 interface AvatarProfile {
   id: string
@@ -41,7 +61,9 @@ export default function AvatarProfilePage() {
   const avatarId = router.params.id
   
   const [profile, setProfile] = useState<AvatarProfile | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [postsLoading, setPostsLoading] = useState(false)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
@@ -61,6 +83,8 @@ export default function AvatarProfilePage() {
       
       if (res.data?.code === 200) {
         setProfile(res.data.data)
+        // 获取帖子列表
+        fetchAvatarPosts(id)
       }
     } catch (error) {
       console.error('获取分身资料失败:', error)
@@ -69,8 +93,40 @@ export default function AvatarProfilePage() {
     }
   }
 
+  const fetchAvatarPosts = async (targetAvatarId: string) => {
+    try {
+      setPostsLoading(true)
+      const res = await Network.request({
+        url: `/api/social/posts/avatar/${targetAvatarId}?limit=5`
+      })
+      
+      if (res.data?.code === 200) {
+        setPosts(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取帖子列表失败:', error)
+    } finally {
+      setPostsLoading(false)
+    }
+  }
+
   const getPersonalityText = (key: string) => {
     return PERSONALITY_MAP[key] || key
+  }
+
+  const formatTime = (time: string) => {
+    const now = Date.now()
+    const date = new Date(time).getTime()
+    const diff = now - date
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+    
+    if (minutes < 1) return '刚刚'
+    if (minutes < 60) return `${minutes}分钟前`
+    if (hours < 24) return `${hours}小时前`
+    if (days < 7) return `${days}天前`
+    return new Date(time).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
   }
 
   return (
@@ -185,6 +241,67 @@ export default function AvatarProfilePage() {
                     </View>
                   ))}
                 </View>
+              </View>
+            )}
+
+            {/* 最新动态 - 热闹景象 */}
+            {posts.length > 0 && (
+              <View className="section-card posts-section">
+                <View className="section-header">
+                  <Text className="section-title">最新动态</Text>
+                  <View className="hot-badge">
+                    <Sparkles size={12} color="#fff" />
+                    <Text className="hot-text">热闹进行中</Text>
+                  </View>
+                </View>
+                {postsLoading ? (
+                  <View className="posts-loading">
+                    <Text className="loading-text">加载中...</Text>
+                  </View>
+                ) : (
+                  <View className="posts-list">
+                    {posts.map((post) => (
+                      <View key={post.id} className="post-card">
+                        <View className="post-content">
+                          <Text className="post-text" numberOfLines={3}>{post.content}</Text>
+                        </View>
+                        {post.images && post.images.length > 0 && (
+                          <View className="post-images">
+                            {post.images.slice(0, 3).map((img, idx) => (
+                              <Image key={idx} src={img} className="post-image" mode="aspectFill" />
+                            ))}
+                          </View>
+                        )}
+                        {/* 互动数据 */}
+                        <View className="post-stats">
+                          <View className="post-stat">
+                            <ThumbsUp size={14} color="#f43f5e" />
+                            <Text className="post-stat-text">{post.likes_count || 0}</Text>
+                          </View>
+                          <View className="post-stat">
+                            <MessageCircle size={14} color="#667eea" />
+                            <Text className="post-stat-text">{post.comments_count || 0}</Text>
+                          </View>
+                          <Text className="post-time">{formatTime(post.created_at)}</Text>
+                        </View>
+                        {/* 评论区热闹景象 */}
+                        {post.recent_comments && post.recent_comments.length > 0 && (
+                          <View className="comments-preview">
+                            {post.recent_comments.slice(0, 2).map((comment) => (
+                              <View key={comment.id} className="comment-item">
+                                <Image src={comment.avatar_url} className="comment-avatar" />
+                                <View className="comment-content">
+                                  <Text className="comment-name">{comment.avatar_name}</Text>
+                                  <Text className="comment-text">{comment.content}</Text>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
 

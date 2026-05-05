@@ -104,6 +104,25 @@ export class SocialController {
     }
   }
 
+  /**
+   * 获取指定分身的帖子列表
+   */
+  @Get('posts/avatar/:avatarId')
+  async getPostsByAvatar(
+    @Param('avatarId') avatarId: string,
+    @Query('limit') limit?: string
+  ) {
+    const posts = await this.socialService.getPostsByAvatar(
+      avatarId,
+      limit ? parseInt(limit) : 10
+    )
+    return {
+      code: 200,
+      data: posts,
+      message: '获取成功'
+    }
+  }
+
   @Delete('post/:id')
   async deletePost(
     @Param('id') postId: string,

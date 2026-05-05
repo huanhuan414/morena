@@ -806,6 +806,73 @@ export class SocialService {
     return { success: true }
   }
 
+  /**
+   * 获取指定分身的帖子列表（包含最近评论）
+   */
+  async getPostsByAvatar(avatarId: string, limit: number = 10) {
+    const client = getSupabaseClient()
+
+    // 获取分身发布的帖子
+    const { data: posts, error } = await client
+      .from('posts')
+      .select('*')
+      .eq('avatar_id', avatarId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      throw new Error(`获取帖子列表失败: ${error.message}`)
+    }
+
+    if (!posts || posts.length === 0) {
+      return []
+    }
+
+    // 获取每个帖子的最近评论
+    const postIds = posts.map(p => p.id)
+    const { data: comments } = await client
+      .from('comments')
+      .select('id, content, post_id, avatar_id, created_at')
+      .in('post_id', postIds)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // 获取评论者的分身信息
+    const commentAvatarIds = comments?.map(c => c.avatar_id).filter(Boolean) || []
+    let commentAvatars: Record<string, any> = {}
+
+    if (commentAvatarIds.length > 0) {
+      const { data: avatars } = await client
+        .from('avatars')
+        .select('id, name, avatar_url')
+        .in('id', [...new Set(commentAvatarIds)])
+      avatars?.forEach(a => {
+        commentAvatars[a.id] = a
+      })
+    }
+
+    // 合并帖子和评论数据
+    const commentsByPostId: Record<string, any[]> = {}
+    comments?.forEach(comment => {
+      if (!commentsByPostId[comment.post_id]) {
+        commentsByPostId[comment.post_id] = []
+      }
+      if (commentsByPostId[comment.post_id].length < 2) { // 每个帖子最多2条评论
+        commentsByPostId[comment.post_id].push({
+          id: comment.id,
+          content: comment.content,
+          avatar_name: comment.avatar_id ? commentAvatars[comment.avatar_id]?.name : '匿名',
+          avatar_url: comment.avatar_id ? commentAvatars[comment.avatar_id]?.avatar_url : ''
+        })
+      }
+    })
+
+    return posts.map(post => ({
+      ...post,
+      recent_comments: commentsByPostId[post.id] || []
+    }))
+  }
+
   async likePost(userId: string, postId: string, avatarId?: string) {
     const client = getSupabaseClient()
     
