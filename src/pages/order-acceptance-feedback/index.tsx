@@ -53,9 +53,10 @@ export default function OrderAcceptanceFeedback() {
     }
   }
 
+  // 接单者催促验收
   const handleUrgeAcceptance = () => {
     Taro.showToast({
-      title: '已发送催促通知',
+      title: `已催促发单者验收「${avatarName}」`,
       icon: 'success'
     })
   }
@@ -69,7 +70,7 @@ export default function OrderAcceptanceFeedback() {
       })
       if (response.data?.code === 200) {
         Taro.showToast({
-          title: '验收成功',
+          title: `已验收「${avatarName}」`,
           icon: 'success'
         })
         setTimeout(() => navigateBack(), 1500)
