@@ -1516,7 +1516,7 @@ export class AvatarService {
       throw new Error('Avatar not found or no permission')
     }
 
-    // 获取所有好友关系（双向查询）
+    // 获取所有好友关系（双向查询，包括 pending 和 accepted）
     // 1. 分身发起的好友关系：avatar_id = avatarId，对方是 friend_avatar_id
     // 2. 别人发起的好友关系：friend_avatar_id = avatarId，对方是 avatar_id
     const { data: friendships, error } = await client
@@ -1531,19 +1531,30 @@ export class AvatarService {
         created_at
       `)
       .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
-      .eq('status', 'accepted')
       .order('created_at', { ascending: false })
 
     if (error) {
       throw new Error("Failed to get friend list: " + error.message)
     }
 
-    // 获取所有好友分身ID（去重）
+    // 分离已接受的好友和待确认的好友请求
+    const acceptedFriendships = (friendships || []).filter(f => f.status === 'accepted')
+    const pendingRequests = (friendships || []).filter(f => f.status === 'pending')
+
+    // 获取已接受好友的ID列表
     const friendAvatarIds = [...new Set(
-      (friendships || []).map(f => f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id)
+      acceptedFriendships.map(f => f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id)
     )]
 
-    if (friendAvatarIds.length === 0) {
+    // 获取待确认请求中对方分身的ID（当前分身是被请求方，即 friend_avatar_id = avatarId 且 status = pending）
+    const pendingFromOthers = pendingRequests.filter(f => f.friend_avatar_id === avatarId)
+    const pendingFriendIds = pendingFromOthers.map(f => f.avatar_id)
+
+    // 合并所有需要查询的分身ID
+    const allFriendAvatarIds = [...new Set([...friendAvatarIds, ...pendingFriendIds])]
+
+    if (allFriendAvatarIds.length === 0) {
+      // 如果没有任何好友或请求，返回空数组（兼容旧逻辑）
       return []
     }
 
@@ -1551,7 +1562,7 @@ export class AvatarService {
     const { data: friendAvatars } = await client
       .from('avatars')
       .select('id, name, avatar_url, level, personality')
-      .in('id', friendAvatarIds)
+      .in('id', allFriendAvatarIds)
 
     const friendAvatarMap = new Map(
       (friendAvatars || []).map(a => [a.id, a])
@@ -1559,10 +1570,18 @@ export class AvatarService {
 
     // 创建好友ID到好友关系的映射（保留最新的记录）
     const friendRelationshipMap = new Map<string, any>()
-    for (const f of (friendships || [])) {
+    for (const f of acceptedFriendships) {
       const friendAvatarId = f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id
       if (!friendRelationshipMap.has(friendAvatarId)) {
-        friendRelationshipMap.set(friendAvatarId, f)
+        friendRelationshipMap.set(friendAvatarId, { ...f, isPending: false })
+      }
+    }
+
+    // 添加待确认的好友请求
+    for (const f of pendingFromOthers) {
+      const friendAvatarId = f.avatar_id
+      if (!friendRelationshipMap.has(friendAvatarId)) {
+        friendRelationshipMap.set(friendAvatarId, { ...f, isPending: true })
       }
     }
 
@@ -1570,7 +1589,7 @@ export class AvatarService {
     return Array.from(friendRelationshipMap.values())
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .map(f => {
-        const friendAvatarId = f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id
+        const friendAvatarId = f.isPending ? f.avatar_id : (f.avatar_id === avatarId ? f.friend_avatar_id : f.avatar_id)
         const friendAvatar = friendAvatarMap.get(friendAvatarId)
 
         return {
@@ -1585,6 +1604,7 @@ export class AvatarService {
           match_reason: f.match_reason,
           compatibility_score: f.compatibility_score,
           status: f.status,
+          isPending: f.isPending || false,  // 是否是待确认的好友请求
           created_at: f.created_at
         }
       })
@@ -1603,6 +1623,96 @@ export class AvatarService {
       throw new Error("Failed to delete avatar: " + error.message)
     }
     
+    return { success: true }
+  }
+
+  /**
+   * 接受好友请求
+   * 将 pending 状态的好友关系更新为 accepted
+   */
+  async acceptFriendRequest(avatarId: string, friendAvatarId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 验证分身属于该用户
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .single()
+
+    if (!avatar) {
+      throw new Error('Avatar not found or no permission')
+    }
+    
+    // 查找待确认的好友请求（friend_avatar_id = 当前分身ID，avatar_id = 请求方ID，status = pending）
+    const { data: friendship, error: findError } = await client
+      .from('avatar_friends')
+      .select('id')
+      .eq('avatar_id', friendAvatarId)  // 请求方
+      .eq('friend_avatar_id', avatarId) // 当前分身是被请求方
+      .eq('status', 'pending')
+      .single()
+
+    if (findError || !friendship) {
+      throw new Error('Friend request not found')
+    }
+
+    // 更新为已接受
+    const { error: updateError } = await client
+      .from('avatar_friends')
+      .update({ status: 'accepted' })
+      .eq('id', friendship.id)
+
+    if (updateError) {
+      throw new Error('Failed to accept friend request: ' + updateError.message)
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * 拒绝好友请求
+   * 删除 pending 状态的好友关系
+   */
+  async rejectFriendRequest(avatarId: string, friendAvatarId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 验证分身属于该用户
+    const { data: avatar } = await client
+      .from('avatars')
+      .select('id')
+      .eq('id', avatarId)
+      .eq('user_id', userId)
+      .single()
+
+    if (!avatar) {
+      throw new Error('Avatar not found or no permission')
+    }
+    
+    // 查找待确认的好友请求
+    const { data: friendship, error: findError } = await client
+      .from('avatar_friends')
+      .select('id')
+      .eq('avatar_id', friendAvatarId)
+      .eq('friend_avatar_id', avatarId)
+      .eq('status', 'pending')
+      .single()
+
+    if (findError || !friendship) {
+      throw new Error('Friend request not found')
+    }
+
+    // 删除好友关系
+    const { error: deleteError } = await client
+      .from('avatar_friends')
+      .delete()
+      .eq('id', friendship.id)
+
+    if (deleteError) {
+      throw new Error('Failed to reject friend request: ' + deleteError.message)
+    }
+
     return { success: true }
   }
 

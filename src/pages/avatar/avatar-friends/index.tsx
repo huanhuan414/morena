@@ -4,7 +4,7 @@ import { useState } from 'react'
 import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, UserPlus, Heart, Phone,
-  MessageCircle, Star, Zap, Users
+  MessageCircle, Star, Zap, Users, Check, X, Bell, Clock
 } from 'lucide-react-taro'
 import { getAvatarStyleClass } from '@/utils/avatar-style'
 import './index.css'
@@ -27,6 +27,7 @@ interface AvatarFriend {
   benefits?: string
   status?: string
   created_at: string
+  isPending?: boolean  // 是否是待确认的好友请求
   friend?: FriendInfo
 }
 
@@ -74,6 +75,10 @@ export default function AvatarFriendsPage() {
     }
   })
 
+  // 分离已接受的好友和待确认的好友请求
+  const acceptedFriends = friends.filter(f => !f.isPending)
+  const pendingRequests = friends.filter(f => f.isPending)
+
   const fetchFriends = async () => {
     try {
       setLoading(true)
@@ -87,6 +92,56 @@ export default function AvatarFriendsPage() {
       showToast({ title: '获取失败', icon: 'none' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 接受好友请求
+  const acceptFriendRequest = async (friend: AvatarFriend) => {
+    const friendAvatarId = friend.friend?.id
+    if (!friendAvatarId) {
+      showToast({ title: '好友信息不完整', icon: 'none' })
+      return
+    }
+    
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}/friends/${friendAvatarId}/accept`,
+        method: 'POST'
+      })
+      if (res.data?.code === 200) {
+        showToast({ title: '已接受好友请求', icon: 'success' })
+        fetchFriends() // 刷新列表
+      } else {
+        showToast({ title: res.data?.msg || '操作失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('接受好友请求失败:', error)
+      showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  // 拒绝好友请求
+  const rejectFriendRequest = async (friend: AvatarFriend) => {
+    const friendAvatarId = friend.friend?.id
+    if (!friendAvatarId) {
+      showToast({ title: '好友信息不完整', icon: 'none' })
+      return
+    }
+    
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}/friends/${friendAvatarId}/reject`,
+        method: 'POST'
+      })
+      if (res.data?.code === 200) {
+        showToast({ title: '已拒绝好友请求', icon: 'success' })
+        fetchFriends() // 刷新列表
+      } else {
+        showToast({ title: res.data?.msg || '操作失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('拒绝好友请求失败:', error)
+      showToast({ title: '操作失败', icon: 'none' })
     }
   }
 
@@ -157,42 +212,121 @@ export default function AvatarFriendsPage() {
     return '初识朋友'
   }
 
-  return (
-    <View className="af-page">
-      {/* 顶部导航 */}
-      <View className="af-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="af-header-back" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#00f5ff" />
-          <Text className="af-back-text">返回</Text>
+  // 渲染好友列表内容
+  const renderFriendsList = () => {
+    if (loading) {
+      return (
+        <View className="af-loading">
+          <Text className="af-loading-text">加载中...</Text>
         </View>
-        <Text className="af-header-title">好友列表</Text>
-        <View className="af-header-right" style={{ width: `${capsuleWidth}rpx` }}>
-          <Heart size={20} color="#ff6b9d" />
+      )
+    }
+    
+    if (friends.length === 0) {
+      return (
+        <View className="af-empty">
+          <View className="af-empty-icon">
+            <UserPlus size={64} color="rgba(0, 245, 255, 0.3)" />
+          </View>
+          <Text className="af-empty-title">暂无好友</Text>
+          <Text className="af-empty-desc">
+            开启自动托管后，分身会自动寻找性格互补的好友
+          </Text>
         </View>
-      </View>
-
-      <ScrollView className="af-scroll" scrollY>
-        {loading ? (
-          <View className="af-loading">
-            <Text className="af-loading-text">加载中...</Text>
-          </View>
-        ) : friends.length === 0 ? (
-          <View className="af-empty">
-            <View className="af-empty-icon">
-              <UserPlus size={64} color="rgba(0, 245, 255, 0.3)" />
-            </View>
-            <Text className="af-empty-title">暂无好友</Text>
-            <Text className="af-empty-desc">
-              开启自动托管后，分身会自动寻找性格互补的好友
-            </Text>
-          </View>
-        ) : (
-          <View className="af-list">
-            <View className="af-count-section">
-              <Text className="af-count-text">共 {friends.length} 位好友</Text>
+      )
+    }
+    
+    return (
+      <View className="af-list">
+        {/* 待确认的好友请求 */}
+        {pendingRequests.length > 0 && (
+          <View className="af-pending-section">
+            <View className="af-section-header">
+              <Bell size={18} color="#ffd700" />
+              <Text className="af-section-title">待确认请求 ({pendingRequests.length})</Text>
             </View>
             
-            {friends.map((friend, idx) => (
+            {pendingRequests.map((friend, idx) => (
+              <View key={friend.id || `pending-${idx}`} className="af-friend-card af-pending-card">
+                {/* 好友头部信息 */}
+                <View className="af-friend-header">
+                  <View className="af-friend-avatar">
+                    {friend.friend?.avatar_url ? (
+                      <Image
+                        src={friend.friend.avatar_url}
+                        className={`af-friend-img ${getAvatarStyleClass(friend.friend.appearance_style)}`}
+                        mode="aspectFill"
+                      />
+                    ) : (
+                      <View className="af-friend-placeholder">
+                        <Sparkles size={28} color="#ffd700" />
+                      </View>
+                    )}
+                  </View>
+                  
+                  <View className="af-friend-info">
+                    <View className="af-friend-name-row">
+                      <Text className="af-friend-name">
+                        {friend.friend?.name || '未知分身'}
+                      </Text>
+                      <View className="af-pending-badge">
+                        <Clock size={12} color="#ffd700" />
+                        <Text className="af-pending-text">待确认</Text>
+                      </View>
+                    </View>
+                    <View className="af-friend-meta">
+                      <Text className="af-friend-level">
+                        Lv.{friend.friend?.level || 1}
+                      </Text>
+                      <Text className="af-friend-divider">·</Text>
+                      <Text className="af-friend-date">
+                        {formatDate(friend.created_at)}收到请求
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 交友原因 */}
+                {friend.match_reason && (
+                  <View className="af-reason-section">
+                    <View className="af-reason-header">
+                      <Users size={16} color="#00f5ff" />
+                      <Text className="af-reason-title">交友原因</Text>
+                    </View>
+                    <Text className="af-reason-text">{friend.match_reason}</Text>
+                  </View>
+                )}
+
+                {/* 操作按钮 - 待确认状态 */}
+                <View className="af-action-buttons">
+                  <View 
+                    className="af-action-btn af-accept-btn"
+                    onClick={() => acceptFriendRequest(friend)}
+                  >
+                    <Check size={18} color="#00ff88" />
+                    <Text className="af-action-btn-text">接受</Text>
+                  </View>
+                  <View 
+                    className="af-action-btn af-reject-btn"
+                    onClick={() => rejectFriendRequest(friend)}
+                  >
+                    <X size={18} color="#ff6b6b" />
+                    <Text className="af-action-btn-text">拒绝</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 已接受的好友列表 */}
+        {acceptedFriends.length > 0 && (
+          <View className="af-accepted-section">
+            <View className="af-count-section">
+              <Text className="af-count-text">已接受好友 ({acceptedFriends.length})</Text>
+            </View>
+            
+            {acceptedFriends.map((friend, idx) => (
               <View key={friend.id || idx} className="af-friend-card">
                 {/* 好友头部信息 */}
                 <View className="af-friend-header">
@@ -291,6 +425,57 @@ export default function AvatarFriendsPage() {
             ))}
           </View>
         )}
+      </View>
+    )
+  }
+
+  // 渲染聊天内容
+  const renderChatContent = () => {
+    if (chatLoading) {
+      return (
+        <View className="af-chat-loading">
+          <Text className="af-chat-loading-text">加载中...</Text>
+        </View>
+      )
+    }
+    
+    if (chatData?.messages && chatData.messages.length > 0) {
+      return (
+        <ScrollView className="af-chat-messages" scrollY>
+          {chatData.messages.map((msg, idx) => (
+            <View key={idx} className={`af-chat-msg ${msg.role}`}>
+              <Text className="af-chat-msg-content">{msg.content}</Text>
+              <Text className="af-chat-msg-time">{formatTime(msg.created_at)}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )
+    }
+    
+    return (
+      <View className="af-chat-empty">
+        <Text className="af-chat-empty-text">暂无聊天记录</Text>
+        <Text className="af-chat-empty-hint">开启语音通话开始对话吧~</Text>
+      </View>
+    )
+  }
+
+  return (
+    <View className="af-page">
+      {/* 顶部导航 */}
+      <View className="af-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="af-header-back" onClick={() => navigateBack()}>
+          <ArrowLeft size={24} color="#00f5ff" />
+          <Text className="af-back-text">返回</Text>
+        </View>
+        <Text className="af-header-title">好友列表</Text>
+        <View className="af-header-right" style={{ width: `${capsuleWidth}rpx` }}>
+          <Heart size={20} color="#ff6b9d" />
+        </View>
+      </View>
+
+      <ScrollView className="af-scroll" scrollY>
+        {renderFriendsList()}
 
         {/* 聊天记录弹窗 */}
         {selectedFriend && (
@@ -300,26 +485,7 @@ export default function AvatarFriendsPage() {
                 <Text className="af-chat-title">与 {selectedFriend.friend?.name} 的对话</Text>
                 <Text className="af-chat-close" onClick={() => { setSelectedFriend(null); setChatData(null) }}>关闭</Text>
               </View>
-              
-              {chatLoading ? (
-                <View className="af-chat-loading">
-                  <Text className="af-chat-loading-text">加载中...</Text>
-                </View>
-              ) : chatData?.messages && chatData.messages.length > 0 ? (
-                <ScrollView className="af-chat-messages" scrollY>
-                  {chatData.messages.map((msg, idx) => (
-                    <View key={idx} className={`af-chat-msg ${msg.role}`}>
-                      <Text className="af-chat-msg-content">{msg.content}</Text>
-                      <Text className="af-chat-msg-time">{formatTime(msg.created_at)}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : (
-                <View className="af-chat-empty">
-                  <Text className="af-chat-empty-text">暂无聊天记录</Text>
-                  <Text className="af-chat-empty-hint">开启语音通话开始对话吧~</Text>
-                </View>
-              )}
+              {renderChatContent()}
             </View>
           </View>
         )}

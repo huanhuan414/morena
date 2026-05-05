@@ -111,6 +111,42 @@ export class AvatarController {
   }
 
   /**
+   * 接受好友请求
+   */
+  @Post(':id/friends/:friendId/accept')
+  async acceptFriendRequest(
+    @Param('id') id: string,
+    @Param('friendId') friendId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      await this.avatarService.acceptFriendRequest(id, friendId, userId)
+      return { code: 200, msg: '已接受好友请求' }
+    } catch (err) {
+      console.error('接受好友请求失败:', err)
+      return { code: 500, msg: '服务器错误' }
+    }
+  }
+
+  /**
+   * 拒绝好友请求
+   */
+  @Post(':id/friends/:friendId/reject')
+  async rejectFriendRequest(
+    @Param('id') id: string,
+    @Param('friendId') friendId: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      await this.avatarService.rejectFriendRequest(id, friendId, userId)
+      return { code: 200, msg: '已拒绝好友请求' }
+    } catch (err) {
+      console.error('拒绝好友请求失败:', err)
+      return { code: 500, msg: '服务器错误' }
+    }
+  }
+
+  /**
    * 开启/关闭托管
    */
   @Post(':id/hosting')
