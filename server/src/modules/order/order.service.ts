@@ -37,8 +37,11 @@ export class OrderService {
       }
     }
 
-    // 根据预算金额设置订单状态
-    const status = orderData.budget && orderData.budget > 0 ? 'pending_payment' : 'open'
+    // 根据 is_paid 字段设置订单状态
+    // is_paid 为 false 时，订单状态为 pending_payment（待支付）
+    // is_paid 为 true 时，订单状态为 open（待接单）
+    const isPaid = orderData.is_paid !== undefined ? orderData.is_paid : (orderData.budget && orderData.budget > 0 ? false : true)
+    const status = isPaid ? 'open' : 'pending_payment'
 
     const { data, error } = await client
       .from('orders')
@@ -51,6 +54,7 @@ export class OrderService {
         target_audience: orderData.target_audience || null,
         requirements: orderData.requirements || {},
         budget: orderData.budget || 0,
+        is_paid: isPaid,
         expected_quantity: orderData.expected_quantity || 1,
         deadline: orderData.deadline || null,
         status,

@@ -10,6 +10,7 @@ export interface ProcessingStatus {
   orderId?: string
   issuerId?: string  // 发单者ID
   status: 'queuing' | 'generating' | 'preview' | 'publishing' | 'completed' | 'failed'
+  isPaid?: boolean  // 订单是否已支付
   queuePosition?: number
   estimatedTime?: number
   generatedContent?: {
@@ -316,10 +317,11 @@ export class OrderProcessingService {
     // 查询订单信息
     let orderData: any = null
     let budget: number = 0
+    let isPaid: boolean = true  // 默认为已支付
     if (request.order_id) {
       const { data: order, error: orderError } = await client
         .from('orders')
-        .select('id, title, platforms, content_type, deadline, budget')
+        .select('id, title, platforms, content_type, deadline, budget, is_paid')
         .eq('id', request.order_id)
         .maybeSingle()
 
@@ -328,6 +330,7 @@ export class OrderProcessingService {
       } else if (order) {
         orderData = order
         budget = parseFloat(order.budget) || 0
+        isPaid = order.is_paid !== false  // 如果 is_paid 字段为 false 或 undefined，则为未支付
         console.log('[OrderProcessing] 订单信息查询成功:', order)
       } else {
         console.warn('[OrderProcessing] 未找到订单信息，order_id:', request.order_id)
@@ -375,6 +378,7 @@ export class OrderProcessingService {
       orderId: request.order_id,
       issuerId: request.user_id,  // 添加发单者ID
       status: request.status as any,
+      isPaid,  // 添加订单是否已支付
       generatedContent: request.generated_content ? {
         title: orderData?.title || '未知订单',
         content: request.generated_content,
@@ -1191,6 +1195,18 @@ export class OrderProcessingService {
     if (request.status !== 'awaiting_acceptance') {
       console.warn('[OrderProcessing] 当前状态不允许验收:', request.status)
       throw new Error(`当前状态不允许验收，当前状态: ${request.status}`)
+    }
+
+    // 查询订单是否已支付
+    const { data: orderData } = await client
+      .from('orders')
+      .select('id, is_paid, budget')
+      .eq('id', request.order_id)
+      .single()
+
+    if (orderData && !orderData.is_paid) {
+      console.warn('[OrderProcessing] 订单未支付，无法验收')
+      throw new Error('订单尚未支付，请先完成支付后再验收')
     }
 
     // 更新分身请求状态为 completed

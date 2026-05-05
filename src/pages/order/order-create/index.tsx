@@ -16,6 +16,7 @@ import './index.css'
 interface OrderForm {
   title: string
   description: string
+  budget: number  // 订单预算
   avatarCount: number
   quantityPerAvatar: number // 每个分身做的份数
   requirements: {
@@ -63,6 +64,7 @@ export default function OrderCreatePage() {
   const [form, setForm] = useState<OrderForm>({
     title: '',
     description: '',
+    budget: 0,
     avatarCount: 1,
     quantityPerAvatar: 1,
     requirements: {
@@ -137,6 +139,7 @@ export default function OrderCreatePage() {
         setForm({
           title: orderData.title || '',
           description: orderData.description || '',
+          budget: parseFloat(orderData.budget) || 0,
           avatarCount: orderData.avatar_count || orderData.avatarCount || 1,
           quantityPerAvatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
           requirements: {
@@ -541,6 +544,7 @@ ${contentTypePrompt}
           title: form.title,
           description: form.description,
           budget: totalPrice.total,
+          is_paid: true, // 立即支付
           content_type: form.requirements.contentType,
           platforms: form.requirements.platforms,
           target_audience: form.requirements.targetAudience,
@@ -749,14 +753,15 @@ ${contentTypePrompt}
         console.warn('获取地理位置失败:', error)
       }
 
-      // 创建订单，budget设为0，后端会自动设置status为'open'
+      // 创建订单，暂不支付但保留预算，后端会设置 status 为 'open' 并标记 is_paid 为 false
       const res = await Network.request({
         url: '/api/order',
         method: 'POST',
         data: {
           title: form.title,
           description: form.description,
-          budget: 0, // 暂不支付，预算为0
+          budget: form.budget, // 保留用户设置的预算
+          is_paid: false, // 暂不支付
           content_type: form.requirements.contentType,
           platforms: form.requirements.platforms,
           target_audience: form.requirements.targetAudience,
