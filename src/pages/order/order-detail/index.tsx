@@ -63,7 +63,7 @@ interface Order {
   summary_stats?: {
     totalAvatars: number
     acceptedAvatars: number
-    submittedAvatars: number
+    completedAvatars: number
     totalPosts: number
     totalPlatforms: number
     totalPublished: number
@@ -716,8 +716,8 @@ export default function OrderDetailPage() {
                       <Text className="stat-label block">已接受</Text>
                     </View>
                     <View className="stat-item">
-                      <Text className="stat-value block">{order.summary_stats?.submittedAvatars || 0}</Text>
-                      <Text className="stat-label block">已提交</Text>
+                      <Text className="stat-value block">{order.summary_stats?.completedAvatars || 0}</Text>
+                      <Text className="stat-label block">已完成</Text>
                     </View>
                   </View>
                 </View>

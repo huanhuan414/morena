@@ -200,8 +200,8 @@ export class OrderService {
       orderData.dispatch_request_status = firstRequest.status
 
       // 计算统计数据
-      const acceptedRequests = requestsData.filter((r: any) => r.status === 'accepted')
-      const submittedRequests = requestsData.filter((r: any) => r.status === 'feedback_submitted' || r.status === 'awaiting_acceptance')
+      const acceptedRequests = requestsData.filter((r: any) => r.status === 'accepted' || r.status === 'generating' || r.status === 'preview' || r.status === 'published' || r.status === 'awaiting_acceptance' || r.status === 'feedback_submitted')
+      const completedRequests = requestsData.filter((r: any) => r.status === 'completed')
 
       // 统计每个分身的作品数据
       const avatarStats = requestsData.map((request: any) => {
@@ -275,7 +275,7 @@ export class OrderService {
       const summaryStats = {
         totalAvatars: requestsData.length,
         acceptedAvatars: acceptedRequests.length,
-        submittedAvatars: submittedRequests.length,
+        completedAvatars: completedRequests.length,
         totalPosts: requestsData.reduce((sum: number, r: any) => sum + (r.posts?.length || 0), 0),
         totalPlatforms: requestsData.reduce((sum: number, r: any) => sum + (r.publish_status?.platforms?.length || 0), 0),
         totalPublished: requestsData.reduce((sum: number, r: any) => sum + (r.publish_status?.platforms?.filter((p: any) => p.status === 'success').length || 0), 0),
