@@ -833,12 +833,13 @@ export class AvatarService {
   /**
    * 获取用户所有分身列表
    */
-  async getAllAvatars() {
+  async getAllAvatars(userId: string) {
     try {
       const client = getSupabaseClient()
       const { data, error } = await client
         .from('avatars')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
       if (error) {

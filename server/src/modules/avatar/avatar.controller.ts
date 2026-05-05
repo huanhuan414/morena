@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common'
+import { Controller, Get, Param, Headers } from '@nestjs/common'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
@@ -6,12 +6,12 @@ export class AvatarController {
   constructor(private readonly avatarService: AvatarService) {}
 
   @Get()
-  async getAllAvatars() {
+  async getMyAvatars(@Headers('x-user-id') userId: string) {
     try {
-      const avatars = await this.avatarService.getAllAvatars()
+      const avatars = await this.avatarService.getAvatarsByUserId(userId)
       return { code: 200, msg: 'success', data: avatars }
     } catch (err) {
-      console.error('获取所有分身失败:', err)
+      console.error('获取分身列表失败:', err)
       return { code: 500, msg: '服务器错误', data: [] }
     }
   }
