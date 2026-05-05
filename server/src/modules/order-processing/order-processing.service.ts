@@ -267,7 +267,7 @@ export class OrderProcessingService {
     // 分别查询订单请求、订单和分身信息（因为可能没有外键关系）
     const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, order_id, avatar_id, issuer_id, status, generated_content, publish_status, confirmed_content')
+      .select('id, order_id, avatar_id, user_id, status, generated_content, publish_status, confirmed_content')
       .eq('id', requestId)
       .single()
 
@@ -360,7 +360,7 @@ export class OrderProcessingService {
     const status: ProcessingStatus = {
       requestId,
       orderId: request.order_id,
-      issuerId: request.issuer_id,  // 添加发单者ID
+      issuerId: request.user_id,  // 添加发单者ID
       status: request.status as any,
       generatedContent: request.generated_content ? {
         title: orderData?.title || '未知订单',
