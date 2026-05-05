@@ -475,6 +475,10 @@ export default function MindChatPage() {
   // 手掌图片检测弹窗
   const [palmDetectImage, setPalmDetectImage] = useState<string>('')
 
+  // 🔴 新技能提示（右上角 tag）
+  const [showNewSkillTip, setShowNewSkillTip] = useState(true) // 默认显示提示
+  const NEW_SKILL_TIP = 'NEW' // 新技能提示文字
+
   // 检测消息是否涉及第三方平台
   const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null => {
     const lowerMessage = message.toLowerCase()
@@ -4495,8 +4499,17 @@ export default function MindChatPage() {
                 <Camera size={24} color="#666666" />
               )}
             </View>
-            <View className="left-icon-btn skill-btn" onClick={navigateToSkillsSquare}>
+            <View className="left-icon-btn skill-btn" onClick={() => {
+                navigateToSkillsSquare()
+                setShowNewSkillTip(false)
+              }}
+            >
               <Wrench size={24} color="#666666" />
+              {showNewSkillTip && (
+                <View className="skill-new-tag">
+                  <Text className="skill-new-tag-text">{NEW_SKILL_TIP}</Text>
+                </View>
+              )}
             </View>
           </View>
 

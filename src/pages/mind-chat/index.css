@@ -2084,6 +2084,46 @@
   transform: scale(0.95);
 }
 
+/* 🔴 新技能提示 Tag */
+.skill-btn {
+  position: relative;
+}
+
+.skill-new-tag {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  background: linear-gradient(135deg, #FF4757 0%, #FF6B81 100%);
+  border-radius: 20rpx;
+  padding: 4rpx 10rpx;
+  min-width: 56rpx;
+  height: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(255, 71, 87, 0.4);
+  animation: skillTagPulse 2s ease-in-out infinite;
+  z-index: 10;
+}
+
+.skill-new-tag-text {
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+}
+
+@keyframes skillTagPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4rpx 12rpx rgba(255, 71, 87, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 6rpx 16rpx rgba(255, 71, 87, 0.6);
+  }
+}
+
 /* 文本输入框 - 在卡片内部 */
 .input-textarea {
   flex: 1;
