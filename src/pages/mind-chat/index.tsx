@@ -3742,24 +3742,6 @@ export default function MindChatPage() {
           </View>
         </View>
         <View className="header-right" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16rpx' }}>
-          {/* 新技能提示 - 放在导航栏右侧 */}
-          <View
-            className="clickable"
-            onClick={() => navigateToSkillsSquare()}
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: '8rpx',
-              background: 'rgba(123, 63, 228, 0.1)',
-              border: '1.5rpx solid rgba(123, 63, 228, 0.3)',
-              borderRadius: '20rpx',
-              padding: '6rpx 14rpx',
-            }}
-          >
-            <Sparkles size={14} color="#7B3FE4" />
-            <Text style={{ fontSize: '18rpx', fontWeight: 500, color: '#7B3FE4' }}>新技能</Text>
-          </View>
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
@@ -4509,8 +4491,30 @@ export default function MindChatPage() {
               onClick={() => {
                 navigateToSkillsSquare()
               }}
+              style={{ position: 'relative' }}
             >
               <Wrench size={24} color="#666666" />
+              {/* 技能数量 tag */}
+              <View style={{
+                position: 'absolute',
+                top: '-8rpx',
+                right: '-12rpx',
+                background: '#7B3FE4',
+                color: '#FFFFFF',
+                borderRadius: '12rpx',
+                padding: '0 6rpx',
+                minWidth: '28rpx',
+                height: '28rpx',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16rpx',
+                fontWeight: 600,
+                zIndex: 1,
+              }}
+              >
+              <Text style={{ color: '#FFFFFF', fontSize: '18rpx', fontWeight: 700 }}>8</Text>
+            </View>
             </View>
           </View>
 
