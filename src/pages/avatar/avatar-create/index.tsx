@@ -143,11 +143,6 @@ export default function AvatarCreatePage() {
         })))
 
         setSkillsFromSquare(filteredSkills)
-        showToast({
-          title: `加载${filteredSkills.length}个技能`,
-          icon: 'none',
-          duration: 1500
-        })
       } else {
         console.error('[技能广场] API返回异常:', res)
         showToast({ title: '加载技能失败', icon: 'none' })

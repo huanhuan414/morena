@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Headers } from '@nestjs/common'
+import { Controller, Get, Post, Param, Headers, Body } from '@nestjs/common'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
@@ -13,6 +13,34 @@ export class AvatarController {
     } catch (err) {
       console.error('获取分身列表失败:', err)
       return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  @Post()
+  async createAvatar(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { name: string; avatar_url: string; description?: string; platform?: string; accounts?: any[] }
+  ) {
+    try {
+      console.log('创建分身请求:', { userId, name: body.name, platform: body.platform })
+      const avatar = await this.avatarService.createAvatar(userId, {
+        name: body.name,
+        avatar_url: body.avatar_url,
+        description: body.description || '',
+        platform: body.platform || '通用'
+      })
+      
+      // 如果有账号数据，创建账号关联
+      if (body.accounts && body.accounts.length > 0 && avatar && avatar.id) {
+        for (const account of body.accounts) {
+          await this.avatarService.createAccount(avatar.id, account)
+        }
+      }
+      
+      return { code: 200, msg: 'success', data: avatar }
+    } catch (err) {
+      console.error('创建分身失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
     }
   }
 
