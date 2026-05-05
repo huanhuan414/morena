@@ -560,6 +560,10 @@
   font-size: 32rpx;
   font-weight: 600;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
 }
 
 .action-btn-primary {
@@ -717,32 +721,8 @@
 .action-section {
   padding: 32rpx;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 20rpx;
-}
-
-/* 待验收列表 */
-.pending-list {
-  max-height: 600rpx;
-  overflow-y: auto;
-}
-
-.pending-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx;
-  background: #FAFAFC;
-  border-radius: 16rpx;
-  margin-bottom: 16rpx;
-  gap: 16rpx;
-}
-
-/* 评分星星 */
-.rating-stars {
-  display: flex;
-  justify-content: center;
-  gap: 16rpx;
-  margin: 32rpx 0;
 }
 
 .star-item {
