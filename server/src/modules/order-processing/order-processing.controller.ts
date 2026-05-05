@@ -159,7 +159,7 @@ export class OrderProcessingController {
   @Post('feedback/:requestId')
   async submitFeedback(
     @Param('requestId') requestId: string,
-    @Body('feedback') feedback: Record<string, { image?: string; link?: string }>
+    @Body('feedback') feedback: Record<string, { images?: string[]; image?: string; link?: string }>
   ) {
     try {
       const result = await this.processingService.submitPublishFeedback(requestId, feedback)

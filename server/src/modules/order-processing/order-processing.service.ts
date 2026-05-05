@@ -409,12 +409,19 @@ export class OrderProcessingService {
     return status
   }
 
-  // 提取反馈中的截图URL
+  // 提取反馈中的截图URL（支持多图）
   private extractScreenshotUrls(publishFeedback: Record<string, any>): string[] {
     const urls: string[] = []
     for (const feedback of Object.values(publishFeedback)) {
-      if (feedback && typeof feedback === 'object' && feedback.image) {
-        urls.push(feedback.image)
+      if (feedback && typeof feedback === 'object') {
+        // 支持多图数组
+        if (feedback.images && Array.isArray(feedback.images)) {
+          urls.push(...feedback.images.filter((url: string) => url))
+        }
+        // 兼容旧的单图
+        if (feedback.image) {
+          urls.push(feedback.image)
+        }
       }
     }
     return urls
@@ -1019,7 +1026,10 @@ export class OrderProcessingService {
 
     // 更新 published_works 表中的反馈截图
     for (const [platform, feedbackData] of Object.entries(enhancedFeedback)) {
-      if (feedbackData.image) {
+      // 支持多图（优先）和单图（向后兼容）
+      const screenshotUrls = feedbackData.images || (feedbackData.image ? [feedbackData.image] : [])
+      
+      if (screenshotUrls.length > 0) {
         // 查找已保存的作品记录
         const { data: workData, error: workError } = await client
           .from('published_works')
@@ -1029,15 +1039,16 @@ export class OrderProcessingService {
           .single()
 
         if (!workError && workData) {
-          // 更新反馈截图
+          // 更新反馈截图（多图）
           await client
             .from('published_works')
             .update({
-              feedback_image: feedbackData.image,
+              feedback_image: screenshotUrls[0], // 第一张图作为主图
+              feedback_images: screenshotUrls,   // 所有图片
               updated_at: new Date().toISOString()
             })
             .eq('id', workData.id)
-          console.log(`[OrderProcessing] 已更新平台 ${platform} 的反馈截图`)
+          console.log(`[OrderProcessing] 已更新平台 ${platform} 的反馈截图，共 ${screenshotUrls.length} 张`)
         }
       }
     }

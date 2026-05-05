@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck } from 'lucide-react-taro'
+import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck, Plus, X } from 'lucide-react-taro'
 import './index.css'
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -121,50 +121,59 @@ export default function OrderPublishFeedback() {
     })
   }
 
-  const handleChooseImage = (platform: string) => {
-    Taro.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0]
-        console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
-
-        try {
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload/image',
-            filePath: tempFilePath,
-            name: 'file'
-          })
-
-          console.log('[OrderPublishFeedback] 上传响应:', uploadRes.data)
-
-          const uploadData = JSON.parse(uploadRes.data)
-          if (uploadData.code === 200) {
-            const imageUrl = uploadData.data.url
-            setFeedback(prev => ({
-              ...prev,
-              [platform]: { ...prev[platform], image: imageUrl }
-            }))
-            Taro.showToast({
-              title: '上传成功',
-              icon: 'success'
-            })
-          } else {
-            Taro.showToast({
-              title: uploadData.message || '上传失败',
-              icon: 'none'
-            })
-          }
-        } catch (error) {
-          console.error('[OrderPublishFeedback] 上传图片失败:', error)
-          Taro.showToast({
-            title: '上传失败，请重试',
-            icon: 'none'
-          })
+  const handleChooseImage = async (platform: string) => {
+    try {
+      const res = await Taro.chooseImage({
+        count: 9,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera']
+      })
+      
+      console.log('[OrderPublishFeedback] 选择图片:', res.tempFilePaths)
+      
+      Taro.showLoading({ title: '上传中...', mask: true })
+      
+      const uploadPromises = res.tempFilePaths.map(filePath => 
+        Network.uploadFile({
+          url: '/api/upload/image',
+          filePath,
+          name: 'file'
+        })
+      )
+      
+      const results = await Promise.all(uploadPromises)
+      const uploadedUrls: string[] = []
+      
+      results.forEach(result => {
+        const uploadData = JSON.parse(result.data)
+        if (uploadData.code === 200) {
+          uploadedUrls.push(uploadData.data.url)
         }
+      })
+      
+      Taro.hideLoading()
+      
+      if (uploadedUrls.length > 0) {
+        setFeedback(prev => ({
+          ...prev,
+          [platform]: { 
+            ...prev[platform], 
+            images: [...(prev[platform]?.images || []), ...uploadedUrls]
+          }
+        }))
+        Taro.showToast({
+          title: `上传成功${uploadedUrls.length}张`,
+          icon: 'success'
+        })
       }
-    })
+    } catch (error) {
+      Taro.hideLoading()
+      console.error('[OrderPublishFeedback] 上传图片失败:', error)
+      Taro.showToast({
+        title: '上传失败，请重试',
+        icon: 'none'
+      })
+    }
   }
 
   const handleLinkChange = (platform: string, value: string) => {
@@ -186,7 +195,8 @@ export default function OrderPublishFeedback() {
 
     const hasInvalid = platforms.some(platform => {
       const fb = feedback[platform]
-      return !fb.image && !fb.link
+      const hasImages = fb.images && fb.images.length > 0
+      return !hasImages && !fb.link
     })
 
     if (hasInvalid) {
@@ -542,36 +552,47 @@ export default function OrderPublishFeedback() {
                     {/* 上传截图 */}
                     <View className="space-y-2">
                       <Label className="text-sm text-gray-700 font-medium">发布截图</Label>
-                      {fb.image ? (
-                        <View className="relative">
-                          <Image
-                            src={fb.image}
-                            className="w-full h-48 rounded-lg object-cover"
-                            mode="aspectFill"
-                          />
-                          <View
-                            className="absolute top-2 right-2"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setFeedback(prev => ({
-                                ...prev,
-                                [platform]: { ...prev[platform], image: '' }
-                              }))
-                            }}
-                          >
-                            <View className="bg-red-500 text-white rounded px-2 py-1 text-xs">
-                              删除
+                      <View className="flex flex-wrap gap-2">
+                        {/* 已上传的图片列表 */}
+                        {fb.images && fb.images.length > 0 && fb.images.map((img: string, idx: number) => (
+                          <View key={idx} className="relative" style={{ width: '30%' }}>
+                            <Image
+                              src={img}
+                              className="w-full h-20 rounded-lg object-cover"
+                              mode="aspectFill"
+                              onClick={() => Taro.previewImage({ urls: fb.images, current: img })}
+                            />
+                            <View
+                              className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setFeedback(prev => ({
+                                  ...prev,
+                                  [platform]: { 
+                                    ...prev[platform], 
+                                    images: prev[platform].images.filter((_: string, i: number) => i !== idx)
+                                  }
+                                }))
+                              }}
+                            >
+                              <X size={12} color="#fff" />
                             </View>
                           </View>
-                        </View>
-                      ) : (
-                        <View
-                          className="upload-area"
-                          onClick={() => handleChooseImage(platform)}
-                        >
-                          <Upload size={32} color="#9ca3af" />
-                          <Text className="block text-gray-500 text-sm mt-2">点击上传发布截图</Text>
-                        </View>
+                        ))}
+                        
+                        {/* 添加更多图片按钮 */}
+                        {(!fb.images || fb.images.length < 9) && (
+                          <View
+                            className="upload-area"
+                            style={{ width: '30%', height: 80 }}
+                            onClick={() => handleChooseImage(platform)}
+                          >
+                            <Plus size={24} color="#9ca3af" />
+                          </View>
+                        )}
+                      </View>
+                      {(!fb.images || fb.images.length === 0) && (
+                        <Text className="block text-gray-400 text-xs mt-1">点击上传发布截图，最多9张</Text>
                       )}
                     </View>
 
