@@ -487,7 +487,7 @@ export default function OrderDetailPage() {
               onClick={() => setActiveTab('detail')}
             >
               <FileText 
-                size={28} 
+                size={24} 
                 color={activeTab === 'detail' ? '#FFFFFF' : '#7B3FE4'} 
                 className="tab-item-icon"
               />
@@ -498,7 +498,7 @@ export default function OrderDetailPage() {
               onClick={() => setActiveTab('progress')}
             >
               <Users 
-                size={28} 
+                size={24} 
                 color={activeTab === 'progress' ? '#FFFFFF' : '#7B3FE4'} 
                 className="tab-item-icon"
               />
@@ -509,7 +509,7 @@ export default function OrderDetailPage() {
               onClick={() => setActiveTab('result')}
             >
               <Sparkles 
-                size={28} 
+                size={24} 
                 color={activeTab === 'result' ? '#FFFFFF' : '#7B3FE4'} 
                 className="tab-item-icon"
               />
