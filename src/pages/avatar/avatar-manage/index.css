@@ -875,8 +875,8 @@
 }
 
 .time-cancel-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5rpx solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5rpx solid rgba(255, 255, 255, 0.2);
 }
 
 .time-confirm-btn {
@@ -884,10 +884,16 @@
   box-shadow: 0 8rpx 24rpx rgba(6, 182, 212, 0.3);
 }
 
-.time-cancel-text,
+.time-cancel-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .time-confirm-text {
   font-size: 28rpx;
   font-weight: 700;
+  color: #ffffff;
 }
 
 [data-theme="dark"] .avatar-manage-page {
