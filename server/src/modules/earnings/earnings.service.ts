@@ -18,7 +18,7 @@ interface EarningsStats {
   averageEarnings: number
 }
 
-interface LeaderboardResponse {
+export interface LeaderboardResponse {
   records: EarningsRecord[]
   stats: EarningsStats
 }
