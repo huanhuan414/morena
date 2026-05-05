@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { useState, useEffect, useMemo } from 'react'
-import Taro, { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad } from '@tarojs/taro'
+import Taro, { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad, showActionSheet } from '@tarojs/taro'
 import { getSafeArea } from '@/utils/safe-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -347,29 +347,76 @@ export default function AvatarCreatePage() {
   ]
 
   // 选择照片
-  const handleChoosePhoto = async () => {
+  // 处理照片选择
+  const handleChoosePhoto = async (source: 'album' | 'camera' | 'wechat') => {
     try {
-      const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
-      if (isMiniApp) {
+      let filePath = ''
+
+      if (source === 'album') {
+        // 从相册选择
+        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album'] })
+        filePath = res.tempFilePaths[0]
+      } else if (source === 'camera') {
+        // 拍照
+        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['camera'] })
+        filePath = res.tempFilePaths[0]
+      } else if (source === 'wechat') {
+        // 从微信聊天记录选择（仅微信小程序）
         const res: any = await Taro.chooseMessageFile({ count: 1, type: 'image' })
-        const paths = res.tempFiles.map((f: any) => f.path)
-        if (paths && paths.length > 0) {
-          setPhotoPath(paths[0])
-          analyzePhoto(paths[0])
-        }
-      } else {
-        // H5 端
-        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] })
-        const paths = res.tempFilePaths
-        if (paths && paths.length > 0) {
-          setPhotoPath(paths[0])
-          analyzePhoto(paths[0])
-        }
+        filePath = res.tempFiles[0].path
       }
-    } catch (error) {
+
+      if (filePath) {
+        setPhotoPath(filePath)
+        analyzePhoto(filePath)
+      }
+    } catch (error: any) {
+      // 用户取消选择不提示
+      if (error?.errMsg?.includes('cancel')) return
       console.error('选择照片失败:', error)
       showToast({ title: '选择照片失败', icon: 'none' })
     }
+  }
+
+  // 显示选择菜单
+  const showPhotoSourceMenu = () => {
+    const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
+    const isTT = Taro.getEnv() === Taro.ENV_TYPE.TT
+    const isMiniApp = isWeapp || isTT
+
+    if (!isMiniApp) {
+      // H5 端直接使用系统选择器
+      handleChoosePhoto('album')
+      return
+    }
+
+    // 小程序端显示操作菜单
+    const options = ['从相册选择', '拍照']
+    if (isWeapp) {
+      options.push('从微信选择')
+    }
+
+    showActionSheet({
+      itemList: options,
+      success: (res) => {
+        if (res.errMsg?.includes('ok')) {
+          switch (res.tapIndex) {
+            case 0:
+              handleChoosePhoto('album')
+              break
+            case 1:
+              handleChoosePhoto('camera')
+              break
+            case 2:
+              handleChoosePhoto('wechat')
+              break
+          }
+        }
+      },
+      fail: () => {
+        console.log('取消选择')
+      }
+    })
   }
 
   // 分析照片
@@ -612,7 +659,7 @@ export default function AvatarCreatePage() {
       <View className="upload-section">
         <View 
           className={`upload-area ${photoPath ? 'with-photo' : ''}`}
-          onClick={canCreateAvatar ? handleChoosePhoto : () => {
+          onClick={canCreateAvatar ? showPhotoSourceMenu : () => {
             showToast({ title: createLimitReason, icon: 'none' })
           }}
         >
