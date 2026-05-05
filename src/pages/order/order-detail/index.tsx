@@ -641,18 +641,23 @@ export default function OrderDetailPage() {
                 </>
               )}
 
-              {order.status === 'reviewing' && (
+              {/* 待验收/验收中状态显示操作按钮 */}
+              {(order.status === 'awaiting_acceptance' || order.status === 'reviewing') && (
                 <>
-                  {allAvatarsCompleted && (
+                  {/* 待验收分身按钮 - 有待验收分身时显示 */}
+                  {pendingAvatars.length > 0 && (
                     <Button onClick={() => setShowRating(true)} className="primary-action-btn">
                       <Check size={18} color="#fff" />
+                      <Text>验收待验收分身</Text>
+                    </Button>
+                  )}
+                  {/* 验收订单按钮 - 全部分身验收完时显示 */}
+                  {allAvatarsCompleted && (
+                    <Button onClick={() => setShowRating(true)} className="secondary-action-btn">
+                      <CheckCircle size={18} color="#fff" />
                       <Text>验收订单</Text>
                     </Button>
                   )}
-                  <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
-                    <X size={18} color="#fff" />
-                    <Text>驳回修改</Text>
-                  </Button>
                 </>
               )}
             </View>
