@@ -269,42 +269,116 @@ export default function OrderPublishFeedback() {
 
   // 渲染图片内容（朋友圈、小红书图文）
   const renderImageContent = () => {
-    if (!generatedContent?.images || generatedContent.images.length === 0) {
+    // 如果是纯图片类型（没有文案），只显示图片
+    if (contentType === 'image' && !generatedContent?.content) {
+      if (!generatedContent?.images || generatedContent.images.length === 0) {
+        return (
+          <View className="empty-content">
+            <ImageIcon size={48} color="#d1d5db" />
+            <Text className="block text-gray-400 mt-2">暂无生成图片</Text>
+          </View>
+        )
+      }
+
+      return (
+        <View className="image-gallery">
+          <View className="flex justify-between items-center mb-3">
+            <Text className="block text-base font-medium text-gray-700">生成图片 ({generatedContent.images.length}张)</Text>
+          </View>
+          <View className="image-grid">
+            {generatedContent.images.map((img, index) => (
+              <View 
+                key={index} 
+                className="image-item"
+                onClick={() => {
+                  setPreviewImage(img)
+                  setPreviewVisible(true)
+                }}
+              >
+                <Image
+                  src={img}
+                  className="image-thumbnail"
+                  mode="aspectFill"
+                />
+                <View className="image-overlay">
+                  <Eye size={20} color="#fff" />
+                </View>
+              </View>
+            ))}
+          </View>
+          <Text className="block text-xs text-gray-500 mt-2">点击图片可预览大图</Text>
+        </View>
+      )
+    }
+
+    // 小红书图文/朋友圈图文：同时显示文案和图片
+    const hasImages = generatedContent?.images && generatedContent.images.length > 0
+    const hasContent = generatedContent?.content
+
+    if (!hasImages && !hasContent) {
       return (
         <View className="empty-content">
           <ImageIcon size={48} color="#d1d5db" />
-          <Text className="block text-gray-400 mt-2">暂无生成图片</Text>
+          <Text className="block text-gray-400 mt-2">暂无生成内容</Text>
         </View>
       )
     }
 
     return (
-      <View className="image-gallery">
-        <View className="flex justify-between items-center mb-3">
-          <Text className="block text-base font-medium text-gray-700">生成图片 ({generatedContent.images.length}张)</Text>
-        </View>
-        <View className="image-grid">
-          {generatedContent.images.map((img, index) => (
-            <View 
-              key={index} 
-              className="image-item"
-              onClick={() => {
-                setPreviewImage(img)
-                setPreviewVisible(true)
-              }}
-            >
-              <Image
-                src={img}
-                className="image-thumbnail"
-                mode="aspectFill"
-              />
-              <View className="image-overlay">
-                <Eye size={20} color="#fff" />
+      <View className="image-content-wrapper">
+        {/* 文案内容 */}
+        {hasContent && (
+          <View className="content-section">
+            <View className="flex items-center space-x-2 mb-3">
+              <FileText size={20} color="#ed4996" />
+              <Text className="block text-base font-medium text-gray-700">文案内容</Text>
+            </View>
+            <View className="content-text-card">
+              {generatedContent.title && (
+                <Text className="block text-base font-bold text-gray-900 mb-2">
+                  {generatedContent.title}
+                </Text>
+              )}
+              <Text className="block text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {generatedContent.content}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* 图片内容 */}
+        {hasImages && (
+          <View className="image-section">
+            <View className="flex items-center justify-between mb-3">
+              <View className="flex items-center space-x-2">
+                <ImageIcon size={20} color="#ed4996" />
+                <Text className="block text-base font-medium text-gray-700">配图 ({generatedContent.images?.length || 0}张)</Text>
               </View>
             </View>
-          ))}
-        </View>
-        <Text className="block text-xs text-gray-500 mt-2">点击图片可预览大图</Text>
+            <View className="image-grid">
+              {(generatedContent.images || []).map((img, index) => (
+                <View 
+                  key={index} 
+                  className="image-item"
+                  onClick={() => {
+                    setPreviewImage(img)
+                    setPreviewVisible(true)
+                  }}
+                >
+                  <Image
+                    src={img}
+                    className="image-thumbnail"
+                    mode="aspectFill"
+                  />
+                  <View className="image-overlay">
+                    <Eye size={20} color="#fff" />
+                  </View>
+                </View>
+              ))}
+            </View>
+            <Text className="block text-xs text-gray-500 mt-2">点击图片可预览大图</Text>
+          </View>
+        )}
       </View>
     )
   }
@@ -540,7 +614,6 @@ export default function OrderPublishFeedback() {
               src={previewImage}
               className="preview-image"
               mode="aspectFit"
-              preview="true"
             />
             <View 
               className="preview-close"
