@@ -53,8 +53,6 @@ export default function OrderPublishFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [previewImage, setPreviewImage] = useState<string>('')
-  const [previewVisible, setPreviewVisible] = useState(false)
   
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null)
   const [publishPlatforms, setPublishPlatforms] = useState<PublishPlatform[]>([])
@@ -115,6 +113,14 @@ export default function OrderPublishFeedback() {
     }
   }
 
+  // 图片预览（使用 Taro.previewImage API，支持多图切换）
+  const handlePreviewImage = (urls: string[], current: string) => {
+    Taro.previewImage({
+      urls: urls,
+      current: current
+    })
+  }
+
   const handleChooseImage = (platform: string) => {
     Taro.chooseImage({
       count: 1,
@@ -126,7 +132,7 @@ export default function OrderPublishFeedback() {
 
         try {
           const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
+            url: '/api/upload/image',
             filePath: tempFilePath,
             name: 'file'
           })
@@ -288,8 +294,7 @@ export default function OrderPublishFeedback() {
             {/* 左侧大图 */}
             <View className="xhs-main-image" onClick={() => {
               if (images[0]) {
-                setPreviewImage(images[0])
-                setPreviewVisible(true)
+                handlePreviewImage(images, images[0])
               }
             }}>
               <Image
@@ -311,8 +316,7 @@ export default function OrderPublishFeedback() {
                     key={index}
                     className="xhs-thumb-item"
                     onClick={() => {
-                      setPreviewImage(img)
-                      setPreviewVisible(true)
+                      handlePreviewImage(images, img)
                     }}
                   >
                     <Image
@@ -355,8 +359,7 @@ export default function OrderPublishFeedback() {
               key={index} 
               className="image-item"
               onClick={() => {
-                setPreviewImage(img)
-                setPreviewVisible(true)
+                handlePreviewImage(images, img)
               }}
             >
               <Image
@@ -601,29 +604,6 @@ export default function OrderPublishFeedback() {
           {submitting ? '提交中...' : '提交反馈'}
         </Button>
       </View>
-
-      {/* 图片预览弹窗 */}
-      {previewVisible && (
-        <View 
-          className="preview-overlay" 
-          onClick={() => setPreviewVisible(false)}
-        >
-          <View className="preview-content" onClick={(e) => e.stopPropagation()}>
-            <Image
-              src={previewImage}
-              className="preview-image"
-              mode="aspectFit"
-              preview="true"
-            />
-            <View 
-              className="preview-close"
-              onClick={() => setPreviewVisible(false)}
-            >
-              <Text className="block text-white text-lg">×</Text>
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   )
 }
