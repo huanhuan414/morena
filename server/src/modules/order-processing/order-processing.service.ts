@@ -15,6 +15,7 @@ export interface ProcessingStatus {
     content: string
     images?: string[]
     platforms: string[]
+    contentType?: string  // 图文/图片/视频/文章
   }
   publishStatus?: {
     platforms: Array<{
@@ -361,7 +362,8 @@ export class OrderProcessingService {
         title: orderData?.title || '未知订单',
         content: request.generated_content,
         images: imageSuggestions,
-        platforms: orderData?.platforms || []
+        platforms: orderData?.platforms || [],
+        contentType: orderData?.content_type || '图文'
       } : undefined,
       publishStatus: request.publish_status,
       avatarAccounts  // 返回分身绑定的账号信息
