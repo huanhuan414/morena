@@ -652,10 +652,19 @@ export default function OrderPublishFeedback() {
         </View>
       </View>
 
-      {/* 固定底部按钮 - 根据角色显示不同内容 */}
+      {/* 固定底部按钮 - 根据订单状态显示不同内容 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
-        {isIssuer ? (
-          // 发单者视角：验收按钮
+        {processingStatus?.status === 'published' ? (
+          // 待反馈状态：显示提交反馈按钮
+          <Button
+            className="w-full submit-button"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? '提交中...' : '提交反馈'}
+          </Button>
+        ) : (
+          // 已提交反馈状态（feedback_submitted/awaiting_acceptance）：显示验收按钮
           <View>
             <Text className="block text-center text-sm text-gray-500 mb-2">
               验收通过后订单将完成
@@ -669,15 +678,6 @@ export default function OrderPublishFeedback() {
               {submitting ? '验收中...' : '验收通过'}
             </Button>
           </View>
-        ) : (
-          // 接单者视角：提交反馈按钮
-          <Button
-            className="w-full submit-button"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? '提交中...' : '提交反馈'}
-          </Button>
         )}
       </View>
 
