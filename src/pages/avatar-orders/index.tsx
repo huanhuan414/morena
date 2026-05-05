@@ -171,9 +171,9 @@ export default function AvatarOrdersPage() {
         })
         break
       case 'awaiting_acceptance':
-        // 待验收的订单跳转到待验收反馈页面
+        // 待验收的订单跳转到待验收反馈页面，带上 role=avatar 表示分身视角
         navigateTo({
-          url: `/pages/order-acceptance-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+          url: `/pages/order-acceptance-feedback/index?requestId=${order.id}&orderId=${order.order_id}&role=avatar`
         })
         break
       case 'cancelled':

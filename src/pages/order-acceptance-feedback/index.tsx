@@ -1,39 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { View, Text, Image, ScrollView, Video } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ArrowLeft, Bell, ExternalLink, CircleCheck } from 'lucide-react-taro'
-import { useUserStore } from '@/stores/user'
 import './index.css'
 
 export default function OrderAcceptanceFeedback() {
   const router = useRouter()
-  const { requestId, orderId } = router.params
+  const { requestId, orderId, role } = router.params
   const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
-  const [isIssuer, setIsIssuer] = useState(false)
 
-  // 使用 hook 方式获取用户信息
-  const userInfo = useUserStore((state) => state.userInfo)
+  // 通过 URL 参数判断角色：role=avatar 表示分身视角（接单者），否则为发单者
+  const isIssuer = role !== 'avatar'
 
   useLoad(() => {
-    console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId })
+    console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId, role, isIssuer })
     loadData()
   })
-
-  // 当 data 或 userInfo 变化时，判断角色
-  useEffect(() => {
-    if (data && userInfo) {
-      const currentUserId = userInfo.id
-      const issuerId = data.issuerId
-      console.log('[OrderAcceptanceFeedback] 判断角色:', { currentUserId, issuerId, isIssuer: currentUserId === issuerId })
-      setIsIssuer(currentUserId === issuerId)
-    }
-  }, [data, userInfo])
 
   const loadData = async () => {
     try {
