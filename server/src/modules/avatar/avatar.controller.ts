@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Headers, Body } from '@nestjs/common'
+import { Controller, Get, Post, Put, Param, Headers, Body } from '@nestjs/common'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
@@ -90,6 +90,121 @@ export class AvatarController {
     } catch (err) {
       console.error('获取分身订单失败:', err)
       return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  /**
+   * 获取分身好友列表
+   */
+  @Get(':id/friends')
+  async getAvatarFriends(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      const friends = await this.avatarService.getAvatarFriends(id, userId)
+      return { code: 200, msg: 'success', data: friends }
+    } catch (err) {
+      console.error('获取好友列表失败:', err)
+      return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  /**
+   * 开启/关闭托管
+   */
+  @Post(':id/hosting')
+  async toggleHosting(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string,
+    @Body() body: { enabled: boolean; settings?: any }
+  ) {
+    try {
+      const { enabled, settings } = body
+      const avatar = await this.avatarService.findById(id)
+      
+      if (!avatar) {
+        return { code: 404, msg: '分身不存在', data: null }
+      }
+      
+      // 使用 updateAvatar 方法更新托管状态
+      await this.avatarService.updateAvatar(id, userId, {
+        is_hosted: enabled
+      })
+      
+      // 如果有额外设置，也更新
+      if (settings) {
+        await this.avatarService.updateHostingSettings(id, userId, settings)
+      }
+      
+      return { 
+        code: 200, 
+        msg: enabled ? '托管已开启' : '托管已关闭', 
+        data: { enabled } 
+      }
+    } catch (err) {
+      console.error('托管操作失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * 更新托管设置
+   */
+  @Put(':id/hosting/settings')
+  async updateHostingSettings(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string,
+    @Body() body: any
+  ) {
+    try {
+      const result = await this.avatarService.updateHostingSettings(id, userId, body)
+      return { code: 200, msg: '设置已更新', data: result }
+    } catch (err) {
+      console.error('更新托管设置失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * 获取分身学习数据
+   */
+  @Get(':id/learning')
+  async getLearningData(@Param('id') id: string) {
+    try {
+      const avatar = await this.avatarService.findById(id)
+      
+      if (!avatar) {
+        return { code: 404, msg: '分身不存在', data: null }
+      }
+      
+      const learningData = avatar.learning_data || {
+        messageCount: 0,
+        avgMessageLength: 0,
+        toneProfile: {},
+        personalityTraits: {},
+        communicationStyle: {},
+        interests: [],
+        commonPhrases: [],
+        userIdentity: {}
+      }
+      
+      const metrics = {
+        learningDays: Math.floor((Date.now() - new Date(avatar.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+        lastActiveTime: avatar.updated_at
+      }
+      
+      return { 
+        code: 200, 
+        msg: 'success', 
+        data: { 
+          learning: learningData,
+          metrics
+        } 
+      }
+    } catch (err) {
+      console.error('获取学习数据失败:', err)
+      return { code: 500, msg: '服务器错误', data: null }
     }
   }
 }
