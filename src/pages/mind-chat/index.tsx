@@ -4499,7 +4499,6 @@ export default function MindChatPage() {
               )}
             </View>
             <View
-              className="flex flex-row items-center"
               onClick={() => {
                 navigateToSkillsSquare()
                 setShowNewSkillTip(false)
@@ -4511,13 +4510,18 @@ export default function MindChatPage() {
               {showNewSkillTip && (
                 <View
                   style={{
+                    position: 'absolute',
+                    top: '-10rpx',
+                    right: '-10rpx',
                     background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)',
-                    borderRadius: '8rpx',
-                    padding: '4rpx 8rpx',
-                    marginLeft: '-4rpx',
+                    borderRadius: '20rpx',
+                    padding: '2rpx 10rpx',
+                    minWidth: '60rpx',
+                    textAlign: 'center',
+                    boxShadow: '0 2rpx 8rpx rgba(255, 71, 87, 0.4)',
                   }}
                 >
-                  <Text style={{ fontSize: '16rpx', fontWeight: 600, color: '#FFFFFF' }}>
+                  <Text style={{ fontSize: '16rpx', fontWeight: 700, color: '#FFFFFF', lineHeight: '24rpx' }}>
                     NEW
                   </Text>
                 </View>
