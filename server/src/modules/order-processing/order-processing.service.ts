@@ -25,6 +25,14 @@ export interface ProcessingStatus {
     }>
     summary: string
   }
+  // 分身绑定的账号信息
+  avatarAccounts?: Array<{
+    id: string
+    platform: string
+    account_name: string
+    account_url?: string
+    appid?: string
+  }>
 }
 
 // 队列管理
@@ -326,9 +334,24 @@ export class OrderProcessingService {
       }
     }
 
+    // 查询分身绑定的账号信息
+    let avatarAccounts: any[] = []
+    if (request.avatar_id) {
+      const { data: accounts } = await client
+        .from('avatar_accounts')
+        .select('id, platform, account_name, account_url, appid')
+        .eq('avatar_id', request.avatar_id)
+      
+      if (accounts) {
+        avatarAccounts = accounts
+        console.log('[OrderProcessing] 分身账号信息:', avatarAccounts)
+      }
+    }
+
     console.log('[OrderProcessing] 所有数据查询完成:', {
       hasOrder: !!orderData,
-      hasAvatar: !!avatarData
+      hasAvatar: !!avatarData,
+      accountCount: avatarAccounts.length
     })
 
     const status: ProcessingStatus = {
@@ -340,7 +363,8 @@ export class OrderProcessingService {
         images: imageSuggestions,
         platforms: orderData?.platforms || []
       } : undefined,
-      publishStatus: request.publish_status
+      publishStatus: request.publish_status,
+      avatarAccounts  // 返回分身绑定的账号信息
     }
 
     // 如果是排队状态，获取队列位置
