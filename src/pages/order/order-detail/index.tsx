@@ -661,6 +661,11 @@ export default function OrderDetailPage() {
                 <Text className="section-title block">分身执行状态</Text>
                 
                 {/* 汇总统计 */}
+                <View className="avatar-execution-header">
+                  <Text className="avatar-execution-title block">分身执行状态</Text>
+                  <Text className="avatar-execution-count block">{order.summary_stats.totalAvatars}个分身</Text>
+                </View>
+                
                 <View className="avatar-execution-summary">
                   <View className="summary-item">
                     <Text className="summary-value">{order.summary_stats.totalAvatars}</Text>
@@ -698,26 +703,32 @@ export default function OrderDetailPage() {
                     }}
                   >
                     <View className="avatar-exec-info">
-                      <View className="avatar-mini">
+                      <View className="avatar-exec-avatar">
                         {stat.avatarUrl ? (
-                          <Image src={stat.avatarUrl} className="avatar-mini-image" />
+                          <Image src={stat.avatarUrl} className="avatar-exec-avatar-image" />
                         ) : (
-                          <View className="avatar-mini-placeholder">
-                            <User size={16} color="#00f5ff" />
+                          <View className="avatar-exec-avatar-placeholder">
+                            <User size={20} color="#ffffff" />
                           </View>
                         )}
                       </View>
                       <View className="avatar-exec-details">
                         <Text className="avatar-exec-name block">{stat.avatarName}</Text>
-                        <Text className="avatar-exec-progress block">
-                          {stat.postCount > 0 && `${stat.postCount}个作品`}
-                          {stat.feedbackCount > 0 && ` | ${stat.feedbackCount}条反馈`}
-                          {(stat.totalViews > 0 || stat.totalLikes > 0) && ` | 曝光${stat.totalViews} 点赞${stat.totalLikes}`}
-                        </Text>
+                        <View className="avatar-exec-meta">
+                          {stat.postCount > 0 && (
+                            <Text className="avatar-exec-meta-item block">{stat.postCount}个作品</Text>
+                          )}
+                          {stat.feedbackCount > 0 && (
+                            <Text className="avatar-exec-meta-item block">{stat.feedbackCount}条反馈</Text>
+                          )}
+                          {stat.totalViews > 0 && (
+                            <Text className="avatar-exec-meta-item block">曝光{stat.totalViews}</Text>
+                          )}
+                        </View>
                       </View>
                     </View>
-                    <View className={`status-badge ${stat.status}`}>
-                      <Text className="status-badge-text">
+                    <View className={`avatar-status-badge ${stat.status}`}>
+                      <Text className="block">
                         {stat.status === 'pending' && '待接受'}
                         {stat.status === 'accepted' && '制作中'}
                         {stat.status === 'generating' && '生成中'}

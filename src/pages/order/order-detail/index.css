@@ -1115,46 +1115,70 @@
 
 /* 分身执行状态列表 */
 .avatar-execution-list {
-  background: #ffffff;
-  border-radius: 20rpx;
-  padding: 24rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
   margin-bottom: 32rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.3);
+}
+
+.avatar-execution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.avatar-execution-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.avatar-execution-count {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
 }
 
 .avatar-execution-summary {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-around;
-  padding: 24px;
-  margin-bottom: 24px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: space-between;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.15);
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 8rpx;
+  flex: 1;
 }
 
 .summary-value {
-  font-size: 36px;
+  font-size: 40rpx;
   font-weight: 700;
-  color: #00f5ff;
+  color: #ffffff;
 }
 
 .summary-label {
-  font-size: 24px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .summary-divider {
-  width: 1px;
-  height: 48px;
+  width: 1rpx;
+  height: 48rpx;
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -1162,17 +1186,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 0;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
 .avatar-execution-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
-.avatar-execution-item:first-child {
-  padding-top: 0;
+.avatar-execution-item:active {
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
 .avatar-exec-info {
@@ -1182,20 +1210,97 @@
   flex: 1;
 }
 
+.avatar-exec-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+  overflow: hidden;
+}
+
+.avatar-exec-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.avatar-exec-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
 .avatar-exec-details {
   flex: 1;
 }
 
 .avatar-exec-name {
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 6rpx;
 }
 
-.avatar-exec-progress {
+.avatar-exec-meta {
   font-size: 22rpx;
   color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.avatar-exec-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.avatar-status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.avatar-status-badge.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.avatar-status-badge.accepted,
+.avatar-status-badge.generating,
+.avatar-status-badge.preview,
+.avatar-status-badge.publishing {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.avatar-status-badge.published {
+  background: #fce7f3;
+  color: #db2777;
+}
+
+.avatar-status-badge.feedback_submitted,
+.avatar-status-badge.awaiting_acceptance {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.avatar-status-badge.completed {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.avatar-status-badge.rejected {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* 执行时间线 */
