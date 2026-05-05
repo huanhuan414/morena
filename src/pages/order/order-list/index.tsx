@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, useRouter, navigateTo, navigateBack, showToast } from '@tarojs/taro'
+import { useLoad, useDidShow, useRouter, navigateTo, navigateBack, showToast, showActionSheet, showLoading, hideLoading } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import {
   Clock, ChevronRight, Sparkles, Plus,
   Check, DollarSign,
-  Package, Loader, Circle, SlidersHorizontal, ArrowLeft
+  Package, Loader, Circle, SlidersHorizontal, ArrowLeft, Settings
 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
@@ -278,6 +278,111 @@ export default function OrderListPage() {
            steps?.find(s => s.status === 'pending')
   }
 
+  // 订单管理功能
+  const handleManageOrder = (order: Order, e: any) => {
+    e.stopPropagation()
+    
+    const actions: string[] = []
+    const status = order.status
+    
+    // 根据订单状态显示不同的操作选项
+    if (status === 'open' || status === 'pending_payment') {
+      actions.push('编辑订单')
+      actions.push('取消订单')
+    } else if (status === 'in_progress' || status === 'awaiting_acceptance') {
+      actions.push('查看详情')
+      actions.push('取消订单')
+    } else if (status === 'completed') {
+      actions.push('查看详情')
+      actions.push('再次发布')
+      actions.push('删除订单')
+    } else if (status === 'cancelled') {
+      actions.push('删除订单')
+      actions.push('重新发布')
+    }
+    
+    if (actions.length === 0) return
+    
+    showActionSheet({
+      itemList: actions,
+      success: (res) => {
+        const action = actions[res.tapIndex]
+        handleOrderAction(action, order)
+      }
+    })
+  }
+  
+  const handleOrderAction = async (action: string, order: Order) => {
+    switch (action) {
+      case '编辑订单':
+        navigateTo({ url: `/pages/order/order-create/index?id=${order.id}` })
+        break
+        
+      case '查看详情':
+        handleOrderClick(order)
+        break
+        
+      case '取消订单':
+        await handleCancelOrder(order.id)
+        break
+        
+      case '删除订单':
+        await handleDeleteOrder(order.id)
+        break
+        
+      case '再次发布':
+      case '重新发布':
+        navigateTo({ url: `/pages/order/order-create/index?copyFrom=${order.id}` })
+        break
+    }
+  }
+  
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      showLoading({ title: '取消中...' })
+      const res = await Network.request({
+        url: `/api/order/${orderId}/cancel`,
+        method: 'PUT'
+      })
+      hideLoading()
+      
+      if (res.data?.code === 200) {
+        showToast({ title: '订单已取消', icon: 'success' })
+        fetchOrders()
+        fetchStats()
+      } else {
+        showToast({ title: res.data?.msg || '取消失败', icon: 'none' })
+      }
+    } catch (error) {
+      hideLoading()
+      console.error('取消订单失败:', error)
+      showToast({ title: '取消失败', icon: 'none' })
+    }
+  }
+  
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      showLoading({ title: '删除中...' })
+      const res = await Network.request({
+        url: `/api/order/${orderId}`,
+        method: 'DELETE'
+      })
+      hideLoading()
+      
+      if (res.data?.code === 200) {
+        showToast({ title: '订单已删除', icon: 'success' })
+        fetchOrders()
+        fetchStats()
+      } else {
+        showToast({ title: res.data?.msg || '删除失败', icon: 'none' })
+      }
+    } catch (error) {
+      hideLoading()
+      console.error('删除订单失败:', error)
+      showToast({ title: '删除失败', icon: 'none' })
+    }
+  }
+
   return (
     <View className="order-list-page">
       {/* 头部 */}
@@ -394,9 +499,19 @@ export default function OrderListPage() {
                         {config.label}
                       </Text>
                     </View>
-                    <Text className="order-time">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </Text>
+                    <View className="order-header-right">
+                      <Text className="order-time">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </Text>
+                      {mode !== 'avatar' && (
+                        <View 
+                          className="order-more-btn"
+                          onClick={(e) => handleManageOrder(order, e)}
+                        >
+                          <Settings size={18} color="#9ca3af" />
+                        </View>
+                      )}
+                    </View>
                   </View>
                   
                   {/* 订单标题 */}

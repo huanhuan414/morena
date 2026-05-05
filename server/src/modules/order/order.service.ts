@@ -964,6 +964,38 @@ export class OrderService {
     return data
   }
 
+  async deleteOrder(orderId: string, userId: string) {
+    const client = getSupabaseClient()
+    
+    // 先检查订单状态，只有已取消或已完成的订单可以删除
+    const { data: order, error: checkError } = await client
+      .from('orders')
+      .select('status')
+      .eq('id', orderId)
+      .eq('user_id', userId)
+      .single()
+    
+    if (checkError || !order) {
+      throw new Error('订单不存在或无权限删除')
+    }
+    
+    if (order.status !== 'cancelled' && order.status !== 'completed') {
+      throw new Error('只有已取消或已完成的订单可以删除')
+    }
+    
+    const { error } = await client
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+      .eq('user_id', userId)
+    
+    if (error) {
+      throw new Error(`删除订单失败: ${error.message}`)
+    }
+    
+    return { success: true }
+  }
+
   async getOpenOrders(page = 1, pageSize = 20) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize

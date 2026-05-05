@@ -311,22 +311,10 @@ export class OrderController {
     @Param('id') orderId: string,
     @Headers('x-user-id') userId: string
   ) {
-    const client = (await import('../../storage/database/supabase-client')).getSupabaseClient()
-    
-    const { error } = await client
-      .from('orders')
-      .delete()
-      .eq('id', orderId)
-      .eq('user_id', userId)
-      .eq('status', 'open') // 只允许删除未开始的订单
-    
-    if (error) {
-      throw new Error(`删除订单失败: ${error.message}`)
-    }
-    
+    const result = await this.orderService.deleteOrder(orderId, userId)
     return {
       code: 200,
-      data: null,
+      data: result,
       message: '删除成功'
     }
   }
