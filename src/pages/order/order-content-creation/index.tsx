@@ -1,558 +1,496 @@
-import Taro, { useLoad, useRouter, showToast, navigateTo } from '@tarojs/taro'
-import { getSafeArea } from '@/utils/safe-area'
-import { useState, useRef } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { useLoad, useRouter, navigateBack, showToast, navigateTo } from '@tarojs/taro'
+import { useState, useEffect } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import { 
-  ArrowLeft, Send, Image as ImageIcon, Sparkles, Loader, Copy, Download, Check
-} from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
+import { Clock, Loader, Check, X, Smartphone, Sparkles, Zap, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  imageUrl?: string
-  timestamp: number
+// 订单处理状态类型
+type ProcessStatus = 'queuing' | 'generating' | 'preview' | 'publishing' | 'completed' | 'failed'
+
+interface OrderProcessingData {
+  requestId: string
+  orderId: string
+  avatarId: string
+  status: ProcessStatus
+  queuePosition?: number
+  estimatedTime?: number
+  generatedContent?: {
+    title: string
+    content: string
+    platform: string
+  }
+  publishStatus?: {
+    platform: string
+    status: 'pending' | 'success' | 'failed' | 'manual'
+    message?: string
+  }
 }
 
-interface OrderInfo {
-  id: string
-  title: string
-  requirements: string
-  budget: number
-  deadline: string
-  platforms: string[]
-  dispatch_request_status?: string
+// 平台名称映射
+const PLATFORM_NAMES: Record<string, string> = {
+  wechat_mp: '公众号',
+  wechat_moments: '朋友圈',
+  wechat_video: '视频号',
+  xiaohongshu: '小红书',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  kuaishou: '快手'
 }
 
 export default function OrderContentCreationPage() {
   const router = useRouter()
   const { requestId, avatarId, orderId } = router.params
 
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [inputText, setInputText] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [generatingImage, setGeneratingImage] = useState(false)
-  const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
-  const [generatedImages, setGeneratedImages] = useState<Array<{url: string, prompt: string}>>([])
-  const [showSubmitModal, setShowSubmitModal] = useState(false)
-  const [submitContent, setSubmitContent] = useState('')
+  const [processingData, setProcessingData] = useState<OrderProcessingData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [userContent, setUserContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const scrollRef = useRef<any>(null)
+  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null)
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null)
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    // 初始化安全区域信息
     const safeArea = getSafeArea()
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
 
     if (requestId && avatarId && orderId) {
-      initPage()
+      console.log('[OrderProcessing] 页面加载，参数:', { requestId, avatarId, orderId })
+      startPolling()
     } else {
+      console.error('[OrderProcessing] 参数错误', { requestId, avatarId, orderId })
       showToast({ title: '参数错误', icon: 'none' })
-      setTimeout(() => Taro.navigateBack(), 1500)
+      setTimeout(() => navigateBack(), 1500)
     }
   })
 
-  const initPage = async () => {
-    // 获取订单信息
-    try {
-      const res = await Network.request({
-        url: `/api/order/${orderId}`
-      })
-      if (res.data?.code === 200) {
-        setOrderInfo(res.data.data)
-      }
-    } catch (error) {
-      console.error('获取订单信息失败:', error)
-    }
+  // 添加状态变化监听，用于调试
+  useEffect(() => {
+    console.log('[OrderProcessing] 状态变化:', {
+      loading,
+      hasProcessingData: !!processingData,
+      status: processingData?.status,
+      hasGeneratedContent: !!processingData?.generatedContent,
+      hasContent: !!processingData?.generatedContent?.content
+    })
+  }, [loading, processingData])
 
-    // 获取分发请求详情，加载已生成的内容
+  useEffect(() => {
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval)
+      }
+    }
+  }, [pollInterval])
+
+  const startPolling = () => {
+    console.log('[OrderProcessing] 开始轮询状态')
+    // 初始获取处理状态
+    fetchProcessingStatus()
+
+    // 每1秒轮询一次状态（从2秒改为1秒，更实时）
+    const interval = setInterval(() => {
+      fetchProcessingStatus()
+    }, 1000)
+
+    setPollInterval(interval)
+  }
+
+  const fetchProcessingStatus = async () => {
     try {
-      const dispatchRes = await Network.request({
-        url: `/api/order-dispatch/request/${requestId}`
+      console.log('[OrderProcessing] 开始获取状态:', { requestId })
+      const res = await Network.request({
+        url: `/api/order-processing/status/${requestId}`
       })
-      
-      if (dispatchRes.data?.code === 200) {
-        const dispatchData = dispatchRes.data.data
-        
-        // 如果已有生成内容，加载显示
-        if (dispatchData.generated_content) {
-          const content = dispatchData.generated_content
-          const loadedMessages: Message[] = []
-          
-          // 添加欢迎消息
-          loadedMessages.push({
-            id: 'welcome',
-            role: 'assistant',
-            content: '您好！我是您的内容创作助手。之前已生成的内容如下：',
-            timestamp: Date.now() - 1000
+
+      console.log('[OrderProcessing] 状态响应:', res.data)
+
+      if (res.data?.code === 200) {
+        const data = res.data.data as OrderProcessingData
+
+        // 第一次获取到数据时，设置 loading 为 false
+        if (loading) {
+          console.log('[OrderProcessing] 首次获取状态成功，取消加载状态')
+          setLoading(false)
+        }
+
+        // 状态变化时记录日志
+        if (processingData?.status && processingData.status !== data.status) {
+          console.log('[OrderProcessing] 状态变化:', {
+            from: processingData.status,
+            to: data.status
           })
-          
-          // 添加生成的内容
-          if (typeof content === 'string') {
-            loadedMessages.push({
-              id: 'generated-content',
-              role: 'assistant',
-              content: content,
-              timestamp: Date.now()
-            })
-          } else if (content?.content) {
-            loadedMessages.push({
-              id: 'generated-content',
-              role: 'assistant',
-              content: content.content,
-              timestamp: Date.now()
-            })
-          }
-          
-          // 添加图片
-          if (content?.images && content.images.length > 0) {
-            setGeneratedImages(content.images.map((url: string, idx: number) => ({
-              url,
-              prompt: `生成图片 ${idx + 1}`
-            })))
-          }
-          
-          setMessages(loadedMessages)
-        } else {
-          // 没有已生成内容，显示欢迎消息
-          setMessages([{
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: '您好！我是您的内容创作助手。请问您需要我帮您创作什么内容呢？如果需要生成海报或图片，请告诉我您的需求，我会为您生成精美的图片。',
-            timestamp: Date.now()
-          }])
         }
+
+        setProcessingData(data)
+        setLastUpdateTime(new Date())  // 更新最后更新时间
+
+        // 如果生成完成，停止轮询
+        if (data.status === 'preview' || data.status === 'completed' || data.status === 'failed') {
+          if (pollInterval) {
+            clearInterval(pollInterval)
+            setPollInterval(null)
+          }
+          console.log('[OrderProcessing] 状态轮询停止，当前状态:', data.status)
+        }
+      } else {
+        console.error('[OrderProcessing] 获取状态失败:', res.data?.message)
+        const errorCount = (processingData as any)?.errorCount || 0
+        if (errorCount >= 5) {
+          if (pollInterval) {
+            clearInterval(pollInterval)
+            setPollInterval(null)
+          }
+          showToast({ title: '获取状态失败，请刷新页面', icon: 'none' })
+          if (loading) setLoading(false)
+        }
+        setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
       }
     } catch (error) {
-      console.error('获取分发请求失败:', error)
-      // 即使失败也显示欢迎消息
-      setMessages([{
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: '您好！我是您的内容创作助手。请问您需要我帮您创作什么内容呢？',
-        timestamp: Date.now()
-      }])
-    }
-  }
-
-  const handleSend = async () => {
-    if (!inputText.trim() || loading) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputText.trim(),
-      timestamp: Date.now()
-    }
-
-    setMessages(prev => [...prev, userMessage])
-    setInputText('')
-    setLoading(true)
-    scrollToBottom()
-
-    // 检测是否需要生成图片
-    const needsImageGeneration = /生成图片|生成海报|画一张|给我画|创作图片|制作图片|生成图像/i.test(inputText)
-
-    if (needsImageGeneration) {
-      // 提取图片生成提示词
-      const imagePrompt = extractImagePrompt(inputText)
-      if (imagePrompt) {
-        await generateImage(imagePrompt)
-      }
-    }
-
-    // 调用 AI 对话接口
-    try {
-      const res = await Network.request({
-        url: `/api/chat/send`,
-        method: 'POST',
-        data: {
-          avatarId,
-          content: userMessage.content,
-          requestId
+      console.error('[OrderProcessing] 请求异常:', error)
+      const errorCount = (processingData as any)?.errorCount || 0
+      if (errorCount >= 5) {
+        if (pollInterval) {
+          clearInterval(pollInterval)
+          setPollInterval(null)
         }
-      })
-
-      if (res.data?.code === 200) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: res.data.data?.content || '抱歉，我无法理解您的问题，请重试。',
-          timestamp: Date.now()
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      } else {
-        throw new Error(res.data?.msg || '发送失败')
+        showToast({ title: '网络异常，请刷新页面', icon: 'none' })
       }
-    } catch (error: any) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `抱歉，发生了错误：${error.message || '请重试'}`,
-        timestamp: Date.now()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setLoading(false)
-      scrollToBottom()
+      if (loading) setLoading(false)
+      setProcessingData({ ...(processingData as any), errorCount: errorCount + 1 } as any)
     }
   }
 
-  const extractImagePrompt = (text: string): string => {
-    // 移除"生成图片"、"画一张"等前缀，提取实际需求
-    let prompt = text
-      .replace(/生成图片|生成海报|画一张|给我画|创作图片|制作图片|生成图像/gi, '')
-      .trim()
-    
-    // 如果提取的内容太少，使用原始文本
-    return prompt.length > 5 ? prompt : text
-  }
-
-  const generateImage = async (prompt: string) => {
-    setGeneratingImage(true)
-    scrollToBottom()
-
-    try {
-      // 添加用户图片请求消息
-      const requestMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'user',
-        content: `请根据以下提示词生成图片：${prompt}`,
-        timestamp: Date.now()
-      }
-      setMessages(prev => [...prev, requestMsg])
-
-      // 调用图片生成接口
-      const res = await Network.request({
-        url: `/api/v1/images/generations`,
-        method: 'POST',
-        data: {
-          prompt,
-          size: '2K',
-          style: 'realistic'
-        }
-      })
-
-      if (res.data?.code === 200 && res.data.data?.url) {
-        const imageUrl = res.data.data.url
-        
-        // 添加生成的图片消息
-        const imageMsg: Message = {
-          id: (Date.now() + 2).toString(),
-          role: 'assistant',
-          content: '图片已生成！',
-          imageUrl,
-          timestamp: Date.now()
-        }
-        setMessages(prev => [...prev, imageMsg])
-        setGeneratedImages(prev => [...prev, { url: imageUrl, prompt }])
-      } else {
-        throw new Error(res.data?.msg || '图片生成失败')
-      }
-    } catch (error: any) {
-      const errorMsg: Message = {
-        id: (Date.now() + 2).toString(),
-        role: 'assistant',
-        content: `图片生成失败：${error.message || '请重试'}`,
-        timestamp: Date.now()
-      }
-      setMessages(prev => [...prev, errorMsg])
-    } finally {
-      setGeneratingImage(false)
-      scrollToBottom()
-    }
-  }
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 100)
-  }
-
-  // 打开提交内容弹窗
-  const openSubmitModal = () => {
-    // 汇总所有对话和图片
-    const allContent = messages
-      .filter(m => m.role === 'assistant')
-      .map(m => m.content)
-      .join('\n\n')
-    
-    // 添加图片链接
-    const imageLinks = generatedImages
-      .map(img => `![生成图片](${img.url})`)
-      .join('\n\n')
-    
-    setSubmitContent(allContent + (imageLinks ? '\n\n' + imageLinks : ''))
-    setShowSubmitModal(true)
-  }
-
-  // 提交内容
-  const handleSubmitContent = async () => {
-    if (!submitContent.trim()) {
-      showToast({ title: '请输入提交内容', icon: 'none' })
+  const handleConfirmContent = async () => {
+    if (!userContent.trim()) {
+      showToast({ title: '请确认内容', icon: 'none' })
       return
     }
 
     setSubmitting(true)
     try {
-      // 提取图片链接
-      const imageMatches = submitContent.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || []
-      const images = imageMatches.map((match: string) => {
-        const urlMatch = match.match(/\(([^)]+)\)/)
-        return urlMatch ? urlMatch[1] : ''
-      }).filter((url: string) => url)
-
-      // 构建提交数据
-      const submitData = {
-        avatarId,
-        content: {
-          content: submitContent,
-          images: images.length > 0 ? images : undefined
-        }
-      }
-
       const res = await Network.request({
-        url: `/api/order/${orderId}/submit-content`,
+        url: `/api/order-processing/confirm/${requestId}`,
         method: 'POST',
-        data: submitData
+        data: {
+          content: userContent
+        }
       })
 
       if (res.data?.code === 200) {
-        showToast({ title: '提交成功，等待验收', icon: 'success' })
-        setShowSubmitModal(false)
-        
-        // 跳转到发布反馈页面
-        setTimeout(() => {
-          navigateTo({
-            url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}`
-          })
-        }, 1500)
+        showToast({ title: '已提交，正在发布', icon: 'success' })
+        // 开始发布流程
+        await startPublish()
       } else {
-        throw new Error(res.data?.msg || '提交失败')
+        showToast({ title: res.data?.message || '提交失败', icon: 'none' })
       }
-    } catch (error: any) {
-      showToast({ title: error.message || '提交失败', icon: 'none' })
+    } catch (error) {
+      console.error('确认内容失败:', error)
+      showToast({ title: '提交失败', icon: 'none' })
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleGenerateImageDirectly = async () => {
-    if (!inputText.trim()) {
-      showToast({ title: '请输入图片描述', icon: 'none' })
-      return
-    }
-    await generateImage(inputText)
-  }
-
-  const copyImageUrl = (url: string) => {
-    Taro.setClipboardData({
-      data: url,
-      success: () => showToast({ title: '已复制链接', icon: 'success' })
-    })
-  }
-
-  const downloadImage = async (url: string) => {
+  const startPublish = async () => {
     try {
-      await Network.downloadFile({ url })
-      showToast({ title: '下载成功', icon: 'success' })
-    } catch {
-      showToast({ title: '下载失败', icon: 'none' })
+      const res = await Network.request({
+        url: `/api/order-processing/publish/${requestId}`,
+        method: 'POST'
+      })
+
+      if (res.data?.code === 200) {
+        showToast({ title: '发布成功', icon: 'success' })
+        // 跳转到订单详情页
+        setTimeout(() => {
+          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+        }, 1500)
+      } else {
+        showToast({ title: res.data?.message || '发布失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('发布失败:', error)
+      showToast({ title: '发布失败', icon: 'none' })
     }
   }
 
-  const handleImageClick = (imageUrl: string) => {
-    Taro.previewImage({ urls: [imageUrl] })
+  const renderQueuingState = () => (
+    <View className="status-card">
+      <View className="status-icon queuing">
+        <Clock size={48} color="#f59e0b" />
+      </View>
+      <Text className="status-title block">排队中</Text>
+      <Text className="status-desc block">
+        当前有 {processingData?.queuePosition || 0} 个任务在队列中
+      </Text>
+      {processingData?.estimatedTime && (
+        <View className="time-estimate">
+          <Text className="time-label block">预计等待时间</Text>
+          <Text className="time-value block">{processingData.estimatedTime}秒</Text>
+        </View>
+      )}
+      <View className="progress-wrapper">
+        <View className="progress-bar queuing">
+          <View 
+            className="progress-fill" 
+            style={{ 
+              width: '0%',
+              background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text block">0%</Text>
+      </View>
+      <Loader size={24} color="#f59e0b" className="loading-spinner" />
+    </View>
+  )
+
+  const renderGeneratingState = () => (
+    <View className="status-card">
+      <View className="status-icon generating">
+        <Sparkles size={48} color="#3b82f6" />
+      </View>
+      <Text className="status-title block">生成内容中</Text>
+      <Text className="status-desc block">
+        AI 正在为您生成优质内容，请稍候...
+      </Text>
+      <View className="progress-wrapper">
+        <View className="progress-bar generating">
+          <View 
+            className="progress-fill animated" 
+            style={{ 
+              background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text">生成中...</Text>
+      </View>
+      <Loader size={24} color="#3b82f6" className="loading-spinner" />
+    </View>
+  )
+
+  const renderPreviewState = () => {
+    return (
+      <View className="preview-section">
+        <View className="preview-header">
+          <Text className="preview-title block">内容预览</Text>
+          <Text className="preview-subtitle block">请确认下方内容，如需修改可编辑后提交</Text>
+        </View>
+
+        <View className="content-editor">
+          <Textarea
+            className="content-textarea"
+            placeholder="生成的内容将在这里显示"
+            value={userContent || processingData?.generatedContent?.content || ''}
+            onInput={(e) => setUserContent(e.detail.value)}
+            maxlength={2000}
+            style={{ width: '100%', minHeight: '200px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', fontSize: '14px', lineHeight: '1.6', color: '#1e293b' }}
+          />
+        </View>
+
+        <View className="preview-actions">
+          <Button
+            className="action-btn confirm-btn"
+            onClick={handleConfirmContent}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <Text className="btn-text block">提交中...</Text>
+            ) : (
+              <>
+                <Check size={20} color="#fff" />
+                <Text className="btn-text block">确认并发布</Text>
+              </>
+            )}
+          </Button>
+        </View>
+      </View>
+    )
+  }
+
+  const renderPublishingState = () => (
+    <View className="status-card">
+      <View className="status-icon publishing">
+        <Zap size={48} color="#10b981" />
+      </View>
+      <Text className="status-title block">发布中</Text>
+      <Text className="status-desc block">
+        正在发布到 {PLATFORM_NAMES[processingData?.generatedContent?.platform || '目标平台']}...
+      </Text>
+      <View className="progress-wrapper">
+        <View className="progress-bar publishing">
+          <View 
+            className="progress-fill animated" 
+            style={{ 
+              background: 'linear-gradient(90deg, #10b981 0%, #22c55e 100%)'
+            }}
+          />
+        </View>
+        <Text className="progress-text">发布中...</Text>
+      </View>
+      <Loader size={24} color="#10b981" className="loading-spinner" />
+    </View>
+  )
+
+  const renderCompletedState = () => (
+    <View className="status-card success">
+      <View className="status-icon success">
+        <Check size={48} color="#22c55e" />
+      </View>
+      <Text className="status-title block">发布成功</Text>
+      {processingData?.publishStatus?.message && (
+        <Text className="status-desc block">{processingData.publishStatus.message}</Text>
+      )}
+      <Button className="action-btn" onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })}>
+        <Text className="btn-text block">查看订单详情</Text>
+      </Button>
+    </View>
+  )
+
+  const renderFailedState = () => (
+    <View className="status-card error">
+      <View className="status-icon error">
+        <X size={48} color="#ef4444" />
+      </View>
+      <Text className="status-title block">处理失败</Text>
+      <Text className="status-desc block">
+        内容生成或发布失败，请稍后重试
+      </Text>
+      <Button className="action-btn" onClick={() => navigateBack()}>
+        <Text className="btn-text block">返回</Text>
+      </Button>
+    </View>
+  )
+
+  const renderErrorState = () => (
+    <View className="status-card error">
+      <View className="status-icon error">
+        <X size={48} color="#ef4444" />
+      </View>
+      <Text className="status-title block">获取状态失败</Text>
+      <Text className="status-desc block">
+        无法获取订单处理状态，请刷新页面重试
+      </Text>
+      <Button
+        className="action-btn"
+        onClick={() => {
+          if (pollInterval) {
+            clearInterval(pollInterval)
+          }
+          startPolling()
+        }}
+      >
+        <Text className="btn-text">重新加载</Text>
+      </Button>
+    </View>
+  )
+
+  if (loading) {
+    return (
+      <View className="order-content-creation-page">
+        <View className="loading-wrapper">
+          <Loader size={32} color="#00f5ff" />
+          <Text className="loading-text">加载中...</Text>
+        </View>
+      </View>
+    )
   }
 
   return (
-    <View className="content-creation-page">
+    <View className="order-content-creation-page">
       {/* 背景装饰 */}
       <View className="bg-decoration bg-1" />
       <View className="bg-decoration bg-2" />
 
       {/* 头部 */}
       <View className="page-header">
-        <View className="header-left" onClick={() => Taro.navigateBack()}>
+        <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
-        <Text className="header-title">内容创作</Text>
+        <Text className="header-title block">订单处理</Text>
         <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
 
-      {/* 订单信息 */}
-      {orderInfo && (
-        <View className="order-info-bar">
-          <Text className="order-title">{orderInfo.title}</Text>
-          <View className="order-budget">
-            <Text className="budget-text">¥{orderInfo.budget}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* 消息列表 */}
-      <ScrollView 
-        className="messages-container" 
-        scrollY
-        ref={scrollRef}
-      >
-        {messages.map((msg) => (
-          <View 
-            key={msg.id} 
-            className={`message ${msg.role === 'user' ? 'user-message' : 'assistant-message'}`}
-          >
-            {msg.role === 'assistant' && (
-              <View className="avatar-icon">
-                <Sparkles size={20} color="#3b82f6" />
-              </View>
-            )}
-            <View className="message-content">
-              <Text className="message-text">{msg.content}</Text>
-              {msg.imageUrl && (
-                <View className="image-message">
-                  <Image 
-                    src={msg.imageUrl} 
-                    className="generated-image"
-                    mode="aspectFit"
-                    onClick={() => handleImageClick(msg.imageUrl!)}
-                  />
-                  <View className="image-actions">
-                    <View className="action-btn" onClick={() => copyImageUrl(msg.imageUrl || '')}>
-                      <Copy size={16} color="#64748b" />
-                      <Text className="action-text">复制链接</Text>
-                    </View>
-                    <View className="action-btn" onClick={() => downloadImage(msg.imageUrl || '')}>
-                      <Download size={16} color="#64748b" />
-                      <Text className="action-text">下载</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
+      <ScrollView className="page-scroll" scrollY>
+        {/* 订单基本信息 */}
+        {processingData?.generatedContent && (
+          <View className="order-info-card">
+            <View className="info-header">
+              <Sparkles size={20} color="#00f5ff" />
+              <Text className="info-title block">订单信息</Text>
             </View>
-            {msg.role === 'user' && (
-              <View className="user-avatar">
-                <Text className="user-avatar-text">我</Text>
-              </View>
-            )}
-          </View>
-        ))}
-        
-        {generatingImage && (
-          <View className="message assistant-message">
-            <View className="avatar-icon">
-              <Sparkles size={20} color="#3b82f6" />
-            </View>
-            <View className="message-content">
-              <View className="loading-indicator">
-                <Loader size={18} color="#3b82f6" className="spin-icon" />
-                <Text className="loading-text">正在生成图片...</Text>
+            <Text className="info-order-title block">{processingData.generatedContent.title}</Text>
+            <View className="info-meta">
+              <View className="info-meta-item">
+                <Smartphone size={16} color="#6366f1" />
+                <Text className="info-meta-text block">
+                  {PLATFORM_NAMES[processingData.generatedContent.platform] || processingData.generatedContent.platform}
+                </Text>
               </View>
             </View>
           </View>
         )}
-      </ScrollView>
 
-      {/* 快捷操作 */}
-      {generatedImages.length > 0 && (
-        <View className="generated-images-gallery">
-          <Text className="gallery-title">已生成的图片</Text>
-          <ScrollView className="gallery-scroll" scrollX>
-            {generatedImages.map((img, index) => (
-              <View key={index} className="gallery-item" onClick={() => handleImageClick(img.url)}>
-                <Image src={img.url} className="gallery-image" mode="aspectFill" />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 提交按钮区域 */}
-      <View className="submit-action-area">
-        <Button 
-          className="submit-btn"
-          onClick={openSubmitModal}
-          disabled={messages.length <= 1}
-        >
-          <Check size={18} color="#fff" />
-          <Text>提交内容</Text>
-        </Button>
-      </View>
-
-      {/* 输入区域 */}
-      <View className="input-area">
-        <View className="input-wrapper">
-          <View className="input-container">
-            <Textarea
-              className="input-textarea"
-              value={inputText}
-              onInput={(e: any) => setInputText(e.detail.value)}
-              placeholder="输入您的创作需求..."
-              maxlength={500}
-              autoHeight
-            />
-          </View>
-          <View className="input-actions">
-            <View 
-              className="action-icon-btn"
-              onClick={handleGenerateImageDirectly}
-            >
-              <ImageIcon size={20} color={inputText.trim() ? '#3b82f6' : '#94a3b8'} />
+        {/* 状态展示 */}
+        <View className="status-section">
+          {/* 显示最后更新时间 */}
+          {lastUpdateTime && (
+            <View className="last-update-time">
+              <Text className="update-time-text block">
+                最后更新: {lastUpdateTime.toLocaleTimeString()}
+              </Text>
             </View>
-            <Button 
-              className="send-btn"
-              onClick={handleSend}
-              disabled={!inputText.trim() || loading}
-            >
-              {loading ? (
-                <Loader size={18} color="#fff" className="spin-icon" />
-              ) : (
-                <Send size={18} color="#fff" />
+          )}
+
+          {/* 如果有多次错误，显示错误状态 */}
+          {(processingData as any)?.errorCount >= 5 && renderErrorState()}
+
+          {/* 如果没有错误或错误次数不足5次，显示正常状态 */}
+          {(!processingData || (processingData as any)?.errorCount < 5) && (
+            <>
+              {processingData?.status === 'queuing' && renderQueuingState()}
+              {processingData?.status === 'generating' && renderGeneratingState()}
+              {processingData?.status === 'preview' && renderPreviewState()}
+              {processingData?.status === 'publishing' && renderPublishingState()}
+              {processingData?.status === 'completed' && renderCompletedState()}
+              {processingData?.status === 'failed' && renderFailedState()}
+
+              {/* 如果有processingData但没有匹配的状态，显示默认状态 */}
+              {processingData &&
+               !['queuing', 'generating', 'preview', 'publishing', 'completed', 'failed'].includes(processingData.status) && (
+                <View className="status-card">
+                  <View className="status-icon">
+                    <Clock size={48} color="#6366f1" />
+                  </View>
+                  <Text className="status-title block">等待处理</Text>
+                  <Text className="status-desc block">
+                    当前状态：{processingData.status}
+                  </Text>
+                  <View className="progress-wrapper">
+                    <View className="progress-bar">
+                      <View
+                        className="progress-fill animated"
+                        style={{
+                          background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)'
+                        }}
+                      />
+                    </View>
+                    <Text className="progress-text block">处理中...</Text>
+                  </View>
+                  <Loader size={24} color="#6366f1" className="loading-spinner" />
+                </View>
               )}
-            </Button>
-          </View>
+            </>
+          )}
         </View>
-      </View>
 
-      {/* 提交内容弹窗 */}
-      {showSubmitModal && (
-        <View className="modal-overlay">
-          <View className="modal-content">
-            <View className="modal-header">
-              <Text className="modal-title block">提交内容</Text>
-              <View className="modal-close" onClick={() => setShowSubmitModal(false)}>
-                <Text>✕</Text>
-              </View>
-            </View>
-            <View className="modal-body">
-              <Text className="block text-sm text-gray-600 mb-2">请确认提交的内容：</Text>
-              <Textarea
-                className="submit-textarea"
-                value={submitContent}
-                onInput={(e: any) => setSubmitContent(e.detail.value)}
-                placeholder="汇总的内容将显示在这里..."
-                maxlength={5000}
-                autoHeight
-              />
-            </View>
-            <View className="modal-footer">
-              <Button variant="outline" onClick={() => setShowSubmitModal(false)} className="modal-btn">
-                <Text>取消</Text>
-              </Button>
-              <Button onClick={handleSubmitContent} disabled={submitting} className="modal-btn primary">
-                {submitting ? (
-                  <Loader size={16} color="#fff" />
-                ) : (
-                  <Text>确认提交</Text>
-                )}
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
+        <View className="bottom-space" />
+      </ScrollView>
     </View>
   )
 }
