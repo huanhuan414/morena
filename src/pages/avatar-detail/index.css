@@ -1,0 +1,290 @@
+.detail-container {
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.loading-text,
+.error-text {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #666;
+}
+
+.error-text {
+  color: #ef4444;
+}
+
+/* 导航栏 */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.nav-back {
+  width: 40px;
+}
+
+.nav-back-text {
+  font-size: 20px;
+  color: #333;
+}
+
+.nav-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+}
+
+.nav-right {
+  width: 40px;
+}
+
+/* 内容滚动区 */
+.content-scroll {
+  height: calc(100vh - 44px);
+}
+
+/* 分身头部 */
+.avatar-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.avatar-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+.avatar-info {
+  flex: 1;
+  margin-left: 16px;
+}
+
+.avatar-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-name {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.avatar-level {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.level-text {
+  font-size: 12px;
+}
+
+.avatar-desc {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+/* 数据统计卡片 */
+.stats-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stat-label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #999;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: #eee;
+}
+
+/* 执行状态概览 */
+.status-overview-card {
+  margin: 0 16px 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f5f6f8;
+  border-radius: 16px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.status-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.status-name {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 订单列表 */
+.orders-section {
+  padding: 0 16px 20px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+}
+
+.empty-text {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #999;
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-card {
+  padding: 14px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.order-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.order-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin-right: 10px;
+}
+
+.order-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.order-status-text {
+  font-size: 12px;
+  color: #fff;
+}
+
+.order-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.order-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.platform-tag {
+  padding: 2px 8px;
+  background: #f0f2f5;
+  border-radius: 4px;
+}
+
+.platform-text {
+  font-size: 11px;
+  color: #666;
+}
+
+.order-earnings {
+  font-size: 15px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.order-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-text {
+  font-size: 12px;
+  color: #999;
+}

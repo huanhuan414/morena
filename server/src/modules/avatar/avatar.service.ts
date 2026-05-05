@@ -18,6 +18,23 @@ export class AvatarService {
   ) {
   }
 
+  /**
+   * 根据ID获取分身详情
+   */
+  async findById(avatarId: string) {
+    const client = getSupabaseClient()
+    const { data, error } = await client
+      .from('avatars')
+      .select('*')
+      .eq('id', avatarId)
+      .single()
+    
+    if (error || !data) {
+      return null
+    }
+    return data
+  }
+
   async createAvatar(userId: string, avatarData: Record<string, any>) {
     // 检查用户是否可以创建分身
     const canCreate = await this.subscriptionService.canCreateAvatar(userId)
@@ -932,35 +949,56 @@ export class AvatarService {
   }
 
   /**
-   * 获取分身的订单列表
+   * 获取分身的订单列表（分身视角）
+   * 查询 dispatch_requests 表，获取该分身被分发的所有订单请求
    */
-  async getAvatarOrders(avatarId: string, page = 1, pageSize = 10) {
+  async getAvatarOrders(avatarId: string, page = 1, pageSize = 50) {
     const client = getSupabaseClient()
     const offset = (page - 1) * pageSize
 
-    // 获取订单总数
-    const { count } = await client
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('avatar_id', avatarId)
-
-    // 获取订单列表
+    // 获取分身关联的订单请求
     const { data, error } = await client
-      .from('orders')
-      .select('id, title, description, price, status, created_at, completed_at')
+      .from('dispatch_requests')
+      .select(`
+        id,
+        order_id,
+        status,
+        earnings,
+        created_at,
+        submitted_at,
+        orders:order_id (
+          id,
+          title,
+          platforms,
+          content_type
+        )
+      `)
       .eq('avatar_id', avatarId)
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
 
     if (error) {
-      console.error('获取订单失败:', error)
-      return { orders: [], total: 0 }
+      console.error('获取分身订单失败:', error)
+      return []
     }
 
-    return {
-      orders: data || [],
-      total: count || 0
-    }
+    // 格式化返回数据
+    const orders = (data || []).map(item => {
+      const order = item.orders as any
+      return {
+        id: item.id,
+        order_id: item.order_id,
+        order_title: order?.title || '订单',
+        status: item.status,
+        platforms: order?.platforms || [],
+        content_type: order?.content_type || '',
+        earnings: parseFloat(item.earnings) || 0,
+        created_at: item.created_at,
+        submitted_at: item.submitted_at
+      }
+    })
+
+    return orders
   }
 
   /**

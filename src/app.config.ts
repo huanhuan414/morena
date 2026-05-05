@@ -42,6 +42,7 @@ export default defineAppConfig({
     'pages/avatar/avatar-account-config/index',
     'pages/avatar/avatar-friends/index',
     'pages/avatar-orders/index',
+    'pages/avatar-detail/index',
     // 功能页面
     'pages/messages/index',
     'pages/palm-reading/index',
