@@ -475,9 +475,6 @@ export default function MindChatPage() {
   // 手掌图片检测弹窗
   const [palmDetectImage, setPalmDetectImage] = useState<string>('')
 
-  // 🔴 新技能提示（右侧 tag）
-  const [showNewSkillTip, setShowNewSkillTip] = useState(true) // 默认显示提示
-
   // 检测消息是否涉及第三方平台
   const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null => {
     const lowerMessage = message.toLowerCase()
@@ -3760,6 +3757,41 @@ export default function MindChatPage() {
         </View>
       </View>
 
+      {/* 新技能提示横幅 */}
+      <View
+        className="clickable"
+        onClick={() => navigateToSkillsSquare()}
+        style={{
+          margin: '20rpx 32rpx',
+          padding: '24rpx 28rpx',
+          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF4757 50%, #FF6B81 100%)',
+          borderRadius: '20rpx',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          boxShadow: '0 4rpx 16rpx rgba(255, 71, 87, 0.3)',
+        }}
+      >
+        <Sparkles size={32} color="#FFFFFF" />
+        <View style={{ flex: 1, marginLeft: '20rpx' }}>
+          <Text style={{ fontSize: '28rpx', fontWeight: 600, color: '#FFFFFF' }}>
+            🌟 新技能上线
+          </Text>
+          <Text style={{ fontSize: '24rpx', color: 'rgba(255,255,255,0.9)', marginTop: '4rpx' }}>
+            点击体验「看手相」AI智能分析
+          </Text>
+        </View>
+        <View
+          style={{
+            background: 'rgba(255,255,255,0.3)',
+            borderRadius: '30rpx',
+            padding: '8rpx 20rpx',
+          }}
+        >
+          <Text style={{ fontSize: '22rpx', fontWeight: 600, color: '#FFFFFF' }}>去看看</Text>
+        </View>
+      </View>
+
       {/* 分身成长面板 - 有分身时才显示 */}
       {!hasNoAvatar && (
       <View className="learn-panel" style={{ '--mastery-level': `${learningStats.masteryLevel}%` } as React.CSSProperties}>
@@ -4501,31 +4533,9 @@ export default function MindChatPage() {
             <View
               onClick={() => {
                 navigateToSkillsSquare()
-                setShowNewSkillTip(false)
               }}
             >
-              <View className="left-icon-btn skill-btn">
-                <Wrench size={24} color="#666666" />
-              </View>
-              {showNewSkillTip && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: '-10rpx',
-                    right: '-10rpx',
-                    background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)',
-                    borderRadius: '20rpx',
-                    padding: '2rpx 10rpx',
-                    minWidth: '60rpx',
-                    textAlign: 'center',
-                    boxShadow: '0 2rpx 8rpx rgba(255, 71, 87, 0.4)',
-                  }}
-                >
-                  <Text style={{ fontSize: '16rpx', fontWeight: 700, color: '#FFFFFF', lineHeight: '24rpx' }}>
-                    NEW
-                  </Text>
-                </View>
-              )}
+              <Wrench size={24} color="#666666" />
             </View>
           </View>
 
