@@ -215,7 +215,9 @@ export class ContentGenerationService {
       '品牌故事': '故事',
       '知识科普': '科普',
       '生活分享': '生活',
-      '娱乐八卦': '娱乐'
+      '娱乐八卦': '娱乐',
+      'image': '种草图片',
+      '图片': '种草图片'
     }
     return styleMap[contentType] || '种草'
   }
