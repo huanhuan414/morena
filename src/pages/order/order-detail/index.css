@@ -1385,6 +1385,28 @@
   font-size: 22rpx;
 }
 
+/* 已完成徽章 */
+.avatar-completed-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  color: #ffffff;
+  padding: 10rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(82, 196, 26, 0.3);
+}
+
+.avatar-completed-badge text {
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
 /* 执行时间线 */
 .timeline {
   background: #ffffff;
