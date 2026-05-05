@@ -6,8 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
-  Loader, Circle, User,
-  Clock, DollarSign, Calendar, Zap, Users
+  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -96,16 +95,6 @@ interface AvatarStat {
   posts: any[]
 }
 
-interface ExecutionStep {
-  id: string
-  step_number: number
-  step_name: string
-  description: string
-  status: string
-  started_at?: string
-  completed_at?: string
-}
-
 const PLATFORM_NAMES: Record<string, string> = {
   'wechat_mp': '微信公众号',
   'xiaohongshu': '小红书',
@@ -152,8 +141,6 @@ export default function OrderDetailPage() {
 
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-
-  const [executions, setExecutions] = useState<ExecutionStep[]>([])
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
@@ -289,7 +276,7 @@ export default function OrderDetailPage() {
     try {
       const res = await Network.request({ url: `/api/order-dispatch/${id}/status` })
       if (res.data?.code === 200) {
-        setExecutions(res.data.data.executions || [])
+        // 分发状态数据已更新
       }
     } catch (error) {
       console.error('获取分配状态失败:', error)
@@ -390,19 +377,6 @@ export default function OrderDetailPage() {
     navigateTo({
       url: `/pages/order/order-matching/index?orderId=${id}`
     })
-  }
-
-  const getStepIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Check size={20} color="#22c55e" />
-      case 'in_progress':
-        return <Loader size={20} color="#3b82f6" className="animate-spin" />
-      case 'failed':
-        return <X size={20} color="#ef4444" />
-      default:
-        return <Circle size={20} color="rgba(255,255,255,0.2)" />
-    }
   }
 
   if (loading) {
@@ -658,8 +632,6 @@ export default function OrderDetailPage() {
             {/* 分身执行状态列表 */}
             {order.summary_stats?.avatarStats && order.summary_stats.avatarStats.length > 0 && (
               <View className="avatar-execution-list">
-                <Text className="section-title block">分身执行状态</Text>
-                
                 {/* 汇总统计 */}
                 <View className="avatar-execution-header">
                   <Text className="avatar-execution-title block">分身执行状态</Text>
@@ -698,7 +670,7 @@ export default function OrderDetailPage() {
                         Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.requestId}&orderId=${id}` })
                       } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
                         // 已提交反馈 → 查看发布反馈页面
-                        Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
+                        Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
                       }
                     }}
                   >
@@ -746,36 +718,11 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 执行步骤时间线 */}
-            <Text className="section-title block">执行步骤</Text>
-            {executions.length > 0 ? (
-              <View className="timeline">
-                {executions.map((step) => (
-                  <View key={step.id} className="timeline-item">
-                    <View className="timeline-marker">
-                      {getStepIcon(step.status)}
-                      <View className={`timeline-line ${step.status === 'completed' ? 'completed' : ''}`} />
-                    </View>
-                    <View className={`timeline-content ${step.status === 'completed' ? 'completed' : ''}`}>
-                      <Text className="timeline-title block">{step.step_name}</Text>
-                      {step.description && (
-                        <Text className="timeline-desc block">{step.description}</Text>
-                      )}
-                      <Text className="timeline-time block">
-                        {step.completed_at
-                          ? `完成于 ${new Date(step.completed_at).toLocaleString()}`
-                          : step.started_at
-                          ? `开始于 ${new Date(step.started_at).toLocaleString()}`
-                          : '待开始'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
+            {/* 如果没有分身数据，显示空状态 */}
+            {(!order.summary_stats?.avatarStats || order.summary_stats.avatarStats.length === 0) && (
               <View className="empty-state">
-                <Clock size={64} color="rgba(255,255,255,0.2)" />
-                <Text className="empty-text block">暂无执行进度</Text>
+                <User size={64} color="rgba(255,255,255,0.2)" />
+                <Text className="empty-text block">暂无分身执行</Text>
               </View>
             )}
           </View>
