@@ -283,6 +283,11 @@ export default function OrderDetailPage() {
     }
   }
 
+  // 计算是否有待验收的分身
+  const hasAwaitingAvatar = avatarStats?.some((s: any) => s.status === 'awaiting_acceptance')
+  // 计算是否所有分身都验收完成
+  const allAvatarsCompleted = avatarStats?.every((s: any) => s.status === 'completed')
+
   const handleSave = async () => {
     if (!formData.title.trim()) {
       showToast({ title: '请输入订单标题', icon: 'none' })
@@ -314,16 +319,42 @@ export default function OrderDetailPage() {
 
   const handleApprove = async () => {
     try {
-      const res = await Network.request({
-        url: `/api/order/${id}/approve`,
-        method: 'PUT',
-        data: rating > 0 ? { rating: { score: rating, comment: ratingComment } } : {}
-      })
+      // 检查是否有待验收的分身
+      const pendingAvatars = order.summary_stats?.avatarStats?.filter(
+        (stat: any) => ['published', 'feedback_submitted', 'awaiting_acceptance'].includes(stat.status)
+      ) || []
 
-      if (res.data?.code === 200) {
-        showToast({ title: '验收通过', icon: 'success' })
-        setShowRating(false)
-        fetchOrder()
+      if (pendingAvatars.length > 0) {
+        // 还有待验收的分身，先验收第一个
+        const pendingAvatar = pendingAvatars[0]
+        try {
+          const res = await Network.request({
+            url: `/api/order-processing/accept/${pendingAvatar.requestId}`,
+            method: 'PUT'
+          })
+
+          if (res.data?.code === 200) {
+            showToast({ title: `已验收「${pendingAvatar.avatarName}」`, icon: 'success' })
+            setShowRating(false)
+            fetchOrder()
+          }
+        } catch (error) {
+          console.error('验收分身失败:', error)
+          showToast({ title: '验收失败', icon: 'none' })
+        }
+      } else {
+        // 所有分身都验收了，验收整个订单
+        const res = await Network.request({
+          url: `/api/order/${id}/approve`,
+          method: 'PUT',
+          data: rating > 0 ? { rating: { score: rating, comment: ratingComment } } : {}
+        })
+
+        if (res.data?.code === 200) {
+          showToast({ title: allAvatarsCompleted ? '订单验收通过' : '已验收「' + (pendingAvatars[0]?.avatarName || '分身') + '」', icon: 'success' })
+          setShowRating(false)
+          fetchOrder()
+        }
       }
     } catch (error) {
       console.error('验收失败:', error)
@@ -614,12 +645,14 @@ export default function OrderDetailPage() {
                 <>
                   <Button onClick={() => setShowRating(true)} className="primary-action-btn">
                     <Check size={18} color="#fff" />
-                    <Text>验收通过</Text>
+                    <Text>{allAvatarsCompleted ? '验收订单' : '验收待验收分身'}</Text>
                   </Button>
-                  <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
-                    <X size={18} color="#fff" />
-                    <Text>驳回修改</Text>
-                  </Button>
+                  {!allAvatarsCompleted && (
+                    <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
+                      <X size={18} color="#fff" />
+                      <Text>驳回修改</Text>
+                    </Button>
+                  )}
                 </>
               )}
             </View>
@@ -771,7 +804,7 @@ export default function OrderDetailPage() {
         >
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
             <View className="modal-header">
-              <Text className="modal-title block">验收评价</Text>
+              <Text className="modal-title block">{allAvatarsCompleted ? '验收订单' : '验收待验收分身'}</Text>
               <View className="modal-close" onClick={() => setShowRating(false)}>
                 <X size={24} color="#fff" />
               </View>
@@ -804,7 +837,7 @@ export default function OrderDetailPage() {
               </Button>
               <Button onClick={handleApprove}>
                 <Check size={16} color="#fff" />
-                <Text className="block">确认验收</Text>
+                <Text className="block">{allAvatarsCompleted ? '验收订单' : '验收分身'}</Text>
               </Button>
             </View>
           </View>
