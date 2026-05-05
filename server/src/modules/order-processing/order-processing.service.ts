@@ -1142,7 +1142,7 @@ export class OrderProcessingService {
     // 查询分身请求
     const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, order_id, status')
+      .select('id, order_id, status, avatar_id')
       .eq('id', requestId)
       .single()
 
@@ -1169,6 +1169,51 @@ export class OrderProcessingService {
     if (updateError) {
       console.error('[OrderProcessing] 更新分身请求状态失败:', updateError)
       throw new Error('验收失败')
+    }
+
+    // 计算并分配分身收益
+    try {
+      // 查询订单预算
+      const { data: orderData } = await client
+        .from('orders')
+        .select('budget')
+        .eq('id', request.order_id)
+        .single()
+
+      if (orderData && orderData.budget && parseFloat(orderData.budget) > 0) {
+        // 查询该订单下所有已完成的分身请求数量
+        const { data: completedRequests } = await client
+          .from('order_dispatch_requests')
+          .select('avatar_id')
+          .eq('order_id', request.order_id)
+          .eq('status', 'completed')
+
+        const completedCount = completedRequests?.length || 1
+        const budget = parseFloat(orderData.budget)
+        const earningsPerAvatar = budget / completedCount
+
+        // 更新分身的总收益
+        if (request.avatar_id) {
+          const { data: avatarData } = await client
+            .from('avatars')
+            .select('total_earnings')
+            .eq('id', request.avatar_id)
+            .single()
+
+          const currentEarnings = avatarData?.total_earnings || 0
+          const newTotalEarnings = parseFloat(currentEarnings) + earningsPerAvatar
+
+          await client
+            .from('avatars')
+            .update({ total_earnings: newTotalEarnings })
+            .eq('id', request.avatar_id)
+
+          console.log(`[OrderProcessing] 分身 ${request.avatar_id} 获得收益 ${earningsPerAvatar}，总收益: ${newTotalEarnings}`)
+        }
+      }
+    } catch (earningsError) {
+      console.error('[OrderProcessing] 计算收益失败:', earningsError)
+      // 不影响主流程
     }
 
     // 检查该订单下是否还有其他未完成的分身请求
