@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CheckCircle } from 'lucide-react-taro'
+import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck } from 'lucide-react-taro'
 import './index.css'
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -235,15 +235,15 @@ export default function OrderPublishFeedback() {
   // 渲染内容类型标签
   const renderContentTypeBadge = (type: string) => {
     const icons: Record<string, any> = {
-      image: <ImageIcon size={12} />,
-      video: <Video size={12} />,
-      article: <FileText size={12} />,
-      图文: <ImageIcon size={12} />,
-      短视频: <Video size={12} />
+      image: <ImageIcon size={12} color="#666" />,
+      video: <Video size={12} color="#666" />,
+      article: <FileText size={12} color="#666" />,
+      图文: <ImageIcon size={12} color="#666" />,
+      短视频: <Video size={12} color="#666" />
     }
     return (
       <View className="content-type-badge">
-        {icons[type] || <FileText size={12} />}
+        {icons[type] || <FileText size={12} color="#666" />}
         <Text className="block ml-1">{CONTENT_TYPE_NAMES[type] || type}</Text>
       </View>
     )
@@ -446,7 +446,7 @@ export default function OrderPublishFeedback() {
                       <View className={`status-badge ${result.status === 'success' ? 'status-success' : 'status-pending'}`}>
                         {result.status === 'success' ? (
                           <>
-                            <CheckCircle size={12} />
+                            <CircleCheck size={12} color="#10b981" />
                             <Text className="block ml-1">已发布</Text>
                           </>
                         ) : (
@@ -540,7 +540,7 @@ export default function OrderPublishFeedback() {
               src={previewImage}
               className="preview-image"
               mode="aspectFit"
-              preview
+              preview="true"
             />
             <View 
               className="preview-close"

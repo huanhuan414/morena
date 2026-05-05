@@ -156,17 +156,12 @@ export default function AvatarOrdersPage() {
       case 'pending':
         handleViewPendingOrder(order)
         break
-      case 'publishing':
-      case 'awaiting_acceptance':
-      case 'cancelled':
+      case 'accepted':
+      case 'generating':
+      case 'preview':
+        // 制作中/预览中状态跳转到内容创作页面
         navigateTo({
-          url: `/pages/order/order-detail/index?id=${order.order_id}`
-        })
-        break
-      case 'completed':
-        // 已完成的订单跳转到订单详情查看反馈
-        navigateTo({
-          url: `/pages/order/order-detail/index?id=${order.order_id}`
+          url: `/pages/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
         })
         break
       case 'published':
@@ -175,7 +170,17 @@ export default function AvatarOrdersPage() {
           url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
+      case 'publishing':
+      case 'awaiting_acceptance':
+      case 'cancelled':
+      case 'completed':
+        // 这些状态跳转到订单详情页面
+        navigateTo({
+          url: `/pages/order/order-detail/index?id=${order.order_id}`
+        })
+        break
       default:
+        // 其他状态默认跳转到内容创作页面
         navigateTo({
           url: `/pages/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
         })
