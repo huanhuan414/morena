@@ -183,7 +183,7 @@ export class ContentGenerationService {
       // 朋友圈特殊处理：生成3张图 + 爆款文案
       return {
         ...baseParams,
-        style: '朋友圈爆款', // 朋友圈风格
+        style: '分享', // 朋友圈使用分享风格
         keywords: this.extractKeywords(orderDescription),
         include_images: true,
         image_count: 3, // 朋友圈至少3张图
