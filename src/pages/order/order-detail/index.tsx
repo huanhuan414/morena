@@ -837,37 +837,76 @@ export default function OrderDetailPage() {
                 <X size={24} color="#fff" />
               </View>
             </View>
-            <View className="rating-stars">
-              {[1, 2, 3, 4, 5].map(star => (
-                <View
-                  key={star}
-                  className="star-item"
-                  onClick={() => setRating(star)}
-                >
-                  <Star
-                    size={40}
-                    color={star <= rating ? '#eab308' : 'rgba(255,255,255,0.2)'}
+            {pendingAvatars.length > 0 ? (
+              <>
+                <View className="pending-avatar-list">
+                  {pendingAvatars.map(stat => (
+                    <View key={stat.requestId} className="pending-avatar-item">
+                      <View className="pending-avatar-info">
+                        <View 
+                          className="avatar-avatar"
+                          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                        >
+                          <Text className="avatar-avatar-text block">{stat.avatarName?.charAt(0) || '?'}</Text>
+                        </View>
+                        <View className="pending-avatar-text-wrap">
+                          <Text className="block pending-avatar-name">{stat.avatarName}</Text>
+                          <Text className="block pending-avatar-status">待验收</Text>
+                        </View>
+                      </View>
+                      <View 
+                        className="accept-single-btn"
+                        onClick={() => {
+                          setSelectedRequestId(stat.requestId);
+                          setShowRating(true);
+                        }}
+                      >
+                        <Text className="block">验收</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                <View className="modal-footer">
+                  <Button variant="outline" onClick={() => setShowRating(false)}>
+                    <Text className="block">关闭</Text>
+                  </Button>
+                </View>
+              </>
+            ) : (
+              <>
+                <View className="rating-stars">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <View
+                      key={star}
+                      className="star-item"
+                      onClick={() => setRating(star)}
+                    >
+                      <Star
+                        size={40}
+                        color={star <= rating ? '#eab308' : 'rgba(255,255,255,0.2)'}
+                      />
+                    </View>
+                  ))}
+                </View>
+                <View className="modal-input">
+                  <Textarea
+                    value={ratingComment}
+                    onInput={(e: any) => setRatingComment(e.detail.value)}
+                    placeholder="请输入评价（选填）"
+                    className="comment-textarea"
                   />
                 </View>
-              ))}
-            </View>
-            <View className="modal-input">
-              <Textarea
-                value={ratingComment}
-                onInput={(e: any) => setRatingComment(e.detail.value)}
-                placeholder="请输入评价（选填）"
-                className="comment-textarea"
-              />
-            </View>
-            <View className="modal-footer">
-              <Button variant="outline" onClick={() => setShowRating(false)}>
-                <Text className="block">取消</Text>
-              </Button>
-              <Button onClick={handleApprove}>
-                <Check size={16} color="#fff" />
-                <Text className="block">{allAvatarsCompleted ? '验收订单' : '验收分身'}</Text>
-              </Button>
-            </View>
+                <View className="modal-footer">
+                  <Button variant="outline" onClick={() => setShowRating(false)}>
+                    <Text className="block">取消</Text>
+                  </Button>
+                  <Button onClick={handleApprove}>
+                    <Check size={16} color="#fff" />
+                    <Text className="block">{allAvatarsCompleted ? '验收订单' : '验收分身'}</Text>
+                  </Button>
+                </View>
+              </>
+            )}
           </View>
         </View>
       )}
