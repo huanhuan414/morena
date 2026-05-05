@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
-  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users, CheckCircle
+  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -641,7 +641,7 @@ export default function OrderDetailPage() {
               {/* 验收订单按钮 - 全部分身验收完时显示 */}
               {allAvatarsCompleted && (
                 <Button onClick={() => setShowRating(true)} className="primary-action-btn">
-                  <CheckCircle size={18} color="#fff" />
+                  <Check size={18} color="#fff" />
                   <Text>验收订单</Text>
                 </Button>
               )}
@@ -737,7 +737,7 @@ export default function OrderDetailPage() {
 
                     {stat.status === 'completed' && (
                       <View className="avatar-completed-badge">
-                        <CheckCircle size={14} color="#52c41a" />
+                        <Check size={14} color="#52c41a" />
                         <Text className="block">已完成</Text>
                       </View>
                     )}
