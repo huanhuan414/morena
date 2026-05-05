@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
@@ -62,26 +62,9 @@ export default function OrderPublishFeedback() {
   const [contentType, setContentType] = useState<string>('')
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
   
-  // 用户角色判断
-  const [currentUserId, setCurrentUserId] = useState<string>('')
-  const [issuerId, setIssuerId] = useState<string>('')
-  const [isIssuer, setIsIssuer] = useState(false)  // true=发单者，false=接单者(分身)
+  // 处理状态
+  const [processingStatus, setProcessingStatus] = useState<string>('published')
   
-  // 获取当前用户信息
-  useEffect(() => {
-    const userInfo = Taro.getStorageSync('userInfo')
-    if (userInfo?.id) {
-      setCurrentUserId(userInfo.id)
-    }
-  }, [])
-  
-  // 判断用户角色
-  useEffect(() => {
-    if (currentUserId && issuerId) {
-      setIsIssuer(currentUserId === issuerId)
-    }
-  }, [currentUserId, issuerId])
-
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
     loadOrderData()
@@ -101,7 +84,7 @@ export default function OrderPublishFeedback() {
         setGeneratedContent(data.generatedContent)
         setContentType(data.contentType || 'image')
         setCurrentPlatform(data.generatedContent?.platforms?.[0] || '')
-        setIssuerId(data.issuerId || '')  // 保存发单者ID
+        setProcessingStatus(data.status || 'published')  // 保存处理状态
 
         // 获取发布结果
         const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
@@ -654,7 +637,7 @@ export default function OrderPublishFeedback() {
 
       {/* 固定底部按钮 - 根据订单状态显示不同内容 */}
       <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
-        {processingStatus?.status === 'published' ? (
+        {processingStatus === 'published' ? (
           // 待反馈状态：显示提交反馈按钮
           <Button
             className="w-full submit-button"
