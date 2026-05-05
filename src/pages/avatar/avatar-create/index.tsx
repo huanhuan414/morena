@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
-  Camera, Sparkles, Brain, Palette, Zap, Heart, Target,
-  Lightbulb, Shield, Star, ArrowRight, Check, User,
+  Camera, Sparkles, Brain, Zap, Heart, Target,
+  Lightbulb, Star, ArrowRight, Check, User,
   Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
   Moon, Sun, Smile, Bot, ChevronRight, ArrowLeft
 } from 'lucide-react-taro'
@@ -83,6 +83,7 @@ export default function AvatarCreatePage() {
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
   const [skillsFromSquare, setSkillsFromSquare] = useState<any[]>([])
+  const [loadingSkills, setLoadingSkills] = useState(true)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
@@ -145,11 +146,11 @@ export default function AvatarCreatePage() {
         setSkillsFromSquare(filteredSkills)
       } else {
         console.error('[技能广场] API返回异常:', res)
-        showToast({ title: '加载技能失败', icon: 'none' })
       }
     } catch (error) {
       console.error('[技能广场] 加载失败:', error)
-      showToast({ title: '加载技能失败', icon: 'none' })
+    } finally {
+      setLoadingSkills(false)
     }
   }
 
@@ -228,21 +229,18 @@ export default function AvatarCreatePage() {
   ]
 
   const abilities = useMemo(() => {
-    console.log('[abilities] useMemo 被调用，skillsFromSquare.length =', skillsFromSquare.length)
+    console.log('[abilities] useMemo 被调用，skillsFromSquare.length =', skillsFromSquare.length, ', loadingSkills =', loadingSkills)
 
+    // 如果还在加载中，不显示任何技能（等待 API 返回真实数据）
+    if (loadingSkills) {
+      console.log('[abilities] 技能正在加载中，不显示列表')
+      return []
+    }
+
+    // 如果技能广场数据未加载，也不显示默认列表
     if (skillsFromSquare.length === 0) {
-      console.log('[abilities] 使用默认技能列表')
-      // 如果技能广场数据未加载，返回默认列表
-      return [
-        { id: 'writing', name: '写作助手', desc: '文案、文章、创意写作', icon: Sparkles },
-        { id: 'coding', name: '编程专家', desc: '代码开发、技术解答', icon: Zap },
-        { id: 'analysis', name: '数据分析', desc: '数据洞察、报告生成', icon: Brain },
-        { id: 'planning', name: '任务规划', desc: '日程管理、目标追踪', icon: Target },
-        { id: 'learning', name: '学习伙伴', desc: '知识问答、技能提升', icon: Star },
-        { id: 'creative', name: '创意设计', desc: '视觉创意、头脑风暴', icon: Palette },
-        { id: 'emotional', name: '情感陪伴', desc: '心理支持、情绪疏导', icon: Heart },
-        { id: 'protection', name: '安全守护', desc: '隐私保护、风险评估', icon: Shield }
-      ]
+      console.log('[abilities] 技能广场数据为空，不显示默认列表')
+      return []
     }
 
     console.log('[abilities] 使用技能广场数据，前3个技能:', skillsFromSquare.slice(0, 3).map(s => s.name))
