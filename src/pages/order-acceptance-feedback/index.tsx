@@ -112,6 +112,8 @@ export default function OrderAcceptanceFeedback() {
   const generatedContent = data.generatedContent || {}
   const publishFeedback = data.publishFeedback || {}
   const screenshotUrls = publishFeedback.screenshot_urls || []
+  // 获取分身名称
+  const avatarName = data.avatarName || generatedContent.avatarName || '该分身'
   const link = publishFeedback.link || ''
 
   // 获取内容类型

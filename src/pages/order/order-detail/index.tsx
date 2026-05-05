@@ -285,7 +285,6 @@ export default function OrderDetailPage() {
 
   // 计算是否有待验收的分身
   const avatarStats = order?.summary_stats?.avatarStats || []
-  const hasAwaitingAvatar = avatarStats.some((s: any) => s.status === 'awaiting_acceptance')
   // 计算是否所有分身都验收完成
   const allAvatarsCompleted = avatarStats.length > 0 && avatarStats.every((s: any) => s.status === 'completed')
 
@@ -644,16 +643,16 @@ export default function OrderDetailPage() {
 
               {order.status === 'reviewing' && (
                 <>
-                  <Button onClick={() => setShowRating(true)} className="primary-action-btn">
-                    <Check size={18} color="#fff" />
-                    <Text>{allAvatarsCompleted ? '验收订单' : '验收待验收分身'}</Text>
-                  </Button>
-                  {!allAvatarsCompleted && (
-                    <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
-                      <X size={18} color="#fff" />
-                      <Text>驳回修改</Text>
+                  {allAvatarsCompleted && (
+                    <Button onClick={() => setShowRating(true)} className="primary-action-btn">
+                      <Check size={18} color="#fff" />
+                      <Text>验收订单</Text>
                     </Button>
                   )}
+                  <Button variant="outline" onClick={() => setShowReject(true)} className="secondary-action-btn">
+                    <X size={18} color="#fff" />
+                    <Text>驳回修改</Text>
+                  </Button>
                 </>
               )}
             </View>
@@ -736,20 +735,48 @@ export default function OrderDetailPage() {
                         </View>
                       </View>
                     </View>
-                    <View className={`avatar-status-badge ${stat.status}`}>
-                      <Text className="block">
-                        {stat.status === 'pending' && '待接受'}
-                        {stat.status === 'accepted' && '制作中'}
-                        {stat.status === 'generating' && '生成中'}
-                        {stat.status === 'preview' && '预览中'}
-                        {stat.status === 'publishing' && '发布中'}
-                        {stat.status === 'published' && '待反馈'}
-                        {stat.status === 'feedback_submitted' && '待验收'}
-                        {stat.status === 'awaiting_acceptance' && '待验收'}
-                        {stat.status === 'completed' && '已完成'}
-                        {stat.status === 'rejected' && '已拒绝'}
-                      </Text>
-                    </View>
+                    {/* 待验收/已完成状态的分身，添加验收按钮 */}
+                    {['feedback_submitted', 'awaiting_acceptance'].includes(stat.status) && (
+                      <View 
+                        className="avatar-accept-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          Taro.showModal({
+                            title: '验收确认',
+                            content: `确定验收「${stat.avatarName}」的内容？`,
+                            confirmText: '确认验收',
+                            cancelText: '取消',
+                            success: async (res) => {
+                              if (res.confirm) {
+                                try {
+                                  const res = await Network.request({
+                                    url: `/api/order-processing/accept/${stat.requestId}`,
+                                    method: 'POST'
+                                  })
+                                  if (res.data?.code === 200) {
+                                    Taro.showToast({ title: `已验收「${stat.avatarName}」`, icon: 'success' })
+                                    fetchOrder()
+                                  } else {
+                                    Taro.showToast({ title: res.data?.msg || '验收失败', icon: 'none' })
+                                  }
+                                } catch (err) {
+                                  Taro.showToast({ title: '验收失败', icon: 'none' })
+                                }
+                              }
+                            }
+                          })
+                        }}
+                      >
+                        <Check size={14} color="#fff" />
+                        <Text className="block">验收</Text>
+                      </View>
+                    )}
+                    {stat.status === 'completed' && (
+                      <View className="avatar-completed-badge">
+                        <CheckCircle size={14} color="#52c41a" />
+                        <Text className="block">已完成</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
