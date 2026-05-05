@@ -181,6 +181,7 @@
 /* 内容预览区 */
 .preview-section {
   padding: 32px;
+  padding-bottom: calc(32px + 120px);
 }
 
 .content-display {

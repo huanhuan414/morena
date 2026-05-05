@@ -45,7 +45,7 @@ export default function OrderContentCreation() {
     if (rId) setRequestId(rId)
     if (oId) setOrderId(oId)
     if (rId) {
-      fetchOrderStatus(rId)
+      fetchOrderStatus(rId, true)
     }
   }, [])
 
@@ -63,15 +63,15 @@ export default function OrderContentCreation() {
     if (pollingStatus === 'generating' || pollingStatus === 'queuing' || pollingStatus === 'accepted') {
       const interval = setInterval(() => {
         console.log('轮询获取订单状态...')
-        fetchOrderStatus(requestId)
+        fetchOrderStatus(requestId, false)
       }, 3000) // 每3秒轮询
       
       return () => clearInterval(interval)
     }
   }, [processingData?.status, requestId])
 
-  const fetchOrderStatus = async (reqId: string) => {
-    setLoading(true)
+  const fetchOrderStatus = async (reqId: string, isInitial = false) => {
+    if (isInitial) setLoading(true)
     setError('')
     try {
       const res = await Network.request({
