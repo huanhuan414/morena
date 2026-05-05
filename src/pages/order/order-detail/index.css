@@ -689,6 +689,31 @@
   display: none;
 }
 
+/* 分身名称和状态标签 */
+.avatar-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.avatar-status-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-weight: 500;
+}
+
+.tag-pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.tag-completed {
+  background: #d1fae5;
+  color: #059669;
+}
+
 .timeline-item.completed .timeline-marker {
   background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
   border-color: #10b981;

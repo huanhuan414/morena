@@ -638,24 +638,12 @@ export default function OrderDetailPage() {
                 </>
               )}
 
-              {/* 待验收/验收中状态显示操作按钮 */}
-              {(order.status === 'awaiting_acceptance' || order.status === 'reviewing') && (
-                <>
-                  {/* 待验收分身按钮 - 有待验收分身时显示 */}
-                  {pendingAvatars.length > 0 && (
-                    <Button onClick={() => setShowRating(true)} className="primary-action-btn">
-                      <Check size={18} color="#fff" />
-                      <Text>验收待验收分身</Text>
-                    </Button>
-                  )}
-                  {/* 验收订单按钮 - 全部分身验收完时显示 */}
-                  {allAvatarsCompleted && (
-                    <Button onClick={() => setShowRating(true)} className="secondary-action-btn">
-                      <CheckCircle size={18} color="#fff" />
-                      <Text>验收订单</Text>
-                    </Button>
-                  )}
-                </>
+              {/* 验收订单按钮 - 全部分身验收完时显示 */}
+              {allAvatarsCompleted && (
+                <Button onClick={() => setShowRating(true)} className="primary-action-btn">
+                  <CheckCircle size={18} color="#fff" />
+                  <Text>验收订单</Text>
+                </Button>
               )}
             </View>
           </View>
@@ -723,7 +711,16 @@ export default function OrderDetailPage() {
                         )}
                       </View>
                       <View className="avatar-exec-details">
-                        <Text className="avatar-exec-name block">{stat.avatarName}</Text>
+                        <View className="avatar-name-row">
+                          <Text className="avatar-exec-name block">{stat.avatarName}</Text>
+                          {/* 显示状态标签 */}
+                          {stat.status === 'awaiting_acceptance' && (
+                            <Text className="avatar-status-tag tag-pending">待验收</Text>
+                          )}
+                          {stat.status === 'completed' && (
+                            <Text className="avatar-status-tag tag-completed">已完成</Text>
+                          )}
+                        </View>
                         <View className="avatar-exec-meta">
                           {stat.postCount > 0 && (
                             <Text className="avatar-exec-meta-item block">{stat.postCount}个作品</Text>
