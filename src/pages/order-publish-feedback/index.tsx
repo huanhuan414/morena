@@ -1,24 +1,50 @@
 import { useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
-import Taro, { useLoad, useRouter, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft } from 'lucide-react-taro'
+import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck } from 'lucide-react-taro'
 import './index.css'
 
 const PLATFORM_NAMES: Record<string, string> = {
   wechat_mp: '微信公众号',
   wechat_channel: '视频号',
+  wechat_moments: '朋友圈',
   weibo: '微博',
   xiaohongshu: '小红书',
   douyin: '抖音',
   zhihu: '知乎',
   bilibili: '哔哩哔哩',
   toutiao: '今日头条',
+  kuaishou: '快手',
   other: '其他平台'
+}
+
+const CONTENT_TYPE_NAMES: Record<string, string> = {
+  image: '图片',
+  video: '视频',
+  article: '文章',
+ 图文: '图文',
+  短视频: '短视频'
+}
+
+interface GeneratedContent {
+  title?: string
+  content?: string
+  images?: string[]
+  videos?: string[]
+  platforms?: string[]
+  script?: string
+  cover_image?: string
+}
+
+interface PublishPlatform {
+  platform: string
+  status: string
+  message?: string
 }
 
 export default function OrderPublishFeedback() {
@@ -27,9 +53,14 @@ export default function OrderPublishFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [publishResults, setPublishResults] = useState<any[]>([])
-  const [generatedContent, setGeneratedContent] = useState<any>(null)
+  const [previewImage, setPreviewImage] = useState<string>('')
+  const [previewVisible, setPreviewVisible] = useState(false)
+  
+  const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null)
+  const [publishPlatforms, setPublishPlatforms] = useState<PublishPlatform[]>([])
   const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
+  const [contentType, setContentType] = useState<string>('')
+  const [currentPlatform, setCurrentPlatform] = useState<string>('')
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId })
@@ -48,24 +79,23 @@ export default function OrderPublishFeedback() {
       if (response.data?.code === 200) {
         const data = response.data.data
         setGeneratedContent(data.generatedContent)
+        setContentType(data.contentType || 'image')
+        setCurrentPlatform(data.generatedContent?.platforms?.[0] || '')
 
-        // 获取发布结果（兼容驼峰命名和下划线命名）
+        // 获取发布结果
         const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
 
         if (platforms.length > 0) {
-          setPublishResults(platforms)
-          console.log('[OrderPublishFeedback] 发布结果:', platforms)
+          setPublishPlatforms(platforms)
         } else {
-          // 如果没有发布结果，但有生成内容，说明是待发布状态
+          // 根据生成内容的平台创建待发布的平台列表
           if (data.generatedContent?.platforms) {
-            // 根据生成内容的平台创建待发布的平台列表
             const pendingPlatforms = data.generatedContent.platforms.map((p: string) => ({
               platform: p,
               status: 'manual',
               message: '需要手动发布'
             }))
-            setPublishResults(pendingPlatforms)
-            console.log('[OrderPublishFeedback] 待发布平台:', pendingPlatforms)
+            setPublishPlatforms(pendingPlatforms)
           }
         }
       } else {
@@ -95,7 +125,6 @@ export default function OrderPublishFeedback() {
         console.log('[OrderPublishFeedback] 选择图片:', tempFilePath)
 
         try {
-          // 上传图片到服务器
           const uploadRes = await Network.uploadFile({
             url: '/api/upload',
             filePath: tempFilePath,
@@ -140,7 +169,6 @@ export default function OrderPublishFeedback() {
   }
 
   const handleSubmit = async () => {
-    // 验证是否填写了反馈
     const platforms = Object.keys(feedback)
     if (platforms.length === 0) {
       Taro.showToast({
@@ -150,7 +178,6 @@ export default function OrderPublishFeedback() {
       return
     }
 
-    // 验证每个平台至少填写一项
     const hasInvalid = platforms.some(platform => {
       const fb = feedback[platform]
       return !fb.image && !fb.link
@@ -186,9 +213,7 @@ export default function OrderPublishFeedback() {
         })
 
         setTimeout(() => {
-          navigateTo({
-            url: `/pages/order-detail/index?id=${orderId}`
-          })
+          navigateBack()
         }, 2000)
       } else {
         Taro.showToast({
@@ -207,183 +232,325 @@ export default function OrderPublishFeedback() {
     }
   }
 
+  // 渲染内容类型标签
+  const renderContentTypeBadge = (type: string) => {
+    const icons: Record<string, any> = {
+      image: <ImageIcon size={12} color="#666" />,
+      video: <Video size={12} color="#666" />,
+      article: <FileText size={12} color="#666" />,
+      图文: <ImageIcon size={12} color="#666" />,
+      短视频: <Video size={12} color="#666" />
+    }
+    return (
+      <View className="content-type-badge">
+        {icons[type] || <FileText size={12} color="#666" />}
+        <Text className="block ml-1">{CONTENT_TYPE_NAMES[type] || type}</Text>
+      </View>
+    )
+  }
+
+  // 渲染平台标签
+  const renderPlatformBadge = (platform: string) => {
+    const colors: Record<string, string> = {
+      xiaohongshu: 'platform-xiaohongshu',
+      douyin: 'platform-douyin',
+      wechat_mp: 'platform-wechat',
+      wechat_moments: 'platform-wechat',
+      weibo: 'platform-weibo',
+      bilibili: 'platform-bilibili',
+      zhihu: 'platform-zhihu'
+    }
+    return (
+      <View className={`platform-badge ${colors[platform] || 'platform-default'}`}>
+        <Text className="block">{PLATFORM_NAMES[platform] || platform}</Text>
+      </View>
+    )
+  }
+
+  // 渲染图片内容（朋友圈、小红书图文）
+  const renderImageContent = () => {
+    if (!generatedContent?.images || generatedContent.images.length === 0) {
+      return (
+        <View className="empty-content">
+          <ImageIcon size={48} color="#d1d5db" />
+          <Text className="block text-gray-400 mt-2">暂无生成图片</Text>
+        </View>
+      )
+    }
+
+    return (
+      <View className="image-gallery">
+        <View className="flex justify-between items-center mb-3">
+          <Text className="block text-base font-medium text-gray-700">生成图片 ({generatedContent.images.length}张)</Text>
+        </View>
+        <View className="image-grid">
+          {generatedContent.images.map((img, index) => (
+            <View 
+              key={index} 
+              className="image-item"
+              onClick={() => {
+                setPreviewImage(img)
+                setPreviewVisible(true)
+              }}
+            >
+              <Image
+                src={img}
+                className="image-thumbnail"
+                mode="aspectFill"
+              />
+              <View className="image-overlay">
+                <Eye size={20} color="#fff" />
+              </View>
+            </View>
+          ))}
+        </View>
+        <Text className="block text-xs text-gray-500 mt-2">点击图片可预览大图</Text>
+      </View>
+    )
+  }
+
+  // 渲染视频内容（抖音、B站视频）
+  const renderVideoContent = () => {
+    return (
+      <View className="video-content">
+        <View className="flex items-center space-x-2 mb-3">
+          <Video size={20} color="#1677ff" />
+          <Text className="block text-base font-medium text-gray-700">视频内容</Text>
+        </View>
+        <View className="video-placeholder">
+          <Video size={48} color="#d1d5db" />
+          <Text className="block text-gray-400 mt-2">视频预览区域</Text>
+        </View>
+      </View>
+    )
+  }
+
+  // 渲染文章内容（公众号、知乎文章）
+  const renderArticleContent = () => {
+    return (
+      <View className="article-content">
+        {generatedContent?.title && (
+          <Text className="block text-lg font-bold text-gray-900 mb-3">
+            {generatedContent.title}
+          </Text>
+        )}
+        <View className="article-text">
+          <Text className="block text-gray-700 whitespace-pre-wrap leading-relaxed">
+            {generatedContent?.content || ''}
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
+  // 根据内容类型和平台渲染内容
+  const renderContentByType = () => {
+    const platform = currentPlatform
+    const type = contentType
+
+    // 小红书图文/朋友圈图片
+    if (platform === 'xiaohongshu' || platform === 'wechat_moments' || type === 'image' || type === '图文') {
+      return renderImageContent()
+    }
+    
+    // 抖音/B站视频
+    if (platform === 'douyin' || platform === 'bilibili' || type === 'video' || type === '短视频') {
+      return renderVideoContent()
+    }
+    
+    // 公众号/知乎文章
+    if (platform === 'wechat_mp' || platform === 'zhihu' || type === 'article') {
+      return renderArticleContent()
+    }
+
+    // 默认：同时显示图片和文章
+    return (
+      <View className="content-mixed">
+        {generatedContent?.images && generatedContent.images.length > 0 && (
+          <View className="mb-4">{renderImageContent()}</View>
+        )}
+        {renderArticleContent()}
+      </View>
+    )
+  }
+
   if (loading) {
     return (
-      <View className="flex items-center justify-center h-full">
-        <Text className="block text-gray-500">加载中...</Text>
+      <View className="flex items-center justify-center h-full bg-gray-50">
+        <View className="text-center">
+          <View className="loading-spinner" />
+          <Text className="block text-gray-500 mt-3">加载中...</Text>
+        </View>
       </View>
     )
   }
 
   return (
-    <View className="order-publish-feedback-page bg-gray-50 min-h-screen pb-20">
+    <View className="order-publish-feedback-page bg-gray-50 min-h-screen pb-24">
       {/* 顶部导航 */}
-      <View className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
-        <View onClick={() => Taro.navigateBack()} className="p-2 -ml-2">
-          <ArrowLeft size={20} color="#666" />
+      <View className="bg-white border-b border-gray-200 px-4 py-3 flex items-center sticky top-0 z-10">
+        <View onClick={() => navigateBack()} className="p-2 -ml-2">
+          <ArrowLeft size={22} color="#333" />
         </View>
-        <Text className="block flex-1 text-center text-lg font-semibold mr-6">
-          反馈发布效果
+        <Text className="block flex-1 text-center text-lg font-semibold mr-8">
+          发布反馈
         </Text>
       </View>
 
       <View className="p-4 space-y-4">
-        {/* 订单信息卡片 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">订单信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {generatedContent && (
-              <>
-                <View className="flex justify-between">
-                  <Text className="block text-gray-600 text-sm">标题</Text>
-                  <Text className="block text-gray-900 text-sm font-medium">
-                    {generatedContent.title}
-                  </Text>
-                </View>
-                <View className="flex justify-between">
-                  <Text className="block text-gray-600 text-sm">类型</Text>
-                  <Text className="block text-gray-900 text-sm">
-                    {generatedContent.platforms?.includes('video') ? '视频' : '文章'}
-                  </Text>
-                </View>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 生成内容卡片 */}
+        {/* 内容概览卡片 */}
         {generatedContent && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">生成的内容</CardTitle>
+          <Card className="content-overview-card">
+            <CardHeader className="pb-3">
+              <View className="flex items-center justify-between">
+                <CardTitle className="text-base">生成内容概览</CardTitle>
+                <View className="flex items-center space-x-2">
+                  {currentPlatform && renderPlatformBadge(currentPlatform)}
+                  {renderContentTypeBadge(contentType)}
+                </View>
+              </View>
             </CardHeader>
             <CardContent>
-              {generatedContent.title && (
-                <View className="mb-3">
-                  <Text className="block text-gray-900 text-base font-semibold">
-                    {generatedContent.title}
-                  </Text>
-                </View>
-              )}
-              <View className="bg-gray-50 rounded-lg p-3">
-                <Text className="block text-gray-700 text-sm whitespace-pre-wrap">
-                  {generatedContent.content || ''}
-                </Text>
-              </View>
+              {renderContentByType()}
             </CardContent>
           </Card>
         )}
 
-        {/* 发布平台列表 */}
+        {/* 平台反馈列表 */}
         <View className="space-y-3">
           <Text className="block text-base font-semibold text-gray-900 px-1">
-            请为发布的平台填写反馈
+            发布平台反馈
           </Text>
 
-          {publishResults.map((result: any, index: number) => {
-            const platform = result.platform
-            const platformName = PLATFORM_NAMES[platform] || platform
-            const fb = feedback[platform] || { image: '', link: '' }
+          {publishPlatforms.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Text className="block text-gray-500">暂无发布平台</Text>
+              </CardContent>
+            </Card>
+          ) : (
+            publishPlatforms.map((result: PublishPlatform, index: number) => {
+              const platform = result.platform
+              const platformName = PLATFORM_NAMES[platform] || platform
+              const fb = feedback[platform] || { image: '', link: '' }
 
-            return (
-              <Card key={index}>
-                <CardContent className="p-4 space-y-3">
-                  {/* 平台名称和状态 */}
-                  <View className="flex items-center justify-between">
-                    <View className="flex items-center space-x-2">
-                      <Text className="block text-base font-medium">{platformName}</Text>
-                      <View
-                        className={`px-2 py-1 rounded text-xs ${
-                          result.status === 'success' ? 'bg-green-100 text-green-700' :
-                          result.status === 'manual' ? 'bg-orange-100 text-orange-700' :
-                          'bg-red-100 text-red-700'
-                        }`}
-                      >
-                        {result.status === 'success' ? '已发布' :
-                         result.status === 'manual' ? '需手动发布' : '发布异常'}
+              return (
+                <Card key={index} className="platform-card">
+                  <CardContent className="p-4 space-y-4">
+                    {/* 平台名称和状态 */}
+                    <View className="flex items-center justify-between">
+                      <View className="flex items-center space-x-2">
+                        {renderPlatformBadge(platform)}
+                        <Text className="block text-base font-medium">{platformName}</Text>
+                      </View>
+                      <View className={`status-badge ${result.status === 'success' ? 'status-success' : 'status-pending'}`}>
+                        {result.status === 'success' ? (
+                          <>
+                            <CircleCheck size={12} color="#10b981" />
+                            <Text className="block ml-1">已发布</Text>
+                          </>
+                        ) : (
+                          <Text className="block">待发布</Text>
+                        )}
                       </View>
                     </View>
-                  </View>
 
-                  {/* 发布说明 */}
-                  {result.message && (
-                    <View className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                      <Text className="block text-xs text-orange-800">{result.message}</Text>
-                      {result.status === 'manual' && (
-                        <Text className="block text-xs text-orange-600 mt-2 font-medium">
-                          请在手动发布后，上传截图并填写链接以完成反馈
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  {/* 上传截图 */}
-                  <View className="space-y-2">
-                    <Label className="text-sm text-gray-700">发布截图</Label>
-                    {fb.image ? (
-                      <View className="relative">
-                        <Image
-                          src={fb.image}
-                          className="w-full h-40 rounded-lg object-cover"
-                          mode="aspectFill"
-                        />
-                        <View
-                          className="absolute top-2 right-2"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setFeedback(prev => ({
-                              ...prev,
-                              [platform]: { ...prev[platform], image: '' }
-                            }))
-                          }}
-                        >
-                          <View className="bg-red-500 text-white rounded px-2 py-1 text-xs">
-                            删除
-                          </View>
-                        </View>
-                      </View>
-                    ) : (
-                      <View
-                        className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50"
-                        onClick={() => handleChooseImage(platform)}
-                      >
-                        <Upload size={32} color="#9ca3af" />
-                        <Text className="block text-gray-500 text-sm mt-2">点击上传截图</Text>
+                    {/* 发布说明 */}
+                    {result.message && (
+                      <View className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <Text className="block text-xs text-amber-800">{result.message}</Text>
                       </View>
                     )}
-                  </View>
 
-                  {/* 填写链接 */}
-                  <View className="space-y-2">
-                    <Label className="text-sm text-gray-700">发布链接</Label>
-                    <View className="bg-gray-50 rounded-lg px-4 py-3">
-                      <Input
-                        className="w-full bg-transparent"
-                        placeholder="请输入发布链接"
-                        value={fb.link}
-                        onInput={(e) => handleLinkChange(platform, e.detail.value)}
-                      />
+                    {/* 上传截图 */}
+                    <View className="space-y-2">
+                      <Label className="text-sm text-gray-700 font-medium">发布截图</Label>
+                      {fb.image ? (
+                        <View className="relative">
+                          <Image
+                            src={fb.image}
+                            className="w-full h-48 rounded-lg object-cover"
+                            mode="aspectFill"
+                          />
+                          <View
+                            className="absolute top-2 right-2"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setFeedback(prev => ({
+                                ...prev,
+                                [platform]: { ...prev[platform], image: '' }
+                              }))
+                            }}
+                          >
+                            <View className="bg-red-500 text-white rounded px-2 py-1 text-xs">
+                              删除
+                            </View>
+                          </View>
+                        </View>
+                      ) : (
+                        <View
+                          className="upload-area"
+                          onClick={() => handleChooseImage(platform)}
+                        >
+                          <Upload size={32} color="#9ca3af" />
+                          <Text className="block text-gray-500 text-sm mt-2">点击上传发布截图</Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </View>
 
-        {/* 提交按钮 */}
-        <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <Button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 text-base font-medium"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? '提交中...' : '提交反馈'}
-          </Button>
+                    {/* 填写链接 */}
+                    <View className="space-y-2">
+                      <Label className="text-sm text-gray-700 font-medium">发布链接</Label>
+                      <View className="bg-gray-50 rounded-xl px-4 py-3">
+                        <Input
+                          className="w-full bg-transparent text-sm"
+                          placeholder="请输入发布链接"
+                          value={fb.link}
+                          onInput={(e) => handleLinkChange(platform, e.detail.value)}
+                        />
+                      </View>
+                    </View>
+                  </CardContent>
+                </Card>
+              )
+            })
+          )}
         </View>
       </View>
+
+      {/* 固定底部提交按钮 */}
+      <View className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
+        <Button
+          className="w-full submit-button"
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? '提交中...' : '提交反馈'}
+        </Button>
+      </View>
+
+      {/* 图片预览弹窗 */}
+      {previewVisible && (
+        <View 
+          className="preview-overlay" 
+          onClick={() => setPreviewVisible(false)}
+        >
+          <View className="preview-content" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={previewImage}
+              className="preview-image"
+              mode="aspectFit"
+              preview="true"
+            />
+            <View 
+              className="preview-close"
+              onClick={() => setPreviewVisible(false)}
+            >
+              <Text className="block text-white text-lg">×</Text>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
