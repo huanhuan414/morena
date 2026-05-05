@@ -160,89 +160,6 @@ export default function OrderDetailPage() {
     }
   }
 
-  // Markdown 解析函数
-  const parseMarkdown = (text: string): JSX.Element[] => {
-    if (!text) return [<Text key="empty"></Text>]
-
-    const lines = text.split('\n')
-    const result: JSX.Element[] = []
-    let listItems: string[] = []
-    let inList = false
-
-    const flushList = () => {
-      if (listItems.length > 0) {
-        result.push(
-          <View key={`list-${result.length}`} className="markdown-list">
-            {listItems.map((item, idx) => (
-              <Text key={idx} className="markdown-list-item block">{item}</Text>
-            ))}
-          </View>
-        )
-        listItems = []
-        inList = false
-      }
-    }
-
-    lines.forEach((line, index) => {
-      // 处理标题
-      const headingMatch = line.match(/^(#{1,3})\s+(.+)$/)
-      if (headingMatch) {
-        flushList()
-        const level = headingMatch[1].length
-        let content = headingMatch[2]
-        // 处理粗体
-        content = content.replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
-        // 处理斜体
-        content = content.replace(/\*(.+?)\*/g, '<Text class="markdown-em">$1</Text>')
-        if (level === 1) {
-          result.push(<Text key={`h1-${index}`} className="markdown-h1 block">{content}</Text>)
-        } else if (level === 2) {
-          result.push(<Text key={`h2-${index}`} className="markdown-h2 block">{content}</Text>)
-        } else {
-          result.push(<Text key={`h3-${index}`} className="markdown-h3 block">{content}</Text>)
-        }
-        return
-      }
-
-      // 处理列表
-      const listMatch = line.match(/^[\-\*]\s+(.+)$/)
-      if (listMatch) {
-        if (!inList) {
-          inList = true
-        }
-        let content = listMatch[1]
-        // 处理粗体
-        content = content.replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
-        listItems.push(content)
-        return
-      }
-
-      // 如果不是列表项，先刷新列表
-      if (inList) {
-        flushList()
-      }
-
-      // 处理空行
-      if (!line.trim()) {
-        result.push(<View key={`br-${index}`} className="markdown-br"></View>)
-        return
-      }
-
-      // 处理段落（支持粗体和斜体）
-      let content = line
-        .replace(/\*\*(.+?)\*\*/g, '<Text class="markdown-strong">$1</Text>')
-        .replace(/\*(.+?)\*/g, '<Text class="markdown-em">$1</Text>')
-        .replace(/\[(.+?)\]\((.+?)\)/g, '<Text class="markdown-link">$1</Text>')
-
-      result.push(<Text key={`p-${index}`} className="markdown-p block">{content}</Text>)
-    })
-
-    // 刷新最后的列表
-    flushList()
-
-    return result.length > 0 ? result : [<Text key="empty" className="markdown-p block">{text}</Text>]
-  }
-
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
@@ -450,147 +367,138 @@ export default function OrderDetailPage() {
   const statusConfig = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
   const content = order.result?.content
 
+  // 获取状态样式类名
+  const getStatusClass = (status: string): string => {
+    const classMap: Record<string, string> = {
+      'open': 'status-open',
+      'in_progress': 'status-in_progress',
+      'completed': 'status-completed',
+      'cancelled': 'status-cancelled'
+    }
+    return classMap[status] || 'status-open'
+  }
+
   return (
     <View className="order-detail-page">
-      {/* 背景特效 */}
-      <View className="bg-effects">
-        <View className="bg-orb orb-1"></View>
-        <View className="bg-orb orb-2"></View>
-        <View className="bg-orb orb-3"></View>
-      </View>
-
       {/* 顶部导航 */}
       <View className="nav-header" style={{ paddingTop: `${statusBarHeight}px` }}>
         <View className="nav-content">
-          <View className="nav-left">
-            <View className="back-btn" onClick={() => navigateBack()}>
-              <ArrowLeft size={24} color="#1f2937" />
-            </View>
-            <Text className="nav-title">订单详情</Text>
+          <View className="back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={20} color="#475569" />
           </View>
-          {editing && (
-            <View className="nav-actions">
-              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
-                <Text>取消</Text>
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                <Save size={16} color="#fff" />
-              </Button>
-            </View>
-          )}
-          {!editing && order?.status === 'open' && (
-            <View className="edit-btn" onClick={() => setEditing(true)}>
-              <Pencil size={20} color="#00f5ff" />
-            </View>
-          )}
+          <Text className="page-title">订单详情</Text>
+          <View className="header-actions">
+            {editing ? (
+              <>
+                <View className="action-btn" onClick={() => setEditing(false)}>
+                  <X size={18} color="#64748b" />
+                </View>
+                <View className="action-btn" onClick={handleSave} style={{ background: saving ? '#94a3b8' : '#0f172a' }}>
+                  {saving ? <Loader size={18} color="#ffffff" /> : <Save size={18} color="#ffffff" />}
+                </View>
+              </>
+            ) : order?.status === 'open' ? (
+              <View className="action-btn" onClick={() => setEditing(true)}>
+                <Pencil size={18} color="#64748b" />
+              </View>
+            ) : (
+              <View style={{ width: 36 }} />
+            )}
+          </View>
         </View>
       </View>
 
-      {/* 状态卡片 */}
-      <View className="status-card">
-        <View className="status-badge">
-          <View className="status-dot" style={{ background: statusConfig.gradient }}></View>
-          <Text className="status-label" style={{ color: statusConfig.color }}>
-            {statusConfig.label}
-          </Text>
-        </View>
-        <View className="status-info">
-          <Text className="order-title-text">{order.title}</Text>
-          <View className="order-meta">
+      {/* 主内容区域 */}
+      <View className="main-content">
+        {/* 订单头部卡片 */}
+        <View className="order-header-card">
+          <View className="order-title-wrap">
+            <Text className="order-title block">{order.title}</Text>
+            <View className={`order-status-badge ${getStatusClass(order.status)}`}>
+              <Text className="status-text">{statusConfig.label}</Text>
+            </View>
+          </View>
+          <View className="order-meta-row">
             <View className="meta-item">
-              <DollarSign size={16} color="#00f5ff" />
+              <DollarSign size={16} color="#64748b" />
               <Text className="meta-value">¥{order.budget || 0}</Text>
             </View>
             <View className="meta-item">
-              <Calendar size={16} color="#00f5ff" />
-              <Text className="meta-value">
-                {formatDate(order.deadline) || new Date(order.created_at).toLocaleDateString()}
-              </Text>
+              <Calendar size={16} color="#64748b" />
+              <Text className="meta-value">{formatDate(order.deadline) || formatDate(order.created_at)}</Text>
             </View>
             <View className="meta-item">
-              <Users size={16} color="#00f5ff" />
+              <Users size={16} color="#64748b" />
               <Text className="meta-value">{order.expected_quantity || 1} 人</Text>
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Tab切换 - 现代分段式设计 */}
-      <View className="tab-container">
-        <View className="tab-bar-new">
-          <View
-            className={`tab-item-new ${activeTab === 'detail' ? 'active' : ''}`}
-            onClick={() => setActiveTab('detail')}
-          >
-            <View className="tab-icon-wrap">
-              <FileText size={18} color={activeTab === 'detail' ? '#ffffff' : '#64748b'} />
+        {/* Tab 切换 */}
+        <View className="tab-section">
+          <View className="tab-bar">
+            <View
+              className={`tab-item ${activeTab === 'detail' ? 'active' : ''}`}
+              onClick={() => setActiveTab('detail')}
+            >
+              <Text className="tab-item-text">订单详情</Text>
             </View>
-            <Text className="tab-text-new">订单详情</Text>
-          </View>
-          <View
-            className={`tab-item-new ${activeTab === 'progress' ? 'active' : ''}`}
-            onClick={() => setActiveTab('progress')}
-          >
-            <View className="tab-icon-wrap">
-              <Users size={18} color={activeTab === 'progress' ? '#ffffff' : '#64748b'} />
+            <View
+              className={`tab-item ${activeTab === 'progress' ? 'active' : ''}`}
+              onClick={() => setActiveTab('progress')}
+            >
+              <Text className="tab-item-text">执行进度</Text>
             </View>
-            <Text className="tab-text-new">执行进度</Text>
-          </View>
-          <View
-            className={`tab-item-new ${activeTab === 'result' ? 'active' : ''}`}
-            onClick={() => setActiveTab('result')}
-          >
-            <View className="tab-icon-wrap">
-              <TrendingUp size={18} color={activeTab === 'result' ? '#ffffff' : '#64748b'} />
+            <View
+              className={`tab-item ${activeTab === 'result' ? 'active' : ''}`}
+              onClick={() => setActiveTab('result')}
+            >
+              <Text className="tab-item-text">成果展示</Text>
             </View>
-            <Text className="tab-text-new">成果展示</Text>
           </View>
         </View>
-      </View>
 
-      <ScrollView className="content-scroll" scrollY>
-        {/* 订单详情 */}
-        {activeTab === 'detail' && (
-          <View className="detail-panel">
-            {/* 描述卡片 */}
-            <View className="info-card glass-card">
-              <View className="card-header">
-                <View className="card-header-icon">
-                  <Sparkles size={18} color="#6366f1" />
+        <ScrollView className="content-scroll" scrollY>
+          {/* 订单详情 */}
+          {activeTab === 'detail' && (
+            <View className="detail-panel">
+              {/* 描述卡片 */}
+              <View className="card">
+                <View className="card-header">
+                  <View className="card-icon">
+                    <FileText size={18} color="#64748b" />
+                  </View>
+                  <Text className="card-title">订单描述</Text>
                 </View>
-                <Text className="card-title">订单描述</Text>
-              </View>
-              {editing ? (
-                <Textarea
-                  value={formData.description}
-                  onInput={(e: any) => setFormData({ ...formData, description: e.detail.value })}
-                  placeholder="请输入订单描述"
-                  className="edit-textarea"
-                />
+                {editing ? (
+                  <Textarea
+                    value={formData.description}
+                    onInput={(e: any) => setFormData({ ...formData, description: e.detail.value })}
+                    placeholder="请输入订单描述"
+                    className="edit-textarea"
+                  />
               ) : (
-                <View className="markdown-content">
-                  {parseMarkdown(order.description || '暂无描述')}
-                </View>
+                <Text className="description-text block">{order.description || '暂无描述'}</Text>
               )}
             </View>
 
             {/* 需求卡片 */}
             {order.requirements && (
-              <View className="info-card glass-card">
+              <View className="card">
                 <View className="card-header">
-                  <View className="card-header-icon">
-                    <Zap size={18} color="#6366f1" />
+                  <View className="card-icon">
+                    <Zap size={18} color="#64748b" />
                   </View>
                   <Text className="card-title">详细需求</Text>
                 </View>
                 <View className="requirement-list">
                   {order.requirements.platforms && order.requirements.platforms.length > 0 && (
                     <View className="requirement-item">
-                      <Text className="req-label">发布平台</Text>
+                      <Text className="req-label block">发布平台</Text>
                       <View className="platform-chips">
                         {order.requirements.platforms.map((p, idx) => (
                           <View key={idx} className="platform-chip">
-                            <Text className="chip-text">{getPlatformName(p)}</Text>
+                            <Text className="chip-text block">{getPlatformName(p)}</Text>
                           </View>
                         ))}
                       </View>
@@ -611,16 +519,14 @@ export default function OrderDetailPage() {
                   {order.requirements.expectedResults && (
                     <View className="requirement-item">
                       <Text className="req-label block">预期效果</Text>
-                      <View className="markdown-content">
-                        {parseMarkdown(order.requirements.expectedResults)}
-                      </View>
+                      <Text className="req-value block">{order.requirements.expectedResults}</Text>
                     </View>
                   )}
                   {order.deadline && (
                     <View className="requirement-item">
                       <Text className="req-label block">截止日期</Text>
-                      <View className="req-value-wrapper">
-                        <Clock size={16} color="#f59e0b" />
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Clock size={16} color="#64748b" />
                         <Text className="req-value block">{formatDate(order.deadline)}</Text>
                       </View>
                     </View>
@@ -629,31 +535,29 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 单个分身信息（兼容旧逻辑） */}
+            {/* 单个分身信息 */}
             {order.avatars && !order.summary_stats && (
-              <View className="info-card glass-card avatar-card">
+              <View className="card">
                 <View className="card-header">
-                  <View className="card-header-icon">
-                    <User size={18} color="#6366f1" />
+                  <View className="card-icon">
+                    <User size={18} color="#64748b" />
                   </View>
                   <Text className="card-title">执行分身</Text>
                 </View>
-                <View className="avatar-display">
-                  <View className="avatar-image-wrapper">
+                <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {order.avatars.avatar_url ? (
-                      <Image src={order.avatars.avatar_url} className="avatar-image" />
+                      <Image src={order.avatars.avatar_url} style={{ width: 48, height: 48, borderRadius: 24 }} />
                     ) : (
-                      <View className="avatar-placeholder">
-                        <Sparkles size={32} color="#6366f1" />
-                      </View>
+                      <Text style={{ fontSize: 18, fontWeight: 600, color: '#ffffff' }}>{order.avatars.name?.charAt(0) || '?'}</Text>
                     )}
                   </View>
-                  <View className="avatar-details">
-                    <Text className="avatar-name">{order.avatars.name}</Text>
+                  <View style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <Text style={{ fontSize: 15, fontWeight: 600, color: '#1e293b' }} className="block">{order.avatars.name}</Text>
                     {order.avatars.level && (
-                      <View className="avatar-level-badge">
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <Star size={12} color="#eab308" />
-                        <Text className="level-text">Lv.{order.avatars.level}</Text>
+                        <Text style={{ fontSize: 12, color: '#64748b' }} className="block">Lv.{order.avatars.level}</Text>
                       </View>
                     )}
                   </View>
@@ -662,25 +566,23 @@ export default function OrderDetailPage() {
             )}
 
             {/* 操作按钮 */}
-            <View className="action-buttons">
+            <View className="action-section">
               {order.status === 'open' && !order.avatars && (
                 <>
-                  <Button onClick={handleRetryDispatch} className="primary-action-btn">
-                    <Sparkles size={18} color="#fff" />
-                    <Text>AI智能匹配分身</Text>
-                  </Button>
-                  <Button variant="outline" onClick={handleCancel} className="secondary-action-btn">
-                    <Text style={{ color: '#ef4444' }}>取消订单</Text>
-                  </Button>
+                  <View className="primary-btn" onClick={handleRetryDispatch}>
+                    <Sparkles size={18} color="#ffffff" />
+                    <Text className="primary-btn-text">AI智能匹配分身</Text>
+                  </View>
+                  <View className="secondary-btn" onClick={handleCancel}>
+                    <Text className="secondary-btn-text" style={{ color: '#ef4444' }}>取消订单</Text>
+                  </View>
                 </>
               )}
-
-              {/* 验收订单按钮 - 全部分身验收完时显示 */}
               {allAvatarsCompleted && (
-                <Button onClick={() => setShowRating(true)} className="primary-action-btn">
-                  <Check size={18} color="#fff" />
-                  <Text>验收订单</Text>
-                </Button>
+                <View className="primary-btn" onClick={() => setShowRating(true)}>
+                  <Check size={18} color="#ffffff" />
+                  <Text className="primary-btn-text">验收订单</Text>
+                </View>
               )}
             </View>
           </View>
@@ -689,101 +591,89 @@ export default function OrderDetailPage() {
         {/* 执行进度 */}
         {activeTab === 'progress' && (
           <View className="progress-panel">
-            {/* 分身执行状态列表 */}
             {order.summary_stats?.avatarStats && order.summary_stats.avatarStats.length > 0 && (
-              <View className="avatar-execution-list">
+              <View>
                 {/* 汇总统计 */}
-                <View className="avatar-execution-header">
-                  <Text className="avatar-execution-title block">分身执行状态</Text>
-                  <Text className="avatar-execution-count block">{order.summary_stats.totalAvatars}个分身</Text>
-                </View>
-                
-                <View className="avatar-execution-summary">
-                  <View className="summary-item">
-                    <Text className="summary-value">{order.summary_stats.totalAvatars}</Text>
-                    <Text className="summary-label">总分身</Text>
+                <View className="stats-summary">
+                  <View className="stat-item">
+                    <Text className="stat-value block">{order.summary_stats.totalAvatars}</Text>
+                    <Text className="stat-label block">总分身</Text>
                   </View>
-                  <View className="summary-divider" />
-                  <View className="summary-item">
-                    <Text className="summary-value">{order.summary_stats.acceptedAvatars}</Text>
-                    <Text className="summary-label">已接受</Text>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <Text className="stat-value block">{order.summary_stats.acceptedAvatars}</Text>
+                    <Text className="stat-label block">已接受</Text>
                   </View>
-                  <View className="summary-divider" />
-                  <View className="summary-item">
-                    <Text className="summary-value">{order.summary_stats.submittedAvatars}</Text>
-                    <Text className="summary-label">已提交</Text>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <Text className="stat-value block">{order.summary_stats.submittedAvatars}</Text>
+                    <Text className="stat-label block">已提交</Text>
                   </View>
                 </View>
-                
+
+                {/* 分身列表 */}
+                <View className="avatar-list-header">
+                  <Text className="avatar-list-title block">分身列表</Text>
+                  <Text className="avatar-list-count block">{order.summary_stats.totalAvatars}个分身</Text>
+                </View>
+
                 {order.summary_stats.avatarStats.map((stat: any, index: number) => (
-                  <View 
-                    key={index} 
-                    className="avatar-execution-item"
+                  <View
+                    key={index}
+                    className="avatar-item"
                     onClick={() => {
-                      console.log('点击分身状态:', stat.status, 'requestId:', stat.requestId)
-                      // 根据分身状态决定跳转行为（发单者视角）
                       if (stat.status === 'pending') {
-                        // 未接受订单 → 查看分身主页
                         Taro.navigateTo({ url: `/pages/avatar-profile/index?id=${stat.avatarId}` })
                       } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
-                        // 已接受订单 → 查看内容创作页面
                         Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.requestId}&orderId=${id}` })
                       } else if (['published', 'feedback_submitted'].includes(stat.status)) {
-                        // 待反馈/已提交 → 查看发布反馈页面
                         Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
                       } else if (stat.status === 'awaiting_acceptance') {
-                        // 待验收 → 查看待验收页面
                         Taro.navigateTo({ url: `/pages/order-acceptance-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
                       } else if (stat.status === 'completed') {
-                        // 已完成 → 查看分身完成页面
                         Taro.navigateTo({ url: `/pages/order-completed/index?requestId=${stat.requestId}&orderId=${id}` })
                       }
                     }}
                   >
-                    <View className="avatar-exec-info">
-                      <View className="avatar-exec-avatar">
+                    <View className="avatar-info">
+                      <View className="avatar-avatar">
                         {stat.avatarUrl ? (
-                          <Image src={stat.avatarUrl} className="avatar-exec-avatar-image" />
+                          <Image src={stat.avatarUrl} className="avatar-avatar-image" />
                         ) : (
-                          <View className="avatar-exec-avatar-placeholder">
-                            <User size={20} color="#ffffff" />
-                          </View>
+                          <Text className="avatar-avatar-text block">{stat.avatarName?.charAt(0) || '?'}</Text>
                         )}
                       </View>
-                      <View className="avatar-exec-details">
-                        <View className="avatar-name-row">
-                          <Text className="avatar-exec-name block">{stat.avatarName}</Text>
-                          {/* 显示状态标签 */}
-                          {stat.status === 'awaiting_acceptance' && (
-                            <Text className="avatar-status-tag tag-pending">待验收</Text>
-                          )}
-                          {stat.status === 'completed' && (
-                            <Text className="avatar-status-tag tag-completed">已完成</Text>
-                          )}
-                        </View>
-                        <View className="avatar-exec-meta">
+                      <View className="avatar-details">
+                        <Text className="avatar-name block">{stat.avatarName}</Text>
+                        <View className="avatar-meta">
                           {stat.postCount > 0 && (
-                            <Text className="avatar-exec-meta-item block">{stat.postCount}个作品</Text>
-                          )}
-                          {stat.feedbackCount > 0 && (
-                            <Text className="avatar-exec-meta-item block">{stat.feedbackCount}条反馈</Text>
+                            <Text className="avatar-meta-item block">{stat.postCount}个作品</Text>
                           )}
                           {stat.totalViews > 0 && (
-                            <Text className="avatar-exec-meta-item block">曝光{stat.totalViews}</Text>
+                            <Text className="avatar-meta-item block">曝光{stat.totalViews}</Text>
                           )}
                         </View>
                       </View>
                     </View>
-
                     {stat.status === 'completed' && (
-                      <View className="avatar-completed-badge">
-                        <Check size={14} color="#52c41a" />
-                        <Text className="block">已完成</Text>
+                      <View className="completed-badge">
+                        <Check size={14} color="#16a34a" />
+                        <Text className="completed-badge-text block">已完成</Text>
                       </View>
                     )}
                     {stat.status === 'awaiting_acceptance' && (
-                      <View className="avatar-pending-btn">
-                        <Text className="block">待验收</Text>
+                      <View className="pending-btn">
+                        <Text className="pending-btn-text block">待验收</Text>
+                      </View>
+                    )}
+                    {stat.status === 'pending' && (
+                      <View className="status-tag pending">
+                        <Text className="block">待接单</Text>
+                      </View>
+                    )}
+                    {['accepted', 'generating', 'preview', 'publishing'].includes(stat.status) && (
+                      <View className="status-tag" style={{ background: '#eff6ff' }}>
+                        <Text className="block" style={{ color: '#2563eb' }}>进行中</Text>
                       </View>
                     )}
                   </View>
@@ -791,10 +681,12 @@ export default function OrderDetailPage() {
               </View>
             )}
 
-            {/* 如果没有分身数据，显示空状态 */}
+            {/* 空状态 */}
             {(!order.summary_stats?.avatarStats || order.summary_stats.avatarStats.length === 0) && (
               <View className="empty-state">
-                <User size={64} color="rgba(255,255,255,0.2)" />
+                <View className="empty-icon">
+                  <User size={48} color="#cbd5e1" />
+                </View>
                 <Text className="empty-text block">暂无分身执行</Text>
               </View>
             )}
@@ -805,32 +697,57 @@ export default function OrderDetailPage() {
         {activeTab === 'result' && (
           <View className="result-panel">
             {content ? (
-              <View className="result-content">
+              <View>
                 {content.title && (
-                  <View className="result-title-card glass-card">
-                    <Text className="result-title-text block">{content.title}</Text>
+                  <View className="card">
+                    <Text style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }} className="block">{content.title}</Text>
                   </View>
                 )}
-                <View className="result-body-card glass-card">
-                  <Text className="result-body-text block">{content.content}</Text>
+                <View className="card">
+                  <View className="card-header">
+                    <View className="card-icon">
+                      <TrendingUp size={18} color="#64748b" />
+                    </View>
+                    <Text className="card-title">内容详情</Text>
+                  </View>
+                  <Text className="result-content-text block">{content.content}</Text>
                 </View>
                 {content.images && content.images.length > 0 && (
-                  <View className="result-images">
-                    {content.images.map((img, idx) => (
-                      <Image key={idx} src={img} className="result-image" mode="aspectFill" />
-                    ))}
+                  <View className="card">
+                    <View className="card-header">
+                      <View className="card-icon">
+                        <FileText size={18} color="#64748b" />
+                      </View>
+                      <Text className="card-title">配图</Text>
+                    </View>
+                    <View className="images-grid">
+                      {content.images.map((img, idx) => (
+                        <Image
+                          key={idx}
+                          src={img}
+                          className="grid-image"
+                          mode="aspectFill"
+                          onClick={() => {
+                            Taro.previewImage({ urls: content.images || [], current: img })
+                          }}
+                        />
+                      ))}
+                    </View>
                   </View>
                 )}
               </View>
             ) : (
               <View className="empty-state">
-                <Sparkles size={64} color="rgba(255,255,255,0.2)" />
+                <View className="empty-icon">
+                  <Sparkles size={48} color="#cbd5e1" />
+                </View>
                 <Text className="empty-text block">暂无成果内容</Text>
               </View>
             )}
           </View>
         )}
       </ScrollView>
+      </View>
 
       {/* 验收弹窗 */}
       {showRating && (
@@ -841,9 +758,9 @@ export default function OrderDetailPage() {
         >
           <View className="modal-content" onClick={(e: any) => e.stopPropagation()}>
             <View className="modal-header">
-              <Text className="modal-title block">{allAvatarsCompleted ? '验收订单' : '验收待验收分身'}</Text>
+              <Text className="modal-title block">{allAvatarsCompleted ? '验收订单' : '验收分身'}</Text>
               <View className="modal-close" onClick={() => setShowRating(false)}>
-                <X size={24} color="#fff" />
+                <X size={20} color="#64748b" />
               </View>
             </View>
             {pendingAvatars.length > 0 ? (
@@ -852,22 +769,19 @@ export default function OrderDetailPage() {
                   {pendingAvatars.map(stat => (
                     <View key={stat.requestId} className="pending-avatar-item">
                       <View className="pending-avatar-info">
-                        <View 
-                          className="avatar-avatar"
-                          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-                        >
+                        <View className="avatar-avatar">
                           <Text className="avatar-avatar-text block">{stat.avatarName?.charAt(0) || '?'}</Text>
                         </View>
-                        <View className="pending-avatar-text-wrap">
-                          <Text className="block pending-avatar-name">{stat.avatarName}</Text>
-                          <Text className="block pending-avatar-status">待验收</Text>
+                        <View style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <Text className="pending-avatar-name block">{stat.avatarName}</Text>
+                          <Text style={{ fontSize: 12, color: '#d97706' }} className="block">待验收</Text>
                         </View>
                       </View>
-                      <View 
+                      <View
                         className="accept-single-btn"
                         onClick={() => {
-                          setSelectedRequestId(stat.requestId);
-                          setShowRating(true);
+                          setSelectedRequestId(stat.requestId)
+                          handleApprove()
                         }}
                       >
                         <Text className="block">验收</Text>
@@ -891,28 +805,25 @@ export default function OrderDetailPage() {
                       onClick={() => setRating(star)}
                     >
                       <Star
-                        size={40}
-                        color={star <= rating ? '#eab308' : 'rgba(255,255,255,0.2)'}
+                        size={32}
+                        color={star <= rating ? '#eab308' : '#e2e8f0'}
                       />
                     </View>
                   ))}
                 </View>
-                <View className="modal-input">
-                  <Textarea
-                    value={ratingComment}
-                    onInput={(e: any) => setRatingComment(e.detail.value)}
-                    placeholder="请输入评价（选填）"
-                    className="comment-textarea"
-                  />
-                </View>
-                <View className="modal-footer">
-                  <Button variant="outline" onClick={() => setShowRating(false)}>
-                    <Text className="block">取消</Text>
-                  </Button>
-                  <Button onClick={handleApprove}>
-                    <Check size={16} color="#fff" />
-                    <Text className="block">{allAvatarsCompleted ? '验收订单' : '验收分身'}</Text>
-                  </Button>
+                <Textarea
+                  value={ratingComment}
+                  onInput={(e: any) => setRatingComment(e.detail.value)}
+                  placeholder="请输入评价（选填）"
+                  className="rating-textarea"
+                />
+                <View className="modal-actions">
+                  <View className="modal-btn modal-btn-cancel" onClick={() => setShowRating(false)}>
+                    <Text className="modal-btn-cancel-text block">取消</Text>
+                  </View>
+                  <View className="modal-btn modal-btn-confirm" onClick={handleApprove}>
+                    <Text className="modal-btn-confirm-text block">确认验收</Text>
+                  </View>
                 </View>
               </>
             )}
@@ -931,25 +842,22 @@ export default function OrderDetailPage() {
             <View className="modal-header">
               <Text className="modal-title block">驳回原因</Text>
               <View className="modal-close" onClick={() => setShowReject(false)}>
-                <X size={24} color="#fff" />
+                <X size={20} color="#64748b" />
               </View>
             </View>
-            <View className="modal-input">
-              <Textarea
-                value={rejectReason}
-                onInput={(e: any) => setRejectReason(e.detail.value)}
-                placeholder="请输入驳回原因，帮助分身更好地修改"
-                className="reject-textarea"
-              />
-            </View>
-            <View className="modal-footer">
-              <Button variant="outline" onClick={() => setShowReject(false)}>
-                <Text className="block">取消</Text>
-              </Button>
-              <Button onClick={handleReject}>
-                <X size={16} color="#fff" />
-                <Text className="block">确认驳回</Text>
-              </Button>
+            <Textarea
+              value={rejectReason}
+              onInput={(e: any) => setRejectReason(e.detail.value)}
+              placeholder="请输入驳回原因，帮助分身更好地修改"
+              className="rating-textarea"
+            />
+            <View className="modal-actions">
+              <View className="modal-btn modal-btn-cancel" onClick={() => setShowReject(false)}>
+                <Text className="modal-btn-cancel-text block">取消</Text>
+              </View>
+              <View className="modal-btn modal-btn-confirm" onClick={handleReject} style={{ background: '#ef4444' }}>
+                <Text className="modal-btn-confirm-text block">确认驳回</Text>
+              </View>
             </View>
           </View>
         </View>
