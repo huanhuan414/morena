@@ -684,11 +684,31 @@ export default function OrderDetailPage() {
             {order.summary_stats?.avatarStats && order.summary_stats.avatarStats.length > 0 && (
               <View className="avatar-execution-list">
                 <Text className="section-title block">分身执行状态</Text>
+                
+                {/* 汇总统计 */}
+                <View className="avatar-execution-summary">
+                  <View className="summary-item">
+                    <Text className="summary-value">{order.summary_stats.totalAvatars}</Text>
+                    <Text className="summary-label">总分身</Text>
+                  </View>
+                  <View className="summary-divider" />
+                  <View className="summary-item">
+                    <Text className="summary-value">{order.summary_stats.acceptedAvatars}</Text>
+                    <Text className="summary-label">已接受</Text>
+                  </View>
+                  <View className="summary-divider" />
+                  <View className="summary-item">
+                    <Text className="summary-value">{order.summary_stats.submittedAvatars}</Text>
+                    <Text className="summary-label">已提交</Text>
+                  </View>
+                </View>
+                
                 {order.summary_stats.avatarStats.map((stat: any, index: number) => (
                   <View 
                     key={index} 
                     className="avatar-execution-item"
                     onClick={() => {
+                      console.log('点击分身状态:', stat.status, 'requestId:', stat.requestId)
                       // 根据分身状态决定跳转行为（发单者视角）
                       if (stat.status === 'pending') {
                         // 未接受订单 → 查看分身主页

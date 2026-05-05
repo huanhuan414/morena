@@ -241,6 +241,7 @@ export class OrderService {
         const totalShares = posts.reduce((sum: number, p: any) => sum + (p.sharesCount || p.shares_count || 0), 0)
 
         return {
+          requestId: request.id,  // 添加 requestId
           avatarId: request.avatar_id,
           avatarName: avatarInfo?.name || '未知',
           avatarUrl: avatarInfo?.avatar_url || '',

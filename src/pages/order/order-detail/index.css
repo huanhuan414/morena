@@ -1122,6 +1122,42 @@
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
+.avatar-execution-summary {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  padding: 24px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #00f5ff;
+}
+
+.summary-label {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.summary-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .avatar-execution-item {
   display: flex;
   align-items: center;
