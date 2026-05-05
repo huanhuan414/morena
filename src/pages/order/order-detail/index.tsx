@@ -616,7 +616,23 @@ export default function OrderDetailPage() {
                 {order.summary_stats.avatarStats && order.summary_stats.avatarStats.length > 0 && (
                   <View className="avatar-list">
                     {order.summary_stats.avatarStats.map((stat: any, index: number) => (
-                      <View key={index} className="avatar-item">
+                      <View 
+                        key={index} 
+                        className="avatar-item"
+                        onClick={() => {
+                          // 根据分身状态决定跳转行为（发单者视角）
+                          if (stat.status === 'pending') {
+                            // 未接受订单 → 查看分身主页
+                            Taro.navigateTo({ url: `/pages/avatar-detail/index?id=${stat.avatarId}` })
+                          } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
+                            // 已接受订单 → 查看内容创作页面
+                            Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.avatarId}&orderId=${id}` })
+                          } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
+                            // 已提交反馈 → 查看发布反馈页面
+                            Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.avatarId}&orderId=${id}` })
+                          }
+                        }}
+                      >
                         <View className="avatar-info-row">
                           <View className="avatar-mini">
                             {stat.avatarUrl ? (
@@ -635,7 +651,7 @@ export default function OrderDetailPage() {
                               {stat.status === 'generating' && '制作中'}
                               {stat.status === 'preview' && '预览中'}
                               {stat.status === 'publishing' && '发布中'}
-                              {stat.status === 'published' && '已发布'}
+                              {stat.status === 'published' && '待反馈'}
                               {stat.status === 'feedback_submitted' && '待验收'}
                               {stat.status === 'awaiting_acceptance' && '待验收'}
                               {stat.status === 'completed' && '已完成'}
