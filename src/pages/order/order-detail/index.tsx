@@ -78,6 +78,7 @@ interface Order {
 }
 
 interface AvatarStat {
+  requestId: string
   avatarId: string
   avatarName: string
   avatarUrl: string
@@ -138,6 +139,7 @@ export default function OrderDetailPage() {
   const [showRating, setShowRating] = useState(false)
   const [rating, setRating] = useState(5)
   const [ratingComment, setRatingComment] = useState('')
+  const [selectedRequestId, setSelectedRequestId] = useState<string>('')
 
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -321,8 +323,22 @@ export default function OrderDetailPage() {
 
   const handleApprove = async () => {
     try {
-      if (pendingAvatars.length > 0) {
-        // 还有待验收的分身，先验收第一个
+      if (selectedRequestId) {
+        // 验收选中的分身
+        const res = await Network.request({
+          url: `/api/order-processing/accept/${selectedRequestId}`,
+          method: 'PUT'
+        })
+
+        if (res.data?.code === 200) {
+          const avatar = pendingAvatars.find(a => a.requestId === selectedRequestId)
+          showToast({ title: `已验收「${avatar?.avatarName || '分身'}」`, icon: 'success' })
+          setShowRating(false)
+          setSelectedRequestId('')
+          fetchOrder()
+        }
+      } else if (pendingAvatars.length > 0) {
+        // 没有选中特定分身，验收第一个
         const pendingAvatar = pendingAvatars[0]
         try {
           const res = await Network.request({
@@ -348,7 +364,7 @@ export default function OrderDetailPage() {
         })
 
         if (res.data?.code === 200) {
-          showToast({ title: allAvatarsCompleted ? '订单验收通过' : '已验收「' + (pendingAvatars[0]?.avatarName || '分身') + '」', icon: 'success' })
+          showToast({ title: '订单验收通过', icon: 'success' })
           setShowRating(false)
           fetchOrder()
         }

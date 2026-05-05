@@ -1192,16 +1192,16 @@ export class OrderProcessingService {
         .single()
 
       if (orderData && orderData.budget && parseFloat(orderData.budget) > 0) {
-        // 查询该订单下所有已完成的分身请求数量
-        const { data: completedRequests } = await client
+        // 查询该订单下所有参与的分身数量（排除已拒绝/已取消的）
+        const { data: participatingRequests } = await client
           .from('order_dispatch_requests')
           .select('avatar_id')
           .eq('order_id', request.order_id)
-          .eq('status', 'completed')
+          .not('status', 'in', '(rejected,cancelled)')
 
-        const completedCount = completedRequests?.length || 1
+        const participantCount = participatingRequests?.length || 1
         const budget = parseFloat(orderData.budget)
-        const earningsPerAvatar = budget / completedCount
+        const earningsPerAvatar = budget / participantCount
 
         // 更新分身的总收益
         if (request.avatar_id) {
@@ -1219,7 +1219,7 @@ export class OrderProcessingService {
             .update({ total_earnings: newTotalEarnings })
             .eq('id', request.avatar_id)
 
-          console.log(`[OrderProcessing] 分身 ${request.avatar_id} 获得收益 ${earningsPerAvatar}，总收益: ${newTotalEarnings}`)
+          console.log(`[OrderProcessing] 分身 ${request.avatar_id} 获得收益 ${earningsPerAvatar.toFixed(2)}（预算 ${budget} / 参与分身 ${participantCount} 个），总收益: ${newTotalEarnings.toFixed(2)}`)
         }
       }
     } catch (earningsError) {

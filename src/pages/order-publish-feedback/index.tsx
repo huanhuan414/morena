@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck, Plus, X } from 'lucide-react-taro'
+import { ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck, Plus, X } from 'lucide-react-taro'
 import './index.css'
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function OrderPublishFeedback() {
   
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null)
   const [publishPlatforms, setPublishPlatforms] = useState<PublishPlatform[]>([])
-  const [feedback, setFeedback] = useState<Record<string, { image: string; link: string }>>({})
+  const [feedback, setFeedback] = useState<Record<string, { images: string[]; link: string }>>({})
   const [contentType, setContentType] = useState<string>('')
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
 
@@ -519,7 +519,7 @@ export default function OrderPublishFeedback() {
             publishPlatforms.map((result: PublishPlatform, index: number) => {
               const platform = result.platform
               const platformName = PLATFORM_NAMES[platform] || platform
-              const fb = feedback[platform] || { image: '', link: '' }
+              const fb = feedback[platform] || { images: [], link: '' }
 
               return (
                 <Card key={index} className="platform-card">
