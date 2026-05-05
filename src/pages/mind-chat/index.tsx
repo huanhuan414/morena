@@ -475,9 +475,8 @@ export default function MindChatPage() {
   // 手掌图片检测弹窗
   const [palmDetectImage, setPalmDetectImage] = useState<string>('')
 
-  // 🔴 新技能提示（右上角 tag）
+  // 🔴 新技能提示（右侧 tag）
   const [showNewSkillTip, setShowNewSkillTip] = useState(true) // 默认显示提示
-  const NEW_SKILL_TIP = 'NEW' // 新技能提示文字
 
   // 检测消息是否涉及第三方平台
   const detectPlatformFromMessage = (message: string): 'douyin' | 'xiaohongshu' | 'wechat' | 'bilibili' | 'weibo' | null => {
@@ -4500,30 +4499,29 @@ export default function MindChatPage() {
               )}
             </View>
             <View
-              className="flex flex-col items-center"
+              className="flex flex-row items-center"
               onClick={() => {
                 navigateToSkillsSquare()
                 setShowNewSkillTip(false)
               }}
             >
+              <View className="left-icon-btn skill-btn">
+                <Wrench size={24} color="#666666" />
+              </View>
               {showNewSkillTip && (
                 <View
                   style={{
                     background: 'linear-gradient(135deg, #FF4757 0%, #FF6B81 100%)',
-                    borderRadius: '16rpx',
-                    padding: '2rpx 12rpx',
-                    marginBottom: '8rpx',
-                    boxShadow: '0 4rpx 12rpx rgba(255, 71, 87, 0.4)',
+                    borderRadius: '8rpx',
+                    padding: '4rpx 8rpx',
+                    marginLeft: '-4rpx',
                   }}
                 >
                   <Text style={{ fontSize: '16rpx', fontWeight: 600, color: '#FFFFFF' }}>
-                    {NEW_SKILL_TIP}
+                    NEW
                   </Text>
                 </View>
               )}
-              <View className="left-icon-btn skill-btn">
-                <Wrench size={24} color="#666666" />
-              </View>
             </View>
           </View>
 
