@@ -91,6 +91,9 @@ export default function OrderPublishFeedback() {
         const statusData = res.data.data
         setIssuerId(statusData.issuerId || '')
         
+        // 从 generatedContent 中提取内容
+        const genContent = statusData.generatedContent || {}
+        
         setData({
           requestId: statusData.requestId,
           orderId: orderId || statusData.orderId,
@@ -99,10 +102,12 @@ export default function OrderPublishFeedback() {
           avatarAvatar: statusData.avatarAvatar,
           status: statusData.status,
           issuerId: statusData.issuerId,
-          contentUrl: statusData.contentUrl,
-          contentText: statusData.contentText,
-          contentType: statusData.contentType,
-          targetPlatform: statusData.targetPlatform,
+          // generatedContent 中的 images 数组取第一张作为 contentUrl
+          contentUrl: genContent.images?.[0] || '',
+          // generatedContent 中的 content 作为 contentText
+          contentText: genContent.content || '',
+          contentType: genContent.contentType || statusData.contentType,
+          targetPlatform: genContent.platforms?.[0] || statusData.targetPlatform,
           feedbackLink: statusData.feedbackLink,
           feedbackScreenshot: statusData.feedbackScreenshot,
           feedbackText: statusData.feedbackText,
