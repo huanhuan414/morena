@@ -741,6 +741,11 @@ export default function OrderDetailPage() {
                         <Text className="block">已完成</Text>
                       </View>
                     )}
+                    {stat.status === 'awaiting_acceptance' && (
+                      <View className="avatar-pending-btn">
+                        <Text className="block">待验收</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>

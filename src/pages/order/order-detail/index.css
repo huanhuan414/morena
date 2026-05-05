@@ -1375,6 +1375,16 @@
   color: #dc2626;
 }
 
+/* 待验收按钮 */
+.avatar-pending-btn {
+  background: #fff7e6;
+  color: #fa8c16;
+  border: 1rpx solid #fa8c16;
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+}
+
 /* 执行时间线 */
 .timeline {
   background: #ffffff;
