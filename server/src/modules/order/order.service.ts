@@ -464,14 +464,6 @@ export class OrderService {
             generatedItems.push(`![自动生成图片](${url})`)
           }
         }
-        // 保存多张图片到 images 字段
-        if (imageUrls.length > 0) {
-          const client = getSupabaseClient()
-          await client
-            .from('generated_content')
-            .update({ images: imageUrls.filter(Boolean) })
-            .eq('request_id', requestId)
-        }
       } else {
         imageUrl = await this.generateImageForOrder(order)
         if (imageUrl) {
