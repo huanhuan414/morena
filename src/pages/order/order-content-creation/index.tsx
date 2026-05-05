@@ -130,6 +130,12 @@ export default function OrderContentCreationPage() {
         setProcessingData(data)
         setLastUpdateTime(new Date())  // 更新最后更新时间
 
+        // 如果是预览状态且没有编辑过内容，自动填充生成的内容
+        if (data.status === 'preview' && !userContent && data.generatedContent?.content) {
+          console.log('[OrderProcessing] 自动填充生成的内容')
+          setUserContent(data.generatedContent.content)
+        }
+
         // 如果生成完成，停止轮询
         if (data.status === 'preview' || data.status === 'completed' || data.status === 'failed') {
           if (pollInterval) {
