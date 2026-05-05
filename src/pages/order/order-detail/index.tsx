@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   Sparkles, ArrowLeft, Pencil, Save, Check, X, Star,
-  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users
+  Loader, Circle, User, Clock, DollarSign, Calendar, Zap, Users, CheckCircle
 } from 'lucide-react-taro'
 import './index.css'
 
