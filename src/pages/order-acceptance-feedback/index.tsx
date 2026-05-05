@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, Image, ScrollView, Video } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
@@ -15,15 +15,25 @@ export default function OrderAcceptanceFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+  const [isIssuer, setIsIssuer] = useState(false)
 
-  // 获取当前用户ID和判断角色
-  const currentUserId = useUserStore.getState().userInfo?.id || ''
-  const isIssuer = currentUserId && data?.issuerId === currentUserId // true=发单者 false=接单者
+  // 使用 hook 方式获取用户信息
+  const userInfo = useUserStore((state) => state.userInfo)
 
   useLoad(() => {
     console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId })
     loadData()
   })
+
+  // 当 data 或 userInfo 变化时，判断角色
+  useEffect(() => {
+    if (data && userInfo) {
+      const currentUserId = userInfo.id
+      const issuerId = data.issuerId
+      console.log('[OrderAcceptanceFeedback] 判断角色:', { currentUserId, issuerId, isIssuer: currentUserId === issuerId })
+      setIsIssuer(currentUserId === issuerId)
+    }
+  }, [data, userInfo])
 
   const loadData = async () => {
     try {
@@ -55,8 +65,9 @@ export default function OrderAcceptanceFeedback() {
 
   // 接单者催促验收
   const handleUrgeAcceptance = () => {
+    const name = data?.avatarName || data?.generatedContent?.avatarName || '该分身'
     Taro.showToast({
-      title: `已催促发单者验收「${avatarName}」`,
+      title: `已催促发单者验收「${name}」`,
       icon: 'success'
     })
   }
@@ -66,11 +77,12 @@ export default function OrderAcceptanceFeedback() {
     try {
       const response = await Network.request({
         url: `/api/order-processing/accept/${requestId}`,
-        method: 'POST'
+        method: 'PUT'
       })
       if (response.data?.code === 200) {
+        const name = data?.avatarName || data?.generatedContent?.avatarName || '该分身'
         Taro.showToast({
-          title: `已验收「${avatarName}」`,
+          title: `已验收「${name}」`,
           icon: 'success'
         })
         setTimeout(() => navigateBack(), 1500)
@@ -112,8 +124,6 @@ export default function OrderAcceptanceFeedback() {
   const generatedContent = data.generatedContent || {}
   const publishFeedback = data.publishFeedback || {}
   const screenshotUrls = publishFeedback.screenshot_urls || []
-  // 获取分身名称
-  const avatarName = data.avatarName || generatedContent.avatarName || '该分身'
   const link = publishFeedback.link || ''
 
   // 获取内容类型
