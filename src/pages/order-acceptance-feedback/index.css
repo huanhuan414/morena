@@ -290,6 +290,7 @@
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1rpx solid #eee;
+  z-index: 9999;
 }
 
 .urge-button {
