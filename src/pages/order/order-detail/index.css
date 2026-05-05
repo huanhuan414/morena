@@ -180,39 +180,39 @@
 .tab-container {
   margin: 0 32rpx 32rpx;
   background: #FFFFFF;
-  border-radius: 32rpx;
+  border-radius: 24rpx;
   padding: 12rpx;
-  box-shadow: 0 4rpx 24rpx rgba(123, 63, 228, 0.1);
+  box-shadow: 0 4rpx 20rpx rgba(123, 63, 228, 0.08);
 }
 
 .tab-list {
   display: flex;
   background: #F8F7FC;
-  border-radius: 28rpx;
-  padding: 8rpx;
-  gap: 8rpx;
+  border-radius: 20rpx;
+  padding: 6rpx;
+  gap: 6rpx;
 }
 
 .tab-item {
   flex: 1;
-  padding: 28rpx 16rpx;
+  padding: 18rpx 12rpx;
   text-align: center;
-  border-radius: 24rpx;
-  font-size: 30rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
   font-weight: 500;
   color: #666666;
   transition: all 0.3s ease;
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  min-height: 100rpx;
+  min-height: 64rpx;
 }
 
 .tab-item-icon {
-  opacity: 0.5;
+  opacity: 0.6;
   transition: all 0.3s ease;
 }
 
@@ -220,8 +220,7 @@
   background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
   color: #FFFFFF;
   font-weight: 600;
-  box-shadow: 0 8rpx 24rpx rgba(123, 63, 228, 0.35);
-  transform: scale(1.02);
+  box-shadow: 0 4rpx 16rpx rgba(123, 63, 228, 0.3);
 }
 
 .tab-item-active .tab-item-icon {
