@@ -831,6 +831,29 @@ export class AvatarService {
   }
 
   /**
+   * 获取用户所有分身列表
+   */
+  async getAllAvatars() {
+    try {
+      const client = getSupabaseClient()
+      const { data, error } = await client
+        .from('avatars')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      if (error) {
+        console.error('获取分身列表失败:', error)
+        return []
+      }
+      
+      return data || []
+    } catch (err) {
+      console.error('获取分身列表异常:', err)
+      return []
+    }
+  }
+
+  /**
    * 获取活跃分身列表
    * 按最近7天发帖数量排序，返回最真实的活跃分身
    */

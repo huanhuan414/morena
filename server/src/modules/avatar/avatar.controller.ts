@@ -5,6 +5,17 @@ import { AvatarService } from './avatar.service'
 export class AvatarController {
   constructor(private readonly avatarService: AvatarService) {}
 
+  @Get()
+  async getAllAvatars() {
+    try {
+      const avatars = await this.avatarService.getAllAvatars()
+      return { code: 200, msg: 'success', data: avatars }
+    } catch (err) {
+      console.error('获取所有分身失败:', err)
+      return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
   @Get('active')
   async getActiveAvatars() {
     try {
