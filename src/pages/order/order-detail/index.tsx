@@ -734,42 +734,7 @@ export default function OrderDetailPage() {
                         </View>
                       </View>
                     </View>
-                    {/* 待验收/已完成状态的分身，添加验收按钮 */}
-                    {['feedback_submitted', 'awaiting_acceptance'].includes(stat.status) && (
-                      <View 
-                        className="avatar-accept-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          Taro.showModal({
-                            title: '验收确认',
-                            content: `确定验收「${stat.avatarName}」的内容？`,
-                            confirmText: '确认验收',
-                            cancelText: '取消',
-                            success: async (res) => {
-                              if (res.confirm) {
-                                try {
-                                  const res = await Network.request({
-                                    url: `/api/order-processing/accept/${stat.requestId}`,
-                                    method: 'POST'
-                                  })
-                                  if (res.data?.code === 200) {
-                                    Taro.showToast({ title: `已验收「${stat.avatarName}」`, icon: 'success' })
-                                    fetchOrder()
-                                  } else {
-                                    Taro.showToast({ title: res.data?.msg || '验收失败', icon: 'none' })
-                                  }
-                                } catch (err) {
-                                  Taro.showToast({ title: '验收失败', icon: 'none' })
-                                }
-                              }
-                            }
-                          })
-                        }}
-                      >
-                        <Check size={14} color="#fff" />
-                        <Text className="block">验收</Text>
-                      </View>
-                    )}
+
                     {stat.status === 'completed' && (
                       <View className="avatar-completed-badge">
                         <CheckCircle size={14} color="#52c41a" />
