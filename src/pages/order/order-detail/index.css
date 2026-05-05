@@ -1097,3 +1097,138 @@
   color: #6b7280;
 }
 
+/* ============================================
+   执行进度面板
+   ============================================ */
+.progress-panel {
+  padding: 32rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 24rpx;
+  padding-left: 8rpx;
+  border-left: 6rpx solid #6366f1;
+}
+
+/* 分身执行状态列表 */
+.avatar-execution-list {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.avatar-execution-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.avatar-execution-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.avatar-execution-item:first-child {
+  padding-top: 0;
+}
+
+.avatar-exec-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+
+.avatar-exec-details {
+  flex: 1;
+}
+
+.avatar-exec-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 6rpx;
+}
+
+.avatar-exec-progress {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+/* 执行时间线 */
+.timeline {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.timeline-item {
+  display: flex;
+  gap: 24rpx;
+  padding-bottom: 32rpx;
+  position: relative;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item:last-child .timeline-line {
+  display: none;
+}
+
+.timeline-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48rpx;
+}
+
+.timeline-line {
+  width: 4rpx;
+  flex: 1;
+  background: #e5e7eb;
+  margin-top: 12rpx;
+  min-height: 40rpx;
+}
+
+.timeline-line.completed {
+  background: #22c55e;
+}
+
+.timeline-content {
+  flex: 1;
+  background: #f9fafb;
+  border-radius: 16rpx;
+  padding: 20rpx;
+}
+
+.timeline-content.completed {
+  background: #f0fdf4;
+}
+
+.timeline-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+
+.timeline-desc {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-bottom: 8rpx;
+}
+
+.timeline-time {
+  font-size: 22rpx;
+  color: #9ca3af;
+}

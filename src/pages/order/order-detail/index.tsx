@@ -613,63 +613,7 @@ export default function OrderDetailPage() {
                     <Text className="stat-label block">已提交</Text>
                   </View>
                 </View>
-                {order.summary_stats.avatarStats && order.summary_stats.avatarStats.length > 0 && (
-                  <View className="avatar-list">
-                    {order.summary_stats.avatarStats.map((stat: any, index: number) => (
-                      <View 
-                        key={index} 
-                        className="avatar-item"
-                        onClick={() => {
-                          // 根据分身状态决定跳转行为（发单者视角）
-                          if (stat.status === 'pending') {
-                            // 未接受订单 → 查看分身主页
-                            Taro.navigateTo({ url: `/pages/avatar-detail/index?id=${stat.avatarId}` })
-                          } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
-                            // 已接受订单 → 查看内容创作页面
-                            Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.avatarId}&orderId=${id}` })
-                          } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
-                            // 已提交反馈 → 查看发布反馈页面
-                            Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.avatarId}&orderId=${id}` })
-                          }
-                        }}
-                      >
-                        <View className="avatar-info-row">
-                          <View className="avatar-mini">
-                            {stat.avatarUrl ? (
-                              <Image src={stat.avatarUrl} className="avatar-mini-image" />
-                            ) : (
-                              <View className="avatar-mini-placeholder">
-                                <User size={16} color="#00f5ff" />
-                              </View>
-                            )}
-                          </View>
-                          <Text className="avatar-item-name">{stat.avatarName}</Text>
-                          <View className={`status-badge ${stat.status}`}>
-                            <Text className="status-badge-text">
-                              {stat.status === 'pending' && '待接受'}
-                              {stat.status === 'accepted' && '制作中'}
-                              {stat.status === 'generating' && '制作中'}
-                              {stat.status === 'preview' && '预览中'}
-                              {stat.status === 'publishing' && '发布中'}
-                              {stat.status === 'published' && '待反馈'}
-                              {stat.status === 'feedback_submitted' && '待验收'}
-                              {stat.status === 'awaiting_acceptance' && '待验收'}
-                              {stat.status === 'completed' && '已完成'}
-                              {stat.status === 'rejected' && '已拒绝'}
-                            </Text>
-                          </View>
-                        </View>
-                        <View className="avatar-progress-row">
-                          <Text className="progress-text block">
-                            {stat.postCount > 0 && `${stat.postCount}个作品`}
-                            {stat.feedbackCount > 0 && ` | ${stat.feedbackCount}条反馈`}
-                            {(stat.totalViews > 0 || stat.totalLikes > 0) && ` | 曝光${stat.totalViews} 点赞${stat.totalLikes}`}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
+
               </View>
             )}
 
@@ -736,6 +680,68 @@ export default function OrderDetailPage() {
         {/* 执行进度 */}
         {activeTab === 'progress' && (
           <View className="progress-panel">
+            {/* 分身执行状态列表 */}
+            {order.summary_stats?.avatarStats && order.summary_stats.avatarStats.length > 0 && (
+              <View className="avatar-execution-list">
+                <Text className="section-title block">分身执行状态</Text>
+                {order.summary_stats.avatarStats.map((stat: any, index: number) => (
+                  <View 
+                    key={index} 
+                    className="avatar-execution-item"
+                    onClick={() => {
+                      // 根据分身状态决定跳转行为（发单者视角）
+                      if (stat.status === 'pending') {
+                        // 未接受订单 → 查看分身主页
+                        Taro.navigateTo({ url: `/pages/avatar-detail/index?id=${stat.avatarId}` })
+                      } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
+                        // 已接受订单 → 查看内容创作页面
+                        Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.avatarId}&orderId=${id}` })
+                      } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
+                        // 已提交反馈 → 查看发布反馈页面
+                        Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.avatarId}&orderId=${id}` })
+                      }
+                    }}
+                  >
+                    <View className="avatar-exec-info">
+                      <View className="avatar-mini">
+                        {stat.avatarUrl ? (
+                          <Image src={stat.avatarUrl} className="avatar-mini-image" />
+                        ) : (
+                          <View className="avatar-mini-placeholder">
+                            <User size={16} color="#00f5ff" />
+                          </View>
+                        )}
+                      </View>
+                      <View className="avatar-exec-details">
+                        <Text className="avatar-exec-name block">{stat.avatarName}</Text>
+                        <Text className="avatar-exec-progress block">
+                          {stat.postCount > 0 && `${stat.postCount}个作品`}
+                          {stat.feedbackCount > 0 && ` | ${stat.feedbackCount}条反馈`}
+                          {(stat.totalViews > 0 || stat.totalLikes > 0) && ` | 曝光${stat.totalViews} 点赞${stat.totalLikes}`}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className={`status-badge ${stat.status}`}>
+                      <Text className="status-badge-text">
+                        {stat.status === 'pending' && '待接受'}
+                        {stat.status === 'accepted' && '制作中'}
+                        {stat.status === 'generating' && '生成中'}
+                        {stat.status === 'preview' && '预览中'}
+                        {stat.status === 'publishing' && '发布中'}
+                        {stat.status === 'published' && '待反馈'}
+                        {stat.status === 'feedback_submitted' && '待验收'}
+                        {stat.status === 'awaiting_acceptance' && '待验收'}
+                        {stat.status === 'completed' && '已完成'}
+                        {stat.status === 'rejected' && '已拒绝'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 执行步骤时间线 */}
+            <Text className="section-title block">执行步骤</Text>
             {executions.length > 0 ? (
               <View className="timeline">
                 {executions.map((step) => (
