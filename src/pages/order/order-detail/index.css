@@ -710,9 +710,15 @@
   font-weight: 600;
   text-align: center;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
+  white-space: nowrap;
+}
+
+.action-btn Text {
+  white-space: nowrap;
 }
 
 .action-btn-primary {
