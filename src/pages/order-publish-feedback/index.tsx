@@ -296,7 +296,8 @@ export default function OrderPublishFeedback() {
               if (images[0]) {
                 handlePreviewImage(images, images[0])
               }
-            }}>
+            }}
+            >
               <Image
                 src={images[0]}
                 className="xhs-main-img"

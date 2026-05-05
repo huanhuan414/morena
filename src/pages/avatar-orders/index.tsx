@@ -170,8 +170,12 @@ export default function AvatarOrdersPage() {
           url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
-      case 'publishing':
       case 'awaiting_acceptance':
+        // 待验收的订单跳转到待验收反馈页面
+        navigateTo({
+          url: `/pages/order-acceptance-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
+        })
+        break
       case 'cancelled':
       case 'completed':
         // 这些状态跳转到订单详情页面

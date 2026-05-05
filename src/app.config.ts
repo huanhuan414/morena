@@ -18,6 +18,7 @@ export default defineAppConfig({
     'pages/order/order-publish-guide/index',
     'pages/order-feedback/index',
     'pages/order-publish-feedback/index',
+    'pages/order-acceptance-feedback/index',
     'pages/pending-order/index',
     'pages/order-stats/index',
     // 个人中心
