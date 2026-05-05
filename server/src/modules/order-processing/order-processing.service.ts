@@ -406,11 +406,11 @@ export class OrderProcessingService {
       throw new Error('获取订单请求失败')
     }
 
-    // 更新分发请求状态为 publishing
+    // 更新分发请求状态为 published（待反馈 - 分身需要上传截图和链接）
     const { error: updateError } = await client
       .from('order_dispatch_requests')
       .update({
-        status: 'publishing',
+        status: 'published',
         confirmed_content: content
       })
       .eq('id', requestId)
@@ -419,10 +419,10 @@ export class OrderProcessingService {
       throw new Error('确认内容失败')
     }
 
-    // 更新主订单状态为 publishing（所有分身都在发布中）
+    // 更新主订单状态为 awaiting_acceptance（发单者待验收）
     await client
       .from('orders')
-      .update({ status: 'publishing' })
+      .update({ status: 'awaiting_acceptance' })
       .eq('id', request.order_id)
 
     return { success: true }
