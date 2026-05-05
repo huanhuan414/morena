@@ -4492,24 +4492,26 @@ export default function MindChatPage() {
               onClick={() => {
                 navigateToSkillsSquare()
               }}
-              style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', position: 'relative' }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}
             >
               <Wrench size={24} color="#666666" />
-              {/* 技能数量 tag */}
+              {/* 技能数量 tag - 小圆形徽章 */}
               <View style={{
-                background: '#7B3FE4',
+                position: 'absolute',
+                top: '-10rpx',
+                right: '-10rpx',
+                background: 'linear-gradient(135deg, #7B3FE4 0%, #A855F7 100%)',
                 color: '#FFFFFF',
-                borderRadius: '12rpx',
-                padding: '0 6rpx',
-                marginLeft: '4rpx',
-                minWidth: '28rpx',
-                height: '28rpx',
+                borderRadius: '50%',
+                width: '32rpx',
+                height: '32rpx',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: '0 2rpx 8rpx rgba(123, 63, 228, 0.4)',
               }}
               >
-                <Text style={{ color: '#FFFFFF', fontSize: '16rpx', fontWeight: 700 }}>8</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: '18rpx', fontWeight: 700 }}>8</Text>
               </View>
             </View>
           </View>
