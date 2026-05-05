@@ -553,29 +553,6 @@
   gap: 16rpx;
 }
 
-.action-btn {
-  flex: 1;
-  padding: 28rpx 0;
-  border-radius: 16rpx;
-  font-size: 32rpx;
-  font-weight: 600;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-}
-
-.action-btn-primary {
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
-  color: #FFFFFF;
-}
-
-.action-btn-secondary {
-  background: #F5F5F7;
-  color: #666666;
-}
-
 /* 弹窗样式 */
 .modal-overlay {
   position: fixed;
@@ -719,10 +696,43 @@
 
 /* 操作按钮区 */
 .action-section {
-  padding: 32rpx;
+  padding: 32rpx 0;
   display: flex;
   flex-direction: row;
-  gap: 20rpx;
+  gap: 24rpx;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 28rpx 24rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.action-btn-primary {
+  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+}
+
+.action-btn-primary Text {
+  color: #FFFFFF !important;
+}
+
+.action-btn-secondary {
+  background: #F5F5F7;
+}
+
+.action-btn-secondary Text {
+  color: #666666 !important;
+}
+
+.action-btn-danger Text {
+  color: #EF4444 !important;
 }
 
 .star-item {

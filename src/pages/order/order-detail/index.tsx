@@ -679,11 +679,12 @@ export default function OrderDetailPage() {
             {order.status === 'open' && !order.avatars && (
               <View className="action-section">
                 <View className="action-btn action-btn-primary" onClick={() => navigateTo({ url: `/pages/order/order-matching/index?orderId=${id}` })}>
-                  <Sparkles size={22} color="#FFFFFF" />
+                  <Sparkles size={20} color="#FFFFFF" />
                   <Text className="block">AI智能匹配分身</Text>
                 </View>
-                <View className="action-btn action-btn-secondary" onClick={handleCancel}>
-                  <Text className="block" style={{ color: '#EF4444' }}>取消订单</Text>
+                <View className="action-btn action-btn-secondary action-btn-danger" onClick={handleCancel}>
+                  <X size={20} color="#EF4444" />
+                  <Text className="block">取消订单</Text>
                 </View>
               </View>
             )}
@@ -691,7 +692,7 @@ export default function OrderDetailPage() {
             {allAvatarsCompleted && (
               <View className="action-section">
                 <View className="action-btn action-btn-primary" onClick={() => setShowRating(true)}>
-                  <Check size={22} color="#FFFFFF" />
+                  <Check size={20} color="#FFFFFF" />
                   <Text className="block">验收订单</Text>
                 </View>
               </View>
