@@ -1,0 +1,447 @@
+/* 工资墙页面 - 高级特效明亮模式 */
+.earnings-wall-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #F8F7FC 0%, #FFFFFF 30%, #F8F7FC 100%);
+  padding-bottom: 120rpx;
+}
+
+/* 导航栏 */
+.nav-header {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1rpx solid rgba(123, 63, 228, 0.1);
+}
+
+.nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 32rpx;
+}
+
+.back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(123, 63, 228, 0.08);
+  border-radius: 16rpx;
+}
+
+.nav-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.nav-right {
+  width: 64rpx;
+}
+
+/* 英雄区域 */
+.hero-section {
+  position: relative;
+  margin: 32rpx;
+  padding: 48rpx 32rpx;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F3E8FF 100%);
+  border-radius: 32rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(123, 63, 228, 0.15);
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hero-particles {
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 8rpx;
+  height: 8rpx;
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+  border-radius: 50%;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-20rpx) scale(1.2);
+    opacity: 1;
+  }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-icon {
+  width: 100rpx;
+  height: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+  border-radius: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(123, 63, 228, 0.3);
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+
+.hero-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-bottom: 32rpx;
+}
+
+/* 统计数据行 */
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 24rpx;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #7B3FE4;
+  margin-bottom: 4rpx;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.stat-divider {
+  width: 2rpx;
+  height: 48rpx;
+  background: linear-gradient(180deg, transparent, #E5E7EB, transparent);
+  margin: 0 16rpx;
+}
+
+/* Top 3 区域 */
+.top-three-section {
+  margin: 0 32rpx 32rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.top-three-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16rpx;
+  padding: 32rpx 16rpx;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
+  border-radius: 28rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+}
+
+.top-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.top-1 {
+  transform: translateY(-20rpx);
+}
+
+.top-2, .top-3 {
+  transform: translateY(10rpx);
+}
+
+.crown-wrapper {
+  margin-bottom: -8rpx;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.avatar-medal {
+  margin-bottom: -4rpx;
+}
+
+.avatar-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+  border-radius: 50%;
+  box-shadow: 0 4rpx 16rpx rgba(123, 63, 228, 0.3);
+}
+
+.avatar-avatar.avatar-1 {
+  width: 100rpx;
+  height: 100rpx;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  box-shadow: 0 8rpx 24rpx rgba(255, 215, 0, 0.4);
+}
+
+.avatar-initial {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.avatar-initial.avatar-initial-1 {
+  font-size: 44rpx;
+}
+
+.avatar-name {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #374151;
+  max-width: 120rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-earnings {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #7B3FE4;
+}
+
+.top-1 .avatar-earnings {
+  color: #F59E0B;
+}
+
+/* 排行榜列表 */
+.ranking-list-section {
+  margin: 0 32rpx 32rpx;
+}
+
+.ranking-list {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  transition: all 0.2s ease;
+}
+
+.ranking-item.even {
+  background: #FAFAFA;
+}
+
+.ranking-item.odd {
+  background: #FFFFFF;
+}
+
+.ranking-item:active {
+  background: #F3E8FF;
+}
+
+.rank-badge {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #E5E7EB, #F3F4F6);
+  border-radius: 12rpx;
+  margin-right: 20rpx;
+}
+
+.rank-number {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #6B7280;
+}
+
+.ranking-item:nth-child(1) .rank-badge {
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+}
+
+.ranking-item:nth-child(1) .rank-number {
+  color: #FFFFFF;
+}
+
+.avatar-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.avatar-icon {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7B3FE4, #A78BFA);
+  border-radius: 50%;
+}
+
+.avatar-initial-small {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.avatar-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-name-small {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2rpx;
+}
+
+.avatar-platform {
+  font-size: 20rpx;
+  color: #9CA3AF;
+}
+
+.earnings-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.earnings-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #7B3FE4;
+  margin-bottom: 2rpx;
+}
+
+.orders-count {
+  font-size: 20rpx;
+  color: #9CA3AF;
+}
+
+/* 激励区域 */
+.motivation-section {
+  margin: 0 32rpx;
+}
+
+.motivation-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(245, 158, 11, 0.2);
+}
+
+.motivation-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.motivation-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #92400E;
+  margin-bottom: 4rpx;
+}
+
+.motivation-desc {
+  font-size: 22rpx;
+  color: #B45309;
+}
+
+/* 加载状态 */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 4rpx solid #E5E7EB;
+  border-top-color: #7B3FE4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16rpx;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #6B7280;
+}

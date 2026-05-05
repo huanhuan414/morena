@@ -290,10 +290,8 @@ export default function OrderListPage() {
       actions.push('编辑订单')
       actions.push('取消订单')
     } else if (status === 'in_progress' || status === 'awaiting_acceptance') {
-      actions.push('查看详情')
-      actions.push('取消订单')
+      // 进行中的订单不能编辑，只能查看详情
     } else if (status === 'completed') {
-      actions.push('查看详情')
       actions.push('再次发布')
       actions.push('删除订单')
     } else if (status === 'cancelled') {
@@ -315,11 +313,7 @@ export default function OrderListPage() {
   const handleOrderAction = async (action: string, order: Order) => {
     switch (action) {
       case '编辑订单':
-        navigateTo({ url: `/pages/order/order-create/index?id=${order.id}` })
-        break
-        
-      case '查看详情':
-        handleOrderClick(order)
+        navigateTo({ url: `/pages/order/order-create/index?edit=${order.id}` })
         break
         
       case '取消订单':
@@ -332,7 +326,7 @@ export default function OrderListPage() {
         
       case '再次发布':
       case '重新发布':
-        navigateTo({ url: `/pages/order/order-create/index?copyFrom=${order.id}` })
+        navigateTo({ url: `/pages/order/order-create/index?copy=${order.id}` })
         break
     }
   }

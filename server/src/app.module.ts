@@ -32,6 +32,7 @@ import { OrderProcessingModule } from './modules/order-processing/order-processi
 import { SkillTrainingModule } from './modules/skill-training/skill-training.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
+import { EarningsModule } from './modules/earnings/earnings.module';
 
 @Module({
   imports: [
@@ -64,7 +65,8 @@ import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
     OrderProcessingModule,
     SkillTrainingModule,
     AdminModule,
-    PalmReadingModule
+    PalmReadingModule,
+    EarningsModule
   ],
   controllers: [AppController],
   providers: [AppService],

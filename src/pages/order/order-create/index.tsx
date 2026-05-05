@@ -57,6 +57,8 @@ export default function OrderCreatePage() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [aiWriting, setAiWriting] = useState(false) // AI帮写状态
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null) // 编辑订单ID
+  const [isCopyMode, setIsCopyMode] = useState(false) // 是否是复制模式
 
   const [form, setForm] = useState<OrderForm>({
     title: '',
@@ -78,7 +80,102 @@ export default function OrderCreatePage() {
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
+    
+    // 检查 URL 参数
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const params = (currentPage as any)?.options || Taro.getCurrentInstance().router?.params || {}
+    
+    console.log('[OrderCreate] URL params:', params)
+    
+    // 复制订单模式
+    if (params.copy) {
+      setIsCopyMode(true)
+      loadOrderData(params.copy)
+    }
+    // 编辑订单模式
+    else if (params.edit) {
+      setEditingOrderId(params.edit)
+      loadOrderData(params.edit)
+    }
   })
+  
+  // 加载订单数据
+  const loadOrderData = async (orderId: string) => {
+    try {
+      setLoading(true)
+      const res = await Network.request({
+        url: `/api/order/${orderId}`,
+        method: 'GET'
+      })
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const orderData = res.data.data
+        
+        // 解析 requirements JSON
+        let requirements = {
+          contentType: 'article',
+          platforms: [],
+          targetAudience: '',
+          expectedResults: '',
+          deadline: getDefaultDeadline()
+        }
+        
+        if (orderData.requirements) {
+          try {
+            requirements = typeof orderData.requirements === 'string' 
+              ? JSON.parse(orderData.requirements) 
+              : orderData.requirements
+          } catch (e) {
+            console.error('[OrderCreate] 解析 requirements 失败:', e)
+          }
+        }
+        
+        // 设置表单数据
+        setForm({
+          title: orderData.title || '',
+          description: orderData.description || '',
+          avatarCount: orderData.avatar_count || orderData.avatarCount || 1,
+          quantityPerAvatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
+          requirements: {
+            contentType: requirements.contentType || 'article',
+            platforms: requirements.platforms || [],
+            targetAudience: requirements.targetAudience || '',
+            expectedResults: requirements.expectedResults || '',
+            deadline: requirements.deadline || getDefaultDeadline()
+          }
+        })
+        
+        // 解析附件
+        if (orderData.attachments) {
+          try {
+            const attachmentsData = typeof orderData.attachments === 'string'
+              ? JSON.parse(orderData.attachments)
+              : orderData.attachments
+            if (Array.isArray(attachmentsData)) {
+              setAttachments(attachmentsData.map((att: any, index: number) => ({
+                id: `loaded-${index}`,
+                name: att.name || att.url?.split('/').pop() || '附件',
+                url: att.url,
+                type: att.type || 'file'
+              })))
+            }
+          } catch (e) {
+            console.error('[OrderCreate] 解析 attachments 失败:', e)
+          }
+        }
+        
+        console.log('[OrderCreate] 订单数据加载成功:', orderData.title)
+      } else {
+        showToast({ title: '加载订单失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[OrderCreate] 加载订单失败:', error)
+      showToast({ title: '加载订单失败', icon: 'none' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // 生成日期选择器的数据
   const dateRange = useMemo(() => {
@@ -712,7 +809,9 @@ ${contentTypePrompt}
           <View className="back-btn" onClick={() => navigateBack()}>
             <ArrowLeft size={24} color="#1f2937" />
           </View>
-          <Text className="nav-title">发布订单</Text>
+          <Text className="nav-title">
+            {isCopyMode ? '复制订单' : editingOrderId ? '编辑订单' : '发布订单'}
+          </Text>
           <View className="nav-right"></View>
         </View>
       </View>

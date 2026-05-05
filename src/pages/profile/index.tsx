@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
   Settings, ChevronRight, LogOut, Sparkles, Bell, Info, 
-  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X
+  CircleQuestionMark, Briefcase, Wallet, Crown, Package, X, Trophy
 } from 'lucide-react-taro'
 import { LevelDetailDialog } from '@/components/level-detail-dialog'
 import { getSafeArea } from '@/utils/safe-area'
@@ -72,6 +72,7 @@ const menuItems = [
   { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/pages/skills-square/index' },
   { title: '我要推广', icon: Briefcase, desc: '订单管理', type: 'info', path: '/pages/order/order-list/index' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
+  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/pages/earnings-wall/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
   { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help/index' },
   { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/pages/profile/about/index' }

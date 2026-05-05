@@ -33,6 +33,7 @@ export default defineAppConfig({
     // 收益
     'pages/earning-center/index',
     'pages/referral-center/index',
+    'pages/earnings-wall/index',
     // 分身相关
     'pages/avatar-profile/index',
     'pages/avatar-recommend/index',
