@@ -81,20 +81,22 @@ export default function OrderCreatePage() {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
     
-    // 检查 URL 参数
-    const pages = Taro.getCurrentPages()
-    const currentPage = pages[pages.length - 1]
-    const params = (currentPage as any)?.options || Taro.getCurrentInstance().router?.params || {}
+    // 获取 URL 参数
+    const router = Taro.getCurrentInstance().router
+    const params = router?.params || {}
     
     console.log('[OrderCreate] URL params:', params)
+    console.log('[OrderCreate] Full URL:', router?.path)
     
-    // 复制订单模式
+    // 复制订单模式 - 优先检查 copy 参数
     if (params.copy) {
+      console.log('[OrderCreate] 复制订单模式, orderId:', params.copy)
       setIsCopyMode(true)
       loadOrderData(params.copy)
     }
-    // 编辑订单模式
+    // 编辑订单模式 - 检查 edit 参数
     else if (params.edit) {
+      console.log('[OrderCreate] 编辑订单模式, orderId:', params.edit)
       setEditingOrderId(params.edit)
       loadOrderData(params.edit)
     }
