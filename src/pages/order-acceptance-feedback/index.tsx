@@ -53,16 +53,16 @@ export default function OrderAcceptanceFeedbackPage() {
           setImages(data.generatedContent.images)
         }
         
-        // 提取已提交的反馈信息
-        if (data.publishStatus) {
-          if (data.publishStatus.screenshot_urls) {
-            setPublishUrls(data.publishStatus.screenshot_urls)
+        // 提取已提交的反馈信息（从 publishFeedback 字段）
+        if (data.publishFeedback) {
+          if (data.publishFeedback.screenshot_urls) {
+            setPublishUrls(data.publishFeedback.screenshot_urls)
           }
-          if (data.publishStatus.link) {
-            setPublishLink(data.publishStatus.link)
+          if (data.publishFeedback.link) {
+            setPublishLink(data.publishFeedback.link)
           }
-          if (data.publishStatus.note) {
-            setPublishNote(data.publishStatus.note)
+          if (data.publishFeedback.note) {
+            setPublishNote(data.publishFeedback.note)
           }
         }
       } else {

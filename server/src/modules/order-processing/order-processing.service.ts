@@ -28,6 +28,13 @@ export interface ProcessingStatus {
     }>
     summary: string
   }
+  // 已提交的反馈信息（截图、链接等）
+  publishFeedback?: {
+    screenshot_urls?: string[]
+    link?: string
+    note?: string
+    feedbackSubmittedAt?: string
+  }
   // 分身绑定的账号信息
   avatarAccounts?: Array<{
     id: string
@@ -267,7 +274,7 @@ export class OrderProcessingService {
     // 分别查询订单请求、订单和分身信息（因为可能没有外键关系）
     const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, order_id, avatar_id, user_id, status, generated_content, publish_status, confirmed_content')
+      .select('id, order_id, avatar_id, user_id, status, generated_content, publish_status, publish_feedback, confirmed_content')
       .eq('id', requestId)
       .single()
 
@@ -370,6 +377,13 @@ export class OrderProcessingService {
         contentType: orderData?.content_type || '图文'
       } : undefined,
       publishStatus: request.publish_status,
+      // 返回已提交的反馈信息（截图、链接、备注）
+      publishFeedback: request.publish_feedback ? {
+        screenshot_urls: this.extractScreenshotUrls(request.publish_feedback),
+        link: this.extractLink(request.publish_feedback),
+        note: request.publish_feedback.note,
+        feedbackSubmittedAt: request.publish_feedback.feedbackSubmittedAt
+      } : undefined,
       avatarAccounts  // 返回分身绑定的账号信息
     }
 
@@ -393,6 +407,27 @@ export class OrderProcessingService {
     })
 
     return status
+  }
+
+  // 提取反馈中的截图URL
+  private extractScreenshotUrls(publishFeedback: Record<string, any>): string[] {
+    const urls: string[] = []
+    for (const feedback of Object.values(publishFeedback)) {
+      if (feedback && typeof feedback === 'object' && feedback.image) {
+        urls.push(feedback.image)
+      }
+    }
+    return urls
+  }
+
+  // 提取反馈中的链接
+  private extractLink(publishFeedback: Record<string, any>): string | undefined {
+    for (const feedback of Object.values(publishFeedback)) {
+      if (feedback && typeof feedback === 'object' && feedback.link) {
+        return feedback.link
+      }
+    }
+    return undefined
   }
 
   /**
