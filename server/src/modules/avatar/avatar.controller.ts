@@ -8,7 +8,7 @@ export class AvatarController {
   @Get()
   async getMyAvatars(@Headers('x-user-id') userId: string) {
     try {
-      const avatars = await this.avatarService.getAvatarsByUserId(userId)
+      const avatars = await this.avatarService.getAvatarsByUser(userId)
       return { code: 200, msg: 'success', data: avatars }
     } catch (err) {
       console.error('获取分身列表失败:', err)
