@@ -278,7 +278,7 @@ export class OrderProcessingService {
     // 分别查询订单请求、订单和分身信息（因为可能没有外键关系）
     const { data: request, error: requestError } = await client
       .from('order_dispatch_requests')
-      .select('id, order_id, avatar_id, user_id, status, generated_content, publish_status, publish_feedback, confirmed_content')
+      .select('id, order_id, avatar_id, user_id, status, generated_content, publish_status, publish_feedback, confirmed_content, updated_at')
       .eq('id', requestId)
       .single()
 
