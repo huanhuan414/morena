@@ -668,9 +668,12 @@ export default function OrderDetailPage() {
                       } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
                         // 已接受订单 → 查看内容创作页面
                         Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.requestId}&orderId=${id}` })
-                      } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
-                        // 已提交反馈 → 查看发布反馈页面
+                      } else if (['published', 'feedback_submitted'].includes(stat.status)) {
+                        // 待反馈/已提交 → 查看发布反馈页面
                         Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
+                      } else if (['awaiting_acceptance', 'completed'].includes(stat.status)) {
+                        // 待验收/已完成 → 查看待验收页面
+                        Taro.navigateTo({ url: `/pages/order-acceptance-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
                       }
                     }}
                   >
