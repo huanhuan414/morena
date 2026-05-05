@@ -450,11 +450,33 @@ export class OrderService {
     let videoUrl: string | null = null
     
     // 生成图片
+    const platforms = order.platforms || []
+    const isWechatMoments = platforms.includes('wechat_moments')
+    
     if (needsImage) {
       console.log('[OrderService] 开始自动生成图片/海报...')
-      imageUrl = await this.generateImageForOrder(order)
-      if (imageUrl) {
-        generatedItems.push(`![自动生成图片](${imageUrl})`)
+      
+      // 朋友圈平台生成3张图片
+      if (isWechatMoments) {
+        const imageUrls = await this.generateMultipleImagesForOrder(order, 3)
+        for (const url of imageUrls) {
+          if (url) {
+            generatedItems.push(`![自动生成图片](${url})`)
+          }
+        }
+        // 保存多张图片到 images 字段
+        if (imageUrls.length > 0) {
+          const client = getSupabaseClient()
+          await client
+            .from('generated_content')
+            .update({ images: imageUrls.filter(Boolean) })
+            .eq('request_id', requestId)
+        }
+      } else {
+        imageUrl = await this.generateImageForOrder(order)
+        if (imageUrl) {
+          generatedItems.push(`![自动生成图片](${imageUrl})`)
+        }
       }
     }
     
@@ -536,6 +558,85 @@ export class OrderService {
       console.error('[OrderService] 图片生成失败:', error.message)
       return null
     }
+  }
+
+  /**
+   * 为订单生成多张图片（用于朋友圈等需要多图的场景）
+   */
+  private async generateMultipleImagesForOrder(order: any, count: number = 3): Promise<string[]> {
+    const results: string[] = []
+    const platforms = order.platforms || []
+    const isWechatMoments = platforms.includes('wechat_moments')
+    
+    // 为每张图片生成不同的提示词（朋友圈九宫格风格）
+    const imageStyles = [
+      '精美封面图，高端大气，吸引眼球',
+      '真实场景图，生活化，有代入感',
+      '细节特写图，质感强，引人注目'
+    ]
+    
+    for (let i = 0; i < count; i++) {
+      try {
+        // 构建图片提示词
+        const prompt = this.buildImagePromptForIndex(order, i, imageStyles[i % imageStyles.length], isWechatMoments)
+        
+        const axios = require('axios')
+        const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
+        const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+        
+        const response = await axios.post(apiUrl, {
+          model: 'seedream-4-0',
+          prompt: prompt,
+          size: '1024x1024',
+          style: isWechatMoments ? '3d_animation' : 'flat_illustration'
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': apiKey
+          },
+          timeout: 60000
+        })
+        
+        const imageUrl = response.data?.data?.[0]?.url
+        if (imageUrl) {
+          console.log(`[OrderService] 图片${i + 1}/${count} 生成成功:`, imageUrl)
+          results.push(imageUrl)
+        }
+      } catch (error: any) {
+        console.error(`[OrderService] 图片${i + 1}/${count} 生成失败:`, error.message)
+        // 继续生成下一张，不中断
+      }
+    }
+    
+    return results
+  }
+
+  /**
+   * 为指定序号的图片构建提示词（朋友圈九宫格风格）
+   */
+  private buildImagePromptForIndex(order: any, index: number, style: string, isWechatMoments: boolean): string {
+    const parts: string[] = []
+    
+    // 朋友圈风格特殊处理
+    if (isWechatMoments) {
+      parts.push(`【朋友圈九宫格图片 - 第${index + 1}张】`)
+      parts.push(`风格要求: ${style}`)
+      parts.push(`统一主题: ${order.title || order.description || '精彩内容'}`)
+      
+      if (order.description) {
+        parts.push(`内容描述: ${order.description}`)
+      }
+      
+      // 九宫格风格要求
+      parts.push('九宫格风格：图片之间要有连贯性，整体构成完整故事')
+      parts.push('色调统一：保持整体视觉风格一致')
+      parts.push('构图精美：适合朋友圈展示，视觉效果好')
+    } else {
+      // 默认单图风格
+      return this.buildImagePrompt(order)
+    }
+    
+    return parts.join('\n')
   }
 
   /**

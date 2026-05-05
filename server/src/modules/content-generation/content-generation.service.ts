@@ -172,12 +172,23 @@ export class ContentGenerationService {
         keywords: this.extractKeywords(orderDescription),
         include_images: true
       }
-    } else if (platform === 'douyin' || platform === 'bilibibili' || platform === 'kuaishou') {
+    } else if (platform === 'douyin' || platform === 'bilibili' || platform === 'kuaishou') {
       return {
         ...baseParams,
         video_style: this.mapContentTypeToVideoStyle(contentType),
         duration: 'short', // 默认短视频
         include_background_music: true
+      }
+    } else if (platform === 'wechat_moments') {
+      // 朋友圈特殊处理：生成3张图 + 爆款文案
+      return {
+        ...baseParams,
+        style: '朋友圈爆款', // 朋友圈风格
+        keywords: this.extractKeywords(orderDescription),
+        include_images: true,
+        image_count: 3, // 朋友圈至少3张图
+        content_style: 'short_viral', // 爆款短文案风格
+        content_length: 'short' // 朋友圈文案简短
       }
     }
 
