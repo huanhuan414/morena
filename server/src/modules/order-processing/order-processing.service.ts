@@ -395,8 +395,19 @@ export class OrderProcessingService {
   async confirmContent(requestId: string, content: string) {
     const client = getSupabaseClient()
 
-    // 保存用户确认的内容
-    const { error } = await client
+    // 查询订单请求信息，获取 order_id
+    const { data: request, error: requestError } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id')
+      .eq('id', requestId)
+      .single()
+
+    if (requestError || !request) {
+      throw new Error('获取订单请求失败')
+    }
+
+    // 更新分发请求状态为 publishing
+    const { error: updateError } = await client
       .from('order_dispatch_requests')
       .update({
         status: 'publishing',
@@ -404,9 +415,15 @@ export class OrderProcessingService {
       })
       .eq('id', requestId)
 
-    if (error) {
+    if (updateError) {
       throw new Error('确认内容失败')
     }
+
+    // 更新主订单状态为 publishing（所有分身都在发布中）
+    await client
+      .from('orders')
+      .update({ status: 'publishing' })
+      .eq('id', request.order_id)
 
     return { success: true }
   }
