@@ -692,13 +692,13 @@ export default function OrderDetailPage() {
                       // 根据分身状态决定跳转行为（发单者视角）
                       if (stat.status === 'pending') {
                         // 未接受订单 → 查看分身主页
-                        Taro.navigateTo({ url: `/pages/avatar-detail/index?id=${stat.avatarId}` })
+                        Taro.navigateTo({ url: `/pages/avatar-profile/index?id=${stat.avatarId}` })
                       } else if (['accepted', 'generating', 'preview', 'publishing'].includes(stat.status)) {
                         // 已接受订单 → 查看内容创作页面
-                        Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.avatarId}&orderId=${id}` })
+                        Taro.navigateTo({ url: `/pages/order/order-content-creation/index?requestId=${stat.requestId}&orderId=${id}` })
                       } else if (['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(stat.status)) {
                         // 已提交反馈 → 查看发布反馈页面
-                        Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.avatarId}&orderId=${id}` })
+                        Taro.navigateTo({ url: `/pages/order/order-publish-feedback/index?requestId=${stat.requestId}&orderId=${id}` })
                       }
                     }}
                   >
