@@ -1,6 +1,5 @@
 import { View, Text, ScrollView, Image, Video } from "@tarojs/components"
 import Taro, { useLoad, useDidShow, useRouter, redirectTo, showToast, navigateTo } from "@tarojs/taro"
-import { getSafeArea } from '@/utils/safe-area'
 import { useState, useRef, useEffect } from "react"
 import * as Network from "@/network"
 import { useUserStore } from "@/stores/user"
@@ -380,9 +379,6 @@ export default function MindChatPage() {
     styleMatch: 0
   })
 
-  // 安全区域适配
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
-
   // 学习动画状态
   const [showLearningEffect, setShowLearningEffect] = useState(false)
   const [learningProgress, setLearningProgress] = useState<{
@@ -538,10 +534,6 @@ export default function MindChatPage() {
   }
 
   useLoad(() => {
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
-
     if (!isLoggedIn) {
       redirectTo({ url: '/pages/login/index' })
     }
@@ -3749,46 +3741,29 @@ export default function MindChatPage() {
             )}
           </View>
         </View>
-        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
+        <View className="header-right" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16rpx' }}>
+          {/* 新技能提示 - 放在导航栏右侧 */}
+          <View
+            className="clickable"
+            onClick={() => navigateToSkillsSquare()}
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: '8rpx',
+              background: 'linear-gradient(135deg, #FF6B6B 0%, #FF4757 100%)',
+              borderRadius: '24rpx',
+              padding: '8rpx 16rpx',
+              boxShadow: '0 2rpx 8rpx rgba(255, 71, 87, 0.4)',
+            }}
+          >
+            <Sparkles size={18} color="#FFFFFF" />
+            <Text style={{ fontSize: '20rpx', fontWeight: 600, color: '#FFFFFF' }}>新技能</Text>
+          </View>
           <View className="agent-badge">
             <Zap size={16} color="#00ff88" />
             <Text className="agent-badge-text">Agent</Text>
           </View>
-        </View>
-      </View>
-
-      {/* 新技能提示横幅 */}
-      <View
-        className="clickable"
-        onClick={() => navigateToSkillsSquare()}
-        style={{
-          margin: '20rpx 32rpx',
-          padding: '24rpx 28rpx',
-          background: 'linear-gradient(135deg, #FF6B6B 0%, #FF4757 50%, #FF6B81 100%)',
-          borderRadius: '20rpx',
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          boxShadow: '0 4rpx 16rpx rgba(255, 71, 87, 0.3)',
-        }}
-      >
-        <Sparkles size={32} color="#FFFFFF" />
-        <View style={{ flex: 1, marginLeft: '20rpx' }}>
-          <Text style={{ fontSize: '28rpx', fontWeight: 600, color: '#FFFFFF' }}>
-            🌟 新技能上线
-          </Text>
-          <Text style={{ fontSize: '24rpx', color: 'rgba(255,255,255,0.9)', marginTop: '4rpx' }}>
-            点击体验「看手相」AI智能分析
-          </Text>
-        </View>
-        <View
-          style={{
-            background: 'rgba(255,255,255,0.3)',
-            borderRadius: '30rpx',
-            padding: '8rpx 20rpx',
-          }}
-        >
-          <Text style={{ fontSize: '22rpx', fontWeight: 600, color: '#FFFFFF' }}>去看看</Text>
         </View>
       </View>
 
