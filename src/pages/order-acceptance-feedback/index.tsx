@@ -4,7 +4,8 @@ import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Bell, ExternalLink } from 'lucide-react-taro'
+import { ArrowLeft, Bell, ExternalLink, CircleCheck } from 'lucide-react-taro'
+import { useUserStore } from '@/stores/user'
 import './index.css'
 
 export default function OrderAcceptanceFeedback() {
@@ -14,6 +15,10 @@ export default function OrderAcceptanceFeedback() {
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+
+  // 获取当前用户ID和判断角色
+  const currentUserId = useUserStore.getState().userInfo?.id || ''
+  const isIssuer = currentUserId && data?.issuerId === currentUserId // true=发单者 false=接单者
 
   useLoad(() => {
     console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId })
@@ -53,6 +58,34 @@ export default function OrderAcceptanceFeedback() {
       title: '已发送催促通知',
       icon: 'success'
     })
+  }
+
+  // 发单者确认验收
+  const handleAccept = async () => {
+    try {
+      const response = await Network.request({
+        url: `/api/order-processing/accept/${requestId}`,
+        method: 'POST'
+      })
+      if (response.data?.code === 200) {
+        Taro.showToast({
+          title: '验收成功',
+          icon: 'success'
+        })
+        setTimeout(() => navigateBack(), 1500)
+      } else {
+        Taro.showToast({
+          title: response.data?.message || '验收失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('[OrderAcceptanceFeedback] 验收失败:', error)
+      Taro.showToast({
+        title: '验收失败',
+        icon: 'none'
+      })
+    }
   }
 
   if (loading) {
@@ -259,10 +292,13 @@ export default function OrderAcceptanceFeedback() {
                   <Text className="feedback-label">发布链接</Text>
                   <View className="link-box">
                     <ExternalLink size={16} color="#07c160" />
-                    <Text className="link-text" onClick={() => {
-                      Taro.setClipboardData({ data: link })
-                      Taro.showToast({ title: '链接已复制', icon: 'success' })
-                    }}>{link}</Text>
+                    <Text
+                      className="link-text"
+                      onClick={() => {
+                        Taro.setClipboardData({ data: link })
+                        Taro.showToast({ title: '链接已复制', icon: 'success' })
+                      }}
+                    >{link}</Text>
                   </View>
                 </View>
               )}
@@ -285,15 +321,27 @@ export default function OrderAcceptanceFeedback() {
         </View>
       </ScrollView>
 
-      {/* 固定底部催促验收按钮 */}
+      {/* 固定底部按钮 - 根据角色显示不同按钮 */}
       <View className="fixed-bottom">
-        <Button
-          className="urge-button"
-          onClick={handleUrgeAcceptance}
-        >
-          <Bell size={18} color="#fff" />
-          <Text className="button-text">催促验收</Text>
-        </Button>
+        {isIssuer ? (
+          // 发单者 - 确认验收按钮
+          <Button
+            className="accept-button"
+            onClick={handleAccept}
+          >
+            <CircleCheck size={18} color="#fff" />
+            <Text className="button-text">确认验收</Text>
+          </Button>
+        ) : (
+          // 接单者 - 催促验收按钮
+          <Button
+            className="urge-button"
+            onClick={handleUrgeAcceptance}
+          >
+            <Bell size={18} color="#fff" />
+            <Text className="button-text">催促验收</Text>
+          </Button>
+        )}
       </View>
     </View>
   )
