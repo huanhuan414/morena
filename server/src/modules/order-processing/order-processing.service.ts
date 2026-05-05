@@ -43,6 +43,10 @@ export interface ProcessingStatus {
     account_url?: string
     appid?: string
   }>
+  // 收益信息（已完成状态时返回）
+  earnings?: number
+  earningsStatus?: 'settled' | 'pending' | 'withdrawn'
+  completedAt?: string
 }
 
 // 队列管理
@@ -311,10 +315,11 @@ export class OrderProcessingService {
 
     // 查询订单信息
     let orderData: any = null
+    let budget: number = 0
     if (request.order_id) {
       const { data: order, error: orderError } = await client
         .from('orders')
-        .select('id, title, platforms, content_type, deadline')
+        .select('id, title, platforms, content_type, deadline, budget')
         .eq('id', request.order_id)
         .maybeSingle()
 
@@ -322,6 +327,7 @@ export class OrderProcessingService {
         console.warn('[OrderProcessing] 查询订单信息失败:', orderError)
       } else if (order) {
         orderData = order
+        budget = parseFloat(order.budget) || 0
         console.log('[OrderProcessing] 订单信息查询成功:', order)
       } else {
         console.warn('[OrderProcessing] 未找到订单信息，order_id:', request.order_id)
@@ -385,6 +391,25 @@ export class OrderProcessingService {
         feedbackSubmittedAt: request.publish_feedback.feedbackSubmittedAt
       } : undefined,
       avatarAccounts  // 返回分身绑定的账号信息
+    }
+
+    // 如果是已完成状态，计算收益
+    if (request.status === 'completed' && request.order_id && budget > 0) {
+      // 查询参与的 分身数量
+      const { data: participatingRequests } = await client
+        .from('order_dispatch_requests')
+        .select('avatar_id')
+        .eq('order_id', request.order_id)
+        .not('status', 'in', '(rejected,cancelled)')
+
+      const participantCount = participatingRequests?.length || 1
+      const earningsPerAvatar = budget / participantCount
+
+      status.earnings = earningsPerAvatar
+      status.earningsStatus = 'settled'  // 已结算
+      status.completedAt = request.updated_at || new Date().toISOString()
+
+      console.log(`[OrderProcessing] 计算收益: 预算 ${budget} / 参与分身 ${participantCount} = ${earningsPerAvatar}`)
     }
 
     // 如果是排队状态，获取队列位置

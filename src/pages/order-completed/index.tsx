@@ -2,37 +2,30 @@ import { useState } from 'react'
 import { View, Text, Image, ScrollView, Video } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Bell, ExternalLink, CircleCheck } from 'lucide-react-taro'
-import { useUserStore } from '@/stores/user'
+import { ArrowLeft, CircleCheck, Wallet, Clock, ExternalLink } from 'lucide-react-taro'
 import './index.css'
 
-export default function OrderAcceptanceFeedback() {
+export default function OrderCompletedPage() {
   const router = useRouter()
   const { requestId, orderId } = router.params
-  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
-  // 获取当前用户ID和判断角色
-  const currentUserId = useUserStore.getState().userInfo?.id || ''
-  const isIssuer = currentUserId && data?.issuerId === currentUserId // true=发单者 false=接单者
-
   useLoad(() => {
-    console.log('[OrderAcceptanceFeedback] 页面加载，params:', { requestId, orderId })
+    console.log('[OrderCompleted] 页面加载，params:', { requestId, orderId })
     loadData()
   })
 
   const loadData = async () => {
     try {
-      console.log('[OrderAcceptanceFeedback] 开始加载数据')
+      console.log('[OrderCompleted] 开始加载数据')
       const response = await Network.request({
         url: `/api/order-processing/status/${requestId}`
       })
 
-      console.log('[OrderAcceptanceFeedback] 数据响应:', response.data)
+      console.log('[OrderCompleted] 数据响应:', response.data)
 
       if (response.data?.code === 200) {
         setData(response.data.data)
@@ -43,49 +36,13 @@ export default function OrderAcceptanceFeedback() {
         })
       }
     } catch (error) {
-      console.error('[OrderAcceptanceFeedback] 加载失败:', error)
+      console.error('[OrderCompleted] 加载失败:', error)
       Taro.showToast({
         title: '网络异常',
         icon: 'none'
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 接单者催促验收
-  const handleUrgeAcceptance = () => {
-    Taro.showToast({
-      title: `已催促发单者验收「${avatarName}」`,
-      icon: 'success'
-    })
-  }
-
-  // 发单者确认验收
-  const handleAccept = async () => {
-    try {
-      const response = await Network.request({
-        url: `/api/order-processing/accept/${requestId}`,
-        method: 'POST'
-      })
-      if (response.data?.code === 200) {
-        Taro.showToast({
-          title: `已验收「${avatarName}」`,
-          icon: 'success'
-        })
-        setTimeout(() => navigateBack(), 1500)
-      } else {
-        Taro.showToast({
-          title: response.data?.message || '验收失败',
-          icon: 'none'
-        })
-      }
-    } catch (error) {
-      console.error('[OrderAcceptanceFeedback] 验收失败:', error)
-      Taro.showToast({
-        title: '验收失败',
-        icon: 'none'
-      })
     }
   }
 
@@ -112,20 +69,18 @@ export default function OrderAcceptanceFeedback() {
   const generatedContent = data.generatedContent || {}
   const publishFeedback = data.publishFeedback || {}
   const screenshotUrls = publishFeedback.screenshot_urls || []
-  // 获取分身名称
-  const avatarName = data.avatarName || generatedContent.avatarName || '该分身'
   const link = publishFeedback.link || ''
-
-  // 获取内容类型
   const contentType = data.contentType || generatedContent.type || 'image'
+
+  // 收益信息
+  const earnings = data.earnings || 0
+  const earningsStatus = data.earningsStatus || 'settled' // settled, pending, withdrawn
 
   // 解析内容文本（支持换行和基本格式）
   const parseContent = (text: string) => {
     if (!text) return []
-    // 按换行符分割，支持 \n
     const lines = text.split('\n').filter(line => line.trim())
     return lines.map((line, idx) => {
-      // 处理标题 (# 开头)
       if (line.startsWith('# ')) {
         return { type: 'h1', text: line.slice(2), key: idx }
       }
@@ -135,19 +90,26 @@ export default function OrderAcceptanceFeedback() {
       if (line.startsWith('### ')) {
         return { type: 'h3', text: line.slice(4), key: idx }
       }
-      // 处理列表项
       if (line.match(/^[•\-\*]\s/)) {
         return { type: 'list', text: line.replace(/^[•\-\*]\s/, ''), key: idx }
       }
       if (line.match(/^\d+\.\s/)) {
         return { type: 'ordered-list', text: line.replace(/^\d+\.\s/, ''), key: idx }
       }
-      // 普通文本
       return { type: 'text', text: line, key: idx }
     })
   }
 
   const parsedContent = parseContent(generatedContent.content || '')
+  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+
+  // 收益状态配置
+  const earningsStatusConfig = {
+    settled: { label: '已结算', color: '#10b981', bgColor: '#d1fae5' },
+    pending: { label: '待结算', color: '#f59e0b', bgColor: '#fef3c7' },
+    withdrawn: { label: '已提现', color: '#6366f1', bgColor: '#e0e7ff' }
+  }
+  const statusInfo = earningsStatusConfig[earningsStatus as keyof typeof earningsStatusConfig] || earningsStatusConfig.settled
 
   return (
     <View className="page-container">
@@ -156,20 +118,36 @@ export default function OrderAcceptanceFeedback() {
         <View className="nav-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="#333" />
         </View>
-        <Text className="nav-title">待验收</Text>
+        <Text className="nav-title">订单完成</Text>
         <View className="nav-right"></View>
       </View>
 
       <ScrollView scrollY className="content-scroll">
-        {/* 状态提示 */}
-        <View className="status-banner">
-          <Bell size={20} color="#fff" />
-          <Text className="status-text">分身已提交发布反馈，请验收</Text>
+        {/* 收益展示卡片 */}
+        <View className="earnings-card">
+          <View className="earnings-header">
+            <View className="earnings-icon">
+              <Wallet size={24} color="#fff" />
+            </View>
+            <Text className="earnings-label">本次收益</Text>
+          </View>
+          <View className="earnings-amount">
+            <Text className="currency">¥</Text>
+            <Text className="amount">{earnings.toFixed(2)}</Text>
+          </View>
+          <View className="earnings-status" style={{ backgroundColor: statusInfo.bgColor }}>
+            <CircleCheck size={14} color={statusInfo.color} />
+            <Text className="status-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
+          </View>
+          <View className="earnings-time">
+            <Clock size={14} color="#999" />
+            <Text className="time-text">完成时间：{data.completedAt || '刚刚'}</Text>
+          </View>
         </View>
 
         {/* 分身发布内容 */}
         <View className="section">
-          <Text className="section-title">分身发布内容</Text>
+          <Text className="section-title">发布内容</Text>
           <Card>
             <CardContent className="p-4">
               {/* 图片类型 */}
@@ -221,10 +199,10 @@ export default function OrderAcceptanceFeedback() {
               {contentType === 'article' && (
                 <View className="article-preview">
                   {generatedContent.title && (
-                    <Text className="block article-title">{generatedContent.title}</Text>
+                    <Text className="article-title">{generatedContent.title}</Text>
                   )}
                   {generatedContent.content && (
-                    <Text className="block article-content">{generatedContent.content}</Text>
+                    <Text className="article-content">{generatedContent.content}</Text>
                   )}
                 </View>
               )}
@@ -268,7 +246,7 @@ export default function OrderAcceptanceFeedback() {
 
         {/* 已提交的反馈信息 */}
         <View className="section">
-          <Text className="section-title">已提交反馈</Text>
+          <Text className="section-title">发布反馈</Text>
           <Card>
             <CardContent className="p-4">
               {/* 截图 */}
@@ -322,30 +300,10 @@ export default function OrderAcceptanceFeedback() {
             </CardContent>
           </Card>
         </View>
-      </ScrollView>
 
-      {/* 固定底部按钮 - 根据角色显示不同按钮 */}
-      <View className="fixed-bottom">
-        {isIssuer ? (
-          // 发单者 - 确认验收按钮
-          <Button
-            className="accept-button"
-            onClick={handleAccept}
-          >
-            <CircleCheck size={18} color="#fff" />
-            <Text className="button-text">确认验收</Text>
-          </Button>
-        ) : (
-          // 接单者 - 催促验收按钮
-          <Button
-            className="urge-button"
-            onClick={handleUrgeAcceptance}
-          >
-            <Bell size={18} color="#fff" />
-            <Text className="button-text">催促验收</Text>
-          </Button>
-        )}
-      </View>
+        {/* 底部留白 */}
+        <View className="bottom-space"></View>
+      </ScrollView>
     </View>
   )
 }

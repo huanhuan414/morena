@@ -177,10 +177,15 @@ export default function AvatarOrdersPage() {
         })
         break
       case 'cancelled':
-      case 'completed':
-        // 这些状态跳转到订单详情页面
+        // 已取消的订单跳转到订单详情页面
         navigateTo({
           url: `/pages/order/order-detail/index?id=${order.order_id}`
+        })
+        break
+      case 'completed':
+        // 已完成的订单跳转到商单完成页面
+        navigateTo({
+          url: `/pages/order-completed/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
       default:
