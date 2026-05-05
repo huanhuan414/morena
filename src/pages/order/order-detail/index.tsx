@@ -284,9 +284,10 @@ export default function OrderDetailPage() {
   }
 
   // 计算是否有待验收的分身
-  const hasAwaitingAvatar = avatarStats?.some((s: any) => s.status === 'awaiting_acceptance')
+  const avatarStats = order?.summary_stats?.avatarStats || []
+  const hasAwaitingAvatar = avatarStats.some((s: any) => s.status === 'awaiting_acceptance')
   // 计算是否所有分身都验收完成
-  const allAvatarsCompleted = avatarStats?.every((s: any) => s.status === 'completed')
+  const allAvatarsCompleted = avatarStats.length > 0 && avatarStats.every((s: any) => s.status === 'completed')
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
