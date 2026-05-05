@@ -83,6 +83,36 @@ export default function OrderAcceptanceFeedback() {
   // 获取内容类型
   const contentType = data.contentType || generatedContent.type || 'image'
 
+  // 解析内容文本（支持换行和基本格式）
+  const parseContent = (text: string) => {
+    if (!text) return []
+    // 按换行符分割，支持 \n
+    const lines = text.split('\n').filter(line => line.trim())
+    return lines.map((line, idx) => {
+      // 处理标题 (# 开头)
+      if (line.startsWith('# ')) {
+        return { type: 'h1', text: line.slice(2), key: idx }
+      }
+      if (line.startsWith('## ')) {
+        return { type: 'h2', text: line.slice(3), key: idx }
+      }
+      if (line.startsWith('### ')) {
+        return { type: 'h3', text: line.slice(4), key: idx }
+      }
+      // 处理列表项
+      if (line.match(/^[•\-\*]\s/)) {
+        return { type: 'list', text: line.replace(/^[•\-\*]\s/, ''), key: idx }
+      }
+      if (line.match(/^\d+\.\s/)) {
+        return { type: 'ordered-list', text: line.replace(/^\d+\.\s/, ''), key: idx }
+      }
+      // 普通文本
+      return { type: 'text', text: line, key: idx }
+    })
+  }
+
+  const parsedContent = parseContent(generatedContent.content || '')
+
   return (
     <View className="page-container">
       {/* 顶部导航 */}
@@ -163,10 +193,37 @@ export default function OrderAcceptanceFeedback() {
                 </View>
               )}
 
-              {/* 文案内容 */}
+              {/* 文案内容 - 美化展示 */}
               {generatedContent.content && contentType !== 'article' && (
                 <View className="content-text-box">
-                  <Text className="content-text">{generatedContent.content}</Text>
+                  {parsedContent.map((item) => {
+                    if (item.type === 'h1') {
+                      return <Text key={item.key} className="content-h1">{item.text}</Text>
+                    }
+                    if (item.type === 'h2') {
+                      return <Text key={item.key} className="content-h2">{item.text}</Text>
+                    }
+                    if (item.type === 'h3') {
+                      return <Text key={item.key} className="content-h3">{item.text}</Text>
+                    }
+                    if (item.type === 'list') {
+                      return (
+                        <View key={item.key} className="content-list-item">
+                          <Text className="content-bullet">•</Text>
+                          <Text className="content-list-text">{item.text}</Text>
+                        </View>
+                      )
+                    }
+                    if (item.type === 'ordered-list') {
+                      return (
+                        <View key={item.key} className="content-list-item">
+                          <Text className="content-bullet">{parsedContent.indexOf(item) + 1}.</Text>
+                          <Text className="content-list-text">{item.text}</Text>
+                        </View>
+                      )
+                    }
+                    return <Text key={item.key} className="content-paragraph">{item.text}</Text>
+                  })}
                 </View>
               )}
             </CardContent>
