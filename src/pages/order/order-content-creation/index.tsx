@@ -25,7 +25,7 @@ interface GeneratedContent {
 interface ProcessingData {
   orderId: string
   orderTitle: string
-  status: 'generating' | 'preview' | 'publishing' | 'completed' | 'failed'
+  status: 'generating' | 'preview' | 'publishing' | 'completed' | 'failed' | 'queuing' | 'accepted'
   generatedContent?: GeneratedContent
   errorMessage?: string
 }
@@ -54,6 +54,21 @@ export default function OrderContentCreation() {
       setEditedContent(processingData.generatedContent.content)
     }
   }, [processingData?.generatedContent?.content])
+
+  // 轮询获取状态（当状态为生成中或排队中时）
+  useEffect(() => {
+    if (!requestId) return
+    
+    const pollingStatus = processingData?.status
+    if (pollingStatus === 'generating' || pollingStatus === 'queuing' || pollingStatus === 'accepted') {
+      const interval = setInterval(() => {
+        console.log('轮询获取订单状态...')
+        fetchOrderStatus(requestId)
+      }, 3000) // 每3秒轮询
+      
+      return () => clearInterval(interval)
+    }
+  }, [processingData?.status, requestId])
 
   const fetchOrderStatus = async (reqId: string) => {
     setLoading(true)

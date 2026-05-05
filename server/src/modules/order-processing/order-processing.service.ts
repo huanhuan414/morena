@@ -13,6 +13,7 @@ export interface ProcessingStatus {
   generatedContent?: {
     title: string
     content: string
+    images?: string[]
     platforms: string[]
   }
   publishStatus?: {
@@ -259,6 +260,20 @@ export class OrderProcessingService {
       .eq('id', requestId)
       .single()
 
+    // 查询生成的内容（包括图片）
+    let imageSuggestions: string[] = []
+    const { data: genContent } = await client
+      .from('generated_content')
+      .select('image_suggestions')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    if (genContent?.image_suggestions) {
+      imageSuggestions = genContent.image_suggestions
+    }
+
     if (requestError) {
       console.error('[OrderProcessing] 查询订单请求失败:', requestError)
       throw new Error(`查询订单请求失败: ${requestError.message}`)
@@ -322,6 +337,7 @@ export class OrderProcessingService {
       generatedContent: request.generated_content ? {
         title: orderData?.title || '未知订单',
         content: request.generated_content,
+        images: imageSuggestions,
         platforms: orderData?.platforms || []
       } : undefined,
       publishStatus: request.publish_status
