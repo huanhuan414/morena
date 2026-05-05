@@ -287,6 +287,8 @@ export default function OrderDetailPage() {
   const avatarStats = order?.summary_stats?.avatarStats || []
   // 计算是否所有分身都验收完成
   const allAvatarsCompleted = avatarStats.length > 0 && avatarStats.every((s: any) => s.status === 'completed')
+  // 待验收的分身列表
+  const pendingAvatars = avatarStats.filter((s: any) => s.status === 'awaiting_acceptance')
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -319,11 +321,6 @@ export default function OrderDetailPage() {
 
   const handleApprove = async () => {
     try {
-      // 检查是否有待验收的分身
-      const pendingAvatars = order.summary_stats?.avatarStats?.filter(
-        (stat: any) => ['published', 'feedback_submitted', 'awaiting_acceptance'].includes(stat.status)
-      ) || []
-
       if (pendingAvatars.length > 0) {
         // 还有待验收的分身，先验收第一个
         const pendingAvatar = pendingAvatars[0]
