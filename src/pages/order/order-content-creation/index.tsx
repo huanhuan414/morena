@@ -21,7 +21,7 @@ interface OrderProcessingData {
   generatedContent?: {
     title: string
     content: string
-    platform: string
+    platforms: string[]
   }
   publishStatus?: {
     platform: string
@@ -326,7 +326,7 @@ export default function OrderContentCreationPage() {
       </View>
       <Text className="status-title block">发布中</Text>
       <Text className="status-desc block">
-        正在发布到 {PLATFORM_NAMES[processingData?.generatedContent?.platform || '目标平台']}...
+        正在发布到 {processingData?.generatedContent?.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '目标平台'}...
       </Text>
       <View className="progress-wrapper">
         <View className="progress-bar publishing">
@@ -435,7 +435,7 @@ export default function OrderContentCreationPage() {
               <View className="info-meta-item">
                 <Smartphone size={16} color="#6366f1" />
                 <Text className="info-meta-text block">
-                  {PLATFORM_NAMES[processingData.generatedContent.platform] || processingData.generatedContent.platform}
+                  {processingData.generatedContent.platforms?.map((p: string) => PLATFORM_NAMES[p] || p).join('、') || '未知平台'}
                 </Text>
               </View>
             </View>

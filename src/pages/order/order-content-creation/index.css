@@ -85,7 +85,7 @@
 
 /* 页面滚动 */
 .page-scroll {
-  height: calc(100vh - 96rpx);
+  height: 1200rpx;
   padding: 24rpx 32rpx;
 }
 
