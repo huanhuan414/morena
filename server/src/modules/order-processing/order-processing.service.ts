@@ -180,7 +180,8 @@ class TaskQueue {
         contentType: order.content_type,
         targetAudience: order.target_audience || '',
         avatarName: avatar.name,
-        avatarPersonality: avatar.personality
+        avatarPersonality: avatar.personality,
+        quantity: order.expected_quantity || 1  // 使用订单的数量要求
       })
 
       console.log('[TaskQueue] 内容生成成功:', {
