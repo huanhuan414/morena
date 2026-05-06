@@ -190,24 +190,26 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
   }
 
   private async addImagesToArticleContent(content: string, topic: string, imageCount: number = 3): Promise<string> {
-    // 公众号文章配图 - 每张使用完全不同的场景和构图
+    // 公众号文章配图 - 每张图片必须完全不同
+    const timestamp = Date.now()
     const wechatMpScenes = [
-      `${topic}，信息图表风格，数据可视化，现代设计，简洁背景，商业感，4K`,
-      `${topic}，插图风格，扁平设计，柔和配色，温暖氛围，杂志排版`,
-      `${topic}，场景插画，手绘风格，文艺小清新，纸张纹理，日系`,
-      `${topic}，实景摄影，户外风光，清新自然，阳光明媚，电影感`,
-      `${topic}，人物场景，职场氛围，专业干练，自然光线，生活感`,
-      `${topic}，创意合成，概念艺术，高级感，渐变背景，超现实`,
-      `${topic}，产品展示，精修图，纯白背景，商业摄影，高质感`,
-      `${topic}，图文排版，杂志风格，精致排版，文艺气息，高级感`
+      `【公众号配图1】信息图表风格：数据可视化图表，现代简洁设计，蓝色科技配色，商业感强，适合公众号封面，4K高清`,
+      `【公众号配图2】精致插图：扁平化插画风格，柔和粉彩色调，温暖氛围，杂志排版感，专业设计作品`,
+      `【公众号配图3】场景插画：手绘风格插画，文艺小清新氛围，纸张纹理质感，日系治愈风格插画作品`,
+      `【公众号配图4】实景摄影：户外自然风光，清新自然色调，阳光明媚，电影感构图，高质量风景摄影`,
+      `【公众号配图5】人物场景：职场办公氛围，专业干练形象，自然柔和光线，生活感强的人文摄影`,
+      `【公众号配图6】创意合成：概念艺术风格，高级感设计，渐变背景色，超现实主义创意图片`,
+      `【公众号配图7】产品精修：纯白背景商业摄影，产品精致修图，高质感商业摄影，专业级产品展示`,
+      `【公众号配图8】杂志排版：精致图文排版设计，文艺气息浓厚，高级感排版风格，时尚杂志视觉`
     ]
     const paragraphs = content.split('\n\n').filter(p => p.trim())
     if (paragraphs.length === 0) return content
 
-    // 根据 imageCount 生成不同场景的提示词
+    // 根据 imageCount 生成不同场景的提示词 - 确保每张完全不同
     const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
-      const sceneIndex = (i * 3 + i * i) % wechatMpScenes.length
-      return wechatMpScenes[sceneIndex]
+      const sceneIndex = i % wechatMpScenes.length
+      const scene = wechatMpScenes[sceneIndex]
+      return `${scene}\n${topic}\n${timestamp + i}\n公众号风格\n序号:${i + 1}/1张\n避免重复`
     })
 
     let imageUrls: string[] = []
@@ -339,22 +341,24 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
         tags = tagsMatch[1].match(/#[^\s#]+/g) || []
       }
 
-      // 生成配图 - 每张使用完全不同的场景描述
+      // 生成配图 - 每张图片必须完全不同
       const imageCount = Math.min(params.images_count || 3, 9)
+      const timestamp = Date.now()
       const xiaohongshuScenes = [
-        `${params.topic}，生活场景，咖啡厅氛围，精致下午茶，马卡龙色系，温暖光线，小红书封面`,
-        `${params.topic}，居家场景，整洁桌面，文具装饰，绿植点缀，自然光，小清新风格`,
-        `${params.topic}，户外场景，城市街景，文艺小店，逛街购物，阳光明媚，旅行感`,
-        `${params.topic}，特写镜头，产品展示，简洁背景，自然光线，高级感，商业摄影`,
-        `${params.topic}，美食场景，摆盘精致，餐具搭配，暖色调，食欲感，杂志风格`,
-        `${params.topic}，穿搭场景，衣柜展示，时尚单品，同色系搭配，日系杂志风`,
-        `${params.topic}，护肤场景，简约化妆台，玻璃瓶身，玫瑰花瓣，干玫瑰色系`,
-        `${params.topic}，书房场景，木质书架，书本装饰，台灯氛围，复古文艺，暖黄光`,
-        `${params.topic}，旅行场景，风景大片，蓝天白云，海边日落，电影感，高级色调`
+        `【图片1】生活场景：精致下午茶咖啡厅，柔和暖色调光线，精致摆盘，马卡龙和蛋糕作为甜点，温馨氛围，适合小红书封面`,
+        `【图片2】居家场景：整洁白色桌面，文具装饰品，薄荷绿植物点缀，自然光从窗户洒入，小清新治愈风格`,
+        `【图片3】城市街景：文艺小店门口，阳光明媚的街道，复古装修风格，逛街购物氛围，充满生活感，旅行感`,
+        `【图片4】特写产品：主体居中特写，简洁纯色背景，自然柔和正面光线，高级感商业摄影风格，产品突出`,
+        `【图片5】美食摄影：精致美食摆盘，木质餐具搭配，暖色调美食摄影，食欲感强，杂志美食风格`,
+        `【图片6】穿搭展示：时尚单品平铺或悬挂，同色系搭配，日系杂志风，简约背景，专业摄影`,
+        `【图片7】护肤场景：简约化妆台，玻璃瓶身护肤品，玫瑰花瓣装饰，干玫瑰色系，精致氛围`,
+        `【图片8】书房场景：木质书架，书本文艺装饰，台灯暖黄光氛围，书房复古文艺风格`,
+        `【图片9】旅行风景：壮丽风景大片，蓝天白云或海边日落，电影感色调，高级色调风景摄影`
       ]
       const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
-        const sceneIndex = (i * 3 + i * i) % xiaohongshuScenes.length
-        return xiaohongshuScenes[sceneIndex]
+        const sceneIndex = i
+        const scene = xiaohongshuScenes[sceneIndex]
+        return `${scene}\n${params.topic}\n${timestamp + i}\n小红书风格\n生成序号:${i + 1}/1张\n确保每张图片完全不同`
       })
 
       const imageUrls: string[] = []
@@ -517,25 +521,28 @@ export class WriteWechatMomentsTool implements AvatarTool {
         mainText = mainText + '\n\n' + interaction
       }
 
-      // 生成配图
+      // 生成配图 - 每张图片必须完全不同
       const imageCount = Math.min(params.image_count || 3, 9)
+      const timestamp = Date.now()
       const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
         const style = params.style || '生活分享'
-        // 每张图片使用完全不同的构图和场景，确保生成不同的图片
+        // 完全不同的构图、光线、背景、角度、色彩风格
         const uniqueScenes = [
-          `${params.topic}，室内场景，柔和自然光，木质家具背景，温暖氛围，高质量摄影`,
-          `${params.topic}，户外场景，阳光明媚，蓝天白云背景，清新自然，4K画质`,
-          `${params.topic}，特写镜头，虚化背景，主体突出，柔和灯光，专业摄影`,
-          `${params.topic}，生活场景，咖啡厅氛围，复古装饰背景，暖色调，电影感`,
-          `${params.topic}，简约风格，纯色背景，简洁干净，高级感，商业摄影`,
-          `${params.topic}，自然光线，窗边拍摄，投影效果，文艺小清新，日系`,
-          `${params.topic}，暗调风格，氛围灯光，神秘感，电影质感，高对比度`,
-          `${params.topic}，明亮色调，白色背景，干净整洁，现代感，杂志风格`,
-          `${params.topic}，生活气息，桌面场景，装饰道具，手作感，温馨氛围`
+          `【图片1】室内场景：柔和自然光从窗户洒入，木质家具和绿植作为背景，温暖舒适的氛围，主体清晰突出，专业摄影构图`,
+          `【图片2】户外场景：阳光明媚的天空下，蓝天白云作为背景，清新自然的城市街景，现代建筑作为陪衬，4K高清画质`,
+          `【图片3】特写镜头：主体居中，虚化背景柔美，柔和的正面灯光，背景是抽象的光斑，专业单反浅景深效果`,
+          `【图片4】咖啡厅氛围：复古装饰的咖啡厅内部，暖黄色灯光，背景是书架和装饰画，文艺小资情调，电影感色调`,
+          `【图片5】简约风格：纯白或浅灰色背景，主体单独展示，极简构图，留白充足，高级感商业摄影风格`,
+          `【图片6】自然窗光：靠窗位置拍摄，自然光投影在桌面上，有窗帘和植物作为装饰，日系小清新调色风格`,
+          `【图片7】暗调电影感：深色背景，侧面单光源打出戏剧性光影，高对比度，神秘氛围感，电影级布光`,
+          `【图片8】明亮杂志风：白色背景，明亮均匀的商业灯光，鲜艳饱和的色彩，现代感强，时尚杂志风格`,
+          `【图片9】生活手作感：木质桌面场景，各式装饰道具和手作物品，自然散落布置，温馨治愈系氛围`
         ]
-        // 确保每张图片的场景描述完全不同
-        const sceneIndex = (i * 3 + i * i) % uniqueScenes.length
-        return uniqueScenes[sceneIndex]
+        // 使用固定顺序而非计算，确保每张图片完全不同
+        const sceneIndex = i
+        const scene = uniqueScenes[sceneIndex]
+        // 添加唯一标识和时间戳确保每次生成的图片都不同
+        return `${scene}\n${params.topic}\n${style}\n生成序号:${i + 1}/1张\n独特风格编号:${timestamp + i}\n避免重复：请生成与之前完全不同的图片`
       })
 
       const imageUrls: string[] = []
