@@ -124,6 +124,8 @@ export default function OrderPublishGuide() {
   const [avatarAccounts, setAvatarAccounts] = useState<AvatarAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
+  const [requestId, setRequestId] = useState<string>('')
+  const [publishing, setPublishing] = useState(false)
 
   // 解析 URL 参数
   useEffect(() => {
@@ -134,6 +136,7 @@ export default function OrderPublishGuide() {
     if (params.images) setImages(params.images.split(',').filter(Boolean))
     if (params.avatarId) setAvatarId(params.avatarId)
     if (params.contentType) setContentType(decodeURIComponent(params.contentType))
+    if (params.requestId) setRequestId(params.requestId)
     if (platforms.length > 0) setCurrentPlatform(platforms[0])
   }, [])
 
@@ -274,6 +277,47 @@ export default function OrderPublishGuide() {
         showCancel: false
       })
     }
+  }
+
+  // 完成发布
+  const handleCompletePublish = async () => {
+    if (!requestId) {
+      Taro.showToast({ title: '缺少订单ID', icon: 'none' })
+      return
+    }
+
+    Taro.showModal({
+      title: '确认发布完成',
+      content: '请确认您已在对应平台完成内容发布，点击确定后将更新订单状态。',
+      confirmText: '确定',
+      cancelText: '取消',
+      success: async (res) => {
+        if (res.confirm) {
+          setPublishing(true)
+          try {
+            const result = await Network.request({
+              url: `/api/order-processing/confirm/${requestId}`,
+              method: 'POST',
+              data: { content: content }
+            })
+            
+            if (result.data?.code === 200) {
+              Taro.showToast({ title: '发布成功', icon: 'success' })
+              // 跳转到订单列表
+              Taro.redirectTo({
+                url: '/pages/avatar-orders/index'
+              })
+            } else {
+              Taro.showToast({ title: result.data?.message || '发布失败', icon: 'none' })
+            }
+          } catch (error: any) {
+            Taro.showToast({ title: error.message || '发布失败', icon: 'none' })
+          } finally {
+            setPublishing(false)
+          }
+        }
+      }
+    })
   }
 
   // 预览图片
@@ -570,6 +614,22 @@ export default function OrderPublishGuide() {
             </View>
           </View>
         </View>
+
+        {/* 完成发布按钮 */}
+        {requestId && (
+          <View className="fixed-bottom-bar">
+            <View 
+              className="complete-publish-btn"
+              onClick={handleCompletePublish}
+            >
+              {publishing ? (
+                <Text className="complete-publish-text">处理中...</Text>
+              ) : (
+                <Text className="complete-publish-text">完成发布</Text>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* 底部安全区 */}
         <View className="safe-area-bottom" />

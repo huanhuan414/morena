@@ -452,3 +452,32 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* 完成发布按钮 */
+.fixed-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 32px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background: #FFFFFF;
+  border-top: 1px solid #E5E7EB;
+  z-index: 100;
+}
+
+.complete-publish-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+  border-radius: 48px;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+}
+
+.complete-publish-text {
+  font-size: 32px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
