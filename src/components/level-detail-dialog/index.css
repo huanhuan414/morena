@@ -73,6 +73,7 @@
   padding: 8rpx 20rpx;
   border-radius: 24rpx;
   margin-bottom: 16rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .level-modal-badge-text {
@@ -191,6 +192,7 @@
   justify-content: center;
   margin-right: 16rpx;
   flex-shrink: 0;
+  background: #1890ff;
 }
 
 .level-modal-item-badge-text {
@@ -298,14 +300,14 @@
 .guide-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: #1A1A2E;
   display: block;
   margin-bottom: 8rpx;
 }
 
 .guide-item-desc {
   font-size: 24rpx;
-  color: rgba(102, 102, 102, 0.7);
+  color: #666;
   display: block;
 }
 
@@ -332,6 +334,7 @@
   padding: 6rpx 16rpx;
   border-radius: 16rpx;
   margin-right: 12rpx;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
 .guide-level-badge-text {
