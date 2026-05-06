@@ -40,6 +40,10 @@ export default function OrderContentCreation() {
   const [editedContent, setEditedContent] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
+  // 生成进度相关状态
+  const [generatingProgress, setGeneratingProgress] = useState(0)
+  const [generatingStep, setGeneratingStep] = useState('')
+  const [generatingDotCount, setGeneratingDotCount] = useState(0)
 
   useEffect(() => {
     const params = Taro.getCurrentInstance()?.router?.params || {}
@@ -71,6 +75,60 @@ export default function OrderContentCreation() {
       return () => clearInterval(interval)
     }
   }, [processingData?.status, requestId])
+
+  // 生成进度动画
+  useEffect(() => {
+    if (processingData?.status === 'generating') {
+      // 重置进度
+      setGeneratingProgress(0)
+      setGeneratingStep('正在分析订单需求...')
+      
+      // 进度条动画
+      const progressInterval = setInterval(() => {
+        setGeneratingProgress(prev => {
+          if (prev >= 90) {
+            return 90 // 保留最后10%等后端返回
+          }
+          // 随机增量，模拟进度
+          const increment = Math.random() * 8 + 2
+          return Math.min(prev + increment, 90)
+        })
+      }, 500)
+      
+      // 步骤文字动画
+      const steps = [
+        '正在分析订单需求...',
+        '正在理解目标受众...',
+        '正在生成创意内容...',
+        '正在撰写文案...',
+        '正在生成配图...',
+        '正在优化内容...',
+        '即将完成...'
+      ]
+      let stepIndex = 0
+      const stepInterval = setInterval(() => {
+        stepIndex = (stepIndex + 1) % steps.length
+        setGeneratingStep(steps[stepIndex])
+      }, 2000)
+      
+      // 省略号动画
+      const dotInterval = setInterval(() => {
+        setGeneratingDotCount(prev => (prev + 1) % 4)
+      }, 400)
+      
+      return () => {
+        clearInterval(progressInterval)
+        clearInterval(stepInterval)
+        clearInterval(dotInterval)
+      }
+    } else {
+      // 生成完成，重置状态
+      if (processingData?.status === 'preview' || processingData?.status === 'completed') {
+        setGeneratingProgress(100)
+        setGeneratingStep('内容生成完成！')
+      }
+    }
+  }, [processingData?.status])
 
   const fetchOrderStatus = async (reqId: string, isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -241,13 +299,48 @@ export default function OrderContentCreation() {
         {/* 制作中状态 */}
         {status === 'generating' && (
           <View className="generating-section">
+            {/* AI 分身动画 */}
             <View className="generating-animation">
-              <View className="ai-avatar">
-                <Text className="ai-icon">🤖</Text>
+              <View className="ai-avatar-container">
+                <View className="ai-avatar-ring"></View>
+                <View className="ai-avatar-pulse"></View>
+                <View className="ai-avatar">
+                  <Text className="ai-icon">🤖</Text>
+                </View>
               </View>
-              <Text className="generating-text">AI 分身正在创作中...</Text>
+              <Text className="generating-text">AI 分身正在创作中</Text>
+              <Text className="generating-dots">
+                {'.'.repeat(generatingDotCount)}{' '.repeat(3 - generatingDotCount)}
+              </Text>
             </View>
-            <Text className="generating-tip">请稍候，内容生成中</Text>
+            
+            {/* 进度条 */}
+            <View className="progress-container">
+              <View className="progress-header">
+                <Text className="progress-label">生成进度</Text>
+                <Text className="progress-percent">{Math.round(generatingProgress)}%</Text>
+              </View>
+              <View className="progress-bar-bg">
+                <View 
+                  className="progress-bar-fill" 
+                  style={{ width: `${generatingProgress}%` }}
+                ></View>
+              </View>
+            </View>
+            
+            {/* 当前步骤 */}
+            <View className="generating-steps">
+              <View className="step-indicator">
+                <View className="step-dot active"></View>
+                <View className="step-line"></View>
+                <View className="step-dot"></View>
+                <View className="step-line"></View>
+                <View className="step-dot"></View>
+              </View>
+              <Text className="step-text">{generatingStep}</Text>
+            </View>
+            
+            <Text className="generating-tip">请稍候，内容生成大约需要 10-30 秒</Text>
           </View>
         )}
 
