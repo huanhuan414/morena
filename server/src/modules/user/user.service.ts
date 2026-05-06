@@ -65,15 +65,24 @@ export class UserService {
     const totalAvatarExp = (userAvatars || []).reduce((sum, a) => sum + (a.exp || 0), 0)
     const maxAvatarLevel = userAvatars?.length ? Math.max(...userAvatars.map(a => a.level || 1)) : 1
     
-    // 获取分身接单的订单数量（任务）
+    // 获取分身接单的订单数量（待接受 + 执行中 = 商单数量）
     let orderCount = 0
     if (avatarIds.length > 0) {
-      const { count } = await client
+      // 待接受的商单数量
+      const { count: pendingCount } = await client
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .in('avatar_id', avatarIds)
-        .eq('status', 'completed')
-      orderCount = count || 0
+        .eq('status', 'pending')
+      
+      // 执行中的商单数量
+      const { count: executingCount } = await client
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+        .eq('status', 'generating')
+      
+      orderCount = (pendingCount || 0) + (executingCount || 0)
     }
     
     // 获取用户的帖子数量（动态）

@@ -269,7 +269,7 @@ export default function ProfilePage() {
           </View>
           <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/order/order-list/index?mode=avatar' })}>
             <Text className="h-stat-value">{stats.taskCount}</Text>
-            <Text className="h-stat-label">任务</Text>
+            <Text className="h-stat-label">商单</Text>
           </View>
           <View className="h-stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
             <Text className="h-stat-value">{stats.postCount}</Text>
