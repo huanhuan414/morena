@@ -305,7 +305,7 @@ export default function SkillsSquare() {
 
     try {
       const res = await Network.request({
-        url: '/api/avatar',
+        url: '/api/avatar/my',
         method: 'GET'
       })
 
