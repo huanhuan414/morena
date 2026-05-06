@@ -126,6 +126,7 @@ export default function OrderPublishGuide() {
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
   const [requestId, setRequestId] = useState<string>('')
   const [publishing, setPublishing] = useState(false)
+  const [orderId, setOrderId] = useState<string>('')
 
   // 解析 URL 参数
   useEffect(() => {
@@ -137,6 +138,7 @@ export default function OrderPublishGuide() {
     if (params.avatarId) setAvatarId(params.avatarId)
     if (params.contentType) setContentType(decodeURIComponent(params.contentType))
     if (params.requestId) setRequestId(params.requestId)
+    if (params.orderId) setOrderId(params.orderId)
     if (platforms.length > 0) setCurrentPlatform(platforms[0])
   }, [])
 
@@ -303,10 +305,12 @@ export default function OrderPublishGuide() {
             
             if (result.data?.code === 200) {
               Taro.showToast({ title: '发布成功', icon: 'success' })
-              // 跳转到订单列表
-              Taro.redirectTo({
-                url: '/pages/avatar-orders/index'
-              })
+              // 跳转到待反馈页面，传递 orderId（avatarId 会从订单数据中获取）
+              setTimeout(() => {
+                Taro.redirectTo({
+                  url: `/pages/order-feedback/index?orderId=${orderId}`
+                })
+              }, 1000)
             } else {
               Taro.showToast({ title: result.data?.message || '发布失败', icon: 'none' })
             }

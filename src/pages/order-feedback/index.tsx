@@ -48,10 +48,20 @@ export default function OrderFeedbackPage() {
   const [uploading, setUploading] = useState(false)
 
   useLoad(() => {
-    if (orderId && avatarId) {
+    // 如果没有 avatarId 但有 orderId，先获取订单数据再获取 avatarId
+    if (orderId && !avatarId) {
+      fetchOrderData().then(() => {
+        if (orderData?.avatar_id) {
+          fetchAvatarData(orderData.avatar_id)
+          fetchGeneratedContent()
+        }
+      }).finally(() => {
+        setLoading(false)
+      })
+    } else if (orderId && avatarId) {
       Promise.all([
         fetchOrderData(),
-        fetchAvatarData()
+        fetchAvatarData(avatarId)
       ]).then(() => {
         // 获取订单和分身数据后，再获取生成内容
         fetchGeneratedContent()
@@ -77,9 +87,11 @@ export default function OrderFeedbackPage() {
     }
   }
 
-  const fetchAvatarData = async () => {
+  const fetchAvatarData = async (avatarIdParam?: string) => {
+    const id = avatarIdParam || avatarId
+    if (!id) return
     try {
-      const res = await Network.request({ url: `/api/avatars/${avatarId}` })
+      const res = await Network.request({ url: `/api/avatars/${id}` })
       if (res.data?.code === 200) {
         setAvatarData(res.data.data)
       }

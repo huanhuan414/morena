@@ -193,7 +193,7 @@ export default function OrderContentCreation() {
     const images = generatedContent?.images || []
 
     Taro.navigateTo({
-      url: `/pages/order/order-publish-guide/index?platforms=${platforms.join(',')}&content=${encodeURIComponent(content)}&title=${encodeURIComponent(title)}&images=${images.join(',')}&requestId=${requestId || ''}`
+      url: `/pages/order/order-publish-guide/index?platforms=${platforms.join(',')}&content=${encodeURIComponent(content)}&title=${encodeURIComponent(title)}&images=${images.join(',')}&requestId=${requestId || ''}&orderId=${orderId || ''}`
     })
   }
 
