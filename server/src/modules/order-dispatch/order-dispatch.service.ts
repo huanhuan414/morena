@@ -2207,9 +2207,17 @@ export class OrderDispatchService {
       .filter(avatar => avatar !== null) as (AvatarScore & { user_id: string })[]
     
     // ========== 第五步：综合排序 ==========
-    console.log('[智能匹配] 综合评分排序...')
+    console.log('[智能匹配] 综合评分排序（真实分身优先）...')
     
-    scoredAvatars.sort((a, b) => b.score - a.score)
+    // 真实分身（有头像，用户创建的）优先于系统分身
+    scoredAvatars.sort((a, b) => {
+      const aIsReal = a.avatar_url && a.avatar_url.trim() !== ''
+      const bIsReal = b.avatar_url && b.avatar_url.trim() !== ''
+      if (aIsReal !== bIsReal) {
+        return aIsReal ? -1 : 1  // 真实分身排在前面
+      }
+      return b.score - a.score  // 相同类型按评分排序
+    })
     
     // 获取额外信息（评分、平均评分、收益等）
     const avatarIds = scoredAvatars.map(a => a.id)
@@ -2246,6 +2254,7 @@ export class OrderDispatchService {
         avatar_url: avatar.avatar_url || '',
         level: avatar.level,
         score: avatar.score,
+        isReal: !!(avatar.avatar_url && avatar.avatar_url.trim() !== ''), // 是否是真实分身
         matchReasons: avatar.reason,
         isHosted: avatar.is_hosted,
         completionRate: avatar.completionRate,
