@@ -42,6 +42,11 @@ export class WriteWechatMpArticleTool implements AvatarTool {
       type: 'boolean' as const,
       description: '是否生成封面图',
       default: true
+    },
+    images_count: {
+      type: 'number' as const,
+      description: '配图数量（1-9张）',
+      default: 3
     }
   }
 
@@ -148,7 +153,8 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
       }
 
       // 自动添加文章配图
-      const contentWithImages = await this.addImagesToArticleContent(mainContent, titles[0] || params.topic)
+      const imageCount = Math.min(params.images_count || 3, 9)
+      const contentWithImages = await this.addImagesToArticleContent(mainContent, titles[0] || params.topic, imageCount)
 
       return {
         success: true,
@@ -183,15 +189,26 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
     }
   }
 
-  private async addImagesToArticleContent(content: string, topic: string): Promise<string> {
-    // 简化版：在文章开头和中间添加1-2张配图
+  private async addImagesToArticleContent(content: string, topic: string, imageCount: number = 3): Promise<string> {
+    // 公众号文章配图 - 每张使用完全不同的场景和构图
+    const wechatMpScenes = [
+      `${topic}，信息图表风格，数据可视化，现代设计，简洁背景，商业感，4K`,
+      `${topic}，插图风格，扁平设计，柔和配色，温暖氛围，杂志排版`,
+      `${topic}，场景插画，手绘风格，文艺小清新，纸张纹理，日系`,
+      `${topic}，实景摄影，户外风光，清新自然，阳光明媚，电影感`,
+      `${topic}，人物场景，职场氛围，专业干练，自然光线，生活感`,
+      `${topic}，创意合成，概念艺术，高级感，渐变背景，超现实`,
+      `${topic}，产品展示，精修图，纯白背景，商业摄影，高质感`,
+      `${topic}，图文排版，杂志风格，精致排版，文艺气息，高级感`
+    ]
     const paragraphs = content.split('\n\n').filter(p => p.trim())
     if (paragraphs.length === 0) return content
 
-    const imagePrompts = [
-      `${topic}, 插图风格, 清新简约`,
-      `${topic}, 信息图表风格, 现代设计`
-    ]
+    // 根据 imageCount 生成不同场景的提示词
+    const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
+      const sceneIndex = (i * 3 + i * i) % wechatMpScenes.length
+      return wechatMpScenes[sceneIndex]
+    })
 
     let imageUrls: string[] = []
     try {
@@ -322,11 +339,23 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
         tags = tagsMatch[1].match(/#[^\s#]+/g) || []
       }
 
-      // 生成配图
+      // 生成配图 - 每张使用完全不同的场景描述
       const imageCount = Math.min(params.images_count || 3, 9)
-      const imagePrompts = Array.from({ length: imageCount }, (_, i) =>
-        `${params.topic} 小红书风格${i + 1}, ${params.style}, ${i === 0 ? '封面图' : '配图'}, 高质量, 4K`
-      )
+      const xiaohongshuScenes = [
+        `${params.topic}，生活场景，咖啡厅氛围，精致下午茶，马卡龙色系，温暖光线，小红书封面`,
+        `${params.topic}，居家场景，整洁桌面，文具装饰，绿植点缀，自然光，小清新风格`,
+        `${params.topic}，户外场景，城市街景，文艺小店，逛街购物，阳光明媚，旅行感`,
+        `${params.topic}，特写镜头，产品展示，简洁背景，自然光线，高级感，商业摄影`,
+        `${params.topic}，美食场景，摆盘精致，餐具搭配，暖色调，食欲感，杂志风格`,
+        `${params.topic}，穿搭场景，衣柜展示，时尚单品，同色系搭配，日系杂志风`,
+        `${params.topic}，护肤场景，简约化妆台，玻璃瓶身，玫瑰花瓣，干玫瑰色系`,
+        `${params.topic}，书房场景，木质书架，书本装饰，台灯氛围，复古文艺，暖黄光`,
+        `${params.topic}，旅行场景，风景大片，蓝天白云，海边日落，电影感，高级色调`
+      ]
+      const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
+        const sceneIndex = (i * 3 + i * i) % xiaohongshuScenes.length
+        return xiaohongshuScenes[sceneIndex]
+      })
 
       const imageUrls: string[] = []
       try {
