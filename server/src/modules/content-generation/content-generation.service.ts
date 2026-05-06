@@ -84,55 +84,50 @@ export class ContentGenerationService {
           continue
         }
 
-        // 根据 quantity 循环生成多个内容
-        for (let i = 0; i < quantity; i++) {
-          const indexSuffix = quantity > 1 ? ` (${i + 1}/${quantity})` : ''
-          
-          // 构建工具参数
-          const toolParams = this.buildToolParams(
-            platform,
-            orderTitle,
-            orderDescription,
-            contentType,
-            targetAudience,
-            avatarPersonality,
-            quantity > 1 ? i + 1 : undefined
-          )
+        // 构建工具参数，quantity 传递给工具表示需要的图片/视频数量
+        const toolParams = this.buildToolParams(
+          platform,
+          orderTitle,
+          orderDescription,
+          contentType,
+          targetAudience,
+          avatarPersonality,
+          quantity  // 传递 quantity 作为图片/视频数量
+        )
 
-          // 构建工具上下文
-          const context: ToolContext = {
-            avatarId,
-            userId: '',
-            conversationId: requestId,
-            metadata: {
-              orderId,
-              requestId
-            }
+        // 构建工具上下文
+        const context: ToolContext = {
+          avatarId,
+          userId: '',
+          conversationId: requestId,
+          metadata: {
+            orderId,
+            requestId
           }
-
-          // 执行工具
-          const result = await this.toolRegistry.executeTool(toolName, toolParams, context)
-
-          if (!result.success) {
-            this.logger.error(`工具 ${toolName} 执行失败 (${i + 1}/${quantity}):`, result.error)
-            continue
-          }
-
-          // 解析工具输出
-          const parsedContent = this.parseToolResult(result.data, platform)
-
-          // 保存到数据库
-          const contentRecord = await this.saveContent({
-            order_id: orderId,
-            request_id: requestId,
-            avatar_id: avatarId,
-            platform,
-            ...parsedContent
-          })
-
-          results.push(contentRecord)
-          this.logger.log(`平台 ${platform} 内容生成成功${indexSuffix}`)
         }
+
+        // 执行工具（只调用一次，工具内部会根据 image_count 生成多张图片）
+        const result = await this.toolRegistry.executeTool(toolName, toolParams, context)
+
+        if (!result.success) {
+          this.logger.error(`工具 ${toolName} 执行失败:`, result.error)
+          continue
+        }
+
+        // 解析工具输出
+        const parsedContent = this.parseToolResult(result.data, platform)
+
+        // 保存到数据库
+        const contentRecord = await this.saveContent({
+          order_id: orderId,
+          request_id: requestId,
+          avatar_id: avatarId,
+          platform,
+          ...parsedContent
+        })
+
+        results.push(contentRecord)
+        this.logger.log(`平台 ${platform} 内容生成成功 (${quantity} 张图片)`)
       } catch (error) {
         this.logger.error(`平台 ${platform} 内容生成失败:`, error)
       }
@@ -156,7 +151,7 @@ export class ContentGenerationService {
     contentType: string,
     targetAudience: string,
     avatarPersonality?: string,
-    index?: number
+    quantity: number = 1  // 每套内容需要的图片/视频数量
   ): Record<string, any> {
     const baseParams = {
       topic: orderTitle,
@@ -165,40 +160,36 @@ export class ContentGenerationService {
     }
 
     // 根据平台添加特定参数
-    const indexNote = index ? `\n\n[生成序号 ${index}] 请确保本次生成的内容与之前的完全不同]` : ''
-    
     if (platform === 'wechat_mp' || platform === 'weibo') {
       return {
         ...baseParams,
         emotion: this.mapContentTypeToEmotion(contentType),
         keywords: this.extractKeywords(orderDescription),
-        include_cover: true,
-        target_audience: `${targetAudience}${indexNote}`
+        include_cover: true
       }
     } else if (platform === 'xiaohongshu') {
       return {
         ...baseParams,
         style: this.mapContentTypeToStyle(contentType),
         keywords: this.extractKeywords(orderDescription),
-        include_images: true,
-        target_audience: `${targetAudience}${indexNote}`
+        include_images: true
       }
     } else if (platform === 'douyin' || platform === 'bilibili' || platform === 'kuaishou') {
       return {
         ...baseParams,
         video_style: this.mapContentTypeToVideoStyle(contentType),
         duration: 'short', // 默认短视频
-        include_background_music: true,
-        target_audience: `${targetAudience}${indexNote}`
+        include_background_music: true
       }
     } else if (platform === 'wechat_moments') {
       // 朋友圈：使用专门的朋友圈文案工具
+      // quantity 表示每套朋友圈内容需要的图片数量
       return {
         topic: `${orderTitle}`,
         content_type: '图文',
-        image_count: 1,  // 每次生成1张图片
+        image_count: quantity,  // 每套内容包含的图片数量
         style: '产品推广',
-        target_audience: `[重要提醒] 这是微信朋友圈（WeChat Moments）内容，不是小红书！\n朋友圈特点：\n- 简短精炼的文字（30-80字）\n- 生活化、口语化的表达\n- 真实自然，不做作\n- 适合与微信好友分享的内容\n- 每次生成的内容必须完全不同，需要展现不同的角度/场景/表达方式\n\n${targetAudience}${indexNote}`
+        target_audience: `[重要提醒] 这是微信朋友圈（WeChat Moments）内容，不是小红书！\n朋友圈特点：\n- 简短精炼的文字（30-80字）\n- 生活化、口语化的表达\n- 真实自然，不做作\n- 适合与微信好友分享的内容\n\n${targetAudience}`
       }
     }
 
