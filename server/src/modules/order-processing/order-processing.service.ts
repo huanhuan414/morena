@@ -147,6 +147,10 @@ class TaskQueue {
         throw new Error('订单或分身不存在')
       }
 
+      // 获取每个分身生成内容的数量
+      const orderRequirements = order.requirements || {}
+      const quantityPerAvatar = orderRequirements.quantity_per_avatar || 1
+
       // 检查分身是否有内容生成技能
       const platforms = order.platforms || []
       const firstPlatform = platforms[0]
@@ -170,6 +174,7 @@ class TaskQueue {
       }
 
       // 使用 ContentGenerationService 生成内容
+      // 每个分身生成 quantityPerAvatar 份内容（每份是不同的朋友圈内容）
       const generatedContents = await this.contentGenerationService.generateContent({
         orderId,
         requestId,
@@ -181,7 +186,13 @@ class TaskQueue {
         targetAudience: order.target_audience || '',
         avatarName: avatar.name,
         avatarPersonality: avatar.personality,
-        quantity: order.expected_quantity || 1  // 使用订单的数量要求
+        quantity: quantityPerAvatar
+      })
+
+      console.log('[TaskQueue] 内容生成完成:', {
+        requestId,
+        quantityPerAvatar,  // 每个分身生成的内容份数
+        generatedCount: generatedContents.length  // 实际生成的内容数
       })
 
       console.log('[TaskQueue] 内容生成成功:', {
