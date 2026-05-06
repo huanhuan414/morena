@@ -82,6 +82,34 @@ export class AvatarController {
     }
   }
 
+  @Put(':id')
+  async updateAvatar(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId: string,
+    @Body() body: {
+      name?: string
+      personality?: string
+      avatar_url?: string
+      description?: string
+      config?: Record<string, any>
+      latitude?: number
+      longitude?: number
+      location_text?: string
+    }
+  ) {
+    try {
+      console.log('[AvatarController] 更新分身:', id, body)
+      const avatar = await this.avatarService.updateAvatar(id, userId, body)
+      if (!avatar) {
+        return { code: 404, msg: '分身不存在', data: null }
+      }
+      return { code: 200, msg: 'success', data: avatar }
+    } catch (err) {
+      console.error('更新分身失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
   @Get(':id/orders')
   async getAvatarOrders(@Param('id') id: string) {
     try {

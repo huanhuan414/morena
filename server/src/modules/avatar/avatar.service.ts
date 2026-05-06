@@ -35,6 +35,58 @@ export class AvatarService {
     return data
   }
 
+  async updateAvatar(avatarId: string, userId: string, updateData: {
+    name?: string
+    personality?: string
+    avatar_url?: string
+    description?: string
+    config?: Record<string, any>
+    latitude?: number
+    longitude?: number
+    location_text?: string
+  }) {
+    const client = getSupabaseClient()
+
+    // 构建更新对象
+    const updates: Record<string, any> = {}
+    if (updateData.name !== undefined) updates.name = updateData.name
+    if (updateData.personality !== undefined) updates.personality = updateData.personality
+    if (updateData.avatar_url !== undefined) updates.avatar_url = updateData.avatar_url
+    if (updateData.description !== undefined) updates.description = updateData.description
+    if (updateData.config !== undefined) updates.config = updateData.config
+    if (updateData.latitude !== undefined) updates.latitude = updateData.latitude
+    if (updateData.longitude !== undefined) updates.longitude = updateData.longitude
+    if (updateData.location_text !== undefined) updates.location_text = updateData.location_text
+
+    // 如果有经纬度但没有详细地址，进行逆地理编码
+    if (updateData.latitude && updateData.longitude && !updateData.location_text) {
+      try {
+        const geoResult = await this.reverseGeocodingService.reverseGeocode(
+          updateData.latitude,
+          updateData.longitude
+        )
+        updates.location_text = geoResult.formatted_address
+      } catch (error) {
+        console.warn('[更新分身] 逆地理编码失败:', error)
+        updates.location_text = `${updateData.latitude.toFixed(6)}, ${updateData.longitude.toFixed(6)}`
+      }
+    }
+
+    const { data, error } = await client
+      .from('avatars')
+      .update(updates)
+      .eq('id', avatarId)
+      .select()
+      .single()
+
+    if (error || !data) {
+      console.error('[更新分身] 更新失败:', error)
+      return null
+    }
+
+    return data
+  }
+
   async createAvatar(userId: string, avatarData: Record<string, any>) {
     // 检查用户是否可以创建分身
     const canCreate = await this.subscriptionService.canCreateAvatar(userId)

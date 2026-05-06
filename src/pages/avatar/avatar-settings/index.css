@@ -56,6 +56,8 @@
   border: none;
   box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
   transition: all 0.3s ease;
+  /* 右侧留出胶囊按钮空间，避免被遮挡 */
+  margin-right: 160rpx;
 }
 
 .as-header-action:active {
