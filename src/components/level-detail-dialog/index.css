@@ -13,8 +13,8 @@
 }
 
 .level-modal-content {
-  background: var(--card); /* 使用CSS变量适配主题 */
-  border: 4rpx solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-card);
+  border: 4rpx solid #e5e5e5;
   border-radius: 48rpx;
   max-height: 80vh;
   width: 650rpx;
@@ -26,7 +26,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 32rpx;
-  border-bottom: 2rpx solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2rpx solid #e5e5e5;
 }
 
 .level-modal-title-row {
@@ -262,7 +262,7 @@
 .guide-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: #1A1A2E;
   margin-bottom: 20rpx;
   display: block;
 }
@@ -272,7 +272,7 @@
   align-items: flex-start;
   margin-bottom: 20rpx;
   padding: 20rpx;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f5f5f7;
   border-radius: 24rpx;
 }
 
@@ -305,13 +305,13 @@
 
 .guide-item-desc {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(102, 102, 102, 0.7);
   display: block;
 }
 
 .guide-level-item {
-  background: rgba(255, 255, 255, 0.08);
-  border: 2rpx solid rgba(255, 255, 255, 0.1);
+  background: #f5f5f7;
+  border: 2rpx solid #e5e5e5;
   border-radius: 24rpx;
   padding: 20rpx;
   margin-bottom: 16rpx;
@@ -343,7 +343,7 @@
 .guide-level-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(26, 26, 46, 0.9);
 }
 
 .guide-level-sources {
@@ -355,7 +355,7 @@
   align-items: center;
   margin-bottom: 12rpx;
   padding: 12rpx 16rpx;
-  background: rgba(255, 255, 255, 0.03);
+  background: #fafafa;
   border-radius: 16rpx;
 }
 
@@ -366,7 +366,7 @@
 .guide-source-desc {
   flex: 1;
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(102, 102, 102, 0.7);
   margin-left: 12rpx;
 }
 
