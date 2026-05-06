@@ -43,7 +43,6 @@ export default function OrderContentCreation() {
   // 生成进度相关状态
   const [generatingProgress, setGeneratingProgress] = useState(0)
   const [generatingStep, setGeneratingStep] = useState('')
-  const [generatingDotCount, setGeneratingDotCount] = useState(0)
   const [generatingStepIndex, setGeneratingStepIndex] = useState(0)
 
   useEffect(() => {
@@ -110,15 +109,9 @@ export default function OrderContentCreation() {
         setGeneratingStepIndex(steps[stepIndex].index)
       }, 2500) // 减慢步骤切换频率
       
-      // 省略号动画
-      const dotInterval = setInterval(() => {
-        setGeneratingDotCount(prev => (prev + 1) % 4)
-      }, 500)
-      
       return () => {
         clearInterval(progressInterval)
         clearInterval(stepInterval)
-        clearInterval(dotInterval)
       }
     } else {
       // 生成完成，重置状态
@@ -309,9 +302,11 @@ export default function OrderContentCreation() {
                 </View>
               </View>
               <Text className="generating-text">AI 分身正在创作中</Text>
-              <Text className="generating-dots">
-                {'.'.repeat(generatingDotCount)}{' '.repeat(3 - generatingDotCount)}
-              </Text>
+              <View className="generating-dots">
+                <Text className="dot dot-1">.</Text>
+                <Text className="dot dot-2">.</Text>
+                <Text className="dot dot-3">.</Text>
+              </View>
             </View>
             
             {/* 进度条 */}

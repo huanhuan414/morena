@@ -272,12 +272,31 @@
 }
 
 .generating-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 40px;
+}
+
+.dot {
   font-size: 36px;
   color: #667eea;
   font-weight: 600;
-  margin-top: 8px;
-  min-width: 60px;
-  text-align: center;
+  animation: dot-blink 1.2s ease-in-out infinite;
+}
+
+.dot-1 { animation-delay: 0s; }
+.dot-2 { animation-delay: 0.4s; }
+.dot-3 { animation-delay: 0.8s; }
+
+@keyframes dot-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .generating-tip {
