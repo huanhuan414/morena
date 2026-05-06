@@ -1,11 +1,25 @@
-import { Controller, Get, Post, Put, Delete, Param, Headers, Body } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Headers, Body, UseInterceptors, UploadedFile } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
 export class AvatarController {
   constructor(private readonly avatarService: AvatarService) {}
 
-  @Get()
+  /**
+   * 上传照片并分析
+   */
+  @Post('analyze-photo')
+  @UseInterceptors(FileInterceptor('photo'))
+  async analyzePhoto(@UploadedFile() file: Express.Multer.File) {
+    try {
+      const result = await this.avatarService.analyzePhoto(file)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      console.error('分析照片失败:', err)
+      return { code: 500, msg: err.message || '分析失败', data: null }
+    }
+  }
   async getMyAvatars(@Headers('x-user-id') userId: string) {
     try {
       const avatars = await this.avatarService.getAvatarsByUser(userId)

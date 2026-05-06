@@ -162,6 +162,13 @@ export class AvatarAgentService {
       } else {
         // 直接回复
         response = await this.generateResponse(avatarId, thought)
+
+        // 记录对话经验（普通聊天也记录）
+        await this.learningService.learnFromResult(avatarId, thought, {
+          success: true,
+          toolName: 'none',
+          data: { message: response.content }
+        })
       }
 
       // 3. 存储记忆
