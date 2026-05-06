@@ -18,7 +18,8 @@ import {
 } from './tools/content-tools'
 import {
   WriteWechatMpArticleTool,
-  WriteXiaohongshuNoteTool
+  WriteXiaohongshuNoteTool,
+  WriteWechatMomentsTool
 } from './tools/content-creation-tools'
 import {
   GenerateImageTool as ContentGenerateImageTool,
@@ -73,6 +74,7 @@ import {
     // 内容创作工具（从旧系统迁移）
     WriteWechatMpArticleTool,
     WriteXiaohongshuNoteTool,
+    WriteWechatMomentsTool,
     // 内容生成工具（从旧系统迁移）
     ContentGenerateImageTool,
     GenerateVideoTool,

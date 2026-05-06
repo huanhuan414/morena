@@ -771,7 +771,7 @@ export class OrderProcessingService {
       'weibo': 'write_article',
       'bilibili': 'write_article',
       'wechat_video': 'write_article',
-      'wechat_moments': 'write_article'
+      'wechat_moments': 'write_wechat_moments_content'
     }
 
     const skillType = platformSkillMap[platform] || 'write_article'

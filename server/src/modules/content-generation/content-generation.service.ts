@@ -12,7 +12,7 @@ const PLATFORM_TOOL_MAPPING: Record<string, string> = {
   weibo: 'write_wechat_mp_article', // 微博使用文章工具，后续可以优化
   bilibili: 'generate_video', // B站使用视频工具
   kuaishou: 'generate_video', // 快手使用视频工具
-  wechat_moments: 'write_xiaohongshu_note' // 微信朋友圈使用图文笔记工具
+  wechat_moments: 'write_wechat_moments_content' // 微信朋友圈使用专门的朋友圈文案工具
 }
 
 // 平台名称映射
@@ -180,16 +180,12 @@ export class ContentGenerationService {
         include_background_music: true
       }
     } else if (platform === 'wechat_moments') {
-      // 朋友圈特殊处理：生成3张图 + 朋友圈风格的爆款文案
+      // 朋友圈：使用专门的朋友圈文案工具
       return {
-        topic: `${orderTitle}（发朋友圈）`, // 明确标注是朋友圈
-        description: `[重要：这是微信朋友圈内容，不是小红书]\n${orderDescription}\n\n要求：\n1. 朋友圈文案要简短精炼，30-80字左右\n2. 语言风格：生活化、口语化、真实分享感\n3. 不要用小红书式的"姐妹们""真的绝"等表达\n4. 可以用 emoji 增加趣味\n5. 图片建议3张，符合朋友圈分享风格`,
-        style: '分享',
-        keywords: this.extractKeywords(orderDescription),
-        include_images: true,
+        topic: `${orderTitle}`,
+        content_type: '图文',
         image_count: 3,
-        content_style: 'short_viral',
-        content_length: 'short',
+        style: '产品推广',
         target_audience: `[重要提醒] 这是微信朋友圈（WeChat Moments）内容，不是小红书！\n朋友圈特点：\n- 简短精炼的文字（30-80字）\n- 生活化、口语化的表达\n- 真实自然，不做作\n- 适合与微信好友分享的内容\n\n${targetAudience}`
       }
     }
@@ -286,12 +282,24 @@ export class ContentGenerationService {
       //   video_url: "视频URL"
       // }
 
+      // 处理微信朋友圈的特殊格式（工具返回的是 text 而不是 content）
+      let content = toolData.content || toolData.body || ''
+      if (!content && toolData.text) {
+        content = toolData.text
+      }
+      
+      // 处理 wechat_moments_content 嵌套结构
+      if (!content && toolData.wechat_moments_content) {
+        content = toolData.wechat_moments_content.text || ''
+      }
+
       return {
         title: toolData.title || toolData.topic || '',
-        content: toolData.content || toolData.body || '',
+        content: content,
         hashtags: Array.isArray(toolData.hashtags) ? toolData.hashtags : [],
         image_suggestions: [
           ...(Array.isArray(toolData.images) ? toolData.images : []),
+          ...(Array.isArray(toolData.wechat_moments_content?.images) ? toolData.wechat_moments_content.images : []),
           ...(toolData.cover_image ? [toolData.cover_image] : [])
         ],
         video_suggestions: toolData.video_url ? [toolData.video_url] : [],

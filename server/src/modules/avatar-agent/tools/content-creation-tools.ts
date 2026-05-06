@@ -382,4 +382,168 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
   }
 }
 
+/**
+ * 撰写微信朋友圈内容工具（朋友圈爆款文案）
+ */
+@Injectable()
+export class WriteWechatMomentsTool implements AvatarTool {
+  name = 'write_wechat_moments_content'
+  displayName = '撰写微信朋友圈爆款文案'
+  description = '生成适合微信朋友圈传播的爆款内容，包含简短精炼的文案和生活化的配图。此工具仅生成内容，发布需要配合发布功能。'
+  category = 'content_creation' as const
+
+  paramsSchema = {
+    topic: {
+      type: 'string' as const,
+      description: '内容主题/话题',
+      required: true
+    },
+    content_type: {
+      type: 'string' as const,
+      description: '内容类型',
+      enum: ['图文', '纯文字', '纯图片'],
+      default: '图文'
+    },
+    image_count: {
+      type: 'number' as const,
+      description: '配图数量（1-9张）',
+      default: 3
+    },
+    style: {
+      type: 'string' as const,
+      description: '内容风格',
+      enum: ['生活分享', '工作感悟', '产品推广', '日常打卡', '情感表达'],
+      default: '生活分享'
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const startTime = Date.now()
+      const config = new Config()
+      const client = new LLMClient(config)
+
+      // 朋友圈文案风格指南
+      const styleGuides = {
+        '生活分享': '真实自然的生活记录，分享日常趣事或实用好物，语气像朋友聊天',
+        '工作感悟': '职场心得、成长感悟、经验分享，传递正能量但不鸡汤',
+        '产品推广': '软性植入，不生硬，像朋友推荐好东西一样自然',
+        '日常打卡': '健身、学习、美食等打卡记录，展示自律生活',
+        '情感表达': '亲情、友情、爱情的感悟，真挚动人但不矫情'
+      }
+
+      const prompt = `你是一位深谙微信朋友圈传播规律的文案专家。请为以下主题创作一条朋友圈内容：
+
+主题：${params.topic}
+内容类型：${params.content_type}
+风格：${styleGuides[params.style] || styleGuides['生活分享']}
+配图数量：${params.image_count}张
+
+【重要提醒】
+这是微信朋友圈（WeChat Moments）内容，不是小红书！朋友圈内容特点：
+- 文字简短精炼：30-80字左右
+- 语言风格：生活化、口语化、真实分享感
+- 避免使用："姐妹们"、"宝子们"、"真的绝"、"种草"等小红书式表达
+- 不要写太长的正文，朋友圈用户习惯快速浏览
+- 可以用 emoji 增加趣味性和活力
+
+请严格按照以下格式输出：
+
+## 文案
+（30-80字的精炼文案，符合朋友圈风格，可包含emoji）
+
+## 配图提示词
+（生成${params.image_count}张朋友圈配图的AI生成提示词，每张一句话描述）
+（图片风格要求：生活化、真实感、暖色调为主，符合朋友圈分享风格）
+
+## 互动引导
+（可选：如果适合，添加一句简短的互动引导，如"你们觉得呢？"）
+
+---
+
+现在开始创作：`
+
+      const response = await client.invoke([
+        { role: 'user', content: prompt }
+      ], {
+        model: 'doubao-seed-1-8-251228',
+        temperature: 0.8
+      })
+
+      const content = response.content.trim()
+
+      // 解析文案
+      const textSection = content.match(/## 文案\n([\s\S]*?)(?=## 配图|$)/i)
+      let mainText = ''
+      if (textSection) {
+        mainText = textSection[1].trim()
+      }
+
+      // 解析互动引导
+      const interactionMatch = content.match(/## 互动引导\n([\s\S]*?)$/i)
+      const interaction = interactionMatch ? interactionMatch[1].trim() : ''
+
+      // 合并文案和互动引导
+      if (interaction) {
+        mainText = mainText + '\n\n' + interaction
+      }
+
+      // 生成配图
+      const imageCount = Math.min(params.image_count || 3, 9)
+      const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
+        const style = params.style || '生活分享'
+        return `${params.topic}，朋友圈风格，${styleGuides[style]}，暖色调，生活化场景，高质量，4K`
+      })
+
+      const imageUrls: string[] = []
+      try {
+        const imageClient = new ImageGenerationClient(config)
+
+        for (const promptText of imagePrompts) {
+          try {
+            const imgResponse = await imageClient.generate({
+              prompt: promptText,
+              size: '1K',
+              watermark: false
+            })
+            const helper = imageClient.getResponseHelper(imgResponse)
+            if (helper.success && helper.imageUrls.length > 0) {
+              imageUrls.push(helper.imageUrls[0])
+            }
+          } catch (err) {
+            console.error('生成朋友圈配图失败:', err)
+          }
+        }
+      } catch (err) {
+        console.error('批量生成朋友圈配图失败:', err)
+      }
+
+      return {
+        success: true,
+        toolName: this.name,
+        data: {
+          text: mainText,
+          images: imageUrls,
+          image_count: imageUrls.length,
+          style: params.style || '生活分享',
+          message: `朋友圈文案「${params.topic}」创作完成，已生成${imageUrls.length}张配图`,
+          wechat_moments_content: {
+            text: mainText,
+            images: imageUrls,
+            image_count: imageUrls.length
+          }
+        },
+        executionTime: Date.now() - startTime
+      }
+    } catch (err: any) {
+      return {
+        success: false,
+        toolName: this.name,
+        error: `撰写朋友圈内容失败: ${err.message}`,
+        executionTime: Date.now() - Date.now()
+      }
+    }
+  }
+}
+
 // Part 1/3

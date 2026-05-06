@@ -14,7 +14,8 @@ import {
 } from './content-tools'
 import {
   WriteWechatMpArticleTool,
-  WriteXiaohongshuNoteTool
+  WriteXiaohongshuNoteTool,
+  WriteWechatMomentsTool
 } from './content-creation-tools'
 import {
   GenerateImageTool as ContentGenerateImageTool,
@@ -68,6 +69,7 @@ export class AvatarToolRegistry {
     // 内容创作工具（从旧系统迁移）
     private readonly writeWechatMpArticleTool: WriteWechatMpArticleTool,
     private readonly writeXiaohongshuNoteTool: WriteXiaohongshuNoteTool,
+    private readonly writeWechatMomentsTool: WriteWechatMomentsTool,
     // 内容生成工具（从旧系统迁移）
     private readonly contentGenerateImageTool: ContentGenerateImageTool,
     private readonly generateVideoTool: GenerateVideoTool,
@@ -115,6 +117,7 @@ export class AvatarToolRegistry {
     // 内容创作工具（从旧系统迁移）
     this.registerTool(this.writeWechatMpArticleTool)
     this.registerTool(this.writeXiaohongshuNoteTool)
+    this.registerTool(this.writeWechatMomentsTool)
 
     // 内容生成工具（从旧系统迁移）
     this.registerTool(this.contentGenerateImageTool)
