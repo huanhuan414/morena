@@ -4499,29 +4499,8 @@ export default function MindChatPage() {
           </View>
 
           {/* 中间：输入框 - 支持长按录音 */}
-          <Textarea
-            ref={textareaRef}
-            className="input-textarea"
-            placeholder={isRecording ? `录音中... ${recordingTime}s` : "发消息或按住说话..."}
-            placeholderClass={`input-placeholder ${isRecording ? 'recording' : ''}`}
-            value={inputText}
-            maxlength={1000}
-            onInput={(e: any) => {
-              let newValue = ''
-              if (e.detail && e.detail.value !== undefined) {
-                newValue = e.detail.value
-              } else if (e.target && e.target.value !== undefined) {
-                newValue = e.target.value
-              } else if (typeof e === 'string') {
-                newValue = e
-              }
-              setInputText(newValue)
-            }}
-            onConfirm={() => sendMessage()}
-            confirmType="send"
-            adjustPosition
-            autoHeight
-            cursorSpacing={80}
+          <View 
+            className={`input-textarea-wrap ${isRecording ? 'recording' : ''} ${!inputText ? 'can-record' : ''}`}
             onTouchStart={() => {
               // 只有输入框为空时，长按才触发录音
               if (!inputText && !isRecording) {
@@ -4538,7 +4517,32 @@ export default function MindChatPage() {
                 stopRecording()
               }
             }}
-          />
+          >
+            <Textarea
+              ref={textareaRef}
+              className="input-textarea"
+              placeholder={isRecording ? `录音中... ${recordingTime}s` : "发消息或按住说话..."}
+              placeholderClass={`input-placeholder ${isRecording ? 'recording' : ''}`}
+              value={inputText}
+              maxlength={1000}
+              onInput={(e: any) => {
+                let newValue = ''
+                if (e.detail && e.detail.value !== undefined) {
+                  newValue = e.detail.value
+                } else if (e.target && e.target.value !== undefined) {
+                  newValue = e.target.value
+                } else if (typeof e === 'string') {
+                  newValue = e
+                }
+                setInputText(newValue)
+              }}
+              onConfirm={() => sendMessage()}
+              confirmType="send"
+              adjustPosition
+              autoHeight
+              cursorSpacing={80}
+            />
+          </View>
 
           {/* 右侧：发送按钮 */}
           {inputText.trim() && (

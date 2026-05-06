@@ -262,7 +262,7 @@
 .guide-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #fff;
   margin-bottom: 20rpx;
   display: block;
 }
@@ -272,7 +272,7 @@
   align-items: flex-start;
   margin-bottom: 20rpx;
   padding: 20rpx;
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 24rpx;
 }
 
@@ -298,20 +298,20 @@
 .guide-item-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #fff;
   display: block;
   margin-bottom: 8rpx;
 }
 
 .guide-item-desc {
   font-size: 24rpx;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   display: block;
 }
 
 .guide-level-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 2rpx solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+  border: 2rpx solid rgba(255, 255, 255, 0.1);
   border-radius: 24rpx;
   padding: 20rpx;
   margin-bottom: 16rpx;
@@ -343,7 +343,7 @@
 .guide-level-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .guide-level-sources {

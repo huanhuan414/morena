@@ -480,6 +480,7 @@
    ======================================== */
 .message-list {
   flex: 1;
+  min-height: 400rpx;
   padding: var(--space-3) var(--page-padding);
   overflow-y: auto;
   position: relative;
@@ -2121,6 +2122,28 @@
   }
 }
 
+/* 输入框外层包裹 - 支持长按录音 */
+.input-textarea-wrap {
+  flex: 1;
+  min-height: 64rpx;
+  max-height: 200rpx;
+  background: #FFFFFF;
+  border-radius: 40rpx;
+  padding: 4rpx 8rpx;
+  margin: 0 12rpx;
+  display: flex;
+  align-items: center;
+}
+
+.input-textarea-wrap.can-record {
+  background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+}
+
+.input-textarea-wrap.recording {
+  background: linear-gradient(135deg, #FFE4E4 0%, #FFCCCC 100%);
+  border: 2rpx solid #FF3B30;
+}
+
 /* 文本输入框 - 在卡片内部 */
 .input-textarea {
   flex: 1;
@@ -2134,7 +2157,7 @@
   border-radius: 0;
   outline: none;
   padding: 12rpx 16rpx;
-  margin: 0 12rpx;
+  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
