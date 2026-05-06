@@ -492,7 +492,20 @@ export class WriteWechatMomentsTool implements AvatarTool {
       const imageCount = Math.min(params.image_count || 3, 9)
       const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
         const style = params.style || '生活分享'
-        return `${params.topic}，朋友圈风格，${styleGuides[style]}，暖色调，生活化场景，高质量，4K`
+        // 每张图片使用不同的角度和构图，确保生成不同的图片
+        const angleOptions = [
+          '正面视角，简洁背景',
+          '侧面视角，自然光线',
+          '俯视角度，平铺展示',
+          '仰视角度，创意构图',
+          '近景特写，突出主体',
+          '远景视角，交代环境',
+          '局部细节，手持展示',
+          '生活场景，自然状态',
+          '精致摆放，专业摄影'
+        ]
+        const angle = angleOptions[i % angleOptions.length]
+        return `${params.topic}，朋友圈风格，${styleGuides[style]}，${angle}，暖色调，高质量，4K`
       })
 
       const imageUrls: string[] = []
