@@ -79,9 +79,13 @@ export default function AvatarOrderCompletedPage() {
   }
 
   const handleShare = () => {
-    Taro.showShareMenu({
-      withShareTicket: true
-    })
+    try {
+      Taro.showShareMenu({
+        withShareTicket: true
+      })
+    } catch (error) {
+      console.log('分享菜单配置失败，不影响其他功能')
+    }
   }
 
   return (
