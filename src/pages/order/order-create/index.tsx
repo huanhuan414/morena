@@ -760,7 +760,7 @@ ${contentTypePrompt}
         data: {
           title: form.title,
           description: form.description,
-          budget: form.budget, // 保留用户设置的预算
+          budget: totalPrice.total, // 使用计算后的总价
           is_paid: false, // 暂不支付
           content_type: form.requirements.contentType,
           platforms: form.requirements.platforms,
