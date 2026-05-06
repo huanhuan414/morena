@@ -191,26 +191,26 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
 
   private async addImagesToArticleContent(content: string, topic: string, imageCount: number = 3): Promise<string> {
     // 公众号文章配图 - 每张图片内容方向完全不同，都围绕主题，适合公众号推广
-    const topic = params.topic || '内容分享'
+    const articleTopic = topic || '内容分享'
     
     // 核心：每张图片的内容方向完全不同，不是改变角度，而是改变"故事"
-    const imagePrompts = [
+    const wechatMpScenes: string[] = [
       // 图片1：信息图表，数据感强
-      ${topic}的信息图表设计，数据可视化，图表清晰，现代简洁风格，蓝色科技配色，商业感强，适合公众号封面，让人想点击,
+      `${articleTopic}的信息图表设计，数据可视化，图表清晰，现代简洁风格，蓝色科技配色，商业感强，适合公众号封面，让人想点击`,
       // 图片2：精致插画，杂志感
-      ${topic}的精致插画风格，扁平化插画，${topic}元素明确，柔和粉彩色调，温暖氛围，杂志排版感，文艺气息浓厚,
+      `${articleTopic}的精致插画风格，扁平化插画，${articleTopic}元素明确，柔和粉彩色调，温暖氛围，杂志排版感，文艺气息浓厚`,
       // 图片3：场景插画，文艺治愈
-      ${topic}的手绘插画场景，${topic}融入生活场景，文艺清新氛围，纸张纹理质感，日系治愈风格，让人想收藏,
+      `${articleTopic}的手绘插画场景，${articleTopic}融入生活场景，文艺清新氛围，纸张纹理质感，日系治愈风格，让人想收藏`,
       // 图片4：户外大片，电影感
-      ${topic}的户外实景摄影，${topic}与自然风光结合，高饱和度电影感色调，${topic}在风景中，阳光明媚，让人向往,
+      `${articleTopic}的户外实景摄影，${articleTopic}与自然风光结合，高饱和度电影感色调，${articleTopic}在风景中，阳光明媚，让人向往`,
       // 图片5：职场人物，专业感
-      ${topic}的职场人物场景，${topic}作为主角，专业干练形象，自然柔和光线，生活感强的人文摄影，适合职场分享,
+      `${articleTopic}的职场人物场景，${articleTopic}作为主角，专业干练形象，自然柔和光线，生活感强的人文摄影，适合职场分享`,
       // 图片6：创意合成，超现实
-      ${topic}的创意合成艺术，${topic}元素创意呈现，高级感设计，渐变背景色，超现实主义创意图片，让人印象深刻,
+      `${articleTopic}的创意合成艺术，${articleTopic}元素创意呈现，高级感设计，渐变背景色，超现实主义创意图片，让人印象深刻`,
       // 图片7：产品精修，商业感
-      ${topic}的产品精修展示，${topic}单品突出，纯白背景商业摄影，精致修图，高质感商业摄影，适合产品推广,
+      `${articleTopic}的产品精修展示，${articleTopic}单品突出，纯白背景商业摄影，精致修图，高质感商业摄影，适合产品推广`,
       // 图片8：复古杂志风
-      ${topic}的复古杂志风格，${topic}主题明确，复古色调，文案排版设计，文艺气息浓厚，高级感排版风格，让人眼前一亮`
+      `${articleTopic}的复古杂志风格，${articleTopic}主题明确，复古色调，文案排版设计，文艺气息浓厚，高级感排版风格，让人眼前一亮`
     ]
     const paragraphs = content.split('\n\n').filter(p => p.trim())
     if (paragraphs.length === 0) return content
@@ -349,28 +349,28 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
 
       // 生成配图 - 每张图片内容方向完全不同，都围绕主题，适合小红书推广分享
       const imageCount = Math.min(params.images_count || 3, 9)
-      const topic = params.topic || '分享'
+      const xhsTopic = params.topic || '分享'
       
       // 核心：每张图片的内容方向完全不同，不是改变角度，而是改变"故事"
-      const imagePrompts = [
+      const xhsImagePrompts: string[] = [
         // 图片1：精致下午茶场景
-        ${topic}的精致下午茶场景，高颜值甜点或饮品，${topic}元素融入其中，精致餐具，木质桌面，窗边自然光，暖色调，氛围感强，适合小红书种草,
+        `${xhsTopic}的精致下午茶场景，高颜值甜点或饮品，${xhsTopic}元素融入其中，精致餐具，木质桌面，窗边自然光，暖色调，氛围感强，适合小红书种草`,
         // 图片2：卧室温馨角落
-        ${topic}在温馨卧室场景，白色床品或靠垫，${topic}作为装饰主角，柔和暖光，居家感强，${topic}质感完美呈现，治愈系风格,
+        `${xhsTopic}在温馨卧室场景，白色床品或靠垫，${xhsTopic}作为装饰主角，柔和暖光，居家感强，${xhsTopic}质感完美呈现，治愈系风格`,
         // 图片3：户外旅行日记
-        ${topic}与旅途风景结合，蓝天白云或落日晚霞，${topic}在风景中，电影感色调，旅行大片风格，高饱和度，让人向往,
+        `${xhsTopic}与旅途风景结合，蓝天白云或落日晚霞，${xhsTopic}在风景中，电影感色调，旅行大片风格，高饱和度，让人向往`,
         // 图片4：美食特写质感
-        ${topic}的美食摄影特写，单反微距镜头，${topic}质感完美呈现，虚化背景，商业美食摄影，${topic}色香味俱全感，让人流口水,
+        `${xhsTopic}的美食摄影特写，单反微距镜头，${xhsTopic}质感完美呈现，虚化背景，商业美食摄影，${xhsTopic}色香味俱全感，让人流口水`,
         // 图片5：时尚穿搭展示
-        ${topic}单品穿搭展示，同色系搭配，日系杂志风，简约背景，专业时尚摄影，${topic}完美展示，适合种草推荐,
+        `${xhsTopic}单品穿搭展示，同色系搭配，日系杂志风，简约背景，专业时尚摄影，${xhsTopic}完美展示，适合种草推荐`,
         // 图片6：护肤美妆精致
-        ${topic}的精致护肤场景，玻璃瓶身，玫瑰花瓣或绿植装饰，${topic}精致感，干玫瑰色系，纯欲风格，小红书爆款风格,
+        `${xhsTopic}的精致护肤场景，玻璃瓶身，玫瑰花瓣或绿植装饰，${xhsTopic}精致感，干玫瑰色系，纯欲风格，小红书爆款风格`,
         // 图片7：书房文艺角落
-        ${topic}的书房文艺场景，木质书架，台灯暖黄光，复古书籍装饰，${topic}融入文艺氛围，文青风格，让人想收藏,
+        `${xhsTopic}的书房文艺场景，木质书架，台灯暖黄光，复古书籍装饰，${xhsTopic}融入文艺氛围，文青风格，让人想收藏`,
         // 图片8：咖啡厅小资风
-        ${topic}的咖啡厅小资场景，${topic}在精致咖啡厅中，${topic}主角感强，复古或文艺咖啡馆氛围，窗边光线，文青感,
+        `${xhsTopic}的咖啡厅小资场景，${xhsTopic}在精致咖啡厅中，${xhsTopic}主角感强，复古或文艺咖啡馆氛围，窗边光线，文青感`,
         // 图片9：极简产品展示
-        ${topic}单品极简展示，纯白或纯色背景，现代设计感，极简主义风格，${topic}完美呈现，电商质感，适合小红书推广`
+        `${xhsTopic}单品极简展示，纯白或纯色背景，现代设计感，极简主义风格，${xhsTopic}完美呈现，电商质感，适合小红书推广`
       ].slice(0, imageCount)
 
       const imageUrls: string[] = []
@@ -378,7 +378,7 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
         const config = new Config()
         const imageClient = new ImageGenerationClient(config)
 
-        for (const prompt of imagePrompts) {
+        for (const prompt of xhsImagePrompts) {
           try {
             const response = await imageClient.generate({
               prompt,
@@ -546,17 +546,17 @@ export class WriteWechatMomentsTool implements AvatarTool {
         // 图片3：人物生活场景，代入感
         `${topic}融入日常生活场景，人物自然互动或生活道具，${topic}作为主角抓拍，真实自然感，故事性强，代入感强，适合种草推荐`,
         // 图片4：美食精致特写，高级感
-        ${topic}的精致特写，单反微距摄影，${topic}质感完美呈现，浅景深虚化背景，商业美食摄影风格，高级感强，吸引眼球`,
+        `${topic}的精致特写，单反微距摄影，${topic}质感完美呈现，浅景深虚化背景，商业美食摄影风格，高级感强，吸引眼球`,
         // 图片5：极简纯色背景，产品感
-        ${topic}单品展示，纯色渐变背景，现代设计感，极简主义风格，${topic}完美呈现，电商产品图质感，商业摄影风格，适合推广`,
+        `${topic}单品展示，纯色渐变背景，现代设计感，极简主义风格，${topic}完美呈现，电商产品图质感，商业摄影风格，适合推广`,
         // 图片6：夜景氛围感，浪漫神秘
-        ${topic}的夜景氛围拍摄，暖黄灯光或霓虹色调，暗调背景，${topic}在夜色中，浪漫神秘感，电影感人像风格，让人心动`,
+        `${topic}的夜景氛围拍摄，暖黄灯光或霓虹色调，暗调背景，${topic}在夜色中，浪漫神秘感，电影感人像风格，让人心动`,
         // 图片7：复古胶片风格，文艺独特
-        ${topic}的胶片复古感，颗粒质感明显，暖色调偏色，漏光效果，胶片边框感，文艺青年风格，独特吸睛，让人印象深刻`,
+        `${topic}的胶片复古感，颗粒质感明显，暖色调偏色，漏光效果，胶片边框感，文艺青年风格，独特吸睛，让人印象深刻`,
         // 图片8：工作学习场景，干练专业
-        ${topic}的工作或学习场景，${topic}融入专业氛围，书桌或办公环境，干练专业形象，自然光线，${topic}质感强，适合职场分享`,
+        `${topic}的工作或学习场景，${topic}融入专业氛围，书桌或办公环境，干练专业形象，自然光线，${topic}质感强，适合职场分享`,
         // 图片9：艺术插画风格，创意独特
-        ${topic}的手绘插画风格，扁平或矢量插画，${topic}元素完美融入，现代插画设计感，艺术气息浓厚，创意独特，让人眼前一亮`
+        `${topic}的手绘插画风格，扁平或矢量插画，${topic}元素完美融入，现代插画设计感，艺术气息浓厚，创意独特，让人眼前一亮`
       ].slice(0, imageCount)
 
       const imageUrls: string[] = []
