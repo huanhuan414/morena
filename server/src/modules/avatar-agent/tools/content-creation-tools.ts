@@ -153,7 +153,7 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
       }
 
       // 自动添加文章配图
-      const imageCount = Math.min(params.images_count || 3, 9)
+      const imageCount = Math.min(params.images_count || 1, 9)
       const contentWithImages = await this.addImagesToArticleContent(mainContent, titles[0] || params.topic, imageCount)
 
       return {
@@ -349,7 +349,7 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
       }
 
       // 生成配图 - 每张图片视觉风格完全不同，都围绕需求主题，适合小红书推广分享
-      const imageCount = Math.min(params.images_count || 3, 9)
+      const imageCount = Math.min(params.images_count || 1, 9)
       const xhsTopic = params.topic || '分享'
       
       // 核心：每张图片的视觉风格完全不同，确保AI生成差异巨大的图片
@@ -536,7 +536,7 @@ export class WriteWechatMomentsTool implements AvatarTool {
       }
 
       // 生成配图 - 每张图片画面风格完全不同，都围绕需求主题，适合推广分享
-      const imageCount = Math.min(params.image_count || 3, 9)
+      const imageCount = Math.min(params.image_count || 1, 9)
       const topic = params.topic || '生活分享'
       
       // 核心：每张图片的画面风格完全不同，确保AI生成差异巨大的图片

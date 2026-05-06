@@ -296,15 +296,26 @@ export class ContentGenerationService {
         content = toolData.wechat_moments_content.text || ''
       }
 
+      // 处理微信朋友圈的特殊嵌套结构，避免图片重复
+      let finalImages: string[] = []
+      if (toolData.wechat_moments_content?.images && Array.isArray(toolData.wechat_moments_content.images)) {
+        // 朋友圈工具返回的是 wechat_moments_content 嵌套结构
+        finalImages = toolData.wechat_moments_content.images
+      } else if (Array.isArray(toolData.images)) {
+        // 其他工具返回的是 images 数组
+        finalImages = toolData.images
+      }
+      
+      // 如果有封面图，添加到末尾（封面图单独显示）
+      if (toolData.cover_image) {
+        finalImages = [...finalImages, toolData.cover_image]
+      }
+
       return {
         title: toolData.title || toolData.topic || '',
         content: content,
         hashtags: Array.isArray(toolData.hashtags) ? toolData.hashtags : [],
-        image_suggestions: [
-          ...(Array.isArray(toolData.images) ? toolData.images : []),
-          ...(Array.isArray(toolData.wechat_moments_content?.images) ? toolData.wechat_moments_content.images : []),
-          ...(toolData.cover_image ? [toolData.cover_image] : [])
-        ],
+        image_suggestions: finalImages,
         video_suggestions: toolData.video_url ? [toolData.video_url] : [],
         status: 'draft'
       }
