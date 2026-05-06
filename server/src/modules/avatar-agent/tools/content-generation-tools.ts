@@ -75,57 +75,30 @@ export class GenerateImageTool implements AvatarTool {
 
       const optimizedPrompt = ImagePromptOptimizer.optimize(params.prompt, params.style || 'realistic')
 
-      const apiUrl = 'https://ark.cn-beijing.volces.com/api/v3/images/generations'
-      const apiKey = process.env.VOLC_VIDEO_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
-
-      console.log('AvatarAgent工具 - 调用豆包图片生成 API:', {
+      console.log('AvatarAgent工具 - 调用图片生成 SDK:', {
         prompt_length: optimizedPrompt.length,
         size: params.size || '2K',
         style: params.style || 'realistic'
       })
 
-      const response = await axios.post(apiUrl, {
-        model: 'doubao-seedream-4-0-250828',
+      // 使用 SDK 调用图片生成
+      const config = new Config()
+      const imageClient = new ImageGenerationClient(config)
+
+      const imageResponse = await imageClient.generate({
         prompt: optimizedPrompt,
-        sequential_image_generation: 'disabled',
-        response_format: 'url',
-        size: params.size || '2K',
-        stream: false,
+        size: (params.size || '2K') as any,
         watermark: false
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        timeout: 120000
       })
 
-      if (response.status !== 200) {
-        const errorMsg = response.data?.error?.message || response.data?.message || '图片生成失败'
-        return { success: false, toolName: this.name, error: `图片生成失败: ${errorMsg}` }
+      const helper = imageClient.getResponseHelper(imageResponse)
+
+      if (!helper.success || helper.imageUrls.length === 0) {
+        return { success: false, toolName: this.name, error: `生成图片失败: ${helper.errorMessages.join('; ') || '未知错误'}` }
       }
 
-      const responseData = response.data
-      const imageData = responseData?.data || responseData
-
-      let imageUrls: string[] = []
-
-      if (Array.isArray(imageData)) {
-        imageUrls = imageData.map((img: any) => img.url).filter(Boolean)
-      } else if (imageData?.url) {
-        imageUrls = [imageData.url]
-      } else if (imageData?.image_urls) {
-        imageUrls = imageData.image_urls
-      } else if (typeof responseData === 'string') {
-        imageUrls = [responseData]
-      }
-
-      if (imageUrls.length === 0) {
-        const errorMsg = responseData?.message || '未获取到图片URL'
-        return { success: false, toolName: this.name, error: `图片生成失败: ${errorMsg}` }
-      }
-
-      console.log('AvatarAgent工具 - 图片生成成功，CDN URL:', imageUrls[0])
+      const imageUrls = helper.imageUrls
+      console.log('AvatarAgent工具 - 图片生成成功，URL:', imageUrls[0])
 
       return {
         success: true,
