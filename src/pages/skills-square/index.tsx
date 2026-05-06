@@ -908,7 +908,7 @@ export default function SkillsSquare() {
               </View>
             )}
 
-            {(!searchKeyword ? filterSkills(skills) : skills).map((skill) => {
+            {(!searchKeyword ? skills : searchKeyword === '发布' ? filterSkills(skills) : skills).map((skill) => {
               const owned = isOwned(skill.id)
               const displayName = getSkillDisplayName(skill.name, skill.tool_name || '')
               console.log('[SkillSquare] 渲染技能卡片:', {

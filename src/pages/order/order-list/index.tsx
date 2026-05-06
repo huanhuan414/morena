@@ -230,6 +230,7 @@ export default function OrderListPage() {
   // 根据订单状态跳转到不同页面
   const handleOrderClick = (order: Order) => {
     const status = order.status
+    const isAvatarMode = mode === 'avatar'
     
     // 根据不同状态跳转到不同页面
     switch (status) {
@@ -242,8 +243,14 @@ export default function OrderListPage() {
         navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
         break
       case 'in_progress':
-        // 进行中 - 跳转到内容创作页面
-        navigateTo({ url: `/pages/order/order-content-creation/index?id=${order.id}` })
+        // 进行中
+        if (isAvatarMode) {
+          // 接单者（分身）跳转到内容创作页面
+          navigateTo({ url: `/pages/order/order-content-creation/index?id=${order.id}&requestId=${order.request_id}&avatarId=${router.params.avatarId || ''}` })
+        } else {
+          // 发单者跳转到订单详情（查看进度）
+          navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+        }
         break
       case 'awaiting_acceptance':
         // 待验收 - 跳转到订单详情（待验收确认）
