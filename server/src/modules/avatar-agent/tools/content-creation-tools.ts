@@ -229,8 +229,7 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
           const response = await imageClient.generate({
             prompt: `${prompt}, 4K, high quality`,
             size: '1K',
-            watermark: false,
-            seed: Math.floor(Math.random() * 2147483647) + i * 1000000 // 随机种子确保每张图片不同
+            watermark: false
           })
           const helper = imageClient.getResponseHelper(response)
           if (helper.success && helper.imageUrls.length > 0) {
