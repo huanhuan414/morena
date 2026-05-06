@@ -19,6 +19,25 @@ export class AvatarService {
   }
 
   /**
+   * 获取用户的所有分身
+   */
+  async getAvatarsByUserId(userId: string) {
+    const client = getSupabaseClient()
+    const { data, error } = await client
+      .from('avatars')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('获取用户分身失败:', error)
+      return []
+    }
+    return data || []
+  }
+
+  /**
    * 根据ID获取分身详情
    */
   async findById(avatarId: string) {

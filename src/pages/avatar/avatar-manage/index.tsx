@@ -144,7 +144,7 @@ export default function AvatarManagePage() {
 
   const fetchAvatars = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar' })
+      const res = await Network.request({ url: '/api/avatar/my' })
       console.log('获取分身响应:', res.data)
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []

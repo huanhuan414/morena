@@ -20,15 +20,6 @@ export class AvatarController {
       return { code: 500, msg: err.message || '分析失败', data: null }
     }
   }
-  async getMyAvatars(@Headers('x-user-id') userId: string) {
-    try {
-      const avatars = await this.avatarService.getAvatarsByUser(userId)
-      return { code: 200, msg: 'success', data: avatars }
-    } catch (err) {
-      console.error('获取分身列表失败:', err)
-      return { code: 500, msg: '服务器错误', data: [] }
-    }
-  }
 
   @Post()
   async createAvatar(
@@ -55,6 +46,20 @@ export class AvatarController {
     } catch (err) {
       console.error('创建分身失败:', err)
       return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  /**
+   * 获取当前用户的所有分身
+   */
+  @Get('my')
+  async getMyAvatars(@Headers('x-user-id') userId: string) {
+    try {
+      const avatars = await this.avatarService.getAvatarsByUserId(userId)
+      return { code: 200, msg: 'success', data: avatars }
+    } catch (err) {
+      console.error('获取我的分身失败:', err)
+      return { code: 500, msg: '服务器错误', data: [] }
     }
   }
 

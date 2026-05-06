@@ -654,7 +654,7 @@ export default function MindChatPage() {
       
       // 如果没有选中的分身，获取用户第一个分身
       if (!targetAvatarId) {
-        const res = await Network.request({ url: '/api/avatar' })
+        const res = await Network.request({ url: '/api/avatar/my' })
         if (res.data?.code === 200 && res.data.data?.length > 0) {
           targetAvatarId = res.data.data[0].id
           setAvatar(res.data.data[0])
@@ -833,7 +833,7 @@ export default function MindChatPage() {
 
   const fetchDefaultAvatar = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar' })
+      const res = await Network.request({ url: '/api/avatar/my' })
       if (res.data?.code === 200 && res.data.data?.length > 0) {
         const defaultAvatar = res.data.data[0]
         setAvatar(defaultAvatar)
