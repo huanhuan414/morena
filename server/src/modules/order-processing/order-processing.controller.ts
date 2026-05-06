@@ -83,6 +83,39 @@ export class OrderProcessingController {
   }
 
   /**
+   * 更新请求状态
+   */
+  @Put('status/:requestId')
+  async updateStatus(
+    @Param('requestId') requestId: string,
+    @Body('status') status: string
+  ) {
+    try {
+      const client = getSupabaseClient()
+      const { error } = await client
+        .from('order_dispatch_requests')
+        .update({ status })
+        .eq('id', requestId)
+
+      if (error) {
+        throw new Error('更新状态失败')
+      }
+
+      return {
+        code: 200,
+        data: { success: true },
+        message: '状态更新成功'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '更新失败'
+      }
+    }
+  }
+
+  /**
    * 确认内容
    */
   @Post('confirm/:requestId')

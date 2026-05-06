@@ -202,7 +202,22 @@ export default function OrderContentCreation() {
     if (!requestId) return
     setShowConfirm(false)
     
-    // 由于没有自动发布接口，跳转到发布引导页面
+    try {
+      // 先更新状态为 publishing
+      await Network.request({
+        url: `/api/order-processing/status/${requestId}`,
+        method: 'PUT',
+        data: { status: 'publishing' }
+      })
+      // 更新本地 processingData 状态
+      if (processingData) {
+        setProcessingData({ ...processingData, status: 'publishing' })
+      }
+    } catch (err) {
+      console.error('更新状态失败:', err)
+    }
+    
+    // 跳转到发布引导页面
     handleGoToPublishGuide()
   }
 

@@ -492,20 +492,21 @@ export class WriteWechatMomentsTool implements AvatarTool {
       const imageCount = Math.min(params.image_count || 3, 9)
       const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
         const style = params.style || '生活分享'
-        // 每张图片使用不同的角度和构图，确保生成不同的图片
-        const angleOptions = [
-          '正面视角，简洁背景',
-          '侧面视角，自然光线',
-          '俯视角度，平铺展示',
-          '仰视角度，创意构图',
-          '近景特写，突出主体',
-          '远景视角，交代环境',
-          '局部细节，手持展示',
-          '生活场景，自然状态',
-          '精致摆放，专业摄影'
+        // 每张图片使用完全不同的构图和场景，确保生成不同的图片
+        const uniqueScenes = [
+          `${params.topic}，室内场景，柔和自然光，木质家具背景，温暖氛围，高质量摄影`,
+          `${params.topic}，户外场景，阳光明媚，蓝天白云背景，清新自然，4K画质`,
+          `${params.topic}，特写镜头，虚化背景，主体突出，柔和灯光，专业摄影`,
+          `${params.topic}，生活场景，咖啡厅氛围，复古装饰背景，暖色调，电影感`,
+          `${params.topic}，简约风格，纯色背景，简洁干净，高级感，商业摄影`,
+          `${params.topic}，自然光线，窗边拍摄，投影效果，文艺小清新，日系`,
+          `${params.topic}，暗调风格，氛围灯光，神秘感，电影质感，高对比度`,
+          `${params.topic}，明亮色调，白色背景，干净整洁，现代感，杂志风格`,
+          `${params.topic}，生活气息，桌面场景，装饰道具，手作感，温馨氛围`
         ]
-        const angle = angleOptions[i % angleOptions.length]
-        return `${params.topic}，朋友圈风格，${styleGuides[style]}，${angle}，暖色调，高质量，4K`
+        // 确保每张图片的场景描述完全不同
+        const sceneIndex = (i * 3 + i * i) % uniqueScenes.length
+        return uniqueScenes[sceneIndex]
       })
 
       const imageUrls: string[] = []
