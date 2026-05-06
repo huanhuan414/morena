@@ -244,12 +244,12 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: #667eea;
+  transition: opacity 0.3s ease;
 }
 
-.step-dot.active {
-  background: #667eea;
-  animation: step-pulse 1s ease-in-out infinite;
+.step-dot.inactive {
+  opacity: 0.3;
 }
 
 .step-line {
@@ -330,17 +330,6 @@
   }
   100% {
     transform: translateX(100%);
-  }
-}
-
-@keyframes step-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(0.9);
   }
 }
 

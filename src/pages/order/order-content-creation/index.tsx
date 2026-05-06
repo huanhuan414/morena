@@ -44,6 +44,7 @@ export default function OrderContentCreation() {
   const [generatingProgress, setGeneratingProgress] = useState(0)
   const [generatingStep, setGeneratingStep] = useState('')
   const [generatingDotCount, setGeneratingDotCount] = useState(0)
+  const [generatingStepIndex, setGeneratingStepIndex] = useState(0)
 
   useEffect(() => {
     const params = Taro.getCurrentInstance()?.router?.params || {}
@@ -82,6 +83,7 @@ export default function OrderContentCreation() {
       // 重置进度
       setGeneratingProgress(0)
       setGeneratingStep('正在分析订单需求...')
+      setGeneratingStepIndex(0)
       
       // 进度条动画
       const progressInterval = setInterval(() => {
@@ -90,31 +92,28 @@ export default function OrderContentCreation() {
             return 90 // 保留最后10%等后端返回
           }
           // 随机增量，模拟进度
-          const increment = Math.random() * 8 + 2
+          const increment = Math.random() * 5 + 1
           return Math.min(prev + increment, 90)
         })
-      }, 500)
+      }, 800) // 减慢进度更新频率，避免跳动
       
-      // 步骤文字动画
+      // 步骤文字和指示器动画
       const steps = [
-        '正在分析订单需求...',
-        '正在理解目标受众...',
-        '正在生成创意内容...',
-        '正在撰写文案...',
-        '正在生成配图...',
-        '正在优化内容...',
-        '即将完成...'
+        { text: '正在分析订单需求...', index: 0 },
+        { text: '正在理解目标受众...', index: 1 },
+        { text: '正在生成创意内容...', index: 2 }
       ]
       let stepIndex = 0
       const stepInterval = setInterval(() => {
         stepIndex = (stepIndex + 1) % steps.length
-        setGeneratingStep(steps[stepIndex])
-      }, 2000)
+        setGeneratingStep(steps[stepIndex].text)
+        setGeneratingStepIndex(steps[stepIndex].index)
+      }, 2500) // 减慢步骤切换频率
       
       // 省略号动画
       const dotInterval = setInterval(() => {
         setGeneratingDotCount(prev => (prev + 1) % 4)
-      }, 400)
+      }, 500)
       
       return () => {
         clearInterval(progressInterval)
@@ -126,6 +125,7 @@ export default function OrderContentCreation() {
       if (processingData?.status === 'preview' || processingData?.status === 'completed') {
         setGeneratingProgress(100)
         setGeneratingStep('内容生成完成！')
+        setGeneratingStepIndex(2)
       }
     }
   }, [processingData?.status])
@@ -331,11 +331,11 @@ export default function OrderContentCreation() {
             {/* 当前步骤 */}
             <View className="generating-steps">
               <View className="step-indicator">
-                <View className="step-dot active"></View>
+                <View className={`step-dot ${generatingStepIndex === 0 ? '' : 'inactive'}`}></View>
                 <View className="step-line"></View>
-                <View className="step-dot"></View>
+                <View className={`step-dot ${generatingStepIndex === 1 ? '' : 'inactive'}`}></View>
                 <View className="step-line"></View>
-                <View className="step-dot"></View>
+                <View className={`step-dot ${generatingStepIndex === 2 ? '' : 'inactive'}`}></View>
               </View>
               <Text className="step-text">{generatingStep}</Text>
             </View>
