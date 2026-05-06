@@ -258,4 +258,26 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 手动触发任务处理（用于恢复僵尸任务）
+   */
+  @Post('trigger-task/:requestId')
+  async triggerTask(@Param('requestId') requestId: string) {
+    try {
+      const result = await this.processingService.triggerTask(requestId)
+      return {
+        code: 200,
+        data: result,
+        message: '任务已触发'
+      }
+    } catch (error: any) {
+      console.error('[OrderProcessing] 触发任务失败:', error)
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '触发失败'
+      }
+    }
+  }
 }

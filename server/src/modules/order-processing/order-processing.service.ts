@@ -62,6 +62,39 @@ class TaskQueue {
   ) {
     // 每30秒执行一次队列检查
     setInterval(() => this.processQueue(), 30000)
+    
+    // 启动时检查僵尸任务（generating 状态超过5分钟但没有内容的）
+    setTimeout(() => this.recoverZombieTasks(), 5000)
+  }
+
+  // 恢复僵尸任务（generating状态超过5分钟但没有内容）
+  private async recoverZombieTasks() {
+    try {
+      const client = getSupabaseClient()
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      
+      const { data: zombieTasks } = await client
+        .from('order_dispatch_requests')
+        .select('id, order_id, avatar_id')
+        .eq('status', 'generating')
+        .lt('updated_at', fiveMinutesAgo)
+        .is('generated_content', null)
+      
+      if (zombieTasks && zombieTasks.length > 0) {
+        console.log('[TaskQueue] 发现僵尸任务，恢复中:', zombieTasks.length)
+        
+        for (const task of zombieTasks) {
+          // 将任务重新加入队列
+          this.queue.push({ requestId: task.id, timestamp: Date.now() })
+          console.log('[TaskQueue] 僵尸任务已重新加入队列:', task.id)
+        }
+        
+        // 触发队列处理
+        this.processQueue()
+      }
+    } catch (error) {
+      console.error('[TaskQueue] 恢复僵尸任务失败:', error)
+    }
   }
 
   // 加入队列
@@ -448,6 +481,33 @@ export class OrderProcessingService {
     })
 
     return status
+  }
+
+  // 手动触发任务处理
+  async triggerTask(requestId: string): Promise<{ success: boolean; message: string }> {
+    const client = getSupabaseClient()
+    
+    // 查询任务状态
+    const { data: request } = await client
+      .from('order_dispatch_requests')
+      .select('id, order_id, avatar_id, status')
+      .eq('id', requestId)
+      .single()
+
+    if (!request) {
+      return { success: false, message: '任务不存在' }
+    }
+
+    // 将状态改为 accepted 并加入队列
+    await client
+      .from('order_dispatch_requests')
+      .update({ status: 'accepted' })
+      .eq('id', requestId)
+
+    // 加入队列
+    await this.queue.enqueue(requestId)
+
+    return { success: true, message: '任务已触发' }
   }
 
   // 提取反馈中的截图URL（支持多图）
