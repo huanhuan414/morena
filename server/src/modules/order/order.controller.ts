@@ -81,10 +81,11 @@ export class OrderController {
   @Get('list')
   async list(
     @Headers('x-user-id') userId: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('avatar_id') avatarId?: string
   ) {
-    console.log('[OrderController] list 被调用, userId:', userId, 'status:', status)
-    const orders = await this.orderService.getOrders(userId, status)
+    console.log('[OrderController] list 被调用, userId:', userId, 'status:', status, 'avatarId:', avatarId)
+    const orders = await this.orderService.getOrders(userId, status, avatarId)
     return {
       code: 200,
       data: orders,

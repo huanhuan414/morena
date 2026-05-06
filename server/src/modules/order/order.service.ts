@@ -71,9 +71,46 @@ export class OrderService {
     return data
   }
 
-  async getOrders(userId: string, status?: string) {
+  async getOrders(userId: string, status?: string, avatarId?: string) {
     const client = getSupabaseClient()
     
+    // 如果指定了 avatar_id，从 order_dispatch_requests 表获取该分身接受的订单ID
+    if (avatarId) {
+      const { data: requests, error: requestsError } = await client
+        .from('order_dispatch_requests')
+        .select('order_id')
+        .eq('avatar_id', avatarId)
+        .in('status', ['pending', 'accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed', 'failed'])
+      
+      if (requestsError) {
+        throw new Error(`获取分身订单失败: ${requestsError.message}`)
+      }
+      
+      const orderIds = (requests || []).map(r => r.order_id)
+      
+      if (orderIds.length === 0) {
+        return []
+      }
+      
+      let query = client
+        .from('orders')
+        .select('*')
+        .in('id', orderIds)
+      
+      if (status) {
+        query = query.eq('status', status)
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false })
+      
+      if (error) {
+        throw new Error(`获取订单列表失败: ${error.message}`)
+      }
+      
+      return data || []
+    }
+    
+    // 否则返回该用户的订单
     let query = client
       .from('orders')
       .select('*')
