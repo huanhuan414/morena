@@ -174,7 +174,7 @@ class TaskQueue {
       }
 
       // 使用 ContentGenerationService 生成内容
-      // quantity 表示每套内容需要的图片数量
+      // quantityPerAvatar: 图片=张数，视频=个数，图文=套数
       const generatedContents = await this.contentGenerationService.generateContent({
         orderId,
         requestId,
@@ -186,7 +186,7 @@ class TaskQueue {
         targetAudience: order.target_audience || '',
         avatarName: avatar.name,
         avatarPersonality: avatar.personality,
-        quantity: quantityPerAvatar  // 每套内容的图片数量
+        quantity: quantityPerAvatar  // 图片=张数，视频=个数，图文=套数
       })
 
       console.log('[TaskQueue] 内容生成完成:', {
