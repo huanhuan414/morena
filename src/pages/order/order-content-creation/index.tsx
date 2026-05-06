@@ -28,6 +28,8 @@ interface ProcessingData {
   status: 'generating' | 'preview' | 'publishing' | 'completed' | 'failed' | 'queuing' | 'accepted'
   generatedContent?: GeneratedContent
   errorMessage?: string
+  // 存储从后端获取的平台信息（即使 generatedContent 为空也能显示平台）
+  platforms?: string[]
 }
 
 export default function OrderContentCreation() {
@@ -85,7 +87,9 @@ export default function OrderContentCreation() {
           orderTitle: data.orderTitle || '商单内容',
           status: data.status,
           generatedContent: data.generatedContent,
-          errorMessage: data.errorMessage
+          errorMessage: data.errorMessage,
+          // 从 generatedContent 或 orderDataPlatforms 获取平台信息
+          platforms: data.generatedContent?.platforms || data.orderDataPlatforms || []
         })
         if (data.generatedContent?.content) {
           setEditedContent(data.generatedContent.content)
@@ -225,7 +229,7 @@ export default function OrderContentCreation() {
         <View className="order-card-footer">
           <Text className="platform-label">目标平台：</Text>
           <View className="platform-tags">
-            {generatedContent?.platforms?.map((p: string) => (
+            {(processingData?.platforms || generatedContent?.platforms)?.map((p: string) => (
               <Text key={p} className="platform-tag">{PLATFORM_NAMES[p] || p}</Text>
             )) || <Text className="no-platform">未指定</Text>}
           </View>

@@ -180,15 +180,17 @@ export class ContentGenerationService {
         include_background_music: true
       }
     } else if (platform === 'wechat_moments') {
-      // 朋友圈特殊处理：生成3张图 + 爆款文案
+      // 朋友圈特殊处理：生成3张图 + 朋友圈风格的爆款文案
       return {
-        ...baseParams,
-        style: '分享', // 朋友圈使用分享风格
+        topic: `${orderTitle}（发朋友圈）`, // 明确标注是朋友圈
+        description: `[重要：这是微信朋友圈内容，不是小红书]\n${orderDescription}\n\n要求：\n1. 朋友圈文案要简短精炼，30-80字左右\n2. 语言风格：生活化、口语化、真实分享感\n3. 不要用小红书式的"姐妹们""真的绝"等表达\n4. 可以用 emoji 增加趣味\n5. 图片建议3张，符合朋友圈分享风格`,
+        style: '分享',
         keywords: this.extractKeywords(orderDescription),
         include_images: true,
-        image_count: 3, // 朋友圈至少3张图
-        content_style: 'short_viral', // 爆款短文案风格
-        content_length: 'short' // 朋友圈文案简短
+        image_count: 3,
+        content_style: 'short_viral',
+        content_length: 'short',
+        target_audience: `[重要提醒] 这是微信朋友圈（WeChat Moments）内容，不是小红书！\n朋友圈特点：\n- 简短精炼的文字（30-80字）\n- 生活化、口语化的表达\n- 真实自然，不做作\n- 适合与微信好友分享的内容\n\n${targetAudience}`
       }
     }
 
