@@ -12,62 +12,81 @@
   top: 0;
   left: 0;
   right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+}
+
+.as-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 32rpx;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20rpx);
-  border-bottom: 2rpx solid rgba(6, 182, 212, 0.1);
-  z-index: 100;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  gap: 16rpx;
+  padding: 0 32rpx 20rpx;
 }
 
-.as-header-back {
-  padding: 12rpx 24rpx;
-  background: rgba(6, 182, 212, 0.08);
-  border-radius: 12rpx;
-  border: none;
-  transition: all 0.3s ease;
+.as-back-button {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5rpx solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.as-header-back:active {
-  transform: scale(0.95);
-  background: rgba(6, 182, 212, 0.15);
+.as-back-button:active {
+  transform: scale(0.92);
+  background: #f1f5f9;
 }
 
 .as-back-text {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #06b6d4;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.as-header-title-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .as-header-title {
-  font-size: 36rpx;
+  font-size: 40rpx;
   font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.5rpx;
+  color: #0f172a;
+  letter-spacing: -0.5rpx;
 }
 
-.as-header-action {
-  padding: 12rpx 28rpx;
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-  border-radius: 12rpx;
-  border: none;
-  box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
-  transition: all 0.3s ease;
-  margin-right: 20rpx;
-}
-
-.as-header-action:active {
-  transform: scale(0.95);
-  box-shadow: 0 2rpx 8rpx rgba(6, 182, 212, 0.2);
+.as-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .as-action-text {
+  padding: 12rpx 28rpx;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  border-radius: 12rpx;
   font-size: 28rpx;
   font-weight: 700;
   color: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(6, 182, 212, 0.3);
+  transition: all 0.2s ease;
+}
+
+.as-action-btn:active .as-action-text {
+  transform: scale(0.95);
+  box-shadow: 0 2rpx 8rpx rgba(6, 182, 212, 0.2);
 }
 
 /* 滚动容器 - 预留导航栏和胶囊按钮空间 */

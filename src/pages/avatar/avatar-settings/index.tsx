@@ -1,4 +1,4 @@
-import Taro, { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import {
   ChevronRight, Sparkles, Settings, Trash2,
   Volume2, Bell, Moon, Zap, Shield, MapPin
 } from 'lucide-react-taro'
+import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
 interface AvatarSettings {
@@ -42,21 +43,13 @@ export default function AvatarSettingsPage() {
   const [editName, setEditName] = useState('')
   const [editPersonality, setEditPersonality] = useState('')
   
-  // 状态栏和胶囊按钮适配
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [capsuleWidth, setCapsuleWidth] = useState(160)
+  // 安全区域适配
+  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
-    // 初始化状态栏和胶囊按钮信息
-    const systemInfo = Taro.getSystemInfoSync()
-    setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
-    }
+    // 初始化安全区域信息
+    const safeArea = getSafeArea()
+    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
     
     if (avatarId) {
       fetchAvatar()
@@ -238,13 +231,21 @@ export default function AvatarSettingsPage() {
   return (
     <View className="avatar-settings-page">
       {/* 顶部导航 */}
-      <View className="as-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="as-header-back" onClick={() => navigateBack()}>
-          <Text className="as-back-text">← 返回</Text>
-        </View>
-        <Text className="as-header-title">分身设置</Text>
-        <View className="as-header-action" style={{ width: `${capsuleWidth}rpx` }} onClick={() => editing ? saveProfile() : setEditing(true)}>
-          <Text className="as-action-text">{editing ? '保存' : '编辑'}</Text>
+      <View className="as-header">
+        <View className="as-header-top">
+          <View className="as-back-button" onClick={() => navigateBack()}>
+            <Text className="as-back-text">←</Text>
+          </View>
+          <View className="as-header-title-container">
+            <Text className="as-header-title">分身设置</Text>
+          </View>
+          <View 
+            className="as-action-btn" 
+            style={{ width: `${capsulePlaceholderWidth}rpx` }}
+            onClick={() => editing ? saveProfile() : setEditing(true)}
+          >
+            <Text className="as-action-text">{editing ? '保存' : '编辑'}</Text>
+          </View>
         </View>
       </View>
 
