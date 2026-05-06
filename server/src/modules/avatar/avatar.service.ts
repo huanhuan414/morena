@@ -122,7 +122,43 @@ export class AvatarService {
       console.error('[AvatarService] 新分身欢迎机制执行失败:', error)
     })
 
+    // 🔴 新增：如果这是用户的第一个分身，将分身头像同步到用户账号头像
+    await this.syncAvatarToUser(userId, data).catch(error => {
+      console.error('[AvatarService] 同步分身头像到用户失败:', error)
+    })
+
     return data
+  }
+
+  /**
+   * 🔴 如果是用户的第一个分身，将分身头像同步到用户账号头像
+   */
+  private async syncAvatarToUser(userId: string, avatar: any) {
+    const client = getSupabaseClient()
+
+    // 查询该用户已有的分身数量（排除刚创建的这个）
+    const { count, error: countError } = await client
+      .from('avatars')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .neq('id', avatar.id)
+
+    // 如果用户没有其他分身，则这是第一个分身
+    if (count === 0 && avatar.avatar_url) {
+      console.log(`[同步头像] 用户 ${userId} 创建第一个分身，同步头像到用户账号`)
+
+      // 更新用户账号的头像
+      const { error: updateError } = await client
+        .from('users')
+        .update({ avatar: avatar.avatar_url })
+        .eq('id', userId)
+
+      if (updateError) {
+        console.error('[同步头像] 更新用户头像失败:', updateError)
+      } else {
+        console.log(`[同步头像] 用户账号头像已更新为: ${avatar.avatar_url}`)
+      }
+    }
   }
 
   /**
