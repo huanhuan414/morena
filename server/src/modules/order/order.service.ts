@@ -43,6 +43,12 @@ export class OrderService {
     const isPaid = orderData.is_paid !== undefined ? orderData.is_paid : (orderData.budget && orderData.budget > 0 ? false : true)
     const status = isPaid ? 'open' : 'pending_payment'
 
+    // 提取 quantity_per_avatar 到 requirements 中
+    const requirements = orderData.requirements || {}
+    if (orderData.content_config?.quantity_per_avatar) {
+      requirements.quantity_per_avatar = orderData.content_config.quantity_per_avatar
+    }
+
     const { data, error } = await client
       .from('orders')
       .insert({
@@ -52,7 +58,7 @@ export class OrderService {
         content_type: orderData.content_type || 'text',
         platforms: orderData.platforms || [],
         target_audience: orderData.target_audience || null,
-        requirements: orderData.requirements || {},
+        requirements,
         budget: orderData.budget || 0,
         is_paid: isPaid,
         expected_quantity: orderData.expected_quantity || 1,

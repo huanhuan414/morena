@@ -193,24 +193,24 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
     // 公众号文章配图 - 每张图片内容方向完全不同，都围绕主题，适合公众号推广
     const articleTopic = topic || '内容分享'
     
-    // 核心：每张图片的内容方向完全不同，不是改变角度，而是改变"故事"
+    // 核心：每张图片的画面完全不同，确保AI生成不同的图片
     const wechatMpScenes: string[] = [
-      // 图片1：信息图表，数据感强
-      `${articleTopic}的信息图表设计，数据可视化，图表清晰，现代简洁风格，蓝色科技配色，商业感强，适合公众号封面，让人想点击`,
-      // 图片2：精致插画，杂志感
-      `${articleTopic}的精致插画风格，扁平化插画，${articleTopic}元素明确，柔和粉彩色调，温暖氛围，杂志排版感，文艺气息浓厚`,
-      // 图片3：场景插画，文艺治愈
-      `${articleTopic}的手绘插画场景，${articleTopic}融入生活场景，文艺清新氛围，纸张纹理质感，日系治愈风格，让人想收藏`,
-      // 图片4：户外大片，电影感
-      `${articleTopic}的户外实景摄影，${articleTopic}与自然风光结合，高饱和度电影感色调，${articleTopic}在风景中，阳光明媚，让人向往`,
-      // 图片5：职场人物，专业感
-      `${articleTopic}的职场人物场景，${articleTopic}作为主角，专业干练形象，自然柔和光线，生活感强的人文摄影，适合职场分享`,
-      // 图片6：创意合成，超现实
-      `${articleTopic}的创意合成艺术，${articleTopic}元素创意呈现，高级感设计，渐变背景色，超现实主义创意图片，让人印象深刻`,
-      // 图片7：产品精修，商业感
-      `${articleTopic}的产品精修展示，${articleTopic}单品突出，纯白背景商业摄影，精致修图，高质感商业摄影，适合产品推广`,
-      // 图片8：复古杂志风
-      `${articleTopic}的复古杂志风格，${articleTopic}主题明确，复古色调，文案排版设计，文艺气息浓厚，高级感排版风格，让人眼前一亮`
+      // 图片1：职场办公场景
+      `微信公众号风格，一位专业女性职场精英在现代办公室，${articleTopic}完美融入场景，白领职业装，自然柔和光线，高端职场感，${articleTopic}质感完美，专业感强，适合职场公众号，让人想点击`,
+      // 图片2：户外旅行大片
+      `微信公众号风格，${articleTopic}与海边日落结合，金色阳光，${articleTopic}在风景中，电影感人像构图，高饱和度暖色调，${articleTopic}质感完美，大片感强，让人向往远方`,
+      // 图片3：精致美食场景
+      `微信公众号美食风格，${articleTopic}精致美食摄影，${articleTopic}作为美食主角，马卡龙粉色系，木质或白色餐盘，${articleTopic}让人流口水，商业美食摄影，让人食欲大增`,
+      // 图片4：科技数码展示
+      `微信公众号科技风格，${articleTopic}科技产品展示，${articleTopic}单品，纯白背景专业摄影，现代科技感，高清质感，${articleTopic}完美呈现，适合科技公众号，让人想购买`,
+      // 图片5：家居生活场景
+      `微信公众号生活风格，${articleTopic}在温馨家居场景，${articleTopic}质感完美，奶油色系家居，柔和暖光，${articleTopic}融入生活，居家感强，治愈系风格，让人想收藏`,
+      // 图片6：时尚穿搭展示
+      `微信公众号时尚风格，${articleTopic}单品穿搭展示，${articleTopic}作为主角，日系原宿风，同色系搭配，简约背景，专业时尚摄影，让人想购买的冲动感`,
+      // 图片7：商务会议场景
+      `微信公众号商业风格，${articleTopic}在精致商务会议中，${articleTopic}质感完美，深色商务装，正式会议场景，${articleTopic}完美呈现，商务感强，适合商业公众号`,
+      // 图片8：艺术插画风格
+      `微信公众号插画风格，${articleTopic}精致插画设计，扁平化插画，${articleTopic}元素明确，柔和粉彩色调，温暖氛围，杂志排版感，文艺气息浓厚，让人眼前一亮`
     ]
     const paragraphs = content.split('\n\n').filter(p => p.trim())
     if (paragraphs.length === 0) return content
@@ -223,12 +223,14 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
       const config = new Config()
       const imageClient = new ImageGenerationClient(config)
 
-      for (const prompt of imagePrompts) {
+      for (let i = 0; i < imagePrompts.length; i++) {
+        const prompt = imagePrompts[i]
         try {
           const response = await imageClient.generate({
             prompt: `${prompt}, 4K, high quality`,
             size: '1K',
-            watermark: false
+            watermark: false,
+            seed: Math.floor(Math.random() * 2147483647) + i * 1000000 // 随机种子确保每张图片不同
           })
           const helper = imageClient.getResponseHelper(response)
           if (helper.success && helper.imageUrls.length > 0) {
@@ -351,26 +353,24 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
       const imageCount = Math.min(params.images_count || 3, 9)
       const xhsTopic = params.topic || '分享'
       
-      // 核心：每张图片的内容方向完全不同，不是改变角度，而是改变"故事"
+      // 核心：每张图片的画面完全不同，确保AI生成不同的图片
       const xhsImagePrompts: string[] = [
         // 图片1：精致下午茶场景
-        `${xhsTopic}的精致下午茶场景，高颜值甜点或饮品，${xhsTopic}元素融入其中，精致餐具，木质桌面，窗边自然光，暖色调，氛围感强，适合小红书种草`,
+        `小红书风格，一位年轻女生在阳光咖啡厅享受下午茶，${xhsTopic}精致摆盘，提拉米苏或马卡龙，马卡龙粉色系，木质桌面，窗边自然光，暖色调，画面精美，高画质，适合小红书种草分享`,
         // 图片2：卧室温馨角落
-        `${xhsTopic}在温馨卧室场景，白色床品或靠垫，${xhsTopic}作为装饰主角，柔和暖光，居家感强，${xhsTopic}质感完美呈现，治愈系风格`,
+        `小红书风格，${xhsTopic}在温馨卧室床上展示，白色奶油色床品，${xhsTopic}质感完美，柔和暖黄灯光，复古抱枕装饰，居家生活感，${xhsTopic}质感完美呈现，治愈系风格，让人想收藏`,
         // 图片3：户外旅行日记
-        `${xhsTopic}与旅途风景结合，蓝天白云或落日晚霞，${xhsTopic}在风景中，电影感色调，旅行大片风格，高饱和度，让人向往`,
-        // 图片4：美食特写质感
-        `${xhsTopic}的美食摄影特写，单反微距镜头，${xhsTopic}质感完美呈现，虚化背景，商业美食摄影，${xhsTopic}色香味俱全感，让人流口水`,
+        `小红书风格，${xhsTopic}与海边日落风景结合，金色沙滩，${xhsTopic}在草帽或野餐垫上，日落橙色调，电影感人像构图，高饱和度，${xhsTopic}融入旅途，让人向往远方`,
+        // 图片4：美食摄影特写
+        `小红书美食风格，${xhsTopic}精致特写镜头，单反微距摄影，${xhsTopic}质感完美，浅景深虚化背景，马卡龙色调，商业美食摄影风格，${xhsTopic}让人流口水食欲感`,
         // 图片5：时尚穿搭展示
-        `${xhsTopic}单品穿搭展示，同色系搭配，日系杂志风，简约背景，专业时尚摄影，${xhsTopic}完美展示，适合种草推荐`,
-        // 图片6：护肤美妆精致
-        `${xhsTopic}的精致护肤场景，玻璃瓶身，玫瑰花瓣或绿植装饰，${xhsTopic}精致感，干玫瑰色系，纯欲风格，小红书爆款风格`,
-        // 图片7：书房文艺角落
-        `${xhsTopic}的书房文艺场景，木质书架，台灯暖黄光，复古书籍装饰，${xhsTopic}融入文艺氛围，文青风格，让人想收藏`,
-        // 图片8：咖啡厅小资风
-        `${xhsTopic}的咖啡厅小资场景，${xhsTopic}在精致咖啡厅中，${xhsTopic}主角感强，复古或文艺咖啡馆氛围，窗边光线，文青感`,
-        // 图片9：极简产品展示
-        `${xhsTopic}单品极简展示，纯白或纯色背景，现代设计感，极简主义风格，${xhsTopic}完美呈现，电商质感，适合小红书推广`
+        `小红书时尚风格，${xhsTopic}单品穿搭展示，${xhsTopic}作为主角，日系原宿风，同色系搭配，简约白色背景，专业时尚摄影，让人想购买的冲动感`,
+        // 图片6：护肤场景
+        `小红书护肤风格，${xhsTopic}精致护肤场景，玻璃瓶身，玫瑰花瓣装饰，${xhsTopic}质感完美，干玫瑰色系，自然光柔和光线，${xhsTopic}精致感，纯欲风格，小红书爆款`,
+        // 图片7：书房学习场景
+        `小红书文艺风格，${xhsTopic}在精致书房展示，木质书架背景，台灯暖黄光，复古书籍装饰，${xhsTopic}融入文艺氛围，文青风格，让人想收藏`,
+        // 图片8：咖啡厅工作场景
+        `小红书生活风格，${xhsTopic}在文艺咖啡厅中，${xhsTopic}在精心布置的桌面上，拿铁咖啡，${xhsTopic}质感完美，窗边光线，文青感，记录美好生活`
       ].slice(0, imageCount)
 
       const imageUrls: string[] = []
@@ -378,10 +378,13 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
         const config = new Config()
         const imageClient = new ImageGenerationClient(config)
 
-        for (const prompt of xhsImagePrompts) {
+        for (let i = 0; i < xhsImagePrompts.length; i++) {
+          const prompt = xhsImagePrompts[i]
+          const uniqueId = `${i + 1}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          const uniquePrompt = `${prompt} [图片序号: ${i + 1}, 唯一ID: ${uniqueId}]`
           try {
             const response = await imageClient.generate({
-              prompt,
+              prompt: uniquePrompt,
               size: '1K',
               watermark: false
             })
@@ -537,36 +540,38 @@ export class WriteWechatMomentsTool implements AvatarTool {
       const imageCount = Math.min(params.image_count || 3, 9)
       const topic = params.topic || '生活分享'
       
-      // 核心：每张图片的内容方向完全不同，不是改变角度，而是改变"故事"
+      // 核心：每张图片的画面完全不同，确保AI生成不同的图片
       const imagePrompts = [
-        // 图片1：户外阳光明媚，活力感
-        `${topic}，阳光明媚的户外场景，蓝天白云背景，大自然光线，高饱和度暖色调，年轻活力感，广角视野，旅行大片风格，适合朋友圈分享`,
-        // 图片2：室内温暖角落，居家感
-        `${topic}，温馨的室内一角，木质家具或文艺装饰，暖黄色灯光，柔和阴影，居家舒适感，治愈系风格，让人想点赞收藏`,
-        // 图片3：人物生活场景，代入感
-        `${topic}融入日常生活场景，人物自然互动或生活道具，${topic}作为主角抓拍，真实自然感，故事性强，代入感强，适合种草推荐`,
-        // 图片4：美食精致特写，高级感
-        `${topic}的精致特写，单反微距摄影，${topic}质感完美呈现，浅景深虚化背景，商业美食摄影风格，高级感强，吸引眼球`,
-        // 图片5：极简纯色背景，产品感
-        `${topic}单品展示，纯色渐变背景，现代设计感，极简主义风格，${topic}完美呈现，电商产品图质感，商业摄影风格，适合推广`,
-        // 图片6：夜景氛围感，浪漫神秘
-        `${topic}的夜景氛围拍摄，暖黄灯光或霓虹色调，暗调背景，${topic}在夜色中，浪漫神秘感，电影感人像风格，让人心动`,
-        // 图片7：复古胶片风格，文艺独特
-        `${topic}的胶片复古感，颗粒质感明显，暖色调偏色，漏光效果，胶片边框感，文艺青年风格，独特吸睛，让人印象深刻`,
-        // 图片8：工作学习场景，干练专业
-        `${topic}的工作或学习场景，${topic}融入专业氛围，书桌或办公环境，干练专业形象，自然光线，${topic}质感强，适合职场分享`,
-        // 图片9：艺术插画风格，创意独特
-        `${topic}的手绘插画风格，扁平或矢量插画，${topic}元素完美融入，现代插画设计感，艺术气息浓厚，创意独特，让人眼前一亮`
+        // 图片1：城市街景，年轻人拿着产品
+        `朋友圈风格摄影，一位年轻女性/男性手持${topic}，站在繁忙的城市街道，背景是霓虹灯和现代建筑，清晨自然光，高画质，人物占画面三分之一，自然抓拍感，真实生活气息，适合社交媒体`,
+        // 图片2：海边日落，产品融入风景
+        `朋友圈分享风格${topic}，黄昏时分海边日落场景，${topic}作为画面核心道具摆放，暖橙色天空，海浪沙滩，电影感构图，广角视野，大片质感，让人向往远方`,
+        // 图片3：咖啡厅精致下午茶场景
+        `朋友圈种草风格，精致的咖啡厅下午茶场景，${topic}完美融入场景，原木桌面，绿色植物点缀，拿铁拉花，${topic}质感完美，阳光透过窗户照射，小清新治愈系，画面精美`,
+        // 图片4：卧室温馨角落，产品展示
+        `朋友圈风格场景照，${topic}在温馨的卧室角落展示，米白色床品，暖色台灯，${topic}质感完美呈现，居家生活感，温暖治愈，让人想收藏，摄影作品质感`,
+        // 图片5：户外露营野餐场景
+        `朋友圈旅行风格${topic}，户外露营野餐场景，${topic}在野餐垫上展示，蓝天白云，草地树林，${topic}融入自然氛围，清新自然风，让人想体验，广角构图`,
+        // 图片6：厨房烹饪场景
+        `朋友圈美食风格${topic}，现代厨房烹饪场景，${topic}作为主角展示，不锈钢厨具背景，自然光从窗户射入，${topic}质感完美，烟火气与生活感，记录美好生活`,
+        // 图片7：健身房运动场景
+        `朋友圈运动风格${topic}，现代健身房场景，${topic}作为运动装备展示，镜子反射，器材背景，${topic}质感强，充满活力，阳光透过天窗，健康生活态度`,
+        // 图片8：书桌学习工作场景
+        `朋友圈学习风格${topic}，简约书桌学习工作场景，${topic}在精心布置的桌面上，文具书本咖啡，${topic}质感完美，文艺清新，窗边自然光，积极向上的生活态度`
       ].slice(0, imageCount)
 
       const imageUrls: string[] = []
       try {
         const imageClient = new ImageGenerationClient(config)
 
-        for (const promptText of imagePrompts) {
+        for (let i = 0; i < imagePrompts.length; i++) {
+          const promptText = imagePrompts[i]
+          // 添加唯一标识确保每次生成都不同
+          const uniqueId = `${i + 1}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          const uniquePrompt = `${promptText} [图片序号: ${i + 1}, 唯一ID: ${uniqueId}]`
           try {
             const imgResponse = await imageClient.generate({
-              prompt: promptText,
+              prompt: uniquePrompt,
               size: '1K',
               watermark: false
             })
