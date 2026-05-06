@@ -31,7 +31,7 @@ export class PalmReadingService {
   /**
    * 创建任务并异步执行
    */
-  async createTask(imageUrl: string, avatarId?: string): Promise<PalmReadingRecord> {
+  async createTask(imageUrl: string, avatarId?: string, userId?: string): Promise<PalmReadingRecord> {
     const { data, error } = await this.supabase
       .from('palm_reading_records')
       .insert({
@@ -39,6 +39,7 @@ export class PalmReadingService {
         palm_image_url: imageUrl,
         status: 'pending',
         progress: '任务已创建',
+        user_id: userId || null,
       })
       .select()
       .single();
@@ -180,12 +181,14 @@ STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white pa
     return data as PalmReadingRecord;
   }
 
-  async getHistory(avatarId?: string, page = 1, limit = 10): Promise<{ records: PalmReadingRecord[]; total: number }> {
+  async getHistory(userId?: string, avatarId?: string, page = 1, limit = 10): Promise<{ records: PalmReadingRecord[]; total: number }> {
     const offset = (page - 1) * limit;
 
     // 先查总数
     let countQuery = this.supabase.from('palm_reading_records').select('*', { count: 'exact', head: true });
-    if (avatarId) {
+    if (userId) {
+      countQuery = countQuery.eq('user_id', userId);
+    } else if (avatarId) {
       countQuery = countQuery.eq('avatar_id', avatarId);
     }
     const { count } = await countQuery;
@@ -197,7 +200,9 @@ STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white pa
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (avatarId) {
+    if (userId) {
+      dataQuery = dataQuery.eq('user_id', userId);
+    } else if (avatarId) {
       dataQuery = dataQuery.eq('avatar_id', avatarId);
     }
     const { data, error } = await dataQuery;
@@ -210,9 +215,22 @@ STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white pa
   }
 
   /**
-   * 删除指定记录
+   * 删除指定记录（需验证用户ID）
    */
-  async deleteRecord(id: string): Promise<void> {
+  async deleteRecord(id: string, userId?: string): Promise<void> {
+    // 如果提供了 userId，先验证记录是否属于该用户
+    if (userId) {
+      const { data } = await this.supabase
+        .from('palm_reading_records')
+        .select('user_id')
+        .eq('id', id)
+        .single();
+
+      if (data && data.user_id && data.user_id !== userId) {
+        throw new Error('无权删除此记录');
+      }
+    }
+
     const { error } = await this.supabase.from('palm_reading_records').delete().eq('id', id);
     if (error) {
       throw new Error(`删除记录失败: ${error.message}`);
@@ -220,11 +238,13 @@ STYLE: All text in Chinese. Fine lines, rounded cards, minimalist black-white pa
   }
 
   /**
-   * 清空所有历史记录
+   * 清空所有历史记录（按用户ID）
    */
-  async clearHistory(avatarId?: string): Promise<void> {
+  async clearHistory(userId?: string, avatarId?: string): Promise<void> {
     let query = this.supabase.from('palm_reading_records').delete();
-    if (avatarId) {
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else if (avatarId) {
       query = query.eq('avatar_id', avatarId);
     }
     const { error } = await query;

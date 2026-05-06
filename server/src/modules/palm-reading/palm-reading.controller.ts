@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Param, Delete, Headers } from '@nestjs/common';
 import { PalmReadingService } from './palm-reading.service';
 
 @Controller('palm-reading')
@@ -9,7 +9,10 @@ export class PalmReadingController {
    * 创建掌相阅读任务（异步，立即返回taskId）
    */
   @Post('create')
-  async create(@Body() body: { imageUrl: string; avatarId?: string }) {
+  async create(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { imageUrl: string; avatarId?: string }
+  ) {
     const { imageUrl, avatarId } = body;
 
     if (!imageUrl) {
@@ -17,7 +20,7 @@ export class PalmReadingController {
     }
 
     try {
-      const record = await this.palmReadingService.createTask(imageUrl, avatarId);
+      const record = await this.palmReadingService.createTask(imageUrl, avatarId, userId);
       return { code: 200, message: '任务创建成功', data: record };
     } catch (error: any) {
       return { code: 500, message: error.message || '创建任务失败', data: null };
@@ -38,10 +41,11 @@ export class PalmReadingController {
   }
 
   /**
-   * 查询历史记录（支持分页）
+   * 查询历史记录（支持分页，按用户ID过滤）
    */
   @Get('history')
   async getHistory(
+    @Headers('x-user-id') userId: string,
     @Query('avatarId') avatarId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -49,7 +53,7 @@ export class PalmReadingController {
     try {
       const pageNum = page ? parseInt(page, 10) : 1;
       const limitNum = limit ? parseInt(limit, 10) : 10;
-      const result = await this.palmReadingService.getHistory(avatarId, pageNum, limitNum);
+      const result = await this.palmReadingService.getHistory(userId, avatarId, pageNum, limitNum);
       return { code: 200, message: '查询成功', data: result };
     } catch (error: any) {
       return { code: 500, message: error.message || '查询失败', data: null };
@@ -60,9 +64,12 @@ export class PalmReadingController {
    * 删除指定记录
    */
   @Delete(':id')
-  async deleteRecord(@Param('id') id: string) {
+  async deleteRecord(
+    @Headers('x-user-id') userId: string,
+    @Param('id') id: string
+  ) {
     try {
-      await this.palmReadingService.deleteRecord(id);
+      await this.palmReadingService.deleteRecord(id, userId);
       return { code: 200, message: '删除成功', data: null };
     } catch (error: any) {
       return { code: 500, message: error.message || '删除失败', data: null };
@@ -73,9 +80,12 @@ export class PalmReadingController {
    * 清空所有历史记录
    */
   @Delete()
-  async clearHistory(@Query('avatarId') avatarId?: string) {
+  async clearHistory(
+    @Headers('x-user-id') userId: string,
+    @Query('avatarId') avatarId?: string
+  ) {
     try {
-      await this.palmReadingService.clearHistory(avatarId);
+      await this.palmReadingService.clearHistory(userId, avatarId);
       return { code: 200, message: '清空成功', data: null };
     } catch (error: any) {
       return { code: 500, message: error.message || '清空失败', data: null };

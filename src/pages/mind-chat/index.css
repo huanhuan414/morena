@@ -548,7 +548,7 @@
 }
 
 .message-item.user .message-bubble {
-  background: var(--primary);
+  background: #60a5fa; /* 浅蓝色，更柔和协调 */
   border-bottom-right-radius: var(--space-1);
 }
 

@@ -205,6 +205,47 @@ export class AvatarController {
   /**
    * 获取分身学习数据
    */
+  @Post('accounts')
+  async createAccount(
+    @Body() body: any
+  ) {
+    try {
+      console.log('[AvatarController] 创建账号:', body)
+      const account = await this.avatarService.createAccount(body.avatar_id, body)
+      return { code: 200, msg: 'success', data: account }
+    } catch (err) {
+      console.error('[AvatarController] 创建账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Put('accounts/:id')
+  async updateAccount(
+    @Param('id') id: string,
+    @Body() body: any
+  ) {
+    try {
+      console.log('[AvatarController] 更新账号:', id, body)
+      const account = await this.avatarService.updateAccount(id, body)
+      return { code: 200, msg: 'success', data: account }
+    } catch (err) {
+      console.error('[AvatarController] 更新账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Delete('accounts/:id')
+  async deleteAccount(@Param('id') id: string) {
+    try {
+      console.log('[AvatarController] 删除账号:', id)
+      await this.avatarService.deleteAccount(id)
+      return { code: 200, msg: 'success' }
+    } catch (err) {
+      console.error('[AvatarController] 删除账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误' }
+    }
+  }
+
   @Get(':id/learning')
   async getLearningData(@Param('id') id: string) {
     try {

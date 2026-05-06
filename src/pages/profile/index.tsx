@@ -267,7 +267,7 @@ export default function ProfilePage() {
             <Text className="h-stat-value">{stats.avatarCount}</Text>
             <Text className="h-stat-label">AI分身</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/order/order-list/index?mode=avatar' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-manage/index' })}>
             <Text className="h-stat-value">{stats.taskCount}</Text>
             <Text className="h-stat-label">商单</Text>
           </View>
