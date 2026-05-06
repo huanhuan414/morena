@@ -6,7 +6,7 @@
 import { Injectable } from '@nestjs/common'
 import { AvatarTool, ToolContext, ToolResult } from './tool.interface'
 import axios from 'axios'
-import { S3Storage } from 'coze-coding-dev-sdk'
+import { S3Storage, Config, ImageGenerationClient } from 'coze-coding-dev-sdk'
 
 /**
  * 专业提示词优化器 - 图片
