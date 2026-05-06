@@ -242,16 +242,20 @@ const getSkillIcon = (toolName?: string): string => {
 }
 
 // 🔴 过滤掉非公众号发布技能
-// 只保留公众号发布相关技能
+// 只保留公众号发布相关技能（publish_ 开头的技能只保留公众号发布）
 const filterSkills = (skills: Skill[]): Skill[] => {
-  // 只保留公众号发布相关的技能
   const allowedToolNames = [
     'publish_wechat_mp',      // 发布公众号
     'write_wechat_mp_article'  // 写公众号文章
   ]
-  return skills.filter(skill => 
-    skill.tool_name && allowedToolNames.includes(skill.tool_name)
-  )
+  return skills.filter(skill => {
+    // 如果不是 publish_ 开头的技能，正常显示
+    if (!skill.tool_name || !skill.tool_name.startsWith('publish_')) {
+      return true
+    }
+    // publish_ 开头的技能只保留公众号相关的
+    return allowedToolNames.includes(skill.tool_name)
+  })
 }
 
 interface Skill {
