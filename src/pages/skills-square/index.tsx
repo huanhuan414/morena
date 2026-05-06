@@ -908,7 +908,8 @@ export default function SkillsSquare() {
               </View>
             )}
 
-            {(!searchKeyword ? skills : searchKeyword === '发布' ? filterSkills(skills) : skills).map((skill) => {
+            {/* 始终对发布相关技能进行过滤，只保留公众号发布技能 */}
+            {filterSkills(skills).map((skill) => {
               const owned = isOwned(skill.id)
               const displayName = getSkillDisplayName(skill.name, skill.tool_name || '')
               console.log('[SkillSquare] 渲染技能卡片:', {
