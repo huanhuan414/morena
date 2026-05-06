@@ -251,7 +251,6 @@ export default function AvatarSettingsPage() {
       <ScrollView 
         className="as-scroll" 
         scrollY
-        style={{ paddingTop: `${statusBarHeight + 90}rpx` }}
       >
         {/* 分身信息 */}
         <View className="as-avatar-section">
