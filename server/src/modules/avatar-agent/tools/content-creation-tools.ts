@@ -209,7 +209,7 @@ ${params.keywords?.length ? `关键词：${params.keywords.join('、')}` : ''}
     const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
       const sceneIndex = i % wechatMpScenes.length
       const scene = wechatMpScenes[sceneIndex]
-      return `${scene}\n${topic}\n${timestamp + i}\n公众号风格\n序号:${i + 1}/1张\n避免重复`
+      return `${scene}`
     })
 
     let imageUrls: string[] = []
@@ -358,7 +358,8 @@ export class WriteXiaohongshuNoteTool implements AvatarTool {
       const imagePrompts = Array.from({ length: imageCount }, (_, i) => {
         const sceneIndex = i
         const scene = xiaohongshuScenes[sceneIndex]
-        return `${scene}\n${params.topic}\n${timestamp + i}\n小红书风格\n生成序号:${i + 1}/1张\n确保每张图片完全不同`
+        // 只使用场景描述，不包含订单内容
+        return `${scene}`
       })
 
       const imageUrls: string[] = []
@@ -541,8 +542,8 @@ export class WriteWechatMomentsTool implements AvatarTool {
         // 使用固定顺序而非计算，确保每张图片完全不同
         const sceneIndex = i
         const scene = uniqueScenes[sceneIndex]
-        // 添加唯一标识和时间戳确保每次生成的图片都不同
-        return `${scene}\n${params.topic}\n${style}\n生成序号:${i + 1}/1张\n独特风格编号:${timestamp + i}\n避免重复：请生成与之前完全不同的图片`
+        // 只使用场景描述，不包含订单内容，避免敏感内容检测
+        return `${scene}`
       })
 
       const imageUrls: string[] = []
