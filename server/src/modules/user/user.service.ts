@@ -65,24 +65,27 @@ export class UserService {
     const totalAvatarExp = (userAvatars || []).reduce((sum, a) => sum + (a.exp || 0), 0)
     const maxAvatarLevel = userAvatars?.length ? Math.max(...userAvatars.map(a => a.level || 1)) : 1
     
-    // 获取用户下单的订单数量（任务大厅：待接受 + 执行中 = 商单数量）
-    // userId = 当前用户，表示用户作为发单方的订单
+    // 获取用户分身接的订单数量（待接单 + 执行中）
+    // avatarIds = 该用户创建的所有分身ID
+    // orders.avatar_id IN (这些分身ID) 表示分身接的订单
     let orderCount = 0
-    // 待接受的商单数量
-    const { count: pendingCount } = await client
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-    
-    // 执行中的商单数量
-    const { count: executingCount } = await client
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('status', 'generating')
-    
-    orderCount = (pendingCount || 0) + (executingCount || 0)
+    if (avatarIds.length > 0) {
+      // 待接受的商单数量
+      const { count: pendingCount } = await client
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+        .eq('status', 'pending')
+      
+      // 执行中的商单数量
+      const { count: executingCount } = await client
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('avatar_id', avatarIds)
+        .eq('status', 'generating')
+      
+      orderCount = (pendingCount || 0) + (executingCount || 0)
+    }
     
     // 获取用户的帖子数量（动态）
     const { count: postCount } = await client
