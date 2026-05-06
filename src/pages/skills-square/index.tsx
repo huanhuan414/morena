@@ -153,7 +153,8 @@ const AGENT_ORDER_SKILL = {
   purchase_count: 500
 }
 
-// 个人IP打造技能配置
+/*
+// 个人IP打造技能配置（已隐藏）
 const PERSONAL_IP_KIT: {
   id: string;
   name: string;
@@ -179,6 +180,7 @@ const PERSONAL_IP_KIT: {
   rating: 5.0,
   purchase_count: 666
 }
+*/
 
 // 自动发帖助手技能配置
 const AUTO_POST_SKILL = {
@@ -239,15 +241,17 @@ const getSkillIcon = (toolName?: string): string => {
   return iconMap[toolName || ''] || iconMap['default']
 }
 
-// 🔴 过滤掉短剧套件和个人IP套件中的技能
-// 注意：只保留有tool_name且不在套件列表中的技能
+// 🔴 过滤掉非公众号发布技能
+// 只保留公众号发布相关技能
 const filterSkills = (skills: Skill[]): Skill[] => {
-  const kitSkillToolNames = new Set([
-    ...SHORT_DRAMA_KIT.skills,
-    ...PERSONAL_IP_KIT.skills
-  ])
-  // ✅ 正确逻辑：只保留有tool_name且不在套件列表中的技能
-  return skills.filter(skill => skill.tool_name && !kitSkillToolNames.has(skill.tool_name))
+  // 只保留公众号发布相关的技能
+  const allowedToolNames = [
+    'publish_wechat_mp',      // 发布公众号
+    'write_wechat_mp_article'  // 写公众号文章
+  ]
+  return skills.filter(skill => 
+    skill.tool_name && allowedToolNames.includes(skill.tool_name)
+  )
 }
 
 interface Skill {
