@@ -24,7 +24,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  padding: 0 32rpx 20rpx;
+  padding: 44rpx 160rpx 20rpx 32rpx;
 }
 
 .as-back-button {
