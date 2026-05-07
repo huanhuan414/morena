@@ -196,7 +196,7 @@ export default function AvatarRecommendPage() {
       reasons.push('性格匹配度高')
     }
 
-    if (avatar.abilities.length > 0) {
+    if (avatar.abilities && avatar.abilities.length > 0) {
       reasons.push('技能互补')
     }
 
