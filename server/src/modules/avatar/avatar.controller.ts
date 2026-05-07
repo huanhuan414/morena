@@ -305,6 +305,18 @@ export class AvatarController {
     }
   }
 
+  @Delete(':id')
+  async deleteAvatar(@Param('id') id: string, @Headers('x-user-id') userId: string) {
+    try {
+      console.log('[AvatarController] 删除分身:', id, 'userId:', userId)
+      await this.avatarService.deleteAvatar(id, userId)
+      return { code: 200, msg: '删除成功' }
+    } catch (err) {
+      console.error('[AvatarController] 删除分身失败:', err)
+      return { code: 500, msg: err.message || '服务器错误' }
+    }
+  }
+
   @Get(':id/learning')
   async getLearningData(@Param('id') id: string) {
     try {
