@@ -570,6 +570,15 @@ export default function MindChatPage() {
         } else {
           fetchDefaultAvatar()
         }
+      } else if (!avatar) {
+        // 如果不是首次加载但还没有分身，尝试获取
+        const routeAvatarId = router.params.avatarId
+        if (routeAvatarId) {
+          fetchAvatar(routeAvatarId)
+          fetchOrCreateConversation(routeAvatarId)
+        } else {
+          fetchDefaultAvatar()
+        }
       }
 
       // 延迟获取学习数据，确保 avatar 已加载
