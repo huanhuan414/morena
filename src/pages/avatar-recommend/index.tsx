@@ -356,14 +356,16 @@ export default function AvatarRecommendPage() {
       </ScrollView>
 
       {/* 全局跳过按钮 */}
-      <View style={{
-        position: 'fixed',
-        bottom: 50,
-        left: 16,
-        right: 16,
-        zIndex: 100
-      }}>
-        <View 
+      <View
+        style={{
+          position: 'fixed',
+          bottom: 50,
+          left: 16,
+          right: 16,
+          zIndex: 100
+        }}
+      >
+        <View
           className="skip-btn-full"
           onClick={handleSkip}
         >

@@ -221,6 +221,17 @@
   background: #fff;
   border-radius: 16px;
   overflow: hidden;
+  width: 100%;
+}
+
+/* 确保平台反馈区域宽度拉满 */
+.publish-platforms-list {
+  width: 100%;
+}
+
+.publish-platforms-list .platform-card {
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .status-badge {

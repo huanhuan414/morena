@@ -335,3 +335,13 @@ input, textarea {
 .page-header {
   padding-top: calc(env(safe-area-inset-top) + 200rpx) !important;
 }
+
+/* 发布反馈页面平台卡片宽度拉满 */
+.order-publish-feedback-page .platform-card,
+.order-publish-feedback-page Card {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}

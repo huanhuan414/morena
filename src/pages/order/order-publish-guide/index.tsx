@@ -305,10 +305,10 @@ export default function OrderPublishGuide() {
             
             if (result.data?.code === 200) {
               Taro.showToast({ title: '发布成功', icon: 'success' })
-              // 跳转到待反馈页面，传递 orderId（avatarId 会从订单数据中获取）
+              // 跳转到发布反馈页面
               setTimeout(() => {
                 Taro.redirectTo({
-                  url: `/pages/order-feedback/index?orderId=${orderId}`
+                  url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
                 })
               }, 1000)
             } else {

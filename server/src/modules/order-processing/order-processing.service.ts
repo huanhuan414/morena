@@ -328,18 +328,24 @@ export class OrderProcessingService {
       .eq('id', requestId)
       .single()
 
-    // 查询生成的内容（包括图片）
-    let imageSuggestions: string[] = []
-    const { data: genContent } = await client
+    // 查询生成的内容（包括图片）- 收集所有图片URL
+    const { data: genContents } = await client
       .from('generated_content')
       .select('image_suggestions')
       .eq('request_id', requestId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
     
-    if (genContent?.image_suggestions) {
-      imageSuggestions = genContent.image_suggestions
+    const imageSuggestions: string[] = []
+    if (genContents && genContents.length > 0) {
+      for (const gc of genContents) {
+        if (gc.image_suggestions && Array.isArray(gc.image_suggestions)) {
+          for (const img of gc.image_suggestions) {
+            if (img && !imageSuggestions.includes(img)) {
+              imageSuggestions.push(img)
+            }
+          }
+        }
+      }
     }
 
     if (requestError) {
