@@ -1,7 +1,8 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
-      navigationBarTitleText: '分身资料',
+      // 不使用原生导航栏，使用自定义 page-header
+      disableScroll: false,
       enableShareAppMessage: true,
       enableShareTimeline: true
     })
-  : { navigationBarTitleText: '分身资料' }
+  : { disableScroll: false }

@@ -265,11 +265,12 @@ export class AvatarController {
    */
   @Post('accounts')
   async createAccount(
+    @Headers('x-user-id') userId: string,
     @Body() body: any
   ) {
     try {
       console.log('[AvatarController] 创建账号:', body)
-      const account = await this.avatarService.createAccount(body.avatar_id, body)
+      const account = await this.avatarService.createAccount(userId, body)
       return { code: 200, msg: 'success', data: account }
     } catch (err) {
       console.error('[AvatarController] 创建账号失败:', err)

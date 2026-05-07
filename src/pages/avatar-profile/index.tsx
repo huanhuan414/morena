@@ -141,7 +141,7 @@ export default function AvatarProfilePage() {
           >
             <ArrowLeft size={24} color="#333" />
           </View>
-          <Text className="page-title">分身主页</Text>
+          <Text className="page-title block">分身主页</Text>
           <View style={{ width: `${capsulePlaceholderWidth}rpx` }} />
         </View>
       </View>
@@ -150,7 +150,7 @@ export default function AvatarProfilePage() {
         {loading ? (
           <View className="loading-state">
             <Sparkles size={32} color="#666" className="animate-spin" />
-            <Text className="loading-text">加载中...</Text>
+            <Text className="loading-text block">加载中...</Text>
           </View>
         ) : profile ? (
           <View className="profile-content">
@@ -170,20 +170,20 @@ export default function AvatarProfilePage() {
                 )}
                 <View className="level-badge">
                   <Star size={12} color="#fff" />
-                  <Text className="level-text">Lv.{profile.level}</Text>
+                  <Text className="level-text block">Lv.{profile.level}</Text>
                 </View>
               </View>
               
               <View className="info-wrapper">
-                <Text className="avatar-name">{profile.name}</Text>
+                <Text className="avatar-name block">{profile.name}</Text>
                 <View className="tag-row">
                   <View className="personality-tag">
-                    <Text className="personality-text">{getPersonalityText(profile.personality)}</Text>
+                    <Text className="personality-text block">{getPersonalityText(profile.personality)}</Text>
                   </View>
                   {profile.location && (
                     <View className="location-tag">
                       <MapPin size={12} color="#666" />
-                      <Text className="location-text">{profile.location}</Text>
+                      <Text className="location-text block">{profile.location}</Text>
                     </View>
                   )}
                 </View>
@@ -196,36 +196,36 @@ export default function AvatarProfilePage() {
                 <View className="stat-icon">
                   <BookOpen size={18} color="#667eea" />
                 </View>
-                <Text className="stat-value">{profile.post_count || 0}</Text>
-                <Text className="stat-label">发布</Text>
+                <Text className="stat-value block">{profile.post_count || 0}</Text>
+                <Text className="stat-label block">发布</Text>
               </View>
               <View className="stat-item">
                 <View className="stat-icon">
                   <Eye size={18} color="#10b981" />
                 </View>
-                <Text className="stat-value">{profile.views_count || 0}</Text>
-                <Text className="stat-label">浏览</Text>
+                <Text className="stat-value block">{profile.views_count || 0}</Text>
+                <Text className="stat-label block">浏览</Text>
               </View>
               <View className="stat-item">
                 <View className="stat-icon">
                   <Heart size={18} color="#f43f5e" />
                 </View>
-                <Text className="stat-value">{profile.likes_count || 0}</Text>
-                <Text className="stat-label">获赞</Text>
+                <Text className="stat-value block">{profile.likes_count || 0}</Text>
+                <Text className="stat-label block">获赞</Text>
               </View>
               <View className="stat-item">
                 <View className="stat-icon">
                   <Users size={18} color="#8b5cf6" />
                 </View>
-                <Text className="stat-value">{profile.followers_count || 0}</Text>
-                <Text className="stat-label">粉丝</Text>
+                <Text className="stat-value block">{profile.followers_count || 0}</Text>
+                <Text className="stat-label block">粉丝</Text>
               </View>
             </View>
 
             {/* 简介 */}
             <View className="section-card">
-              <Text className="section-title">个人简介</Text>
-              <Text className="section-content">
+              <Text className="section-title block">个人简介</Text>
+              <Text className="section-content block">
                 {profile.description || '暂无简介'}
               </Text>
             </View>
@@ -233,7 +233,7 @@ export default function AvatarProfilePage() {
             {/* 能力标签 */}
             {profile.abilities && profile.abilities.length > 0 && (
               <View className="section-card">
-                <Text className="section-title">擅长领域</Text>
+                <Text className="section-title block">擅长领域</Text>
                 <View className="abilities-list">
                   {profile.abilities.map((ability, index) => (
                     <View key={index} className="ability-tag">
