@@ -590,7 +590,7 @@ export default function AvatarCreatePage() {
           abilities: skillsData, // 传递完整的技能数据（包含tool_name）
           appearance_style: appearanceStyle,
           speaking_style: speakingStyle,
-          photo_url: photoUrl,
+          avatar_url: photoUrl, // 使用 avatar_url 与后端保持一致
           photo_analysis: photoAnalysis,
           ...locationData
         }
