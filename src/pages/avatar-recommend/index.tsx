@@ -126,7 +126,7 @@ export default function AvatarRecommendPage() {
     return avatars.filter(avatar => {
       switch (activeFilter) {
         case 'level':
-          return avatar.level >= 1
+          return (avatar.level || 0) >= 1
         case 'distance':
           return avatar.distance !== undefined && avatar.distance < 500
         case 'personality':
@@ -192,7 +192,7 @@ export default function AvatarRecommendPage() {
       reasons.push('距离近')
     }
 
-    if (avatar.matchScore >= 80) {
+    if ((avatar.matchScore || 0) >= 80) {
       reasons.push('性格匹配度高')
     }
 
@@ -200,7 +200,7 @@ export default function AvatarRecommendPage() {
       reasons.push('技能互补')
     }
 
-    if (avatar.level >= 10) {
+    if ((avatar.level || 0) >= 10) {
       reasons.push('优质分身')
     }
 
@@ -297,7 +297,7 @@ export default function AvatarRecommendPage() {
                   <View className="avatar-meta">
                     <View className="meta-tag">
                       <Star size={12} color="#fbbf24" />
-                      <Text className="meta-text">{avatar.exp} EXP</Text>
+                      <Text className="meta-text">{(avatar.exp || 0)} EXP</Text>
                     </View>
                     {avatar.distance !== undefined && (
                       <View className="meta-tag">
@@ -307,17 +307,17 @@ export default function AvatarRecommendPage() {
                     )}
                   </View>
                   <View className="personality-tags">
-                    <Text className="personality-tag">{avatar.personality}</Text>
+                    <Text className="personality-tag">{avatar.personality || '通用型'}</Text>
                   </View>
-                  <Text className="avatar-desc">{avatar.description}</Text>
+                  <Text className="avatar-desc">{avatar.description || '暂无描述'}</Text>
                 </View>
               </View>
 
               {/* 匹配度分数 */}
               <View className="match-score-section">
-                <View className="match-score-circle" style={{ borderColor: getMatchScoreColor(avatar.matchScore) }}>
-                  <Text className="match-score-text" style={{ color: getMatchScoreColor(avatar.matchScore) }}>
-                    {avatar.matchScore}
+                <View className="match-score-circle" style={{ borderColor: getMatchScoreColor(avatar.matchScore || 0) }}>
+                  <Text className="match-score-text" style={{ color: getMatchScoreColor(avatar.matchScore || 0) }}>
+                    {avatar.matchScore || 0}
                   </Text>
                   <Text className="match-score-label">匹配度</Text>
                 </View>
@@ -326,7 +326,7 @@ export default function AvatarRecommendPage() {
 
               {/* 技能标签 */}
               <View className="abilities-section">
-                {avatar.abilities.slice(0, 3).map((ability, idx) => (
+                {(avatar.abilities || []).slice(0, 3).map((ability, idx) => (
                   <View key={idx} className="ability-badge">
                     <Zap size={12} color="#06b6d4" />
                     <Text className="ability-text">{ability}</Text>
