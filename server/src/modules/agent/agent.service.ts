@@ -658,6 +658,19 @@ export class AgentService {
         )
       }
 
+      // 🔴 调用学习服务：分析对话内容，更新分身学习数据
+      try {
+        await this.learningService.analyzeAndUpdate(
+          avatarId,
+          userId,
+          taskDescription,
+          result.finalAnswer || ''
+        )
+        console.log(`[AgentService] 分身 ${avatarId} 学习数据已更新`)
+      } catch (learningError) {
+        console.error(`[AgentService] 分身学习更新失败:`, learningError)
+      }
+
       return result
     } finally {
       // 清理任务上下文
@@ -740,6 +753,19 @@ export class AgentService {
           result,
           taskId
         )
+      }
+
+      // 🔴 调用学习服务：分析对话内容，更新分身学习数据
+      try {
+        await this.learningService.analyzeAndUpdate(
+          avatarId,
+          userId,
+          taskDescription,
+          result.finalAnswer || ''
+        )
+        console.log(`[AgentService] 异步任务 - 分身 ${avatarId} 学习数据已更新`)
+      } catch (learningError) {
+        console.error(`[AgentService] 异步任务 - 分身学习更新失败:`, learningError)
       }
 
       return result
