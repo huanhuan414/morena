@@ -1,4 +1,4 @@
-import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation } from '@tarojs/taro'
+import { useLoad, useRouter, navigateBack, showToast, showModal, navigateTo, getLocation, getSetting, openSetting } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -128,8 +128,34 @@ export default function AvatarSettingsPage() {
     try {
       showToast({ title: '正在获取位置...', icon: 'loading', duration: 2000 })
 
+      // 先检查定位权限设置
+      const settingRes = await getSetting()
+      
+      if (!settingRes.authSetting['scope.userLocation']) {
+        // 未授权，尝试请求授权
+        try {
+          await getLocation({
+            type: 'gcj02'
+          })
+        } catch (err) {
+          // 用户拒绝授权，提示并引导去设置
+          const modalRes = await showModal({
+            title: '定位权限',
+            content: '需要定位权限来更新分身位置，请在设置中开启定位权限',
+            confirmText: '去设置',
+            cancelText: '取消'
+          })
+          
+          if (modalRes.confirm) {
+            await openSetting()
+          }
+          return
+        }
+      }
+
+      // 获取位置
       const locationRes = await getLocation({
-        type: 'wgs84'
+        type: 'gcj02'
       })
 
       // 只传递经纬度，让后端自动进行逆地理编码

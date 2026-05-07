@@ -74,6 +74,11 @@ export default defineAppConfig({
     navigationBarTitleText: '分身大师',
     navigationBarTextStyle: 'black',
   },
+  permission: {
+    'scope.userLocation': {
+      desc: '你的位置信息将用于定位分身当前位置，展示附近的动态和内容',
+    },
+  },
   tabBar: {
     color: '#999999',
     selectedColor: '#1890ff',
