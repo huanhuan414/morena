@@ -91,7 +91,7 @@ export default function AvatarRecommendPage() {
 
       if (res.data?.code === 200) {
         const data = res.data.data
-        const recommendations = data?.recommendations || data?.data || []
+        const recommendations = Array.isArray(data) ? data : (data?.recommendations || data?.data || [])
         console.log('获取到推荐分身数量:', recommendations.length)
         setAvatars(recommendations)
 
