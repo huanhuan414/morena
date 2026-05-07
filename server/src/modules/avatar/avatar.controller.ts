@@ -233,7 +233,7 @@ export class AvatarController {
   ) {
     try {
       const { location, limit = 20 } = body
-      const recommendations = await this.avatarService.getRecommendedAvatars(location, limit, userId)
+      const recommendations = await this.avatarService.getActiveAvatars(limit)
       return { code: 200, data: recommendations }
     } catch (err) {
       console.error('获取推荐分身失败:', err)
