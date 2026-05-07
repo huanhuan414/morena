@@ -106,7 +106,7 @@
 /* ============ 分身列表 ============ */
 .avatar-list {
   flex: 1;
-  padding: 0 32rpx 32rpx;
+  padding: 0 32rpx 180rpx;
 }
 
 /* ============ 加载状态 ============ */
@@ -400,8 +400,8 @@
   }
 }
 
-/* 跳过按钮 */
-.skip-btn {
+/* 跳过按钮（右上角固定 - 已弃用） */
+/* .skip-btn {
   position: fixed;
   top: calc(var(--status-bar-height) + 20rpx);
   right: 32rpx;
@@ -412,4 +412,20 @@
   font-size: 26rpx;
   color: #666;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+} */
+
+/* 跳过按钮（底部固定） */
+.skip-btn-full {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 40rpx;
+  padding: 28rpx 48rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e5e5;
+}
+
+.skip-text-full {
+  font-size: 30rpx;
+  color: #666;
+  font-weight: 400;
 }

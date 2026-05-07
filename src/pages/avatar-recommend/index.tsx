@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useLoad, navigateTo } from '@tarojs/taro'
+import Taro, { useLoad, navigateTo, switchTab } from '@tarojs/taro'
 import * as Network from '@/network'
 import { User, MapPin, Star, Zap, Heart, Sparkles, Send } from 'lucide-react-taro'
 import { getAvatarStyleClass } from '@/utils/avatar-style'
@@ -181,7 +181,7 @@ export default function AvatarRecommendPage() {
   }
 
   const handleSkip = () => {
-    // 跳过推荐，直接跳转回分身列表
+    // 跳过推荐，直接跳转回分身列表（我的分身页面）
     switchTab({ url: '/pages/avatar/avatar-manage/index' })
   }
 
@@ -350,17 +350,26 @@ export default function AvatarRecommendPage() {
                   <Text className="action-text">添加好友</Text>
                 </View>
               </View>
-              {/* 跳过按钮 */}
-              <View 
-                className="skip-btn"
-                onClick={handleSkip}
-              >
-                <Text className="skip-text">跳过，暂不添加</Text>
-              </View>
             </View>
           ))
         )}
       </ScrollView>
+
+      {/* 全局跳过按钮 */}
+      <View style={{
+        position: 'fixed',
+        bottom: 50,
+        left: 16,
+        right: 16,
+        zIndex: 100
+      }}>
+        <View 
+          className="skip-btn-full"
+          onClick={handleSkip}
+        >
+          <Text className="skip-text-full">跳过，暂不添加</Text>
+        </View>
+      </View>
     </View>
   )
 }
