@@ -507,6 +507,7 @@ export default function AvatarCreatePage() {
         suggestedName: '小墨'
       }
       setPhotoAnalysis(mockAnalysis)
+      setPhotoUrl(photoPath)  // 使用本地临时路径作为头像
       setAvatarName('小墨')
       setSelectedPersonality('empathetic')
       showToast({ title: '分析完成', icon: 'success' })

@@ -110,7 +110,11 @@ export class AvatarService {
 
     // 生成默认头像URL（使用DiceBear API）
     const defaultAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}&backgroundColor=c0aede`
-    const avatarUrl = avatarData.photo_url || avatarData.avatar_url || defaultAvatarUrl
+    // 只有当 photo_url 有实际内容时才使用（不是空字符串、null、undefined）
+    const photoUrlValue = avatarData.photo_url
+    const avatarUrl = (photoUrlValue && photoUrlValue.trim() !== '') 
+      ? photoUrlValue 
+      : (avatarData.avatar_url || defaultAvatarUrl)
 
     const { data, error } = await client
       .from('avatars')
