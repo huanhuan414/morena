@@ -361,7 +361,7 @@ export default function AvatarManagePage() {
                 {/* 分身信息 */}
                 <View className="avatar-info-section">
                   <View className="avatar-avatar">
-                    {avatar.avatar_url ? (
+                    {avatar.avatar_url && avatar.avatar_url.trim() !== '' ? (
                       <Image
                         src={avatar.avatar_url}
                         className={`avatar-img style-${avatar.appearance_style || 'real'}`}

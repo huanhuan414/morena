@@ -552,16 +552,26 @@ export default function AvatarAccountConfigPage() {
               const displayName = extraInfo.nickname || account.account_name
               const avatarUrl = extraInfo.avatar_url || ''
 
+              // 根据平台显示默认头像
+              const getDefaultAvatarUrl = () => {
+                if (account.platform === 'douyin') {
+                  return 'https://p3.douyinpic.com/aweme/default_avatars/douyin_default.png'
+                } else if (account.platform === 'xiaohongshu') {
+                  return 'https://sns-default-img.xhscdn.com/dynamic-user-avatar-default'
+                } else {
+                  return 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnP6Bc4MvoaYe5niaNricsP2fR9ibiaR5icT4A/0?wx_fmt=png'
+                }
+              }
+              const displayAvatarUrl = avatarUrl || getDefaultAvatarUrl()
+
               return (
                 <View key={account.id} className="account-card">
                   <View className="account-header">
-                    {avatarUrl && (
-                      <Image
-                        src={avatarUrl}
-                        className="account-avatar"
-                        mode="aspectFill"
-                      />
-                    )}
+                    <Image
+                      src={displayAvatarUrl}
+                      className="account-avatar"
+                      mode="aspectFill"
+                    />
                     <View className="account-info">
                       <View className="account-platform-name">
                         <Text className="account-platform">{platformInfo?.label || account.platform}</Text>

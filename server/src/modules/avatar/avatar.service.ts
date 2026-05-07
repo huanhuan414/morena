@@ -108,13 +108,17 @@ export class AvatarService {
       }
     }
 
+    // 生成默认头像URL（使用DiceBear API）
+    const defaultAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}&backgroundColor=c0aede`
+    const avatarUrl = avatarData.photo_url || avatarData.avatar_url || defaultAvatarUrl
+
     const { data, error } = await client
       .from('avatars')
       .insert({
         user_id: userId,
         name: avatarData.name || 'My AI Avatar',
         description: this.generateDescription(photoAnalysis, avatarData),
-        avatar_url: avatarData.photo_url || avatarData.avatar_url || '',
+        avatar_url: avatarUrl,
         personality: avatarData.personality || photoAnalysis.recommendedType || 'friendly',
         appearance_style: avatarData.appearance_style || 'tech',
         speaking_style: avatarData.speaking_style || 'friendly',
