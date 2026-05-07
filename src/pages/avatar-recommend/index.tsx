@@ -180,15 +180,9 @@ export default function AvatarRecommendPage() {
     })
   }
 
-  const navigateToNext = () => {
-    // 跳过当前推荐，继续查看下一个
-    if (currentIndex < filteredAvatars.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-    } else {
-      // 没有更多推荐了，跳转回分身列表
-      Taro.showToast({ title: '暂无更多推荐', icon: 'none' })
-      switchTab({ url: '/pages/avatar/avatar-manage/index' })
-    }
+  const handleSkip = () => {
+    // 跳过推荐，直接跳转回分身列表
+    switchTab({ url: '/pages/avatar/avatar-manage/index' })
   }
 
   const getMatchReason = (avatar: RecommendedAvatar): string => {
@@ -359,7 +353,7 @@ export default function AvatarRecommendPage() {
               {/* 跳过按钮 */}
               <View 
                 className="skip-btn"
-                onClick={() => navigateToNext()}
+                onClick={handleSkip}
               >
                 <Text className="skip-text">跳过，暂不添加</Text>
               </View>
