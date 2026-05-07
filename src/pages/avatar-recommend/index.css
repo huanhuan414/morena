@@ -399,3 +399,17 @@
     height: 100rpx;
   }
 }
+
+/* 跳过按钮 */
+.skip-btn {
+  position: fixed;
+  top: calc(var(--status-bar-height) + 20rpx);
+  right: 32rpx;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 30rpx;
+  padding: 16rpx 32rpx;
+  font-size: 26rpx;
+  color: #666;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}

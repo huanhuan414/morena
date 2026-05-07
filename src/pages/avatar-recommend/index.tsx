@@ -179,6 +179,17 @@ export default function AvatarRecommendPage() {
     })
   }
 
+  const navigateToNext = () => {
+    // 跳过当前推荐，继续查看下一个
+    if (currentIndex < filteredAvatars.length - 1) {
+      setCurrentIndex(currentIndex + 1)
+    } else {
+      // 没有更多推荐了，跳转回分身列表
+      Taro.showToast({ title: '暂无更多推荐', icon: 'none' })
+      switchTab({ url: '/pages/avatar/avatar-manage/index' })
+    }
+  }
+
   const getMatchReason = (avatar: RecommendedAvatar): string => {
     const reasons: string[] = []
 
@@ -343,6 +354,13 @@ export default function AvatarRecommendPage() {
                   <Send size={16} color="#ffffff" />
                   <Text className="action-text">添加好友</Text>
                 </View>
+              </View>
+              {/* 跳过按钮 */}
+              <View 
+                className="skip-btn"
+                onClick={() => navigateToNext()}
+              >
+                <Text className="skip-text">跳过，暂不添加</Text>
               </View>
             </View>
           ))
