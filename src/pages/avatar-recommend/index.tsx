@@ -90,7 +90,8 @@ export default function AvatarRecommendPage() {
       console.log('推荐分身响应:', res)
 
       if (res.data?.code === 200) {
-        const recommendations = res.data.data || []
+        const data = res.data.data
+        const recommendations = data?.recommendations || data?.data || []
         console.log('获取到推荐分身数量:', recommendations.length)
         setAvatars(recommendations)
 
