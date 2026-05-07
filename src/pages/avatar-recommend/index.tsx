@@ -27,6 +27,7 @@ interface RecommendedAvatar {
 export default function AvatarRecommendPage() {
   const [avatars, setAvatars] = useState<RecommendedAvatar[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentAvatarId, setCurrentAvatarId] = useState<string>('')
   const [userLocation, setUserLocation] = useState<{
     latitude: number | null
     longitude: number | null
@@ -37,8 +38,23 @@ export default function AvatarRecommendPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'level' | 'distance' | 'personality'>('all')
 
   useLoad(() => {
+    loadCurrentAvatar()
     loadRecommendations()
   })
+
+  const loadCurrentAvatar = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/avatar/my'
+      })
+      console.log('获取分身列表:', res.data)
+      if (res.data?.data?.length > 0) {
+        setCurrentAvatarId(res.data.data[0].id)
+      }
+    } catch (err) {
+      console.error('获取分身失败:', err)
+    }
+  }
 
   const loadRecommendations = async () => {
     try {
@@ -109,11 +125,11 @@ export default function AvatarRecommendPage() {
     return avatars.filter(avatar => {
       switch (activeFilter) {
         case 'level':
-          return avatar.level >= 10
+          return avatar.level >= 1
         case 'distance':
-          return avatar.distance !== undefined && avatar.distance < 50
+          return avatar.distance !== undefined && avatar.distance < 500
         case 'personality':
-          return avatar.matchScore >= 80
+          return avatar.matchScore >= 50
         default:
           return true
       }
@@ -123,11 +139,18 @@ export default function AvatarRecommendPage() {
   const filteredAvatars = getFilteredAvatars()
 
   const sendFriendRequest = async (avatarId: string) => {
+    if (!currentAvatarId) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
     try {
       const res = await Network.request({
         url: '/api/avatar/friend-request',
         method: 'POST',
-        data: { targetAvatarId: avatarId }
+        data: { 
+          avatar_id: currentAvatarId,
+          target_avatar_id: avatarId 
+        }
       })
 
       if (res.data?.code === 200) {
@@ -152,7 +175,7 @@ export default function AvatarRecommendPage() {
 
   const viewAvatar = (avatarId: string) => {
     navigateTo({
-      url: `/pages/avatar-detail/index?avatarId=${avatarId}`
+      url: `/pages/avatar-profile/index?avatarId=${avatarId}`
     })
   }
 

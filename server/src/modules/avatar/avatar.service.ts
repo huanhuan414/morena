@@ -262,6 +262,16 @@ export class AvatarService {
   }
 
   /**
+   * 发送好友请求
+   */
+  async sendFriendRequest(fromAvatarId: string, toAvatarId: string, userId: string) {
+    return this.friendshipService.sendFriendRequest(
+      { id: fromAvatarId } as any,
+      { id: toAvatarId } as any
+    )
+  }
+
+  /**
    * 为分身添加用户选择的技能
    */
   private async addUserSelectedSkills(avatarId: string, abilities: any[]) {

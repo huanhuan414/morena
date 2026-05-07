@@ -205,6 +205,43 @@ export class AvatarController {
   }
 
   /**
+   * 发送好友请求
+   */
+  @Post('friend-request')
+  async sendFriendRequest(
+    @Body() body: { avatar_id: string; target_avatar_id: string },
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      const { avatar_id, target_avatar_id } = body
+      const success = await this.avatarService.sendFriendRequest(avatar_id, target_avatar_id, userId)
+      if (success) {
+        return { code: 200, msg: '好友请求已发送' }
+      } else {
+        return { code: 400, msg: '发送失败，可能已是好友或请求已存在' }
+      }
+    } catch (err) {
+      console.error('发送好友请求失败:', err)
+      return { code: 500, msg: '服务器错误' }
+    }
+  }
+
+  @Post('recommendations')
+  async getRecommendations(
+    @Body() body: { location?: { latitude: number; longitude: number }; limit?: number },
+    @Headers('x-user-id') userId: string
+  ) {
+    try {
+      const { location, limit = 20 } = body
+      const recommendations = await this.avatarService.getRecommendedAvatars(location, limit, userId)
+      return { code: 200, data: recommendations }
+    } catch (err) {
+      console.error('获取推荐分身失败:', err)
+      return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  /**
    * 开启/关闭托管
    */
   @Post(':id/hosting')
