@@ -374,8 +374,17 @@ export class AvatarController {
         userIdentity: {}
       }
       
+      // 从 config.learning 中获取学习天数，如果没有则从创建时间计算
+      const configLearning = avatar.config?.learning || {}
+      const learningDays = configLearning.learningDays !== undefined 
+        ? configLearning.learningDays 
+        : Math.floor((Date.now() - new Date(avatar.created_at).getTime()) / (1000 * 60 * 60 * 24))
+      
       const metrics = {
-        learningDays: Math.floor((Date.now() - new Date(avatar.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+        learningDays,
+        masteryLevel: configLearning.masteryLevel || 0,
+        messageCount: configLearning.messageCount || 0,
+        styleMatch: configLearning.styleMatch || 0,
         lastActiveTime: avatar.updated_at
       }
       
