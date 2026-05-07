@@ -3760,6 +3760,7 @@ export default function MindChatPage() {
           <Text className="learn-panel-title">分身成长</Text>
         </View>
         
+        {/* 统计行 - 只显示数字，不显示详细信息 */}
         <View className="learn-stats-row">
           <View className="learn-stat-item clickable" onClick={() => setShowLearningDetail('dialog')}>
             <MessageCircle size={16} color="#7B3FE4" />
@@ -3783,83 +3784,18 @@ export default function MindChatPage() {
           </View>
         </View>
         
-        {/* 用户画像 - 始终显示 */}
-        {(learningStats.userIdentity?.occupation || learningStats.userIdentity?.education || learningStats.userIdentity?.personalityType || learningStats.userIdentity?.lifeEvents?.length) && (
-          <View className="learn-identity-section clickable" onClick={() => setShowLearningDetail('identity')}>
-            <Text className="learn-section-title">我的画像</Text>
-            <View className="learn-identity-cards">
-              {learningStats.userIdentity?.occupation && (
-                <View className="learn-identity-card">
-                  <Text className="learn-identity-label">职业</Text>
-                  <Text className="learn-identity-value">{learningStats.userIdentity.occupation}</Text>
-                </View>
-              )}
-              {learningStats.userIdentity?.education && (
-                <View className="learn-identity-card">
-                  <Text className="learn-identity-label">学历</Text>
-                  <Text className="learn-identity-value">{learningStats.userIdentity.education}</Text>
-                </View>
-              )}
-              {learningStats.userIdentity?.personalityType && (
-                <View className="learn-identity-card">
-                  <Text className="learn-identity-label">性格</Text>
-                  <Text className="learn-identity-value">{learningStats.userIdentity.personalityType}</Text>
-                </View>
-              )}
-              {learningStats.userIdentity?.lifeEvents && learningStats.userIdentity.lifeEvents.length > 0 && (
-                <View className="learn-identity-card full-width">
-                  <Text className="learn-identity-label">生活大事</Text>
-                  <Text className="learn-identity-value">{learningStats.userIdentity.lifeEvents.join('、')}</Text>
-                </View>
-              )}
-            </View>
+        {/* 查看详情提示 - 点击可查看所有学习详情 */}
+        <View className="learn-detail-hint clickable" onClick={() => setShowLearningDetail('identity')}>
+          <View className="learn-detail-hint-item">
+            <Text className="learn-detail-hint-icon">📊</Text>
+            <Text className="learn-detail-hint-text">我的画像</Text>
           </View>
-        )}
-        
-        {/* 详细内容 - 始终显示 */}
-        <ScrollView className="learn-panel-content" scrollY style={{ maxHeight: '200rpx' }}>
-        
-        {/* 风格匹配度 */}
-        {(learningStats.styleMatch || 0) > 0 && (
-          <View className="learn-style-section clickable" onClick={() => setShowLearningDetail('style')}>
-            <Text className="learn-style-label">风格匹配度</Text>
-            <View className="learn-style-bar">
-              <View 
-                className="learn-style-fill" 
-                style={{ width: `${learningStats.styleMatch}%` }}
-              />
-            </View>
-            <Text className="learn-style-value">{learningStats.styleMatch}%</Text>
+          <View className="learn-detail-hint-item">
+            <Text className="learn-detail-hint-icon">🎯</Text>
+            <Text className="learn-detail-hint-text">风格匹配度 {learningStats.styleMatch || 0}%</Text>
           </View>
-        )}
+        </View>
         
-        {/* 兴趣话题 */}
-        {learningStats.interests && learningStats.interests.length > 0 && (
-          <View className="learn-interests-section clickable" onClick={() => setShowLearningDetail('interests')}>
-            <Text className="learn-section-title">兴趣话题</Text>
-            <View className="learn-tags">
-              {learningStats.interests.slice(0, 5).map((interest, idx) => (
-                <View key={idx} className="learn-tag">
-                  <Text className="learn-tag-text">{interest}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-        
-        {/* 常用表达 */}
-        {learningStats.commonPhrases && learningStats.commonPhrases.length > 0 && (
-          <View className="learn-phrases-section clickable" onClick={() => setShowLearningDetail('phrases')}>
-            <Text className="learn-section-title">你的常用表达</Text>
-            <View className="learn-phrases">
-              {learningStats.commonPhrases.slice(0, 3).map((phrase, idx) => (
-                <Text key={idx} className="learn-phrase">&ldquo;{phrase}&rdquo;</Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        </ScrollView>
       </View>
       )}
 
