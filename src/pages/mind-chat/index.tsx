@@ -4501,13 +4501,32 @@ export default function MindChatPage() {
           {/* 中间：输入框 - 支持长按录音 */}
           <View 
             className={`input-textarea-wrap ${isRecording ? 'recording' : ''} ${!inputText ? 'can-record' : ''}`}
-            onTouchStart={() => {
-              // 只有输入框为空时，长按才触发录音
-              if (!inputText && !isRecording) {
-                startRecording()
+            onTouchStart={(e) => {
+              // 记录触摸开始时间
+              ;(e.currentTarget as any).__touchStartTime = Date.now()
+              ;(e.currentTarget as any).__touchMoved = false
+            }}
+            onTouchMove={(e) => {
+              // 如果手指移动了，标记为已移动
+              if (e.currentTarget && (e.currentTarget as any).__touchMoved !== undefined) {
+                ;(e.currentTarget as any).__touchMoved = true
               }
             }}
-            onTouchEnd={() => {
+            onTouchEnd={(e) => {
+              // 只有按住超过 300ms 且没有移动过，才触发录音
+              const touchStartTime = (e.currentTarget as any).__touchStartTime || 0
+              const duration = Date.now() - touchStartTime
+              const hasMoved = (e.currentTarget as any).__touchMoved
+              
+              // 清除标记
+              ;(e.currentTarget as any).__touchStartTime = 0
+              ;(e.currentTarget as any).__touchMoved = false
+              
+              // 录音：按住超过300ms，没移动过，输入框为空
+              if (!hasMoved && duration >= 300 && !inputText && !isRecording) {
+                startRecording()
+              }
+              // 停止录音
               if (isRecording) {
                 stopRecording()
               }

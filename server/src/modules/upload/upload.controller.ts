@@ -80,6 +80,44 @@ export class UploadController {
   }
 
   /**
+   * 🔴 上传音频（用于语音识别）
+   */
+  @Post('audio')
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+    console.log('[UploadController] 接收到音频上传请求')
+    console.log('[UploadController] 文件信息:', {
+      originalname: file?.originalname,
+      size: file?.size,
+      mimetype: file?.mimetype,
+      hasBuffer: !!file?.buffer
+    })
+
+    if (!file) {
+      return {
+        code: 400,
+        message: '未接收到文件'
+      }
+    }
+
+    try {
+      const result = await this.uploadService.uploadAudio(file)
+      return {
+        code: 200,
+        message: '上传成功',
+        data: result
+      }
+    } catch (error) {
+      console.error('[UploadController] 音频上传失败:', error)
+      return {
+        code: 500,
+        message: error.message || '上传失败',
+        error: error.message
+      }
+    }
+  }
+
+  /**
    * 🔴 上传视频
    */
   @Post('video')
