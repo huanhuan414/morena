@@ -354,9 +354,9 @@ export default function AvatarCreatePage() {
         const res: any = await Taro.chooseImage({ count: 1, sourceType: ['camera'] })
         filePath = res.tempFilePaths[0]
       } else if (source === 'wechat') {
-        // 从微信聊天记录选择（仅微信小程序）
-        const res: any = await Taro.chooseMessageFile({ count: 1, type: 'image' })
-        filePath = res.tempFiles[0].path
+        // 从相册选择或拍照（支持微信小程序）
+        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] })
+        filePath = res.tempFilePaths[0]
       }
 
       if (filePath) {

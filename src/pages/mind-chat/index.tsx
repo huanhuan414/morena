@@ -1330,15 +1330,16 @@ export default function MindChatPage() {
       let tempFilePaths: string[] = []
 
       if (isMiniApp) {
-        const chooseRes: any = await TaroPromisify(Taro.chooseMessageFile)({
+        // 使用 chooseImage 支持相册和拍照（chooseMessageFile 只能从微信聊天记录选择）
+        const chooseRes: any = await TaroPromisify(Taro.chooseImage)({
           count: remainingCount,
-          type: 'image'
+          sourceType: ['album', 'camera']
         })
         if (!chooseRes) {
           // 用户取消了选择
           return
         }
-        tempFilePaths = chooseRes.tempFiles.map((f: { path: string }) => f.path)
+        tempFilePaths = chooseRes.tempFilePaths
       } else {
         const chooseRes: any = await TaroPromisify(Taro.chooseImage)({
           count: remainingCount,
