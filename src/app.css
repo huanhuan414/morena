@@ -1,7 +1,8 @@
 /* stylelint-disable selector-type-no-unknown */
 /* stylelint-disable at-rule-no-unknown */
 /* stylelint-disable number-max-precision */
-@import url('weapp-tailwindcss');
+/* Tailwind CSS v4 - H5 模式必需 */
+@import "tailwindcss";
 @import url('./styles/avatar-styles.css');
 
 /* 小程序页面容器高度设置，确保垂直居中生效 */
