@@ -1297,6 +1297,11 @@ export class AgentService {
       }
     }
 
+    // 确保 currentContext 是数组，否则创建新数组
+    if (!Array.isArray(currentContext)) {
+      currentContext = []
+    }
+
     // 添加新的对话上下文
     currentContext.push(
       { role: 'user', content: userMessage },
