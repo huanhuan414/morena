@@ -58,6 +58,22 @@ export class EarningsService {
     }
   }
 
+  async getLeaderboard() {
+    const db = getMySQLClient()
+    const earnings = await db.query(
+      `SELECT user_id, SUM(amount) as total 
+       FROM earnings 
+       WHERE status = 'settled' 
+       GROUP BY user_id 
+       ORDER BY total DESC 
+       LIMIT 50`
+    )
+    return {
+      items: earnings || [],
+      total: earnings?.length || 0
+    }
+  }
+
   async updateEarningStatus(earningId: string, status: string) {
     const db = getMySQLClient()
     

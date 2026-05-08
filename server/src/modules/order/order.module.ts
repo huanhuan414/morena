@@ -9,6 +9,10 @@ import { ReverseGeocodingService } from '../../services/reverse-geocoding.servic
 @Module({
   imports: [OrderDispatchModule, EarningModule],
   controllers: [OrderController],
-  providers: [OrderService, ReverseGeocodingService]
+  providers: [
+    OrderService,
+    ReverseGeocodingService,
+    { provide: 'ORDER_SERVICE', useClass: OrderService },
+  ]
 })
 export class OrderModule {}

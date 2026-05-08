@@ -6,7 +6,13 @@ import { RecommendationController } from './recommendation.controller'
 @Module({
   imports: [],
   controllers: [RecommendationController],
-  providers: [RecommendationService],
+  providers: [
+    RecommendationService,
+    {
+      provide: 'RECOMMENDATION_SERVICE',
+      useClass: RecommendationService
+    }
+  ],
   exports: [RecommendationService]
 })
 export class RecommendationModule {}

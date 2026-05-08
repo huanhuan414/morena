@@ -5,7 +5,10 @@ import { OrderResultsService } from './order-results.service'
 
 @Module({
   controllers: [OrderResultsController],
-  providers: [OrderResultsService],
-  exports: [OrderResultsService]
+  providers: [
+    OrderResultsService,
+    { provide: 'ORDER_RESULTS_SERVICE', useClass: OrderResultsService }
+  ],
+  exports: [OrderResultsService, 'ORDER_RESULTS_SERVICE']
 })
 export class OrderResultsModule {}

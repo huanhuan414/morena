@@ -1,13 +1,13 @@
 // @ts-nocheck
-import { Controller, Post, Body, Headers } from '@nestjs/common'
+import { Controller, Post, Get, Body, Headers, Query, Inject } from '@nestjs/common'
 import { RecommendationService } from './recommendation.service'
 
-@Controller('avatar')
+@Controller('recommendation')
 export class RecommendationController {
-  constructor(private readonly recommendationService: RecommendationService) {}
+  constructor(@Inject('RECOMMENDATION_SERVICE') private readonly recommendationService: RecommendationService) {}
 
   /**
-   * 获取推荐分身列表
+   * 获取推荐分身列表 - POST
    */
   @Post('recommendations')
   async getRecommendations(
@@ -25,6 +25,24 @@ export class RecommendationController {
     return {
       code: 200,
       msg: 'Get recommendations successfully',
+      data: recommendations
+    }
+  }
+
+  /**
+   * 获取推荐列表 - GET
+   */
+  @Get('list')
+  async getRecommendationList(@Query('type') type: string) {
+    const recommendations = await this.recommendationService.getRecommendations(
+      undefined,
+      type,
+      20
+    )
+
+    return {
+      code: 200,
+      msg: 'success',
       data: recommendations
     }
   }

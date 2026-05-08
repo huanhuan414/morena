@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Headers, Query } from '@nestjs/common'
+// @ts-nocheck
+import { Controller, Get, Post, Body, Headers, Query, Inject } from '@nestjs/common'
 import { EarningService } from './earning.service'
 
 @Controller('earnings')
 export class EarningController {
-  constructor(private readonly earningService: EarningService) {}
+  constructor(@Inject('EARNING_SERVICE') private readonly earningService: EarningService) {}
 
   @Get('overview')
   async getOverview(@Headers('x-user-id') userId: string) {
@@ -46,24 +47,6 @@ export class EarningController {
       code: 200,
       data: withdrawal,
       message: '提现申请已提交'
-    }
-  }
-
-  @Get('withdrawals')
-  async getWithdrawals(
-    @Headers('x-user-id') userId: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string
-  ) {
-    const result = await this.earningService.getWithdrawals(
-      userId,
-      page ? parseInt(page) : 1,
-      pageSize ? parseInt(pageSize) : 20
-    )
-    return {
-      code: 200,
-      data: result,
-      message: '获取成功'
     }
   }
 }

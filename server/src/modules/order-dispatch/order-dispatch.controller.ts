@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Get, Post, Put, Body, Param, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { OrderDispatchService } from './order-dispatch.service'
 
 @Controller('order-dispatch')
 export class OrderDispatchController {
-  constructor(private readonly dispatchService: OrderDispatchService) {}
+  constructor(@Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService) {}
 
   /**
    * 触发订单分配

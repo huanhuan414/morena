@@ -14,7 +14,27 @@ import { TikHubModule } from '../tikhub/tikhub.module';
 @Module({
   imports: [SubscriptionModule, TikHubModule],
   controllers: [AvatarController],
-  providers: [AvatarService, LearningService, HostingService, FriendshipService, VoiceCallGateway, VoiceCallService, ReverseGeocodingService],
+  providers: [
+    AvatarService,
+    LearningService,
+    HostingService,
+    FriendshipService,
+    VoiceCallGateway,
+    VoiceCallService,
+    ReverseGeocodingService,
+    {
+      provide: 'AVATAR_SERVICE',
+      useClass: AvatarService
+    },
+    {
+      provide: 'AVATAR_LEARNING_SERVICE',
+      useClass: LearningService
+    },
+    {
+      provide: 'AVATAR_HOSTING_SERVICE',
+      useClass: HostingService
+    }
+  ],
   exports: [AvatarService, LearningService, HostingService, FriendshipService, VoiceCallService]
 })
 export class AvatarModule {}

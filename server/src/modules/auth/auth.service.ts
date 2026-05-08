@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { Injectable, UnauthorizedException, BadRequestException, Inject } from '@nestjs/common'
-import { usersTable, earningsTable } from '../../storage/database/mysql-client'
+import { getMySQLClient } from '../../storage/database/mysql-client'
 import { AuthSmsService } from './sms.service'
+import * as crypto from 'crypto'
 
 @Injectable()
 export class AuthService {
@@ -80,27 +81,23 @@ export class AuthService {
     // 验证成功，删除验证码
     this.codeCache.delete(phone)
 
-    const users = usersTable()
+    const db = getMySQLClient()
     
     // 查找用户（使用手机号作为唯一标识）
-    const { data: existingUser, error: findError } = await users.where({ phone })
+    const result = await db.query('users', { phone })
+    const existingUser = (result as any)?.data?.[0]
     
-    if (findError) {
-      throw new Error(`查询用户失败: ${findError.message}`)
-    }
-    
-    if (existingUser && existingUser.length > 0) {
+    if (existingUser) {
       // 已注册用户，直接登录
       return {
-        user: existingUser[0],
+        user: existingUser,
         isNewUser: false,
-        token: this.generateToken(existingUser[0].id),
+        token: this.generateToken(existingUser.id),
       }
     }
     
     // 新用户，自动注册
     const newUserData = {
-      id: undefined, // 让数据库自动生成
       phone,
       openid: `phone_${phone}`, // 用手机号生成唯一openid
       nickname: nickname || `用户${phone.slice(-4)}`,
@@ -108,13 +105,21 @@ export class AuthService {
       level: 1,
       exp: 0,
       credits: 100, // 新用户赠送100积分
+      referral_code: this.generateReferralCode(),
+      created_at: new Date(),
+      updated_at: new Date(),
     }
-    const { data: newUser, error: createError } = await users.insert(newUserData)
     
-    if (createError) {
-      throw new Error(`创建用户失败: ${createError.message}`)
+    const insertResult = await db.insert('users', newUserData)
+    
+    if (insertResult.error) {
+      throw new Error(`创建用户失败: ${insertResult.error.message}`)
     }
 
+    // 获取新创建的用户
+    const newUserResult = await db.query('users', { phone })
+    const newUser = (newUserResult as any)?.data?.[0]
+    
     if (!newUser) {
       throw new Error('创建用户失败：未返回用户数据')
     }
@@ -143,148 +148,209 @@ export class AuthService {
    * 处理邀请关系并发放奖励
    */
   private async processReferral(inviteeId: string, referralCode: string): Promise<{ inviterId: string; reward: number }> {
-    const users = usersTable()
+    const db = getMySQLClient()
     
     // 查找邀请人
-    const { data: inviter } = await users.where({ referralCode })
+    const inviterResult = await db.query('users', { referral_code: referralCode })
+    const inviter = (inviterResult as any)?.data?.[0]
     
-    if (!inviter || inviter.length === 0) {
+    if (!inviter) {
       throw new Error('邀请码无效')
     }
     
-    const inviterData = inviter[0]
-    if (inviterData.id === inviteeId) {
+    if (inviter.id === inviteeId) {
       throw new Error('不能使用自己的邀请码')
     }
     
-    // TODO: 创建邀请记录（暂时跳过，因为 referrals 表可能有外键约束）
-    
-    // 更新被邀请人的邀请人字段
-    await users.update(inviteeId, { invitedBy: inviterData.id })
+    // 创建邀请记录
+    await db.insert('referrals', {
+      referrer_id: inviter.id,
+      referee_id: inviteeId,
+      referral_code: referralCode,
+      status: 'completed',
+      created_at: new Date(),
+    })
     
     // 发放邀请奖励（给邀请人）
     const REWARD_AMOUNT = 10 // 邀请奖励金额
     const REWARD_CREDITS = 50 // 邀请奖励积分
     
     // 添加收益记录
-    const earnings = earningsTable()
-    await earnings.insert({
-      userId: inviterData.id,
+    await db.insert('earnings', {
+      user_id: inviter.id,
       type: 'referral_bonus',
       amount: REWARD_AMOUNT,
       description: `邀请新用户奖励`,
-      status: 'settled'
+      status: 'settled',
+      created_at: new Date(),
     })
     
     // 更新邀请人余额和总收益
-    const currentBalance = parseFloat(inviterData.balance || '0')
-    const currentTotalEarnings = parseFloat(inviterData.totalEarnings || '0')
-    const currentCredits = parseInt(inviterData.credits || '0')
-    
-    await users.update(inviterData.id, {
-      balance: currentBalance + REWARD_AMOUNT,
-      totalEarnings: currentTotalEarnings + REWARD_AMOUNT,
-      credits: currentCredits + REWARD_CREDITS
+    await db.update('users', inviter.id, {
+      credits: inviter.credits + REWARD_CREDITS,
+      total_earnings: (inviter.total_earnings || 0) + REWARD_AMOUNT,
+      updated_at: new Date(),
     })
     
-    console.log(`[AuthService] 邀请奖励发放成功: 邀请人=${inviterData.id}, 被邀请人=${inviteeId}, 奖励金额=${REWARD_AMOUNT}, 积分=${REWARD_CREDITS}`)
-    
-    return {
-      inviterId: inviterData.id,
-      reward: REWARD_AMOUNT
-    }
+    return { inviterId: inviter.id, reward: REWARD_AMOUNT }
   }
 
-  async wechatLogin(code: string) {
-    // 微信小程序登录
+  /**
+   * 微信登录
+   */
+  async wechatLogin(code: string): Promise<{ user: any; token: string; isNewUser: boolean }> {
+    // 调用微信接口获取 openid
     const wxAppId = process.env.WX_APP_ID
-    const wxSecret = process.env.WX_APP_SECRET
+    const wxAppSecret = process.env.WX_APP_SECRET
     
-    if (!wxAppId || !wxSecret) {
-      // 开发环境：使用模拟登录
-      console.log('开发环境：模拟微信登录')
-      const mockOpenid = `dev_${Date.now()}`
-      return this.createOrGetUser(mockOpenid, '模拟用户', undefined)
+    if (!wxAppId || !wxAppSecret) {
+      throw new Error('微信配置未设置')
     }
-
+    
+    const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${wxAppId}&secret=${wxAppSecret}&js_code=${code}&grant_type=authorization_code`
+    
     try {
-      const response = await fetch(
-        `https://api.weixin.qq.com/sns/jscode2session?appid=${wxAppId}&secret=${wxSecret}&js_code=${code}&grant_type=authorization_code`
-      )
-      const data = await response.json()
+      const wxResponse = await fetch(wxUrl)
+      const wxData = await wxResponse.json()
       
-      if (data.errcode) {
-        throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`)
+      if (wxData.errcode) {
+        throw new Error(`微信登录失败: ${wxData.errmsg}`)
       }
-
-      return this.createOrGetUser(data.openid, '微信用户', undefined)
-    } catch (error) {
-      console.error('微信登录错误:', error)
-      throw new UnauthorizedException('登录失败，请重试')
+      
+      const openid = wxData.openid
+      const sessionKey = wxData.session_key
+      
+      // 查找或创建用户
+      return await this.createOrGetUser(openid)
+    } catch (error: any) {
+      throw new Error(`微信登录失败: ${error.message}`)
     }
   }
 
-  private async createOrGetUser(openid: string, nickname: string, avatar?: string) {
-    const users = usersTable()
+  /**
+   * 创建或获取微信用户
+   */
+  private async createOrGetUser(openid: string, nickname?: string, avatar?: string) {
+    const db = getMySQLClient()
     
     // 查找用户
-    const { data: existingUser, error: findError } = await users.where({ openid })
+    const result = await db.query('users', { openid })
+    const existingUser = (result as any)?.data?.[0]
     
-    if (findError) {
-      throw new Error(`查询用户失败: ${findError.message}`)
-    }
-    
-    if (existingUser && existingUser.length > 0) {
+    if (existingUser) {
       return {
-        user: existingUser[0],
+        user: existingUser,
+        token: this.generateToken(existingUser.id),
         isNewUser: false,
-        token: this.generateToken(existingUser[0].id)
       }
     }
     
     // 创建新用户
     const newUserData = {
       openid,
-      nickname: nickname || '莫瑞娜用户',
+      nickname: nickname || '微信用户',
       avatar: avatar || '',
       level: 1,
       exp: 0,
-      credits: 100 // 新用户赠送100积分
+      credits: 100,
+      referral_code: this.generateReferralCode(),
+      created_at: new Date(),
+      updated_at: new Date(),
     }
-    const { data: newUser, error: createError } = await users.insert(newUserData)
     
-    if (createError) {
-      throw new Error(`创建用户失败: ${createError.message}`)
-    }
+    await db.insert('users', newUserData)
+    
+    // 获取新创建的用户
+    const newUserResult = await db.query('users', { openid })
+    const newUser = (newUserResult as any)?.data?.[0]
     
     if (!newUser) {
-      throw new Error('创建用户失败：未返回用户数据')
+      throw new Error('创建用户失败')
     }
     
     return {
       user: newUser,
+      token: this.generateToken(newUser.id),
       isNewUser: true,
-      token: this.generateToken(newUser.id)
     }
   }
 
-  private generateToken(userId: string) {
-    // 简单的 token 生成（生产环境应使用 JWT）
-    return Buffer.from(`${userId}:${Date.now()}`).toString('base64')
+  /**
+   * 获取当前用户信息
+   */
+  async getCurrentUser(authHeader: string) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('请先登录')
+    }
+    
+    const token = authHeader.substring(7)
+    const userId = this.verifyToken(token)
+    
+    if (!userId) {
+      throw new UnauthorizedException('登录已过期')
+    }
+    
+    const db = getMySQLClient()
+    const result = await db.query('users', { id: userId })
+    const user = (result as any)?.data?.[0]
+    
+    if (!user) {
+      throw new UnauthorizedException('用户不存在')
+    }
+    
+    return { user }
   }
 
+  /**
+   * 根据ID获取用户
+   */
   async getUserById(userId: string) {
-    const users = usersTable()
-    const { data, error } = await users.findById(userId)
-    
-    if (error) {
-      throw new Error(`获取用户失败: ${error.message}`)
+    const db = getMySQLClient()
+    const result = await db.query('users', { id: userId })
+    return (result as any)?.data?.[0]
+  }
+
+  /**
+   * 生成 JWT token（简化版）
+   */
+  private generateToken(userId: string): string {
+    const payload = { userId, iat: Date.now() }
+    const secret = process.env.JWT_SECRET || 'morena-secret-key'
+    const encoded = Buffer.from(JSON.stringify(payload)).toString('base64')
+    const signature = crypto.createHmac('sha256', secret).update(encoded).digest('hex')
+    return `${encoded}.${signature}`
+  }
+
+  /**
+   * 验证 token
+   */
+  private verifyToken(token: string): string | null {
+    try {
+      const [encoded, signature] = token.split('.')
+      const secret = process.env.JWT_SECRET || 'morena-secret-key'
+      const expectedSignature = crypto.createHmac('sha256', secret).update(encoded).digest('hex')
+      
+      if (signature !== expectedSignature) {
+        return null
+      }
+      
+      const payload = JSON.parse(Buffer.from(encoded, 'base64').toString())
+      
+      // 检查 token 是否过期（7天）
+      if (Date.now() - payload.iat > 7 * 24 * 60 * 60 * 1000) {
+        return null
+      }
+      
+      return payload.userId
+    } catch {
+      return null
     }
-    
-    if (!data) {
-      throw new Error('用户不存在')
-    }
-    
-    return data
+  }
+
+  /**
+   * 生成邀请码
+   */
+  private generateReferralCode(): string {
+    return crypto.randomBytes(4).toString('hex').toUpperCase()
   }
 }

@@ -328,6 +328,12 @@ export class MysqlClient {
       const conditions = paramsOrConditions as Record<string, any>;
       const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
       const values = Object.values(conditions);
+      
+      // 如果条件为空，直接查询所有
+      if (keys.length === 0) {
+        return this.query(`SELECT * FROM ${sqlOrTable}`, []);
+      }
+      
       return this.query(`SELECT * FROM ${sqlOrTable} WHERE ${keys.join(' AND ')}`, values);
     }
     // 标准 SQL 查询
@@ -378,9 +384,73 @@ export class MysqlClient {
     return this.findOne(tableOrConditions);
   }
 
-  // 带条件的查询
-  async queryWhere(conditions: Record<string, any>): Promise<any[]> {
-    return this.findMany(conditions);
+  // 带条件的查询（兼容旧代码，支持表名和自定义WHERE条件）
+  async queryWhere(tableOrConditions: string | Record<string, any>, whereOrOptions?: string | Record<string, any> | any, options?: any): Promise<any[]> {
+    // queryWhere(conditions) - 标准用法
+    if (typeof tableOrConditions === 'object') {
+      return this.findMany(tableOrConditions);
+    }
+    
+    // queryWhere(table, whereSql, options) - 兼容旧代码
+    const table = tableOrConditions;
+    const whereSql = whereOrOptions as string;
+    const opt = options || {};
+    
+    try {
+      const pool = getPool();
+      let sql = `SELECT * FROM ${table}`;
+      const values: any[] = [];
+      
+      if (whereSql) {
+        sql += ` WHERE ${whereSql}`;
+      }
+      
+      if (opt.orderBy) {
+        sql += ` ORDER BY ${toSnakeCase(opt.orderBy)}`;
+        if (opt.orderDirection) {
+          sql += ` ${opt.orderDirection}`;
+        }
+      }
+      
+      if (opt.limit) {
+        sql += ` LIMIT ${opt.limit}`;
+      }
+      
+      if (opt.offset) {
+        sql += ` OFFSET ${opt.offset}`;
+      }
+      
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      return rows.map((row: any) => convertKeysToCamel(row));
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // 带条件的计数（兼容旧代码，支持表名和自定义WHERE条件）
+  async countWhere(tableOrConditions: string | Record<string, any>, whereSql?: string): Promise<number> {
+    // countWhere(conditions) - 标准用法
+    if (typeof tableOrConditions === 'object') {
+      return this.count(tableOrConditions);
+    }
+    
+    // countWhere(table, whereSql) - 兼容旧代码
+    const table = tableOrConditions;
+    
+    try {
+      const pool = getPool();
+      let sql = `SELECT COUNT(*) as count FROM ${table}`;
+      const values: any[] = [];
+      
+      if (whereSql) {
+        sql += ` WHERE ${whereSql}`;
+      }
+      
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      return rows[0]?.count || 0;
+    } catch (error: any) {
+      return 0;
+    }
   }
 
   // 构建 WHERE 子句
@@ -578,12 +648,7 @@ export async function deleteRow(table: string, conditions: Record<string, any>):
   return new MysqlClient(table).delete(conditions);
 }
 
-// 导出 getMySQLClient 函数
-let _mysqlClient: MysqlClient | null = null;
-
-export function getMySQLClient(): MysqlClient {
-  if (!_mysqlClient) {
-    _mysqlClient = new MysqlClient('_default');
-  }
-  return _mysqlClient;
+// 导出 getMySQLClient 函数 - 返回 MysqlClient 实例
+export function getMySQLClient(table?: string): MysqlClient {
+  return new MysqlClient(table || 'users');
 }

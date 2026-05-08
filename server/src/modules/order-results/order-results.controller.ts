@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Post, Get, Body, Param, Headers } from '@nestjs/common'
+import { Controller, Post, Get, Body, Param, Headers, Inject } from '@nestjs/common'
 import { OrderResultsService, CreateResultDto } from './order-results.service'
 
 @Controller('order-results')
 export class OrderResultsController {
-  constructor(private readonly orderResultsService: OrderResultsService) {}
+  constructor(@Inject('ORDER_RESULTS_SERVICE') private readonly orderResultsService: OrderResultsService) {}
 
   /**
    * 提交订单效果数据

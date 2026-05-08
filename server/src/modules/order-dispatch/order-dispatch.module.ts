@@ -17,7 +17,10 @@ import { OrderProcessingModule } from '../order-processing/order-processing.modu
     OrderProcessingModule
   ],
   controllers: [OrderDispatchController],
-  providers: [OrderDispatchService],
-  exports: [OrderDispatchService]
+  providers: [
+    OrderDispatchService,
+    { provide: 'ORDER_DISPATCH_SERVICE', useClass: OrderDispatchService }
+  ],
+  exports: [OrderDispatchService, 'ORDER_DISPATCH_SERVICE']
 })
 export class OrderDispatchModule {}
