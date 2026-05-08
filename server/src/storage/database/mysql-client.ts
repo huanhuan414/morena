@@ -6,7 +6,7 @@ let pool: Pool | null = null;
 function getPool(): Pool {
   if (!pool) {
     pool = mysql.createPool({
-      host: process.env.MYSQL_HOST || '180.184.205.74',
+      host: process.env.MYSQL_HOST || '127.0.0.1',
       port: parseInt(process.env.MYSQL_PORT || '16033'),
       user: process.env.MYSQL_USER || 'mrl',
       password: process.env.MYSQL_PASSWORD || 'SYDPHJB8aGBn83Eh',

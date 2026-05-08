@@ -84,6 +84,66 @@ export class SocialService {
     return { followed: true }
   }
 
+  /**
+   * 获取用户分身累计统计数据
+   */
+  async getAvatarTotalStats(userId: string) {
+    const db = getMySQLClient()
+    
+    // 获取用户的分身数量
+    const avatars = await db.query('avatars', {
+      user_id: userId
+    }) as any[]
+    const avatarCount = avatars?.length || 0
+    
+    // 获取用户的所有分身ID
+    const avatarIds = avatars?.map((a: any) => a.id) || []
+    
+    let totalPosts = 0
+    let totalFollowers = 0
+    let totalLikes = 0
+    
+    if (avatarIds.length > 0) {
+      // 获取每个分身的统计数据并汇总
+      for (const avatarId of avatarIds) {
+        // 帖子数量
+        const posts = await db.query('posts', {
+          avatar_id: avatarId
+        }) as any[]
+        totalPosts += posts?.length || 0
+        
+        // 粉丝数量
+        const followers = await db.query('avatar_follows', {
+          following_id: avatarId
+        }) as any[]
+        totalFollowers += followers?.length || 0
+        
+        // 获赞数量
+        const avatarPosts = await db.query('posts', {
+          avatar_id: avatarId
+        }) as any[]
+        const postIds = avatarPosts?.map((p: any) => p.id) || []
+        
+        if (postIds.length > 0) {
+          for (const postId of postIds) {
+            const likes = await db.query('likes', {
+              target_id: postId,
+              target_type: 'post'
+            }) as any[]
+            totalLikes += likes?.length || 0
+          }
+        }
+      }
+    }
+    
+    return {
+      avatarCount,
+      totalPosts,
+      totalFollowers,
+      totalLikes
+    }
+  }
+
   async getComments(targetId: string, page = 1, pageSize = 20) {
     const db = getMySQLClient()
     

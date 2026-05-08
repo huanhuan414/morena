@@ -2,7 +2,7 @@ import type { UserConfigExport } from "@tarojs/cli"
 
 export default {
   defineConstants: {
-    PROJECT_DOMAIN: JSON.stringify(''), // 开发模式下使用空字符串，让 Coze 网关处理 /api 路由
+    PROJECT_DOMAIN: JSON.stringify('https://mrlweb.51webjs.com'), // 直连服务器
   },
   mini: {
     debugReact: true,

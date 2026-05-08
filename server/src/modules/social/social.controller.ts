@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Get, Post, Delete, Body, Param, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { SocialService } from './social.service'
 
 @Controller('social')
 export class SocialController {
-  constructor(private readonly socialService: SocialService) {}
+  constructor(@Inject('SOCIAL_SERVICE') private readonly socialService: SocialService) {}
 
   @Get('followers')
   async getFollowersAndFollowing(@Headers('x-user-id') userId: string) {
