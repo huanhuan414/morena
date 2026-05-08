@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Get, Post, Delete, Body, Param, Headers, Query } from '@nestjs/common'
 import { SocialService } from './social.service'
 

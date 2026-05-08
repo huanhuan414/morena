@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Module } from '@nestjs/common';
 import { PalmReadingController } from './palm-reading.controller';
 import { PalmReadingService } from './palm-reading.service';

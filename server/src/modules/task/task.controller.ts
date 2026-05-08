@@ -1,118 +1,41 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, Query, Headers } from '@nestjs/common'
+import { Controller, Post, Get, Put, Param, Body, Headers } from '@nestjs/common'
 import { TaskService } from './task.service'
 
-@Controller('task')
+@Controller('tasks')
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
   async createTask(
     @Headers('x-user-id') userId: string,
-    @Body() body: any
+    @Body() body: { type: string; avatar_id?: string; config?: Record<string, any> }
   ) {
-    console.log('创建任务请求:', { userId, body })
-    
-    const task = await this.taskService.createTask(userId, body)
-    
-    return {
-      code: 200,
-      msg: '创建成功',
-      data: task
-    }
+    return await this.taskService.createTask(userId, body)
   }
 
   @Get()
   async getTasks(
     @Headers('x-user-id') userId: string,
-    @Query('status') status?: string
+    @Headers('x-task-status') status?: string
   ) {
-    const tasks = await this.taskService.getTasksByUser(userId, status)
-    
-    return {
-      code: 200,
-      data: tasks
-    }
+    return await this.taskService.getTasks(userId, status)
   }
 
   @Get('stats')
   async getTaskStats(@Headers('x-user-id') userId: string) {
-    const stats = await this.taskService.getTaskStats(userId)
-    
-    return {
-      code: 200,
-      data: stats
-    }
+    return await this.taskService.getTaskStats(userId)
   }
 
   @Get(':id')
-  async getTask(
-    @Headers('x-user-id') userId: string,
-    @Param('id') taskId: string
-  ) {
-    // userId 可选，只通过 taskId 查询
-    const task = await this.taskService.getTaskById(taskId)
-    
-    return {
-      code: 200,
-      data: task
-    }
+  async getTask(@Param('id') id: string) {
+    return await this.taskService.getTask(id)
   }
 
-  @Post(':id/execute')
-  async executeTask(
-    @Headers('x-user-id') userId: string,
-    @Param('id') taskId: string
+  @Put(':id/status')
+  async updateTaskStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string; result?: Record<string, any> }
   ) {
-    console.log('执行任务请求:', { taskId, userId })
-    
-    const result = await this.taskService.executeTask(taskId, userId)
-    
-    return {
-      code: 200,
-      msg: '任务执行完成',
-      data: result
-    }
-  }
-
-  @Put(':id')
-  async updateTask(
-    @Headers('x-user-id') userId: string,
-    @Param('id') taskId: string,
-    @Body() body: any
-  ) {
-    const task = await this.taskService.updateTask(taskId, userId, body)
-    
-    return {
-      code: 200,
-      msg: '更新成功',
-      data: task
-    }
-  }
-
-  @Post(':id/cancel')
-  async cancelTask(
-    @Headers('x-user-id') userId: string,
-    @Param('id') taskId: string
-  ) {
-    const task = await this.taskService.cancelTask(taskId, userId)
-    
-    return {
-      code: 200,
-      msg: '任务已取消',
-      data: task
-    }
-  }
-
-  @Delete(':id')
-  async deleteTask(
-    @Headers('x-user-id') userId: string,
-    @Param('id') taskId: string
-  ) {
-    await this.taskService.deleteTask(taskId, userId)
-    
-    return {
-      code: 200,
-      msg: '删除成功'
-    }
+    return await this.taskService.updateTaskStatus(id, body.status, body.result)
   }
 }

@@ -117,11 +117,11 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.banUser(userId, action)
+    const result = await this.adminService.banUser(userId, action === 'ban')
     return {
       code: result.success ? 200 : 400,
       data: null,
-      message: result.message
+      message: result.message || '操作完成'
     }
   }
 
@@ -143,7 +143,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getAvatars(page, limit, keyword, status)
+    const result = await this.adminService.getAvatars(page, limit)
     return {
       code: 200,
       data: result,
@@ -191,7 +191,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getOrders(page, limit, keyword, status)
+    const result = await this.adminService.getOrders(page, limit, status)
     return {
       code: 200,
       data: result,
@@ -233,7 +233,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getSkills()
+    const result = await this.adminService.getSkills(1, 100)
     return {
       code: 200,
       data: result,
@@ -343,7 +343,8 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getPosts(status, search)
+    const page = parseInt(search || '1', 10);
+    const result = await this.adminService.getPosts(page, 20, status)
     return {
       code: 200,
       data: result,
@@ -420,14 +421,16 @@ export class AdminController {
   @Get('finance/transactions')
   async getTransactions(
     @Headers('authorization') token: string,
-    @Query('type') type?: string
+    @Query('type') type?: string,
+    @Query('page') pageStr?: string
   ) {
     const admin = await this.adminService.verifyToken(token)
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getTransactions(type)
+    const page = parseInt(pageStr || '1', 10);
+    const result = await this.adminService.getTransactions(page, 20, type)
     return {
       code: 200,
       data: result,
@@ -508,7 +511,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.getReferrers()
+    const result = await this.adminService.getReferrers(1, 100)
     return {
       code: 200,
       data: result,
@@ -614,11 +617,11 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.changePassword(admin.id, oldPassword, newPassword)
+    const result = await this.adminService.changePassword(admin.id, newPassword)
     return {
       code: result.success ? 200 : 400,
       data: null,
-      message: result.message
+      message: result.message || '密码修改成功'
     }
   }
 
@@ -632,7 +635,7 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const config = await this.adminService.getConfig()
+    const config = await this.adminService.getSystemConfig()
     return {
       code: 200,
       data: config,
@@ -653,11 +656,11 @@ export class AdminController {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const result = await this.adminService.updateConfig(config)
+    const result = await this.adminService.updateSystemConfig(config)
     return {
       code: result.success ? 200 : 400,
       data: null,
-      message: result.message
+      message: result.success ? '配置更新成功' : '配置更新失败'
     }
   }
 }

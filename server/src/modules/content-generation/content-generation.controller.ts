@@ -1,14 +1,10 @@
 import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
-import { GeneratedContent } from './types'
 
 @Controller('content-generation')
 export class ContentGenerationController {
   constructor(private readonly contentGenerationService: ContentGenerationService) {}
 
-  /**
-   * 为订单生成内容
-   */
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   async generateContent(@Body() body: {
@@ -20,8 +16,6 @@ export class ContentGenerationController {
     platforms: string[]
     contentType: string
     targetAudience: string
-    avatarName?: string
-    avatarPersonality?: string
   }) {
     try {
       const result = await this.contentGenerationService.generateContent(body)
@@ -39,9 +33,6 @@ export class ContentGenerationController {
     }
   }
 
-  /**
-   * 获取分身生成的内容
-   */
   @Get('request/:requestId/avatar/:avatarId')
   async getGeneratedContent(
     @Param('requestId') requestId: string,
@@ -63,9 +54,6 @@ export class ContentGenerationController {
     }
   }
 
-  /**
-   * 更新内容状态
-   */
   @Post(':contentId/status')
   @HttpCode(HttpStatus.OK)
   async updateContentStatus(

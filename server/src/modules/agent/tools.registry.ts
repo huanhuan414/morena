@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { Tool, ToolContext, ToolResult, ToolCallRequest, ToolExecutionContext } from './tools.interface'
+import { ITool, ToolContext, ToolResult, ToolCallRequest, ToolExecutionContext } from './tools.interface'
 import { SearchTool } from './tools/search.tool'
 import { SendMessageTool } from './tools/send-message.tool'
 import { CreateDocumentTool } from './tools/create-document.tool'
@@ -7,9 +7,30 @@ import { QueryDataTool } from './tools/query-data.tool'
 import { GenerateImageTool } from './tools/generate-image.tool'
 import { GenerateVideoTool } from './tools/generate-video.tool'
 
+// Helper to extract tool name from definition
+const getToolName = (tool: any): string => {
+  return tool.definition?.name || tool.name
+}
+
+// Helper to extract tool properties from definition
+const getToolProps = (tool: any): any => {
+  if (tool.definition) {
+    return {
+      name: tool.definition.name,
+      description: tool.definition.description,
+      parameters: tool.definition.paramsSchema || {}
+    }
+  }
+  return {
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters || {}
+  }
+}
+
 @Injectable()
 export class ToolsRegistry {
-  private tools: Map<string, Tool> = new Map()
+  private tools: Map<string, ITool> = new Map()
 
   constructor(
     private readonly searchTool: SearchTool,
@@ -28,9 +49,10 @@ export class ToolsRegistry {
     this.register(generateVideoTool)
   }
 
-  private register(tool: Tool) {
-    this.tools.set(tool.name, tool)
-    console.log(`[ToolsRegistry] 注册工具: ${tool.name}`)
+  private register(tool: any) {
+    const name = getToolName(tool)
+    this.tools.set(name, tool)
+    console.log(`[ToolsRegistry] 注册工具: ${name}`)
   }
 
   /**
@@ -41,11 +63,7 @@ export class ToolsRegistry {
     description: string
     parameters: Record<string, any>
   }> {
-    return Array.from(this.tools.values()).map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters
-    }))
+    return Array.from(this.tools.values()).map(tool => getToolProps(tool))
   }
 
   /**
@@ -88,7 +106,7 @@ export class ToolsRegistry {
   /**
    * 获取工具
    */
-  getTool(name: string): Tool | undefined {
+  getTool(name: string): ITool | undefined {
     return this.tools.get(name)
   }
 }

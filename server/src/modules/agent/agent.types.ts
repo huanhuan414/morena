@@ -17,6 +17,8 @@ export type ToolCategory =
   | 'content_creation'  // 内容创作
   | 'platform_publish'  // 平台发布
   | 'data_analysis'     // 数据分析
+  | 'short_drama'      // 短剧创作
+  | 'short_drama_extended'  // 短剧扩展
 
 // 步骤类型
 export type StepType = 
@@ -46,6 +48,7 @@ export interface ToolResult {
   success: boolean
   data?: any
   error?: string
+  message?: string
   requires_config?: boolean
   config_platform?: PlatformType
   config_fields?: ConfigField[]

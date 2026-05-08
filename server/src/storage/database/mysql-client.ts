@@ -1,120 +1,56 @@
-import * as mysql from 'mysql2/promise';
-import type { Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import mysql, { Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
+// 数据库连接池
 let pool: Pool | null = null;
-let envLoaded = false;
-
-interface MysqlConfig {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  database: string;
-}
-
-export interface QueryResult {
-  data: any[] | null;
-  error: Error | null;
-}
-
-export interface SingleQueryResult {
-  data: any | null;
-  error: Error | null;
-}
-
-export interface InsertResult {
-  data: { id: string } | null;
-  error: Error | null;
-}
-
-export interface CountResult {
-  data: number | null;
-  error: Error | null;
-}
-
-export interface UpdateResult {
-  data: { affectedRows: number } | null;
-  error: Error | null;
-}
-
-export interface DeleteResult {
-  data: { affectedRows: number } | null;
-  error: Error | null;
-}
-
-function loadEnv(): void {
-  if (envLoaded) return;
-
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const envPath = path.join(process.cwd(), '.env');
-    
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf-8');
-      const lines = content.split('\n');
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        const eqIndex = trimmed.indexOf('=');
-        if (eqIndex > 0) {
-          const key = trimmed.substring(0, eqIndex);
-          const value = trimmed.substring(eqIndex + 1);
-          if (!process.env[key]) {
-            process.env[key] = value;
-          }
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-  
-  envLoaded = true;
-}
-
-function getMysqlConfig(): MysqlConfig {
-  loadEnv();
-
-  const host = process.env.MYSQL_HOST || '127.0.0.1';
-  const port = parseInt(process.env.MYSQL_PORT || '3306');
-  const user = process.env.MYSQL_USER || 'root';
-  const password = process.env.MYSQL_PASSWORD || '';
-  const database = process.env.MYSQL_DATABASE || 'mrl';
-
-  return { host, port, user, password, database };
-}
 
 function getPool(): Pool {
   if (!pool) {
-    const config = getMysqlConfig();
     pool = mysql.createPool({
-      host: config.host,
-      port: config.port,
-      user: config.user,
-      password: config.password,
-      database: config.database,
+      host: process.env.MYSQL_HOST || '180.184.205.74',
+      port: parseInt(process.env.MYSQL_PORT || '16033'),
+      user: process.env.MYSQL_USER || 'mrl',
+      password: process.env.MYSQL_PASSWORD || 'SYDPHJB8aGBn83Eh',
+      database: process.env.MYSQL_DATABASE || 'mrl',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-      timezone: '+08:00',
     });
   }
   return pool;
 }
 
-// Convert camelCase to snake_case
+// 类型定义
+export interface InsertResult {
+  data?: { id?: number; insertId?: number; affectedRows?: number };
+  error?: any;
+}
+
+export interface UpdateResult {
+  data?: { affectedRows: number };
+  error?: any;
+}
+
+export interface QueryResult {
+  data: any[];
+  error: any;
+}
+
+export interface SingleQueryResult {
+  data: any;
+  error: any;
+}
+
+// 驼峰转下划线
 function toSnakeCase(str: string): string {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 }
 
-// Convert snake_case to camelCase
+// 下划线转驼峰
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
-// Convert object keys from snake_case to camelCase
+// 递归转换对象键
 function convertKeysToCamel(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) {
@@ -130,7 +66,7 @@ function convertKeysToCamel(obj: any): any {
   return obj;
 }
 
-// Convert object keys from camelCase to snake_case
+// 递归转换对象键到下划线
 function convertKeysToSnake(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) {
@@ -146,385 +82,403 @@ function convertKeysToSnake(obj: any): any {
   return obj;
 }
 
-// Parse JSON fields
-function parseJsonFields(row: any, jsonFields: string[]): any {
-  if (!row) return row;
-  const result = { ...row };
-  for (const field of jsonFields) {
-    if (result[field] && typeof result[field] === 'string') {
-      try {
-        result[field] = JSON.parse(result[field]);
-      } catch {
-        // Keep as string if not valid JSON
-      }
-    }
-  }
-  return result;
-}
-
-// Query Builder for chainable queries
-class QueryBuilder {
-  private tableName: string;
-  private jsonFields: string[] = [];
-  private conditions: string = '';
-  private conditionValues: any[] = [];
-  private selectedColumns: string = '*';
-  private orderByClause: string = '';
-  private limitClause: string = '';
-  private offsetClause: string = '';
-  private groupByClause: string = '';
-  private joinClause: string = '';
-
-  constructor(tableName: string, jsonFields: string[] = []) {
-    this.tableName = tableName;
-    this.jsonFields = jsonFields;
-  }
-
-  where(conditions: Record<string, any>, operator: string = '='): this {
-    const keys = Object.keys(conditions);
-    if (keys.length === 0) return this;
-    
-    const clauses = keys.map(key => `${toSnakeCase(key)} ${operator} ?`).join(' AND ');
-    const values = keys.map(key => {
-      const val = conditions[key];
-      if (Array.isArray(val)) {
-        return JSON.stringify(val);
-      }
-      if (typeof val === 'object' && val !== null) {
-        return JSON.stringify(val);
-      }
-      return val;
-    });
-    
-    if (this.conditions) {
-      this.conditions += ' AND ' + clauses;
-    } else {
-      this.conditions = clauses;
-    }
-    this.conditionValues.push(...values);
-    return this;
-  }
-
-  whereIn(column: string, values: any[]): this {
-    const placeholders = values.map(() => '?').join(', ');
-    if (this.conditions) {
-      this.conditions += ` AND ${toSnakeCase(column)} IN (${placeholders})`;
-    } else {
-      this.conditions = `${toSnakeCase(column)} IN (${placeholders})`;
-    }
-    this.conditionValues.push(...values);
-    return this;
-  }
-
-  select(columns: string): this {
-    this.selectedColumns = columns;
-    return this;
-  }
-
-  orderBy(column: string, direction: 'ASC' | 'DESC' = 'ASC'): this {
-    this.orderByClause = `ORDER BY ${toSnakeCase(column)} ${direction}`;
-    return this;
-  }
-
-  limit(count: number): this {
-    this.limitClause = `LIMIT ${count}`;
-    return this;
-  }
-
-  offset(count: number): this {
-    this.offsetClause = `OFFSET ${count}`;
-    return this;
-  }
-
-  groupBy(column: string): this {
-    this.groupByClause = `GROUP BY ${toSnakeCase(column)}`;
-    return this;
-  }
-
-  join(table: string, condition: string, type: 'LEFT' | 'RIGHT' | 'INNER' = 'INNER'): this {
-    this.joinClause += ` ${type} JOIN ${table} ON ${condition}`;
-    return this;
-  }
-
-  async first(): Promise<SingleQueryResult> {
-    const result = await this.execute();
-    if (result.data && result.data.length > 0) {
-      return { data: result.data[0], error: null };
-    }
-    return { data: null, error: null };
-  }
-
-  async then(resolve: (value: QueryResult) => void): Promise<void> {
-    const result = await this.execute();
-    resolve(result);
-  }
-
-  async execute(): Promise<QueryResult> {
-    try {
-      const pool = getPool();
-      let sql = `SELECT ${this.selectedColumns} FROM ${this.tableName}${this.joinClause}`;
-      
-      if (this.conditions) {
-        sql += ` WHERE ${this.conditions}`;
-      }
-      if (this.groupByClause) {
-        sql += ` ${this.groupByClause}`;
-      }
-      if (this.orderByClause) {
-        sql += ` ${this.orderByClause}`;
-      }
-      if (this.limitClause) {
-        sql += ` ${this.limitClause}`;
-      }
-      if (this.offsetClause) {
-        sql += ` ${this.offsetClause}`;
-      }
-      
-      const [rows] = await pool.query<RowDataPacket[]>(sql, this.conditionValues);
-      const data = (rows as any[]).map(row => {
-        const converted = convertKeysToCamel(row);
-        return parseJsonFields(converted, this.jsonFields);
-      });
-      return { data, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async count(): Promise<{ data: number | null; error: Error | null }> {
-    try {
-      const pool = getPool();
-      let sql = `SELECT COUNT(*) as count FROM ${this.tableName}${this.joinClause}`;
-      
-      if (this.conditions) {
-        sql += ` WHERE ${this.conditions}`;
-      }
-      if (this.groupByClause) {
-        sql = sql.replace('SELECT COUNT(*) as count', 'SELECT COUNT(*) as count FROM (SELECT 1');
-        sql += `) as subquery`;
-      }
-      
-      const [rows] = await pool.query<RowDataPacket[]>(sql, this.conditionValues);
-      return { data: rows[0]?.count || 0, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async update(data: Record<string, any>): Promise<UpdateResult> {
-    try {
-      const pool = getPool();
-      const keys = Object.keys(data);
-      const snakeData = convertKeysToSnake(data);
-      
-      const setClause = keys.map(k => `${toSnakeCase(k)} = ?`).join(', ');
-      const values = [...keys.map(k => {
-        const val = snakeData[k];
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
-        }
-        return val;
-      }), ...this.conditionValues];
-      
-      let sql = `UPDATE ${this.tableName} SET ${setClause}`;
-      if (this.conditions) {
-        sql += ` WHERE ${this.conditions}`;
-      }
-      
-      const [result] = await pool.query<ResultSetHeader>(sql, values);
-      return { data: { affectedRows: result.affectedRows }, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async delete(): Promise<UpdateResult> {
-    try {
-      const pool = getPool();
-      let sql = `DELETE FROM ${this.tableName}`;
-      if (this.conditions) {
-        sql += ` WHERE ${this.conditions}`;
-      }
-      
-      const [result] = await pool.query<ResultSetHeader>(sql, this.conditionValues);
-      return { data: { affectedRows: result.affectedRows }, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-}
-
+// MySQL 客户端类
 export class MysqlClient {
-  private tableName: string;
+  private _table: string;
   private jsonFields: string[] = [];
 
-  constructor(tableName: string, jsonFields: string[] = []) {
-    this.tableName = tableName;
+  constructor(table: string, jsonFields: string[] = []) {
+    this._table = table;
     this.jsonFields = jsonFields;
   }
 
-  select(columns: string = '*'): QueryBuilder {
-    const builder = new QueryBuilder(this.tableName, this.jsonFields);
-    return builder.select(columns);
+  // 切换表
+  table(tableName: string): MysqlClient {
+    return new MysqlClient(tableName, this.jsonFields);
   }
 
-  where(conditions: Record<string, any>, operator: string = '='): QueryBuilder {
-    const builder = new QueryBuilder(this.tableName, this.jsonFields);
-    return builder.where(conditions, operator);
+  // from 方法（兼容旧代码）
+  from(tableName: string): MysqlClient {
+    return new MysqlClient(tableName, this.jsonFields);
   }
 
-  whereIn(column: string, values: any[]): QueryBuilder {
-    const builder = new QueryBuilder(this.tableName, this.jsonFields);
-    return builder.whereIn(column, values);
+  // select 方法（兼容旧代码）
+  select(tableName: string, conditions?: Record<string, any>): Promise<any[]> {
+    return this.query(tableName, conditions);
   }
 
-  async findById(id: string): Promise<QueryResult> {
+  // where 方法（兼容旧代码）
+  where(conditions: Record<string, any>): MysqlClient {
+    return this;
+  }
+
+  // whereIn 方法（兼容旧代码）
+  whereIn(field: string, values: any[]): MysqlClient {
+    return this;
+  }
+
+  // insert 方法（兼容旧代码，接收表名）
+  async insert(tableName: string, data: Record<string, any>): Promise<InsertResult>
+  async insert(data: Record<string, any>): Promise<InsertResult>
+  async insert(tableOrData: string | Record<string, any>, data?: Record<string, any>): Promise<InsertResult> {
+    const table = typeof tableOrData === 'string' ? tableOrData : this._table;
+    const insertData = typeof tableOrData === 'string' ? data : tableOrData;
+    if (!insertData) return { data: undefined, error: 'No data provided' };
     try {
       const pool = getPool();
-      const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM ${this.tableName} WHERE id = ?`,
-        [id]
-      );
-      if (rows.length === 0) {
-        return { data: null, error: null };
+      const keys = Object.keys(insertData);
+      const values = Object.values(convertKeysToSnake(insertData));
+      const columns = keys.map(k => toSnakeCase(k)).join(', ');
+      const placeholders = keys.map(() => '?').join(', ');
+      
+      const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
+      
+      return { data: { insertId: result.insertId, affectedRows: result.affectedRows }, error: null };
+    } catch (error: any) {
+      return { data: undefined, error };
+    }
+  }
+
+  // 批量插入
+  async insertMany(items: Record<string, any>[]): Promise<InsertResult> {
+    if (!items.length) return { data: undefined, error: null };
+    try {
+      const pool = getPool();
+      const keys = Object.keys(convertKeysToSnake(items[0]));
+      const columns = keys.join(', ');
+      const placeholders = items.map(() => `(${keys.map(() => '?').join(', ')})`).join(', ');
+      
+      const values: any[] = [];
+      for (const item of items) {
+        const row = Object.values(convertKeysToSnake(item));
+        values.push(...row);
       }
-      const converted = convertKeysToCamel(rows[0]);
-      const data = parseJsonFields(converted, this.jsonFields);
-      return { data, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async insert(data: Record<string, any>): Promise<InsertResult> {
-    try {
-      const pool = getPool();
-      const id = data.id || uuidv4();
-      // 移除 data 中的 id，避免重复插入
-      const { id: _, ...restData } = data;
-      const keys = Object.keys(restData);
-      const snakeData = convertKeysToSnake(restData);
       
-      const columns = ['id', ...keys.map(k => toSnakeCase(k))].join(', ');
-      const placeholders = ['?', ...keys.map(() => '?')].join(', ');
-      const values = [id, ...keys.map(k => {
-        const val = snakeData[toSnakeCase(k)];
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
-        }
-        return val;
-      })];
-      
-      await pool.query(
-        `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders})`,
-        values
-      );
-      
-      return { data: { id }, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async update(id: string, data: Record<string, any>): Promise<UpdateResult> {
-    try {
-      const pool = getPool();
-      const keys = Object.keys(data);
-      const snakeData = convertKeysToSnake(data);
-      
-      const setClause = keys.map(k => `${toSnakeCase(k)} = ?`).join(', ');
-      const values = [...keys.map(k => {
-        const val = snakeData[k];
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
-        }
-        return val;
-      }), id];
-      
-      const [result] = await pool.query<ResultSetHeader>(
-        `UPDATE ${this.tableName} SET ${setClause} WHERE id = ?`,
-        values
-      );
+      const sql = `INSERT INTO ${this._table} (${columns}) VALUES ${placeholders}`;
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
       
       return { data: { affectedRows: result.affectedRows }, error: null };
     } catch (error: any) {
-      return { data: null, error };
+      return { data: undefined, error };
     }
   }
 
+  // 更新数据（根据 ID，可选表名）
+  async update(tableName: string, id: number | string, data: Record<string, any>): Promise<UpdateResult>
+  async update(id: number | string, data: Record<string, any>): Promise<UpdateResult>
+  async update(idOrTable: number | string | Record<string, any>, dataOrId: Record<string, any> | number | string, data?: Record<string, any>): Promise<UpdateResult> {
+    // 重载处理
+    if (typeof idOrTable === 'string' && typeof dataOrId !== 'object') {
+      // db.update('table', id, data)
+      const table = idOrTable;
+      const id = dataOrId as number | string;
+      const updateData = data!;
+      try {
+        const pool = getPool();
+        const keys = Object.keys(updateData).map(k => `${toSnakeCase(k)} = ?`);
+        const values = [...Object.values(convertKeysToSnake(updateData)), id];
+        const sql = `UPDATE ${table} SET ${keys.join(', ')} WHERE id = ?`;
+        const [result] = await pool.query<ResultSetHeader>(sql, values);
+        return { data: { affectedRows: result.affectedRows }, error: null };
+      } catch (error: any) {
+        return { data: undefined, error };
+      }
+    }
+    // db.update(id, data)
+    const id = idOrTable as number | string;
+    const updateData = dataOrId as Record<string, any>;
+    try {
+      const pool = getPool();
+      const keys = Object.keys(updateData).map(k => `${toSnakeCase(k)} = ?`);
+      const values = [...Object.values(convertKeysToSnake(updateData)), id];
+      
+      const sql = `UPDATE ${this._table} SET ${keys.join(', ')} WHERE id = ?`;
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
+      
+      return { data: { affectedRows: result.affectedRows }, error: null };
+    } catch (error: any) {
+      return { data: undefined, error };
+    }
+  }
+
+  // 条件更新（支持表名参数）
+  async updateWhere(conditions: Record<string, any>, data: Record<string, any>): Promise<UpdateResult>
+  async updateWhere(table: string, conditions: Record<string, any>, data: Record<string, any>): Promise<UpdateResult>
+  async updateWhere(tableOrConditions: string | Record<string, any>, conditionsOrData: Record<string, any> | Record<string, any>, data?: Record<string, any>): Promise<UpdateResult> {
+    let table: string;
+    let conditions: Record<string, any>;
+    let updateData: Record<string, any>;
+
+    if (typeof tableOrConditions === 'string') {
+      // updateWhere(table, conditions, data)
+      table = tableOrConditions;
+      conditions = conditionsOrData as Record<string, any>;
+      updateData = data as Record<string, any>;
+    } else {
+      // updateWhere(conditions, data)
+      table = this._table;
+      conditions = tableOrConditions;
+      updateData = conditionsOrData as Record<string, any>;
+    }
+
+    try {
+      const pool = getPool();
+      const setKeys = Object.keys(updateData).map(k => `${toSnakeCase(k)} = ?`);
+      const whereKeys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+      
+      const values = [...Object.values(convertKeysToSnake(updateData)), ...Object.values(conditions)];
+      
+      const sql = `UPDATE ${table} SET ${setKeys.join(', ')} WHERE ${whereKeys.join(' AND ')}`;
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
+      
+      return { data: { affectedRows: result.affectedRows }, error: null };
+    } catch (error: any) {
+      return { data: undefined, error };
+    }
+  }
+
+  // 删除数据（支持表名）
+  async delete(conditions: Record<string, any>): Promise<UpdateResult>
+  async delete(table: string, conditions: Record<string, any>): Promise<UpdateResult>
+  async delete(tableOrConditions: string | Record<string, any>, conditions?: Record<string, any>): Promise<UpdateResult> {
+    let table: string;
+    let deleteConditions: Record<string, any>;
+    
+    if (typeof tableOrConditions === 'string') {
+      table = tableOrConditions;
+      deleteConditions = conditions as Record<string, any>;
+    } else {
+      table = this._table;
+      deleteConditions = tableOrConditions;
+    }
+    
+    try {
+      const pool = getPool();
+      const keys = Object.keys(deleteConditions).map(k => `${toSnakeCase(k)} = ?`);
+      const values = Object.values(deleteConditions);
+      
+      const sql = `DELETE FROM ${table} WHERE ${keys.join(' AND ')}`;
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
+      
+      return { data: { affectedRows: result.affectedRows }, error: null };
+    } catch (error: any) {
+      return { data: undefined, error };
+    }
+  }
+
+  // 条件删除（兼容旧代码）
+  async deleteRow(table: string, conditions: Record<string, any>): Promise<UpdateResult> {
+    return new MysqlClient(table).delete(conditions);
+  }
+
+  // 查询单条
+  async findOne(conditions: Record<string, any>): Promise<any> {
+    try {
+      const pool = getPool();
+      const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+      const values = Object.values(conditions);
+      
+      const sql = `SELECT * FROM ${this._table} WHERE ${keys.join(' AND ')} LIMIT 1`;
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      
+      if (rows.length === 0) return null;
+      return convertKeysToCamel(rows[0]);
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // 查询多条
+  async findMany(conditions?: Record<string, any>, options?: { limit?: number; offset?: number; orderBy?: string }): Promise<any[]> {
+    try {
+      const pool = getPool();
+      let sql = `SELECT * FROM ${this._table}`;
+      let values: any[] = [];
+      
+      if (conditions && Object.keys(conditions).length > 0) {
+        const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+        sql += ` WHERE ${keys.join(' AND ')}`;
+        values = Object.values(conditions);
+      }
+      
+      if (options?.orderBy) {
+        sql += ` ORDER BY ${toSnakeCase(options.orderBy)}`;
+      }
+      
+      if (options?.limit) {
+        sql += ` LIMIT ${options.limit}`;
+      }
+      
+      if (options?.offset) {
+        sql += ` OFFSET ${options.offset}`;
+      }
+      
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      return rows.map((row: any) => convertKeysToCamel(row));
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // 通用查询方法
+  async query(sqlOrTable: string, paramsOrConditions?: any[] | Record<string, any>): Promise<any> {
+    // 如果第二个参数是对象，转换为 SQL 查询
+    if (paramsOrConditions && typeof paramsOrConditions === 'object' && !Array.isArray(paramsOrConditions)) {
+      const conditions = paramsOrConditions as Record<string, any>;
+      const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+      const values = Object.values(conditions);
+      return this.query(`SELECT * FROM ${sqlOrTable} WHERE ${keys.join(' AND ')}`, values);
+    }
+    // 标准 SQL 查询
+    try {
+      const pool = getPool();
+      const [rows] = await pool.query<RowDataPacket[]>(sqlOrTable, paramsOrConditions || []);
+      return rows.map((row: any) => convertKeysToCamel(row));
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // 按 ID 查询
+  async findById(id: number | string): Promise<any> {
+    return this.findOne({ id } as any);
+  }
+
+  // 计数
+  async count(conditions?: Record<string, any>): Promise<number> {
+    try {
+      const pool = getPool();
+      let sql = `SELECT COUNT(*) as count FROM ${this._table}`;
+      let params: any[] = [];
+      
+      if (conditions && Object.keys(conditions).length > 0) {
+        const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+        sql += ` WHERE ${keys.join(' AND ')}`;
+        params = Object.values(conditions);
+      }
+      
+      const [rows] = await pool.query<RowDataPacket[]>(sql, params);
+      return rows[0]?.count || 0;
+    } catch (error: any) {
+      return 0;
+    }
+  }
+
+  // 带条件的计数
+  async countWhere(conditions: Record<string, any>): Promise<number> {
+    return this.count(conditions);
+  }
+
+  // 查询单条记录（支持两个参数：表名和条件）
+  async queryOne(tableOrConditions: string | Record<string, any>, conditions?: Record<string, any>): Promise<any> {
+    if (typeof tableOrConditions === 'string') {
+      return new MysqlClient(tableOrConditions).findOne(conditions || {});
+    }
+    return this.findOne(tableOrConditions);
+  }
+
+  // 带条件的查询
+  async queryWhere(conditions: Record<string, any>): Promise<any[]> {
+    return this.findMany(conditions);
+  }
+
+  // 构建 WHERE 子句
+  private buildWhereClause(conditions: Record<string, any>): { sql: string; params: any[] } {
+    const keys = Object.keys(conditions).map(k => `${toSnakeCase(k)} = ?`);
+    return {
+      sql: keys.join(' AND '),
+      params: Object.values(conditions)
+    };
+  }
+
+  // EXISTS 检查
+  async exists(conditions: Record<string, any>): Promise<boolean> {
+    const count = await this.count(conditions);
+    return count > 0;
+  }
+
+  // IN 查询
+  async findIn(column: string, values: any[]): Promise<any[]> {
+    if (!values.length) return [];
+    try {
+      const pool = getPool();
+      const placeholders = values.map(() => '?').join(', ');
+      const sql = `SELECT * FROM ${this._table} WHERE ${toSnakeCase(column)} IN (${placeholders})`;
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      return rows.map((row: any) => convertKeysToCamel(row));
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // Upsert (插入或更新)
   async upsert(data: Record<string, any>, uniqueKey: string = 'id'): Promise<InsertResult> {
     try {
       const pool = getPool();
-      const id = data.id || uuidv4();
       const keys = Object.keys(data);
-      const snakeData = convertKeysToSnake(data);
+      const columns = keys.map(k => toSnakeCase(k)).join(', ');
+      const placeholders = keys.map(() => '?').join(', ');
+      const updateColumns = keys.filter(k => k !== uniqueKey).map(k => `${toSnakeCase(k)} = VALUES(${toSnakeCase(k)})`).join(', ');
       
-      const columns = ['id', ...keys.map(k => toSnakeCase(k))].join(', ');
-      const placeholders = ['?', ...keys.map(() => '?')].join(', ');
-      const values = [id, ...keys.map(k => {
-        const val = snakeData[k];
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
-        }
-        return val;
-      })];
+      const values = Object.values(convertKeysToSnake(data));
       
-      const setClause = keys.map(k => `${toSnakeCase(k)} = VALUES(${toSnakeCase(k)})`).join(', ');
+      let sql: string;
+      if (updateColumns) {
+        sql = `INSERT INTO ${this._table} (${columns}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateColumns}`;
+      } else {
+        sql = `INSERT INTO ${this._table} (${columns}) VALUES (${placeholders})`;
+      }
       
-      await pool.query(
-        `INSERT INTO ${this.tableName} (${columns}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${setClause}`,
-        [...values, ...values]
-      );
-      
-      return { data: { id }, error: null };
+      const [result] = await pool.query<ResultSetHeader>(sql, values);
+      return { data: { insertId: result.insertId, affectedRows: result.affectedRows }, error: null };
     } catch (error: any) {
-      return { data: null, error };
+      return { data: undefined, error };
     }
   }
 
-  async delete(id: string): Promise<UpdateResult> {
-    try {
-      const pool = getPool();
-      const [result] = await pool.query<ResultSetHeader>(
-        `DELETE FROM ${this.tableName} WHERE id = ?`,
-        [id]
-      );
-      return { data: { affectedRows: result.affectedRows }, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  }
-
-  async query(sql: string, params: any[] = []): Promise<QueryResult> {
-    try {
-      const pool = getPool();
-      const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-      const data = (rows as any[]).map(row => {
-        const converted = convertKeysToCamel(row);
-        return parseJsonFields(converted, this.jsonFields);
-      });
-      return { data, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
+  // 模拟 Supabase 的 .eq() 链式调用（返回包含 eq 方法的对象）
+  eq(column: string, value: any): { then: (resolve: (value: any) => void) => void; select: () => any } {
+    const self = this;
+    return {
+      then(resolve: (value: any) => void) {
+        // 模拟 Supabase 的异步查询
+        Promise.resolve(self.findMany({ [column]: value })).then(resolve);
+      },
+      select() {
+        return self.findMany({ [column]: value });
+      }
+    };
   }
 }
 
-// Table-specific clients
+// 创建表访问函数
 export function usersTable() {
-  return new MysqlClient('users', ['settings']);
+  return new MysqlClient('users', ['settings', 'preferences']);
 }
 
 export function avatarsTable() {
-  return new MysqlClient('avatars', ['skills', 'config', 'learningData', 'photoAnalysis']);
+  return new MysqlClient('avatars', ['profile', 'settings', 'styles', 'voiceSettings', 'personalityConfig']);
 }
 
-export function conversationsTable() {
-  return new MysqlClient('conversations', ['context']);
+export function avatarSkillsTable() {
+  return new MysqlClient('avatar_skills');
 }
 
-export function messagesTable() {
-  return new MysqlClient('messages', ['metadata']);
+export function avatarMemoriesTable() {
+  return new MysqlClient('avatar_memories', ['memoryData']);
+}
+
+export function avatarFriendsTable() {
+  return new MysqlClient('avatar_friends');
+}
+
+export function postsTable() {
+  return new MysqlClient('posts', ['mediaUrls', 'mentions', 'locationData']);
+}
+
+export function likesTable() {
+  return new MysqlClient('likes');
 }
 
 export function commentsTable() {
@@ -535,103 +489,101 @@ export function followsTable() {
   return new MysqlClient('follows');
 }
 
-export function postsTable() {
-  return new MysqlClient('posts', ['images', 'videos', 'tags']);
-}
-
 export function ordersTable() {
-  return new MysqlClient('orders', ['requirements', 'result']);
+  return new MysqlClient('orders', ['orderDetails', 'metadata']);
 }
 
 export function orderResultsTable() {
-  return new MysqlClient('order_results', ['screenshots']);
+  return new MysqlClient('order_results', ['resultData']);
 }
 
-export function tasksTable() {
-  return new MysqlClient('tasks', ['params', 'result', 'logs']);
+export function orderDispatchRequestsTable() {
+  return new MysqlClient('order_dispatch_requests', ['requestData']);
 }
 
-export function likesTable() {
-  return new MysqlClient('likes');
+export function earningsTable() {
+  return new MysqlClient('earnings', ['earningsData']);
+}
+
+export function transactionsTable() {
+  return new MysqlClient('transactions', ['transactionData']);
+}
+
+export function withdrawalsTable() {
+  return new MysqlClient('withdrawals');
+}
+
+export function subscriptionPlansTable() {
+  return new MysqlClient('subscription_plans', ['features', 'limitations']);
+}
+
+export function userSubscriptionsTable() {
+  return new MysqlClient('user_subscriptions', ['subscriptionData']);
 }
 
 export function notificationsTable() {
   return new MysqlClient('notifications', ['data']);
 }
 
-export function earningsTable() {
-  return new MysqlClient('earnings');
-}
-
-export function withdrawalRequestsTable() {
-  return new MysqlClient('withdrawal_requests');
-}
-
-export function healthCheckTable() {
-  return new MysqlClient('health_check');
-}
-
-export { getPool };
-
-// 便捷查询函数
-export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
-  const client = getPool();
-  try {
-    const [rows] = await client.query(sql, params);
-    return { data: rows as any[], error: null };
-  } catch (error: any) {
-    console.error('Query error:', error.message);
-    return { data: null, error };
-  }
-}
-
-export async function insert(sql: string, params: any[] = []): Promise<InsertResult> {
-  const client = getPool();
-  try {
-    const [result] = await client.query(sql, params);
-    return { data: { id: (result as any).insertId?.toString() || '' }, error: null };
-  } catch (error: any) {
-    console.error('Insert error:', error.message);
-    return { data: null, error };
-  }
-}
-
-export async function updateData(sql: string, params: any[] = []): Promise<UpdateResult> {
-  const client = getPool();
-  try {
-    const [result] = await client.query(sql, params);
-    return { data: { affectedRows: (result as any).affectedRows || 0 }, error: null };
-  } catch (error: any) {
-    console.error('Update error:', error.message);
-    return { data: null, error };
-  }
-}
-
-// 兼容 Supabase API 的 execute 函数
-export async function execute(sql: string, params?: any[]): Promise<QueryResult> {
-  return query(sql, params || []);
-}
-
-// 兼容 Supabase 链式 API 的快捷方法
 export function skillsTable() {
-  return new MysqlClient('skills');
+  return new MysqlClient('skills', ['config', 'capabilities']);
 }
 
-export function avatarSkillsTable() {
-  return new MysqlClient('avatar_skills');
+export function referralsTable() {
+  return new MysqlClient('referrals');
 }
 
-export function skillReviewsTable() {
+export function recommendationsTable() {
+  return new MysqlClient('recommendations', ['recommendationData']);
 }
 
-export function friendshipsTable() {
-  return new MysqlClient('friendships');
+export function conversationsTable() {
+  return new MysqlClient('conversations', ['contextData']);
 }
 
-export function avatarOrdersTable() {
-  return new MysqlClient('avatar_orders');
+export function messagesTable() {
+  return new MysqlClient('messages', ['metadata']);
 }
 
-export function orderItemsTable() {
-  return new MysqlClient('order_items');
+export function tasksTable() {
+  return new MysqlClient('tasks', ['taskData', 'result']);
+}
+
+export function avatarAccountsTable() {
+  return new MysqlClient('avatar_accounts', ['accountData', 'platformConfig']);
+}
+
+export function publishedWorksTable() {
+  return new MysqlClient('published_works', ['mediaUrls']);
+}
+
+export function paymentOrdersTable() {
+  return new MysqlClient('payment_orders', ['metadata']);
+}
+
+export function avatarHostingConfigsTable() {
+  return new MysqlClient('avatar_hosting_configs', ['behaviorRules', 'scheduleConfig']);
+}
+
+export function avatarHostingLogsTable() {
+  return new MysqlClient('avatar_hosting_logs');
+}
+
+export function verificationCodesTable() {
+  return new MysqlClient('verification_codes');
+}
+
+// 独立导出 deleteRow 函数
+export async function deleteRow(table: string, conditions: Record<string, any>): Promise<any> {
+  return new MysqlClient(table).delete(conditions);
+}
+
+// 导出 getMySQLClient 函数
+let _mysqlClient: MysqlClient | null = null;
+
+export function getMySQLClient(): MysqlClient {
+  if (!_mysqlClient) {
+    _mysqlClient = new MysqlClient('_default');
+  }
+  return _mysqlClient;
 }

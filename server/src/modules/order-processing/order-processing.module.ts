@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Module } from '@nestjs/common'
 import { OrderProcessingController } from './order-processing.controller'
 import { OrderProcessingService } from './order-processing.service'

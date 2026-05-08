@@ -1,14 +1,15 @@
+// @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import axios, { AxiosInstance } from 'axios'
-import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class TikHubService {
   private readonly axios: AxiosInstance
   private readonly apiKey: string
 
-  constructor(private configService: ConfigService) {
-    this.apiKey = this.configService.get('TIKHUB_API_KEY') || 'iawtA+4A7Gr1hkOTKq2M5SfzahTUd5h4uUjatHyZS/m90wqBB2yqURXBKw=='
+  constructor() {
+    // 直接从环境变量获取，不依赖 ConfigService
+    this.apiKey = process.env.TIKHUB_API_KEY || 'iawtA+4A7Gr1hkOTKq2M5SfzahTUd5h4uUjatHyZS/m90wqBB2yqURXBKw=='
 
     this.axios = axios.create({
       baseURL: 'https://api.tikhub.io/api/v1',

@@ -22,38 +22,28 @@ import {
   GenerateVideoTool
 } from './content-generation-tools'
 import {
-  PublishWechatMpTool,
-  PublishXiaohongshuTool,
-  PublishWechatVideoTool
+  PublishWechatMpTool
 } from './platform-publish-tools'
 import {
   QueryUserProfileTool,
-  QueryOrdersTool,
-  QueryFriendsTool
+  QueryOrdersTool
 } from './data-tools'
 import {
-  SendMessageTool,
-  CreateMomentTool,
-  AddCommentTool
+  AvatarSendMessageTool,
+  AvatarCreateMomentTool
 } from './social-tools'
 import {
   CreateTaskTool,
-  UpdateTaskStatusTool,
-  QueryTasksTool,
-  AssignTaskTool
+  UpdateTaskTool,
+  QueryTasksTool
 } from './task-tools'
 import {
-  ChangePasswordTool,
-  UpdateProfileTool,
-  UploadAvatarTool,
-  BindPhoneTool,
-  DeleteAccountTool
+  ChangePasswordTool
 } from './user-management-tools'
 import {
   QueryAvatarFriendsTool,
   AddAvatarFriendTool,
-  RemoveAvatarFriendTool,
-  QueryAvatarProfileTool
+  RemoveAvatarFriendTool
 } from './avatar-management-tools'
 
 @Injectable()
@@ -66,41 +56,31 @@ export class AvatarToolRegistry {
     private readonly writeArticleTool: WriteArticleTool,
     private readonly generateImageTool: GenerateImageTool,
     private readonly summarizeTool: SummarizeTool,
-    // 内容创作工具（从旧系统迁移）
+    // 内容创作工具
     private readonly writeWechatMpArticleTool: WriteWechatMpArticleTool,
     private readonly writeXiaohongshuNoteTool: WriteXiaohongshuNoteTool,
     private readonly writeWechatMomentsTool: WriteWechatMomentsTool,
-    // 内容生成工具（从旧系统迁移）
+    // 内容生成工具
     private readonly contentGenerateImageTool: ContentGenerateImageTool,
     private readonly generateVideoTool: GenerateVideoTool,
-    // 平台发布工具（从旧系统迁移）
+    // 平台发布工具
     private readonly publishWechatMpTool: PublishWechatMpTool,
-    private readonly publishXiaohongshuTool: PublishXiaohongshuTool,
-    private readonly publishWechatVideoTool: PublishWechatVideoTool,
     // 数据查询工具
     private readonly queryUserProfileTool: QueryUserProfileTool,
     private readonly queryOrdersTool: QueryOrdersTool,
-    private readonly queryFriendsTool: QueryFriendsTool,
     // 社交互动工具
-    private readonly sendMessageTool: SendMessageTool,
-    private readonly createMomentTool: CreateMomentTool,
-    private readonly addCommentTool: AddCommentTool,
+    private readonly sendMessageTool: AvatarSendMessageTool,
+    private readonly createMomentTool: AvatarCreateMomentTool,
     // 任务管理工具
     private readonly createTaskTool: CreateTaskTool,
-    private readonly updateTaskStatusTool: UpdateTaskStatusTool,
+    private readonly updateTaskTool: UpdateTaskTool,
     private readonly queryTasksTool: QueryTasksTool,
-    private readonly assignTaskTool: AssignTaskTool,
     // 用户管理工具
     private readonly changePasswordTool: ChangePasswordTool,
-    private readonly updateProfileTool: UpdateProfileTool,
-    private readonly uploadAvatarTool: UploadAvatarTool,
-    private readonly bindPhoneTool: BindPhoneTool,
-    private readonly deleteAccountTool: DeleteAccountTool,
     // 分身管理工具
     private readonly queryAvatarFriendsTool: QueryAvatarFriendsTool,
     private readonly addAvatarFriendTool: AddAvatarFriendTool,
-    private readonly removeAvatarFriendTool: RemoveAvatarFriendTool,
-    private readonly queryAvatarProfileTool: QueryAvatarProfileTool
+    private readonly removeAvatarFriendTool: RemoveAvatarFriendTool
   ) {
     this.registerAllTools()
   }
@@ -109,53 +89,41 @@ export class AvatarToolRegistry {
    * 注册所有工具
    */
   private registerAllTools() {
-    // 原有内容创作工具
-    this.registerTool(this.writeArticleTool)
-    this.registerTool(this.generateImageTool)
-    this.registerTool(this.summarizeTool)
+    // 内容创作工具
+    this.registerTool(this.writeArticleTool, 'WriteArticleTool')
+    this.registerTool(this.generateImageTool, 'GenerateImageTool')
+    this.registerTool(this.summarizeTool, 'SummarizeTool')
+    this.registerTool(this.writeWechatMpArticleTool, 'WriteWechatMpArticleTool')
+    this.registerTool(this.writeXiaohongshuNoteTool, 'WriteXiaohongshuNoteTool')
+    this.registerTool(this.writeWechatMomentsTool, 'WriteWechatMomentsTool')
 
-    // 内容创作工具（从旧系统迁移）
-    this.registerTool(this.writeWechatMpArticleTool)
-    this.registerTool(this.writeXiaohongshuNoteTool)
-    this.registerTool(this.writeWechatMomentsTool)
+    // 内容生成工具
+    this.registerTool(this.contentGenerateImageTool, 'ContentGenerateImageTool')
+    this.registerTool(this.generateVideoTool, 'GenerateVideoTool')
 
-    // 内容生成工具（从旧系统迁移）
-    this.registerTool(this.contentGenerateImageTool)
-    this.registerTool(this.generateVideoTool)
-
-    // 平台发布工具（从旧系统迁移）
-    this.registerTool(this.publishWechatMpTool)
-    this.registerTool(this.publishXiaohongshuTool)
-    this.registerTool(this.publishWechatVideoTool)
+    // 平台发布工具
+    this.registerTool(this.publishWechatMpTool, 'PublishWechatMpTool')
 
     // 数据查询工具
-    this.registerTool(this.queryUserProfileTool)
-    this.registerTool(this.queryOrdersTool)
-    this.registerTool(this.queryFriendsTool)
+    this.registerTool(this.queryUserProfileTool, 'QueryUserProfileTool')
+    this.registerTool(this.queryOrdersTool, 'QueryOrdersTool')
 
     // 社交互动工具
-    this.registerTool(this.sendMessageTool)
-    this.registerTool(this.createMomentTool)
-    this.registerTool(this.addCommentTool)
+    this.registerTool(this.sendMessageTool, 'AvatarSendMessageTool')
+    this.registerTool(this.createMomentTool, 'AvatarCreateMomentTool')
 
     // 任务管理工具
-    this.registerTool(this.createTaskTool)
-    this.registerTool(this.updateTaskStatusTool)
-    this.registerTool(this.queryTasksTool)
-    this.registerTool(this.assignTaskTool)
+    this.registerTool(this.createTaskTool, 'CreateTaskTool')
+    this.registerTool(this.updateTaskTool, 'UpdateTaskTool')
+    this.registerTool(this.queryTasksTool, 'QueryTasksTool')
 
     // 用户管理工具
-    this.registerTool(this.changePasswordTool)
-    this.registerTool(this.updateProfileTool)
-    this.registerTool(this.uploadAvatarTool)
-    this.registerTool(this.bindPhoneTool)
-    this.registerTool(this.deleteAccountTool)
+    this.registerTool(this.changePasswordTool, 'ChangePasswordTool')
 
     // 分身管理工具
-    this.registerTool(this.queryAvatarFriendsTool)
-    this.registerTool(this.addAvatarFriendTool)
-    this.registerTool(this.removeAvatarFriendTool)
-    this.registerTool(this.queryAvatarProfileTool)
+    this.registerTool(this.queryAvatarFriendsTool, 'QueryAvatarFriendsTool')
+    this.registerTool(this.addAvatarFriendTool, 'AddAvatarFriendTool')
+    this.registerTool(this.removeAvatarFriendTool, 'RemoveAvatarFriendTool')
 
     this.logger.log(`已注册 ${this.tools.size} 个工具`)
   }
@@ -163,16 +131,15 @@ export class AvatarToolRegistry {
   /**
    * 注册单个工具
    */
-  registerTool(tool: AvatarTool) {
+  private registerTool(tool: AvatarTool | undefined, toolName: string = 'unknown') {
+    if (!tool) {
+      this.logger.warn(`工具 ${toolName} 未定义或未注入，跳过注册`)
+      return
+    }
+    if (this.tools.has(tool.name)) {
+      this.logger.warn(`工具 ${tool.name} 已存在，将被覆盖`)
+    }
     this.tools.set(tool.name, tool)
-    this.logger.log(`已注册工具: ${tool.name} (${tool.category})`)
-  }
-
-  /**
-   * 获取工具
-   */
-  getTool(name: string): AvatarTool | undefined {
-    return this.tools.get(name)
   }
 
   /**
@@ -183,6 +150,30 @@ export class AvatarToolRegistry {
   }
 
   /**
+   * 获取指定工具
+   */
+  getTool(name: string): AvatarTool | undefined {
+    return this.tools.get(name)
+  }
+
+  /**
+   * 执行工具
+   */
+  async executeTool(name: string, params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    const tool = this.tools.get(name)
+    if (!tool) {
+      return { success: false, error: `工具 ${name} 不存在` }
+    }
+
+    try {
+      return await tool.execute(params, context)
+    } catch (error: any) {
+      this.logger.error(`执行工具 ${name} 失败`, error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  /**
    * 按类别获取工具
    */
   getToolsByCategory(category: string): AvatarTool[] {
@@ -190,134 +181,16 @@ export class AvatarToolRegistry {
   }
 
   /**
-   * 检查工具是否存在
+   * 获取工具的 Schema
    */
-  hasTool(name: string): boolean {
-    return this.tools.has(name)
-  }
-
-  /**
-   * 验证工具参数
-   */
-  validateToolParams(toolName: string, params: Record<string, any>): {
-    valid: boolean
-    errors: string[]
-  } {
-    const tool = this.getTool(toolName)
-    if (!tool) {
-      return {
-        valid: false,
-        errors: [`工具 ${toolName} 不存在`]
-      }
-    }
-
-    const errors: string[] = []
-
-    for (const [paramName, schema] of Object.entries(tool.paramsSchema)) {
-      // 检查必填参数
-      if (schema.required && !params[paramName]) {
-        errors.push(`缺少必填参数: ${paramName}`)
-        continue
-      }
-
-      // 检查枚举值
-      if (schema.enum && params[paramName] && !schema.enum.includes(params[paramName])) {
-        errors.push(`参数 ${paramName} 的值无效，可选值为: ${schema.enum.join(', ')}`)
-      }
-
-      // 检查类型
-      if (params[paramName]) {
-        const actualType = Array.isArray(params[paramName]) ? 'array' : typeof params[paramName]
-        if (actualType !== schema.type) {
-          errors.push(`参数 ${paramName} 类型错误，期望 ${schema.type}，实际 ${actualType}`)
-        }
-      }
-    }
-
+  getToolSchema(name: string) {
+    const tool = this.tools.get(name)
+    if (!tool) return null
     return {
-      valid: errors.length === 0,
-      errors
+      name: tool.name,
+      displayName: tool.displayName,
+      description: tool.description,
+      params: tool.paramsSchema
     }
-  }
-
-  /**
-   * 执行工具
-   */
-  async executeTool(
-    toolName: string,
-    params: Record<string, any>,
-    context: ToolContext
-  ): Promise<ToolResult> {
-    try {
-      // 验证工具是否存在
-      const tool = this.getTool(toolName)
-      if (!tool) {
-        return {
-          success: false,
-          toolName,
-          error: `工具 ${toolName} 不存在`
-        }
-      }
-
-      // 验证参数
-      const validation = this.validateToolParams(toolName, params)
-      if (!validation.valid) {
-        return {
-          success: false,
-          toolName,
-          error: `参数验证失败: ${validation.errors.join('; ')}`
-        }
-      }
-
-      this.logger.log(`执行工具: ${toolName}`, params)
-
-      // 执行工具
-      const result = await tool.execute(params, context)
-
-      this.logger.log(`工具执行完成: ${toolName}, 成功: ${result.success}`)
-
-      return result
-    } catch (error) {
-      this.logger.error(`工具执行异常: ${toolName}`, error)
-      return {
-        success: false,
-        toolName,
-        error: error.message
-      }
-    }
-  }
-
-  /**
-   * 获取工具列表描述（用于大模型）
-   */
-  getToolsDescription(): string {
-    const tools = this.getAllTools()
-    const descriptions = tools.map(tool => {
-      const params = Object.entries(tool.paramsSchema)
-        .map(([name, schema]) => {
-          const required = schema.required ? '（必填）' : '（可选）'
-          const enumValues = schema.enum ? `可选值: ${schema.enum.join(', ')}` : ''
-          return `  - ${name}: ${schema.description}${required} ${enumValues}`
-        })
-        .join('\n')
-
-      return `
-工具名称: ${tool.name}
-显示名称: ${tool.displayName}
-分类: ${tool.category}
-描述: ${tool.description}
-参数:
-${params}
-`
-    })
-
-    return `可用工具列表:\n${descriptions.join('\n')}`
-  }
-
-  /**
-   * 获取工具名称列表
-   */
-  getToolNames(): string[] {
-    return Array.from(this.tools.keys())
   }
 }

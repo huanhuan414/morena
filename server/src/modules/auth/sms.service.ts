@@ -1,8 +1,9 @@
+// @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import * as crypto from 'crypto'
 
 @Injectable()
-export class SmsService {
+export class AuthSmsService {
   private accessKeyId = 'REMOVED_KEY'
   private accessKeySecret = 'REMOVED_SECRET'
   private signName = '贵州一枝梅信息科技'

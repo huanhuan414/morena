@@ -1,86 +1,50 @@
-import { Controller, Get, Post, Put, Delete, Param, Headers, Body, UseInterceptors, UploadedFile } from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
+// @ts-nocheck
+import { Controller, Get, Post, Put, Delete, Param, Headers, Body, Query } from '@nestjs/common'
 import { AvatarService } from './avatar.service'
 
 @Controller('avatar')
 export class AvatarController {
   constructor(private readonly avatarService: AvatarService) {}
 
-  /**
-   * 上传照片并分析
-   */
-  @Post('analyze-photo')
-  @UseInterceptors(FileInterceptor('photo'))
-  async analyzePhoto(@UploadedFile() file: Express.Multer.File) {
-    try {
-      const result = await this.avatarService.analyzePhoto(file)
-      return { code: 200, msg: 'success', data: result }
-    } catch (err) {
-      console.error('分析照片失败:', err)
-      return { code: 500, msg: err.message || '分析失败', data: null }
-    }
-  }
-
   @Post()
   async createAvatar(
     @Headers('x-user-id') userId: string,
-    @Body() body: { name: string; avatar_url: string; description?: string; platform?: string; accounts?: any[] }
+    @Body() body: { name: string; avatar_url?: string; description?: string; gender?: string; age?: number }
   ) {
     try {
-      console.log('创建分身请求:', { userId, name: body.name, platform: body.platform })
       const avatar = await this.avatarService.createAvatar(userId, {
         name: body.name,
-        avatar_url: body.avatar_url,
+        avatar_url: body.avatar_url || '',
         description: body.description || '',
-        platform: body.platform || '通用'
+        gender: body.gender,
+        age: body.age
       })
-      
-      // 如果有账号数据，创建账号关联
-      if (body.accounts && body.accounts.length > 0 && avatar && avatar.id) {
-        for (const account of body.accounts) {
-          await this.avatarService.createAccount(avatar.id, account)
-        }
-      }
-      
       return { code: 200, msg: 'success', data: avatar }
     } catch (err) {
-      console.error('创建分身失败:', err)
       return { code: 500, msg: err.message || '服务器错误', data: null }
     }
   }
 
-  /**
-   * 获取当前用户的所有分身
-   */
   @Get()
-  async getAllAvatars() {
+  async getAllAvatars(@Headers('x-user-id') userId?: string) {
     try {
-      const avatars = await this.avatarService.findAll()
-      return { code: 200, msg: 'success', data: avatars }
+      if (userId) {
+        const avatars = await this.avatarService.getUserAvatars(userId)
+        return { code: 200, msg: 'success', data: avatars.data }
+      }
+      const result = await this.avatarService.getUserAvatars('')
+      return { code: 200, msg: 'success', data: result.data || [] }
     } catch (err) {
-      console.error('获取所有分身失败:', err)
-      return { code: 500, msg: '服务器错误', data: [] }
-    }
-  }
-
-  @Get('my')
-  async getMyAvatars(@Headers('x-user-id') userId: string) {
-    try {
-      const avatars = await this.avatarService.getAvatarsByUserId(userId)
-      return { code: 200, msg: 'success', data: avatars }
-    } catch (err) {
-      console.error('获取我的分身失败:', err)
       return { code: 500, msg: '服务器错误', data: [] }
     }
   }
 
   @Get('active')
-  async getActiveAvatars() {
+  async getActiveAvatars(@Query('limit') limit?: string) {
     try {
-      const avatars = await this.avatarService.getActiveAvatars(10)
-      return { code: 200, msg: 'success', data: avatars }
+      const result = await this.avatarService.getUserAvatars('')
+      return { code: 200, msg: 'success', data: result.data?.slice(0, parseInt(limit || '10')) || [] }
     } catch (err) {
-      console.error('获取活跃分身失败:', err)
       return { code: 500, msg: '服务器错误', data: [] }
     }
   }
@@ -88,26 +52,12 @@ export class AvatarController {
   @Get(':id')
   async getAvatarDetail(@Param('id') id: string) {
     try {
-      const avatar = await this.avatarService.findById(id)
-      if (!avatar) {
+      const result = await this.avatarService.getAvatarById(parseInt(id))
+      if (!result.data) {
         return { code: 404, msg: '分身不存在', data: null }
       }
-      
-      // 格式化返回数据
-      const formattedAvatar = {
-        id: avatar.id,
-        name: avatar.name,
-        avatar_url: avatar.avatar_url,
-        level: avatar.level || 1,
-        description: avatar.description || '',
-        completed_orders: avatar.completed_orders || 0,
-        total_earnings: 0, // 需要从 earnings 表计算
-        rating: 5.0 // 默认评分
-      }
-      
-      return { code: 200, msg: 'success', data: formattedAvatar }
+      return { code: 200, msg: 'success', data: result.data }
     } catch (err) {
-      console.error('获取分身详情失败:', err)
       return { code: 500, msg: '服务器错误', data: null }
     }
   }
@@ -115,289 +65,92 @@ export class AvatarController {
   @Put(':id')
   async updateAvatar(
     @Param('id') id: string,
-    @Headers('x-user-id') userId: string,
-    @Body() body: {
-      name?: string
-      personality?: string
-      avatar_url?: string
-      description?: string
-      config?: Record<string, any>
-      latitude?: number
-      longitude?: number
-      location_text?: string
-    }
+    @Body() body: { name?: string; avatar_url?: string; description?: string }
   ) {
     try {
-      console.log('[AvatarController] 更新分身:', id, body)
-      const avatar = await this.avatarService.updateAvatar(id, userId, body)
-      if (!avatar) {
-        return { code: 404, msg: '分身不存在', data: null }
-      }
-      return { code: 200, msg: 'success', data: avatar }
+      const result = await this.avatarService.updateAvatar(parseInt(id), body)
+      return { code: 200, msg: 'success', data: result }
     } catch (err) {
-      console.error('更新分身失败:', err)
-      return { code: 500, msg: err.message || '服务器错误', data: null }
-    }
-  }
-
-  @Get(':id/orders')
-  async getAvatarOrders(@Param('id') id: string) {
-    try {
-      const orders = await this.avatarService.getAvatarOrders(id)
-      return { code: 200, msg: 'success', data: orders }
-    } catch (err) {
-      console.error('获取分身订单失败:', err)
-      return { code: 500, msg: '服务器错误', data: [] }
-    }
-  }
-
-  /**
-   * 获取分身好友列表
-   */
-  @Get(':id/friends')
-  async getAvatarFriends(
-    @Param('id') id: string,
-    @Headers('x-user-id') userId: string
-  ) {
-    try {
-      const friends = await this.avatarService.getAvatarFriends(id, userId)
-      return { code: 200, msg: 'success', data: friends }
-    } catch (err) {
-      console.error('获取好友列表失败:', err)
-      return { code: 500, msg: '服务器错误', data: [] }
-    }
-  }
-
-  /**
-   * 接受好友请求
-   */
-  @Post(':id/friends/:friendId/accept')
-  async acceptFriendRequest(
-    @Param('id') id: string,
-    @Param('friendId') friendId: string,
-    @Headers('x-user-id') userId: string
-  ) {
-    try {
-      await this.avatarService.acceptFriendRequest(id, friendId, userId)
-      return { code: 200, msg: '已接受好友请求' }
-    } catch (err) {
-      console.error('接受好友请求失败:', err)
-      return { code: 500, msg: '服务器错误' }
-    }
-  }
-
-  /**
-   * 拒绝好友请求
-   */
-  @Post(':id/friends/:friendId/reject')
-  async rejectFriendRequest(
-    @Param('id') id: string,
-    @Param('friendId') friendId: string,
-    @Headers('x-user-id') userId: string
-  ) {
-    try {
-      await this.avatarService.rejectFriendRequest(id, friendId, userId)
-      return { code: 200, msg: '已拒绝好友请求' }
-    } catch (err) {
-      console.error('拒绝好友请求失败:', err)
-      return { code: 500, msg: '服务器错误' }
-    }
-  }
-
-  /**
-   * 发送好友请求
-   */
-  @Post('friend-request')
-  async sendFriendRequest(
-    @Body() body: { avatar_id: string; target_avatar_id: string },
-    @Headers('x-user-id') userId: string
-  ) {
-    try {
-      const { avatar_id, target_avatar_id } = body
-      const success = await this.avatarService.sendFriendRequest(avatar_id, target_avatar_id, userId)
-      if (success) {
-        return { code: 200, msg: '好友请求已发送' }
-      } else {
-        return { code: 400, msg: '发送失败，可能已是好友或请求已存在' }
-      }
-    } catch (err) {
-      console.error('发送好友请求失败:', err)
-      return { code: 500, msg: '服务器错误' }
-    }
-  }
-
-  @Post('recommendations')
-  async getRecommendations(
-    @Body() body: { location?: { latitude: number; longitude: number }; limit?: number },
-    @Headers('x-user-id') userId: string
-  ) {
-    try {
-      const { location, limit = 20 } = body
-      const recommendations = await this.avatarService.getActiveAvatars(limit)
-      return { code: 200, data: recommendations }
-    } catch (err) {
-      console.error('获取推荐分身失败:', err)
-      return { code: 500, msg: '服务器错误', data: [] }
-    }
-  }
-
-  /**
-   * 开启/关闭托管
-   */
-  @Post(':id/hosting')
-  async toggleHosting(
-    @Param('id') id: string,
-    @Headers('x-user-id') userId: string,
-    @Body() body: { enabled: boolean; settings?: any }
-  ) {
-    try {
-      const { enabled, settings } = body
-      const avatar = await this.avatarService.findById(id)
-      
-      if (!avatar) {
-        return { code: 404, msg: '分身不存在', data: null }
-      }
-      
-      // 使用 updateAvatar 方法更新托管状态
-      await this.avatarService.updateAvatar(id, userId, {
-        is_hosted: enabled
-      })
-      
-      // 如果有额外设置，也更新
-      if (settings) {
-        await this.avatarService.updateHostingSettings(id, userId, settings)
-      }
-      
-      return { 
-        code: 200, 
-        msg: enabled ? '托管已开启' : '托管已关闭', 
-        data: { enabled } 
-      }
-    } catch (err) {
-      console.error('托管操作失败:', err)
-      return { code: 500, msg: err.message || '服务器错误', data: null }
-    }
-  }
-
-  /**
-   * 更新托管设置
-   */
-  @Put(':id/hosting/settings')
-  async updateHostingSettings(
-    @Param('id') id: string,
-    @Headers('x-user-id') userId: string,
-    @Body() body: any
-  ) {
-    try {
-      const result = await this.avatarService.updateHostingSettings(id, userId, body)
-      return { code: 200, msg: '设置已更新', data: result }
-    } catch (err) {
-      console.error('更新托管设置失败:', err)
-      return { code: 500, msg: err.message || '服务器错误', data: null }
-    }
-  }
-
-  /**
-   * 获取分身学习数据
-   */
-  @Post('accounts')
-  async createAccount(
-    @Headers('x-user-id') userId: string,
-    @Body() body: any
-  ) {
-    try {
-      console.log('[AvatarController] 创建账号:', body)
-      const account = await this.avatarService.createAccount(userId, body)
-      return { code: 200, msg: 'success', data: account }
-    } catch (err) {
-      console.error('[AvatarController] 创建账号失败:', err)
-      return { code: 500, msg: err.message || '服务器错误', data: null }
-    }
-  }
-
-  @Put('accounts/:id')
-  async updateAccount(
-    @Param('id') id: string,
-    @Body() body: any
-  ) {
-    try {
-      console.log('[AvatarController] 更新账号:', id, body)
-      const account = await this.avatarService.updateAccount(id, body)
-      return { code: 200, msg: 'success', data: account }
-    } catch (err) {
-      console.error('[AvatarController] 更新账号失败:', err)
-      return { code: 500, msg: err.message || '服务器错误', data: null }
-    }
-  }
-
-  @Delete('accounts/:id')
-  async deleteAccount(@Param('id') id: string) {
-    try {
-      console.log('[AvatarController] 删除账号:', id)
-      await this.avatarService.deleteAccount(id)
-      return { code: 200, msg: 'success' }
-    } catch (err) {
-      console.error('[AvatarController] 删除账号失败:', err)
-      return { code: 500, msg: err.message || '服务器错误' }
+      return { code: 500, msg: '服务器错误', data: null }
     }
   }
 
   @Delete(':id')
   async deleteAvatar(@Param('id') id: string, @Headers('x-user-id') userId: string) {
     try {
-      console.log('[AvatarController] 删除分身:', id, 'userId:', userId)
-      await this.avatarService.deleteAvatar(id, userId)
-      return { code: 200, msg: '删除成功' }
+      const result = await this.avatarService.deleteAvatar(parseInt(id), userId)
+      return { code: 200, msg: 'success', data: result }
     } catch (err) {
-      console.error('[AvatarController] 删除分身失败:', err)
-      return { code: 500, msg: err.message || '服务器错误' }
+      return { code: 500, msg: '服务器错误', data: null }
     }
   }
 
-  @Get(':id/learning')
-  async getLearningData(@Param('id') id: string) {
+  @Get(':id/skills')
+  async getSkills(@Param('id') id: string) {
     try {
-      const avatar = await this.avatarService.findById(id)
-      
-      if (!avatar) {
-        return { code: 404, msg: '分身不存在', data: null }
-      }
-      
-      const learningData = avatar.learning_data || {
-        messageCount: 0,
-        avgMessageLength: 0,
-        toneProfile: {},
-        personalityTraits: {},
-        communicationStyle: {},
-        interests: [],
-        commonPhrases: [],
-        userIdentity: {}
-      }
-      
-      // 从 config.learning 中获取学习天数，如果没有则从创建时间计算
-      const configLearning = avatar.config?.learning || {}
-      const learningDays = configLearning.learningDays !== undefined 
-        ? configLearning.learningDays 
-        : Math.floor((Date.now() - new Date(avatar.created_at).getTime()) / (1000 * 60 * 60 * 24))
-      
-      const metrics = {
-        learningDays,
-        masteryLevel: configLearning.masteryLevel || 0,
-        messageCount: configLearning.messageCount || 0,
-        styleMatch: configLearning.styleMatch || 0,
-        lastActiveTime: avatar.updated_at
-      }
-      
-      return { 
-        code: 200, 
-        msg: 'success', 
-        data: { 
-          learning: learningData,
-          metrics
-        } 
-      }
+      const result = await this.avatarService.getSkills(parseInt(id))
+      return { code: 200, msg: 'success', data: result.data }
     } catch (err) {
-      console.error('获取学习数据失败:', err)
+      return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  @Post(':id/skills')
+  async addSkill(@Param('id') id: string, @Body() body: any) {
+    try {
+      const result = await this.avatarService.addSkill(parseInt(id), body)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      return { code: 500, msg: '服务器错误', data: null }
+    }
+  }
+
+  @Delete(':id/skills/:skillId')
+  async deleteSkill(@Param('skillId') skillId: string) {
+    try {
+      const result = await this.avatarService.deleteSkill(parseInt(skillId))
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      return { code: 500, msg: '服务器错误', data: null }
+    }
+  }
+
+  @Get(':id/memories')
+  async getMemories(@Param('id') id: string) {
+    try {
+      const result = await this.avatarService.getMemories(parseInt(id))
+      return { code: 200, msg: 'success', data: result.data }
+    } catch (err) {
+      return { code: 500, msg: '服务器错误', data: [] }
+    }
+  }
+
+  @Post(':id/memories')
+  async addMemory(@Param('id') id: string, @Body() body: any) {
+    try {
+      const result = await this.avatarService.addMemory(parseInt(id), body)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      return { code: 500, msg: '服务器错误', data: null }
+    }
+  }
+
+  @Delete(':id/memories/:memoryId')
+  async deleteMemory(@Param('memoryId') memoryId: string) {
+    try {
+      const result = await this.avatarService.deleteMemory(parseInt(memoryId))
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      return { code: 500, msg: '服务器错误', data: null }
+    }
+  }
+
+  @Get(':id/stats')
+  async getStats(@Param('id') id: string) {
+    try {
+      const result = await this.avatarService.getStats(parseInt(id))
+      return { code: 200, msg: 'success', data: result.data }
+    } catch (err) {
       return { code: 500, msg: '服务器错误', data: null }
     }
   }

@@ -1,846 +1,896 @@
-import { Injectable } from '@nestjs/common'
-import { getSupabaseClient } from '../../storage/database/supabase-client'
-import * as crypto from 'crypto'
-
-// 默认管理员账号
-const DEFAULT_ADMIN = {
-  username: 'admin',
-  password: 'admin123',
-  role: 'super'
-}
-
-interface AdminUser {
-  id: string
-  username: string
-  password: string
-  role: string
-  last_login?: string
-  created_at: string
-}
-
-interface SystemConfig {
-  siteName: string
-  siteDescription: string
-  maintenanceMode: boolean
-  registerEnabled: boolean
-  maxAvatarsPerUser: number
-  commissionRate: number
-}
+import { Injectable } from '@nestjs/common';
+import { getMySQLClient } from '../../storage/database/mysql-client';
 
 @Injectable()
 export class AdminService {
-  private supabase = getSupabaseClient()
-  private admins: Map<string, AdminUser> = new Map()
-  private config: SystemConfig = {
-    siteName: 'AI分身平台',
-    siteDescription: '创建你的专属AI分身',
-    maintenanceMode: false,
-    registerEnabled: true,
-    maxAvatarsPerUser: 5,
-    commissionRate: 10
-  }
-
-  constructor() {
-    // 初始化默认管理员
-    this.admins.set('1', {
-      id: '1',
-      username: DEFAULT_ADMIN.username,
-      password: DEFAULT_ADMIN.password,
-      role: DEFAULT_ADMIN.role,
-      created_at: new Date().toISOString()
-    })
-  }
-
-  /**
-   * 生成Token
-   */
   private generateToken(admin: any): string {
-    const data = JSON.stringify({
-      id: admin.id || '1',
+    return Buffer.from(JSON.stringify({
+      id: admin.id,
       username: admin.username,
-      role: admin.role,
-      exp: Date.now() + 24 * 60 * 60 * 1000
-    })
-    return Buffer.from(data).toString('base64')
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+    })).toString('base64');
   }
 
-  /**
-   * 验证Token
-   */
-  async verifyToken(token: string): Promise<any> {
-    if (!token) return null
+  async verifyAdmin(username: string, password: string): Promise<any> {
     try {
-      const data = JSON.parse(Buffer.from(token, 'base64').toString())
-      if (data.exp < Date.now()) return null
-      return data
-    } catch {
-      return null
-    }
-  }
-
-  /**
-   * 管理员登录
-   */
-  async login(username: string, password: string): Promise<{ success: boolean; message: string; data?: any }> {
-    // 检查是否是默认管理员
-    if (username === DEFAULT_ADMIN.username && password === DEFAULT_ADMIN.password) {
-      const admin = {
-        id: '1',
-        username: DEFAULT_ADMIN.username,
-        role: DEFAULT_ADMIN.role
+      const db = getMySQLClient();
+      const result = await db.query(
+        `SELECT * FROM admin_users WHERE username = ? AND password = ?`,
+        [username, password]
+      );
+      
+      if (result.error) {
+        console.error('查询管理员失败:', result.error);
+        return { success: false, message: '验证失败' };
       }
-      return {
-        success: true,
-        message: '登录成功',
-        data: { token: this.generateToken(admin), admin }
-      }
-    }
-
-    // 检查其他管理员
-    for (const [id, admin] of this.admins) {
-      if (admin.username === username && admin.password === password) {
+      
+      if (result.data && result.data.length > 0) {
+        const admin = result.data[0];
         return {
           success: true,
           message: '登录成功',
           data: { token: this.generateToken(admin), admin }
-        }
-      }
-    }
-
-    return { success: false, message: '账号或密码错误' }
-  }
-
-  /**
-   * 获取仪表盘统计数据
-   */
-  async getDashboardStats(): Promise<any> {
-    try {
-      const { count: totalUsers } = await this.supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: totalAvatars } = await this.supabase
-        .from('avatars')
-        .select('*', { count: 'exact', head: true })
-
-      const { count: totalOrders } = await this.supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-
-      const { data: earnings } = await this.supabase
-        .from('earnings')
-        .select('amount')
-        .eq('type', 'revenue')
-
-      const totalRevenue = earnings?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0
-
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      const { count: todayNewUsers } = await this.supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString())
-
-      const { count: todayOrders } = await this.supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString())
-
-      const { count: pendingOrders } = await this.supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-
-      const { count: pendingContent } = await this.supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-
-      return {
-        totalUsers: totalUsers || 0,
-        totalAvatars: totalAvatars || 0,
-        totalOrders: totalOrders || 0,
-        totalRevenue: totalRevenue,
-        todayNewUsers: todayNewUsers || 0,
-        todayOrders: todayOrders || 0,
-        pendingOrders: pendingOrders || 0,
-        pendingContent: pendingContent || 0
+        };
       }
     } catch (error) {
-      console.error('获取仪表盘数据失败:', error)
+      console.error('验证管理员失败:', error);
+    }
+
+    return { success: false, message: '账号或密码错误' };
+  }
+
+  async getDashboardStats(): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      
+      const totalUsersResult = await db.query(`SELECT COUNT(*) as count FROM users`);
+      const totalUsers = totalUsersResult.data?.[0]?.count || 0;
+      
+      const totalAvatarsResult = await db.query(`SELECT COUNT(*) as count FROM avatars`);
+      const totalAvatars = totalAvatarsResult.data?.[0]?.count || 0;
+      
+      const totalOrdersResult = await db.query(`SELECT COUNT(*) as count FROM orders`);
+      const totalOrders = totalOrdersResult.data?.[0]?.count || 0;
+      
+      const earningsResult = await db.query(`SELECT SUM(amount) as total FROM earnings WHERE type = 'revenue'`);
+      const totalRevenue = earningsResult.data?.[0]?.total || 0;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().slice(0, 19).replace('T', ' ');
+      
+      const todayNewUsersResult = await db.query(
+        `SELECT COUNT(*) as count FROM users WHERE created_at >= ?`, [todayStr]
+      );
+      const todayNewUsers = todayNewUsersResult.data?.[0]?.count || 0;
+      
+      const todayOrdersResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE created_at >= ?`, [todayStr]
+      );
+      const todayOrders = todayOrdersResult.data?.[0]?.count || 0;
+      
+      const pendingOrdersResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE status = 'pending'`
+      );
+      const pendingOrders = pendingOrdersResult.data?.[0]?.count || 0;
+      
+      const pendingContentResult = await db.query(
+        `SELECT COUNT(*) as count FROM posts WHERE status = 'pending'`
+      );
+      const pendingContent = pendingContentResult.data?.[0]?.count || 0;
+
+      return {
+        totalUsers,
+        totalAvatars,
+        totalOrders,
+        totalRevenue,
+        todayNewUsers,
+        todayOrders,
+        pendingOrders,
+        pendingContent
+      };
+    } catch (error) {
+      console.error('获取仪表盘数据失败:', error);
       return {
         totalUsers: 0, totalAvatars: 0, totalOrders: 0, totalRevenue: 0,
         todayNewUsers: 0, todayOrders: 0, pendingOrders: 0, pendingContent: 0
-      }
+      };
     }
   }
 
-  // ===== 用户管理 =====
-
   async getUsers(page: number, limit: number, keyword?: string): Promise<any> {
     try {
-      let query = this.supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1)
-
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      let sql = `SELECT * FROM users`;
+      let countSql = `SELECT COUNT(*) as count FROM users`;
+      const params: any[] = [];
+      
       if (keyword) {
-        query = query.or(`phone.ilike.%${keyword}%,nickname.ilike.%${keyword}%`)
+        sql += ` WHERE (phone LIKE ? OR nickname LIKE ?)`;
+        countSql += ` WHERE (phone LIKE ? OR nickname LIKE ?)`;
+        const kw = `%${keyword}%`;
+        params.push(kw, kw);
       }
+      
+      sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+      
+      const result = await db.query(sql, [...params, limit, offset]);
+      const users = result.data || [];
+      
+      const countResult = await db.query(countSql, params);
+      const total = countResult.data?.[0]?.count || 0;
+      
+      const usersWithStats = await Promise.all(users.map(async (user: any) => {
+        const avatarResult = await db.query(
+          `SELECT COUNT(*) as count FROM avatars WHERE user_id = ?`, [user.id]
+        );
+        const avatarCount = avatarResult.data?.[0]?.count || 0;
+        
+        const orderResult = await db.query(
+          `SELECT COUNT(*) as count FROM orders WHERE user_id = ?`, [user.id]
+        );
+        const orderCount = orderResult.data?.[0]?.count || 0;
+        
+        return {
+          ...user,
+          avatar_count: avatarCount,
+          order_count: orderCount
+        };
+      }));
 
-      const { data, count, error } = await query
-      if (error) throw error
-
-      const userIds = data?.map(u => u.id) || []
-      const { data: avatarCounts } = await this.supabase
-        .from('avatars')
-        .select('user_id')
-        .in('user_id', userIds)
-
-      const { data: orderCounts } = await this.supabase
-        .from('orders')
-        .select('user_id')
-        .in('user_id', userIds)
-
-      const avatarCountMap = new Map()
-      avatarCounts?.forEach(a => {
-        avatarCountMap.set(a.user_id, (avatarCountMap.get(a.user_id) || 0) + 1)
-      })
-
-      const orderCountMap = new Map()
-      orderCounts?.forEach(o => {
-        orderCountMap.set(o.user_id, (orderCountMap.get(o.user_id) || 0) + 1)
-      })
-
-      const usersWithStats = data?.map(user => ({
-        ...user,
-        avatar_count: avatarCountMap.get(user.id) || 0,
-        order_count: orderCountMap.get(user.id) || 0
-      }))
-
-      return { list: usersWithStats || [], total: count || 0, page, limit }
+      return { list: usersWithStats, total, page, limit };
     } catch (error) {
-      console.error('获取用户列表失败:', error)
-      return { list: [], total: 0, page, limit }
+      console.error('获取用户列表失败:', error);
+      return { list: [], total: 0, page, limit };
     }
   }
 
   async getUserDetail(userId: string): Promise<any> {
     try {
-      const { data: user, error } = await this.supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      const db = getMySQLClient();
+      
+      const userResult = await db.query(
+        `SELECT * FROM users WHERE id = ?`, [userId]
+      );
+      const user = userResult.data?.[0];
+      if (!user) return null;
 
-      if (error || !user) return null
+      const avatarResult = await db.query(
+        `SELECT COUNT(*) as count FROM avatars WHERE user_id = ?`, [userId]
+      );
+      const avatarCount = avatarResult.data?.[0]?.count || 0;
+      
+      const orderResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE user_id = ?`, [userId]
+      );
+      const orderCount = orderResult.data?.[0]?.count || 0;
+      
+      const postResult = await db.query(
+        `SELECT COUNT(*) as count FROM posts WHERE user_id = ?`, [userId]
+      );
+      const postCount = postResult.data?.[0]?.count || 0;
 
-      const { count: avatarCount } = await this.supabase
-        .from('avatars')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      const { count: orderCount } = await this.supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      const { count: postCount } = await this.supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      const { data: earnings } = await this.supabase
-        .from('earnings')
-        .select('amount')
-        .eq('user_id', userId)
-
-      const { data: transactions } = await this.supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', userId)
-        .eq('type', 'expense')
-
-      const totalEarnings = earnings?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0
-      const totalSpent = transactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0
+      const earningsResult = await db.query(
+        `SELECT SUM(amount) as total FROM earnings WHERE user_id = ?`, [userId]
+      );
+      const totalEarnings = earningsResult.data?.[0]?.total || 0;
 
       return {
         ...user,
-        avatar_count: avatarCount || 0,
-        order_count: orderCount || 0,
-        post_count: postCount || 0,
-        total_earnings: totalEarnings,
-        total_spent: totalSpent
-      }
+        avatar_count: avatarCount,
+        order_count: orderCount,
+        post_count: postCount,
+        total_earnings: totalEarnings
+      };
     } catch (error) {
-      console.error('获取用户详情失败:', error)
-      return null
+      console.error('获取用户详情失败:', error);
+      return null;
+    }
+  }
+
+  async getOrders(page: number, limit: number, status?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      let sql = `SELECT o.*, u.nickname, u.phone 
+                 FROM orders o 
+                 LEFT JOIN users u ON o.user_id = u.id`;
+      let countSql = `SELECT COUNT(*) as count FROM orders`;
+      const params: any[] = [];
+      
+      if (status) {
+        sql += ` WHERE o.status = ?`;
+        countSql += ` WHERE status = ?`;
+        params.push(status);
+      }
+      
+      sql += ` ORDER BY o.created_at DESC LIMIT ? OFFSET ?`;
+      
+      const result = await db.query(sql, [...params, limit, offset]);
+      const orders = result.data || [];
+      
+      const countResult = await db.query(countSql, params);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: orders, total, page, limit };
+    } catch (error) {
+      console.error('获取订单列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async getAvatars(page: number, limit: number): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      const result = await db.query(
+        `SELECT a.*, u.nickname, u.phone 
+         FROM avatars a 
+         LEFT JOIN users u ON a.user_id = u.id 
+         ORDER BY a.created_at DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      const avatars = result.data || [];
+      
+      const countResult = await db.query(`SELECT COUNT(*) as count FROM avatars`);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: avatars, total, page, limit };
+    } catch (error) {
+      console.error('获取分身列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async getPosts(page: number, limit: number, status?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      let sql = `SELECT p.*, u.nickname, av.name as avatar_name 
+                 FROM posts p 
+                 LEFT JOIN users u ON p.user_id = u.id 
+                 LEFT JOIN avatars av ON p.avatar_id = av.id`;
+      let countSql = `SELECT COUNT(*) as count FROM posts`;
+      const params: any[] = [];
+      
+      if (status) {
+        sql += ` WHERE p.status = ?`;
+        countSql += ` WHERE status = ?`;
+        params.push(status);
+      }
+      
+      sql += ` ORDER BY p.created_at DESC LIMIT ? OFFSET ?`;
+      
+      const result = await db.query(sql, [...params, limit, offset]);
+      const posts = result.data || [];
+      
+      const countResult = await db.query(countSql, params);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: posts, total, page, limit };
+    } catch (error) {
+      console.error('获取内容列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async getSkills(page: number, limit: number): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      const result = await db.query(
+        `SELECT * FROM skills ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      const skills = result.data || [];
+      
+      const countResult = await db.query(`SELECT COUNT(*) as count FROM skills`);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: skills, total, page, limit };
+    } catch (error) {
+      console.error('获取技能列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async createSkill(data: { name: string; description: string; category: string; icon: string; prompt: string }): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const id = `skill_${Date.now()}`;
+      const result = await db.query(
+        `INSERT INTO skills (id, name, description, category, icon, prompt, status, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())`,
+        [id, data.name, data.description, data.category, data.icon, data.prompt]
+      );
+      
+      return { id, ...data, status: 'active' };
+    } catch (error) {
+      console.error('创建技能失败:', error);
+      return null;
+    }
+  }
+
+  async updateSkill(id: string, data: any): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const fields: string[] = [];
+      const params: any[] = [];
+      
+      if (data.name) {
+        fields.push('name = ?');
+        params.push(data.name);
+      }
+      if (data.description) {
+        fields.push('description = ?');
+        params.push(data.description);
+      }
+      if (data.category) {
+        fields.push('category = ?');
+        params.push(data.category);
+      }
+      if (data.icon) {
+        fields.push('icon = ?');
+        params.push(data.icon);
+      }
+      if (data.prompt) {
+        fields.push('prompt = ?');
+        params.push(data.prompt);
+      }
+      
+      fields.push('updated_at = NOW()');
+      params.push(id);
+      
+      await db.query(
+        `UPDATE skills SET ${fields.join(', ')} WHERE id = ?`,
+        params
+      );
+      
+      return { id, ...data };
+    } catch (error) {
+      console.error('更新技能失败:', error);
+      return null;
+    }
+  }
+
+  async deleteSkill(id: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(`DELETE FROM skills WHERE id = ?`, [id]);
+      return { success: true };
+    } catch (error) {
+      console.error('删除技能失败:', error);
+      return { success: false };
+    }
+  }
+
+  async updateSkillStatus(id: string, status: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE skills SET status = ?, updated_at = NOW() WHERE id = ?`,
+        [status, id]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('更新技能状态失败:', error);
+      return { success: false };
+    }
+  }
+
+  async getWithdrawals(page: number, limit: number, status?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      let sql = `SELECT w.*, u.nickname, u.phone 
+                 FROM withdrawal_requests w 
+                 LEFT JOIN users u ON w.user_id = u.id`;
+      let countSql = `SELECT COUNT(*) as count FROM withdrawal_requests`;
+      const params: any[] = [];
+      
+      if (status) {
+        sql += ` WHERE w.status = ?`;
+        countSql += ` WHERE status = ?`;
+        params.push(status);
+      }
+      
+      sql += ` ORDER BY w.created_at DESC LIMIT ? OFFSET ?`;
+      
+      const result = await db.query(sql, [...params, limit, offset]);
+      const withdrawals = result.data || [];
+      
+      const countResult = await db.query(countSql, params);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: withdrawals, total, page, limit };
+    } catch (error) {
+      console.error('获取提现列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async approveWithdraw(id: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE withdrawal_requests SET status = 'approved', updated_at = NOW() WHERE id = ?`,
+        [id]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('批准提现失败:', error);
+      return { success: false };
+    }
+  }
+
+  async rejectWithdraw(id: string, reason?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE withdrawal_requests SET status = 'rejected', reject_reason = ?, updated_at = NOW() WHERE id = ?`,
+        [reason || '审核未通过', id]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('拒绝提现失败:', error);
+      return { success: false };
+    }
+  }
+
+  async getReferrers(page: number, limit: number): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
+      
+      const result = await db.query(
+        `SELECT r.*, u.nickname, u.phone,
+                (SELECT COUNT(*) FROM users WHERE referral_code = r.code) as referral_count,
+                (SELECT SUM(amount) FROM earnings WHERE user_id = r.user_id AND type = 'referral_bonus') as total_bonus
+         FROM referrals r 
+         LEFT JOIN users u ON r.user_id = u.id 
+         ORDER BY r.created_at DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      const referrers = result.data || [];
+      
+      const countResult = await db.query(`SELECT COUNT(*) as count FROM referrals`);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: referrers, total, page, limit };
+    } catch (error) {
+      console.error('获取推荐列表失败:', error);
+      return { list: [], total: 0, page, limit };
+    }
+  }
+
+  async getSystemConfig(): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const result = await db.query(`SELECT * FROM system_config WHERE id = 'system'`);
+      return result.data?.[0] || {
+        id: 'system',
+        app_name: '我的分身',
+        version: '1.0.0',
+        maintenance_mode: false
+      };
+    } catch (error) {
+      console.error('获取系统配置失败:', error);
+      return null;
+    }
+  }
+
+  async updateSystemConfig(data: any): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const fields: string[] = [];
+      const params: any[] = [];
+      
+      if (data.app_name) {
+        fields.push('app_name = ?');
+        params.push(data.app_name);
+      }
+      if (data.version) {
+        fields.push('version = ?');
+        params.push(data.version);
+      }
+      if (data.maintenance_mode !== undefined) {
+        fields.push('maintenance_mode = ?');
+        params.push(data.maintenance_mode);
+      }
+      
+      fields.push('updated_at = NOW()');
+      params.push('system');
+      
+      await db.query(
+        `UPDATE system_config SET ${fields.join(', ')} WHERE id = ?`,
+        params
+      );
+      
+      return { success: true };
+    } catch (error) {
+      console.error('更新系统配置失败:', error);
+      return { success: false };
     }
   }
 
   async getUserStats(userId: string): Promise<any> {
     try {
-      const months: { month: string; start: string; end: string }[] = []
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date()
-        date.setMonth(date.getMonth() - i)
-        months.push({
-          month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-          start: new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
-          end: new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
-        })
-      }
-
-      const monthlyOrders: { month: string; count: number }[] = []
-      const monthlySpending: { month: string; amount: number }[] = []
-
-      for (const m of months) {
-        const { count } = await this.supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .gte('created_at', m.start)
-          .lte('created_at', m.end)
-
-        const { data: spending } = await this.supabase
-          .from('transactions')
-          .select('amount')
-          .eq('user_id', userId)
-          .eq('type', 'expense')
-          .gte('created_at', m.start)
-          .lte('created_at', m.end)
-
-        monthlyOrders.push({ month: m.month, count: count || 0 })
-        monthlySpending.push({ 
-          month: m.month, 
-          amount: spending?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0 
-        })
-      }
-
-      return { monthlyOrders, monthlySpending }
-    } catch (error) {
-      console.error('获取用户统计失败:', error)
-      return { monthlyOrders: [], monthlySpending: [] }
-    }
-  }
-
-  async banUser(userId: string, action: 'ban' | 'unban'): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('users')
-        .update({ status: action === 'ban' ? 'banned' : 'active' })
-        .eq('id', userId)
-
-      if (error) throw error
+      const db = getMySQLClient();
+      
+      const avatarResult = await db.query(
+        `SELECT COUNT(*) as count FROM avatars WHERE user_id = ?`, [userId]
+      );
+      const avatarCount = avatarResult.data?.[0]?.count || 0;
+      
+      const postResult = await db.query(
+        `SELECT COUNT(*) as count FROM posts WHERE user_id = ?`, [userId]
+      );
+      const postCount = postResult.data?.[0]?.count || 0;
+      
+      const orderResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE user_id = ?`, [userId]
+      );
+      const orderCount = orderResult.data?.[0]?.count || 0;
+      
+      const earningsResult = await db.query(
+        `SELECT SUM(amount) as total FROM earnings WHERE user_id = ?`, [userId]
+      );
+      const totalEarnings = earningsResult.data?.[0]?.total || 0;
+      
+      const followResult = await db.query(
+        `SELECT COUNT(*) as count FROM follows WHERE user_id = ?`, [userId]
+      );
+      const followCount = followResult.data?.[0]?.count || 0;
+      
+      const fanResult = await db.query(
+        `SELECT COUNT(*) as count FROM follows WHERE follow_id = ?`, [userId]
+      );
+      const fanCount = fanResult.data?.[0]?.count || 0;
 
       return {
-        success: true,
-        message: action === 'ban' ? '用户已禁用' : '用户已解禁'
+        avatar_count: avatarCount,
+        post_count: postCount,
+        order_count: orderCount,
+        total_earnings: totalEarnings,
+        follow_count: followCount,
+        fan_count: fanCount
+      };
+    } catch (error) {
+      console.error('获取用户统计失败:', error);
+      return {
+        avatar_count: 0,
+        post_count: 0,
+        order_count: 0,
+        total_earnings: 0,
+        follow_count: 0,
+        fan_count: 0
+      };
+    }
+  }
+
+  async login(username: string, password: string): Promise<any> {
+    return this.verifyAdmin(username, password);
+  }
+
+  async verifyToken(token: string): Promise<any> {
+    try {
+      if (!token || !token.startsWith('Bearer ')) {
+        return null;
       }
-    } catch (error) {
-      console.error('操作用户失败:', error)
-      return { success: false, message: '操作失败' }
-    }
-  }
-
-  // ===== 分身管理 =====
-
-  async getAvatars(page: number, limit: number, keyword?: string, status?: string): Promise<any> {
-    try {
-      let query = this.supabase
-        .from('avatars')
-        .select('*, users!inner(nickname)', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1)
-
-      if (keyword) {
-        query = query.or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+      const tokenData = Buffer.from(token.replace('Bearer ', ''), 'base64').toString();
+      const parsed = JSON.parse(tokenData);
+      
+      if (parsed.exp && Date.now() > parsed.exp) {
+        return null;
       }
-
-      if (status && status !== 'all') {
-        query = query.eq('status', status)
+      
+      const db = getMySQLClient();
+      const result = await db.query(
+        `SELECT * FROM admin_users WHERE id = ? AND username = ?`,
+        [parsed.id, parsed.username]
+      );
+      
+      if (result.data && result.data.length > 0) {
+        return result.data[0];
       }
-
-      const { data, count, error } = await query
-      if (error) throw error
-
-      const avatarIds = data?.map(a => a.id) || []
-      const { data: orderStats } = await this.supabase
-        .from('orders')
-        .select('avatar_id')
-        .in('avatar_id', avatarIds)
-
-      const orderCountMap = new Map()
-      orderStats?.forEach(o => {
-        orderCountMap.set(o.avatar_id, (orderCountMap.get(o.avatar_id) || 0) + 1)
-      })
-
-      const avatarsWithStats = data?.map(avatar => ({
-        ...avatar,
-        user_nickname: avatar.users?.nickname,
-        order_count: orderCountMap.get(avatar.id) || 0,
-        rating: 4.5
-      }))
-
-      return { list: avatarsWithStats || [], total: count || 0, page, limit }
+      return null;
     } catch (error) {
-      console.error('获取分身列表失败:', error)
-      return { list: [], total: 0, page, limit }
+      console.error('验证token失败:', error);
+      return null;
     }
   }
 
-  async updateAvatarStatus(avatarId: string, status: string): Promise<{ success: boolean; message: string }> {
+  async banUser(userId: string, banned: boolean, reason?: string): Promise<any> {
     try {
-      const { error } = await this.supabase
-        .from('avatars')
-        .update({ status })
-        .eq('id', avatarId)
-
-      if (error) throw error
-
-      return { success: true, message: '状态更新成功' }
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE users SET banned = ?, ban_reason = ?, updated_at = NOW() WHERE id = ?`,
+        [banned ? 1 : 0, reason || '', userId]
+      );
+      return { success: true };
     } catch (error) {
-      console.error('更新分身状态失败:', error)
-      return { success: false, message: '操作失败' }
+      console.error('封禁用户失败:', error);
+      return { success: false };
     }
   }
 
-  // ===== 订单管理 =====
-
-  async getOrders(page: number, limit: number, keyword?: string, status?: string): Promise<any> {
+  async updateAvatarStatus(avatarId: string, status: string): Promise<any> {
     try {
-      let query = this.supabase
-        .from('orders')
-        .select('*, users!inner(nickname, phone), avatars!inner(name)', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1)
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE avatars SET status = ?, updated_at = NOW() WHERE id = ?`,
+        [status, avatarId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('更新分身状态失败:', error);
+      return { success: false };
+    }
+  }
 
-      if (status && status !== 'all') {
-        query = query.eq('status', status)
+  async updateOrderStatus(orderId: string, status: string, adminNote?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE orders SET status = ?, admin_note = ?, updated_at = NOW() WHERE id = ?`,
+        [status, adminNote || '', orderId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('更新订单状态失败:', error);
+      return { success: false };
+    }
+  }
+
+  async reviewPost(postId: string, status: string, reviewNote?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE posts SET status = ?, review_note = ?, reviewed_at = NOW(), updated_at = NOW() WHERE id = ?`,
+        [status, reviewNote || '', postId]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('审核内容失败:', error);
+      return { success: false };
+    }
+  }
+
+  async deletePost(postId: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(`DELETE FROM posts WHERE id = ?`, [postId]);
+      return { success: true };
+    } catch (error) {
+      console.error('删除内容失败:', error);
+      return { success: false };
+    }
+  }
+
+  async getFinanceStats(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      
+      let dateFilter = '';
+      const params: any[] = [];
+      
+      if (startDate && endDate) {
+        dateFilter = ` WHERE created_at BETWEEN ? AND ?`;
+        params.push(startDate, endDate);
+      } else if (startDate) {
+        dateFilter = ` WHERE created_at >= ?`;
+        params.push(startDate);
+      } else if (endDate) {
+        dateFilter = ` WHERE created_at <= ?`;
+        params.push(endDate);
       }
-
-      const { data, count, error } = await query
-      if (error) throw error
-
-      const orders = data?.map(order => ({
-        ...order,
-        user_nickname: order.users?.nickname,
-        user_phone: order.users?.phone,
-        avatar_name: order.avatars?.name
-      }))
-
-      return { list: orders || [], total: count || 0, page, limit }
-    } catch (error) {
-      console.error('获取订单列表失败:', error)
-      return { list: [], total: 0, page, limit }
-    }
-  }
-
-  async updateOrderStatus(orderId: string, status: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId)
-
-      if (error) throw error
-
-      return { success: true, message: '状态更新成功' }
-    } catch (error) {
-      console.error('更新订单状态失败:', error)
-      return { success: false, message: '操作失败' }
-    }
-  }
-
-  // ===== 技能管理 =====
-
-  async getSkills(): Promise<any> {
-    try {
-      const { data, error } = await this.supabase
-        .from('skills')
-        .select('*')
-        .order('created_at', { ascending: false })
       
-      if (error) throw error
-      return { list: data || [], total: data?.length || 0 }
-    } catch (error) {
-      console.error('获取技能列表失败:', error)
-      return { list: [], total: 0 }
-    }
-  }
-
-  async createSkill(data: any): Promise<{ success: boolean; message: string; data?: any }> {
-    try {
-      const { data: skill, error } = await this.supabase
-        .from('skills')
-        .insert([{
-          ...data,
-          order_count: 0,
-          rating: 5.0,
-          status: 'active',
-          created_at: new Date().toISOString()
-        }])
-        .select()
-        .single()
+      const revenueResult = await db.query(
+        `SELECT SUM(amount) as total FROM earnings ${dateFilter ? dateFilter.replace('WHERE', 'WHERE type = ? AND') : 'WHERE type = ?'}`,
+        ['revenue', ...params]
+      );
+      const totalRevenue = revenueResult.data?.[0]?.total || 0;
       
-      if (error) throw error
-      return { success: true, message: '创建成功', data: skill }
-    } catch (error) {
-      console.error('创建技能失败:', error)
-      return { success: false, message: '创建失败' }
-    }
-  }
-
-  async updateSkill(id: string, data: any): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('skills')
-        .update(data)
-        .eq('id', id)
+      const withdrawalResult = await db.query(
+        `SELECT SUM(amount) as total FROM withdrawal_requests ${dateFilter ? dateFilter.replace('WHERE', 'WHERE status = ? AND') : 'WHERE status = ?'}`,
+        ['approved', ...params]
+      );
+      const totalWithdrawal = withdrawalResult.data?.[0]?.total || 0;
       
-      if (error) throw error
-      return { success: true, message: '更新成功' }
-    } catch (error) {
-      console.error('更新技能失败:', error)
-      return { success: false, message: '更新失败' }
-    }
-  }
-
-  async deleteSkill(id: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('skills')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-      return { success: true, message: '删除成功' }
-    } catch (error) {
-      console.error('删除技能失败:', error)
-      return { success: false, message: '删除失败' }
-    }
-  }
-
-  async updateSkillStatus(id: string, status: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('skills')
-        .update({ status })
-        .eq('id', id)
-      
-      if (error) throw error
-      return { success: true, message: '状态更新成功' }
-    } catch (error) {
-      console.error('更新技能状态失败:', error)
-      return { success: false, message: '更新失败' }
-    }
-  }
-
-  // ===== 内容管理 =====
-
-  async getPosts(status?: string, search?: string): Promise<any> {
-    try {
-      let query = this.supabase
-        .from('posts')
-        .select('*, users!inner(nickname, avatar)')
-        .order('created_at', { ascending: false })
-
-      if (status && status !== 'all') {
-        query = query.eq('status', status)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      // 过滤搜索结果
-      let list = data || []
-      if (search) {
-        list = list.filter((p: any) => p.content?.includes(search))
-      }
-
-      return { 
-        list: list.map((p: any) => ({
-          ...p,
-          nickname: p.users?.nickname,
-          avatar: p.users?.avatar
-        })), 
-        total: list.length 
-      }
-    } catch (error) {
-      console.error('获取帖子列表失败:', error)
-      return { list: [], total: 0 }
-    }
-  }
-
-  async reviewPost(id: string, status: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('posts')
-        .update({ status })
-        .eq('id', id)
-      
-      if (error) throw error
-      return { success: true, message: '审核成功' }
-    } catch (error) {
-      console.error('审核帖子失败:', error)
-      return { success: false, message: '审核失败' }
-    }
-  }
-
-  async deletePost(id: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('posts')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-      return { success: true, message: '删除成功' }
-    } catch (error) {
-      console.error('删除帖子失败:', error)
-      return { success: false, message: '删除失败' }
-    }
-  }
-
-  // ===== 财务管理 =====
-
-  async getFinanceStats(): Promise<any> {
-    try {
-      // 获取充值总额
-      const { data: rechargeData } = await this.supabase
-        .from('transactions')
-        .select('amount')
-        .eq('type', 'recharge')
-        .eq('status', 'completed')
-      
-      const totalRecharge = rechargeData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
-
-      // 获取提现总额
-      const { data: withdrawData } = await this.supabase
-        .from('transactions')
-        .select('amount')
-        .eq('type', 'withdraw')
-        .eq('status', 'completed')
-      
-      const totalWithdraw = withdrawData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
-
-      // 获取分佣总额
-      const { data: commissionData } = await this.supabase
-        .from('earnings')
-        .select('amount')
-        .eq('type', 'commission')
-      
-      const totalCommission = commissionData?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
-
-      // 获取待审核提现
-      const { data: pendingData } = await this.supabase
-        .from('transactions')
-        .select('amount')
-        .eq('type', 'withdraw')
-        .eq('status', 'pending')
-      
-      const pendingWithdraw = pendingData?.reduce((sum: number, t: any) => sum + (t.amount || 0), 0) || 0
+      const orderResult = await db.query(
+        `SELECT COUNT(*) as count, SUM(total_price) as total FROM orders ${dateFilter}`,
+        params
+      );
+      const orderCount = orderResult.data?.[0]?.count || 0;
+      const orderAmount = orderResult.data?.[0]?.total || 0;
 
       return {
-        totalRecharge,
-        totalWithdraw,
-        totalCommission,
-        balance: totalRecharge - totalWithdraw,
-        pendingWithdraw
-      }
+        totalRevenue,
+        totalWithdrawal,
+        balance: totalRevenue - totalWithdrawal,
+        orderCount,
+        orderAmount
+      };
     } catch (error) {
-      console.error('获取财务统计失败:', error)
+      console.error('获取财务统计失败:', error);
       return {
-        totalRecharge: 0,
-        totalWithdraw: 0,
-        totalCommission: 0,
+        totalRevenue: 0,
+        totalWithdrawal: 0,
         balance: 0,
-        pendingWithdraw: 0
-      }
+        orderCount: 0,
+        orderAmount: 0
+      };
     }
   }
 
-  async getTransactions(type?: string): Promise<any> {
+  async getTransactions(page: number, limit: number, type?: string): Promise<any> {
     try {
-      let query = this.supabase
-        .from('transactions')
-        .select('*, users!inner(nickname)')
-        .order('created_at', { ascending: false })
-
-      if (type && type !== 'all') {
-        query = query.eq('type', type)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-
-      return { 
-        list: data?.map((t: any) => ({
-          ...t,
-          nickname: t.users?.nickname
-        })) || [], 
-        total: data?.length || 0 
-      }
-    } catch (error) {
-      console.error('获取交易记录失败:', error)
-      return { list: [], total: 0 }
-    }
-  }
-
-  async approveWithdraw(id: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('transactions')
-        .update({ status: 'completed' })
-        .eq('id', id)
+      const db = getMySQLClient();
+      const offset = (page - 1) * limit;
       
-      if (error) throw error
-      return { success: true, message: '已通过' }
-    } catch (error) {
-      console.error('审核提现失败:', error)
-      return { success: false, message: '审核失败' }
-    }
-  }
-
-  async rejectWithdraw(id: string, reason: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await this.supabase
-        .from('transactions')
-        .update({ status: 'rejected', reject_reason: reason })
-        .eq('id', id)
+      let sql = `SELECT t.*, u.nickname, u.phone 
+                 FROM transactions t 
+                 LEFT JOIN users u ON t.user_id = u.id`;
+      let countSql = `SELECT COUNT(*) as count FROM transactions`;
+      const params: any[] = [];
       
-      if (error) throw error
-      return { success: true, message: '已驳回' }
+      if (type) {
+        sql += ` WHERE t.type = ?`;
+        countSql += ` WHERE type = ?`;
+        params.push(type);
+      }
+      
+      sql += ` ORDER BY t.created_at DESC LIMIT ? OFFSET ?`;
+      
+      const result = await db.query(sql, [...params, limit, offset]);
+      const transactions = result.data || [];
+      
+      const countResult = await db.query(countSql, params);
+      const total = countResult.data?.[0]?.count || 0;
+
+      return { list: transactions, total, page, limit };
     } catch (error) {
-      console.error('驳回提现失败:', error)
-      return { success: false, message: '驳回失败' }
+      console.error('获取交易记录失败:', error);
+      return { list: [], total: 0, page, limit };
     }
   }
-
-  // ===== 推广管理 =====
 
   async getReferralStats(): Promise<any> {
     try {
-      // 获取推广员数量
-      const { count: totalReferrers } = await this.supabase
-        .from('referrals')
-        .select('*', { count: 'exact', head: true })
-
-      // 获取被邀请人数
-      const { data: referredData } = await this.supabase
-        .from('users')
-        .select('referred_by')
-        .not('referred_by', 'is', null)
-
-      const totalReferred = referredData?.length || 0
-
-      // 获取总分佣金额
-      const { data: commissionData } = await this.supabase
-        .from('earnings')
-        .select('amount')
-        .eq('type', 'commission')
-
-      const totalCommission = commissionData?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
+      const db = getMySQLClient();
+      
+      const totalResult = await db.query(`SELECT COUNT(*) as count FROM referrals`);
+      const totalReferrers = totalResult.data?.[0]?.count || 0;
+      
+      const bonusResult = await db.query(
+        `SELECT SUM(amount) as total FROM earnings WHERE type = 'referral_bonus'`
+      );
+      const totalBonus = bonusResult.data?.[0]?.total || 0;
+      
+      const usersResult = await db.query(
+        `SELECT COUNT(*) as count FROM users WHERE referral_code IS NOT NULL AND referral_code != ''`
+      );
+      const referredUsers = usersResult.data?.[0]?.count || 0;
 
       return {
-        totalReferrers: totalReferrers || 0,
-        totalReferred,
-        totalCommission,
-        commissionRate: this.config.commissionRate
-      }
+        totalReferrers,
+        totalBonus,
+        referredUsers,
+        averageBonus: totalReferrers > 0 ? totalBonus / totalReferrers : 0
+      };
     } catch (error) {
-      console.error('获取推广统计失败:', error)
+      console.error('获取推荐统计失败:', error);
       return {
         totalReferrers: 0,
-        totalReferred: 0,
-        totalCommission: 0,
-        commissionRate: this.config.commissionRate
-      }
+        totalBonus: 0,
+        referredUsers: 0,
+        averageBonus: 0
+      };
     }
   }
 
-  async getReferrers(): Promise<any[]> {
+  async updateCommissionRate(rate: number): Promise<any> {
     try {
-      const { data, error } = await this.supabase
-        .from('referrals')
-        .select('*, users!inner(nickname, avatar)')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      return data?.map((r: any) => ({
-        ...r,
-        nickname: r.users?.nickname,
-        avatar: r.users?.avatar
-      })) || []
+      const db = getMySQLClient();
+      await db.query(
+        `INSERT INTO system_config (id, commission_rate, updated_at) 
+         VALUES ('system', ?, NOW()) 
+         ON DUPLICATE KEY UPDATE commission_rate = ?, updated_at = NOW()`,
+        [rate, rate]
+      );
+      return { success: true, rate };
     } catch (error) {
-      console.error('获取推广员列表失败:', error)
-      return []
+      console.error('更新佣金比例失败:', error);
+      return { success: false };
     }
   }
 
-  async updateCommissionRate(rate: number): Promise<{ success: boolean; message: string }> {
+  async getAdmins(): Promise<any> {
     try {
-      this.config.commissionRate = rate
-      // 保存到数据库
-      const { error } = await this.supabase
-        .from('settings')
-        .upsert({ key: 'commission_rate', value: rate.toString() })
-      
-      if (error) throw error
-      return { success: true, message: '设置已更新' }
+      const db = getMySQLClient();
+      const result = await db.query(`SELECT id, username, role, created_at FROM admin_users`);
+      return result.data || [];
     } catch (error) {
-      console.error('更新分佣比例失败:', error)
-      return { success: false, message: '更新失败' }
+      console.error('获取管理员列表失败:', error);
+      return [];
     }
   }
 
-  // ===== 系统设置 =====
-
-  async getAdmins(): Promise<any[]> {
-    return Array.from(this.admins.values()).map(a => ({
-      id: a.id,
-      username: a.username,
-      role: a.role,
-      last_login: a.last_login,
-      created_at: a.created_at
-    }))
+  async addAdmin(username: string, password: string, role: string = 'admin'): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const id = `admin_${Date.now()}`;
+      await db.query(
+        `INSERT INTO admin_users (id, username, password, role, created_at) VALUES (?, ?, ?, ?, NOW())`,
+        [id, username, password, role]
+      );
+      return { id, username, role };
+    } catch (error) {
+      console.error('添加管理员失败:', error);
+      return null;
+    }
   }
 
-  async addAdmin(username: string, password: string): Promise<{ success: boolean; message: string }> {
-    const id = Date.now().toString()
-    this.admins.set(id, {
-      id,
-      username,
-      password,
-      role: 'admin',
-      created_at: new Date().toISOString()
-    })
-    return { success: true, message: '添加成功' }
+  async deleteAdmin(id: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(`DELETE FROM admin_users WHERE id = ?`, [id]);
+      return { success: true };
+    } catch (error) {
+      console.error('删除管理员失败:', error);
+      return { success: false };
+    }
   }
 
-  async deleteAdmin(id: string): Promise<{ success: boolean; message: string }> {
-    if (id === '1') return { success: false, message: '不能删除超级管理员' }
-    this.admins.delete(id)
-    return { success: true, message: '删除成功' }
+  async changePassword(id: string, newPassword: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE admin_users SET password = ?, updated_at = NOW() WHERE id = ?`,
+        [newPassword, id]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('修改密码失败:', error);
+      return { success: false };
+    }
   }
 
-  async changePassword(adminId: string, oldPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    const admin = this.admins.get(adminId)
-    if (!admin) return { success: false, message: '管理员不存在' }
-    if (admin.password !== oldPassword) return { success: false, message: '原密码错误' }
-    admin.password = newPassword
-    return { success: true, message: '密码修改成功' }
+  async getConfig(key: string): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const result = await db.query(
+        `SELECT * FROM system_config WHERE id = ?`, [key]
+      );
+      return result.data?.[0] || null;
+    } catch (error) {
+      console.error('获取配置失败:', error);
+      return null;
+    }
   }
 
-  async getConfig(): Promise<SystemConfig> {
-    return this.config
-  }
-
-  async updateConfig(config: Partial<SystemConfig>): Promise<{ success: boolean; message: string }> {
-    this.config = { ...this.config, ...config }
-    return { success: true, message: '配置已更新' }
+  async updateConfig(key: string, value: any): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      await db.query(
+        `INSERT INTO system_config (id, config_value, updated_at) 
+         VALUES (?, ?, NOW()) 
+         ON DUPLICATE KEY UPDATE config_value = ?, updated_at = NOW()`,
+        [key, JSON.stringify(value), JSON.stringify(value)]
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('更新配置失败:', error);
+      return { success: false };
+    }
   }
 }

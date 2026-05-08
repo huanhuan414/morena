@@ -1,70 +1,63 @@
-import { Injectable } from '@nestjs/common'
-import { Tool, ToolExecutionContext, ToolResult } from '../tools.interface'
-import { getSupabaseClient } from '../../../storage/database/supabase-client'
+/**
+ * 发送消息工具
+ */
 
-@Injectable()
-export class SendMessageTool implements Tool {
-  name = 'send_message'
-  description = '向用户发送消息通知。当任务完成或需要通知用户时使用此工具。'
-  
-  parameters = {
-    message: {
-      type: 'string',
-      description: '要发送给用户的消息内容',
-      required: true
-    },
-    type: {
-      type: 'string',
-      description: '消息类型：text(普通文本), notification(通知), alert(警告)',
-      required: false
+import { ITool, ToolContext, ToolDefinition } from './tool.interface'
+import { ToolResult } from '../agent.types'
+
+// 发送消息工具
+export class SendMessageTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'send_message',
+    displayName: '发送消息',
+    description: '向指定用户或分身发送消息',
+    category: 'app_function',
+    paramsSchema: {
+      to: { type: 'string', description: '接收者ID', required: true },
+      message: { type: 'string', description: '消息内容', required: true },
+      type: { type: 'string', enum: ['text', 'image', 'voice', 'video'], default: 'text' }
     }
   }
 
-  async execute(params: Record<string, any>, context: ToolExecutionContext): Promise<ToolResult> {
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const { message, type = 'text' } = params
-      
-      console.log(`[SendMessageTool] 发送消息: ${message}`)
-      
-      const client = getSupabaseClient()
-      
-      // 将消息保存到数据库，作为一个系统通知
-      // 可以在用户的"我的消息"页面查看
-      const { data, error } = await client
-        .from('notifications')
-        .insert({
-          user_id: context.userId,
-          avatar_id: context.avatarId,
-          type: type,
-          title: 'AI分身通知',
+      const { to, message, type = 'text' } = params
+
+      if (!to || !message) {
+        return {
+          success: false,
+          error: '缺少必要参数',
+          message: '缺少必要参数'
+        }
+      }
+
+      // 记录消息到数据库
+      try {
+        const { getMySQLClient } = await import('../../../storage/database/mysql-client')
+        const db = getMySQLClient()
+        await db.insert('messages', {
+          sender_id: context.userId,
+          receiver_id: to,
           content: message,
-          is_read: false,
-          created_at: new Date().toISOString()
+          type: type,
+          status: 'sent'
         })
-        .select()
-        .single()
-      
-      if (error) {
-        // 如果 notifications 表不存在，记录日志但不报错
-        console.log('[SendMessageTool] 通知已记录（表可能不存在）:', message)
+      } catch (e) {
+        console.log('[SendMessageTool] 消息记录失败（忽略）:', e)
       }
-      
+
+      console.log('[SendMessageTool] 发送消息:', { to, message, type })
+
       return {
         success: true,
-        data: {
-          message,
-          type,
-          sentAt: new Date().toISOString()
-        },
-        message: `消息已发送: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
+        data: { message, type, sentAt: new Date().toISOString() },
+        message: '发送成功'
       }
-    } catch (error) {
-      console.error('[SendMessageTool] 发送失败:', error)
-      // 即使数据库保存失败，也认为消息已发送（日志记录）
+    } catch (err: any) {
       return {
-        success: true,
-        data: { message: params.message },
-        message: `消息已记录: ${params.message?.substring(0, 50)}`
+        success: false,
+        error: err.message,
+        message: '发送失败'
       }
     }
   }

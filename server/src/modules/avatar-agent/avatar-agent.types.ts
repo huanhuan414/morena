@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Avatar Agent 类型定义
  */

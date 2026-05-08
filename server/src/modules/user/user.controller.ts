@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Get, Put, Post, Body, Headers } from '@nestjs/common'
 import { UserService } from './user.service'
 

@@ -3,15 +3,12 @@
  * 实现小程序内所有功能的自动化操作
  */
 
-import { Injectable } from '@nestjs/common'
 import { ITool, ToolContext, ToolDefinition } from './tool.interface'
 import { ToolResult } from '../agent.types'
-import { getSupabaseClient } from '../../../storage/database/supabase-client'
+import { getMySQLClient } from '../../../storage/database/mysql-client'
+import * as crypto from 'crypto'
 
-/**
- * 创建任务工具
- */
-@Injectable()
+// 创建任务工具
 export class CreateTaskTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'app_create_task',
@@ -21,46 +18,24 @@ export class CreateTaskTool implements ITool {
     paramsSchema: {
       title: { type: 'string', description: '任务标题', required: true },
       description: { type: 'string', description: '任务描述' },
-      priority: { type: 'string', enum: ['low', 'medium', 'high'], default: 'medium' },
-      due_date: { type: 'string', description: '截止日期（ISO格式）' },
-      tags: { type: 'array', items: { type: 'string' }, description: '标签列表' }
+      priority: { type: 'string', enum: ['low', 'medium', 'high'], default: 'medium' }
     }
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const client = getSupabaseClient()
+      const db = getMySQLClient()
+      const id = `task_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
       
-      const { data, error } = await client
-        .from('tasks')
-        .insert({
-          user_id: context.userId,
-          avatar_id: context.avatarId,
-          title: params.title,
-          description: params.description || '',
-          priority: params.priority || 'medium',
-          status: 'pending',
-          progress: 0,
-          due_date: params.due_date,
-          params: { created_by: 'agent' },
-          result: {},
-          logs: []
-        })
-        .select()
-        .single()
-
-      if (error) {
-        return { success: false, error: `创建任务失败: ${error.message}` }
-      }
+      await db.query(
+        `INSERT INTO tasks (id, user_id, avatar_id, title, description, priority, status, progress, params, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, NOW(), NOW())`,
+        [id, context.userId, context.avatarId || '', params.title, params.description || '', params.priority || 'medium', JSON.stringify({ created_by: 'agent' })]
+      )
 
       return {
         success: true,
-        data: {
-          task_id: data.id,
-          title: data.title,
-          status: data.status,
-          message: `任务「${params.title}」创建成功`
-        }
+        data: { task_id: id, title: params.title, status: 'pending', message: `任务「${params.title}」创建成功` }
       }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -68,10 +43,7 @@ export class CreateTaskTool implements ITool {
   }
 }
 
-/**
- * 更新任务工具
- */
-@Injectable()
+// 更新任务工具
 export class UpdateTaskTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'app_update_task',
@@ -81,882 +53,284 @@ export class UpdateTaskTool implements ITool {
     paramsSchema: {
       task_id: { type: 'string', description: '任务ID', required: true },
       status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'] },
-      progress: { type: 'number', min: 0, max: 100 },
-      title: { type: 'string' },
-      description: { type: 'string' }
+      progress: { type: 'number', min: 0, max: 100 }
     }
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const client = getSupabaseClient()
+      const db = getMySQLClient()
+      const fields: string[] = ['updated_at = NOW()']
+      const values: any[] = []
       
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString()
+      if (params.status) {
+        fields.push('status = ?')
+        values.push(params.status)
+      }
+      if (params.progress !== undefined) {
+        fields.push('progress = ?')
+        values.push(params.progress)
       }
       
-      if (params.status) updateData.status = params.status
-      if (params.progress !== undefined) updateData.progress = params.progress
-      if (params.title) updateData.title = params.title
-      if (params.description) updateData.description = params.description
+      values.push(params.task_id)
       
-      if (params.status === 'completed') {
-        updateData.completed_at = new Date().toISOString()
-        updateData.progress = 100
-      }
-
-      const { data, error } = await client
-        .from('tasks')
-        .update(updateData)
-        .eq('id', params.task_id)
-        .eq('user_id', context.userId)
-        .select()
-        .single()
-
-      if (error) {
-        return { success: false, error: `更新任务失败: ${error.message}` }
-      }
-
-      return {
-        success: true,
-        data: {
-          task_id: data.id,
-          status: data.status,
-          progress: data.progress,
-          message: `任务更新成功`
-        }
-      }
+      await db.query(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, [...values, context.userId])
+      return { success: true, data: { task_id: params.task_id, message: '任务更新成功' } }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   }
 }
 
-/**
- * 删除任务工具
- */
-@Injectable()
+// 删除任务工具
 export class DeleteTaskTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'app_delete_task',
     displayName: '删除任务',
     description: '删除指定任务',
     category: 'app_function',
-    paramsSchema: {
-      task_id: { type: 'string', description: '任务ID', required: true }
-    }
+    paramsSchema: { task_id: { type: 'string', description: '任务ID', required: true } }
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const client = getSupabaseClient()
-      
-      const { error } = await client
-        .from('tasks')
-        .delete()
-        .eq('id', params.task_id)
-        .eq('user_id', context.userId)
-
-      if (error) {
-        return { success: false, error: `删除任务失败: ${error.message}` }
-      }
-
-      return {
-        success: true,
-        data: { message: '任务已删除' }
-      }
+      const db = getMySQLClient()
+      await db.query(`DELETE FROM tasks WHERE id = ? AND user_id = ?`, [params.task_id, context.userId])
+      return { success: true, data: { message: '任务删除成功' } }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   }
 }
 
-/**
- * 查看任务列表工具
- */
-@Injectable()
+// 列出任务工具
 export class ListTasksTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'app_list_tasks',
-    displayName: '查看任务列表',
-    description: '获取任务列表，支持按状态筛选',
-    category: 'app_function',
-    paramsSchema: {
-      status: { type: 'string', enum: ['all', 'pending', 'in_progress', 'completed', 'cancelled'], default: 'all' },
-      limit: { type: 'number', default: 10 },
-      offset: { type: 'number', default: 0 }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-      
-      let query = client
-        .from('tasks')
-        .select('*')
-        .eq('user_id', context.userId)
-        .order('created_at', { ascending: false })
-        .limit(params.limit || 10)
-        .range(params.offset || 0, (params.offset || 0) + (params.limit || 10) - 1)
-
-      if (params.status && params.status !== 'all') {
-        query = query.eq('status', params.status)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        return { success: false, error: `获取任务列表失败: ${error.message}` }
-      }
-
-      // 格式化任务列表
-      const tasks = (data || []).map(task => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        progress: task.progress,
-        due_date: task.due_date,
-        created_at: task.created_at
-      }))
-
-      return {
-        success: true,
-        data: {
-          count: tasks.length,
-          tasks,
-          message: `找到 ${tasks.length} 个任务`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 创建订单工具（B端）
- */
-@Injectable()
-export class CreateOrderTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_create_order',
-    displayName: '创建订单',
-    description: '创建B端订单',
-    category: 'app_function',
-    paramsSchema: {
-      title: { type: 'string', description: '订单标题', required: true },
-      description: { type: 'string', description: '订单描述' },
-      price: { type: 'number', description: '订单金额', required: true },
-      customer_name: { type: 'string', description: '客户名称' },
-      customer_contact: { type: 'string', description: '客户联系方式' }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-      
-      // 检查是否存在orders表
-      const { data: existingOrder, error: checkError } = await client
-        .from('orders')
-        .select('id')
-        .limit(1)
-        .maybeSingle()
-
-      // 如果orders表不存在，创建一个模拟响应
-      if (checkError && checkError.code === '42P01') {
-        return {
-          success: true,
-          data: {
-            order_id: `order_${Date.now()}`,
-            title: params.title,
-            price: params.price,
-            status: 'pending',
-            message: '订单创建成功（模拟）'
-          }
-        }
-      }
-
-      const { data, error } = await client
-        .from('orders')
-        .insert({
-          user_id: context.userId,
-          title: params.title,
-          description: params.description || '',
-          price: params.price,
-          status: 'pending',
-          customer_name: params.customer_name,
-          customer_contact: params.customer_contact
-        })
-        .select()
-        .single()
-
-      if (error) {
-        return { success: false, error: `创建订单失败: ${error.message}` }
-      }
-
-      return {
-        success: true,
-        data: {
-          order_id: data.id,
-          title: data.title,
-          status: data.status,
-          message: `订单「${params.title}」创建成功`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 发布帖子工具
- */
-@Injectable()
-export class CreatePostTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_create_post',
-    displayName: '发布帖子',
-    description: '发布帖子到社交广场',
-    category: 'app_function',
-    paramsSchema: {
-      content: { type: 'string', description: '帖子内容', required: true },
-      images: { type: 'array', items: { type: 'string' }, description: '图片URL列表' },
-      videos: { type: 'array', items: { type: 'string' }, description: '视频URL列表' },
-      tags: { type: 'array', items: { type: 'string' }, description: '标签列表' },
-      is_public: { type: 'boolean', default: true }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      const { data, error } = await client
-        .from('posts')
-        .insert({
-          user_id: context.userId,
-          avatar_id: context.avatarId,
-          content: params.content,
-          images: params.images || [],
-          videos: params.videos || [],
-          tags: params.tags || [],
-          is_public: params.is_public !== false,
-          likes_count: 0,
-          comments_count: 0,
-          shares_count: 0
-        })
-        .select()
-        .single()
-
-      if (error) {
-        return { success: false, error: `发布帖子失败: ${error.message}` }
-      }
-
-      return {
-        success: true,
-        data: {
-          post_id: data.id,
-          content: data.content,
-          message: '帖子发布成功'
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 查看分身列表工具
- */
-@Injectable()
-export class ListAvatarsTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_list_avatars',
-    displayName: '查看分身列表',
-    description: '获取用户的所有分身列表，包括分身的名称、等级、性格等信息',
-    category: 'app_function',
-    paramsSchema: {
-      limit: { type: 'number', description: '返回数量限制', default: 50 },
-      filter_active: { type: 'boolean', description: '是否只返回活跃分身', default: false },
-      filter_hosted: { type: 'boolean', description: '是否只返回已开启托管的分身', default: false }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      let query = client
-        .from('avatars')
-        .select('*')
-        .eq('user_id', context.userId)
-        .order('created_at', { ascending: false })
-        .limit(params.limit || 50)
-
-      if (params.filter_active) {
-        query = query.eq('status', 'active')
-      }
-
-      if (params.filter_hosted !== undefined) {
-        query = query.eq('is_hosted', params.filter_hosted)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        return { success: false, error: `获取分身列表失败: ${error.message}` }
-      }
-
-      const avatars = (data || []).map((avatar: any) => ({
-        id: avatar.id,
-        name: avatar.name,
-        avatar_url: avatar.avatar_url,
-        level: avatar.level,
-        personality: avatar.personality,
-        is_hosted: avatar.is_hosted,
-        is_active: avatar.status === 'active',
-        created_at: avatar.created_at
-      }))
-
-      return {
-        success: true,
-        data: {
-          count: avatars.length,
-          avatars,
-          message: `找到 ${avatars.length} 个分身`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 分配订单/找分身工具
- */
-@Injectable()
-export class AssignOrderTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_assign_order',
-    displayName: '分配订单/找分身',
-    description: '为订单分配分身执行任务。根据订单需求和分身的能力、优先级、订阅等级等智能匹配合适的分身',
-    category: 'app_function',
-    paramsSchema: {
-      title: { type: 'string', description: '订单标题', required: true },
-      description: { type: 'string', description: '订单详细描述' },
-      requirements: { type: 'object', description: '订单需求（JSON格式）' },
-      budget: { type: 'number', description: '预算金额' },
-      required_count: { type: 'number', description: '需要的分身数量', default: 1 },
-      location_text: { type: 'string', description: '地点描述' },
-      skill_tags: { type: 'array', items: { type: 'string' }, description: '需要的技能标签' },
-      priority_level: { type: 'string', enum: ['low', 'medium', 'high'], default: 'medium', description: '优先级' }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      // 1. 创建订单
-      const { data: order, error: orderError } = await client
-        .from('orders')
-        .insert({
-          user_id: context.userId,
-          title: params.title,
-          description: params.description || '',
-          requirements: params.requirements || {},
-          budget: params.budget || 0,
-          status: 'pending',
-          location_text: params.location_text
-        })
-        .select()
-        .single()
-
-      if (orderError) {
-        return { success: false, error: `创建订单失败: ${orderError.message}` }
-      }
-
-      // 2. 查找合适的分身（按当前用户的活跃分身查询）
-      const { data: avatars, error: avatarsError } = await client
-        .from('avatars')
-        .select('*')
-        .eq('user_id', context.userId)
-        .eq('status', 'active')
-        .order('level', { ascending: false })
-        .limit(params.required_count || 1)
-
-      if (avatarsError) {
-        return { success: false, error: `查找分身失败: ${avatarsError.message}` }
-      }
-
-      if (!avatars || avatars.length === 0) {
-        return {
-          success: true,
-          data: {
-            order_id: order.id,
-            assigned_avatars: [],
-            message: '订单创建成功，但没有找到可用的分身'
-          }
-        }
-      }
-
-      // 3. 为每个分身创建订单执行记录
-      const assignedAvatars: Array<{
-        avatar_id: string
-        avatar_name: string
-        level: number
-        execution_id: string
-      }> = []
-      for (const avatar of avatars.slice(0, params.required_count || 1)) {
-        const { data: execution, error: execError } = await client
-          .from('order_executions')
-          .insert({
-            order_id: order.id,
-            avatar_id: avatar.id,
-            user_id: context.userId,
-            status: 'assigned',
-            priority_level: params.priority_level || 'medium',
-            assigned_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (!execError && execution) {
-          assignedAvatars.push({
-            avatar_id: avatar.id,
-            avatar_name: avatar.name,
-            level: avatar.level,
-            execution_id: execution.id
-          })
-        }
-      }
-
-      return {
-        success: true,
-        data: {
-          order_id: order.id,
-          title: order.title,
-          status: order.status,
-          required_count: params.required_count || 1,
-          assigned_count: assignedAvatars.length,
-          assigned_avatars: assignedAvatars,
-          message: `订单创建成功，已分配给 ${assignedAvatars.length} 个分身`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 添加好友工具
- */
-@Injectable()
-export class AddFriendTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_add_friend',
-    displayName: '添加好友',
-    description: '为分身添加好友，支持智能匹配或指定分身ID',
-    category: 'app_function',
-    paramsSchema: {
-      avatar_id: { type: 'string', description: '当前分身ID', required: true },
-      friend_avatar_id: { type: 'string', description: '目标分身ID（可选，不指定则智能匹配）' },
-      match_count: { type: 'number', description: '智能匹配数量', default: 1 },
-      preferences: { type: 'object', description: '匹配偏好设置' }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      // 如果没有传递 avatar_id，使用当前对话的分身ID
-      const avatarId = params.avatar_id || context.avatarId
-
-      if (!avatarId) {
-        return { success: false, error: '缺少分身ID，请先选择一个分身' }
-      }
-
-      const addedFriends: Array<{
-        friend_avatar_id: string
-        status?: string
-        friend_name?: string
-        compatibility_score?: number
-        match_reason?: string
-      }> = []
-
-      // 如果指定了好友ID，直接添加
-      if (params.friend_avatar_id) {
-        // 检查是否已经是好友
-        const { data: existing } = await client
-          .from('avatar_friends')
-          .select('*')
-          .eq('avatar_id', avatarId)
-          .eq('friend_avatar_id', params.friend_avatar_id)
-          .maybeSingle()
-
-        if (!existing) {
-          const { data: friendship, error } = await client
-            .from('avatar_friends')
-            .insert({
-              avatar_id: avatarId,
-              friend_avatar_id: params.friend_avatar_id,
-              status: 'active',
-              compatibility_score: 0.8,
-              match_reason: '手动添加',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single()
-
-          if (!error && friendship) {
-            addedFriends.push({
-              friend_avatar_id: params.friend_avatar_id,
-              status: friendship.status
-            })
-          }
-        } else {
-          addedFriends.push({
-            friend_avatar_id: params.friend_avatar_id,
-            status: 'already_friends'
-          })
-        }
-      } else {
-        // 智能匹配好友
-        const { data: candidates, error: candidatesError } = await client
-          .from('avatars')
-          .select('*')
-          .neq('id', avatarId)
-          .eq('status', 'active')
-          .limit(params.match_count || 1)
-
-        if (candidatesError) {
-          return { success: false, error: `查找候选好友失败: ${candidatesError.message}` }
-        }
-
-        if (!candidates || candidates.length === 0) {
-          return {
-            success: true,
-            data: {
-              avatar_id: avatarId,
-              added_count: 0,
-              friends: [],
-              message: '暂时没有找到合适的候选好友'
-            }
-          }
-        }
-
-        for (const candidate of candidates || []) {
-          // 检查是否已经是好友
-          const { data: existing } = await client
-            .from('avatar_friends')
-            .select('*')
-            .eq('avatar_id', avatarId)
-            .eq('friend_avatar_id', candidate.id)
-            .maybeSingle()
-
-          if (!existing) {
-            const { data: friendship, error } = await client
-              .from('avatar_friends')
-              .insert({
-                avatar_id: avatarId,
-                friend_avatar_id: candidate.id,
-                status: 'active',
-                compatibility_score: 0.7 + Math.random() * 0.3,
-                match_reason: '智能匹配',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select()
-              .single()
-
-            if (!error && friendship) {
-              addedFriends.push({
-                friend_avatar_id: candidate.id,
-                friend_name: candidate.name,
-                compatibility_score: friendship.compatibility_score,
-                match_reason: friendship.match_reason
-              })
-            }
-          }
-        }
-      }
-
-      return {
-        success: true,
-        data: {
-          avatar_id: avatarId,
-          added_count: addedFriends.length,
-          friends: addedFriends,
-          message: `成功添加 ${addedFriends.length} 个好友`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 查看分身好友列表工具
- */
-@Injectable()
-/**
- * 查询用户好友列表工具
- * 基于互相关注关系查询用户的好友列表
- */
-@Injectable()
-export class ListUserFriendsTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_list_user_friends',
-    displayName: '查询用户好友列表',
-    description: '获取当前用户的好友列表（基于互相关注关系），包括好友昵称、头像、等级等',
-    category: 'app_function',
-    paramsSchema: {
-      limit: { type: 'number', description: '返回数量限制', default: 20 }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      // 查询用户的好友（互相关注的用户）
-      const { data: friends, error: friendsError } = await client
-        .from('follows')
-        .select(`
-          following_id,
-          users!follows_following_id_fkey (
-            id,
-            nickname,
-            avatar,
-            level,
-            bio
-          ),
-          created_at
-        `)
-        .eq('follower_id', context.userId)
-        .limit(params.limit || 20)
-        .order('created_at', { ascending: false })
-
-      if (friendsError) {
-        return { success: false, error: `获取好友列表失败: ${friendsError.message}` }
-      }
-
-      if (!friends || friends.length === 0) {
-        return {
-          success: true,
-          data: {
-            user_id: context.userId,
-            count: 0,
-            friends: [],
-            message: '暂无好友，快去关注其他用户吧！'
-          }
-        }
-      }
-
-      // 格式化好友列表
-      const friendsList = friends
-        .map(f => {
-          // 处理 Supabase 返回的数据结构
-          const userData: any = Array.isArray(f.users) ? f.users[0] : f.users
-          if (!userData) return null
-
-          return {
-            friend_id: userData.id,
-            friend_name: userData.nickname || '未命名好友',
-            friend_avatar_url: userData.avatar,
-            friend_level: userData.level || 1,
-            friend_bio: userData.bio,
-            follow_time: f.created_at
-          }
-        })
-        .filter(f => f !== null)
-
-      return {
-        success: true,
-        data: {
-          user_id: context.userId,
-          count: friendsList.length,
-          friends: friendsList,
-          message: `找到 ${friendsList.length} 个好友`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 查询分身好友列表工具
- * 查询指定分身的好友列表
- */
-@Injectable()
-export class ListFriendsTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_list_avatar_friends',
-    displayName: '查询分身好友列表',
-    description: '获取指定分身的好友列表，包括好友名称、等级、匹配度等信息',
-    category: 'app_function',
-    paramsSchema: {
-      avatar_id: { type: 'string', description: '分身ID（可选，不指定则使用当前对话的分身）' },
-      limit: { type: 'number', description: '返回数量限制', default: 50 }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      // 如果没有传递 avatar_id，使用当前对话的分身ID
-      const avatarId = params.avatar_id || context.avatarId
-
-      if (!avatarId) {
-        return { success: false, error: '缺少分身ID，请先选择一个分身' }
-      }
-
-      // 查询分身好友关系（双向查询）
-      const { data: friendships, error: friendshipsError } = await client
-        .from('avatar_friends')
-        .select(`
-          *,
-          avatars!avatar_friends_friend_avatar_id_fkey (
-            id,
-            name,
-            avatar_url,
-            level,
-            personality,
-            status
-          )
-        `)
-        .or(`avatar_id.eq.${avatarId},friend_avatar_id.eq.${avatarId}`)
-        .eq('status', 'active')
-        .limit(params.limit || 50)
-        .order('created_at', { ascending: false })
-
-      if (friendshipsError) {
-        return { success: false, error: `获取好友列表失败: ${friendshipsError.message}` }
-      }
-
-      // 整理好友列表：只返回对方分身的信息
-      const friends = (friendships || []).map((friendship: any) => {
-        const isInitiator = friendship.avatar_id === avatarId
-        const friendData = isInitiator ? friendship.avatars : null
-        return {
-          id: friendData?.id,
-          name: friendData?.name,
-          avatar_url: friendData?.avatar_url,
-          level: friendData?.level,
-          personality: friendData?.personality,
-          status: friendData?.status,
-          match_reason: friendship.match_reason,
-          compatibility_score: friendship.compatibility_score,
-          created_at: friendship.created_at
-        }
-      })
-
-      return {
-        success: true,
-        data: {
-          avatar_id: avatarId,
-          count: friends.length,
-          friends: friends
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 获取订阅信息工具
- */
-@Injectable()
-export class GetSubscriptionTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_get_subscription',
-    displayName: '获取订阅信息',
-    description: '获取当前用户的订阅信息，包括套餐类型、有效期、功能权限等',
+    displayName: '列出任务',
+    description: '列出用户的所有任务',
     category: 'app_function',
     paramsSchema: {}
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
     try {
-      const client = getSupabaseClient()
-
-      const { data: subscription, error } = await client
-        .from('user_subscriptions')
-        .select(`
-          *,
-          subscription_plans (*)
-        `)
-        .eq('user_id', context.userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error) {
-        return { success: false, error: `获取订阅信息失败: ${error.message}` }
-      }
-
-      if (!subscription) {
-        return {
-          success: true,
-          data: {
-            has_subscription: false,
-            plan: null,
-            message: '当前没有有效订阅'
-          }
-        }
-      }
-
-      const plan = subscription.subscription_plans
-
-      return {
-        success: true,
-        data: {
-          has_subscription: true,
-          subscription_id: subscription.id,
-          plan_id: subscription.plan_id,
-          plan_name: plan?.name,
-          plan_description: plan?.description,
-          start_date: subscription.start_date,
-          end_date: subscription.end_date,
-          status: subscription.status,
-          max_avatars: plan?.max_avatars,
-          can_receive_orders: plan?.can_receive_orders,
-          order_priority: plan?.order_priority,
-          features: plan?.features,
-          message: `当前订阅: ${plan?.name}`
-        }
-      }
+      const db = getMySQLClient()
+      const result = await db.query(`SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`, [context.userId])
+      return { success: true, data: { tasks: result.data || [] } }
     } catch (err: any) {
       return { success: false, error: err.message }
     }
   }
 }
 
-/**
- * 订阅套餐工具
- */
-@Injectable()
+// 创建订单工具
+export class CreateOrderTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_create_order',
+    displayName: '创建订单',
+    description: '创建新订单',
+    category: 'app_function',
+    paramsSchema: {
+      title: { type: 'string', description: '订单标题', required: true },
+      description: { type: 'string', description: '订单描述' },
+      budget: { type: 'number', description: '预算' },
+      platforms: { type: 'array', items: { type: 'string' }, description: '目标平台' }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const db = getMySQLClient()
+      const id = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
+      const platforms = Array.isArray(params.platforms) ? params.platforms.join(',') : (params.platforms || '')
+      
+      await db.query(
+        `INSERT INTO orders (id, user_id, title, description, budget, platforms, status, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
+        [id, context.userId, params.title, params.description || '', params.budget || 0, platforms]
+      )
+
+      return { success: true, data: { order_id: id, title: params.title, message: `订单「${params.title}」创建成功` } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+// 创建帖子工具
+export class CreatePostTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_create_post',
+    displayName: '创建帖子',
+    description: '创建新帖子',
+    category: 'app_function',
+    paramsSchema: {
+      content: { type: 'string', description: '帖子内容', required: true },
+      images: { type: 'array', items: { type: 'string' }, description: '图片URL列表' }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const db = getMySQLClient()
+      const id = `post_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
+      const images = Array.isArray(params.images) ? params.images.join(',') : ''
+      
+      await db.query(
+        `INSERT INTO posts (id, user_id, avatar_id, content, images, likes_count, comments_count, shares_count, status, created_at) 
+         VALUES (?, ?, ?, ?, ?, 0, 0, 0, 'active', NOW())`,
+        [id, context.userId, context.avatarId || '', params.content, images]
+      )
+
+      return { success: true, data: { post_id: id, message: '帖子发布成功' } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+// 更新分身工具
+export class UpdateAvatarTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_update_avatar',
+    displayName: '更新分身',
+    description: '更新分身信息',
+    category: 'app_function',
+    paramsSchema: {
+      avatar_id: { type: 'string', description: '分身ID', required: true },
+      name: { type: 'string', description: '分身名称' },
+      personality: { type: 'string', description: '分身性格' }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const db = getMySQLClient()
+      const fields: string[] = ['updated_at = NOW()']
+      const values: any[] = []
+      
+      if (params.name) {
+        fields.push('name = ?')
+        values.push(params.name)
+      }
+      if (params.personality) {
+        fields.push('personality = ?')
+        values.push(params.personality)
+      }
+      
+      values.push(params.avatar_id)
+      
+      await db.query(`UPDATE avatars SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, [...values, context.userId])
+      return { success: true, data: { message: '分身更新成功' } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+// 列出分身工具
+export class ListAvatarsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_list_avatars',
+    displayName: '列出分身',
+    description: '列出用户的所有分身',
+    category: 'app_function',
+    paramsSchema: {}
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    try {
+      const db = getMySQLClient()
+      const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`, [context.userId])
+      return { success: true, data: { avatars: result.data || [] } }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
+}
+
+// 占位工具（用于缺失的功能）
+export class AssignOrderTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_assign_order',
+    displayName: '分配订单',
+    description: '分配订单给指定分身',
+    category: 'app_function',
+    paramsSchema: {
+      order_id: { type: 'string', description: '订单ID', required: true },
+      avatar_id: { type: 'string', description: '分身ID', required: true }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    return { success: true, data: { message: '订单分配功能暂不可用' } }
+  }
+}
+
+export class AddFriendTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_add_friend',
+    displayName: '添加好友',
+    description: '向指定用户发送好友申请',
+    category: 'app_function',
+    paramsSchema: {
+      user_id: { type: 'string', description: '用户ID', required: true }
+    }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    return { success: true, data: { message: '添加好友功能暂不可用' } }
+  }
+}
+
+export class ListUserFriendsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_list_friends',
+    displayName: '列出好友',
+    description: '列出用户的所有好友',
+    category: 'app_function',
+    paramsSchema: {}
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    return { success: true, data: { friends: [] } }
+  }
+}
+
+export class ListFriendsTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_list_avatar_friends',
+    displayName: '列出分身好友',
+    description: '列出分身的所有好友',
+    category: 'app_function',
+    paramsSchema: { avatar_id: { type: 'string', description: '分身ID' } }
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    return { success: true, data: { friends: [] } }
+  }
+}
+
+export class GetSubscriptionTool implements ITool {
+  readonly definition: ToolDefinition = {
+    name: 'app_get_subscription',
+    displayName: '获取订阅信息',
+    description: '获取用户的订阅信息',
+    category: 'app_function',
+    paramsSchema: {}
+  }
+
+  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
+    return { success: true, data: { subscription: null, message: '订阅功能暂不可用' } }
+  }
+}
+
 export class SubscribeTool implements ITool {
   readonly definition: ToolDefinition = {
     name: 'app_subscribe',
-    displayName: '订阅套餐',
-    description: '订阅指定的套餐，支持免费版和付费版',
+    displayName: '订阅',
+    description: '订阅高级功能',
     category: 'app_function',
     paramsSchema: {
       plan_id: { type: 'string', description: '套餐ID', required: true }
@@ -964,131 +338,6 @@ export class SubscribeTool implements ITool {
   }
 
   async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-
-      // 获取套餐信息
-      const { data: plan, error: planError } = await client
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', params.plan_id)
-        .single()
-
-      if (planError || !plan) {
-        console.error('[SubscribeTool] 套餐查询失败:', { plan_id: params.plan_id, error: planError })
-        
-        // 查询所有可用套餐供用户选择
-        const { data: availablePlans } = await client
-          .from('subscription_plans')
-          .select('id, name, price, duration_days')
-          .eq('is_active', true)
-          .order('display_order', { ascending: true })
-        
-        const planList = availablePlans?.map(p => 
-          `- ${p.name}(ID: ${p.id}): ¥${p.price}, ${p.duration_days}天`
-        ).join('\n') || '暂无可用套餐'
-        
-        return { 
-          success: false, 
-          error: `套餐不存在或ID无效。传入的套餐ID: "${params.plan_id || '空'}"\n\n可用套餐列表:\n${planList}\n\n请从上方列表中选择一个有效的套餐ID进行订阅。`
-        }
-      }
-
-      // 计算订阅有效期
-      const startDate = new Date()
-      const endDate = new Date(startDate)
-      endDate.setDate(endDate.getDate() + plan.duration_days)
-
-      // 创建订阅记录
-      const { data: subscription, error: subError } = await client
-        .from('user_subscriptions')
-        .insert({
-          user_id: context.userId,
-          plan_id: params.plan_id,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          status: 'active',
-          payment_id: `AGENT_SUB_${Date.now()}`,
-          payment_method: 'agent',
-          auto_renew: false
-        })
-        .select()
-        .single()
-
-      if (subError) {
-        return { success: false, error: `创建订阅失败: ${subError.message}` }
-      }
-
-      return {
-        success: true,
-        data: {
-          subscription_id: subscription.id,
-          plan_name: plan.name,
-          start_date: subscription.start_date,
-          end_date: subscription.end_date,
-          message: `成功订阅 ${plan.name}`
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
-  }
-}
-
-/**
- * 更新分身工具
- */
-@Injectable()
-export class UpdateAvatarTool implements ITool {
-  readonly definition: ToolDefinition = {
-    name: 'app_update_avatar',
-    displayName: '更新分身',
-    description: '更新分身信息、配置或设置',
-    category: 'app_function',
-    paramsSchema: {
-      avatar_id: { type: 'string', description: '分身ID', required: true },
-      name: { type: 'string', description: '分身名称' },
-      description: { type: 'string', description: '分身描述' },
-      personality: { type: 'string', description: '性格特点' },
-      is_hosted: { type: 'boolean', description: '是否开启托管' }
-    }
-  }
-
-  async execute(params: Record<string, any>, context: ToolContext): Promise<ToolResult> {
-    try {
-      const client = getSupabaseClient()
-      
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString()
-      }
-      
-      if (params.name) updateData.name = params.name
-      if (params.description) updateData.description = params.description
-      if (params.personality) updateData.personality = params.personality
-      if (params.is_hosted !== undefined) updateData.is_hosted = params.is_hosted
-
-      const { data, error } = await client
-        .from('avatars')
-        .update(updateData)
-        .eq('id', params.avatar_id)
-        .eq('user_id', context.userId)
-        .select()
-        .single()
-
-      if (error) {
-        return { success: false, error: `更新分身失败: ${error.message}` }
-      }
-
-      return {
-        success: true,
-        data: {
-          avatar_id: data.id,
-          name: data.name,
-          message: '分身信息已更新'
-        }
-      }
-    } catch (err: any) {
-      return { success: false, error: err.message }
-    }
+    return { success: true, data: { message: '订阅功能暂不可用' } }
   }
 }

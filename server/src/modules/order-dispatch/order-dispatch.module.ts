@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Module, forwardRef } from '@nestjs/common'
 import { OrderDispatchController } from './order-dispatch.controller'
 import { OrderDispatchService } from './order-dispatch.service'

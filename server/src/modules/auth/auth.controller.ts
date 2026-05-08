@@ -1,9 +1,9 @@
-import { Controller, Post, Body, Get, Headers } from '@nestjs/common'
+import { Controller, Post, Body, Get, Headers, Inject } from '@nestjs/common'
 import { AuthService } from './auth.service'
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject("AUTH_SERVICE") private readonly authService: AuthService) {}
 
   /**
    * 发送验证码

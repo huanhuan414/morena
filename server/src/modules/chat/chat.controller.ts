@@ -1,6 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Headers, Req, Sse, MessageEvent, Query } from '@nestjs/common'
-import { Observable } from 'rxjs'
-import { map } from 'rxjs/operators'
+import { Controller, Get, Post, Delete, Body, Param, Headers } from '@nestjs/common'
 import { ChatService } from './chat.service'
 
 @Controller('chat')
@@ -32,13 +30,8 @@ export class ChatController {
   }
 
   @Get('conversation/:id/messages')
-  async getMessages(
-    @Param('id') conversationId: string,
-    @Query('limit') limit?: string,
-    @Query('before') before?: string
-  ) {
-    const limitNum = limit ? parseInt(limit, 10) : 20
-    const messages = await this.chatService.getConversationMessages(conversationId, limitNum, before)
+  async getMessages(@Param('id') conversationId: string) {
+    const messages = await this.chatService.getMessages(conversationId)
     return {
       code: 200,
       data: messages,
@@ -49,18 +42,12 @@ export class ChatController {
   @Post('send')
   async sendMessage(
     @Headers('x-user-id') userId: string,
-    @Body() body: { conversation_id: string; avatar_id: string; content: string; metadata?: any },
-    @Req() req: any
+    @Body() body: { conversation_id: string; content: string; role?: string }
   ) {
-    const headers = req.headers
-    const message = await this.chatService.sendMessage(
-      body.conversation_id,
-      userId,
-      body.avatar_id,
-      body.content,
-      body.metadata,
-      headers
-    )
+    const message = await this.chatService.addMessage(body.conversation_id, {
+      role: body.role || 'user',
+      content: body.content
+    })
     return {
       code: 200,
       data: message,
@@ -68,68 +55,16 @@ export class ChatController {
     }
   }
 
-  /**
-   * 流式对话接口
-   * 使用 Server-Sent Events (SSE) 实现流式输出
-   */
-  @Sse('stream')
-  async streamMessage(
-    @Headers('x-user-id') userId: string,
-    @Body() body: { conversation_id: string; avatar_id: string; content: string; metadata?: any },
-    @Req() req: any
-  ): Promise<Observable<MessageEvent>> {
-    const headers = req.headers
-    
-    return new Observable(subscriber => {
-      (async () => {
-        try {
-          const generator = this.chatService.sendMessageStream(
-            body.conversation_id,
-            userId,
-            body.avatar_id,
-            body.content,
-            body.metadata,
-            headers
-          )
-          
-          for await (const chunk of generator) {
-            subscriber.next({ data: chunk } as MessageEvent)
-          }
-          
-          subscriber.complete()
-        } catch (error) {
-          subscriber.error(error)
-        }
-      })()
-    })
-  }
-
   @Delete('conversation/:id')
   async deleteConversation(
     @Param('id') conversationId: string,
     @Headers('x-user-id') userId: string
   ) {
-    await this.chatService.deleteConversation(conversationId, userId)
+    await this.chatService.deleteConversation(userId, conversationId)
     return {
       code: 200,
       data: null,
       message: '删除成功'
-    }
-  }
-
-  /**
-   * 直接调用LLM生成内容
-   * 不需要创建对话，直接返回生成的文本
-   */
-  @Post('generate')
-  async generateContent(@Body('prompt') prompt: string) {
-    const content = await this.chatService.generateContent(prompt)
-    return {
-      code: 200,
-      data: {
-        content
-      },
-      message: '生成成功'
     }
   }
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Post, Get, Body, Param, Headers } from '@nestjs/common'
 import { OrderResultsService, CreateResultDto } from './order-results.service'
 

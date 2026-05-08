@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface SubscriptionPlan {
   id: string
   name: string

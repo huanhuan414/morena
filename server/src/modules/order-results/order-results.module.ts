@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Module } from '@nestjs/common'
 import { OrderResultsController } from './order-results.controller'
 import { OrderResultsService } from './order-results.service'

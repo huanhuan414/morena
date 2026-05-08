@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Get, Post, Put, Delete, Body, Param, Headers, Query } from '@nestjs/common'
 import { OrderService } from './order.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'

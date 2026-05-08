@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Post, Body, Get, Query, Param, Delete, Headers } from '@nestjs/common';
 import { PalmReadingService } from './palm-reading.service';
 

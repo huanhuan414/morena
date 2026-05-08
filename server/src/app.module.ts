@@ -18,7 +18,6 @@ import { OrderResultsModule } from './modules/order-results/order-results.module
 import { EarningModule } from './modules/earning/earning.module';
 import { ReferralModule } from './modules/referral/referral.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
-import { SkillsModule } from './modules/skills/skills.module';
 import { MediaModule } from './modules/media/media.module';
 import { ContentGenerationModule } from './modules/content-generation/content-generation.module';
 import { UploadModule } from './modules/upload/upload.module';
@@ -27,10 +26,9 @@ import { RecommendationModule } from './modules/recommendation/recommendation.mo
 import { VideoModule } from './modules/video/video.module';
 import { VisionModule } from './modules/vision/vision.module';
 
-import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
-import { SkillTrainingModule } from './modules/skill-training/skill-training.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
 import { EarningsModule } from './modules/earnings/earnings.module';
 
@@ -53,7 +51,6 @@ import { EarningsModule } from './modules/earnings/earnings.module';
     EarningModule,
     ReferralModule,
     SubscriptionModule,
-    SkillsModule,
     MediaModule,
     ContentGenerationModule,
     UploadModule,
@@ -63,7 +60,6 @@ import { EarningsModule } from './modules/earnings/earnings.module';
     VisionModule,
     TikHubModule,
     OrderProcessingModule,
-    SkillTrainingModule,
     AdminModule,
     PalmReadingModule,
     EarningsModule

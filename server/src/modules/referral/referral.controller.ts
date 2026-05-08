@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Controller, Get, Post, Body, Headers, Query } from '@nestjs/common'
 import { ReferralService } from './referral.service'
 

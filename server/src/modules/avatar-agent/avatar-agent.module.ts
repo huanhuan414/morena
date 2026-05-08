@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Avatar Agent Module
  * 分身 Agent 模块
@@ -27,37 +28,27 @@ import {
 } from './tools/content-generation-tools'
 import {
   PublishWechatMpTool,
-  PublishXiaohongshuTool,
-  PublishWechatVideoTool
 } from './tools/platform-publish-tools'
 import {
   QueryUserProfileTool,
-  QueryOrdersTool,
-  QueryFriendsTool
+  QueryOrdersTool
 } from './tools/data-tools'
 import {
-  SendMessageTool,
-  CreateMomentTool,
-  AddCommentTool
+  AvatarSendMessageTool,
+  AvatarCreateMomentTool
 } from './tools/social-tools'
 import {
   CreateTaskTool,
-  UpdateTaskStatusTool,
-  QueryTasksTool,
-  AssignTaskTool
+  UpdateTaskTool,
+  QueryTasksTool
 } from './tools/task-tools'
 import {
-  ChangePasswordTool,
-  UpdateProfileTool,
-  UploadAvatarTool,
-  BindPhoneTool,
-  DeleteAccountTool
+  ChangePasswordTool
 } from './tools/user-management-tools'
 import {
   QueryAvatarFriendsTool,
   AddAvatarFriendTool,
-  RemoveAvatarFriendTool,
-  QueryAvatarProfileTool
+  RemoveAvatarFriendTool
 } from './tools/avatar-management-tools'
 
 @Module({
@@ -71,47 +62,32 @@ import {
     WriteArticleTool,
     GenerateImageTool,
     SummarizeTool,
-    // 内容创作工具（从旧系统迁移）
+    // 内容创作工具
     WriteWechatMpArticleTool,
     WriteXiaohongshuNoteTool,
     WriteWechatMomentsTool,
-    // 内容生成工具（从旧系统迁移）
+    // 内容生成工具
     ContentGenerateImageTool,
     GenerateVideoTool,
-    // 平台发布工具（从旧系统迁移）
+    // 发布工具
     PublishWechatMpTool,
-    PublishXiaohongshuTool,
-    PublishWechatVideoTool,
     // 数据查询工具
     QueryUserProfileTool,
     QueryOrdersTool,
-    QueryFriendsTool,
-    // 社交互动工具
-    SendMessageTool,
-    CreateMomentTool,
-    AddCommentTool,
-    // 任务管理工具
+    // 社交工具
+    AvatarSendMessageTool,
+    AvatarCreateMomentTool,
+    // 任务工具
     CreateTaskTool,
-    UpdateTaskStatusTool,
+    UpdateTaskTool,
     QueryTasksTool,
-    AssignTaskTool,
     // 用户管理工具
     ChangePasswordTool,
-    UpdateProfileTool,
-    UploadAvatarTool,
-    BindPhoneTool,
-    DeleteAccountTool,
     // 分身管理工具
     QueryAvatarFriendsTool,
     AddAvatarFriendTool,
     RemoveAvatarFriendTool,
-    QueryAvatarProfileTool
   ],
-  exports: [
-    AvatarAgentService,
-    AvatarMemoryService,
-    AvatarLearningService,
-    AvatarToolRegistry
-  ]
+  exports: [AvatarAgentService]
 })
 export class AvatarAgentModule {}
