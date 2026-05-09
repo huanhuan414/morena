@@ -164,14 +164,11 @@ const MindChat: React.FC = () => {
   return (
     <View className="mind-chat-page">
       {/* 顶部渐变背景 */}
-      <View className="page-header">
-        {/* 装饰元素 */}
-        <View className="header-decoration">
-          <View className="decoration-circle circle-1" />
-          <View className="decoration-circle circle-2" />
-        </View>
-        
-        {/* Tab切换 - 无图标 */}
+      <View className="page-header" />
+
+      {/* Tab和搜索区域 - 白色背景 */}
+      <View className="tab-search-area">
+        {/* Tab切换 */}
         <View className="header-tabs">
           <View
             className={cn('header-tab', activeTab === 'my' && 'active')}
@@ -188,30 +185,30 @@ const MindChat: React.FC = () => {
             {activeTab === 'square' && <View className="tab-indicator" />}
           </View>
         </View>
-      </View>
 
-      {/* 搜索和操作栏 - 调整间距 */}
-      <View className="search-section">
-        <View className="search-wrapper">
-          <View className="search-icon-wrapper">
-            <Search size={16} />
+        {/* 搜索和操作栏 */}
+        <View className="search-section">
+          <View className="search-wrapper">
+            <View className="search-icon-wrapper">
+              <Search size={16} />
+            </View>
+            <Input
+              className="search-input"
+              placeholder="搜索分身..."
+              value={searchValue}
+              onInput={(e: any) => setSearchValue(e.detail.value)}
+            />
           </View>
-          <Input
-            className="search-input"
-            placeholder="搜索分身..."
-            value={searchValue}
-            onInput={(e: any) => setSearchValue(e.detail.value)}
-          />
+          {activeTab === 'my' && (
+            <View 
+              className="add-button"
+              onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
+            >
+              <Plus size={18} color="#ffffff" />
+              <Text className="add-button-text">新建</Text>
+            </View>
+          )}
         </View>
-        {activeTab === 'my' && (
-          <View 
-            className="add-button"
-            onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
-          >
-            <Plus size={18} color="#ffffff" />
-            <Text className="add-button-text">新建</Text>
-          </View>
-        )}
       </View>
 
       {/* 内容区域 */}
