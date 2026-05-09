@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp, Sparkles } from 'lucide-react-taro'
 import './index.css'
 
 const Index: React.FC = () => {
   const [userName] = useState('张小明')
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang')
   const [translateX, setTranslateX] = useState(0)
+  const [mindClones] = useState(0) // 分身数量，0表示没有分身
+  const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
+  const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
   const scrollRef = useRef(0)
 
   // 统计数据
   const stats = [
-    { label: '我的分身', value: '3', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '+1 本月', path: '/pages/mind-chat/index' },
+    { label: '我的分身', value: mindClones.toString(), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '+1 本月', path: '/pages/mind-chat/index' },
     { label: '待接订单', value: '12', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '+5 今日', path: '/pages/pending-order/index' },
     { label: '生成内容', value: '158', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '+8 本周', path: '/pages/generated-content/index' },
     { label: '累计收益', value: '2.4', unit: 'k', color: '#EC4899', bg: '#FDF2F8', trend: '+15.8%', path: '/pages/earning-center/index' },
@@ -37,6 +40,12 @@ const Index: React.FC = () => {
     { type: 'trending', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar5', name: '生活博主大白', action: '粉丝突破1000', desc: '恭喜！本月新增粉丝', amount: '+328', time: '30分钟前', icon: TrendingUp },
   ]
 
+  // 订单通知数据
+  const orderNotifications = [
+    { id: 1, platform: '小红书', platformColor: '#FF2442', title: '美妆种草笔记', budget: '¥150-200', deadline: '剩余2小时', desc: '需要突出产品功效，配图3张以上' },
+    { id: 2, platform: '抖音', platformColor: '#00F2EA', title: '探店视频脚本', budget: '¥80-120', deadline: '剩余5小时', desc: '脚本时长1-2分钟，需包含热门元素' },
+  ]
+
   // 复制活动数据用于无缝滚动
   const allActivities = [...activities, ...activities]
 
@@ -59,8 +68,31 @@ const Index: React.FC = () => {
     return () => clearInterval(timer)
   }, [activities.length])
 
+  // 模拟收到订单通知
+  useEffect(() => {
+    // 3秒后显示订单弹窗（演示用）
+    const timer = setTimeout(() => {
+      if (mindClones > 0) {
+        setOrderModalData(orderNotifications[0])
+        setShowOrderModal(true)
+      }
+    }, 3000)
+    
+    return () => clearTimeout(timer)
+  }, [mindClones])
+
   const goToPage = (path: string) => {
     Taro.navigateTo({ url: path })
+  }
+
+  // 处理订单弹窗
+  const handleOrderAccept = () => {
+    setShowOrderModal(false)
+    Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })
+  }
+
+  const handleOrderDismiss = () => {
+    setShowOrderModal(false)
   }
 
   return (
@@ -78,7 +110,9 @@ const Index: React.FC = () => {
               <Text className="nickname">早安，{userName}</Text>
               <View className="subtitle-wrapper">
                 <View className="subtitle-dot" />
-                <Text className="subtitle">分身已工作 4.5 小时</Text>
+                <Text className="subtitle">
+                  {mindClones > 0 ? '分身已工作 4.5 小时' : '快创建你的第一个分身'}
+                </Text>
               </View>
             </View>
           </View>
@@ -115,11 +149,28 @@ const Index: React.FC = () => {
           </View>
         </View>
 
+        {/* 无分身空状态提示 */}
+        {mindClones === 0 && (
+          <View className="empty-minds-section">
+            <View className="empty-minds-card">
+              <View className="empty-minds-icon">
+                <Sparkles size={60} color="#6366F1" />
+              </View>
+              <Text className="empty-minds-title">还没有创建分身</Text>
+              <Text className="empty-minds-desc">创建AI分身，让它帮你自动接单、生成内容、赚取收益</Text>
+              <View className="empty-minds-btn" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
+                <Plus size={32} color="#FFFFFF" />
+                <Text className="empty-minds-btn-text">立即创建分身</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* 推广Banner */}
         <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
           <View className="banner-bg" />
           <View className="banner-content">
-            <View>
+            <View className="banner-top">
               <Text className="banner-title">分身托管收益翻倍</Text>
               <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
             </View>
@@ -214,6 +265,48 @@ const Index: React.FC = () => {
         {/* 底部留白 */}
         <View className="bottom-spacer" />
       </ScrollView>
+
+      {/* 订单通知弹窗 */}
+      {showOrderModal && orderModalData && (
+        <View className="order-modal-overlay" onClick={handleOrderDismiss}>
+          <View className="order-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="order-modal-header">
+              <Text className="order-modal-title">新订单通知</Text>
+              <View className="order-modal-close" onClick={handleOrderDismiss}>
+                <Text className="order-modal-close-text">×</Text>
+              </View>
+            </View>
+            
+            <View className="order-modal-content">
+              <View className="order-modal-platform" style={{ background: orderModalData.platformColor }}>
+                {orderModalData.platform}
+              </View>
+              <Text className="order-modal-order-title">{orderModalData.title}</Text>
+              <Text className="order-modal-desc">{orderModalData.desc}</Text>
+              
+              <View className="order-modal-info">
+                <View className="order-modal-info-item">
+                  <Text className="order-modal-info-label">预算</Text>
+                  <Text className="order-modal-info-value" style={{ color: '#F59E0B' }}>{orderModalData.budget}</Text>
+                </View>
+                <View className="order-modal-info-item">
+                  <Text className="order-modal-info-label">截止</Text>
+                  <Text className="order-modal-info-value" style={{ color: '#EF4444' }}>{orderModalData.deadline}</Text>
+                </View>
+              </View>
+            </View>
+            
+            <View className="order-modal-actions">
+              <View className="order-modal-btn dismiss" onClick={handleOrderDismiss}>
+                <Text className="order-modal-btn-text dismiss">暂不接单</Text>
+              </View>
+              <View className="order-modal-btn accept" onClick={handleOrderAccept}>
+                <Text className="order-modal-btn-text accept">立即接单</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
