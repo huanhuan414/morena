@@ -10,6 +10,7 @@
   min-height: 100vh;
   background: var(--bg-page);
   position: relative;
+  padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
 }
 
 /* ========================================
