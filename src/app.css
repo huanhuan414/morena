@@ -6,15 +6,23 @@
 @import 'weapp-tailwindcss';
 @import url('./styles/avatar-styles.css');
 
-/* H5端字体大小基础设置 - 基于750px设计稿 */
+/* H5端字体大小设置 - 基于375px设计稿 */
 @media (min-width: 320px) {
   html {
-    font-size: calc(100vw / 37.5);
+    /* 基准字体大小：16px */
+    font-size: 16px;
   }
 }
-@media (min-width: 768px) {
+
+@media screen and (min-width: 768px) and (max-width: 1024px) {
   html {
-    font-size: 20.48px;
+    font-size: 18px;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  html {
+    font-size: 20px;
   }
 }
 

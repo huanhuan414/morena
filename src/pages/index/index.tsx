@@ -15,9 +15,7 @@ import {
   Zap,
   Bell,
   Settings,
-  Sparkles,
-  Grid3x3,
-  User
+  Sparkles
 } from 'lucide-react-taro'
 import { Card, CardContent } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
@@ -294,35 +292,6 @@ const Index: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* 底部TabBar - 简洁3tab：首页、分身、我的 */}
-      <View className="custom-tabbar">
-        <View 
-          className="tabbar-item active"
-          onClick={() => Taro.switchTab({ url: '/pages/index/index' })}
-        >
-          <Grid3x3 size={24} color="#7B3FE4" />
-          <Text className="tabbar-text active">首页</Text>
-        </View>
-        <View className="tabbar-item center">
-          <View className="tabbar-center-btn">
-            <Sparkles size={32} color="#fff" />
-          </View>
-        </View>
-        <View 
-          className="tabbar-item"
-          onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}
-        >
-          <User size={24} color="#9CA3AF" />
-          <Text className="tabbar-text">分身</Text>
-        </View>
-        <View 
-          className="tabbar-item"
-          onClick={() => Taro.switchTab({ url: '/pages/profile/index' })}
-        >
-          <User size={24} color="#9CA3AF" />
-          <Text className="tabbar-text">我的</Text>
-        </View>
-      </View>
     </View>
   )
 }
