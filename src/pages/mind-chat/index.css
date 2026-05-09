@@ -1,6 +1,7 @@
 /* 分身页面 */
 .mind-chat-page {
   min-height: 100vh;
+  height: auto;
   background: #f5f5f8;
 }
 
@@ -139,9 +140,9 @@
   letter-spacing: 1rpx;
 }
 
-/* 内容滚动区域 */
+/* 内容滚动区域 - 为TabBar留出空间 */
 .content-scroll {
-  height: calc(100vh - 130rpx);
+  height: calc(100vh - 58px - 130rpx);
 }
 
 /* 我的分身列表 */
