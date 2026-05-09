@@ -6,9 +6,7 @@ import {
   Search,
   Plus,
   Image as ImageIcon,
-  Cpu,
   FileText,
-  Ellipsis,
   Clock,
   Sparkles,
   Zap
@@ -272,16 +270,8 @@ const MindChat: React.FC = () => {
                       <Text className="toolbar-label">形象</Text>
                     </View>
                     <View className="toolbar-btn">
-                      <Cpu size={15} />
-                      <Text className="toolbar-label">托管</Text>
-                    </View>
-                    <View className="toolbar-btn">
                       <FileText size={15} />
                       <Text className="toolbar-label">内容</Text>
-                    </View>
-                    <View className="toolbar-btn">
-                      <Ellipsis size={15} />
-                      <Text className="toolbar-label">更多</Text>
                     </View>
                   </View>
                   <View className="hosting-control">
@@ -350,16 +340,8 @@ const MindChat: React.FC = () => {
                       <Text className="toolbar-label">形象</Text>
                     </View>
                     <View className="toolbar-btn">
-                      <Cpu size={15} />
-                      <Text className="toolbar-label">托管</Text>
-                    </View>
-                    <View className="toolbar-btn">
                       <FileText size={15} />
                       <Text className="toolbar-label">内容</Text>
-                    </View>
-                    <View className="toolbar-btn">
-                      <Ellipsis size={15} />
-                      <Text className="toolbar-label">更多</Text>
                     </View>
                   </View>
                   <View className={cn('follow-action-btn', clone.isFollowing && 'following')}>
