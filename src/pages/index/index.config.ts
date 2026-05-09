@@ -1,9 +1,11 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
       navigationBarTitleText: '首页',
-      navigationStyle: 'default',
+      navigationStyle: 'custom',
+      disableScroll: false
     })
   : {
       navigationBarTitleText: '首页',
-      navigationStyle: 'default',
+      navigationStyle: 'custom',
+      disableScroll: false
     }

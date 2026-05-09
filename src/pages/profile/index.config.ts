@@ -1,9 +1,9 @@
 export default typeof definePageConfig === 'function'
   ? definePageConfig({
       navigationBarTitleText: '我的',
-      navigationStyle: 'default',
+      navigationStyle: 'custom'
     })
   : {
       navigationBarTitleText: '我的',
-      navigationStyle: 'default',
+      navigationStyle: 'custom'
     }
