@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis } from 'lucide-react-taro'
+import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis, DollarSign } from 'lucide-react-taro'
 import './index.css'
 
 // 内容状态
@@ -16,6 +16,7 @@ interface GeneratedContent {
   type: 'text-image' | 'image' | 'video' | 'text'
   platform: string
   thumbnail?: string
+  images?: string[]
   tags: string[]
   stats: {
     views: number
@@ -23,6 +24,7 @@ interface GeneratedContent {
     comments: number
     shares: number
   }
+  earnings?: number
   created_at: string
   status: string
 }
@@ -44,41 +46,66 @@ const STATUS_CONFIG = {
   completed: { label: '结算完成', bg: '#D1FAE5', color: '#059669' },
 }
 
+// 平台配置
+const PLATFORM_CONFIG: Record<string, { name: string; bg: string; color: string }> = {
+  xiaohongshu: { name: '小红书', bg: '#FFF0F5', color: '#FF6B6B' },
+  douyin: { name: '抖音', bg: '#F0FFF0', color: '#00C853' },
+  wechat_mp: { name: '公众号', bg: '#F0F8FF', color: '#1976D2' },
+  weibo: { name: '微博', bg: '#FFF2E8', color: '#FF8200' },
+  bilibili: { name: 'B站', bg: '#FFF0F5', color: '#FB7299' },
+  kuaishou: { name: '快手', bg: '#FFF8F0', color: '#FF4906' },
+}
+
 // 模拟数据
 const MOCK_CONTENTS: GeneratedContent[] = [
   {
     id: '1',
-    title: '春季美妆护肤种草笔记',
+    title: '春季美妆护肤种草笔记，这个季节一定要入手的好物分享',
     content: '今天给大家分享一款超级好用的护肤精华...',
     type: 'text-image',
     platform: 'xiaohongshu',
     thumbnail: 'https://picsum.photos/400/300?random=1',
+    images: [
+      'https://picsum.photos/400/400?random=11',
+      'https://picsum.photos/400/400?random=12',
+      'https://picsum.photos/400/400?random=13',
+      'https://picsum.photos/400/400?random=14',
+      'https://picsum.photos/400/400?random=15',
+    ],
     tags: ['护肤', '种草', '好物分享'],
     stats: { views: 12580, likes: 892, comments: 156, shares: 45 },
+    earnings: 128.50,
     created_at: '2024-03-10',
     status: 'pending'
   },
   {
     id: '2',
-    title: '科技产品开箱测评',
+    title: '科技产品开箱测评，这功能也太强了吧',
     content: '',
     type: 'video',
     platform: 'douyin',
     thumbnail: 'https://picsum.photos/400/300?random=2',
     tags: ['数码', '测评', '开箱'],
     stats: { views: 34520, likes: 2100, comments: 320, shares: 180 },
+    earnings: 356.00,
     created_at: '2024-03-08',
     status: 'feedback'
   },
   {
     id: '3',
-    title: '美食探店推荐',
+    title: '美食探店推荐，这家店太绝了',
     content: '',
     type: 'image',
     platform: 'xiaohongshu',
     thumbnail: 'https://picsum.photos/400/300?random=3',
+    images: [
+      'https://picsum.photos/400/400?random=31',
+      'https://picsum.photos/400/400?random=32',
+      'https://picsum.photos/400/400?random=33',
+    ],
     tags: ['美食', '探店', '推荐'],
     stats: { views: 8960, likes: 560, comments: 89, shares: 32 },
+    earnings: 89.00,
     created_at: '2024-03-05',
     status: 'review'
   },
@@ -91,6 +118,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     thumbnail: 'https://picsum.photos/400/300?random=4',
     tags: ['职场', '成长', '干货'],
     stats: { views: 4520, likes: 320, comments: 67, shares: 28 },
+    earnings: 200.00,
     created_at: '2024-03-03',
     status: 'completed'
   },
@@ -101,11 +129,29 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     type: 'image',
     platform: 'weibo',
     thumbnail: 'https://picsum.photos/400/300?random=5',
+    images: [
+      'https://picsum.photos/400/400?random=51',
+      'https://picsum.photos/400/400?random=52',
+    ],
     tags: ['穿搭', '时尚', '搭配'],
     stats: { views: 15680, likes: 980, comments: 145, shares: 67 },
+    earnings: 150.00,
     created_at: '2024-03-01',
     status: 'completed'
-  }
+  },
+  {
+    id: '6',
+    title: 'B站原创动画制作教程',
+    content: '',
+    type: 'video',
+    platform: 'bilibili',
+    thumbnail: 'https://picsum.photos/400/300?random=6',
+    tags: ['动画', '教程', '原创'],
+    stats: { views: 45200, likes: 3200, comments: 456, shares: 230 },
+    earnings: 500.00,
+    created_at: '2024-02-28',
+    status: 'completed'
+  },
 ]
 
 export default function GeneratedContentPage() {
@@ -148,6 +194,11 @@ export default function GeneratedContentPage() {
     return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || { label: status, bg: '#F1F5F9', color: '#64748B' }
   }
 
+  // 获取平台信息
+  const getPlatformInfo = (platform: string) => {
+    return PLATFORM_CONFIG[platform] || { name: platform, bg: '#F1F5F9', color: '#64748B' }
+  }
+
   // 格式化数字
   const formatNumber = (num: number) => {
     if (num >= 10000) {
@@ -157,6 +208,11 @@ export default function GeneratedContentPage() {
       return (num / 1000).toFixed(1) + 'k'
     }
     return num.toString()
+  }
+
+  // 格式化收益
+  const formatEarnings = (num: number) => {
+    return num.toFixed(2)
   }
 
   // 复制内容
@@ -170,40 +226,69 @@ export default function GeneratedContentPage() {
     })
   }
 
+  // 渲染媒体预览
+  const renderMediaPreview = (content: GeneratedContent) => {
+    // 多图展示
+    if (content.images && content.images.length > 1) {
+      return (
+        <View className="media-preview">
+          <View className="preview-grid">
+            {content.images.slice(0, 5).map((img, idx) => (
+              <View key={idx} className="grid-item">
+                <Image className="grid-image" src={img} mode="aspectFill" />
+                {idx === 4 && content.images!.length > 5 && (
+                  <View className="image-count">
+                    <Text style={{ fontSize: '20rpx', color: '#fff' }}>+{content.images!.length - 5}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+          {content.type === 'video' && (
+            <View className="video-overlay">
+              <View className="play-button">
+                <Play size={32} color="#666" />
+              </View>
+            </View>
+          )}
+        </View>
+      )
+    }
+
+    // 单图展示
+    return (
+      <View className="media-preview">
+        <View className="preview-single">
+          <Image 
+            className="preview-image" 
+            src={content.thumbnail || 'https://picsum.photos/400/300'} 
+            mode="aspectFill"
+          />
+          {content.type === 'video' && (
+            <View className="video-overlay">
+              <View className="play-button">
+                <Play size={32} color="#666" />
+              </View>
+            </View>
+          )}
+          {content.type === 'image' && content.images?.length === 1 && (
+            <View className="image-count">
+              <Text style={{ fontSize: '20rpx', color: '#fff' }}>1/1</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View className="generated-content-page">
       {/* 顶部背景 */}
       <View className="page-header">
-        {/* 装饰圆形 */}
-        <View className="header-decoration">
-          <View className="decoration-circle circle-1" />
-          <View className="decoration-circle circle-2" />
-        </View>
-        
         {/* 页面标题 */}
         <View className="header-title-area">
           <Text className="header-title">生成内容</Text>
           <Text className="header-subtitle">记录每一次创作</Text>
-        </View>
-
-        {/* 内容统计 */}
-        <View className="content-stats">
-          <View className="stat-item">
-            <Text className="stat-number">{contents.length}</Text>
-            <Text className="stat-label">总创作</Text>
-          </View>
-          <View className="stat-divider" />
-          <View className="stat-item">
-            <Text className="stat-number">{contents.filter(c => c.status === 'completed').length}</Text>
-            <Text className="stat-label">已完成</Text>
-          </View>
-          <View className="stat-divider" />
-          <View className="stat-item">
-            <Text className="stat-number">
-              {formatNumber(contents.reduce((sum, c) => sum + c.stats.views, 0))}
-            </Text>
-            <Text className="stat-label">总曝光</Text>
-          </View>
         </View>
       </View>
 
@@ -238,45 +323,61 @@ export default function GeneratedContentPage() {
         ) : (
           filteredContents.map((content) => {
             const statusInfo = getStatusInfo(content.status)
+            const platformInfo = getPlatformInfo(content.platform)
             return (
               <View key={content.id} className="content-card">
-                {/* 卡片头部 */}
-                <View className="card-header">
-                  <View className="status-badge" style={{
-                    background: statusInfo.bg,
-                    color: statusInfo.color
-                  }}
-                  >
-                    <Text style={{ fontSize: '22rpx', fontWeight: 500 }}>{statusInfo.label}</Text>
+                {/* 卡片头部信息 */}
+                <View className="card-top-info">
+                  <View className="platform-badge" style={{ background: platformInfo.bg }}>
+                    <View 
+                      style={{ 
+                        width: '28rpx', 
+                        height: '28rpx', 
+                        borderRadius: '50%', 
+                        background: platformInfo.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={{ fontSize: '16rpx', color: '#fff' }}>
+                        {platformInfo.name.charAt(0)}
+                      </Text>
+                    </View>
+                    <Text className="platform-name">{platformInfo.name}</Text>
                   </View>
-                  <View className="type-badge">
-                    <Text className="type-badge-text">
-                      {content.type === 'text-image' ? '图文' : 
-                       content.type === 'image' ? '纯图' : 
-                       content.type === 'video' ? '视频' : '纯文'}
-                    </Text>
+                  
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12rpx' }}>
+                    {content.earnings !== undefined && (
+                      <View className="earnings-badge">
+                        <DollarSign size={12} color="#D97706" />
+                        <Text className="earnings-text">预估 {formatEarnings(content.earnings)}</Text>
+                      </View>
+                    )}
+                    <View className="status-badge" style={{
+                      background: statusInfo.bg,
+                      color: statusInfo.color
+                    }}
+                    >
+                      <Text style={{ fontSize: '22rpx', fontWeight: 500 }}>{statusInfo.label}</Text>
+                    </View>
                   </View>
                 </View>
 
                 {/* 内容预览 */}
-                {content.type === 'image' || content.type === 'video' ? (
-                  <View className="media-preview">
-                    <Image 
-                      className="preview-image" 
-                      src={content.thumbnail || 'https://picsum.photos/400/300'} 
-                      mode="aspectFill"
-                    />
-                    {content.type === 'video' && (
-                      <View className="video-overlay">
-                        <View className="play-button">
-                          <Play size={32} color="#fff" />
-                        </View>
+                {content.type === 'image' || content.type === 'video' || content.type === 'text-image' ? (
+                  <>
+                    {renderMediaPreview(content)}
+                    
+                    {/* 内容标题 */}
+                    {content.title && (
+                      <View className="content-title-row">
+                        <Text className="content-title">{content.title}</Text>
                       </View>
                     )}
-                  </View>
+                  </>
                 ) : (
                   <View className="text-preview">
-                    <Text className="preview-title">{content.title}</Text>
                     <Text className="preview-content">{content.content}</Text>
                   </View>
                 )}
