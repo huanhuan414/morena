@@ -5,6 +5,11 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 覆盖全局padding-top */
+.generated-content-page .page-header {
+  padding-top: 0 !important;
+}
+
 /* 顶部背景 */
 .page-header {
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
@@ -153,10 +158,9 @@
   padding: 20rpx 24rpx;
 }
 
-/* 平台标签 */
+/* 平台标签 - 简洁圆形 */
 .platform-badge {
   display: inline-flex;
-  flex-direction: row;
   align-items: center;
   padding: 8rpx 20rpx;
   border-radius: 100rpx;
@@ -164,45 +168,46 @@
   flex-shrink: 0;
 }
 
-.platform-badge.weibo {
-  background: #FFF2E8;
+.platform-badge.xiaohongshu {
+  background: rgba(255, 107, 107, 0.12);
+  color: #FF6B6B;
 }
 
 .platform-badge.douyin {
-  background: #E8FFF5;
-}
-
-.platform-badge.xiaohongshu {
-  background: #FFEEF0;
+  background: rgba(0, 200, 83, 0.12);
+  color: #00C853;
 }
 
 .platform-badge.wechat_mp {
-  background: #E8F4FF;
+  background: rgba(25, 118, 210, 0.12);
+  color: #1976D2;
 }
 
-.platform-badge.weixingzh {
-  background: #E8FFF5;
+.platform-badge.weibo {
+  background: rgba(255, 130, 0, 0.12);
+  color: #FF8200;
 }
 
 .platform-badge.bilibili {
-  background: #FFF0F5;
+  background: rgba(251, 114, 153, 0.12);
+  color: #FB7299;
 }
 
 .platform-badge.kuaishou {
-  background: #FFF5EE;
+  background: rgba(255, 73, 6, 0.12);
+  color: #FF4906;
 }
 
 .platform-icon {
-  width: 32rpx;
-  height: 32rpx;
+  width: 28rpx;
+  height: 28rpx;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .platform-name {
   font-size: 24rpx;
-  font-weight: 500;
-  color: #64748B;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -356,19 +361,41 @@
   overflow: hidden;
 }
 
-/* 文字内容预览 */
+/* 文字内容预览 - Markdown样式 */
 .text-preview {
   padding: 0 24rpx 16rpx;
 }
 
 .preview-content {
   font-size: 26rpx;
-  color: #64748B;
-  line-height: 1.6;
+  color: #475569;
+  line-height: 1.8;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.preview-content.expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* 展开收起按钮 */
+.expand-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 16rpx;
+  margin: 12rpx 24rpx 16rpx;
+  background: #F1F5F9;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #6366F1;
+  gap: 6rpx;
+}
+
+.expand-btn.active {
+  background: #EEF2FF;
 }
 
 /* 标签 */

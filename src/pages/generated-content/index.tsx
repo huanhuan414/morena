@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis, DollarSign } from 'lucide-react-taro'
+import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis, DollarSign, ChevronDown } from 'lucide-react-taro'
 import './index.css'
 
 // 内容状态
@@ -46,14 +46,14 @@ const STATUS_CONFIG = {
   completed: { label: '结算完成', bg: '#D1FAE5', color: '#059669' },
 }
 
-// 平台配置
+// 平台配置 - 简洁显示
 const PLATFORM_CONFIG: Record<string, { name: string; bg: string; color: string }> = {
-  xiaohongshu: { name: '小红书', bg: '#FFF0F5', color: '#FF6B6B' },
-  douyin: { name: '抖音', bg: '#F0FFF0', color: '#00C853' },
-  wechat_mp: { name: '公众号', bg: '#F0F8FF', color: '#1976D2' },
-  weibo: { name: '微博', bg: '#FFF2E8', color: '#FF8200' },
-  bilibili: { name: 'B站', bg: '#FFF0F5', color: '#FB7299' },
-  kuaishou: { name: '快手', bg: '#FFF8F0', color: '#FF4906' },
+  xiaohongshu: { name: '小红书', bg: 'rgba(255, 107, 107, 0.12)', color: '#FF6B6B' },
+  douyin: { name: '抖音', bg: 'rgba(0, 200, 83, 0.12)', color: '#00C853' },
+  wechat_mp: { name: '公众号', bg: 'rgba(25, 118, 210, 0.12)', color: '#1976D2' },
+  weibo: { name: '微博', bg: 'rgba(255, 130, 0, 0.12)', color: '#FF8200' },
+  bilibili: { name: 'B站', bg: 'rgba(251, 114, 153, 0.12)', color: '#FB7299' },
+  kuaishou: { name: '快手', bg: 'rgba(255, 73, 6, 0.12)', color: '#FF4906' },
 }
 
 // 模拟数据
@@ -61,7 +61,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
   {
     id: '1',
     title: '春季美妆护肤种草笔记，这个季节一定要入手的好物分享',
-    content: '今天给大家分享一款超级好用的护肤精华...',
+    content: '今天给大家分享一款超级好用的护肤精华，使用后皮肤真的变得超级嫩滑！\n\n## 产品功效\n1. 深层补水\n2. 提亮肤色\n3. 收缩毛孔\n\n坚持使用一个月，皮肤状态明显改善，推荐给大家！',
     type: 'text-image',
     platform: 'xiaohongshu',
     thumbnail: 'https://picsum.photos/400/300?random=1',
@@ -111,9 +111,9 @@ const MOCK_CONTENTS: GeneratedContent[] = [
   },
   {
     id: '4',
-    title: '职场成长干货分享',
-    content: '职场晋升的三大关键要素...',
-    type: 'text',
+    title: '职场成长干货分享：如何在一年内实现薪资翻倍',
+    content: '# 职场晋升的三大关键要素\n\n作为一名在职场摸爬滚打多年的老司机，今天来给大家分享一些真实的职场经验。\n\n## 一、主动承担更多责任\n很多人觉得做好本职工作就够了，但真正能晋升的人，往往是那些主动承担更多工作的人。\n\n## 二、学会有效沟通\n职场中80%的问题都是沟通问题。学会清晰表达自己的想法，同时也要善于倾听他人的意见。\n\n## 三、持续学习投资自己\n不管是读书、上课还是参加行业会议，保持学习的习惯永远是最重要的投资。\n\n---\n**总结**：职场晋升不是一蹴而就的，需要我们在日常工作中不断积累和提升。希望今天的分享对大家有所帮助！',
+    type: 'text-image',
     platform: 'wechat_mp',
     thumbnail: 'https://picsum.photos/400/300?random=4',
     tags: ['职场', '成长', '干货'],
@@ -159,6 +159,7 @@ export default function GeneratedContentPage() {
   const [loading, setLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState<ContentStatus>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   // 图片预览
   const handlePreview = (current: string, urls: string[]) => {
@@ -189,6 +190,17 @@ export default function GeneratedContentPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 切换展开/收起
+  const toggleExpand = (id: string) => {
+    const newExpanded = new Set(expandedIds)
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id)
+    } else {
+      newExpanded.add(id)
+    }
+    setExpandedIds(newExpanded)
   }
 
   // 筛选内容
@@ -298,6 +310,20 @@ export default function GeneratedContentPage() {
     )
   }
 
+  // 简化Markdown显示
+  const simplifyMarkdown = (text: string) => {
+    return text
+      .replace(/#{1,6}\s*/g, '')  // 移除标题符号
+      .replace(/\*\*(.+?)\*\*/g, '$1')  // 移除加粗
+      .replace(/\*(.+?)\*/g, '$1')  // 移除斜体
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1')  // 移除链接
+      .replace(/```[\s\S]*?```/g, '')  // 移除代码块
+      .replace(/`(.+?)`/g, '$1')  // 移除行内代码
+      .replace(/---/g, '')  // 移除分隔线
+      .replace(/\n{2,}/g, '\n')  // 合并多余换行
+      .trim()
+  }
+
   return (
     <View className="generated-content-page">
       {/* 顶部背景 */}
@@ -341,27 +367,15 @@ export default function GeneratedContentPage() {
           filteredContents.map((content) => {
             const statusInfo = getStatusInfo(content.status)
             const platformInfo = getPlatformInfo(content.platform)
+            const isExpanded = expandedIds.has(content.id)
+            
             return (
               <View key={content.id} className="content-card">
                 {/* 卡片头部信息 */}
                 <View className="card-top-info">
+                  {/* 平台标签 - 简洁显示 */}
                   <View className="platform-badge" style={{ background: platformInfo.bg }}>
-                    <View 
-                      style={{ 
-                        width: '28rpx', 
-                        height: '28rpx', 
-                        borderRadius: '50%', 
-                        background: platformInfo.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Text style={{ fontSize: '16rpx', color: '#fff' }}>
-                        {platformInfo.name.charAt(0)}
-                      </Text>
-                    </View>
-                    <Text className="platform-name">{platformInfo.name}</Text>
+                    <Text className="platform-name" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
                   </View>
                   
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12rpx' }}>
@@ -374,8 +388,7 @@ export default function GeneratedContentPage() {
                     <View className="status-badge" style={{
                       background: statusInfo.bg,
                       color: statusInfo.color
-                    }}
-                    >
+                  }}>
                       <Text style={{ fontSize: '22rpx', fontWeight: 500 }}>{statusInfo.label}</Text>
                     </View>
                   </View>
@@ -392,11 +405,62 @@ export default function GeneratedContentPage() {
                         <Text className="content-title">{content.title}</Text>
                       </View>
                     )}
+                    
+                    {/* 文字内容（公众号等） */}
+                    {content.content && (
+                      <>
+                        <View className="text-preview">
+                          <Text className={`preview-content ${isExpanded ? 'expanded' : ''}`}>
+                            {isExpanded ? content.content : simplifyMarkdown(content.content)}
+                          </Text>
+                        </View>
+                        {content.content.length > 100 && (
+                          <View 
+                            className={`expand-btn ${isExpanded ? 'active' : ''}`}
+                            onClick={() => toggleExpand(content.id)}
+                          >
+                            <Text style={{ fontSize: '24rpx', color: '#6366F1' }}>
+                              {isExpanded ? '收起' : '展开全文'}
+                            </Text>
+                            <ChevronDown 
+                              size={14} 
+                              color="#6366F1"
+                              style={{ 
+                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s'
+                              }} 
+                            />
+                          </View>
+                        )}
+                      </>
+                    )}
                   </>
                 ) : (
-                  <View className="text-preview">
-                    <Text className="preview-content">{content.content}</Text>
-                  </View>
+                  <>
+                    <View className="text-preview">
+                      <Text className={`preview-content ${isExpanded ? 'expanded' : ''}`}>
+                        {isExpanded ? content.content : simplifyMarkdown(content.content)}
+                      </Text>
+                    </View>
+                    {content.content.length > 100 && (
+                      <View 
+                        className={`expand-btn ${isExpanded ? 'active' : ''}`}
+                        onClick={() => toggleExpand(content.id)}
+                      >
+                        <Text style={{ fontSize: '24rpx', color: '#6366F1' }}>
+                          {isExpanded ? '收起' : '展开全文'}
+                        </Text>
+                        <ChevronDown 
+                          size={14} 
+                          color="#6366F1"
+                          style={{ 
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s'
+                          }} 
+                        />
+                      </View>
+                    )}
+                  </>
                 )}
 
                 {/* 标签 */}
