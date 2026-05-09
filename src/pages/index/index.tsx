@@ -12,20 +12,20 @@ const Index: React.FC = () => {
 
   // 统计数据
   const stats = [
-    { label: '我的分身', value: '3', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '+1 本月' },
-    { label: '待接订单', value: '12', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '+5 今日' },
-    { label: '生成内容', value: '158', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '+8 本周' },
-    { label: '累计收益', value: '2.4', unit: 'k', color: '#EC4899', bg: '#FDF2F8', trend: '+15.8%' },
+    { label: '我的分身', value: '3', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '+1 本月', path: '/pages/mind-chat/index' },
+    { label: '待接订单', value: '12', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '+5 今日', path: '/pages/pending-order/index' },
+    { label: '生成内容', value: '158', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '+8 本周', path: '/pages/generated-content/index' },
+    { label: '累计收益', value: '2.4', unit: 'k', color: '#EC4899', bg: '#FDF2F8', trend: '+15.8%', path: '/pages/earning-center/index' },
   ]
 
   // 快捷功能
   const quickActions = [
-    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)' },
-    { label: '订单广场', icon: Grid2x2, color: '#F97316', bg: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)' },
-    { label: 'AI做内容', icon: Cpu, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)' },
-    { label: '技能中心', icon: Rocket, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)' },
-    { label: '素材库', icon: Library, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)' },
-    { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)' },
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/pages/avatar/avatar-create/index' },
+    { label: '订单广场', icon: Grid2x2, color: '#F97316', bg: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)', path: '/pages/order/order-list/index' },
+    { label: 'AI做内容', icon: Cpu, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/pages/generated-content/index' },
+    { label: '技能中心', icon: Rocket, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/pages/skills-square/index' },
+    { label: '素材库', icon: Library, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/pages/avatar/avatar-manage/index' },
+    { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/pages/order/order-create/index' },
   ]
 
   // 实时动态
@@ -100,7 +100,7 @@ const Index: React.FC = () => {
         <View className="stats-section">
           <View className="stats-row">
             {stats.map((stat, idx) => (
-              <View key={stat.label} className="stat-item" style={{ animationDelay: `${idx * 0.1}s` }}>
+              <View key={stat.label} className="stat-item" style={{ animationDelay: `${idx * 0.1}s` }} onClick={() => goToPage(stat.path)}>
                 <View className="stat-icon-small" style={{ background: stat.bg }}>
                   {stat.label === '我的分身' && <Users size={28} color={stat.color} />}
                   {stat.label === '待接订单' && <ShoppingBag size={28} color={stat.color} />}
@@ -116,7 +116,7 @@ const Index: React.FC = () => {
         </View>
 
         {/* 推广Banner */}
-        <View className="banner" onClick={() => goToPage('/pages/avatar/create/index')}>
+        <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
           <View className="banner-bg" />
           <View className="banner-content">
             <View className="banner-badge">
@@ -151,7 +151,7 @@ const Index: React.FC = () => {
               <View 
                 key={action.label} 
                 className="quick-item" 
-                onClick={() => goToPage('/pages/avatar/create/index')}
+                onClick={() => goToPage(action.path)}
                 style={{ animationDelay: `${idx * 0.05}s` }}
               >
                 <View className="quick-icon" style={{ background: action.bg }}>
