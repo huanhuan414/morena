@@ -8,7 +8,6 @@ import {
   Image as ImageIcon,
   FileText,
   Clock,
-  Sparkles,
   Zap
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
@@ -238,12 +237,6 @@ const MindChat: React.FC = () => {
                     <Text className="task-label">{clone.task}</Text>
                   </View>
 
-                  {/* AI标识 */}
-                  <View className="ai-badge">
-                    <Sparkles size={10} />
-                    <Text className="ai-label">AI</Text>
-                  </View>
-
                   {/* 底部信息 */}
                   <View className="cover-footer">
                     <View className="clone-profile">
@@ -306,12 +299,6 @@ const MindChat: React.FC = () => {
                   <View className="task-indicator">
                     <Clock size={11} />
                     <Text className="task-label">{clone.task}</Text>
-                  </View>
-
-                  {/* AI标识 */}
-                  <View className="ai-badge">
-                    <Sparkles size={10} />
-                    <Text className="ai-label">AI</Text>
                   </View>
 
                   {/* 底部信息 */}

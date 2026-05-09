@@ -124,6 +124,7 @@
   background: #ffffff;
   border-radius: 16rpx;
   font-size: 26rpx;
+  line-height: 64rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
 }
 
@@ -256,26 +257,6 @@
   font-weight: 500;
 }
 
-/* AI标识 */
-.ai-badge {
-  position: absolute;
-  top: 20rpx;
-  left: 140rpx;
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  padding: 6rpx 12rpx;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 12rpx;
-  color: #ffffff;
-}
-
-.ai-label {
-  font-size: 16rpx;
-  font-weight: 700;
-  letter-spacing: 1rpx;
-}
-
 /* 底部信息 */
 .cover-footer {
   position: absolute;
@@ -392,6 +373,13 @@
   font-size: 22rpx;
   font-weight: 500;
   color: #7c3aed;
+}
+
+/* Switch开关样式覆盖 */
+.hosting-control .taro-switch,
+.hosting-control switch {
+  transform: scale(0.8);
+  margin: 0;
 }
 
 /* 关注按钮 */
