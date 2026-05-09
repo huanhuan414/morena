@@ -1,6 +1,7 @@
 export default defineAppConfig({
   pages: [
     // 主包：TabBar页面
+    'pages/index/index',
     'pages/social/index',
     'pages/mind-chat/index',
     'pages/profile/index',
@@ -85,6 +86,12 @@ export default defineAppConfig({
     backgroundColor: '#ffffff',
     borderStyle: 'black',
     list: [
+      {
+        pagePath: 'pages/index/index',
+        text: '首页',
+        iconPath: './assets/tabbar/home.png',
+        selectedIconPath: './assets/tabbar/home-active.png',
+      },
       {
         pagePath: 'pages/social/index',
         text: '广场',

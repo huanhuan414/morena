@@ -255,7 +255,6 @@ const getSkillIcon = (toolName?: string, iconUrl?: string): string => {
     'recommend_bgm': '🎵',
     'list_avatar_accounts': '🔗',
     'write_article': '✍️',
-    'write_wechat_mp_article': '📰',
     'generate_image': '🖼️',
     'generate_video': '🎬',
     'publish_wechat_mp': '💬',
@@ -285,6 +284,7 @@ interface Skill {
   category: string
   price: number
   icon: string
+  icon_url?: string
   tags: string[]
   rating: number
   rating_count: number
@@ -301,7 +301,7 @@ interface Avatar {
 }
 
 export default function SkillsSquare() {
-  const { userInfo, avatarId, setAvatarId } = useUserStore()
+  const { avatarId, setAvatarId } = useUserStore()
   const [skills, setSkills] = useState<Skill[]>([])
   const [currentAvatar, setCurrentAvatar] = useState<Avatar | null>(null)
   const [loading, setLoading] = useState(false)

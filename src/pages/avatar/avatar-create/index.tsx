@@ -1,1265 +1,352 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { useState, useEffect, useMemo } from 'react'
-import Taro, { switchTab, showToast, getLocation, navigateTo, redirectTo, navigateBack, useLoad, showActionSheet } from '@tarojs/taro'
-import { getSafeArea } from '@/utils/safe-area'
-import { Button } from '@/components/ui/button'
+// @ts-nocheck
+import { useState } from 'react'
+import { View, Text } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
-import * as Network from '@/network'
-import { useUserStore } from '@/stores/user'
-import {
-  Camera, Sparkles, Brain, Zap, Heart, Target,
-  Lightbulb, Star, ArrowRight, Check, User,
-  Eye, MessageCircle, TrendingUp, Wand, Crown, Flame,
-  Moon, Sun, Smile, Bot, ChevronRight, ArrowLeft
-} from 'lucide-react-taro'
+import { ChevronLeft, Upload, Video, Camera, Zap, User, Palette } from 'lucide-react-taro'
+import Taro from '@tarojs/taro'
+import { Network } from '@/network'
 import './index.css'
-// 跨端兼容：微信/抖音用 Taro.chooseMessageFile，H5 用 Taro.chooseImage
 
-interface PhotoAnalysis {
-  facialFeatures?: {
-    expression: string
-    eyes: string
-    impression: string
-  }
-  temperament?: {
-    type: string
-    description: string
-    keywords: string[]
-  }
-  personality?: {
-    core: string[]
-    strengths: string[]
-    workStyle: string
-  }
-  communicationStyle?: string
-  strengths?: string[]
-  recommendedType?: string
-  nameSuggestions?: { name: string; reason: string }[]
-  summary?: string
-  suggestedName?: string
+// 顶部导航
+const TopNav = ({ title, onBack }) => {
+  return (
+    <View className="top-nav">
+      <View className="nav-left" onClick={onBack}>
+        <ChevronLeft size={28} color="#333" />
+      </View>
+      <Text className="nav-title">{title}</Text>
+      <View className="nav-right"></View>
+    </View>
+  )
 }
 
-interface PersonalityOption {
-  id: string
-  name: string
-  desc: string
-  icon: any
-  traits: string[]
+// 步骤流程条
+const StepIndicator = ({ currentStep }) => {
+  const steps = [
+    { label: '形象克隆' },
+    { label: '人设定制' },
+    { label: '能力开通' }
+  ]
+
+  return (
+    <View className="step-indicator">
+      {steps.map((step, index) => (
+        <View key={index} className={`step-item ${currentStep >= index + 1 ? 'active' : ''}`}>
+          <View className={`step-node ${currentStep >= index + 1 ? 'filled' : 'outline'}`}>
+            {currentStep > index + 1 ? (
+              <Text className="step-check">✓</Text>
+            ) : (
+              <Text className="step-num">{index + 1}</Text>
+            )}
+          </View>
+          <Text className={`step-label ${currentStep >= index + 1 ? 'active' : ''}`}>{step.label}</Text>
+        </View>
+      ))}
+    </View>
+  )
 }
 
-interface AppearanceStyle {
-  id: string
-  name: string
-  desc: string
-  color: string
-  icon: any
+// 步骤1：形象克隆
+const StepOne = ({ onUpload, onVideo, onCamera, onSmartClone }) => {
+  return (
+    <View className="step-content">
+      <View className="upload-options">
+        <View className="upload-btn" onClick={onUpload}>
+          <Upload size={24} color="#7B3FE4" />
+          <Text className="upload-label">上传照片</Text>
+        </View>
+        <View className="upload-btn" onClick={onVideo}>
+          <Video size={24} color="#7B3FE4" />
+          <Text className="upload-label">上传视频</Text>
+        </View>
+        <View className="upload-btn" onClick={onCamera}>
+          <Camera size={24} color="#7B3FE4" />
+          <Text className="upload-label">实时拍摄</Text>
+        </View>
+      </View>
+
+      <View className="smart-clone-btn" onClick={onSmartClone}>
+        <Zap size={24} color="#FFF" />
+        <Text className="smart-clone-text">一键智能克隆</Text>
+      </View>
+
+      <Text className="clone-hint">10秒生成真人仿真分身，表情、神态、音色复刻</Text>
+    </View>
+  )
 }
 
-interface SpeakingStyle {
-  id: string
-  name: string
-  desc: string
-  example: string
-  icon: any
+// 步骤2：人设定制
+const StepTwo = ({ formData, onChange }) => {
+  const tags = ['网红', '生活博主', '职场达人', '泛娱乐', '知识博主']
+  const voices = ['原声复刻', '温柔女声', '磁性男声', '甜美萝莉', '成熟御姐']
+
+  return (
+    <View className="step-content">
+      {/* 分身昵称 */}
+      <View className="form-group">
+        <Text className="form-label">分身昵称</Text>
+        <View className="input-wrapper">
+          <Input
+            className="form-input"
+            placeholder="输入分身昵称"
+            placeholderClass="input-placeholder"
+            value={formData.name}
+            onInput={(e) => onChange('name', e.detail.value)}
+          />
+        </View>
+      </View>
+
+      {/* 人设标签 */}
+      <View className="form-group">
+        <Text className="form-label">人设标签</Text>
+        <View className="tags-scroll">
+          {tags.map((tag, index) => (
+            <View
+              key={index}
+              className={`tag-item ${formData.tags.includes(tag) ? 'selected' : ''}`}
+              onClick={() => {
+                const newTags = formData.tags.includes(tag)
+                  ? formData.tags.filter(t => t !== tag)
+                  : [...formData.tags, tag]
+                onChange('tags', newTags)
+              }}
+            >
+              <Text className={`tag-text ${formData.tags.includes(tag) ? 'selected' : ''}`}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* 音色选择 */}
+      <View className="form-group">
+        <Text className="form-label">音色选择</Text>
+        <View className="voice-select">
+          {voices.map((voice, index) => (
+            <View
+              key={index}
+              className={`voice-item ${formData.voice === voice ? 'selected' : ''}`}
+              onClick={() => onChange('voice', voice)}
+            >
+              <Text className={`voice-text ${formData.voice === voice ? 'selected' : ''}`}>{voice}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* 形象微调 */}
+      <View className="form-group">
+        <Text className="form-label">形象微调</Text>
+        <View className="template-btns">
+          <View className="template-btn" onClick={() => onChange('makeup', !formData.makeup)}>
+            <Palette size={20} color={formData.makeup ? '#FFF' : '#7B3FE4'} />
+            <Text className={`template-text ${formData.makeup ? 'selected' : ''}`}>妆容模板</Text>
+          </View>
+          <View className="template-btn" onClick={() => onChange('outfit', !formData.outfit)}>
+            <User size={20} color={formData.outfit ? '#FFF' : '#7B3FE4'} />
+            <Text className={`template-text ${formData.outfit ? 'selected' : ''}`}>穿搭模板</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  )
 }
 
-export default function AvatarCreatePage() {
-  const { isLoggedIn } = useUserStore()
-  const [step, setStep] = useState(0) // 0: 上传照片, 1: 分析结果, 2: 选择性格, 3: 选择能力, 4: 形象风格, 5: 说话方式, 6: 命名
-  const [photoPath, setPhotoPath] = useState<string>('')
-  const [photoUrl, setPhotoUrl] = useState<string>('')
-  const [analyzing, setAnalyzing] = useState(false)
-  const [analyzingProgress, setAnalyzingProgress] = useState(0)
-  const [photoAnalysis, setPhotoAnalysis] = useState<PhotoAnalysis | null>(null)
-  const [selectedPersonality, setSelectedPersonality] = useState<string | null>(null)
-  const [selectedAbilities, setSelectedAbilities] = useState<string[]>([])
-  const [avatarName, setAvatarName] = useState('')
-  const [appearanceStyle, setAppearanceStyle] = useState<string>('tech')
-  const [speakingStyle, setSpeakingStyle] = useState<string>('friendly')
-  const [loading, setLoading] = useState(false)
-  const [canCreateAvatar, setCanCreateAvatar] = useState(true)
-  const [createLimitReason, setCreateLimitReason] = useState('')
-  const [avatarCount, setAvatarCount] = useState(0)
-  const [maxAvatars, setMaxAvatars] = useState(1)
-  const [loadingSubscription, setLoadingSubscription] = useState(true)
-  const [skillsFromSquare, setSkillsFromSquare] = useState<any[]>([])
-  const [loadingSkills, setLoadingSkills] = useState(true)
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+// 步骤3：能力开通
+const StepThree = ({ settings, onToggle }) => {
+  const options = [
+    { key: 'autoOrder', label: '自动接单', desc: '自动接收平台订单' },
+    { key: 'autoContent', label: '自动生成内容', desc: 'AI自动创作内容' },
+    { key: 'autoDistribute', label: '自动全平台分发', desc: '一键分发到各大平台' },
+    { key: 'unlockAll', label: '解锁全部技能', desc: '开通所有高级技能' }
+  ]
 
-  useLoad(() => {
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+  return (
+    <View className="step-content">
+      <View className="settings-list">
+        {options.map((option, index) => (
+          <View key={index} className="setting-item">
+            <View className="setting-info">
+              <Text className="setting-label">{option.label}</Text>
+              <Text className="setting-desc">{option.desc}</Text>
+            </View>
+            <View
+              className={`toggle-switch ${settings[option.key] ? 'active' : ''}`}
+              onClick={() => onToggle(option.key)}
+            >
+              <View className="toggle-dot"></View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+// 主页面
+export default function AvatarCreate() {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    tags: [],
+    voice: '原声复刻',
+    makeup: false,
+    outfit: false,
+    settings: {
+      autoOrder: false,
+      autoContent: false,
+      autoDistribute: false,
+      unlockAll: false
+    }
   })
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      switchTab({ url: '/pages/social/index' })
-      return
-    }
-
-    // 加载订阅信息和技能列表
-    loadSubscriptionInfo()
-    loadSkillsFromSquare()
-  }, [isLoggedIn])
-
-  // 从技能广场获取技能列表
-  const loadSkillsFromSquare = async () => {
-    try {
-      console.log('[技能广场] 开始加载技能...')
-      const res = await Network.request({
-        url: '/api/skills'
-      })
-
-      console.log('[技能广场] API响应:', res)
-      console.log('[技能广场] res.statusCode:', res.statusCode)
-      console.log('[技能广场] res.data:', res.data)
-
-      // ✅ 支持两种格式：res.data.data.skills 或 res.data.data (直接数组)
-      let allSkills: any[] = []
-      if (res.statusCode === 200) {
-        if (res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
-          allSkills = res.data.data.skills
-        } else if (Array.isArray(res.data?.data)) {
-          allSkills = res.data.data
-        }
-        console.log('[技能广场] 获取到技能总数:', allSkills.length)
-
-        // 过滤掉套件技能
-        const filteredSkills = allSkills.filter((skill: any) => {
-          const kitSkillToolNames = new Set([
-            'generate_shortdrama_script',
-            'generate_storyboard',
-            'produce_shortdrama',
-            'generate_multi_episode_drama',
-            'generate_drama_voiceover',
-            'edit_shortdrama_video',
-            'generate_subtitle',
-            'recommend_bgm',
-            'generate_video',
-            'app_assign_order'
-          ])
-          return skill.tool_name && !kitSkillToolNames.has(skill.tool_name)
-        })
-
-        console.log('[技能广场] 过滤后技能数量:', filteredSkills.length)
-        setSkillsFromSquare(filteredSkills)
-      } else {
-        console.error('[技能广场] API返回异常:', res)
-      }
-    } catch (error) {
-      console.error('[技能广场] 加载失败:', error)
-    } finally {
-      setLoadingSkills(false)
-    }
-  }
-
-  const loadSubscriptionInfo = async () => {
-    try {
-      setLoadingSubscription(true)
-      // 获取订阅信息和分身数量
-      const [subscriptionRes, avatarListRes] = await Promise.all([
-        Network.request({ url: '/api/subscription/user' }),
-        Network.request({ url: '/api/avatar/my' })
-      ])
-
-      // 获取当前分身数量
-      const currentCount = avatarListRes.data?.data?.length || 0
-      setAvatarCount(currentCount)
-
-      // 检查订阅权益
-      if (subscriptionRes.data?.data?.plan) {
-        const plan = subscriptionRes.data.data.plan
-        setMaxAvatars(plan.max_avatars)
-        
-        // 检查是否可以创建分身
-        if (plan.max_avatars !== -1 && currentCount >= plan.max_avatars) {
-          setCanCreateAvatar(false)
-          setCreateLimitReason(`当前订阅计划最多支持 ${plan.max_avatars} 个分身，请升级订阅以创建更多分身`)
-        } else {
-          setCanCreateAvatar(true)
-        }
-      } else {
-        // 免费用户最多1个分身
-        setMaxAvatars(1)
-        if (currentCount >= 1) {
-          setCanCreateAvatar(false)
-          setCreateLimitReason('免费用户最多创建 1 个分身，请升级订阅以创建更多分身')
-        } else {
-          setCanCreateAvatar(true)
-        }
-      }
-    } catch (error) {
-      console.error('加载订阅信息失败:', error)
-      setCanCreateAvatar(true) // 加载失败时允许创建，避免阻塞用户
-    } finally {
-      setLoadingSubscription(false)
-    }
-  }
-
-  const personalities: PersonalityOption[] = [
-    {
-      id: 'creative',
-      name: '创意型',
-      desc: '富有想象力，善于创新',
-      icon: Lightbulb,
-      traits: ['想象力丰富', '思维跳跃', '喜欢新事物']
-    },
-    {
-      id: 'analytical',
-      name: '分析型',
-      desc: '逻辑严密，善于推理',
-      icon: Brain,
-      traits: ['逻辑清晰', '注重细节', '善于分析']
-    },
-    {
-      id: 'empathetic',
-      name: '共情型',
-      desc: '善解人意，温暖体贴',
-      icon: Heart,
-      traits: ['善解人意', '温暖体贴', '善于倾听']
-    },
-    {
-      id: 'strategic',
-      name: '战略型',
-      desc: '目标导向，执行力强',
-      icon: Target,
-      traits: ['目标明确', '高效执行', '善于规划']
-    }
-  ]
-
-  const abilities = useMemo(() => {
-    console.log('[abilities] useMemo 被调用，skillsFromSquare.length =', skillsFromSquare.length, ', loadingSkills =', loadingSkills)
-
-    // 如果还在加载中，不显示任何技能（等待 API 返回真实数据）
-    if (loadingSkills) {
-      console.log('[abilities] 技能正在加载中，不显示列表')
-      return []
-    }
-
-    // 如果技能广场数据未加载，也不显示默认列表
-    if (skillsFromSquare.length === 0) {
-      console.log('[abilities] 技能广场数据为空，不显示默认列表')
-      return []
-    }
-
-    console.log('[abilities] 使用技能广场数据，前3个技能:', skillsFromSquare.slice(0, 3).map(s => s.name))
-
-    // 映射技能数据到能力选项
-    const iconMap: Record<string, any> = {
-      'generate_image': Sparkles,
-      'generate_video': Bot,
-      'write_article': Star,
-      'write_wechat_mp_article': MessageCircle,
-      'write_xiaohongshu_note': Heart,
-      'social_media_publish': TrendingUp,
-      'generate_text': Brain,
-      'generate_audio': Zap,
-      'text_to_speech': Sparkles,
-      'default': Star
-    }
-
-    const mappedAbilities = skillsFromSquare.slice(0, 12).map((skill: any) => ({
-      id: skill.id || skill.tool_name,
-      name: skill.name,
-      desc: skill.description,
-      icon: iconMap[skill.tool_name] || iconMap['default'],
-      toolName: skill.tool_name,
-      category: skill.category,
-      tags: skill.tags
-    }))
-
-    console.log('[abilities] 映射后的能力数量:', mappedAbilities.length)
-
-    return mappedAbilities
-  }, [skillsFromSquare])
-
-  // 获取选中的能力项（包含toolName）
-  const getSelectedAbilitiesWithToolName = () => {
-    return selectedAbilities.map(abilityId => {
-      const ability = abilities.find((a: any) => a.id === abilityId)
-      return {
-        id: abilityId,
-        tool_name: (ability as any)?.toolName || null
-      }
-    })
-  }
-
-  const appearanceStyles: AppearanceStyle[] = [
-    { id: 'tech', name: '科技感', desc: '未来·理性', color: '#00f5ff', icon: Bot },
-    { id: 'warm', name: '温暖风', desc: '亲和·阳光', color: '#ff6b6b', icon: Sun },
-    { id: 'mysterious', name: '神秘风', desc: '深邃·优雅', color: '#bf00ff', icon: Moon },
-    { id: 'energetic', name: '活力风', desc: '热情·开朗', color: '#ffaa00', icon: Flame },
-    { id: 'elegant', name: '优雅风', desc: '高贵·精致', color: '#c0c0c0', icon: Crown },
-    { id: 'cute', name: '可爱风', desc: '萌趣·活泼', color: '#ff69b4', icon: Smile }
-  ]
-
-  const speakingStyles: SpeakingStyle[] = [
-    { 
-      id: 'friendly', 
-      name: '亲切友好', 
-      desc: '像老朋友一样自然聊天', 
-      example: '"嘿，今天感觉怎么样？有什么想聊聊的吗？"',
-      icon: Smile 
-    },
-    { 
-      id: 'professional', 
-      name: '专业严谨', 
-      desc: '像专业顾问一样分析问题', 
-      example: '"根据分析，建议您从以下几个方面入手..."',
-      icon: Brain 
-    },
-    { 
-      id: 'creative', 
-      name: '创意风趣', 
-      desc: '富有创意，幽默风趣', 
-      example: '"哇，这个想法太棒了！让我给你加点创意料～"',
-      icon: Sparkles 
-    },
-    { 
-      id: 'gentle', 
-      name: '温柔治愈', 
-      desc: '温柔细腻，善解人意', 
-      example: '"我能理解你的感受，让我们一起慢慢来..."',
-      icon: Heart 
-    },
-    { 
-      id: 'witty', 
-      name: '机智幽默', 
-      desc: '反应敏捷，妙语连珠', 
-      example: '"哈哈，这个问题问得好！让我用最机智的方式回答你～"',
-      icon: Wand 
-    },
-    { 
-      id: 'concise', 
-      name: '简洁高效', 
-      desc: '言简意赅，直击要点', 
-      example: '"核心观点：第一...第二...第三...完毕。"',
-      icon: Zap 
-    }
-  ]
-
-  // 选择照片
-  // 处理照片选择
-  const handleChoosePhoto = async (source: 'album' | 'camera' | 'wechat') => {
-    try {
-      let filePath = ''
-
-      if (source === 'album') {
-        // 从相册选择
-        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album'] })
-        filePath = res.tempFilePaths[0]
-      } else if (source === 'camera') {
-        // 拍照
-        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['camera'] })
-        filePath = res.tempFilePaths[0]
-      } else if (source === 'wechat') {
-        // 从相册选择或拍照（支持微信小程序）
-        const res: any = await Taro.chooseImage({ count: 1, sourceType: ['album', 'camera'] })
-        filePath = res.tempFilePaths[0]
-      }
-
-      if (filePath) {
-        setPhotoPath(filePath)
-        analyzePhoto(filePath)
-      }
-    } catch (error: any) {
-      // 用户取消选择不提示
-      if (error?.errMsg?.includes('cancel')) return
-      console.error('选择照片失败:', error)
-      showToast({ title: '选择照片失败', icon: 'none' })
-    }
-  }
-
-  // 显示选择菜单
-  const showPhotoSourceMenu = () => {
-    const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
-    const isTT = Taro.getEnv() === Taro.ENV_TYPE.TT
-    const isMiniApp = isWeapp || isTT
-
-    if (!isMiniApp) {
-      // H5 端直接使用系统选择器
-      handleChoosePhoto('album')
-      return
-    }
-
-    // 小程序端显示操作菜单
-    const options = ['从相册选择', '拍照']
-    if (isWeapp) {
-      options.push('从微信聊天记录选择')
-    }
-
-    showActionSheet({
-      itemList: options,
-      success: (res) => {
-        if (res.errMsg?.includes('ok')) {
-          switch (res.tapIndex) {
-            case 0:
-              handleChoosePhoto('album')
-              break
-            case 1:
-              handleChoosePhoto('camera')
-              break
-            case 2:
-              handleChoosePhoto('wechat')
-              break
-          }
-        }
-      },
-      fail: () => {
-        console.log('取消选择')
-      }
-    })
-  }
-
-  // 分析照片
-  const analyzePhoto = async (filePath: string) => {
-    setAnalyzing(true)
-    setAnalyzingProgress(1)
-
-    // 模拟进度更新
-    const progressInterval = setInterval(() => {
-      setAnalyzingProgress(prev => {
-        if (prev < 3) {
-          return prev + 1
-        }
-        return prev
-      })
-    }, 800)
-
-    try {
-      // 上传照片进行分析
-      const uploadRes = await Network.uploadFile({
-        url: '/api/avatar/analyze-photo',
-        filePath: filePath,
-        name: 'photo'
-      })
-
-      console.log('上传响应:', uploadRes)
-
-      // 解析响应数据
-      const responseData = typeof uploadRes.data === 'string'
-        ? JSON.parse(uploadRes.data)
-        : uploadRes.data
-
-      clearInterval(progressInterval)
-      setAnalyzingProgress(3)
-
-      if (responseData?.code === 200) {
-        const { photoUrl: url, analysis } = responseData.data
-
-        console.log('图片分析结果:', analysis)
-
-        // 不再拦截人脸检测，无论是否检测到人脸都允许继续创建
-        // 人脸检测结果仅作为提示信息显示
-        if (analysis?.hasFace === false) {
-          console.log('未检测到人脸，但仍允许继续创建')
-        }
-
-        setPhotoUrl(url)
-        setPhotoAnalysis(analysis)
-
-        // 如果AI建议了名字，自动填充
-        if (analysis?.suggestedName) {
-          setAvatarName(analysis.suggestedName)
-        }
-
-        // 如果有推荐的性格类型，自动选择
-        if (analysis?.recommendedType) {
-          setSelectedPersonality(analysis.recommendedType)
-        }
-
-        showToast({ title: '分析完成', icon: 'success' })
-        setStep(1) // 进入分析结果展示页面
-      } else {
-        throw new Error('分析失败')
-      }
-    } catch (error) {
-      console.error('分析照片失败:', error)
-      setAnalyzing(false)
-      showToast({ title: '分析失败，请重试', icon: 'none' })
-      // 模拟分析结果（开发调试用）
-      const mockAnalysis: PhotoAnalysis = {
-        facialFeatures: {
-          expression: '自然温和',
-          eyes: '明亮有神',
-          impression: '给人一种亲切可靠的感觉'
-        },
-        temperament: {
-          type: '阳光活力型',
-          description: '开朗外向，充满正能量，善于与人沟通',
-          keywords: ['活力', '热情', '积极']
-        },
-        personality: {
-          core: ['开朗', '细心', '有责任心'],
-          strengths: ['善于沟通', '执行力强'],
-          workStyle: '高效务实，注重细节'
-        },
-        communicationStyle: '直接明了，善于倾听，能够准确理解他人需求',
-        strengths: ['对话交流', '信息整理', '任务执行'],
-        recommendedType: 'empathetic',
-        nameSuggestions: [
-          { name: '小墨', reason: '简洁有亲和力，适合日常互动' },
-          { name: '星云', reason: '富有想象力，适合创意任务' },
-          { name: '智慧星', reason: '突出智能特性，适合知识问答' }
-        ],
-        summary: '一位温暖而专业的伙伴，能够高效完成各种任务',
-        suggestedName: '小墨'
-      }
-      setPhotoAnalysis(mockAnalysis)
-      setPhotoUrl(photoPath)  // 使用本地临时路径作为头像
-      setAvatarName('小墨')
-      setSelectedPersonality('empathetic')
-      showToast({ title: '分析完成', icon: 'success' })
-      setStep(1)
-    } finally {
-      clearInterval(progressInterval)
-      setAnalyzing(false)
-      setAnalyzingProgress(0)
-    }
-  }
-
-  const toggleAbility = (id: string) => {
-    if (selectedAbilities.includes(id)) {
-      setSelectedAbilities(selectedAbilities.filter(a => a !== id))
-    } else if (selectedAbilities.length < 3) {
-      setSelectedAbilities([...selectedAbilities, id])
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
     } else {
-      showToast({ title: '最多选择3个能力', icon: 'none' })
+      Taro.navigateBack()
     }
   }
 
-  const handleCreate = async () => {
-    if (!avatarName.trim()) {
-      showToast({ title: '请为你的AI分身命名', icon: 'none' })
-      return
+  const updateFormData = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }))
+  }
+
+  const toggleSetting = (key) => {
+    setFormData(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        [key]: !prev.settings[key]
+      }
+    }))
+  }
+
+  const handleUpload = () => {
+    Taro.chooseImage({
+      count: 1,
+      sourceType: ['album'],
+      success: (res) => {
+        console.log('选择照片成功', res.tempFilePaths)
+        Taro.showToast({ title: '照片已选择', icon: 'success' })
+      }
+    })
+  }
+
+  const handleVideo = () => {
+    Taro.chooseVideo({
+      sourceType: ['album'],
+      maxDuration: 60,
+      success: (res) => {
+        console.log('选择视频成功', res.tempFilePath)
+        Taro.showToast({ title: '视频已选择', icon: 'success' })
+      }
+    })
+  }
+
+  const handleCamera = () => {
+    Taro.chooseImage({
+      sourceType: ['camera'],
+      success: (res) => {
+        console.log('拍摄成功', res.tempFilePaths)
+        Taro.showToast({ title: '照片已拍摄', icon: 'success' })
+      }
+    })
+  }
+
+  const handleSmartClone = () => {
+    // 模拟智能克隆
+    Taro.showLoading({ title: '克隆中...' })
+    setTimeout(() => {
+      Taro.hideLoading()
+      setCurrentStep(2)
+    }, 1000)
+  }
+
+  const handleNext = async () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1)
+    } else {
+      // 提交创建分身
+      await submitCreate()
     }
+  }
 
-    setLoading(true)
+  const submitCreate = async () => {
+    setIsLoading(true)
+    Taro.showLoading({ title: '生成分身...' })
     try {
-      // 检查是否可以创建分身
-      const checkRes = await Network.request({
-        url: '/api/subscription/check/create-avatar'
-      })
-
-      if (checkRes.data?.code === 200) {
-        const { canCreate, reason } = checkRes.data.data
-        if (!canCreate) {
-          showToast({ title: reason || '无法创建分身', icon: 'none', duration: 3000 })
-          // 延迟跳转到订阅页面
-          setTimeout(() => {
-            switchTab({ url: '/pages/subscription/index' })
-          }, 500)
-          setLoading(false)
-          return
-        }
-      }
-
-      // 获取地理位置
-      let locationData: {
-        latitude: number | null
-        longitude: number | null
-      } = {
-        latitude: null,
-        longitude: null
-      }
-
-      try {
-        const locationRes = await getLocation({
-          type: 'wgs84'
-        })
-        locationData = {
-          latitude: locationRes.latitude,
-          longitude: locationRes.longitude
-        }
-        console.log('获取地理位置成功:', locationData)
-      } catch (locationError) {
-        console.warn('获取地理位置失败，将使用默认值:', locationError)
-        // 获取地理位置失败不影响分身创建，继续执行
-      }
-
-      // 构建技能数据（包含技能ID和tool_name）
-      const skillsData = getSelectedAbilitiesWithToolName()
-
       const res = await Network.request({
         url: '/api/avatar',
         method: 'POST',
+        header: {
+          'x-user-id': 'user_demo'
+        },
         data: {
-          name: avatarName,
-          personality: selectedPersonality,
-          abilities: skillsData, // 传递完整的技能数据（包含tool_name）
-          appearance_style: appearanceStyle,
-          speaking_style: speakingStyle,
-          avatar_url: photoUrl, // 使用 avatar_url 与后端保持一致
-          photo_analysis: photoAnalysis,
-          ...locationData
+          name: formData.name || '我的分身',
+          description: formData.tags.join(','),
+          gender: 'female'
         }
       })
 
+      Taro.hideLoading()
       if (res.data?.code === 200) {
-        showToast({ title: '创建成功！', icon: 'success' })
+        Taro.showToast({ title: '分身创建成功', icon: 'success' })
         setTimeout(() => {
-          // 跳转到推荐分身页面
-          redirectTo({
-            url: '/pages/avatar-recommend/index'
-          })
-        }, 800)
+          Taro.navigateTo({ url: '/pages/avatar/avatar-manage/index' })
+        }, 1500)
+      } else {
+        Taro.showToast({ title: res.data?.msg || '创建失败', icon: 'none' })
       }
-    } catch (error) {
-      console.error('创建分身失败:', error)
-      showToast({ title: '创建失败，请重试', icon: 'none' })
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '创建失败', icon: 'none' })
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
-
-  // 步骤0: 上传照片
-  const renderStep0 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">上传你的照片</Text>
-        <Text className="step-desc">AI将深度分析你的照片，为你生成专属分身形象</Text>
-      </View>
-
-      {/* 订阅权益提示 */}
-      {!loadingSubscription && (
-        <View className="subscription-info-card">
-          <View className="subscription-info-header">
-            <Crown className="subscription-icon" size={20} color="#fbbf24" />
-            <Text className="subscription-info-title">分身配额</Text>
-          </View>
-          <View className="subscription-info-content">
-            <Text className="subscription-info-text">
-              当前已有 <Text className="highlight">{avatarCount}</Text> 个分身
-              {maxAvatars === -1 ? (
-                <Text className="highlight"> · 无限</Text>
-              ) : (
-                <Text>，还可创建 <Text className="highlight">{maxAvatars - avatarCount}</Text> 个</Text>
-              )}
-            </Text>
-            {!canCreateAvatar && (
-              <View 
-                className="subscription-upgrade-btn"
-                onClick={() => navigateTo({ url: '/pages/subscription/index' })}
-              >
-                <Text className="subscription-upgrade-text">升级订阅以创建更多</Text>
-                <ChevronRight size={16} color="#fbbf24" />
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      <View className="upload-section">
-        <View 
-          className={`upload-area ${photoPath ? 'with-photo' : ''}`}
-          onClick={canCreateAvatar ? showPhotoSourceMenu : () => {
-            showToast({ title: createLimitReason, icon: 'none' })
-          }}
-        >
-          {photoPath ? (
-            <Image 
-              src={photoPath} 
-              className="preview-image" 
-              mode="aspectFill"
-            />
-          ) : (
-            <View className="upload-placeholder">
-              <Camera size={64} color="rgba(255,255,255,0.3)" />
-              <Text className="upload-text">点击上传照片</Text>
-              <Text className="upload-hint">支持从相册选择或拍摄</Text>
-            </View>
-          )}
-        </View>
-
-        {analyzing && (
-          <View className="analyzing-overlay">
-            {/* 高级Loading动画容器 */}
-            <View className="analyzing-loader-container">
-              {/* 外圈脉冲 */}
-              <View className="loader-ring loader-ring-outer" />
-              {/* 中圈旋转 */}
-              <View className="loader-ring loader-ring-middle" />
-              {/* 内圈快速旋转 */}
-              <View className="loader-ring loader-ring-inner" />
-              {/* 核心发光 */}
-              <View className="loader-core">
-                <Brain size={32} color="#00f5ff" className="loader-icon" />
-                <View className="loader-core-glow" />
-              </View>
-              {/* 粒子装饰 */}
-              <View className="loader-particle particle-1" />
-              <View className="loader-particle particle-2" />
-              <View className="loader-particle particle-3" />
-              <View className="loader-particle particle-4" />
-            </View>
-
-            <Text className="analyzing-text">AI正在深度分析中...</Text>
-            <Text className="analyzing-subtext">识别面部特征 · 分析气质类型 · 生成分身形象</Text>
-
-            {/* 进度指示器 */}
-            <View className="progress-dots">
-              <View className={`progress-dot ${analyzingProgress >= 1 ? 'active' : ''}`} />
-              <View className={`progress-dot ${analyzingProgress >= 2 ? 'active' : ''}`} />
-              <View className={`progress-dot ${analyzingProgress >= 3 ? 'active' : ''}`} />
-            </View>
-          </View>
-        )}
-      </View>
-
-      <View className="photo-tips">
-        <Text className="tips-title">📸 高质量分析建议</Text>
-        <Text className="tips-item">• 正面照片，光线充足</Text>
-        <Text className="tips-item">• 表情自然，展示真实个性</Text>
-        <Text className="tips-item">• AI将分析面部特征、气质、性格等多维度信息</Text>
-      </View>
-    </View>
-  )
-
-  // 步骤1: 分析结果展示
-  const renderStep1 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">AI深度分析报告</Text>
-        <Text className="step-desc">基于照片深度分析生成的人格画像</Text>
-      </View>
-
-      {photoAnalysis && (
-        <View className="analysis-report">
-          {/* 照片预览 - 增强版 */}
-          <View className="report-photo-container">
-            <View className="report-photo-glow" />
-            <View className="report-photo">
-              {photoPath && (
-                <Image src={photoPath} className="report-photo-img" mode="aspectFill" />
-              )}
-              <View className="report-photo-overlay">
-                <View className="scan-line" />
-              </View>
-              <View className="report-photo-border" />
-            </View>
-            <View className="report-photo-badge">
-              <Sparkles size={16} color="#00f5ff" />
-              <Text className="badge-text">AI分析完成</Text>
-            </View>
-          </View>
-
-          {/* 气质类型 - 高级卡片 */}
-          {photoAnalysis.temperament && (
-            <View className="report-section premium-section">
-              <View className="section-title-row premium-title">
-                <View className="title-icon-wrap">
-                  <Sparkles size={20} color="#00f5ff" />
-                </View>
-                <Text className="section-title">气质类型</Text>
-                <View className="section-tag">核心特征</View>
-              </View>
-              <View className="temperament-card premium-card">
-                <View className="temperament-glow" />
-                <Text className="temperament-type">{photoAnalysis.temperament.type}</Text>
-                <Text className="temperament-desc">{photoAnalysis.temperament.description}</Text>
-                <View className="temperament-keywords">
-                  {photoAnalysis.temperament.keywords?.map((kw, idx) => (
-                    <View key={idx} className="keyword-tag premium-tag">
-                      <Text className="keyword-text">{kw}</Text>
-                      <View className="tag-glow" />
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* 面部特征 - 增强网格 */}
-          {photoAnalysis.facialFeatures && (
-            <View className="report-section">
-              <View className="section-title-row">
-                <View className="title-icon-wrap purple">
-                  <Eye size={20} color="#bf00ff" />
-                </View>
-                <Text className="section-title">面部特征</Text>
-              </View>
-              <View className="features-grid premium-grid">
-                <View className="feature-item premium-item">
-                  <View className="feature-icon">
-                    <Zap size={16} color="#bf00ff" />
-                  </View>
-                  <Text className="feature-label">表情特点</Text>
-                  <Text className="feature-value">{photoAnalysis.facialFeatures.expression}</Text>
-                </View>
-                <View className="feature-item premium-item">
-                  <View className="feature-icon">
-                    <Star size={16} color="#bf00ff" />
-                  </View>
-                  <Text className="feature-label">眼神特点</Text>
-                  <Text className="feature-value">{photoAnalysis.facialFeatures.eyes}</Text>
-                </View>
-                <View className="feature-item full premium-item">
-                  <View className="feature-icon large">
-                    <Heart size={20} color="#bf00ff" />
-                  </View>
-                  <Text className="feature-label">整体印象</Text>
-                  <Text className="feature-value">{photoAnalysis.facialFeatures.impression}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* 性格特质 - 标签云 */}
-          {photoAnalysis.personality && (
-            <View className="report-section">
-              <View className="section-title-row">
-                <View className="title-icon-wrap red">
-                  <Heart size={20} color="#ff6b6b" />
-                </View>
-                <Text className="section-title">性格特质</Text>
-              </View>
-              <View className="personality-tags">
-                {photoAnalysis.personality.core?.map((trait, idx) => (
-                  <View key={idx} className="personality-tag premium-personality-tag">
-                    <Text className="tag-text">{trait}</Text>
-                    <View className="tag-shine" />
-                  </View>
-                ))}
-              </View>
-              {photoAnalysis.personality.strengths && (
-                <View className="strengths-row premium-strengths">
-                  <View className="strengths-icon">
-                    <TrendingUp size={16} color="#ff6b6b" />
-                  </View>
-                  <Text className="strengths-label">核心优势</Text>
-                  <Text className="strengths-value">{photoAnalysis.personality.strengths.join(' · ')}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* 沟通风格 - 引用样式 */}
-          {photoAnalysis.communicationStyle && (
-            <View className="report-section quote-section">
-              <View className="quote-icon">
-                <MessageCircle size={24} color="#00ff88" />
-              </View>
-              <Text className="communication-text premium-text">&ldquo;{photoAnalysis.communicationStyle}&rdquo;</Text>
-            </View>
-          )}
-
-          {/* 擅长领域 - 炫彩卡片 */}
-          {photoAnalysis.strengths && (
-            <View className="report-section">
-              <View className="section-title-row">
-                <View className="title-icon-wrap orange">
-                  <TrendingUp size={20} color="#ffaa00" />
-                </View>
-                <Text className="section-title">擅长领域</Text>
-              </View>
-              <View className="strengths-grid">
-                {photoAnalysis.strengths.map((s, idx) => (
-                  <View key={idx} className="strength-item premium-strength">
-                    <View className="strength-bg" />
-                    <Text className="strength-text">{s}</Text>
-                    <View className="strength-shine" />
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* 名字建议 - 列表样式 */}
-          {photoAnalysis.nameSuggestions && (
-            <View className="report-section suggestions-section">
-              <View className="section-title-row">
-                <View className="title-icon-wrap cyan">
-                  <Star size={20} color="#00f5ff" />
-                </View>
-                <Text className="section-title">AI推荐名字</Text>
-              </View>
-              <View className="name-suggestions">
-                {photoAnalysis.nameSuggestions.map((suggestion, idx) => (
-                  <View key={idx} className="name-suggestion-item premium-suggestion">
-                    <View className="suggestion-number">{idx + 1}</View>
-                    <View className="suggestion-content">
-                      <Text className="suggested-name">{suggestion.name}</Text>
-                      <Text className="suggestion-reason">{suggestion.reason}</Text>
-                    </View>
-                    <Check size={18} color="#00f5ff" className="suggestion-check" />
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* 总结 - 高亮框 */}
-          {photoAnalysis.summary && (
-            <View className="report-summary premium-summary">
-              <View className="summary-icon">
-                <Brain size={24} color="#00f5ff" />
-              </View>
-              <Text className="summary-text">{photoAnalysis.summary}</Text>
-              <View className="summary-glow" />
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  )
-
-  const renderStep2 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">确认性格类型</Text>
-        <Text className="step-desc">AI已根据分析推荐了性格类型，你可以调整</Text>
-      </View>
-
-      <View className="personality-grid">
-        {personalities.map(p => {
-          const Icon = p.icon
-          const isSelected = selectedPersonality === p.id
-          return (
-            <View
-              key={p.id}
-              className={`personality-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => setSelectedPersonality(p.id)}
-            >
-              <View className={`personality-icon ${isSelected ? 'glow' : ''}`}>
-                <View className={`personality-icon-bg ${isSelected ? 'animated' : ''}`} />
-                <Icon size={28} color={isSelected ? '#00f5ff' : '#fff'} />
-              </View>
-              <Text className="personality-name">{p.name}</Text>
-              <Text className="personality-desc">{p.desc}</Text>
-              <View className="traits-list">
-                {p.traits.map((trait, idx) => (
-                  <View key={idx} className="trait-tag-wrap">
-                    <Text key={idx} className="trait-tag">{trait}</Text>
-                    {isSelected && <View className="trait-shine" />}
-                  </View>
-                ))}
-              </View>
-              {isSelected && (
-                <View className="selected-badge animated-badge">
-                  <Check size={16} color="#00f5ff" />
-                </View>
-              )}
-              {isSelected && <View className="card-glow" />}
-              {isSelected && <View className="card-pulse" />}
-            </View>
-          )
-        })}
-      </View>
-    </View>
-  )
-
-  const renderStep3 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">选择核心能力</Text>
-        <Text className="step-desc">从技能广场选择最多3个能力，打造专属助手</Text>
-      </View>
-
-      <View className="ability-grid">
-        {abilities.map(a => {
-          const Icon = a.icon
-          const isSelected = selectedAbilities.includes(a.id)
-          return (
-            <View
-              key={a.id}
-              className={`ability-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => toggleAbility(a.id)}
-            >
-              <View className="ability-icon-wrap">
-                <Icon size={32} color={isSelected ? '#ffffff' : '#06b6d4'} />
-              </View>
-              <Text className="ability-name">{a.name}</Text>
-              <Text className="ability-desc">{a.desc}</Text>
-              {isSelected && (
-                <View className="ability-check">
-                  <Check size={16} color="#ffffff" />
-                </View>
-              )}
-            </View>
-          )
-        })}
-      </View>
-
-      <View className="selected-count">
-        <Text className="count-text">已选择 {selectedAbilities.length}/3 个能力</Text>
-      </View>
-    </View>
-  )
-
-  // 步骤4: 形象风格
-  const renderStep4 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">选择形象风格</Text>
-        <Text className="step-desc">为你的AI分身选择独特的外观形象</Text>
-      </View>
-
-      <View className="appearance-grid">
-        {appearanceStyles.map(s => {
-          const Icon = s.icon
-          const isSelected = appearanceStyle === s.id
-          return (
-            <View
-              key={s.id}
-              className={`appearance-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => setAppearanceStyle(s.id)}
-            >
-              <View
-                className={`appearance-preview ${isSelected ? 'animated' : ''}`}
-                style={{
-                  background: `linear-gradient(135deg, ${s.color}20 0%, ${s.color}08 100%)`,
-                  borderColor: isSelected ? s.color : 'rgba(6, 182, 212, 0.15)'
-                }}
-              >
-                <View className={`preview-icon-glow ${isSelected ? 'active' : ''}`} style={{ background: s.color }} />
-                <Icon size={48} color={isSelected ? '#ffffff' : s.color} style={{ zIndex: 2 }} />
-              </View>
-              <Text className="appearance-name">{s.name}</Text>
-              <Text className="appearance-desc">{s.desc}</Text>
-              {isSelected && (
-                <View className="appearance-check animated-check" style={{ backgroundColor: s.color }}>
-                  <Check size={18} color="#ffffff" />
-                  <View className="check-shine" style={{ background: s.color }} />
-                </View>
-              )}
-              {isSelected && <View className="appearance-card-glow" style={{ borderColor: s.color }} />}
-            </View>
-          )
-        })}
-      </View>
-    </View>
-  )
-
-  // 步骤5: 说话方式
-  const renderStep5 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">选择说话方式</Text>
-        <Text className="step-desc">决定你的AI分身如何与你沟通</Text>
-      </View>
-
-      <View className="speaking-grid">
-        {speakingStyles.map(s => {
-          const Icon = s.icon
-          const isSelected = speakingStyle === s.id
-          return (
-            <View
-              key={s.id}
-              className={`speaking-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => setSpeakingStyle(s.id)}
-            >
-              <View className={`speaking-header ${isSelected ? 'animated' : ''}`}>
-                <View className="speaking-icon-wrap">
-                  <View className={`icon-glow ${isSelected ? 'active' : ''}`} />
-                  <Icon size={28} color={isSelected ? '#06b6d4' : '#94a3b8'} />
-                </View>
-                <View className="speaking-info">
-                  <Text className="speaking-name">{s.name}</Text>
-                  <Text className="speaking-desc">{s.desc}</Text>
-                </View>
-                {isSelected && (
-                  <View className="speaking-check animated-check">
-                    <Check size={18} color="#06b6d4" />
-                  </View>
-                )}
-              </View>
-              <View className="speaking-example">
-                <View className="example-bg" />
-                <Text className="example-text">&ldquo;{s.example}&rdquo;</Text>
-              </View>
-              {isSelected && <View className="speaking-glow" />}
-              {isSelected && <View className="speaking-pulse" />}
-            </View>
-          )
-        })}
-      </View>
-    </View>
-  )
-
-  const renderStep6 = () => (
-    <View className="step-content">
-      <View className="step-header">
-        <Text className="step-title">为分身命名</Text>
-        <Text className="step-desc">给AI分身一个特别的名字吧</Text>
-      </View>
-
-      <View className="name-section">
-        <View className={`avatar-preview style-${appearanceStyle}`}>
-          <View className="preview-glow" />
-          {photoPath ? (
-            <Image src={photoPath} className="preview-avatar-img" mode="aspectFill" />
-          ) : (
-            <User size={64} color="#00f5ff" />
-          )}
-        </View>
-
-        <View className="name-input-wrap">
-          <Input
-            className="name-input"
-            placeholder="输入分身名称..."
-            value={avatarName}
-            onInput={e => setAvatarName(e.detail.value)}
-            maxlength={12}
-          />
-        </View>
-
-        {photoAnalysis?.nameSuggestions && (
-          <View className="name-suggestions-box">
-            <Text className="suggestions-title">AI推荐名字</Text>
-            <View className="suggestions-list">
-              {photoAnalysis.nameSuggestions.slice(0, 4).map((s, idx) => (
-                <View 
-                  key={idx} 
-                  className="suggestion-tag"
-                  onClick={() => setAvatarName(s.name)}
-                >
-                  <Text className="suggestion-text">{s.name}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View className="summary-card">
-          <Text className="summary-title">分身配置</Text>
-          <View className="summary-item">
-            <Text className="summary-label">气质：</Text>
-            <Text className="summary-value">{photoAnalysis?.temperament?.type || '未分析'}</Text>
-          </View>
-          <View className="summary-item">
-            <Text className="summary-label">性格：</Text>
-            <Text className="summary-value">{personalities.find(p => p.id === selectedPersonality)?.name || '未选择'}</Text>
-          </View>
-          <View className="summary-item">
-            <Text className="summary-label">能力：</Text>
-            <Text className="summary-value">
-              {selectedAbilities.map(id => abilities.find(a => a.id === id)?.name).filter(Boolean).join('、') || '未选择'}
-            </Text>
-          </View>
-          <View className="summary-item">
-            <Text className="summary-label">形象：</Text>
-            <Text className="summary-value">{appearanceStyles.find(s => s.id === appearanceStyle)?.name || '未选择'}</Text>
-          </View>
-          <View className="summary-item">
-            <Text className="summary-label">语风：</Text>
-            <Text className="summary-value">{speakingStyles.find(s => s.id === speakingStyle)?.name || '未选择'}</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  )
-
-  const canNext = () => {
-    switch (step) {
-      case 0: return !!photoPath && !analyzing
-      case 1: return true // 分析结果页可以直接下一步
-      case 2: return !!selectedPersonality
-      case 3: return selectedAbilities.length > 0
-      case 4: return !!appearanceStyle
-      case 5: return !!speakingStyle
-      case 6: return !!avatarName.trim()
-      default: return false
-    }
-  }
-
-  if (!isLoggedIn) return null
 
   return (
-    <View className="page-container">
-      {/* 漂浮粒子效果 */}
-      <View className="floating-particle particle-1" />
-      <View className="floating-particle particle-2" />
-      <View className="floating-particle particle-3" />
-      <View className="floating-particle particle-4" />
+    <View className="create-page">
+      {/* 顶部导航 */}
+      <TopNav title="创建真人分身" onBack={handleBack} />
 
-      {/* 头部 - 适配状态栏 */}
-      <View className="page-header">
-        <View className="header-top">
-          <View className="header-back" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#06b6d4" />
-          </View>
-          <View className="header-info">
-            <Text className="header-title">创建AI分身</Text>
-            <Text className="header-subtitle">上传照片，AI为你生成分身</Text>
-          </View>
-          <View className="header-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
-        </View>
-
-        {/* 进度条 */}
-        <View className="progress-bar">
-          <View className="progress-fill" style={{ width: `${(step / 6) * 100}%` }} />
-        </View>
-        <View className="progress-steps">
-          <View className={`step-indicator ${step >= 0 ? 'active' : ''} ${step > 0 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>上传</Text>
-          </View>
-          <View className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>分析</Text>
-          </View>
-          <View className={`step-indicator ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>性格</Text>
-          </View>
-          <View className={`step-indicator ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>能力</Text>
-          </View>
-          <View className={`step-indicator ${step >= 4 ? 'active' : ''} ${step > 4 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>形象</Text>
-          </View>
-          <View className={`step-indicator ${step >= 5 ? 'active' : ''} ${step > 5 ? 'completed' : ''}`}>
-            <View className="step-dot" />
-            <Text>说话</Text>
-          </View>
-          <View className={`step-indicator ${step >= 6 ? 'active' : ''}`}>
-            <View className="step-dot" />
-            <Text>命名</Text>
-          </View>
-        </View>
-      </View>
+      {/* 步骤流程条 */}
+      <StepIndicator currentStep={currentStep} />
 
       {/* 步骤内容 */}
-      <ScrollView className="content-scroll" scrollY>
-        {step === 0 && renderStep0()}
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
-        {step === 4 && renderStep4()}
-        {step === 5 && renderStep5()}
-        {step === 6 && renderStep6()}
-      </ScrollView>
+      {currentStep === 1 && (
+        <StepOne
+          onUpload={handleUpload}
+          onVideo={handleVideo}
+          onCamera={handleCamera}
+          onSmartClone={handleSmartClone}
+        />
+      )}
+
+      {currentStep === 2 && (
+        <StepTwo
+          formData={formData}
+          onChange={updateFormData}
+        />
+      )}
+
+      {currentStep === 3 && (
+        <StepThree
+          settings={formData.settings}
+          onToggle={toggleSetting}
+        />
+      )}
 
       {/* 底部按钮 */}
-      <View className="bottom-bar">
-        <View className="action-buttons">
-          {step > 0 && (
-            <Button className="action-btn btn-secondary" onClick={() => setStep(step - 1)}>
-              <Text>上一步</Text>
-            </Button>
-          )}
-          {step < 6 ? (
-            <Button
-              className={`action-btn ${canNext() ? 'btn-primary' : 'btn-disabled'}`}
-              onClick={() => canNext() && setStep(step + 1)}
-              disabled={!canNext()}
-            >
-              <Text>下一步</Text>
-              {canNext() && <ArrowRight size={18} color="#fff" />}
-            </Button>
-          ) : (
-            <Button
-              className={`action-btn ${canNext() ? 'btn-primary' : 'btn-disabled'}`}
-              onClick={handleCreate}
-              disabled={!canNext() || loading}
-            >
-              {canNext() && <Sparkles size={18} color="#fff" />}
-              <Text>{loading ? '创建中...' : '创建分身'}</Text>
-            </Button>
-          )}
+      <View className="bottom-action">
+        <View
+          className={`main-btn ${isLoading ? 'loading' : ''}`}
+          onClick={!isLoading ? handleNext : undefined}
+        >
+          <Text className="btn-text">
+            {currentStep === 3 ? '立即生成分身' : '下一步'}
+          </Text>
         </View>
       </View>
     </View>
