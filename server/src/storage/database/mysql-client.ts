@@ -1,11 +1,11 @@
-import mysql, { Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { createPool, Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 // 数据库连接池
 let pool: Pool | null = null;
 
 function getPool(): Pool {
   if (!pool) {
-    pool = mysql.createPool({
+    pool = createPool({
       host: process.env.MYSQL_HOST || '127.0.0.1',
       port: parseInt(process.env.MYSQL_PORT || '16033'),
       user: process.env.MYSQL_USER || 'mrl',
