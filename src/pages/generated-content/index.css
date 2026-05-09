@@ -23,7 +23,8 @@
 .back-btn-area {
   position: absolute;
   left: 16rpx;
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 64rpx;
   height: 64rpx;
   display: flex;
