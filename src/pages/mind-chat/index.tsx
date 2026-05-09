@@ -276,7 +276,7 @@ const MindChat: React.FC = () => {
                       <Text className="toolbar-label">内容</Text>
                     </View>
                     <View className="toolbar-btn">
-                      <MoreVertical size={15} />
+                      <Ellipsis size={15} />
                       <Text className="toolbar-label">更多</Text>
                     </View>
                   </View>
