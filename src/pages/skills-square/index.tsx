@@ -321,7 +321,8 @@ export default function SkillsSquare() {
 
   // 获取分身列表
   const fetchAvatars = async () => {
-    if (!userInfo?.id) return
+    // 即使没有 userInfo，也尝试获取分身列表
+    // if (!userInfo?.id) return
 
     try {
       const res = await Network.request({
@@ -337,6 +338,7 @@ export default function SkillsSquare() {
         const urlAvatarId = router?.params?.avatarId as string
         const targetAvatarId = urlAvatarId || avatarId
 
+        console.log('[SkillSquare] fetchAvatars - avatarList:', avatarList)
         console.log('[SkillSquare] fetchAvatars - targetAvatarId:', targetAvatarId)
         console.log('[SkillSquare] fetchAvatars - urlAvatarId:', urlAvatarId)
         console.log('[SkillSquare] fetchAvatars - store avatarId:', avatarId)
