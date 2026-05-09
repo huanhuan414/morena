@@ -1,389 +1,388 @@
-import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
-import { getSafeArea } from '@/utils/safe-area'
-import { useState } from 'react'
-import { View, Text, ScrollView, RichText } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useEffect } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { ArrowLeft, FileText, Image as ImageIcon, Video, Share2, Check, Sparkles, X, PenTool, Copy, Eye } from 'lucide-react-taro'
+import { Image as ImageIcon, Video, FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis } from 'lucide-react-taro'
 import './index.css'
 
-// 平台名称映射
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信公众号',
-  wechat_moments: '微信朋友圈',
-  wechat_video: '微信视频号',
-  xiaohongshu: '小红书',
-  douyin: '抖音',
-  weibo: '微博',
-  bilibili: 'B站',
-  kuaishou: '快手'
+// 内容类型
+type ContentType = 'all' | 'text-image' | 'image' | 'video'
+
+// 内容数据接口
+interface GeneratedContent {
+  id: string
+  title: string
+  content: string
+  type: 'text-image' | 'image' | 'video' | 'text'
+  platform: string
+  thumbnail?: string
+  tags: string[]
+  stats: {
+    views: number
+    likes: number
+    comments: number
+    shares: number
+  }
+  created_at: string
+  status: string
 }
 
-// 简单的 Markdown 解析器
-const parseMarkdown = (text: string): string => {
-  if (!text) return ''
+// 平台配置
+const PLATFORMS = [
+  { key: 'xiaohongshu', name: '小红书', color: '#FF2442' },
+  { key: 'douyin', name: '抖音', color: '#00F2EA' },
+  { key: 'wechat_mp', name: '公众号', color: '#07C160' },
+  { key: 'weibo', name: '微博', color: '#FF8200' },
+]
 
-  let html = text
+// 类型配置
+const CONTENT_TYPES = [
+  { key: 'all', name: '全部', icon: FileText },
+  { key: 'text-image', name: '图文', icon: ImageIcon },
+  { key: 'image', name: '纯图', icon: ImageIcon },
+  { key: 'video', name: '视频', icon: Video },
+]
 
-  // 转义 HTML 特殊字符
-  html = html.replace(/&/g, '&amp;')
-  html = html.replace(/</g, '&lt;')
-  html = html.replace(/>/g, '&gt;')
-
-  // 标题
-  html = html.replace(/^### (.+)$/gm, '<text class="md-h3">$1</text>\n')
-  html = html.replace(/^## (.+)$/gm, '<text class="md-h2">$1</text>\n')
-  html = html.replace(/^# (.+)$/gm, '<text class="md-h1">$1</text>\n')
-
-  // 粗体
-  html = html.replace(/\*\*(.+?)\*\*/g, '<text class="md-bold">$1</text>')
-
-  // 斜体
-  html = html.replace(/\*(.+?)\*/g, '<text class="md-italic">$1</text>')
-
-  // 无序列表
-  html = html.replace(/^- (.+)$/gm, '<text class="md-li">• $1</text>')
-
-  // 链接
-  html = html.replace(/\[([^\]]+)\]\([^)]+\)/g, '<text class="md-link">$1</text>')
-
-  return html
-}
+// 模拟数据
+const MOCK_CONTENTS: GeneratedContent[] = [
+  {
+    id: '1',
+    title: '春季美妆护肤种草笔记',
+    content: '今天给大家分享一款超级好用的护肤精华...',
+    type: 'text-image',
+    platform: 'xiaohongshu',
+    thumbnail: 'https://picsum.photos/400/300?random=1',
+    tags: ['护肤', '种草', '好物分享'],
+    stats: { views: 12580, likes: 892, comments: 156, shares: 45 },
+    created_at: '2024-03-10',
+    status: 'published'
+  },
+  {
+    id: '2',
+    title: '科技产品开箱测评',
+    content: '',
+    type: 'video',
+    platform: 'douyin',
+    thumbnail: 'https://picsum.photos/400/300?random=2',
+    tags: ['数码', '测评', '开箱'],
+    stats: { views: 34520, likes: 2100, comments: 320, shares: 180 },
+    created_at: '2024-03-08',
+    status: 'published'
+  },
+  {
+    id: '3',
+    title: '美食探店推荐',
+    content: '',
+    type: 'image',
+    platform: 'xiaohongshu',
+    thumbnail: 'https://picsum.photos/400/300?random=3',
+    tags: ['美食', '探店', '推荐'],
+    stats: { views: 8960, likes: 560, comments: 89, shares: 32 },
+    created_at: '2024-03-05',
+    status: 'published'
+  },
+  {
+    id: '4',
+    title: '职场成长干货分享',
+    content: '职场晋升的三大关键要素...',
+    type: 'text',
+    platform: 'wechat_mp',
+    thumbnail: 'https://picsum.photos/400/300?random=4',
+    tags: ['职场', '成长', '干货'],
+    stats: { views: 4520, likes: 320, comments: 67, shares: 28 },
+    created_at: '2024-03-03',
+    status: 'published'
+  },
+  {
+    id: '5',
+    title: '周末穿搭灵感',
+    content: '',
+    type: 'image',
+    platform: 'weibo',
+    thumbnail: 'https://picsum.photos/400/300?random=5',
+    tags: ['穿搭', '时尚', '搭配'],
+    stats: { views: 15680, likes: 980, comments: 145, shares: 67 },
+    created_at: '2024-03-01',
+    status: 'published'
+  }
+]
 
 export default function GeneratedContentPage() {
-  const router = useRouter()
-  const requestId = router.params.requestId
-  const avatarId = router.params.avatarId
-
-  const [contents, setContents] = useState<any[]>([])
+  const [contents, setContents] = useState<GeneratedContent[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedContent, setSelectedContent] = useState<any>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedContent, setEditedContent] = useState('')
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+  const [selectedType, setSelectedType] = useState<ContentType>('all')
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  useLoad(() => {
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+  useEffect(() => {
+    fetchContents()
+  }, [])
 
-    if (requestId && avatarId) {
-      fetchGeneratedContent()
-    } else {
-      showToast({ title: '参数错误', icon: 'none' })
-      setTimeout(() => navigateBack(), 1500)
-    }
-  })
-
-  const fetchGeneratedContent = async () => {
+  const fetchContents = async () => {
     setLoading(true)
     try {
       const res = await Network.request({
-        url: `/api/content-generation/request/${requestId}/avatar/${avatarId}`
+        url: '/api/content-generation/my-contents'
       })
-
       if (res.data?.code === 200) {
         setContents(res.data.data || [])
-        if (res.data.data && res.data.data.length > 0) {
-          setSelectedContent(res.data.data[0])
-        }
+      } else {
+        setContents(MOCK_CONTENTS)
       }
     } catch (error) {
       console.error('获取生成内容失败:', error)
-      showToast({ title: '获取内容失败', icon: 'none' })
+      setContents(MOCK_CONTENTS)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleEdit = () => {
-    if (selectedContent) {
-      setEditedContent(selectedContent.content)
-      setIsEditing(true)
-    }
+  // 筛选内容
+  const filteredContents = contents.filter(content => {
+    const typeMatch = selectedType === 'all' || content.type === selectedType
+    const platformMatch = !selectedPlatform || content.platform === selectedPlatform
+    return typeMatch && platformMatch
+  })
+
+  // 获取平台信息
+  const getPlatformInfo = (key: string) => {
+    return PLATFORMS.find(p => p.key === key) || { name: key, color: '#6366F1' }
   }
 
-  const handleSave = async () => {
-    try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/update-content`,
-        method: 'POST',
-        data: {
-          contentId: selectedContent.id,
-          content: editedContent
-        }
-      })
-
-      if (res.data?.code === 200) {
-        showToast({ title: '保存成功', icon: 'success' })
-        setIsEditing(false)
-        fetchGeneratedContent()
-      }
-    } catch (error) {
-      console.error('保存失败:', error)
-      showToast({ title: '保存失败', icon: 'none' })
+  // 格式化数字
+  const formatNumber = (num: number) => {
+    if (num >= 10000) {
+      return (num / 10000).toFixed(1) + 'w'
     }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k'
+    }
+    return num.toString()
   }
 
-  const handleApprove = async () => {
-    try {
-      const res = await Network.request({
-        url: `/api/content-generation/${selectedContent.id}/status`,
-        method: 'POST',
-        data: { status: 'approved' }
-      })
-
-      if (res.data?.code === 200) {
-        showToast({ title: '已批准', icon: 'success' })
-        fetchGeneratedContent()
-      }
-    } catch (error) {
-      console.error('批准失败:', error)
-      showToast({ title: '操作失败', icon: 'none' })
-    }
-  }
-
-  const handleCopy = () => {
-    const text = selectedContent?.title + '\n\n' + selectedContent?.content
+  // 复制内容
+  const handleCopy = (content: GeneratedContent) => {
     Taro.setClipboardData({
-      data: text,
-      success: () => showToast({ title: '已复制', icon: 'success' })
+      data: content.content,
+      success: () => {
+        setCopiedId(content.id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
     })
-  }
-
-  const handlePublish = async () => {
-    if (!selectedContent || !requestId) return
-
-    try {
-      // 先更新订单状态为 published，这样才能提交发布反馈
-      await Network.request({
-        url: `/api/order-dispatch/request/${requestId}/status`,
-        method: 'PUT',
-        data: { status: 'published' }
-      })
-
-      // 跳转到发布反馈页面
-      Taro.navigateTo({
-        url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${selectedContent.order_id || requestId}`
-      })
-    } catch (error) {
-      console.error('更新状态失败:', error)
-      showToast({ title: '操作失败', icon: 'none' })
-    }
-  }
-
-  if (loading) {
-    return (
-      <View className="generated-content-page">
-        {/* 背景装饰 */}
-        <View className="bg-decoration bg-1" />
-        <View className="bg-decoration bg-2" />
-
-        <View className="page-header">
-          <View className="header-left" onClick={() => navigateBack()}>
-            <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
-          </View>
-          <Text className="header-title">生成内容</Text>
-          <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
-        </View>
-
-        <View className="loading-wrapper">
-          <Sparkles size={48} color="#3b82f6" className="loading-icon" />
-          <Text className="loading-title">AI 正在为您生成内容</Text>
-          <Text className="loading-desc">这需要几秒钟，请稍候...</Text>
-        </View>
-      </View>
-    )
   }
 
   return (
     <View className="generated-content-page">
-      {/* 背景装饰 */}
-      <View className="bg-decoration bg-1" />
-      <View className="bg-decoration bg-2" />
-
-      {/* 头部 */}
+      {/* 顶部背景 */}
       <View className="page-header">
-        <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
+        {/* 装饰圆形 */}
+        <View className="header-decoration">
+          <View className="decoration-circle circle-1" />
+          <View className="decoration-circle circle-2" />
         </View>
-        <Text className="header-title">生成内容</Text>
-        <View className="header-right" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
+        
+        {/* 页面标题 */}
+        <View className="header-title-area">
+          <Text className="header-title">生成内容</Text>
+          <Text className="header-subtitle">记录每一次创作 · 图文 · 视频</Text>
+        </View>
+
+        {/* 内容统计 */}
+        <View className="content-stats">
+          <View className="stat-item">
+            <Text className="stat-number">{contents.length}</Text>
+            <Text className="stat-label">总创作</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-item">
+            <Text className="stat-number">{contents.filter(c => c.status === 'published').length}</Text>
+            <Text className="stat-label">已发布</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-item">
+            <Text className="stat-number">
+              {formatNumber(contents.reduce((sum, c) => sum + c.stats.views, 0))}
+            </Text>
+            <Text className="stat-label">总曝光</Text>
+          </View>
+        </View>
       </View>
 
-      {contents.length === 0 ? (
-        <View className="empty-state">
-          <View className="empty-icon">
-            <X size={64} color="#94a3b8" />
-          </View>
-          <Text className="empty-title">暂无生成内容</Text>
-          <Text className="empty-desc">请先接受订单，系统将自动生成内容</Text>
-        </View>
-      ) : (
-        <>
-          {/* 平台标签 */}
-          <View className="platform-tabs-wrapper">
-            <ScrollView className="platform-tabs" scrollX>
-              {contents.map((content) => (
-                <View
-                  key={content.id}
-                  className={`platform-tab ${selectedContent?.id === content.id ? 'active' : ''}`}
-                  onClick={() => setSelectedContent(content)}
-                >
-                  <Text className="platform-tab-text">
-                    {PLATFORM_NAMES[content.platform] || content.platform}
-                  </Text>
-                  {content.status === 'approved' && (
-                    <View className="platform-tab-badge">
-                      <Check size={12} color="#fff" />
-                    </View>
-                  )}
-                </View>
-              ))}
-            </ScrollView>
-          </View>
+      {/* 类型筛选 */}
+      <View className="type-filter">
+        <ScrollView className="type-scroll" scrollX>
+          {CONTENT_TYPES.map((type) => {
+            const IconComponent = type.icon
+            return (
+              <View
+                key={type.key}
+                className={`type-tag ${selectedType === type.key ? 'active' : ''}`}
+                onClick={() => setSelectedType(type.key as ContentType)}
+              >
+                <IconComponent size={16} color={selectedType === type.key ? '#6366F1' : '#64748B'} />
+                <Text className="type-tag-text">{type.name}</Text>
+              </View>
+            )
+          })}
+        </ScrollView>
+      </View>
 
-          <ScrollView className="content-scroll" scrollY>
-            {selectedContent && (
-              <>
-                {/* 内容头部 */}
-                <View className="content-header">
-                  <View className="header-icon">
-                    <FileText size={24} color="#3b82f6" />
+      {/* 平台筛选 */}
+      <View className="platform-filter">
+        <ScrollView className="platform-scroll" scrollX>
+          <View
+            className={`platform-tag ${selectedPlatform === null ? 'active' : ''}`}
+            onClick={() => setSelectedPlatform(null)}
+          >
+            <Text className="platform-tag-text">全平台</Text>
+          </View>
+          {PLATFORMS.map((platform) => (
+            <View
+              key={platform.key}
+              className={`platform-tag ${selectedPlatform === platform.key ? 'active' : ''}`}
+              onClick={() => setSelectedPlatform(
+                selectedPlatform === platform.key ? null : platform.key
+              )}
+              style={selectedPlatform === platform.key ? {
+                background: `${platform.color}15`,
+                borderColor: platform.color
+              } : {}}
+            >
+              <Text 
+                className="platform-tag-text" 
+                style={selectedPlatform === platform.key ? { color: platform.color } : {}}
+              >
+                {platform.name}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* 内容列表 */}
+      <ScrollView className="content-list" scrollY>
+        {loading ? (
+          <View className="loading-state">
+            <View className="loading-spinner" />
+            <Text className="loading-text">加载中...</Text>
+          </View>
+        ) : filteredContents.length === 0 ? (
+          <View className="empty-state">
+            <FileText size={64} color="#CBD5E1" />
+            <Text className="empty-title">暂无生成内容</Text>
+            <Text className="empty-desc">开始创作你的第一篇内容吧</Text>
+          </View>
+        ) : (
+          filteredContents.map((content) => {
+            const platform = getPlatformInfo(content.platform)
+            return (
+              <View key={content.id} className="content-card">
+                {/* 卡片头部 */}
+                <View className="card-header">
+                  <View className="platform-badge" style={{
+                    background: `${platform.color}15`,
+                    borderColor: `${platform.color}30`
+                  }}
+                  >
+                    <Text className="platform-badge-text" style={{ color: platform.color }}>
+                      {platform.name}
+                    </Text>
                   </View>
-                  <View className="header-info">
-                    <Text className="header-title-text">{selectedContent.title || '未命名内容'}</Text>
-                    <View className="header-meta">
-                      <View className="meta-item">
-                        <Eye size={14} color="#64748b" />
-                        <Text className="meta-text">
-                          {selectedContent.status === 'draft' && '草稿 - 可编辑'}
-                          {selectedContent.status === 'approved' && '已批准'}
-                          {selectedContent.status === 'published' && '已发布'}
-                        </Text>
-                      </View>
-                    </View>
+                  <View className="type-badge">
+                    <Text className="type-badge-text">
+                      {content.type === 'text-image' ? '图文' : 
+                       content.type === 'image' ? '纯图' : 
+                       content.type === 'video' ? '视频' : '纯文'}
+                    </Text>
                   </View>
                 </View>
 
-                {/* 内容卡片 */}
-                <View className="content-card">
-                  {/* Markdown 内容 */}
-                  <View className="content-body">
-                    {isEditing ? (
-                      <View className="edit-wrapper">
-                        <Textarea
-                          className="content-textarea"
-                          value={editedContent}
-                          onInput={(e) => setEditedContent(e.detail.value)}
-                          maxlength={5000}
-                          placeholder="在此编辑内容..."
-                        />
-                        <View className="edit-actions">
-                          <Button className="action-btn cancel-btn" onClick={() => setIsEditing(false)}>
-                            取消
-                          </Button>
-                          <Button className="action-btn save-btn" onClick={handleSave}>
-                            <Check size={18} color="#fff" />
-                            <Text className="btn-text">保存</Text>
-                          </Button>
+                {/* 内容预览 */}
+                {content.type === 'image' || content.type === 'video' ? (
+                  <View className="media-preview">
+                    <Image 
+                      className="preview-image" 
+                      src={content.thumbnail || 'https://picsum.photos/400/300'} 
+                      mode="aspectFill"
+                    />
+                    {content.type === 'video' && (
+                      <View className="video-overlay">
+                        <View className="play-button">
+                          <Play size={32} color="#fff" />
                         </View>
                       </View>
-                    ) : (
-                      <View className="content-display">
-                        <RichText className="markdown-content" nodes={parseMarkdown(selectedContent.content)} />
-                        {selectedContent.status === 'draft' && (
-                          <Button className="edit-trigger" onClick={handleEdit}>
-                            <PenTool size={16} color="#3b82f6" />
-                            <Text className="edit-trigger-text">编辑内容</Text>
-                          </Button>
+                    )}
+                  </View>
+                ) : (
+                  <View className="text-preview">
+                    <Text className="preview-title">{content.title}</Text>
+                    <Text className="preview-content">{content.content}</Text>
+                  </View>
+                )}
+
+                {/* 标签 */}
+                {content.tags.length > 0 && (
+                  <View className="tags-row">
+                    {content.tags.map((tag, index) => (
+                      <View key={index} className="tag-item">
+                        <Text className="tag-text">#{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* 数据统计 */}
+                <View className="stats-row">
+                  <View className="stat-item">
+                    <Eye size={14} color="#94A3B8" />
+                    <Text className="stat-text">{formatNumber(content.stats.views)}</Text>
+                  </View>
+                  <View className="stat-item">
+                    <Heart size={14} color="#94A3B8" />
+                    <Text className="stat-text">{formatNumber(content.stats.likes)}</Text>
+                  </View>
+                  <View className="stat-item">
+                    <MessageCircle size={14} color="#94A3B8" />
+                    <Text className="stat-text">{formatNumber(content.stats.comments)}</Text>
+                  </View>
+                  <View className="stat-item">
+                    <Share2 size={14} color="#94A3B8" />
+                    <Text className="stat-text">{formatNumber(content.stats.shares)}</Text>
+                  </View>
+                </View>
+
+                {/* 底部信息 */}
+                <View className="card-footer">
+                  <View className="date-info">
+                    <Calendar size={12} color="#94A3B8" />
+                    <Text className="date-text">{content.created_at}</Text>
+                  </View>
+                  <View className="action-buttons">
+                    {content.content && (
+                      <View 
+                        className="action-btn"
+                        onClick={() => handleCopy(content)}
+                      >
+                        {copiedId === content.id ? (
+                          <Check size={16} color="#10B981" />
+                        ) : (
+                          <Copy size={16} color="#64748B" />
                         )}
                       </View>
                     )}
-                  </View>
-
-                  {/* 标签 */}
-                  {selectedContent.hashtags && selectedContent.hashtags.length > 0 && (
-                    <View className="section-wrapper">
-                      <Text className="section-title block">推荐标签</Text>
-                      <View className="tags-container">
-                        {selectedContent.hashtags.map((tag: string, index: number) => (
-                          <View key={index} className="tag-item">
-                            <Text className="tag-text">#{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
+                    <View className="action-btn">
+                      <Ellipsis size={16} color="#64748B" />
                     </View>
-                  )}
-
-                  {/* 图片建议 */}
-                  {selectedContent.image_suggestions && selectedContent.image_suggestions.length > 0 && (
-                    <View className="section-wrapper">
-                      <View className="section-header">
-                        <ImageIcon size={18} color="#f59e0b" />
-                        <Text className="section-title">图片建议</Text>
-                      </View>
-                      <View className="suggestions-grid">
-                        {selectedContent.image_suggestions.map((suggestion: string, index: number) => (
-                          <View key={index} className="suggestion-card">
-                            <ImageIcon size={24} color="#f59e0b" />
-                            <Text className="suggestion-text">{suggestion}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* 视频建议 */}
-                  {selectedContent.video_suggestions && selectedContent.video_suggestions.length > 0 && (
-                    <View className="section-wrapper">
-                      <View className="section-header">
-                        <Video size={18} color="#8b5cf6" />
-                        <Text className="section-title">视频建议</Text>
-                      </View>
-                      <View className="suggestions-grid">
-                        {selectedContent.video_suggestions.map((suggestion: string, index: number) => (
-                          <View key={index} className="suggestion-card">
-                            <Video size={24} color="#8b5cf6" />
-                            <Text className="suggestion-text">{suggestion}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* 操作按钮 */}
-                  <View className="actions-wrapper">
-                    {selectedContent.status === 'draft' && (
-                      <>
-                        <Button className="action-btn approve-btn" onClick={handleApprove}>
-                          <Check size={18} color="#fff" />
-                          <Text className="btn-text">批准内容</Text>
-                        </Button>
-                        <Button className="action-btn edit-btn-style" onClick={handleEdit}>
-                          <PenTool size={18} color="#3b82f6" />
-                          <Text className="btn-text">继续编辑</Text>
-                        </Button>
-                      </>
-                    )}
-                    {selectedContent.status === 'approved' && (
-                      <Button className="action-btn publish-btn" onClick={handlePublish}>
-                        <Share2 size={18} color="#fff" />
-                        <Text className="btn-text">准备发布</Text>
-                      </Button>
-                    )}
-                    <Button className="action-btn copy-btn" onClick={handleCopy}>
-                      <Copy size={18} color="#64748b" />
-                      <Text className="btn-text">复制内容</Text>
-                    </Button>
                   </View>
                 </View>
-              </>
-            )}
-          </ScrollView>
-        </>
-      )}
+              </View>
+            )
+          })
+        )}
+
+        {/* 底部占位 */}
+        <View className="bottom-placeholder" />
+      </ScrollView>
     </View>
   )
 }
