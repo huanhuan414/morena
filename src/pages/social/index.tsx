@@ -1,232 +1,152 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useDidShow } from '@tarojs/taro'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
-import { Search, Bell, Settings, Plus, Users, TrendingUp } from 'lucide-react-taro'
+import { Bell, Settings, Search, Users, TrendingUp, Clock, Heart, Plus } from 'lucide-react-taro'
 import './index.css'
 
-// 模拟广场数据
-const mockSquareData = [
-  {
-    id: '1',
-    avatarName: '小美',
-    avatarUrl: '',
-    avatarColor: '#FF6B9D',
-    personality: '生活博主',
-    posts: 128,
-    followers: '2.3w',
-    isOnline: true,
-    tags: ['温柔', '知性', '活泼']
-  },
-  {
-    id: '2',
-    avatarName: '阿杰',
-    avatarUrl: '',
-    avatarColor: '#4ECDC4',
-    personality: '科技达人',
-    posts: 256,
-    followers: '5.1w',
-    isOnline: true,
-    tags: ['专业', '严谨', '幽默']
-  },
-  {
-    id: '3',
-    avatarName: '小林',
-    avatarUrl: '',
-    avatarColor: '#9B59B6',
-    personality: '职场精英',
-    posts: 89,
-    followers: '1.8w',
-    isOnline: false,
-    tags: ['干练', '自信', '独立']
-  },
-  {
-    id: '4',
-    avatarName: '欣欣',
-    avatarUrl: '',
-    avatarColor: '#F39C12',
-    personality: '时尚博主',
-    posts: 312,
-    followers: '8.9w',
-    isOnline: true,
-    tags: ['时尚', '潮流', '美丽']
-  },
-  {
-    id: '5',
-    avatarName: '老王',
-    avatarUrl: '',
-    avatarColor: '#3498DB',
-    personality: '知识分享',
-    posts: 167,
-    followers: '3.4w',
-    isOnline: false,
-    tags: ['博学', '耐心', '热情']
-  },
-  {
-    id: '6',
-    avatarName: '小雪',
-    avatarUrl: '',
-    avatarColor: '#E91E63',
-    personality: '情感专家',
-    posts: 201,
-    followers: '4.2w',
-    isOnline: true,
-    tags: ['温柔', '倾听', '理解']
-  }
+// 模拟分身数据
+const mockAvatars = [
+  { id: '1', name: '小美', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', online: true, gender: '女', age: 25, followers: 12580, posts: 328, tags: ['温柔', '知性'], onlineTime: '在线' },
+  { id: '2', name: '智慧达人', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', online: true, gender: '女', age: 28, followers: 8960, posts: 215, tags: ['知识', '职场'], onlineTime: '在线' },
+  { id: '3', name: '生活家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella', online: false, gender: '女', age: 30, followers: 15890, posts: 456, tags: ['生活', '美食'], onlineTime: '2小时前' },
+  { id: '4', name: '旅行家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Coco', online: true, gender: '男', age: 26, followers: 21350, posts: 589, tags: ['旅行', '摄影'], onlineTime: '在线' },
+  { id: '5', name: '时尚博主', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Daisy', online: false, gender: '女', age: 24, followers: 45670, posts: 892, tags: ['时尚', '美妆'], onlineTime: '5分钟前' },
+  { id: '6', name: '科技控', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Eve', online: true, gender: '男', age: 27, followers: 6780, posts: 156, tags: ['科技', '数码'], onlineTime: '在线' },
 ]
 
-// 分类标签
-const categories = ['推荐', '最新', '热榜', '关注']
-
-export default function SocialSquarePage() {
-  const [activeCategory, setActiveCategory] = useState('推荐')
+export default function SocialSquare() {
+  const [activeTab, setActiveTab] = useState('推荐')
   const [userInfo] = useState({
-    nickname: '用户',
-    avatar: '',
-    avatarId: ''
+    name: '小明',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
   })
 
-  useLoad(() => {
-    console.log('广场页面加载')
-  })
-
-  useDidShow(() => {
-    console.log('广场页面显示')
-  })
-
-  const handleSearch = () => {
-    Taro.showToast({ title: '搜索功能开发中', icon: 'none' })
-  }
-
-  const handleAvatarClick = (avatarId: string) => {
-    Taro.navigateTo({
-      url: `/pages/avatar-profile/index?id=${avatarId}`
-    })
-  }
+  const tabs = ['推荐', '最新', '热榜', '关注']
 
   return (
-    <View className="square-page">
+    <View className="social-container">
       {/* 顶部通栏 */}
-      <View className="square-header">
-        <View className="header-content">
-          {/* 左侧：头像 + 昵称 + 状态 */}
-          <View className="header-left">
-            <View className="user-avatar">
-              {userInfo.avatar ? (
-                <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
-              ) : (
-                <View className="avatar-placeholder">
-                  <Text className="avatar-text">我</Text>
-                </View>
-              )}
-              {/* 在线状态点 */}
-              <View className="online-dot" />
-            </View>
-            <Text className="user-nickname">{userInfo.nickname}</Text>
-            {/* 分身状态标签 */}
-            <View className="status-tag">
-              <Text className="status-tag-text">在线</Text>
+      <View className="header">
+        <View className="header-left">
+          <Image src={userInfo.avatar} className="user-avatar" />
+          <View className="user-info">
+            <Text className="username">{userInfo.name}</Text>
+            <View className="online-badge">
+              <Text className="online-text">在线</Text>
             </View>
           </View>
-
-          {/* 右侧：消息 + 设置 */}
-          <View className="header-right">
-            <View className="header-icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/notifications/index' })}>
-              <Bell size={24} color="#333" />
-              <View className="message-badge">3</View>
-            </View>
-            <View className="header-icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/settings/index' })}>
-              <Settings size={24} color="#333" />
-            </View>
-          </View>
+        </View>
+        <View className="header-right">
+          <Bell size={44} color="#fff" />
+          <Settings size={44} color="#fff" />
         </View>
       </View>
 
       {/* 搜索栏 */}
-      <View className="search-section">
-        <View className="search-bar" onClick={handleSearch}>
-          <Search size={18} color="#999" />
-          <Text className="search-placeholder">搜索分身、内容...</Text>
-        </View>
+      <View className="search-bar">
+        <Search size={32} color="#9CA3AF" />
+        <Text className="search-placeholder">搜索分身、内容...</Text>
       </View>
 
       {/* 分类标签 */}
-      <View className="category-section">
-        <ScrollView className="category-scroll" scrollX enableFlex>
-          <View className="category-list">
-            {categories.map((cat) => (
-              <View
-                key={cat}
-                className={`category-item ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat)}
-              >
-                <Text className={`category-text ${activeCategory === cat ? 'active' : ''}`}>{cat}</Text>
-              </View>
-            ))}
+      <View className="category-tabs">
+        {tabs.map((tab) => (
+          <View
+            key={tab}
+            className={`tab-item ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            <Text className={`tab-text ${activeTab === tab ? 'active' : ''}`}>{tab}</Text>
           </View>
-        </ScrollView>
+        ))}
       </View>
 
-      {/* 分身卡片列表 */}
-      <ScrollView className="square-scroll" scrollY>
-        <View className="avatar-grid">
-          {mockSquareData.map((avatar) => (
-            <View
-              key={avatar.id}
-              className="avatar-card"
-              onClick={() => handleAvatarClick(avatar.id)}
-            >
-              {/* 头像区域 */}
-              <View className="card-avatar-section">
-                <View className="card-avatar" style={{ backgroundColor: avatar.avatarColor }}>
-                  <Text className="card-avatar-text">{avatar.avatarName.slice(0, 1)}</Text>
+      {/* 分身列表 */}
+      <ScrollView scrollY className="avatar-list">
+        {mockAvatars.map((avatar) => (
+          <View key={avatar.id} className="avatar-card">
+            <View className="avatar-main">
+              <View className="avatar-left">
+                <View className="avatar-wrapper">
+                  <Image src={avatar.avatar} className="avatar-img" />
+                  <View className={`online-indicator ${avatar.online ? 'online' : ''}`} />
                 </View>
-                {/* 在线状态 */}
-                {avatar.isOnline && <View className="card-online-indicator" />}
-              </View>
-
-              {/* 信息区域 */}
-              <View className="card-info">
-                <Text className="card-name">{avatar.avatarName}</Text>
-                <Text className="card-personality">{avatar.personality}</Text>
-
-                {/* 标签 */}
-                <View className="card-tags">
-                  {avatar.tags.map((tag, idx) => (
-                    <View key={idx} className="card-tag">
-                      <Text className="card-tag-text">{tag}</Text>
+                <View className="avatar-details">
+                  <View className="avatar-name-row">
+                    <Text className="avatar-name">{avatar.name}</Text>
+                    <View className="gender-badge">
+                      <Text className="badge-text">{avatar.gender}</Text>
                     </View>
-                  ))}
-                </View>
-
-                {/* 数据统计 */}
-                <View className="card-stats">
-                  <View className="stat-item">
-                    <TrendingUp size={12} color="#666" />
-                    <Text className="stat-num">{avatar.posts}</Text>
+                    <View className="age-badge">
+                      <Text className="badge-text">{avatar.age}岁</Text>
+                    </View>
                   </View>
-                  <View className="stat-item">
-                    <Users size={12} color="#666" />
-                    <Text className="stat-num">{avatar.followers}</Text>
+                  <View className="avatar-tags">
+                    {avatar.tags.map((tag, idx) => (
+                      <View key={idx} className="tag-badge">
+                        <Text className="tag-text">{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View className="avatar-stats">
+                    <View className="stat-item">
+                      <Users size={24} color="#6B7280" />
+                      <Text className="stat-text">{avatar.followers}</Text>
+                    </View>
+                    <View className="stat-item">
+                      <TrendingUp size={24} color="#6B7280" />
+                      <Text className="stat-text">{avatar.posts}帖</Text>
+                    </View>
+                    <View className="stat-item online-time">
+                      <Clock size={24} color={avatar.online ? '#10B981' : '#9CA3AF'} />
+                      <Text className={`stat-text ${avatar.online ? 'online' : ''}`}>{avatar.onlineTime}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
-
-              {/* 关注按钮 */}
-              <View className="card-action">
+              <View className="avatar-right">
                 <View className="follow-btn">
-                  <Plus size={14} color="#7B3FE4" />
-                  <Text className="follow-btn-text">关注</Text>
+                  <Heart size={24} color="#fff" />
+                  <Text className="follow-text">关注</Text>
                 </View>
               </View>
             </View>
-          ))}
-        </View>
-
-        {/* 底部间距 */}
-        <View className="scroll-bottom-spacer" />
+          </View>
+        ))}
       </ScrollView>
 
-      {/* 底部TabBar已由系统提供 */}
+      {/* 底部TabBar */}
+      <View className="tabbar">
+        <View className="tabbar-item active">
+          <View className="tabbar-icon active">
+            <Users size={48} color="#7B3FE4" />
+          </View>
+          <Text className="tabbar-text active">广场</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <TrendingUp size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">分身</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon center">
+            <Plus size={48} color="#fff" />
+          </View>
+          <Text className="tabbar-text">发布</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <Bell size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">消息</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <Users size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">我的</Text>
+        </View>
+      </View>
     </View>
   )
 }

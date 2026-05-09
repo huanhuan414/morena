@@ -1,286 +1,212 @@
-import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useDidShow, navigateTo } from '@tarojs/taro'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
-import * as Network from '@/network'
-import { Bell, Settings, Plus, Bot, TrendingUp, Star, Zap, ChevronRight } from 'lucide-react-taro'
+import { Bell, Settings, Users, TrendingUp, DollarSign, Shield, Plus, ChevronRight } from 'lucide-react-taro'
 import './index.css'
 
 // 模拟分身数据
-const mockAvatars = [
-  {
-    id: '1',
-    name: '小美',
-    avatarUrl: '',
-    avatarColor: '#FF6B9D',
-    personality: '生活博主',
-    status: 'active',
-    earnings: '128.50',
-    todayEarnings: '25.00',
-    posts: 128,
-    hostingEnabled: true
+const mockMyAvatars = [
+  { 
+    id: '1', 
+    name: '小美', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', 
+    online: true, 
+    hosting: true,
+    gender: '女', 
+    age: 25, 
+    todayEarnings: 128.50,
+    totalPosts: 328,
+    tags: ['温柔', '知性'] 
   },
-  {
-    id: '2',
-    name: '阿杰',
-    avatarUrl: '',
-    avatarColor: '#4ECDC4',
-    personality: '科技达人',
-    status: 'active',
-    earnings: '256.80',
-    todayEarnings: '45.00',
-    posts: 256,
-    hostingEnabled: true
+  { 
+    id: '2', 
+    name: '智慧达人', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', 
+    online: true, 
+    hosting: false,
+    gender: '女', 
+    age: 28, 
+    todayEarnings: 0,
+    totalPosts: 215,
+    tags: ['知识', '职场'] 
   },
-  {
-    id: '3',
-    name: '小林',
-    avatarUrl: '',
-    avatarColor: '#9B59B6',
-    personality: '职场精英',
-    status: 'inactive',
-    earnings: '89.20',
-    todayEarnings: '0.00',
-    posts: 89,
-    hostingEnabled: false
-  }
 ]
 
-export default function MindChatPage() {
-  const [avatars, setAvatars] = useState(mockAvatars)
+export default function MyAvatarPage() {
+  const [avatars, setAvatars] = useState(mockMyAvatars)
   const [userInfo] = useState({
-    nickname: '用户',
-    avatar: '',
-    avatarId: ''
+    name: '小明',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
   })
 
-  useLoad(() => {
-    console.log('分身页面加载')
-    fetchAvatars()
-  })
-
-  useDidShow(() => {
-    fetchAvatars()
-  })
-
-  const fetchAvatars = async () => {
-    try {
-      const res = await Network.request({ url: '/api/avatar/my' })
-      if (res.data?.code === 200 && res.data.data?.length > 0) {
-        const formattedAvatars = res.data.data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          avatarUrl: item.avatar_url,
-          avatarColor: '#7B3FE4',
-          personality: item.personality || 'AI分身',
-          status: item.status || 'inactive',
-          earnings: item.total_earnings || '0.00',
-          todayEarnings: item.today_earnings || '0.00',
-          posts: item.total_posts || 0,
-          hostingEnabled: item.hosting_enabled === 1
-        }))
-        setAvatars(formattedAvatars)
-      }
-    } catch (error) {
-      console.log('使用模拟数据')
-    }
+  const stats = {
+    totalAvatars: avatars.length,
+    totalPosts: avatars.reduce((sum, a) => sum + a.totalPosts, 0),
+    totalEarnings: avatars.reduce((sum, a) => sum + a.todayEarnings, 0),
+    hostingCount: avatars.filter(a => a.hosting).length,
   }
 
-  const handleAvatarClick = (avatarId: string) => {
-    Taro.navigateTo({
-      url: `/pages/avatar-profile/index?id=${avatarId}`
-    })
-  }
-
-  const handleCreateAvatar = () => {
-    navigateTo({ url: '/pages/avatar/avatar-create/index' })
-  }
-
-  const handleToggleHosting = async (avatarId: string, currentStatus: boolean) => {
-    try {
-      const res = await Network.request({
-        url: `/api/avatar/${avatarId}/hosting`,
-        method: 'POST',
-        data: { enabled: !currentStatus }
-      })
-      if (res.data?.code === 200) {
-        setAvatars(prev => prev.map(avatar =>
-          avatar.id === avatarId ? { ...avatar, hostingEnabled: !currentStatus } : avatar
-        ))
-        Taro.showToast({
-          title: !currentStatus ? '托管已开启' : '托管已关闭',
-          icon: 'success'
-        })
-      }
-    } catch (error) {
-      Taro.showToast({ title: '操作失败', icon: 'none' })
-    }
-  }
-
-  // 计算总计数据
-  const totalStats = {
-    avatarCount: avatars.length,
-    totalPosts: avatars.reduce((sum, a) => sum + a.posts, 0),
-    totalEarnings: avatars.reduce((sum, a) => sum + parseFloat(a.earnings), 0),
-    activeHosting: avatars.filter(a => a.hostingEnabled).length
+  const toggleHosting = (id: string) => {
+    setAvatars(avatars.map(a => 
+      a.id === id ? { ...a, hosting: !a.hosting } : a
+    ))
   }
 
   return (
-    <View className="mind-chat-page">
+    <View className="avatar-container">
       {/* 顶部通栏 */}
-      <View className="mind-header">
-        <View className="header-content">
-          {/* 左侧：头像 + 昵称 + 状态 */}
-          <View className="header-left">
-            <View className="user-avatar">
-              {userInfo.avatar ? (
-                <Image src={userInfo.avatar} className="avatar-img" mode="aspectFill" />
-              ) : (
-                <View className="avatar-placeholder">
-                  <Text className="avatar-text">我</Text>
-                </View>
-              )}
-            </View>
-            <Text className="user-nickname">{userInfo.nickname}</Text>
-            <View className="status-tag">
-              <Text className="status-tag-text">在线</Text>
+      <View className="header">
+        <View className="header-left">
+          <Image src={userInfo.avatar} className="user-avatar" />
+          <View className="user-info">
+            <Text className="username">{userInfo.name}</Text>
+            <View className="online-badge">
+              <Text className="online-dot" />
+              <Text className="online-text">在线</Text>
             </View>
           </View>
-
-          {/* 右侧：消息 + 设置 */}
-          <View className="header-right">
-            <View className="header-icon-btn" onClick={() => navigateTo({ url: '/pages/notifications/index' })}>
-              <Bell size={24} color="#333" />
-            </View>
-            <View className="header-icon-btn" onClick={() => navigateTo({ url: '/pages/settings/index' })}>
-              <Settings size={24} color="#333" />
-            </View>
-          </View>
+        </View>
+        <View className="header-right">
+          <Bell size={44} color="#fff" />
+          <Settings size={44} color="#fff" />
         </View>
       </View>
 
       {/* 数据统计卡片 */}
-      <View className="stats-section">
-        <View className="stats-grid">
-          <View className="stat-card">
-            <View className="stat-icon-wrapper" style={{ backgroundColor: '#f5f0ff' }}>
-              <Bot size={20} color="#7B3FE4" />
-            </View>
-            <Text className="stat-value">{totalStats.avatarCount}</Text>
-            <Text className="stat-label">分身数量</Text>
-          </View>
-          <View className="stat-card">
-            <View className="stat-icon-wrapper" style={{ backgroundColor: '#fff7e6' }}>
-              <TrendingUp size={20} color="#fa8c16" />
-            </View>
-            <Text className="stat-value">{totalStats.totalPosts}</Text>
-            <Text className="stat-label">已发内容</Text>
-          </View>
-          <View className="stat-card">
-            <View className="stat-icon-wrapper" style={{ backgroundColor: '#f6ffed' }}>
-              <Star size={20} color="#52c41a" />
-            </View>
-            <Text className="stat-value">¥{totalStats.totalEarnings.toFixed(0)}</Text>
-            <Text className="stat-label">累计收益</Text>
-          </View>
-          <View className="stat-card">
-            <View className="stat-icon-wrapper" style={{ backgroundColor: '#fff1f0' }}>
-              <Zap size={20} color="#ff4d4f" />
-            </View>
-            <Text className="stat-value">{totalStats.activeHosting}</Text>
-            <Text className="stat-label">托管中</Text>
-          </View>
+      <View className="stats-grid">
+        <View className="stat-card">
+          <Text className="stat-label">我的分身数量</Text>
+          <Text className="stat-value">{stats.totalAvatars}</Text>
+          <Text className="stat-hint">点击直达管理</Text>
+        </View>
+        <View className="stat-card">
+          <Text className="stat-label">已生成内容</Text>
+          <Text className="stat-value">{stats.totalPosts}</Text>
+          <Text className="stat-hint">今日新增 +12</Text>
+        </View>
+        <View className="stat-card">
+          <Text className="stat-label">累计收益</Text>
+          <Text className="stat-value primary">¥{stats.totalEarnings.toFixed(2)}</Text>
+          <Text className="stat-hint">今日收益</Text>
+        </View>
+        <View className="stat-card">
+          <Text className="stat-label">托管中</Text>
+          <Text className="stat-value">{stats.hostingCount}</Text>
+          <Text className="stat-hint">正在运营</Text>
         </View>
       </View>
 
-      {/* 分身列表 */}
-      <ScrollView className="avatar-list-scroll" scrollY>
-        <View className="section-header">
-          <Text className="section-title">我的分身</Text>
-          <Text className="section-count">{avatars.length}个</Text>
+      {/* 我的分身列表 */}
+      <View className="section-header">
+        <Text className="section-title">我的分身</Text>
+        <View className="section-action">
+          <Text className="action-text">管理</Text>
+          <ChevronRight size={28} color="#9CA3AF" />
         </View>
+      </View>
 
-        {avatars.length === 0 ? (
-          <View className="empty-state">
-            <View className="empty-icon-wrapper">
-              <Bot size={48} color="#ccc" />
-            </View>
-            <Text className="empty-title">还没有创建分身</Text>
-            <Text className="empty-desc">创建你的第一个AI分身，开始智能社交之旅</Text>
-          </View>
-        ) : (
-          <View className="avatar-list">
-            {avatars.map((avatar) => (
-              <View key={avatar.id} className="avatar-item" onClick={() => handleAvatarClick(avatar.id)}>
-                {/* 左侧：头像 */}
-                <View className="avatar-left">
-                  <View className="avatar-avatar" style={{ backgroundColor: avatar.avatarColor }}>
-                    {avatar.avatarUrl ? (
-                      <Image src={avatar.avatarUrl} className="avatar-image" mode="aspectFill" />
-                    ) : (
-                      <Text className="avatar-text">{avatar.name.slice(0, 1)}</Text>
-                    )}
-                  </View>
-                  {avatar.hostingEnabled && (
+      <ScrollView scrollY className="avatar-list">
+        {avatars.map((avatar) => (
+          <View key={avatar.id} className="avatar-card">
+            <View className="avatar-main">
+              <View className="avatar-left">
+                <View className="avatar-wrapper">
+                  <Image src={avatar.avatar} className="avatar-img" />
+                  <View className={`online-indicator ${avatar.online ? 'online' : ''}`} />
+                  {avatar.hosting && (
                     <View className="hosting-badge">
-                      <Zap size={12} color="#fff" />
+                      <Shield size={16} color="#fff" />
                     </View>
                   )}
                 </View>
-
-                {/* 中间：信息 */}
-                <View className="avatar-center">
+                <View className="avatar-details">
                   <View className="avatar-name-row">
                     <Text className="avatar-name">{avatar.name}</Text>
-                    <View className={`status-indicator ${avatar.status === 'active' ? 'active' : ''}`}>
-                      <Text className="status-text">{avatar.status === 'active' ? '活跃' : '待机'}</Text>
+                    {avatar.hosting && (
+                      <View className="hosting-tag">
+                        <Text className="hosting-tag-text">托管中</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View className="avatar-tags">
+                    {avatar.tags.map((tag, idx) => (
+                      <View key={idx} className="tag-badge">
+                        <Text className="tag-text">{tag}</Text>
+                      </View>
+                    ))}
+                    <View className="gender-badge">
+                      <Text className="badge-text">{avatar.gender} · {avatar.age}岁</Text>
                     </View>
                   </View>
-                  <Text className="avatar-personality">{avatar.personality}</Text>
-                  <View className="avatar-stats-row">
-                    <View className="mini-stat">
-                      <TrendingUp size={12} color="#999" />
-                      <Text className="mini-stat-text">{avatar.posts}篇</Text>
+                  <View className="avatar-stats">
+                    <View className="stat-item">
+                      <DollarSign size={24} color="#10B981" />
+                      <Text className="stat-text earnings">今日 ¥{avatar.todayEarnings.toFixed(2)}</Text>
                     </View>
-                    <View className="mini-stat">
-                      <Star size={12} color="#999" />
-                      <Text className="mini-stat-text">¥{avatar.todayEarnings}</Text>
+                    <View className="stat-item">
+                      <TrendingUp size={24} color="#6B7280" />
+                      <Text className="stat-text">{avatar.totalPosts}帖</Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* 右侧：操作 */}
-                <View className="avatar-right">
-                  <View 
-                    className={`hosting-toggle ${avatar.hostingEnabled ? 'enabled' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleToggleHosting(avatar.id, avatar.hostingEnabled)
-                    }}
-                  >
-                    <Text className={`toggle-text ${avatar.hostingEnabled ? 'enabled' : ''}`}>
-                      {avatar.hostingEnabled ? '托管中' : '开启托管'}
-                    </Text>
-                    <ChevronRight size={14} color={avatar.hostingEnabled ? '#7B3FE4' : '#999'} />
                   </View>
                 </View>
               </View>
-            ))}
+              <View className="avatar-right">
+                <View 
+                  className={`hosting-toggle ${avatar.hosting ? 'active' : ''}`}
+                  onClick={() => toggleHosting(avatar.id)}
+                >
+                  <View className="toggle-track">
+                    <View className="toggle-thumb" />
+                  </View>
+                  <Text className={`toggle-label ${avatar.hosting ? 'active' : ''}`}>
+                    {avatar.hosting ? '关闭托管' : '开启托管'}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        )}
+        ))}
 
         {/* 创建分身按钮 */}
-        <View className="create-section">
-          <View className="create-btn" onClick={handleCreateAvatar}>
-            <Plus size={20} color="#7B3FE4" />
-            <Text className="create-btn-text">创建新分身</Text>
-          </View>
+        <View className="create-btn">
+          <Plus size={48} color="#7B3FE4" />
+          <Text className="create-text">创建新分身</Text>
+          <Text className="create-hint">AI智能生成 · 10秒克隆</Text>
         </View>
-
-        {/* 底部间距 */}
-        <View className="scroll-bottom-spacer" />
       </ScrollView>
 
-      {/* 底部TabBar已由系统提供 */}
+      {/* 底部TabBar */}
+      <View className="tabbar">
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <Users size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">广场</Text>
+        </View>
+        <View className="tabbar-item active">
+          <View className="tabbar-icon active">
+            <Users size={48} color="#7B3FE4" />
+          </View>
+          <Text className="tabbar-text active">分身</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon center">
+            <Plus size={48} color="#fff" />
+          </View>
+          <Text className="tabbar-text">发布</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <Bell size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">消息</Text>
+        </View>
+        <View className="tabbar-item">
+          <View className="tabbar-icon">
+            <Users size={48} color="#9CA3AF" />
+          </View>
+          <Text className="tabbar-text">我的</Text>
+        </View>
+      </View>
     </View>
   )
 }
