@@ -11,6 +11,7 @@ export default defineAppConfig({
     'pages/social/index',
     // 订单相关
     'pages/order/order-list/index',
+    'pages/order/order-square/index',
     'pages/order/order-create/index',
     'pages/order/order-detail/index',
     'pages/order/order-processing/index',
