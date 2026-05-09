@@ -1,14 +1,13 @@
 // @ts-nocheck
 import React, { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { useNavigate } from '@/hooks/useNavigate'
 import {
   Search,
   Plus,
   Image as ImageIcon,
   Cpu,
   FileText,
-  MoreHorizontal,
+  EllipsisVertical,
   Users,
   Clock,
   TrendingUp,
@@ -242,7 +241,7 @@ const MindChat: React.FC = () => {
                       <Text className="action-text">内容</Text>
                     </View>
                     <View className="action-btn">
-                      <MoreHorizontal size={16} />
+                      <EllipsisVertical size={16} />
                       <Text className="action-text">更多</Text>
                     </View>
                   </View>
