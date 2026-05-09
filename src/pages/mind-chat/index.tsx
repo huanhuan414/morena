@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState } from 'react'
-import Taro from '@tarojs/taro';
+import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import {
   Search,
@@ -8,11 +8,13 @@ import {
   Image as ImageIcon,
   Cpu,
   FileText,
-  EllipsisVertical,
+  MoreHorizontal,
   Users,
   Clock,
   TrendingUp,
-  User
+  User,
+  Sparkles,
+  Zap
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -48,7 +50,6 @@ interface SquareClone {
   type: 'square'
   isFollowing: boolean
 }
-
 
 const MindChat: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CloneType>('my')
@@ -143,31 +144,54 @@ const MindChat: React.FC = () => {
     console.log('Toggle hosting:', id)
   }
 
+  const formatFollowers = (num: number) => {
+    if (num >= 10000) {
+      return (num / 10000).toFixed(1) + 'w'
+    }
+    return num.toString()
+  }
+
   return (
     <View className="mind-chat-page">
-      {/* 顶部Tab */}
-      <View className="page-tabs">
-        <View
-          className={cn('tab-item', activeTab === 'my' && 'active')}
-          onClick={() => setActiveTab('my')}
-        >
-          <User size={18} />
-          <Text className="tab-text">我的分身</Text>
+      {/* 顶部渐变背景 */}
+      <View className="page-header">
+        {/* 装饰元素 */}
+        <View className="header-decoration">
+          <View className="decoration-circle circle-1" />
+          <View className="decoration-circle circle-2" />
         </View>
-        <View
-          className={cn('tab-item', activeTab === 'square' && 'active')}
-          onClick={() => setActiveTab('square')}
-        >
-          <Users size={18} />
-          <Text className="tab-text">分身广场</Text>
+        
+        {/* Tab切换 */}
+        <View className="header-tabs">
+          <View
+            className={cn('header-tab', activeTab === 'my' && 'active')}
+            onClick={() => setActiveTab('my')}
+          >
+            <View className="tab-icon-wrapper">
+              <User size={18} />
+            </View>
+            <Text className="tab-label">我的分身</Text>
+            {activeTab === 'my' && <View className="tab-indicator" />}
+          </View>
+          <View
+            className={cn('header-tab', activeTab === 'square' && 'active')}
+            onClick={() => setActiveTab('square')}
+          >
+            <View className="tab-icon-wrapper">
+              <Users size={18} />
+            </View>
+            <Text className="tab-label">分身广场</Text>
+            {activeTab === 'square' && <View className="tab-indicator" />}
+          </View>
         </View>
-        <View className={cn('tab-indicator', activeTab === 'square' && 'right')} />
       </View>
 
       {/* 搜索和操作栏 */}
-      <View className="search-bar">
-        <View className="search-input-wrapper">
-          <Search size={18} className="search-icon" />
+      <View className="search-section">
+        <View className="search-wrapper">
+          <View className="search-icon-wrapper">
+            <Search size={16} />
+          </View>
           <Input
             className="search-input"
             placeholder="搜索分身..."
@@ -176,9 +200,12 @@ const MindChat: React.FC = () => {
           />
         </View>
         {activeTab === 'my' && (
-          <View className="add-btn" onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}>
-            <Plus size={20} />
-            <Text className="add-btn-text">新增分身</Text>
+          <View 
+            className="add-button"
+            onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
+          >
+            <Plus size={18} />
+            <Text className="add-button-text">新建</Text>
           </View>
         )}
       </View>
@@ -190,63 +217,72 @@ const MindChat: React.FC = () => {
       >
         {activeTab === 'my' ? (
           <View className="my-clones-list">
-            {(filteredClones as MyClone[]).map((clone) => (
-              <View key={clone.id} className="clone-card">
+            {(filteredClones as MyClone[]).map((clone, index) => (
+              <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
                 {/* 封面 */}
                 <View className="clone-cover">
                   <Image className="cover-image" src={clone.image} mode="aspectFill" />
-                  <View className="cover-overlay" />
+                  <View className="cover-gradient" />
                   
                   {/* 状态标签 */}
                   <View className={cn('status-badge', clone.status)}>
                     <View className={cn('status-dot', clone.status)} />
-                    <Text className="status-text">{clone.status}</Text>
+                    <Text className="status-label">{clone.status}</Text>
                   </View>
 
                   {/* 任务指示 */}
-                  <View className="task-badge">
-                    <Clock size={12} />
-                    <Text className="task-text">{clone.task}</Text>
+                  <View className="task-indicator">
+                    <Clock size={11} />
+                    <Text className="task-label">{clone.task}</Text>
+                  </View>
+
+                  {/* AI标识 */}
+                  <View className="ai-badge">
+                    <Sparkles size={10} />
+                    <Text className="ai-label">AI</Text>
                   </View>
 
                   {/* 底部信息 */}
-                  <View className="cover-bottom">
-                    <View className="clone-info">
-                      <Image className="clone-avatar" src={clone.image} />
-                      <View className="clone-text">
-                        <Text className="clone-name">{clone.name}</Text>
-                        <Badge variant="outline" className="role-badge">{clone.role}</Badge>
+                  <View className="cover-footer">
+                    <View className="clone-profile">
+                      <Image className="profile-avatar" src={clone.image} />
+                      <View className="profile-info">
+                        <Text className="profile-name">{clone.name}</Text>
+                        <View className="profile-tags">
+                          <Badge variant="outline" className="role-tag">{clone.role}</Badge>
+                        </View>
                       </View>
                     </View>
-                    <View className="income-info">
+                    <View className="income-display">
                       <Text className="income-label">今日收益</Text>
-                      <Text className="income-value">{clone.income}</Text>
+                      <Text className="income-amount">{clone.income}</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* 操作栏 */}
-                <View className="clone-actions">
-                  <View className="action-buttons">
-                    <View className="action-btn">
-                      <ImageIcon size={16} />
-                      <Text className="action-text">形象</Text>
+                <View className="clone-toolbar">
+                  <View className="toolbar-actions">
+                    <View className="toolbar-btn">
+                      <ImageIcon size={15} />
+                      <Text className="toolbar-label">形象</Text>
                     </View>
-                    <View className="action-btn">
-                      <Cpu size={16} />
-                      <Text className="action-text">托管</Text>
+                    <View className="toolbar-btn">
+                      <Cpu size={15} />
+                      <Text className="toolbar-label">托管</Text>
                     </View>
-                    <View className="action-btn">
-                      <FileText size={16} />
-                      <Text className="action-text">内容</Text>
+                    <View className="toolbar-btn">
+                      <FileText size={15} />
+                      <Text className="toolbar-label">内容</Text>
                     </View>
-                    <View className="action-btn">
-                      <EllipsisVertical size={16} />
-                      <Text className="action-text">更多</Text>
+                    <View className="toolbar-btn">
+                      <MoreHorizontal size={15} />
+                      <Text className="toolbar-label">更多</Text>
                     </View>
                   </View>
-                  <View className="hosting-toggle">
-                    <Text className="toggle-label">自动托管</Text>
+                  <View className="hosting-control">
+                    <Zap size={12} className="hosting-icon" />
+                    <Text className="hosting-label">自动托管</Text>
                     <Switch
                       checked={clone.hosting}
                       color="#7B3FE4"
@@ -258,45 +294,75 @@ const MindChat: React.FC = () => {
             ))}
           </View>
         ) : (
-          <View className="square-clones-list">
-            {(filteredClones as SquareClone[]).map((clone) => (
-              <View key={clone.id} className="square-card">
-                <View className="square-left">
-                  <Image className="square-avatar" src={clone.image} />
-                  <View className="online-indicator" />
-                </View>
-                <View className="square-content">
-                  <View className="square-header">
-                    <Text className="square-name">{clone.name}</Text>
-                    <Badge variant="outline" className="role-badge">{clone.role}</Badge>
+          <View className="square-section">
+            {/* 分类标签 */}
+            <View className="category-tabs">
+              <ScrollView scrollX className="category-scroll">
+                <View className="category-list">
+                  <View className="category-item active">
+                    <Text className="category-text">推荐</Text>
                   </View>
-                  <View className="square-tags">
-                    {clone.tags.map((tag, idx) => (
-                      <View key={idx} className="tag-item">
-                        <Text className="tag-text">{tag}</Text>
+                  <View className="category-item">
+                    <Text className="category-text">最新</Text>
+                  </View>
+                  <View className="category-item">
+                    <Text className="category-text">热榜</Text>
+                  </View>
+                  <View className="category-item">
+                    <Text className="category-text">关注</Text>
+                  </View>
+                  <View className="category-item">
+                    <Text className="category-text">知识博主</Text>
+                  </View>
+                  <View className="category-item">
+                    <Text className="category-text">职场达人</Text>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* 广场列表 */}
+            <View className="square-clones-list">
+              {(filteredClones as SquareClone[]).map((clone, index) => (
+                <View key={clone.id} className="square-card" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <View className="square-avatar-wrapper">
+                    <Image className="square-avatar" src={clone.image} />
+                    <View className="avatar-online-dot" />
+                  </View>
+                  <View className="square-info">
+                    <View className="square-header">
+                      <Text className="square-name">{clone.name}</Text>
+                      <Badge variant="outline" className="square-role-tag">{clone.role}</Badge>
+                    </View>
+                    <View className="square-tags">
+                      {clone.tags.map((tag, idx) => (
+                        <View key={idx} className="square-tag">
+                          <Text className="square-tag-text">{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View className="square-meta">
+                      <View className="meta-item">
+                        <TrendingUp size={11} />
+                        <Text className="meta-text">{clone.posts} 帖子</Text>
                       </View>
-                    ))}
-                  </View>
-                  <View className="square-stats">
-                    <View className="stat-item">
-                      <TrendingUp size={12} />
-                      <Text className="stat-text">{clone.posts} 帖子</Text>
-                    </View>
-                    <View className="stat-item">
-                      <Users size={12} />
-                      <Text className="stat-text">{clone.followers} 粉丝</Text>
+                      <View className="meta-divider" />
+                      <View className="meta-item">
+                        <Users size={11} />
+                        <Text className="meta-text">{formatFollowers(clone.followers)} 粉丝</Text>
+                      </View>
                     </View>
                   </View>
+                  <View className={cn('follow-action', clone.isFollowing && 'following')}>
+                    <Text className="follow-action-text">{clone.isFollowing ? '已关注' : '+ 关注'}</Text>
+                  </View>
                 </View>
-                <View className={cn('follow-btn', clone.isFollowing && 'following')}>
-                  <Text className="follow-text">{clone.isFollowing ? '已关注' : '+ 关注'}</Text>
-                </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
         
-        <View className="bottom-safe" />
+        <View className="bottom-spacer" />
       </ScrollView>
     </View>
   )
