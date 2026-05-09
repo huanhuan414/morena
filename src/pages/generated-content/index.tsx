@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis, DollarSign, ChevronDown } from 'lucide-react-taro'
+import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, PencilLine, Trash2, Play, DollarSign, ChevronDown } from 'lucide-react-taro'
 import './index.css'
 
 // 内容状态
@@ -158,7 +158,7 @@ export default function GeneratedContentPage() {
   const [contents, setContents] = useState<GeneratedContent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState<ContentStatus>('all')
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   // 图片预览
@@ -236,12 +236,18 @@ export default function GeneratedContentPage() {
   }
 
   // 复制内容
-  const handleCopy = (content: GeneratedContent) => {
-    Taro.setClipboardData({
-      data: content.content,
-      success: () => {
-        setCopiedId(content.id)
-        setTimeout(() => setCopiedId(null), 2000)
+  const handleEdit = () => {
+    Taro.showToast({ title: '编辑内容', icon: 'none' })
+  }
+
+  const handleDelete = () => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定要删除这条内容吗？此操作不可恢复',
+      success: (res) => {
+        if (res.confirm) {
+          Taro.showToast({ title: '已删除', icon: 'success' })
+        }
       }
     })
   }
@@ -331,7 +337,7 @@ export default function GeneratedContentPage() {
         {/* 页面标题 */}
         <View className="header-title-area">
           <Text className="header-title">生成内容</Text>
-          <Text className="header-subtitle">记录每一次创作</Text>
+          <Text className="header-subtitle">创作变现，让内容产生价值</Text>
         </View>
       </View>
 
@@ -501,20 +507,17 @@ export default function GeneratedContentPage() {
                     <Text className="date-text">{content.created_at}</Text>
                   </View>
                   <View className="action-buttons">
-                    {content.content && (
-                      <View 
-                        className="action-btn"
-                        onClick={() => handleCopy(content)}
-                      >
-                        {copiedId === content.id ? (
-                          <Check size={16} color="#10B981" />
-                        ) : (
-                          <Copy size={16} color="#64748B" />
-                        )}
-                      </View>
-                    )}
-                    <View className="action-btn">
-                      <Ellipsis size={16} color="#64748B" />
+                    <View 
+                      className="action-btn manage-btn"
+                      onClick={() => handleEdit()}
+                    >
+                      <PencilLine size={16} color="#64748B" />
+                    </View>
+                    <View 
+                      className="action-btn manage-btn"
+                      onClick={() => handleDelete()}
+                    >
+                      <Trash2 size={16} color="#64748B" />
                     </View>
                   </View>
                 </View>

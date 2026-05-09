@@ -254,6 +254,7 @@
   gap: 8rpx;
   flex-shrink: 0;
   white-space: nowrap;
+  margin-right: 16rpx;
 }
 
 .earnings-icon {
@@ -473,6 +474,15 @@
 
 .action-btn {
   padding: 8rpx;
+}
+
+.manage-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 16rpx;
+  background: #F1F5F9;
+  border-radius: 8rpx;
 }
 
 /* 底部占位 */
