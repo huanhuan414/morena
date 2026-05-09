@@ -128,59 +128,69 @@
 }
 
 .stat-card {
-  width: 170rpx;
-  height: 160rpx;
+  width: 160rpx;
+  height: 120rpx;
   background: #FFFFFF;
   border-radius: 24rpx;
-  padding: 20rpx;
+  padding: 16rpx;
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
+  margin-bottom: 16rpx;
 }
 
 .stat-icon-bg {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 16rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .stat-info {
   text-align: center;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
 }
 
 .stat-label {
-  font-size: 20rpx;
+  font-size: 18rpx;
   color: #6B7280;
   display: block;
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .stat-value {
-  font-size: 36rpx;
+  font-size: 28rpx;
   font-weight: 800;
   color: #1F2937;
   display: block;
+  white-space: nowrap;
 }
 
 .stat-unit {
-  font-size: 20rpx;
+  font-size: 18rpx;
   font-weight: 500;
   color: #9CA3AF;
 }
 
 .stat-trend {
   display: inline-block;
-  margin-top: 4rpx;
 }
 
 .trend-text {
-  font-size: 18rpx;
+  font-size: 16rpx;
   color: #10B981;
   font-weight: 600;
 }
@@ -236,6 +246,9 @@
 
 .banner-btn-row {
   margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .banner-btn {
@@ -243,8 +256,8 @@
   align-items: center;
   gap: 4rpx;
   background: #FFFFFF;
-  padding: 12rpx 20rpx;
-  border-radius: 16rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 24rpx;
 }
 
 .banner-btn-text {
@@ -396,84 +409,88 @@
   color: #EF4444;
 }
 
-.activity-carousel-container {
-  position: relative;
-  height: 260rpx;
+.activity-scroll {
   overflow: hidden;
   border-radius: 24rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24rpx 0;
+  margin-top: 32rpx;
+  position: relative;
 }
 
-.carousel-gradient {
+.activity-scroll::before,
+.activity-scroll::after {
+  content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 48rpx;
-  z-index: 10;
+  width: 60rpx;
+  z-index: 2;
   pointer-events: none;
 }
 
-.carousel-gradient-left {
+.activity-scroll::before {
   left: 0;
-  background: linear-gradient(to right, #F8FAFC, transparent);
+  background: linear-gradient(to right, #667eea, transparent);
 }
 
-.carousel-gradient-right {
+.activity-scroll::after {
   right: 0;
-  background: linear-gradient(to left, #F8FAFC, transparent);
+  background: linear-gradient(to left, #764ba2, transparent);
 }
 
 .activity-carousel-track {
   display: flex;
-  gap: 20rpx;
+  gap: 16rpx;
   will-change: transform;
-  animation: marquee2 20s linear infinite;
+  animation: marquee 25s linear infinite;
 }
 
-@keyframes marquee2 {
+@keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
 
 .activity-card {
   width: 240rpx;
-  min-height: 240rpx;
-  background: #FFFFFF;
-  border-radius: 20rpx;
-  padding: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.05);
+  min-height: 140rpx;
+  background: rgba(255,255,255,0.95);
+  border-radius: 16rpx;
+  padding: 16rpx;
   flex-shrink: 0;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.1);
 }
 
 .activity-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .activity-avatar {
-  width: 48rpx;
-  height: 48rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   background: #E5E7EB;
 }
 
 .activity-time-badge {
   background: #F3F4F6;
-  padding: 4rpx 10rpx;
+  padding: 4rpx 8rpx;
   border-radius: 6rpx;
-  font-size: 18rpx;
+  font-size: 16rpx;
   color: #9CA3AF;
 }
 
 .activity-icon-wrapper {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 16rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 14rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 10rpx;
 }
 
 .activity-card-content {
@@ -483,29 +500,29 @@
 }
 
 .activity-name {
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
   color: #1F2937;
   display: block;
 }
 
 .activity-action {
-  font-size: 22rpx;
+  font-size: 20rpx;
   font-weight: 600;
   color: #374151;
   display: block;
 }
 
 .activity-desc {
-  font-size: 20rpx;
+  font-size: 18rpx;
   color: #6B7280;
   display: block;
 }
 
 .activity-amount {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 700;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   display: block;
 }
 
