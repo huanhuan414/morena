@@ -294,7 +294,7 @@ const Index: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* 底部TabBar */}
+      {/* 底部TabBar - 简洁3tab：首页、分身、我的 */}
       <View className="custom-tabbar">
         <View 
           className="tabbar-item active"
@@ -302,13 +302,6 @@ const Index: React.FC = () => {
         >
           <Grid3x3 size={24} color="#7B3FE4" />
           <Text className="tabbar-text active">首页</Text>
-        </View>
-        <View 
-          className="tabbar-item"
-          onClick={() => Taro.switchTab({ url: '/pages/social/index' })}
-        >
-          <Users size={24} color="#9CA3AF" />
-          <Text className="tabbar-text">广场</Text>
         </View>
         <View className="tabbar-item center">
           <View className="tabbar-center-btn">

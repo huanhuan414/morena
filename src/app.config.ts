@@ -2,12 +2,13 @@ export default defineAppConfig({
   pages: [
     // 主包：TabBar页面（第一个为默认页）
     'pages/index/index',
-    'pages/social/index',
     'pages/mind-chat/index',
     'pages/profile/index',
     'pages/login/index',
     'pages/webview/index',
     'pages/publish-redirect/index',
+    // 广场页面（不在TabBar）
+    'pages/social/index',
     // 订单相关
     'pages/order/order-list/index',
     'pages/order/order-create/index',
@@ -91,12 +92,6 @@ export default defineAppConfig({
         text: '首页',
         iconPath: './assets/tabbar/home.png',
         selectedIconPath: './assets/tabbar/home-active.png',
-      },
-      {
-        pagePath: 'pages/social/index',
-        text: '广场',
-        iconPath: './assets/tabbar/users.png',
-        selectedIconPath: './assets/tabbar/users-active.png',
       },
       {
         pagePath: 'pages/mind-chat/index',

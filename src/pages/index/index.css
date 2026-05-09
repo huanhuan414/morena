@@ -1,17 +1,18 @@
-/* 首页样式 - 遵循375px移动端设计规范 */
+/* 首页样式 - 遵循375px移动端设计规范，使用rpx单位 */
 
+/* 页面容器 */
 .page-container {
   min-height: 100vh;
   background: linear-gradient(180deg, #7B3FE4 0%, #5B2DD3 100%);
   display: flex;
   flex-direction: column;
-  padding-bottom: 120px;
+  padding-bottom: 120rpx;
 }
 
 /* 顶部通栏 */
 .header-bar {
-  height: 100px;
-  padding: 20px;
+  height: 100rpx;
+  padding: 20rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -21,42 +22,42 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 12rpx;
 }
 
 .user-avatar-wrapper {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
 }
 
 .user-avatar {
-  width: 72px;
-  height: 72px;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 3rpx solid rgba(255, 255, 255, 0.3);
 }
 
 .online-indicator {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
+  bottom: 4rpx;
+  right: 4rpx;
+  width: 16rpx;
+  height: 16rpx;
   background: #10B981;
-  border: 3px solid #fff;
+  border: 3rpx solid #fff;
   border-radius: 50%;
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 6rpx;
 }
 
 .username {
-  font-size: 20px;
+  font-size: 20rpx;
   font-weight: 700;
   color: #fff;
 }
@@ -64,72 +65,72 @@
 .status-badge {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 4rpx;
   background: rgba(255, 255, 255, 0.2);
-  padding: 4px 10px;
-  border-radius: 10px;
+  padding: 4rpx 10rpx;
+  border-radius: 10rpx;
   width: fit-content;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 6rpx;
+  height: 6rpx;
   background: #10B981;
   border-radius: 50%;
 }
 
 .status-text {
-  font-size: 12px;
+  font-size: 12rpx;
   color: #fff;
   font-weight: 500;
 }
 
 .header-right {
   display: flex;
-  gap: 15px;
+  gap: 15rpx;
   align-items: center;
 }
 
 .icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 40rpx;
+  height: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 12rpx;
 }
 
 /* 主内容区 */
 .main-content {
   flex: 1;
   background: #fff;
-  border-radius: 40px 40px 0 0;
+  border-radius: 40rpx 40rpx 0 0;
   overflow: hidden;
 }
 
 .content-inner {
-  padding: 30px 20px;
+  padding: 30rpx 20rpx;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 20rpx;
 }
 
 /* 欢迎语 */
 .welcome-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 4rpx;
 }
 
 .welcome-title {
-  font-size: 20px;
+  font-size: 20rpx;
   font-weight: 800;
   color: #111827;
 }
 
 .welcome-hint {
-  font-size: 12px;
+  font-size: 12rpx;
   color: #6B7280;
   font-weight: 500;
 }
@@ -138,31 +139,31 @@
 .stats-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 15rpx;
 }
 
 .stat-card {
-  width: calc(50% - 8px);
+  width: calc(50% - 8rpx);
 }
 
 .stat-card-inner {
   border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
 .stat-card-content {
-  padding: 12px;
+  padding: 12rpx;
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 80px;
+  gap: 12rpx;
+  height: 80rpx;
 }
 
 .stat-icon-wrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -173,11 +174,11 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  gap: 2rpx;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 14rpx;
   color: #6B7280;
   font-weight: 700;
 }
@@ -185,24 +186,24 @@
 .stat-value-row {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 2rpx;
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 20rpx;
   font-weight: 800;
   color: #111827;
 }
 
 .stat-unit {
-  font-size: 10px;
+  font-size: 10rpx;
   color: #6B7280;
   font-weight: 500;
   opacity: 0.6;
 }
 
 .stat-change {
-  font-size: 10px;
+  font-size: 10rpx;
   color: #059669;
   font-weight: 700;
 }
@@ -211,10 +212,10 @@
 .promo-banner {
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 24rpx;
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-  padding: 20px;
-  min-height: 120px;
+  padding: 20rpx;
+  min-height: 120rpx;
 }
 
 .promo-content {
@@ -223,34 +224,34 @@
 }
 
 .promo-title {
-  font-size: 14px;
+  font-size: 14rpx;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 4rpx;
 }
 
 .promo-desc {
-  font-size: 10px;
+  font-size: 10rpx;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
 
 .promo-btn {
-  height: 28px;
-  padding: 0 12px;
-  margin-top: 12px;
-  font-size: 10px;
+  height: 28rpx;
+  padding: 0 12rpx;
+  margin-top: 12rpx;
+  font-size: 10rpx;
   font-weight: 800;
   background: #fff !important;
   color: #4F46E5 !important;
   border: none;
-  border-radius: 8px;
+  border-radius: 8rpx;
 }
 
 .promo-icon {
   position: absolute;
-  bottom: -8px;
-  right: -8px;
+  bottom: -8rpx;
+  right: -8rpx;
   transform: rotate(12deg);
 }
 
@@ -258,7 +259,7 @@
 .quick-actions-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 12rpx;
 }
 
 .section-header {
@@ -268,7 +269,7 @@
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 14rpx;
   font-weight: 800;
   color: #111827;
 }
@@ -276,46 +277,46 @@
 .view-all {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 2rpx;
 }
 
 .view-all-text {
-  font-size: 10px;
+  font-size: 10rpx;
   color: #9CA3AF;
 }
 
 .quick-actions-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 10rpx;
   justify-content: space-between;
 }
 
 .action-item {
-  width: 105px;
-  height: 100px;
+  width: 105rpx;
+  height: 100rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 10rpx;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #E5E7EB;
+  border-radius: 16rpx;
+  box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.1);
+  border: 1rpx solid #E5E7EB;
 }
 
 .action-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .action-label {
-  font-size: 12px;
+  font-size: 12rpx;
   font-weight: 700;
   color: #111827;
 }
@@ -323,27 +324,27 @@
 /* 实时动态 */
 .activity-section {
   background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid #E5E7EB;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  border: 1rpx solid #E5E7EB;
 }
 
 .activity-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
 }
 
 .activity-indicator {
-  width: 12px;
-  height: 4px;
+  width: 12rpx;
+  height: 4rpx;
   background: linear-gradient(90deg, #7B3FE4, #A855F7);
-  border-radius: 2px;
+  border-radius: 2rpx;
 }
 
 .activity-title {
-  font-size: 14px;
+  font-size: 14rpx;
   font-weight: 800;
   color: #111827;
   flex: 1;
@@ -352,15 +353,15 @@
 .activity-badge {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 4rpx;
   background: #FEF3C7;
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 2rpx 8rpx;
+  border-radius: 10rpx;
 }
 
 .pulse-dot {
-  width: 6px;
-  height: 6px;
+  width: 6rpx;
+  height: 6rpx;
   background: #F59E0B;
   border-radius: 50%;
   animation: pulse 1.5s infinite;
@@ -372,7 +373,7 @@
 }
 
 .activity-badge-text {
-  font-size: 10px;
+  font-size: 10rpx;
   color: #D97706;
   font-weight: 600;
 }
@@ -380,16 +381,16 @@
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 12rpx;
 }
 
 .activity-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 10px;
+  gap: 12rpx;
+  padding: 10rpx;
   background: #F9FAFB;
-  border-radius: 12px;
+  border-radius: 12rpx;
 }
 
 .activity-left {
@@ -398,29 +399,29 @@
 
 .activity-avatar-wrapper {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .activity-avatar {
-  width: 40px;
-  height: 40px;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2rpx solid #fff;
+  box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 
 .activity-type-icon {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 18px;
-  height: 18px;
+  bottom: -2rpx;
+  right: -2rpx;
+  width: 18rpx;
+  height: 18rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #fff;
+  border: 2rpx solid #fff;
 }
 
 .activity-content {
@@ -432,40 +433,40 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 4rpx;
 }
 
 .activity-item-title {
-  font-size: 12px;
+  font-size: 12rpx;
   font-weight: 700;
   color: #111827;
 }
 
 .activity-time {
-  font-size: 10px;
+  font-size: 10rpx;
   color: #9CA3AF;
   font-weight: 500;
 }
 
 .activity-desc {
-  font-size: 11px;
+  font-size: 11rpx;
   color: #6B7280;
   line-height: 1.4;
 }
 
-/* 底部TabBar */
+/* 底部TabBar - 简洁3tab：首页、分身、我的 */
 .custom-tabbar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 100px;
+  height: 100rpx;
   background: #fff;
   display: flex;
   justify-content: space-around;
   align-items: flex-start;
-  padding-top: 12px;
-  border-top: 1px solid #F3F4F6;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #F3F4F6;
   z-index: 1000;
 }
 
@@ -473,27 +474,27 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 0 20px;
+  gap: 4rpx;
+  padding: 0 20rpx;
 }
 
 .tabbar-item.center {
-  margin-top: -20px;
+  margin-top: -20rpx;
 }
 
 .tabbar-center-btn {
-  width: 56px;
-  height: 56px;
+  width: 56rpx;
+  height: 56rpx;
   background: linear-gradient(135deg, #7B3FE4 0%, #5B2DD3 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(123, 63, 228, 0.4);
+  box-shadow: 0 4rpx 12rpx rgba(123, 63, 228, 0.4);
 }
 
 .tabbar-text {
-  font-size: 12px;
+  font-size: 12rpx;
   font-weight: 500;
   color: #9CA3AF;
 }
