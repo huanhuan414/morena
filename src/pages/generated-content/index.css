@@ -19,10 +19,25 @@
   overflow: hidden;
 }
 
+/* 返回按钮 */
+.back-btn-area {
+  position: absolute;
+  left: 16rpx;
+  top: 0;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
 /* 页面标题 */
 .header-title-area {
   text-align: center;
-  padding: 0 32rpx;
+  padding: 0 80rpx;
   position: relative;
   z-index: 1;
 }

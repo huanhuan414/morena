@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, PencilLine, Trash2, Play, DollarSign, ChevronDown } from 'lucide-react-taro'
+import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, PencilLine, Trash2, Play, DollarSign, ChevronDown, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 内容状态
@@ -334,6 +334,10 @@ export default function GeneratedContentPage() {
     <View className="generated-content-page">
       {/* 顶部背景 */}
       <View className="page-header">
+        {/* 返回按钮 */}
+        <View className="back-btn-area" onClick={() => Taro.navigateBack()}>
+          <ArrowLeft size={20} color="#ffffff" />
+        </View>
         {/* 页面标题 */}
         <View className="header-title-area">
           <Text className="header-title">生成内容</Text>
