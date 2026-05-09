@@ -8,7 +8,7 @@ import {
   Image as ImageIcon,
   Cpu,
   FileText,
-  MoreHorizontal,
+  MoreVertical,
   Users,
   Clock,
   TrendingUp,
@@ -276,7 +276,7 @@ const MindChat: React.FC = () => {
                       <Text className="toolbar-label">内容</Text>
                     </View>
                     <View className="toolbar-btn">
-                      <MoreHorizontal size={15} />
+                      <MoreVertical size={15} />
                       <Text className="toolbar-label">更多</Text>
                     </View>
                   </View>
