@@ -1,212 +1,129 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { useState } from 'react'
-import { Bell, Settings, Users, TrendingUp, DollarSign, Shield, Plus, ChevronRight } from 'lucide-react-taro'
+import Taro from '@tarojs/taro'
+import { Search, Plus, Pencil, Zap, Trash2, Activity } from 'lucide-react-taro'
+import { Switch } from '@/components/ui/switch'
 import './index.css'
 
 // 模拟分身数据
 const mockMyAvatars = [
   { 
     id: '1', 
-    name: '小美', 
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', 
-    online: true, 
-    hosting: true,
-    gender: '女', 
-    age: 25, 
-    todayEarnings: 128.50,
-    totalPosts: 328,
-    tags: ['温柔', '知性'] 
+    name: '数字合伙人 - 晓晨',
+    role: '知识博主',
+    status: '在线',
+    task: '正在录制《AI趋势》视频',
+    income: '128.00',
+    image: 'https://api.dicebear.com/7.x/personas/svg?seed=alex&backgroundColor=b6e3f4',
+    color: 'emerald'
   },
   { 
     id: '2', 
-    name: '智慧达人', 
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', 
-    online: true, 
-    hosting: false,
-    gender: '女', 
-    age: 28, 
-    todayEarnings: 0,
-    totalPosts: 215,
-    tags: ['知识', '职场'] 
+    name: '虚拟导师 - 莉莎',
+    role: '职场专家',
+    status: '忙碌',
+    task: '处理粉丝提问中 (32条)',
+    income: '450.50',
+    image: 'https://api.dicebear.com/7.x/personas/svg?seed=lisa&backgroundColor=ffdfbf',
+    color: 'amber'
   },
+  { 
+    id: '3', 
+    name: '带货达人 - 阿飞',
+    role: '美妆主播',
+    status: '离线',
+    task: '暂无任务',
+    income: '0.00',
+    image: 'https://api.dicebear.com/7.x/personas/svg?seed=jack&backgroundColor=c0aede',
+    color: 'slate'
+  }
 ]
 
-export default function MyAvatarPage() {
+export default function CloneList() {
   const [avatars, setAvatars] = useState(mockMyAvatars)
-  const [userInfo] = useState({
-    name: '小明',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
-  })
-
-  const stats = {
-    totalAvatars: avatars.length,
-    totalPosts: avatars.reduce((sum, a) => sum + a.totalPosts, 0),
-    totalEarnings: avatars.reduce((sum, a) => sum + a.todayEarnings, 0),
-    hostingCount: avatars.filter(a => a.hosting).length,
-  }
 
   const toggleHosting = (id: string) => {
     setAvatars(avatars.map(a => 
-      a.id === id ? { ...a, hosting: !a.hosting } : a
+      a.id === id ? { ...a, status: a.status === '在线' ? '离线' : '在线' } : a
     ))
   }
 
   return (
-    <View className="avatar-container">
-      {/* 顶部通栏 */}
-      <View className="header">
-        <View className="header-left">
-          <Image src={userInfo.avatar} className="user-avatar" />
-          <View className="user-info">
-            <Text className="username">{userInfo.name}</Text>
-            <View className="online-badge">
-              <Text className="online-dot" />
-              <Text className="online-text">在线</Text>
-            </View>
-          </View>
+    <View className="clone-container">
+      {/* Header & Search */}
+      <View className="header-search">
+        <View className="search-wrapper">
+          <Search size={32} color="#9CA3AF" className="search-icon" />
+          <View className="search-input">搜索分身...</View>
         </View>
-        <View className="header-right">
-          <Bell size={44} color="#fff" />
-          <Settings size={44} color="#fff" />
+        <View className="add-btn" onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}>
+          <Plus size={28} color="#fff" />
+          <Text className="add-btn-text">新增分身</Text>
         </View>
       </View>
 
-      {/* 数据统计卡片 */}
-      <View className="stats-grid">
-        <View className="stat-card">
-          <Text className="stat-label">我的分身数量</Text>
-          <Text className="stat-value">{stats.totalAvatars}</Text>
-          <Text className="stat-hint">点击直达管理</Text>
-        </View>
-        <View className="stat-card">
-          <Text className="stat-label">已生成内容</Text>
-          <Text className="stat-value">{stats.totalPosts}</Text>
-          <Text className="stat-hint">今日新增 +12</Text>
-        </View>
-        <View className="stat-card">
-          <Text className="stat-label">累计收益</Text>
-          <Text className="stat-value primary">¥{stats.totalEarnings.toFixed(2)}</Text>
-          <Text className="stat-hint">今日收益</Text>
-        </View>
-        <View className="stat-card">
-          <Text className="stat-label">托管中</Text>
-          <Text className="stat-value">{stats.hostingCount}</Text>
-          <Text className="stat-hint">正在运营</Text>
-        </View>
-      </View>
+      {/* List */}
+      <ScrollView scrollY className="clone-list">
+        {avatars.map((clone) => (
+          <View key={clone.id} className="clone-card">
+            {/* Image & Main Info Overlay */}
+            <View className="clone-image-wrapper">
+              <Image src={clone.image} className="clone-image" mode="aspectFill" />
+              <View className="clone-gradient" />
+              
+              {/* Status Badge */}
+              <View className="status-badge">
+                <View className={`status-dot ${clone.status === '在线' ? 'online animate-pulse' : clone.status === '忙碌' ? 'busy' : 'offline'}`} />
+                <Text className="status-text">{clone.status}</Text>
+              </View>
 
-      {/* 我的分身列表 */}
-      <View className="section-header">
-        <Text className="section-title">我的分身</Text>
-        <View className="section-action">
-          <Text className="action-text">管理</Text>
-          <ChevronRight size={28} color="#9CA3AF" />
-        </View>
-      </View>
+              {/* Task Label */}
+              <View className="task-badge">
+                <Activity size={24} color="#fff" />
+                <Text className="task-text">{clone.task}</Text>
+              </View>
 
-      <ScrollView scrollY className="avatar-list">
-        {avatars.map((avatar) => (
-          <View key={avatar.id} className="avatar-card">
-            <View className="avatar-main">
-              <View className="avatar-left">
-                <View className="avatar-wrapper">
-                  <Image src={avatar.avatar} className="avatar-img" />
-                  <View className={`online-indicator ${avatar.online ? 'online' : ''}`} />
-                  {avatar.hosting && (
-                    <View className="hosting-badge">
-                      <Shield size={16} color="#fff" />
-                    </View>
-                  )}
+              {/* Info Text */}
+              <View className="clone-info">
+                <View className="clone-info-left">
+                  <Text className="clone-name">{clone.name}</Text>
+                  <View className="role-badge">
+                    <Text className="role-text">{clone.role}</Text>
+                  </View>
                 </View>
-                <View className="avatar-details">
-                  <View className="avatar-name-row">
-                    <Text className="avatar-name">{avatar.name}</Text>
-                    {avatar.hosting && (
-                      <View className="hosting-tag">
-                        <Text className="hosting-tag-text">托管中</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View className="avatar-tags">
-                    {avatar.tags.map((tag, idx) => (
-                      <View key={idx} className="tag-badge">
-                        <Text className="tag-text">{tag}</Text>
-                      </View>
-                    ))}
-                    <View className="gender-badge">
-                      <Text className="badge-text">{avatar.gender} · {avatar.age}岁</Text>
-                    </View>
-                  </View>
-                  <View className="avatar-stats">
-                    <View className="stat-item">
-                      <DollarSign size={24} color="#10B981" />
-                      <Text className="stat-text earnings">今日 ¥{avatar.todayEarnings.toFixed(2)}</Text>
-                    </View>
-                    <View className="stat-item">
-                      <TrendingUp size={24} color="#6B7280" />
-                      <Text className="stat-text">{avatar.totalPosts}帖</Text>
-                    </View>
-                  </View>
+                <View className="clone-info-right">
+                  <Text className="income-label">今日收益</Text>
+                  <Text className="income-value">¥{clone.income}</Text>
                 </View>
               </View>
-              <View className="avatar-right">
-                <View 
-                  className={`hosting-toggle ${avatar.hosting ? 'active' : ''}`}
-                  onClick={() => toggleHosting(avatar.id)}
-                >
-                  <View className="toggle-track">
-                    <View className="toggle-thumb" />
-                  </View>
-                  <Text className={`toggle-label ${avatar.hosting ? 'active' : ''}`}>
-                    {avatar.hosting ? '关闭托管' : '开启托管'}
-                  </Text>
-                </View>
+            </View>
+
+            {/* Actions */}
+            <View className="clone-actions">
+              <View className="action-btn">
+                <Pencil size={28} color="#6366F1" />
+                <Text className="action-text">形象</Text>
+              </View>
+              <View className="action-btn">
+                <Zap size={28} color="#F59E0B" />
+                <Text className="action-text">能力</Text>
+              </View>
+              <View className="action-btn">
+                <Trash2 size={28} color="#EF4444" />
+                <Text className="action-text">删除</Text>
+              </View>
+              <View className="hosting-toggle-wrapper">
+                <Switch 
+                  checked={clone.status === '在线'}
+                  onCheckedChange={() => toggleHosting(clone.id)}
+                  className="hosting-switch"
+                />
+                <Text className="toggle-label">托管</Text>
               </View>
             </View>
           </View>
         ))}
-
-        {/* 创建分身按钮 */}
-        <View className="create-btn">
-          <Plus size={48} color="#7B3FE4" />
-          <Text className="create-text">创建新分身</Text>
-          <Text className="create-hint">AI智能生成 · 10秒克隆</Text>
-        </View>
       </ScrollView>
-
-      {/* 底部TabBar */}
-      <View className="tabbar">
-        <View className="tabbar-item">
-          <View className="tabbar-icon">
-            <Users size={48} color="#9CA3AF" />
-          </View>
-          <Text className="tabbar-text">广场</Text>
-        </View>
-        <View className="tabbar-item active">
-          <View className="tabbar-icon active">
-            <Users size={48} color="#7B3FE4" />
-          </View>
-          <Text className="tabbar-text active">分身</Text>
-        </View>
-        <View className="tabbar-item">
-          <View className="tabbar-icon center">
-            <Plus size={48} color="#fff" />
-          </View>
-          <Text className="tabbar-text">发布</Text>
-        </View>
-        <View className="tabbar-item">
-          <View className="tabbar-icon">
-            <Bell size={48} color="#9CA3AF" />
-          </View>
-          <Text className="tabbar-text">消息</Text>
-        </View>
-        <View className="tabbar-item">
-          <View className="tabbar-icon">
-            <Users size={48} color="#9CA3AF" />
-          </View>
-          <Text className="tabbar-text">我的</Text>
-        </View>
-      </View>
     </View>
   )
 }
