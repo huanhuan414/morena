@@ -1,10 +1,10 @@
 export default defineAppConfig({
   pages: [
-    // 主包：TabBar页面
-    'pages/index/index',
+    // 主包：TabBar页面（第一个为默认页）
     'pages/social/index',
     'pages/mind-chat/index',
     'pages/profile/index',
+    'pages/index/index',
     'pages/login/index',
     'pages/webview/index',
     'pages/publish-redirect/index',
