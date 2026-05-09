@@ -87,12 +87,6 @@ export default defineAppConfig({
     borderStyle: 'black',
     list: [
       {
-        pagePath: 'pages/index/index',
-        text: '首页',
-        iconPath: './assets/tabbar/home.png',
-        selectedIconPath: './assets/tabbar/home-active.png',
-      },
-      {
         pagePath: 'pages/social/index',
         text: '广场',
         iconPath: './assets/tabbar/users.png',
