@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp, Zap } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp } from 'lucide-react-taro'
 import './index.css'
 
 const Index: React.FC = () => {
@@ -119,10 +119,6 @@ const Index: React.FC = () => {
         <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
           <View className="banner-bg" />
           <View className="banner-content">
-            <View className="banner-badge">
-              <Zap size={24} color="#FBBF24" />
-              <Text className="banner-badge-text">限时活动</Text>
-            </View>
             <Text className="banner-title">分身托管收益翻倍</Text>
             <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
             <View className="banner-btn">

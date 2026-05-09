@@ -145,6 +145,13 @@
   flex: 1;
   padding: 0 24rpx;
   padding-top: 24rpx;
+  overflow: hidden;
+}
+
+.content-scroll {
+  flex: 1;
+  padding: 0 24rpx;
+  padding-top: 24rpx;
 }
 
 /* 统计卡片区 - 4个一行 */
@@ -259,13 +266,14 @@
 }
 
 .banner-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4rpx;
+  justify-content: center;
+  gap: 6rpx;
   background: #FFFFFF;
-  padding: 12rpx 24rpx;
-  border-radius: 24rpx;
-  width: fit-content;
+  padding: 14rpx 32rpx;
+  border-radius: 30rpx;
+  min-width: 160rpx;
 }
 
 .banner-btn-text {
