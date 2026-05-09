@@ -236,7 +236,7 @@
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
   margin-bottom: 12rpx;
-  width: fit-content;
+  width: 144rpx;
 }
 
 .banner-badge-text {
@@ -258,8 +258,21 @@
   margin-bottom: 16rpx;
 }
 
-.banner-btn {
-  display: flex;
+.banner-badge-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #FBBF24;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+.banner-btn-wrap {
+  display: inline-flex;
   align-items: center;
   gap: 4rpx;
   background: #FFFFFF;
