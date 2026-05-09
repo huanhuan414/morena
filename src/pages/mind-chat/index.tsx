@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { useRouter } from '@tarojs/taro'
+import { useNavigate } from '@/hooks/useNavigate'
 import {
   Search,
   Plus,
@@ -51,7 +51,7 @@ interface SquareClone {
 
 
 const MindChat: React.FC = () => {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<CloneType>('my')
   const [searchValue, setSearchValue] = useState('')
 
@@ -177,7 +177,7 @@ const MindChat: React.FC = () => {
           />
         </View>
         {activeTab === 'my' && (
-          <View className="add-btn" onClick={() => router.push({ url: '/pages/avatar/avatar-create/index' })}>
+          <View className="add-btn" onClick={() => navigate('/pages/avatar/avatar-create/index')}>
             <Plus size={20} />
             <Text className="add-btn-text">新增分身</Text>
           </View>
