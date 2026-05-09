@@ -5,6 +5,11 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 修复全局padding-top影响 */
+.pending-order-page .page-header {
+  padding-top: 0 !important;
+}
+
 /* 顶部背景 */
 .page-header {
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
@@ -235,6 +240,66 @@
 .deadline-text {
   font-size: 22rpx;
   color: #94A3B8;
+}
+
+/* 提示标签 */
+.hint-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-bottom: 16rpx;
+}
+
+.hint-tag {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+}
+
+.hint-tag.warning {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.hint-tag.info {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.hint-tag.hot {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* 接单倒计时 */
+.countdown-badge {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 14rpx;
+  background: #FEF2F2;
+  border-radius: 8rpx;
+}
+
+.countdown-text {
+  font-size: 22rpx;
+  color: #DC2626;
+  font-weight: 600;
+}
+
+.countdown-text.urgent {
+  color: #EF4444;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* 订单标题 */

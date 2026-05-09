@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight } from 'lucide-react-taro'
+import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight, Info, Zap } from 'lucide-react-taro'
 import './index.css'
 
 // 待接订单数据接口
@@ -18,6 +18,8 @@ interface PendingOrder {
   avatar_name?: string
   avatar_level?: number
   target_audience?: string
+  hints?: string[]
+  countdown_seconds?: number
 }
 
 // 平台配置
@@ -29,6 +31,16 @@ const PLATFORMS = [
   { key: 'bilibili', name: 'B站', color: '#FB7299', icon: Video },
   { key: 'kuaishou', name: '快手', color: '#FF4906', icon: Video },
 ]
+
+// 平台提示配置
+const PLATFORM_HINTS: Record<string, string[]> = {
+  douyin: ['需开通团购功能'],
+  xiaohongshu: ['需认证专业号'],
+  wechat_mp: ['需开通流量主'],
+  weibo: ['需满1000粉丝'],
+  bilibili: ['需UP主身份'],
+  kuaishou: ['需开通小店'],
+}
 
 // 模拟数据
 const MOCK_ORDERS: PendingOrder[] = [
@@ -42,7 +54,9 @@ const MOCK_ORDERS: PendingOrder[] = [
     status: 'pending',
     avatar_name: '小美',
     avatar_level: 3,
-    target_audience: '18-25岁女性'
+    target_audience: '18-25岁女性',
+    hints: ['需认证专业号'],
+    countdown_seconds: 3600 * 5 + 1234,
   },
   {
     id: '2',
@@ -54,7 +68,9 @@ const MOCK_ORDERS: PendingOrder[] = [
     status: 'pending',
     avatar_name: '科技达人',
     avatar_level: 5,
-    target_audience: '数码爱好者'
+    target_audience: '数码爱好者',
+    hints: ['需开通团购功能', '热门订单'],
+    countdown_seconds: 3600 * 2 + 4521,
   },
   {
     id: '3',
@@ -66,7 +82,9 @@ const MOCK_ORDERS: PendingOrder[] = [
     status: 'pending',
     avatar_name: '吃货小分队',
     avatar_level: 2,
-    target_audience: '美食爱好者'
+    target_audience: '美食爱好者',
+    hints: ['需满1000粉丝'],
+    countdown_seconds: 3600 * 12 + 2345,
   },
   {
     id: '4',
@@ -78,19 +96,90 @@ const MOCK_ORDERS: PendingOrder[] = [
     status: 'pending',
     avatar_name: '职场导师',
     avatar_level: 4,
-    target_audience: '职场人士'
-  }
+    target_audience: '职场人士',
+    hints: ['需开通流量主'],
+    countdown_seconds: 3600 * 24 + 5678,
+  },
+  {
+    id: '5',
+    title: '健身打卡短视频',
+    description: '创作健身打卡类短视频，展示训练动作和计划，适合健身爱好者',
+    budget: 450,
+    platforms: ['douyin'],
+    deadline: '2024-03-16',
+    status: 'pending',
+    avatar_name: '健身教练',
+    avatar_level: 4,
+    target_audience: '健身人群',
+    hints: ['需开通团购功能', '紧急订单'],
+    countdown_seconds: 3600 + 890,
+  },
+  {
+    id: '6',
+    title: '旅行打卡攻略图文',
+    description: '分享热门旅游景点打卡攻略，包含拍照技巧和路线推荐',
+    budget: 700,
+    platforms: ['xiaohongshu', 'kuaishou'],
+    deadline: '2024-03-22',
+    status: 'pending',
+    avatar_name: '旅行家',
+    avatar_level: 5,
+    target_audience: '旅行爱好者',
+    hints: ['需开通小店'],
+    countdown_seconds: 3600 * 8 + 3456,
+  },
 ]
+
+// 格式化倒计时
+const formatCountdown = (seconds: number): string => {
+  if (seconds <= 0) return '已截止'
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hours > 0) {
+    return `${hours}小时${minutes}分`
+  }
+  return `${minutes}分${secs}秒`
+}
 
 export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [autoAccept, setAutoAccept] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
+  const [countdowns, setCountdowns] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetchOrders()
   }, [])
+
+  // 倒计时更新
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdowns(prev => {
+        const newCountdowns = { ...prev }
+        Object.keys(newCountdowns).forEach(id => {
+          if (newCountdowns[id] > 0) {
+            newCountdowns[id] -= 1
+          }
+        })
+        return newCountdowns
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  // 初始化订单倒计时
+  useEffect(() => {
+    if (orders.length > 0) {
+      const initial: Record<string, number> = {}
+      orders.forEach(order => {
+        initial[order.id] = order.countdown_seconds || 3600
+      })
+      setCountdowns(initial)
+    }
+  }, [orders])
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -119,6 +208,23 @@ export default function PendingOrderListPage() {
   // 获取平台信息
   const getPlatformInfo = (key: string) => {
     return PLATFORMS.find(p => p.key === key) || { name: key, color: '#6366F1', icon: FileText }
+  }
+
+  // 获取订单提示
+  const getOrderHints = (order: PendingOrder): string[] => {
+    const hints: string[] = [...(order.hints || [])]
+    // 自动添加平台相关提示
+    order.platforms.forEach(p => {
+      const platformHints = PLATFORM_HINTS[p]
+      if (platformHints) {
+        platformHints.forEach(h => {
+          if (!hints.includes(h)) {
+            hints.push(h)
+          }
+        })
+      }
+    })
+    return hints
   }
 
   return (
@@ -200,103 +306,128 @@ export default function PendingOrderListPage() {
             <Text className="empty-desc">稍后再来看看吧</Text>
           </View>
         ) : (
-          filteredOrders.map((order) => (
-            <View key={order.id} className="order-card">
-              {/* 卡片头部 - 平台标签 */}
-              <View className="card-header">
-                <View className="platform-tags">
-                  {order.platforms.map((platformKey) => {
-                    const platform = getPlatformInfo(platformKey)
-                    const IconComponent = platform.icon
-                    return (
-                      <View
-                        key={platformKey}
-                        className="platform-badge"
-                        style={{
-                          background: `${platform.color}15`,
-                          borderColor: `${platform.color}30`
-                        }}
+          filteredOrders.map((order) => {
+            const hints = getOrderHints(order)
+            const countdown = countdowns[order.id] || 0
+            const isUrgent = countdown < 3600 // 少于1小时
+
+            return (
+              <View key={order.id} className="order-card">
+                {/* 卡片头部 - 平台标签 + 倒计时 */}
+                <View className="card-header">
+                  <View className="platform-tags">
+                    {order.platforms.map((platformKey) => {
+                      const platform = getPlatformInfo(platformKey)
+                      const IconComponent = platform.icon
+                      return (
+                        <View
+                          key={platformKey}
+                          className="platform-badge"
+                          style={{
+                            background: `${platform.color}15`,
+                            borderColor: `${platform.color}30`
+                          }}
+                        >
+                          <IconComponent size={12} color={platform.color} />
+                          <Text className="platform-badge-text" style={{ color: platform.color }}>
+                            {platform.name}
+                          </Text>
+                        </View>
+                      )
+                    })}
+                  </View>
+                  {/* 接单倒计时 */}
+                  <View className="countdown-badge">
+                    <Zap size={12} color={isUrgent ? '#EF4444' : '#6366F1'} />
+                    <Text className={`countdown-text ${isUrgent ? 'urgent' : ''}`}>
+                      {formatCountdown(countdown)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* 提示标签 */}
+                {hints.length > 0 && (
+                  <View className="hint-tags">
+                    {hints.map((hint, idx) => (
+                      <View 
+                        key={idx} 
+                        className={`hint-tag ${hint.includes('热门') || hint.includes('紧急') || hint.includes('高收益') ? 'hot' : hint.includes('需') ? 'warning' : 'info'}`}
                       >
-                        <IconComponent size={12} color={platform.color} />
-                        <Text className="platform-badge-text" style={{ color: platform.color }}>
-                          {platform.name}
-                        </Text>
+                        <Info size={10} color="#6366F1" />
+                        <Text>{hint}</Text>
                       </View>
-                    )
-                  })}
+                    ))}
+                  </View>
+                )}
+
+                {/* 订单标题 */}
+                <Text className="order-title">{order.title}</Text>
+                <Text className="order-desc">{order.description}</Text>
+
+                {/* 目标受众 */}
+                {order.target_audience && (
+                  <View className="audience-tag">
+                    <Users size={12} color="#8B5CF6" />
+                    <Text className="audience-text">{order.target_audience}</Text>
+                  </View>
+                )}
+
+                {/* 数据统计 */}
+                <View className="stats-row">
+                  <View className="stat-item">
+                    <Wallet size={16} color="#F59E0B" />
+                    <View className="stat-content">
+                      <Text className="stat-label">预算</Text>
+                      <Text className="stat-value budget">¥{order.budget}</Text>
+                    </View>
+                  </View>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <TrendingUp size={16} color="#10B981" />
+                    <View className="stat-content">
+                      <Text className="stat-label">预估收益</Text>
+                      <Text className="stat-value earnings">¥{Math.floor(order.budget * 0.8)}</Text>
+                    </View>
+                  </View>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <Clock size={16} color="#6366F1" />
+                    <View className="stat-content">
+                      <Text className="stat-label">交付周期</Text>
+                      <Text className="stat-value">3天</Text>
+                    </View>
+                  </View>
                 </View>
-                <View className="deadline-badge">
-                  <Clock size={12} color="#94A3B8" />
-                  <Text className="deadline-text">
-                    {new Date(order.deadline).toLocaleDateString()}
-                  </Text>
+
+                {/* 分身信息 */}
+                {order.avatar_name && (
+                  <View className="avatar-info">
+                    <View className="avatar-avatar">
+                      <Text className="avatar-initial">{order.avatar_name.charAt(0)}</Text>
+                    </View>
+                    <Text className="avatar-name">{order.avatar_name}</Text>
+                    <View className="avatar-level">
+                      <Text className="level-text">L{order.avatar_level}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* 操作按钮 */}
+                <View className="card-actions">
+                  <Button className="action-btn decline">
+                    <Text className="btn-text">婉拒</Text>
+                  </Button>
+                  <Button 
+                    className="action-btn accept"
+                    disabled={countdown <= 0}
+                  >
+                    <Text className="btn-text">{countdown <= 0 ? '已截止' : '立即接单'}</Text>
+                    {countdown > 0 && <ChevronRight size={16} color="#fff" />}
+                  </Button>
                 </View>
               </View>
-
-              {/* 订单标题 */}
-              <Text className="order-title">{order.title}</Text>
-              <Text className="order-desc">{order.description}</Text>
-
-              {/* 目标受众 */}
-              {order.target_audience && (
-                <View className="audience-tag">
-                  <Users size={12} color="#8B5CF6" />
-                  <Text className="audience-text">{order.target_audience}</Text>
-                </View>
-              )}
-
-              {/* 数据统计 */}
-              <View className="stats-row">
-                <View className="stat-item">
-                  <Wallet size={16} color="#F59E0B" />
-                  <View className="stat-content">
-                    <Text className="stat-label">预算</Text>
-                    <Text className="stat-value budget">¥{order.budget}</Text>
-                  </View>
-                </View>
-                <View className="stat-divider" />
-                <View className="stat-item">
-                  <TrendingUp size={16} color="#10B981" />
-                  <View className="stat-content">
-                    <Text className="stat-label">预估收益</Text>
-                    <Text className="stat-value earnings">¥{Math.floor(order.budget * 0.8)}</Text>
-                  </View>
-                </View>
-                <View className="stat-divider" />
-                <View className="stat-item">
-                  <Clock size={16} color="#6366F1" />
-                  <View className="stat-content">
-                    <Text className="stat-label">交付周期</Text>
-                    <Text className="stat-value">3天</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* 分身信息 */}
-              {order.avatar_name && (
-                <View className="avatar-info">
-                  <View className="avatar-avatar">
-                    <Text className="avatar-initial">{order.avatar_name.charAt(0)}</Text>
-                  </View>
-                  <Text className="avatar-name">{order.avatar_name}</Text>
-                  <View className="avatar-level">
-                    <Text className="level-text">L{order.avatar_level}</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* 操作按钮 */}
-              <View className="card-actions">
-                <Button className="action-btn decline">
-                  <Text className="btn-text">婉拒</Text>
-                </Button>
-                <Button className="action-btn accept">
-                  <Text className="btn-text">立即接单</Text>
-                  <ChevronRight size={16} color="#fff" />
-                </Button>
-              </View>
-            </View>
-          ))
+            )
+          })
         )}
         
         {/* 底部占位 */}
