@@ -115,13 +115,18 @@ export default function AvatarCreatePage() {
       console.log('[技能广场] res.statusCode:', res.statusCode)
       console.log('[技能广场] res.data:', res.data)
 
-      // ✅ 正确判断：检查 statusCode 和 data.skills
-      if (res.statusCode === 200 && res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
-        const allSkills = res.data.data.skills
+      // ✅ 支持两种格式：res.data.data.skills 或 res.data.data (直接数组)
+      let allSkills: any[] = []
+      if (res.statusCode === 200) {
+        if (res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
+          allSkills = res.data.data.skills
+        } else if (Array.isArray(res.data?.data)) {
+          allSkills = res.data.data
+        }
         console.log('[技能广场] 获取到技能总数:', allSkills.length)
 
-        // 过滤掉套件技能（短剧套件、个人IP套件等）
-        const filteredSkills = res.data.data.skills.filter((skill: any) => {
+        // 过滤掉套件技能
+        const filteredSkills = allSkills.filter((skill: any) => {
           const kitSkillToolNames = new Set([
             'generate_shortdrama_script',
             'generate_storyboard',
@@ -138,11 +143,6 @@ export default function AvatarCreatePage() {
         })
 
         console.log('[技能广场] 过滤后技能数量:', filteredSkills.length)
-        console.log('[技能广场] 前3个技能:', filteredSkills.slice(0, 3).map(s => ({
-          name: s.name,
-          tool_name: s.tool_name
-        })))
-
         setSkillsFromSquare(filteredSkills)
       } else {
         console.error('[技能广场] API返回异常:', res)

@@ -368,22 +368,21 @@ export default function SkillsSquare() {
       console.log('[SkillSquare] res.data:', res.data)
       console.log('[SkillSquare] res.statusCode:', res.statusCode)
 
-      // 直接使用已验证的方式：res.data.data.skills
-      if (res.statusCode === 200 && res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
-        const skillsList = res.data.data.skills
-        console.log('[SkillSquare] 技能列表长度:', skillsList.length)
-        console.log('[SkillSquare] 技能列表内容:', skillsList.slice(0, 2))
-        console.log('[SkillSquare] 即将调用 setSkills')
+      // 支持两种格式：res.data.data.skills 或 res.data.data (直接数组)
+      let skillsList: any[] = []
+      if (res.statusCode === 200) {
+        if (res.data?.data?.skills && Array.isArray(res.data.data.skills)) {
+          // 旧格式：{skills: [...]}
+          skillsList = res.data.data.skills
+        } else if (Array.isArray(res.data?.data)) {
+          // 新格式：直接是数组
+          skillsList = res.data.data
+        }
         setSkills(skillsList)
-        console.log('[SkillSquare] 已调用 setSkills，skillsList 长度:', skillsList.length)
+        console.log('[SkillSquare] 技能列表长度:', skillsList.length)
       } else {
-        console.log('[SkillSquare] 未获取到技能数据')
-        console.log('[SkillSquare] statusCode:', res.statusCode)
-        console.log('[SkillSquare] res.data.code:', res.data?.code)
-        console.log('[SkillSquare] res.data.data?.skills:', res.data?.data?.skills)
-        console.log('[SkillSquare] 即将调用 setSkills([])')
+        console.log('[SkillSquare] 请求失败')
         setSkills([])
-        console.log('[SkillSquare] 已调用 setSkills([])')
       }
     } catch (error) {
       console.error('[SkillSquare] 获取技能列表失败:', error)
