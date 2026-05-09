@@ -1,10 +1,10 @@
 export default defineAppConfig({
   pages: [
     // 主包：TabBar页面（第一个为默认页）
+    'pages/index/index',
     'pages/social/index',
     'pages/mind-chat/index',
     'pages/profile/index',
-    'pages/index/index',
     'pages/login/index',
     'pages/webview/index',
     'pages/publish-redirect/index',
@@ -81,11 +81,17 @@ export default defineAppConfig({
     },
   },
   tabBar: {
-    color: '#999999',
-    selectedColor: '#1890ff',
+    color: '#9CA3AF',
+    selectedColor: '#7B3FE4',
     backgroundColor: '#ffffff',
     borderStyle: 'black',
     list: [
+      {
+        pagePath: 'pages/index/index',
+        text: '首页',
+        iconPath: './assets/tabbar/home.png',
+        selectedIconPath: './assets/tabbar/home-active.png',
+      },
       {
         pagePath: 'pages/social/index',
         text: '广场',
