@@ -276,9 +276,28 @@
   width: fit-content;
 }
 
+.banner-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: #FFFFFF;
+  padding: 14rpx 28rpx;
+  border-radius: 30rpx;
+  width: fit-content;
+}
+
+.banner-btn.create {
+  padding: 14rpx 28rpx;
+}
+
 .banner-btn-text {
   font-size: 22rpx;
   font-weight: 600;
+  color: #6366F1;
+}
+
+.banner-btn-text.create {
   color: #6366F1;
 }
 
@@ -535,67 +554,6 @@
   height: 180rpx;
 }
 
-/* 无分身空状态 */
-.empty-minds-section {
-  width: 100%;
-  margin-bottom: 24rpx;
-}
-
-.empty-minds-card {
-  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
-  border-radius: 24rpx;
-  padding: 40rpx 32rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.empty-minds-icon {
-  width: 120rpx;
-  height: 120rpx;
-  background: #FFFFFF;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.15);
-}
-
-.empty-minds-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1E293B;
-  margin-bottom: 12rpx;
-}
-
-.empty-minds-desc {
-  font-size: 24rpx;
-  color: #64748B;
-  line-height: 1.6;
-  margin-bottom: 28rpx;
-  max-width: 500rpx;
-}
-
-.empty-minds-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
-  padding: 20rpx 40rpx;
-  border-radius: 50rpx;
-  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.3);
-}
-
-.empty-minds-btn-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-}
-
-/* 订单通知弹窗 */
 .order-modal-overlay {
   position: fixed;
   top: 0;

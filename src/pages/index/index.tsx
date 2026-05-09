@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp, Sparkles } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp } from 'lucide-react-taro'
 import './index.css'
 
 const Index: React.FC = () => {
   const [userName] = useState('张小明')
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang')
   const [translateX, setTranslateX] = useState(0)
-  const [mindClones] = useState(0) // 分身数量，0表示没有分身
+  const [mindClones] = useState(1) // 分身数量，0表示没有分身
   const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
   const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
   const scrollRef = useRef(0)
@@ -149,35 +149,31 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 无分身空状态提示 */}
-        {mindClones === 0 && (
-          <View className="empty-minds-section">
-            <View className="empty-minds-card">
-              <View className="empty-minds-icon">
-                <Sparkles size={60} color="#6366F1" />
-              </View>
-              <Text className="empty-minds-title">还没有创建分身</Text>
-              <Text className="empty-minds-desc">创建AI分身，让它帮你自动接单、生成内容、赚取收益</Text>
-              <View className="empty-minds-btn" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
-                <Plus size={32} color="#FFFFFF" />
-                <Text className="empty-minds-btn-text">立即创建分身</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* 推广Banner */}
+        {/* 推广Banner - 根据是否有分身显示不同内容 */}
         <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
           <View className="banner-bg" />
           <View className="banner-content">
-            <View className="banner-top">
-              <Text className="banner-title">分身托管收益翻倍</Text>
-              <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
-            </View>
-            <View className="banner-bottom">
-              <Text className="banner-btn-text">立即开启</Text>
-              <ChevronRight size={24} color="#6366F1" />
-            </View>
+            {mindClones > 0 ? (
+              // 有分身 - 显示托管收益翻倍
+              <>
+                <Text className="banner-title">分身托管收益翻倍</Text>
+                <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
+                <View className="banner-btn">
+                  <Text className="banner-btn-text">立即开启</Text>
+                  <ChevronRight size={24} color="#6366F1" />
+                </View>
+              </>
+            ) : (
+              // 无分身 - 显示创建分身
+              <>
+                <Text className="banner-title">创建你的第一个分身</Text>
+                <Text className="banner-desc">AI智能分身，自动接单赚收益</Text>
+                <View className="banner-btn create">
+                  <Plus size={28} color="#6366F1" />
+                  <Text className="banner-btn-text create">立即创建</Text>
+                </View>
+              </>
+            )}
           </View>
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
