@@ -206,10 +206,45 @@ const AUTO_POST_SKILL = {
   }
 }
 
-// 根据 tool_name 获取图标
-const getSkillIcon = (toolName?: string): string => {
+// 根据 tool_name 或 icon_url 获取图标
+const getSkillIcon = (toolName?: string, iconUrl?: string): string => {
+  // 如果有 icon_url 且是 emoji，直接返回
+  if (iconUrl && iconUrl.length <= 4 && /^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(iconUrl)) {
+    return iconUrl
+  }
+  // 如果 icon_url 是 URL，使用默认图标
+  if (iconUrl && iconUrl.startsWith('http')) {
+    // 从 URL 中尝试提取可能的图标
+    const iconMap: Record<string, string> = {
+      'marketing': '📱',
+      'content': '📝',
+      'video': '🎬',
+      'growth': '💰',
+      'service': '💬',
+      'social': '🐦',
+      'knowledge': '💡',
+      'community': '👥',
+    }
+    const urlLower = iconUrl.toLowerCase()
+    for (const [key, icon] of Object.entries(iconMap)) {
+      if (urlLower.includes(key)) return icon
+    }
+  }
+  
   const iconMap: Record<string, string> = {
-    // 短剧相关
+    'wechat_marketing': '📱',
+    'xiaohongshu_note': '📔',
+    'short_video_script': '🎬',
+    'private_traffic': '💰',
+    'customer_service': '💬',
+    'moments_copywriting': '✍️',
+    'douyin_script': '🎥',
+    'weibo_post': '🐦',
+    'zhihu_answer': '💡',
+    'write_wechat_mp_article': '📰',
+    'food_review_reply': '🍜',
+    'community_chat': '👥',
+    'auto_post_to_home': '📝',
     'generate_shortdrama_script': '📝',
     'generate_storyboard': '🎬',
     'produce_shortdrama': '🎥',
@@ -218,43 +253,28 @@ const getSkillIcon = (toolName?: string): string => {
     'edit_shortdrama_video': '✂️',
     'generate_subtitle': '💬',
     'recommend_bgm': '🎵',
-    // 自动发帖
-    'auto_post_to_home': '📝',
-    // 账号管理
     'list_avatar_accounts': '🔗',
-    // 内容创作
     'write_article': '✍️',
     'write_wechat_mp_article': '📰',
-    'write_xiaohongshu_note': '📝',
     'generate_image': '🖼️',
     'generate_video': '🎬',
-    // 平台发布
     'publish_wechat_mp': '💬',
     'publish_xiaohongshu': '📱',
     'publish_bilibili': '📺',
     'publish_weibo': '🌐',
     'publish_douyin': '🎵',
     'publish_wechat_video': '📱',
-    // 其他
     'default': '🎯'
   }
   return iconMap[toolName || ''] || iconMap['default']
 }
 
-// 🔴 过滤掉非公众号发布技能
-// 只保留公众号发布相关技能（publish_ 开头的技能只保留公众号发布）
+// 🔴 过滤技能 - 宽松模式，所有技能都显示
 const filterSkills = (skills: Skill[]): Skill[] => {
-  const allowedToolNames = [
-    'publish_wechat_mp',      // 发布公众号
-    'write_wechat_mp_article'  // 写公众号文章
-  ]
+  // 移除严格的过滤逻辑，显示所有技能
   return skills.filter(skill => {
-    // 如果不是 publish_ 开头的技能，正常显示
-    if (!skill.tool_name || !skill.tool_name.startsWith('publish_')) {
-      return true
-    }
-    // publish_ 开头的技能只保留公众号相关的
-    return allowedToolNames.includes(skill.tool_name)
+    // 只要有 id 和 name 就显示
+    return skill.id && skill.name
   })
 }
 
@@ -940,7 +960,7 @@ export default function SkillsSquare() {
                   }}
                 >
                   <View className="vertical-icon-area">
-                    <Text className="vertical-icon">{getSkillIcon(skill.tool_name)}</Text>
+                    <Text className="vertical-icon">{getSkillIcon(skill.tool_name, skill.icon_url)}</Text>
                     {owned && (
                       <View className="vertical-owned-badge">
                         <Check size={10} color="#fff" />
@@ -990,7 +1010,7 @@ export default function SkillsSquare() {
             {selectedSkill && (
               <View className="dialog-content">
                 <View className="skill-preview">
-                  <Text className="preview-icon">{getSkillIcon(selectedSkill.tool_name)}</Text>
+                  <Text className="preview-icon">{getSkillIcon(selectedSkill.tool_name, selectedSkill.icon_url)}</Text>
                   <View className="preview-info">
                     <Text className="preview-name">{selectedSkill.name}</Text>
                     <Text className="preview-desc">{selectedSkill.description}</Text>
