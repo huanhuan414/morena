@@ -208,7 +208,7 @@ const MindChat: React.FC = () => {
             className="add-button"
             onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
           >
-            <Plus size={18} />
+            <Plus size={18} color="#ffffff" />
             <Text className="add-button-text">新建</Text>
           </View>
         )}
