@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { useState, useEffect, useRef } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { 
@@ -38,28 +37,9 @@ const activities = [
 ]
 
 export default function Index() {
-  const [translateX, setTranslateX] = useState(0)
-  const translateXRef = useRef(0)
+  // 复制数据用于无缝滚动
+  const duplicatedActivities = [...activities, ...activities, ...activities]
   
-  // 自动滚动效果 - 从右到左
-  useEffect(() => {
-    const cardWidth = 280 // 每个卡片宽度 + 间距
-    const totalWidth = activities.length * cardWidth
-    
-    const timer = setInterval(() => {
-      translateXRef.current -= 2
-      setTranslateX(translateXRef.current)
-      
-      // 当滚动到一半时，重置位置实现无缝循环
-      if (Math.abs(translateXRef.current) >= totalWidth) {
-        translateXRef.current = 0
-        setTranslateX(0)
-      }
-    }, 16)
-
-    return () => clearInterval(timer)
-  }, [])
-
   const goToPage = (path: string) => {
     Taro.navigateTo({ url: path })
   }
@@ -186,11 +166,8 @@ export default function Index() {
             <View className="carousel-gradient carousel-gradient-right" />
             
             {/* 滚动内容 - 从右到左滚动 */}
-            <View 
-              className="activity-carousel-track"
-              style={{ transform: `translateX(${translateX}rpx)` }}
-            >
-              {activities.map((item, index) => (
+            <View className="activity-carousel-track">
+              {duplicatedActivities.map((item, index) => (
                 <View key={`${item.name}-${index}`} className="activity-card">
                   <View className="activity-card-header">
                     <Image className="activity-avatar" src={item.avatar} />

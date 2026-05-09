@@ -426,6 +426,12 @@
   display: flex;
   gap: 20rpx;
   will-change: transform;
+  animation: marquee2 20s linear infinite;
+}
+
+@keyframes marquee2 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .activity-card {
