@@ -8,7 +8,7 @@
 /* 顶部背景 */
 .page-header {
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
-  padding: env(safe-area-inset-top) 0 24rpx;
+  padding: 0 0 24rpx;
   border-radius: 0 0 40rpx 40rpx;
   position: relative;
   overflow: hidden;
@@ -155,12 +155,13 @@
 
 /* 平台标签 */
 .platform-badge {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
-  padding: 6rpx 16rpx;
+  padding: 8rpx 20rpx;
   border-radius: 100rpx;
-  gap: 6rpx;
+  gap: 8rpx;
+  flex-shrink: 0;
 }
 
 .platform-badge.weibo {
@@ -168,19 +169,19 @@
 }
 
 .platform-badge.douyin {
-  background: #F0FFF0;
+  background: #E8FFF5;
 }
 
 .platform-badge.xiaohongshu {
-  background: #FFF0F5;
+  background: #FFEEF0;
 }
 
 .platform-badge.wechat_mp {
-  background: #F0F8FF;
+  background: #E8F4FF;
 }
 
 .platform-badge.weixingzh {
-  background: #F0FFF0;
+  background: #E8FFF5;
 }
 
 .platform-badge.bilibili {
@@ -188,26 +189,33 @@
 }
 
 .platform-badge.kuaishou {
-  background: #FFF8F0;
+  background: #FFF5EE;
 }
 
 .platform-icon {
-  width: 28rpx;
-  height: 28rpx;
+  width: 32rpx;
+  height: 32rpx;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .platform-name {
-  font-size: 22rpx;
+  font-size: 24rpx;
+  font-weight: 500;
   color: #64748B;
+  white-space: nowrap;
 }
 
 /* 状态标签 */
 .status-badge {
-  padding: 8rpx 16rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
   border-radius: 100rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .status-badge.pending {
@@ -232,21 +240,24 @@
 
 /* 预估收益 */
 .earnings-badge {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
-  padding: 8rpx 16rpx;
+  padding: 8rpx 20rpx;
   background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
   border-radius: 100rpx;
-  gap: 6rpx;
+  gap: 8rpx;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .earnings-icon {
   color: #D97706;
+  flex-shrink: 0;
 }
 
 .earnings-text {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #92400E;
   font-weight: 600;
 }
@@ -370,9 +381,12 @@
 }
 
 .tag-item {
-  padding: 8rpx 16rpx;
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
   background: #EEF2FF;
   border-radius: 100rpx;
+  flex-shrink: 0;
 }
 
 .tag-text {
