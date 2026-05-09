@@ -8,7 +8,7 @@ import {
   Image as ImageIcon,
   Cpu,
   FileText,
-  MoreVertical,
+  Ellipsis,
   Users,
   Clock,
   TrendingUp,
