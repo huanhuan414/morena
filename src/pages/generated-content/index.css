@@ -8,7 +8,7 @@
 /* 顶部背景 */
 .page-header {
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
-  padding: 16rpx 0 32rpx;
+  padding: env(safe-area-inset-top) 0 24rpx;
   border-radius: 0 0 40rpx 40rpx;
   position: relative;
   overflow: hidden;
@@ -72,8 +72,8 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  margin: 32rpx 48rpx 0;
-  padding: 24rpx;
+  margin: 24rpx 48rpx 0;
+  padding: 20rpx;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 24rpx;
   backdrop-filter: blur(10px);
@@ -104,22 +104,21 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* 类型筛选 */
-.type-filter {
+/* 状态筛选 */
+.status-filter {
   padding: 24rpx 0 16rpx;
   background: #F8FAFC;
 }
 
-.type-scroll {
+.status-scroll {
   padding: 0 24rpx;
   white-space: nowrap;
 }
 
-.type-tag {
+.status-tag {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 8rpx;
   padding: 16rpx 28rpx;
   margin-right: 16rpx;
   background: #FFFFFF;
@@ -128,61 +127,24 @@
   white-space: nowrap;
 }
 
-.type-tag.active {
+.status-tag.active {
   background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
   border-color: transparent;
 }
 
-.type-tag-text {
+.status-tag-text {
   font-size: 26rpx;
   color: #64748B;
 }
 
-.type-tag.active .type-tag-text {
+.status-tag.active .status-tag-text {
   color: #FFFFFF;
   font-weight: 600;
 }
 
-/* 平台筛选 */
-.platform-filter {
-  padding: 0 0 16rpx;
-  background: #F8FAFC;
-}
-
-.platform-scroll {
-  padding: 0 24rpx;
-  white-space: nowrap;
-}
-
-.platform-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 12rpx 24rpx;
-  margin-right: 16rpx;
-  background: #FFFFFF;
-  border: 2rpx solid #E2E8F0;
-  border-radius: 100rpx;
-  white-space: nowrap;
-}
-
-.platform-tag.active {
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-  border-color: transparent;
-}
-
-.platform-tag-text {
-  font-size: 24rpx;
-  color: #64748B;
-}
-
-.platform-tag.active .platform-tag-text {
-  color: #FFFFFF;
-  font-weight: 500;
-}
-
 /* 内容列表 */
 .content-list {
-  height: calc(100vh - 480rpx - env(safe-area-inset-bottom));
+  height: calc(100vh - 400rpx - env(safe-area-inset-bottom));
   padding: 0 24rpx;
 }
 
@@ -254,15 +216,31 @@
   margin-bottom: 20rpx;
 }
 
-.platform-badge {
+.status-badge {
   padding: 8rpx 16rpx;
   border-radius: 100rpx;
-  border: 2rpx solid;
-}
-
-.platform-badge-text {
   font-size: 22rpx;
   font-weight: 500;
+}
+
+.status-badge.pending {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.status-badge.feedback {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.status-badge.review {
+  background: #E0E7FF;
+  color: #6366F1;
+}
+
+.status-badge.completed {
+  background: #D1FAE5;
+  color: #059669;
 }
 
 .type-badge {

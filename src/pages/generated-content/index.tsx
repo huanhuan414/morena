@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import * as Network from '@/network'
-import { Image as ImageIcon, Video, FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis } from 'lucide-react-taro'
+import { FileText, Calendar, Eye, Heart, MessageCircle, Share2, Copy, Check, Play, Ellipsis } from 'lucide-react-taro'
 import './index.css'
 
-// 内容类型
-type ContentType = 'all' | 'text-image' | 'image' | 'video'
+// 内容状态
+type ContentStatus = 'all' | 'pending' | 'feedback' | 'review' | 'completed'
 
 // 内容数据接口
 interface GeneratedContent {
@@ -27,21 +27,22 @@ interface GeneratedContent {
   status: string
 }
 
-// 平台配置
-const PLATFORMS = [
-  { key: 'xiaohongshu', name: '小红书', color: '#FF2442' },
-  { key: 'douyin', name: '抖音', color: '#00F2EA' },
-  { key: 'wechat_mp', name: '公众号', color: '#07C160' },
-  { key: 'weibo', name: '微博', color: '#FF8200' },
+// 内容状态配置
+const CONTENT_STATUSES = [
+  { key: 'all', name: '全部' },
+  { key: 'pending', name: '待发布' },
+  { key: 'feedback', name: '待反馈' },
+  { key: 'review', name: '待验收' },
+  { key: 'completed', name: '结算完成' },
 ]
 
-// 类型配置
-const CONTENT_TYPES = [
-  { key: 'all', name: '全部', icon: FileText },
-  { key: 'text-image', name: '图文', icon: ImageIcon },
-  { key: 'image', name: '纯图', icon: ImageIcon },
-  { key: 'video', name: '视频', icon: Video },
-]
+// 状态配置
+const STATUS_CONFIG = {
+  pending: { label: '待发布', bg: '#FEF3C7', color: '#D97706' },
+  feedback: { label: '待反馈', bg: '#DBEAFE', color: '#2563EB' },
+  review: { label: '待验收', bg: '#E0E7FF', color: '#6366F1' },
+  completed: { label: '结算完成', bg: '#D1FAE5', color: '#059669' },
+}
 
 // 模拟数据
 const MOCK_CONTENTS: GeneratedContent[] = [
@@ -55,7 +56,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     tags: ['护肤', '种草', '好物分享'],
     stats: { views: 12580, likes: 892, comments: 156, shares: 45 },
     created_at: '2024-03-10',
-    status: 'published'
+    status: 'pending'
   },
   {
     id: '2',
@@ -67,7 +68,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     tags: ['数码', '测评', '开箱'],
     stats: { views: 34520, likes: 2100, comments: 320, shares: 180 },
     created_at: '2024-03-08',
-    status: 'published'
+    status: 'feedback'
   },
   {
     id: '3',
@@ -79,7 +80,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     tags: ['美食', '探店', '推荐'],
     stats: { views: 8960, likes: 560, comments: 89, shares: 32 },
     created_at: '2024-03-05',
-    status: 'published'
+    status: 'review'
   },
   {
     id: '4',
@@ -91,7 +92,7 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     tags: ['职场', '成长', '干货'],
     stats: { views: 4520, likes: 320, comments: 67, shares: 28 },
     created_at: '2024-03-03',
-    status: 'published'
+    status: 'completed'
   },
   {
     id: '5',
@@ -103,15 +104,14 @@ const MOCK_CONTENTS: GeneratedContent[] = [
     tags: ['穿搭', '时尚', '搭配'],
     stats: { views: 15680, likes: 980, comments: 145, shares: 67 },
     created_at: '2024-03-01',
-    status: 'published'
+    status: 'completed'
   }
 ]
 
 export default function GeneratedContentPage() {
   const [contents, setContents] = useState<GeneratedContent[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedType, setSelectedType] = useState<ContentType>('all')
-  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState<ContentStatus>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -139,14 +139,13 @@ export default function GeneratedContentPage() {
 
   // 筛选内容
   const filteredContents = contents.filter(content => {
-    const typeMatch = selectedType === 'all' || content.type === selectedType
-    const platformMatch = !selectedPlatform || content.platform === selectedPlatform
-    return typeMatch && platformMatch
+    const statusMatch = selectedStatus === 'all' || content.status === selectedStatus
+    return statusMatch
   })
 
-  // 获取平台信息
-  const getPlatformInfo = (key: string) => {
-    return PLATFORMS.find(p => p.key === key) || { name: key, color: '#6366F1' }
+  // 获取状态信息
+  const getStatusInfo = (status: string) => {
+    return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || { label: status, bg: '#F1F5F9', color: '#64748B' }
   }
 
   // 格式化数字
@@ -184,7 +183,7 @@ export default function GeneratedContentPage() {
         {/* 页面标题 */}
         <View className="header-title-area">
           <Text className="header-title">生成内容</Text>
-          <Text className="header-subtitle">记录每一次创作 · 图文 · 视频</Text>
+          <Text className="header-subtitle">记录每一次创作</Text>
         </View>
 
         {/* 内容统计 */}
@@ -195,8 +194,8 @@ export default function GeneratedContentPage() {
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
-            <Text className="stat-number">{contents.filter(c => c.status === 'published').length}</Text>
-            <Text className="stat-label">已发布</Text>
+            <Text className="stat-number">{contents.filter(c => c.status === 'completed').length}</Text>
+            <Text className="stat-label">已完成</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
@@ -208,52 +207,16 @@ export default function GeneratedContentPage() {
         </View>
       </View>
 
-      {/* 类型筛选 */}
-      <View className="type-filter">
-        <ScrollView className="type-scroll" scrollX>
-          {CONTENT_TYPES.map((type) => {
-            const IconComponent = type.icon
-            return (
-              <View
-                key={type.key}
-                className={`type-tag ${selectedType === type.key ? 'active' : ''}`}
-                onClick={() => setSelectedType(type.key as ContentType)}
-              >
-                <IconComponent size={16} color={selectedType === type.key ? '#6366F1' : '#64748B'} />
-                <Text className="type-tag-text">{type.name}</Text>
-              </View>
-            )
-          })}
-        </ScrollView>
-      </View>
-
-      {/* 平台筛选 */}
-      <View className="platform-filter">
-        <ScrollView className="platform-scroll" scrollX>
-          <View
-            className={`platform-tag ${selectedPlatform === null ? 'active' : ''}`}
-            onClick={() => setSelectedPlatform(null)}
-          >
-            <Text className="platform-tag-text">全平台</Text>
-          </View>
-          {PLATFORMS.map((platform) => (
+      {/* 内容状态筛选 */}
+      <View className="status-filter">
+        <ScrollView className="status-scroll" scrollX>
+          {CONTENT_STATUSES.map((status) => (
             <View
-              key={platform.key}
-              className={`platform-tag ${selectedPlatform === platform.key ? 'active' : ''}`}
-              onClick={() => setSelectedPlatform(
-                selectedPlatform === platform.key ? null : platform.key
-              )}
-              style={selectedPlatform === platform.key ? {
-                background: `${platform.color}15`,
-                borderColor: platform.color
-              } : {}}
+              key={status.key}
+              className={`status-tag ${selectedStatus === status.key ? 'active' : ''}`}
+              onClick={() => setSelectedStatus(status.key as ContentStatus)}
             >
-              <Text 
-                className="platform-tag-text" 
-                style={selectedPlatform === platform.key ? { color: platform.color } : {}}
-              >
-                {platform.name}
-              </Text>
+              <Text className="status-tag-text">{status.name}</Text>
             </View>
           ))}
         </ScrollView>
@@ -274,19 +237,17 @@ export default function GeneratedContentPage() {
           </View>
         ) : (
           filteredContents.map((content) => {
-            const platform = getPlatformInfo(content.platform)
+            const statusInfo = getStatusInfo(content.status)
             return (
               <View key={content.id} className="content-card">
                 {/* 卡片头部 */}
                 <View className="card-header">
-                  <View className="platform-badge" style={{
-                    background: `${platform.color}15`,
-                    borderColor: `${platform.color}30`
+                  <View className="status-badge" style={{
+                    background: statusInfo.bg,
+                    color: statusInfo.color
                   }}
                   >
-                    <Text className="platform-badge-text" style={{ color: platform.color }}>
-                      {platform.name}
-                    </Text>
+                    <Text style={{ fontSize: '22rpx', fontWeight: 500 }}>{statusInfo.label}</Text>
                   </View>
                   <View className="type-badge">
                     <Text className="type-badge-text">
