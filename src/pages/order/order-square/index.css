@@ -3,14 +3,19 @@
 /* 页面容器 */
 .order-square-page {
   min-height: 100vh;
-  background: #F8F7FC;
+  background: #F8FAFC;
   display: flex;
   flex-direction: column;
 }
 
+/* 覆盖全局 page-header 的 padding-top */
+.order-square-page .page-header {
+  padding-top: 0 !important;
+}
+
 /* 顶部背景 */
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #9B6EF3 100%);
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
   padding: 16rpx 0 24rpx;
   position: relative;
   overflow: hidden;
@@ -109,7 +114,7 @@
 }
 
 .platform-tag.active .platform-tag-text {
-  color: #667eea;
+  color: #6366F1;
 }
 
 /* 筛选栏 */
@@ -121,7 +126,7 @@
   margin: -16rpx 24rpx 16rpx;
   background: #fff;
   border-radius: 20rpx;
-  box-shadow: 0 4rpx 20rpx rgba(123, 63, 228, 0.08);
+  box-shadow: 0 4rpx 20rpx rgba(99, 102, 241, 0.08);
   position: relative;
   z-index: 2;
   margin-top: 0;
@@ -137,7 +142,7 @@
 }
 
 .filter-item.active .filter-text {
-  color: #7B3FE4;
+  color: #6366F1;
   font-weight: 600;
 }
 
@@ -171,7 +176,7 @@
   background: #fff;
   border-radius: 24rpx;
   padding: 28rpx;
-  box-shadow: 0 4rpx 20rpx rgba(123, 63, 228, 0.08);
+  box-shadow: 0 4rpx 20rpx rgba(99, 102, 241, 0.06);
   position: relative;
   overflow: hidden;
 }
@@ -240,13 +245,13 @@
 
 .req-tag {
   padding: 6rpx 16rpx;
-  background: #F3E8FF;
+  background: #EEF2FF;
   border-radius: 8rpx;
 }
 
 .req-tag-text {
   font-size: 22rpx;
-  color: #7B3FE4;
+  color: #6366F1;
 }
 
 /* 数据统计行 */
@@ -333,7 +338,7 @@
 
 /* 接单按钮 */
 .accept-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
   border: none !important;
   padding: 12rpx 32rpx !important;
   border-radius: 32rpx !important;
@@ -361,8 +366,8 @@
 .loading-spinner {
   width: 48rpx;
   height: 48rpx;
-  border: 4rpx solid #F3E8FF;
-  border-top-color: #7B3FE4;
+  border: 4rpx solid #EEF2FF;
+  border-top-color: #6366F1;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
