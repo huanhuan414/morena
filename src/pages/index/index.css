@@ -285,13 +285,14 @@
 }
 
 .quick-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: space-between;
 }
 
 .action-item {
-  width: 100%;
+  width: 105px;
   height: 100px;
   display: flex;
   flex-direction: column;
@@ -301,7 +302,7 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid #E5E7EB;
 }
 
 .action-icon-wrapper {
@@ -321,10 +322,10 @@
 
 /* 实时动态 */
 .activity-section {
-  background: #F9FAFB;
+  background: #fff;
   border-radius: 16px;
   padding: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid #E5E7EB;
 }
 
 .activity-header {
@@ -337,14 +338,43 @@
 .activity-indicator {
   width: 12px;
   height: 4px;
-  background: #4F46E5;
+  background: linear-gradient(90deg, #7B3FE4, #A855F7);
   border-radius: 2px;
 }
 
 .activity-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   color: #111827;
+  flex: 1;
+}
+
+.activity-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #FEF3C7;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #F59E0B;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.activity-badge-text {
+  font-size: 10px;
+  color: #D97706;
+  font-weight: 600;
 }
 
 .activity-list {
@@ -355,37 +385,72 @@
 
 .activity-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+  padding: 10px;
+  background: #F9FAFB;
+  border-radius: 12px;
 }
 
-.activity-avatar-placeholder {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #E5E7EB;
+.activity-left {
   flex-shrink: 0;
+}
+
+.activity-avatar-wrapper {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.activity-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.activity-type-icon {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
 }
 
 .activity-content {
   flex: 1;
+  min-width: 0;
+}
+
+.activity-content-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
 }
 
-.activity-title-placeholder {
-  width: 96px;
-  height: 8px;
-  background: #E5E7EB;
-  border-radius: 4px;
+.activity-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
 }
 
-.activity-desc-placeholder {
-  width: 100%;
-  height: 6px;
-  background: #F3F4F6;
-  border-radius: 3px;
+.activity-time {
+  font-size: 10px;
+  color: #9CA3AF;
+  font-weight: 500;
+}
+
+.activity-desc {
+  font-size: 11px;
+  color: #6B7280;
+  line-height: 1.4;
 }
 
 /* 底部TabBar */

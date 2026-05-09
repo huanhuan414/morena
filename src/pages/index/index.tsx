@@ -37,11 +37,63 @@ const Index: React.FC = () => {
 
   const quickActions = [
     { label: '创建分身', icon: Sparkles, path: '/pages/avatar/avatar-create/index', bgColor: 'indigo' },
-    { label: '订单广场', icon: LayoutGrid, path: '/pages/orders/index', bgColor: 'orange' },
-    { label: 'AI做内容', icon: Cpu, path: '/pages/ai-content/index', bgColor: 'violet' },
+    { label: '订单广场', icon: LayoutGrid, path: '/pages/order/order-list/index', bgColor: 'orange' },
+    { label: 'AI做内容', icon: Cpu, path: '/pages/skills-square/index', bgColor: 'violet' },
     { label: '技能中心', icon: Rocket, path: '/pages/skills-square/index', bgColor: 'sky' },
-    { label: '素材库', icon: Library, path: '/pages/assets/index', bgColor: 'emerald' },
-    { label: '自动分发', icon: Share2, path: '/pages/distribution/index', bgColor: 'pink' },
+    { label: '素材库', icon: Library, path: '/pages/generated-content/index', bgColor: 'emerald' },
+    { label: '自动分发', icon: Share2, path: '/pages/order/order-publish-guide/index', bgColor: 'pink' },
+  ];
+
+  // 实时动态数据
+  const activities = [
+    {
+      id: 1,
+      type: 'order_received',
+      avatar: 'https://via.placeholder.com/40/7B3FE4/ffffff?text=小美',
+      avatarName: '小美',
+      title: '新订单接单成功',
+      desc: '恭喜！你的"知识博主小美"分身成功接单，获得收益 ¥28.00',
+      time: '刚刚',
+      icon: ShoppingBag,
+      iconColor: '#F59E0B',
+      bgColor: 'bg-amber-50'
+    },
+    {
+      id: 2,
+      type: 'earning',
+      avatar: 'https://via.placeholder.com/40/10B981/ffffff?text=小明',
+      avatarName: '小明',
+      title: '收益到账提醒',
+      desc: '你的"职场达人小明"分身完成内容分发，收益 +¥15.50',
+      time: '5分钟前',
+      icon: Coins,
+      iconColor: '#10B981',
+      bgColor: 'bg-emerald-50'
+    },
+    {
+      id: 3,
+      type: 'order_pending',
+      avatar: 'https://via.placeholder.com/40/8B5CF6/ffffff?text=小红',
+      avatarName: '小红',
+      title: '待处理订单',
+      desc: '"泛娱乐小红"有1个新订单等待确认，金额 ¥35.00',
+      time: '10分钟前',
+      icon: FileText,
+      iconColor: '#8B5CF6',
+      bgColor: 'bg-violet-50'
+    },
+    {
+      id: 4,
+      type: 'content_generated',
+      avatar: 'https://via.placeholder.com/40/EC4899/ffffff?text=小雪',
+      avatarName: '小雪',
+      title: '内容生成完成',
+      desc: 'AI已为"生活博主小雪"自动生成2篇种草笔记',
+      time: '15分钟前',
+      icon: Rocket,
+      iconColor: '#EC4899',
+      bgColor: 'bg-pink-50'
+    },
   ];
 
   const getBgClass = (color: string) => {
@@ -196,14 +248,44 @@ const Index: React.FC = () => {
             <View className="activity-header">
               <View className="activity-indicator"></View>
               <Text className="activity-title">实时动态</Text>
+              <View className="activity-badge">
+                <View className="pulse-dot"></View>
+                <Text className="activity-badge-text">实时</Text>
+              </View>
             </View>
             <View className="activity-list">
-              {[1, 2].map((i) => (
-                <View key={i} className="activity-item">
-                  <View className="activity-avatar-placeholder"></View>
+              {activities.map((activity) => (
+                <View 
+                  key={activity.id} 
+                  className="activity-item"
+                  onClick={() => {
+                    if (activity.type === 'order_received' || activity.type === 'order_pending') {
+                      navigateTo('/pages/order/order-list/index')
+                    } else if (activity.type === 'earning') {
+                      navigateTo('/pages/earning-center/index')
+                    } else {
+                      navigateTo('/pages/generated-content/index')
+                    }
+                  }}
+                >
+                  <View className="activity-left">
+                    <View className="activity-avatar-wrapper">
+                      <Image 
+                        className="activity-avatar"
+                        src={activity.avatar}
+                        mode="aspectFill"
+                      />
+                      <View className="activity-type-icon" style={{ backgroundColor: activity.bgColor }}>
+                        <activity.icon size={12} color={activity.iconColor} />
+                      </View>
+                    </View>
+                  </View>
                   <View className="activity-content">
-                    <View className="activity-title-placeholder"></View>
-                    <View className="activity-desc-placeholder"></View>
+                    <View className="activity-content-header">
+                      <Text className="activity-item-title">{activity.title}</Text>
+                      <Text className="activity-time">{activity.time}</Text>
+                    </View>
+                    <Text className="activity-desc">{activity.desc}</Text>
                   </View>
                 </View>
               ))}
