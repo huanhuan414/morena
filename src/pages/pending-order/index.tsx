@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
-import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight, Info, Zap } from 'lucide-react-taro'
+import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight, Info, Zap, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 // 待接订单数据接口
@@ -236,14 +237,17 @@ export default function PendingOrderListPage() {
         </View>
         
         {/* 页面标题 */}
-        <View className="header-title-area">
-          <Text className="header-title">待接订单</Text>
-          <Text className="header-subtitle">智能匹配 · AI辅助 · 自动生成</Text>
+        <View className="header-title-row">
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="header-title-area">
+            <Text className="header-title">待接订单</Text>
+            <Text className="header-subtitle">智能匹配 · AI辅助 · 自动生成</Text>
+          </View>
         </View>
 
-        {/* 自动接单开关 */}
       </View>
-
       {/* 平台筛选 */}
       <View className="platform-filter">
         <ScrollView className="platform-scroll" scrollX>
@@ -407,6 +411,7 @@ export default function PendingOrderListPage() {
                   </Button>
                   <Button 
                     className="action-btn accept"
+                    onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
                     disabled={countdown <= 0}
                   >
                     <Text className="btn-text">{countdown <= 0 ? '已截止' : '立即接单'}</Text>
