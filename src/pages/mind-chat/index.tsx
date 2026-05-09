@@ -163,12 +163,15 @@ const MindChat: React.FC = () => {
 
   return (
     <View className="mind-chat-page">
-      {/* 顶部渐变背景 */}
-      <View className="page-header" />
-
-      {/* Tab和搜索区域 - 白色背景 */}
-      <View className="tab-search-area">
-        {/* Tab切换 */}
+      {/* 顶部渐变背景 - 一体化设计 */}
+      <View className="page-header">
+        {/* 装饰元素 */}
+        <View className="header-decoration">
+          <View className="decoration-circle circle-1" />
+          <View className="decoration-circle circle-2" />
+        </View>
+        
+        {/* Tab切换 - 无图标 */}
         <View className="header-tabs">
           <View
             className={cn('header-tab', activeTab === 'my' && 'active')}
