@@ -13,7 +13,7 @@
 /* 顶部背景 */
 .page-header {
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
-  padding: 16rpx 0 32rpx;
+  padding: env(safe-area-inset-top) 0 32rpx;
   border-radius: 0 0 40rpx 40rpx;
   position: relative;
   overflow: hidden;

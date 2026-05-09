@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight, Info, Zap } from 'lucide-react-taro'
 import './index.css'
@@ -145,7 +144,6 @@ const formatCountdown = (seconds: number): string => {
 export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
-  const [autoAccept, setAutoAccept] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
 
@@ -244,16 +242,6 @@ export default function PendingOrderListPage() {
         </View>
 
         {/* 自动接单开关 */}
-        <View className="auto-accept-bar">
-          <View className="auto-accept-left">
-            <Clock size={16} color="#6366F1" />
-            <Text className="auto-accept-text">自动接单</Text>
-          </View>
-          <Switch
-            checked={autoAccept}
-            onCheckedChange={(checked) => setAutoAccept(checked)}
-          />
-        </View>
       </View>
 
       {/* 平台筛选 */}
