@@ -4,6 +4,7 @@ import { View, Text } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { ChevronLeft, Upload, Mic, Sparkles } from 'lucide-react-taro'
 import Taro from '@tarojs/taro'
+import { Network } from '@/network'
 import './index.css'
 
 // 步骤标签
@@ -132,15 +133,42 @@ export default function AvatarCreate() {
 
   // 提交创建
   const submitCreate = async () => {
+    // 验证必填项
+    if (!formData.name.trim()) {
+      Taro.showToast({ title: '请输入分身昵称', icon: 'none' })
+      return
+    }
+    
     setIsLoading(true)
     Taro.showLoading({ title: '生成分身中...' })
-    setTimeout(() => {
+    
+    try {
+      // 调用后端API创建分身
+      const result = await Network.request({
+        url: '/api/avatars',
+        method: 'POST',
+        data: {
+          name: formData.name.trim(),
+          tags: formData.tags,
+          voice: formData.voice || '温柔女声',
+          abilities: formData.abilities,
+          status: 'online'
+        }
+      })
+      
+      console.log('创建分身结果:', result)
+      
       Taro.hideLoading()
       Taro.showToast({ title: '分身创建成功', icon: 'success' })
       setTimeout(() => {
         Taro.switchTab({ url: '/pages/mind-chat/index' })
       }, 1500)
-    }, 1500)
+    } catch (error) {
+      console.error('创建分身失败:', error)
+      Taro.hideLoading()
+      Taro.showToast({ title: '创建失败，请重试', icon: 'none' })
+      setIsLoading(false)
+    }
   }
 
   return (

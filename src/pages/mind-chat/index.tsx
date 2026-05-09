@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import {
@@ -9,17 +9,19 @@ import {
   FileText,
   Clock,
   Zap,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { Network } from '@/network'
 import './index.css'
 
 type CloneType = 'my' | 'square'
 
-interface MyClone {
+interface Avatar {
   id: number
   name: string
   role: string
@@ -31,131 +33,159 @@ interface MyClone {
   type: 'my'
   posts: number
   followers?: number
-}
-
-interface SquareClone {
-  id: number
-  name: string
-  role: string
-  gender: string
-  age: string
-  tags: string[]
-  posts: number
-  followers: number
-  image: string
-  type: 'square'
-  isFollowing: boolean
-  status: '在线' | '忙碌' | '离线'
-  task: string
-  hosting: boolean
+  voice_id?: string
+  personality?: string
+  skills?: string
+  created_at?: string
 }
 
 const MindChat: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CloneType>('my')
   const [searchValue, setSearchValue] = useState('')
+  const [myClones, setMyClones] = useState<Avatar[]>([])
+  const [squareClones, setSquareClones] = useState<Avatar[]>([])
+  const [loading, setLoading] = useState(true)
+  const [hostingToggles, setHostingToggles] = useState<Record<number, boolean>>({})
 
-  const myClones: MyClone[] = [
-    {
-      id: 1,
-      name: '数字合伙人 - 晓晨',
-      role: '知识博主',
-      status: '在线',
-      task: '正在录制《AI趋势》视频',
-      income: '¥128.00',
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
-      hosting: true,
-      type: 'my',
-      posts: 45
-    },
-    {
-      id: 2,
-      name: '虚拟导师 - 莉莎',
-      role: '职场专家',
-      status: '忙碌',
-      task: '处理粉丝提问中 (32条)',
-      income: '¥450.50',
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/3a6b5955abb240f5a99ac6366bd561ad.jpg',
-      hosting: true,
-      type: 'my',
-      posts: 128
-    },
-    {
-      id: 3,
-      name: '带货达人 - 阿飞',
-      role: '美妆主播',
-      status: '离线',
-      task: '暂无任务',
-      income: '¥0.00',
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/3ec3faccca184f0496feabf22fbfea5b.jpg',
-      hosting: false,
-      type: 'my',
-      posts: 0
-    }
-  ]
+  // 获取用户ID
+  const getUserId = useCallback(() => {
+    const userInfo = Taro.getStorageSync('userInfo')
+    return userInfo?.id || 1 // 默认1用于测试
+  }, [])
 
-  const squareClones: SquareClone[] = [
-    {
-      id: 4,
-      name: '知识导师 - 林浩',
-      role: '知识博主',
-      gender: '男',
-      age: '28岁',
-      tags: ['理性', '专业', '深度'],
-      posts: 256,
-      followers: 12500,
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
-      type: 'square',
-      isFollowing: false,
-      status: '在线',
-      task: '正在解答粉丝问题',
-      hosting: false
-    },
-    {
-      id: 5,
-      name: '生活达人 - 苏晴',
-      role: '生活博主',
-      gender: '女',
-      age: '25岁',
-      tags: ['温柔', '知性', '生活'],
-      posts: 189,
-      followers: 8900,
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/3a6b5955abb240f5a99ac6366bd561ad.jpg',
-      type: 'square',
-      isFollowing: true,
-      status: '忙碌',
-      task: '录制生活vlog中',
-      hosting: true
-    },
-    {
-      id: 6,
-      name: '职场精英 - 张伟',
-      role: '职场达人',
-      gender: '男',
-      age: '32岁',
-      tags: ['职场', '管理', '晋升'],
-      posts: 342,
-      followers: 15600,
-      image: 'https://modao.cc/agent-py/media/generated_images/2026-05-09/3ec3faccca184f0496feabf22fbfea5b.jpg',
-      type: 'square',
-      isFollowing: false,
-      status: '离线',
-      task: '暂无任务',
-      hosting: false
+  // 加载我的分身列表
+  const loadMyClones = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await Network.request({
+        url: '/api/avatar',
+        method: 'GET'
+      })
+      console.log('加载分身列表:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const avatars = res.data.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          role: item.personality || '通用助手',
+          status: '在线' as const,
+          task: '待命中',
+          income: '¥0.00',
+          image: item.avatar_url || 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
+          hosting: item.hosting === 1,
+          type: 'my',
+          posts: item.posts || 0,
+          voice_id: item.voice_id,
+          personality: item.personality,
+          skills: item.skills,
+          created_at: item.created_at
+        }))
+        setMyClones(avatars)
+        
+        // 初始化托管开关状态
+        const toggles: Record<number, boolean> = {}
+        avatars.forEach((avatar: Avatar) => {
+          toggles[avatar.id] = avatar.hosting
+        })
+        setHostingToggles(toggles)
+      }
+    } catch (error) {
+      console.error('加载分身失败:', error)
+      // 使用示例数据
+      setMyClones([])
+    } finally {
+      setLoading(false)
     }
-  ]
+  }, [getUserId])
+
+  // 加载分身广场
+  const loadSquareClones = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await Network.request({
+        url: '/api/avatar/list',
+        method: 'GET'
+      })
+      console.log('加载分身广场:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const avatars = res.data.data.slice(0, 6).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          role: item.personality || '通用助手',
+          gender: '未知',
+          age: '未知',
+          tags: item.personality ? [item.personality] : ['AI助手'],
+          posts: item.posts || 0,
+          followers: item.followers || 0,
+          image: item.avatar_url || 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
+          type: 'square' as const,
+          isFollowing: false,
+          status: '在线' as const,
+          task: '待命中',
+          hosting: false
+        }))
+        setSquareClones(avatars)
+      }
+    } catch (error) {
+      console.error('加载分身广场失败:', error)
+      setSquareClones([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'my') {
+      loadMyClones()
+    } else {
+      loadSquareClones()
+    }
+  }, [activeTab, loadMyClones, loadSquareClones])
 
   const filteredClones = (activeTab === 'my' ? myClones : squareClones).filter(clone =>
     clone.name.toLowerCase().includes(searchValue.toLowerCase())
   )
 
+  // 切换托管状态
+  const handleToggleHosting = async (id: number) => {
+    const newValue = !hostingToggles[id]
+    setHostingToggles(prev => ({ ...prev, [id]: newValue }))
+    
+    try {
+      await Network.request({
+        url: `/api/avatar/${id}`,
+        method: 'PUT',
+        data: { hosting: newValue ? 1 : 0 }
+      })
+      console.log('更新托管状态成功:', id, newValue)
+    } catch (error) {
+      console.error('更新托管状态失败:', error)
+      // 回滚状态
+      setHostingToggles(prev => ({ ...prev, [id]: !newValue }))
+    }
+  }
+
+  // 删除分身
   const handleDeleteClone = (id: number) => {
     Taro.showModal({
       title: '确认删除',
       content: '确定要删除这个分身吗？此操作不可恢复。',
       confirmColor: '#EF4444',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          console.log('Delete clone:', id)
+          try {
+            await Network.request({
+              url: `/api/avatar/${id}`,
+              method: 'DELETE'
+            })
+            console.log('删除分身成功:', id)
+            Taro.showToast({ title: '删除成功', icon: 'success' })
+            loadMyClones()
+          } catch (error) {
+            console.error('删除分身失败:', error)
+            Taro.showToast({ title: '删除失败', icon: 'none' })
+          }
         }
       }
     })
@@ -226,9 +256,23 @@ const MindChat: React.FC = () => {
         className="content-scroll"
         scrollY
       >
-        {activeTab === 'my' ? (
+        {loading ? (
+          <View className="loading-state">
+            <Loader2 size={32} className="animate-spin" />
+            <Text className="loading-text">加载中...</Text>
+          </View>
+        ) : filteredClones.length === 0 ? (
+          <View className="empty-state">
+            <Text className="empty-text">
+              {activeTab === 'my' ? '暂无分身' : '暂无分身'}
+            </Text>
+            <Text className="empty-desc">
+              {activeTab === 'my' ? '点击右上角"新建"创建你的第一个分身' : '分身广场暂无内容'}
+            </Text>
+          </View>
+        ) : activeTab === 'my' ? (
           <View className="my-clones-list">
-            {(filteredClones as MyClone[]).map((clone, index) => (
+            {(filteredClones as Avatar[]).map((clone, index) => (
               <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
                 {/* 封面 */}
                 <View className="clone-cover">
@@ -285,7 +329,7 @@ const MindChat: React.FC = () => {
                     <Zap size={12} className="hosting-icon" />
                     <Text className="hosting-label">自动托管</Text>
                     <Switch
-                      checked={clone.hosting}
+                      checked={hostingToggles[clone.id] || false}
                       color="#7B3FE4"
                       onChange={() => handleToggleHosting(clone.id)}
                     />
@@ -296,7 +340,7 @@ const MindChat: React.FC = () => {
           </View>
         ) : (
           <View className="my-clones-list">
-            {(filteredClones as SquareClone[]).map((clone, index) => (
+            {(filteredClones as Avatar[]).map((clone, index) => (
               <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
                 {/* 封面 */}
                 <View className="clone-cover">
@@ -327,7 +371,7 @@ const MindChat: React.FC = () => {
                       </View>
                     </View>
                     <View className="income-display">
-                      <Text className="income-label">{formatFollowers(clone.followers)}</Text>
+                      <Text className="income-label">{formatFollowers(clone.followers || 0)}</Text>
                       <Text className="income-amount">粉丝</Text>
                     </View>
                   </View>

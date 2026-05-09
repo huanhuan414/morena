@@ -1,25 +1,74 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp, Send } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
+import { Network } from '@/network'
 import './index.css'
 
 const Index: React.FC = () => {
-  const [userName] = useState('张小明')
-  const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang')
+  const [userName] = useState('用户')
+  const [avatar, setAvatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
   const [translateX, setTranslateX] = useState(0)
-  const [mindClones] = useState(1) // 分身数量，0表示没有分身
+  const [mindClones, setMindClones] = useState(0) // 分身数量
+  const [stats, setStats] = useState([
+    { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
+    { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
+    { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
+    { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+  ])
+
   const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
   const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
   const scrollRef = useRef(0)
 
-  // 统计数据
-  const stats = [
-    { label: '我的分身', value: mindClones.toString(), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '+1 本月', path: '/pages/mind-chat/index' },
-    { label: '待接订单', value: '12', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '+5 今日', path: '/pages/pending-order/index' },
-    { label: '生成内容', value: '158', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '+8 本周', path: '/pages/generated-content/index' },
-    { label: '累计收益', value: '2.4', unit: 'k', color: '#EC4899', bg: '#FDF2F8', trend: '+15.8%', path: '/pages/earning-center/index' },
-  ]
+  // 获取统计数据
+  const fetchStats = async () => {
+    try {
+      const res = await Network.request({ url: '/api/dashboard/stats' })
+      console.log('统计数据:', res.data)
+      if (res.data?.code === 200 && res.data?.data) {
+        const data = res.data.data
+        setMindClones(data.avatar_count || 0)
+        setStats([
+          { label: '我的分身', value: String(data.avatar_count || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
+          { label: '待接订单', value: String(data.pending_orders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
+          { label: '生成内容', value: String(data.generated_content || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
+          { label: '累计收益', value: String(data.total_earnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+        ])
+        // 更新头像
+        if (data.user_avatar) setAvatar(data.user_avatar)
+        if (data.user_name) {
+          // 需要找到userName的setter
+        }
+      }
+    } catch (err) {
+      console.error('获取统计数据失败:', err)
+    }
+  }
+
+  // 实时动态
+  const [activities, setActivities] = useState<any[]>([])
+
+  // 获取实时动态
+  const fetchActivities = async () => {
+    try {
+      const res = await Network.request({ url: '/api/activities/recent' })
+      console.log('实时动态:', res.data)
+      if (res.data?.code === 200 && res.data?.data) {
+        setActivities(res.data.data)
+      }
+    } catch (err) {
+      console.error('获取实时动态失败:', err)
+    }
+  }
+
+  useEffect(() => {
+    // 初始化加载数据
+    const initData = async () => {
+      await Promise.all([fetchStats(), fetchActivities()])
+    }
+    initData()
+  }, [])
 
   // 快捷功能
   const quickActions = [
@@ -31,14 +80,7 @@ const Index: React.FC = () => {
     { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/pages/order/order-create/index' },
   ]
 
-  // 实时动态
-  const activities = [
-    { type: 'order', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar1', name: '知识博主小美', action: '新订单接单成功', desc: '成功接单，获得收益', amount: '+¥28.00', time: '刚刚', icon: ShoppingBag },
-    { type: 'coin', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar2', name: '职场达人小明', action: '收益到账提醒', desc: '完成内容分发，收益', amount: '+¥15.50', time: '5分钟前', icon: Coins },
-    { type: 'clock', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar3', name: '泛娱乐小红', action: '待处理订单', desc: '有新订单等待确认，金额', amount: '¥35.00', time: '10分钟前', icon: FileText },
-    { type: 'file', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar4', name: 'AI自动', action: '内容生成完成', desc: '已自动生成2篇种草笔记', amount: '', time: '15分钟前', icon: Cpu },
-    { type: 'trending', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar5', name: '生活博主大白', action: '粉丝突破1000', desc: '恭喜！本月新增粉丝', amount: '+328', time: '30分钟前', icon: TrendingUp },
-  ]
+  // 从API获取实时动态
 
   // 订单通知数据
   const orderNotifications = [
