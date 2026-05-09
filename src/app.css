@@ -3,7 +3,20 @@
 /* stylelint-disable number-max-precision */
 /* Tailwind CSS v4 - H5 模式必需 */
 @import "tailwindcss";
+@import 'weapp-tailwindcss';
 @import url('./styles/avatar-styles.css');
+
+/* H5端字体大小基础设置 - 基于750px设计稿 */
+@media (min-width: 320px) {
+  html {
+    font-size: calc(100vw / 37.5);
+  }
+}
+@media (min-width: 768px) {
+  html {
+    font-size: 20.48px;
+  }
+}
 
 /* 小程序页面容器高度设置，确保垂直居中生效 */
 page {
