@@ -350,6 +350,14 @@
   color: #64748b;
 }
 
+.delete-btn {
+  background: #FEE2E2;
+}
+
+.delete-btn .toolbar-label {
+  color: #EF4444;
+}
+
 .toolbar-label {
   font-size: 22rpx;
   font-weight: 500;

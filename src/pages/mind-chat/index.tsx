@@ -8,7 +8,8 @@ import {
   Image as ImageIcon,
   FileText,
   Clock,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -147,8 +148,17 @@ const MindChat: React.FC = () => {
     clone.name.toLowerCase().includes(searchValue.toLowerCase())
   )
 
-  const handleToggleHosting = (id: number) => {
-    console.log('Toggle hosting:', id)
+  const handleDeleteClone = (id: number) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定要删除这个分身吗？此操作不可恢复。',
+      confirmColor: '#EF4444',
+      success: (res) => {
+        if (res.confirm) {
+          console.log('Delete clone:', id)
+        }
+      }
+    })
   }
 
   const formatFollowers = (num: number) => {
@@ -266,6 +276,10 @@ const MindChat: React.FC = () => {
                       <FileText size={15} />
                       <Text className="toolbar-label">内容</Text>
                     </View>
+                    <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
+                      <Trash2 size={15} color="#EF4444" />
+                      <Text className="toolbar-label delete-label">删除</Text>
+                    </View>
                   </View>
                   <View className="hosting-control">
                     <Zap size={12} className="hosting-icon" />
@@ -329,6 +343,10 @@ const MindChat: React.FC = () => {
                     <View className="toolbar-btn">
                       <FileText size={15} />
                       <Text className="toolbar-label">内容</Text>
+                    </View>
+                    <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
+                      <Trash2 size={15} color="#EF4444" />
+                      <Text className="toolbar-label delete-label">删除</Text>
                     </View>
                   </View>
                   <View className={cn('follow-action-btn', clone.isFollowing && 'following')}>
