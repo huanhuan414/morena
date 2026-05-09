@@ -160,6 +160,14 @@ export default function GeneratedContentPage() {
   const [selectedStatus, setSelectedStatus] = useState<ContentStatus>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
+  // 图片预览
+  const handlePreview = (current: string, urls: string[]) => {
+    Taro.previewImage({
+      current,
+      urls
+    })
+  }
+
   useEffect(() => {
     fetchContents()
   }, [])
@@ -235,7 +243,12 @@ export default function GeneratedContentPage() {
           <View className="preview-grid">
             {content.images.slice(0, 5).map((img, idx) => (
               <View key={idx} className="grid-item">
-                <Image className="grid-image" src={img} mode="aspectFill" />
+                <Image 
+                  className="grid-image" 
+                  src={img} 
+                  mode="aspectFill"
+                  onClick={() => handlePreview(img, content.images!)}
+                />
                 {idx === 4 && content.images!.length > 5 && (
                   <View className="image-count">
                     <Text style={{ fontSize: '20rpx', color: '#fff' }}>+{content.images!.length - 5}</Text>
@@ -263,6 +276,10 @@ export default function GeneratedContentPage() {
             className="preview-image" 
             src={content.thumbnail || 'https://picsum.photos/400/300'} 
             mode="aspectFill"
+            onClick={() => {
+              const urls = content.images?.length ? content.images : [content.thumbnail || 'https://picsum.photos/400/300']
+              handlePreview(content.thumbnail || 'https://picsum.photos/400/300', urls as string[])
+            }}
           />
           {content.type === 'video' && (
             <View className="video-overlay">
