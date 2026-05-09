@@ -119,11 +119,13 @@ const Index: React.FC = () => {
         <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
           <View className="banner-bg" />
           <View className="banner-content">
-            <Text className="banner-title">分身托管收益翻倍</Text>
-            <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
-            <View className="banner-btn">
+            <View>
+              <Text className="banner-title">分身托管收益翻倍</Text>
+              <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
+            </View>
+            <View className="banner-bottom">
               <Text className="banner-btn-text">立即开启</Text>
-              <ChevronRight size={28} color="#6366F1" />
+              <ChevronRight size={24} color="#6366F1" />
             </View>
           </View>
           <View className="banner-decoration">
