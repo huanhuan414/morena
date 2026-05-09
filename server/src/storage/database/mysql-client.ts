@@ -371,9 +371,30 @@ export class MysqlClient {
     }
   }
 
-  // 带条件的计数
-  async countWhere(conditions: Record<string, any>): Promise<number> {
-    return this.count(conditions);
+  // 带条件的计数（兼容旧代码，支持表名和自定义WHERE条件）
+  async countWhere(tableOrConditions: string | Record<string, any>, whereSql?: string): Promise<number> {
+    // countWhere(conditions) - 标准用法
+    if (typeof tableOrConditions === 'object') {
+      return this.count(tableOrConditions);
+    }
+    
+    // countWhere(table, whereSql) - 兼容旧代码
+    const table = tableOrConditions;
+    
+    try {
+      const pool = getPool();
+      let sql = `SELECT COUNT(*) as count FROM ${table}`;
+      const values: any[] = [];
+      
+      if (whereSql) {
+        sql += ` WHERE ${whereSql}`;
+      }
+      
+      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
+      return rows[0]?.count || 0;
+    } catch (error: any) {
+      return 0;
+    }
   }
 
   // 查询单条记录（支持两个参数：表名和条件）
@@ -424,32 +445,6 @@ export class MysqlClient {
       return rows.map((row: any) => convertKeysToCamel(row));
     } catch (error: any) {
       throw error;
-    }
-  }
-
-  // 带条件的计数（兼容旧代码，支持表名和自定义WHERE条件）
-  async countWhere(tableOrConditions: string | Record<string, any>, whereSql?: string): Promise<number> {
-    // countWhere(conditions) - 标准用法
-    if (typeof tableOrConditions === 'object') {
-      return this.count(tableOrConditions);
-    }
-    
-    // countWhere(table, whereSql) - 兼容旧代码
-    const table = tableOrConditions;
-    
-    try {
-      const pool = getPool();
-      let sql = `SELECT COUNT(*) as count FROM ${table}`;
-      const values: any[] = [];
-      
-      if (whereSql) {
-        sql += ` WHERE ${whereSql}`;
-      }
-      
-      const [rows] = await pool.query<RowDataPacket[]>(sql, values);
-      return rows[0]?.count || 0;
-    } catch (error: any) {
-      return 0;
     }
   }
 
