@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Cpu, Rocket, Library, Share2, ChevronRight, TrendingUp, Zap } from 'lucide-react-taro'
@@ -7,6 +7,8 @@ import './index.css'
 const Index: React.FC = () => {
   const [userName] = useState('张小明')
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=Zhang')
+  const [translateX, setTranslateX] = useState(0)
+  const scrollRef = useRef(0)
 
   // 统计数据
   const stats = [
@@ -34,6 +36,28 @@ const Index: React.FC = () => {
     { type: 'file', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar4', name: 'AI自动', action: '内容生成完成', desc: '已自动生成2篇种草笔记', amount: '', time: '15分钟前', icon: Cpu },
     { type: 'trending', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=avatar5', name: '生活博主大白', action: '粉丝突破1000', desc: '恭喜！本月新增粉丝', amount: '+328', time: '30分钟前', icon: TrendingUp },
   ]
+
+  // 复制活动数据用于无缝滚动
+  const allActivities = [...activities, ...activities]
+
+  // 自动滚动效果 - 从右到左
+  useEffect(() => {
+    const cardWidth = 280 // 每个卡片宽度 + 间距
+    const totalWidth = activities.length * cardWidth
+    
+    const timer = setInterval(() => {
+      scrollRef.current -= 1
+      setTranslateX(scrollRef.current)
+      
+      // 当滚动到一半时，重置位置实现无缝循环
+      if (Math.abs(scrollRef.current) >= totalWidth) {
+        scrollRef.current = 0
+        setTranslateX(0)
+      }
+    }, 30)
+
+    return () => clearInterval(timer)
+  }, [activities.length])
 
   const goToPage = (path: string) => {
     Taro.navigateTo({ url: path })
@@ -72,29 +96,20 @@ const Index: React.FC = () => {
 
       {/* 主内容区 */}
       <ScrollView scrollY className="content" enhanced showScrollbar={false}>
-        {/* 统计卡片区 */}
+        {/* 统计卡片区 - 4个一行 */}
         <View className="stats-section">
-          <View className="stats-grid">
+          <View className="stats-row">
             {stats.map((stat, idx) => (
-              <View key={stat.label} className="stat-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <View className="stat-header">
-                  <View className="stat-icon" style={{ background: stat.bg }}>
-                    {stat.label === '我的分身' && <Users size={32} color={stat.color} />}
-                    {stat.label === '待接订单' && <ShoppingBag size={32} color={stat.color} />}
-                    {stat.label === '生成内容' && <FileText size={32} color={stat.color} />}
-                    {stat.label === '累计收益' && <Coins size={32} color={stat.color} />}
-                  </View>
-                  <View className="stat-trend-tag" style={{ backgroundColor: stat.bg, color: stat.color }}>
-                    {stat.trend}
-                  </View>
+              <View key={stat.label} className="stat-item" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <View className="stat-icon-small" style={{ background: stat.bg }}>
+                  {stat.label === '我的分身' && <Users size={28} color={stat.color} />}
+                  {stat.label === '待接订单' && <ShoppingBag size={28} color={stat.color} />}
+                  {stat.label === '生成内容' && <FileText size={28} color={stat.color} />}
+                  {stat.label === '累计收益' && <Coins size={28} color={stat.color} />}
                 </View>
-                <View className="stat-info">
-                  <Text className="stat-label">{stat.label}</Text>
-                  <View className="stat-value-row">
-                    <Text className="stat-value" style={{ color: stat.color }}>{stat.value}</Text>
-                    <Text className="stat-unit">{stat.unit}</Text>
-                  </View>
-                </View>
+                <Text className="stat-value-small" style={{ color: stat.color }}>{stat.value}{stat.unit}</Text>
+                <Text className="stat-label-small">{stat.label}</Text>
+                <Text className="stat-trend-small" style={{ color: stat.color }}>{stat.trend}</Text>
               </View>
             ))}
           </View>
@@ -148,7 +163,7 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 实时动态 - 横向滚动 */}
+        {/* 实时动态 - 从右到左自动滚动轮播 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
@@ -160,10 +175,21 @@ const Index: React.FC = () => {
               <Text className="live-text">LIVE</Text>
             </View>
           </View>
-          <ScrollView scrollX className="activity-scroll" showScrollbar={false}>
-            <View className="activity-list">
-              {activities.map((item, index) => (
-                <View key={index} className="activity-card">
+          
+          {/* 自动滚动容器 */}
+          <View className="activity-carousel-container">
+            {/* 左渐变遮罩 */}
+            <View className="carousel-gradient carousel-gradient-left" />
+            {/* 右渐变遮罩 */}
+            <View className="carousel-gradient carousel-gradient-right" />
+            
+            {/* 滚动内容 - 从右到左滚动 */}
+            <View 
+              className="activity-carousel-track"
+              style={{ transform: `translateX(${translateX}rpx)` }}
+            >
+              {allActivities.map((item, index) => (
+                <View key={`${item.name}-${index}`} className="activity-card">
                   <View className="activity-card-header">
                     <Image className="activity-avatar" src={item.avatar} />
                     <View className="activity-time-badge">{item.time}</View>
@@ -184,7 +210,7 @@ const Index: React.FC = () => {
                 </View>
               ))}
             </View>
-          </ScrollView>
+          </View>
         </View>
 
         {/* 底部留白 */}
