@@ -147,7 +147,7 @@ export class RecommendationService {
     
     // 先获取订单详情
     const orders = await db.query(
-      `SELECT id, title, description, platforms, content_type, budget, requirements 
+      `SELECT id, title, description, platforms, content_type, budget, requirements, avatar_count 
        FROM orders WHERE id = ? AND user_id = ?`,
       [orderId, userId]
     ) as any[]
@@ -240,9 +240,18 @@ export class RecommendationService {
     // 按匹配度降序排序
     enhancedAvatars.sort((a, b) => b.matchScore - a.matchScore)
     
-    console.log('[RecommendationService] 返回推荐分身数量:', enhancedAvatars.length)
+    // 只返回订单需要的分身数量，默认为3个
+    const requiredCount = order.required_avatars || order.avatar_count || 3
+    const limitedAvatars = enhancedAvatars.slice(0, requiredCount)
     
-    return enhancedAvatars
+    // 标记最佳推荐（分数最高的1个）
+    limitedAvatars.forEach((avatar, index) => {
+      avatar.isBest = index === 0
+    })
+    
+    console.log('[RecommendationService] 订单需要分身数:', requiredCount, '，返回推荐分身数量:', limitedAvatars.length)
+    
+    return limitedAvatars
   }
 
   // 获取已完成任务数

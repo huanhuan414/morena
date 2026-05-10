@@ -4,8 +4,8 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { 
-  ArrowLeft, Sparkles, Check, Star, Zap, Trophy, TrendingUp,
-  MessageSquare, Users, Loader, Crown, ThumbsUp
+  ArrowLeft, Sparkles, Check, Star, Trophy, TrendingUp,
+  Users, Loader, Crown, ThumbsUp, Send
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -31,6 +31,7 @@ interface OrderInfo {
   contentType?: string
   requirements?: string
   avatarCount?: number
+  requiredAvatars?: number
 }
 
 export default function OrderMatchingPage() {
@@ -153,20 +154,28 @@ export default function OrderMatchingPage() {
     }
   }
 
+  // 一键分配 + 发送短信
   const dispatchToAll = async () => {
-    if (recommendations.length === 0) {
+    // 使用订单需要的分身数量，如果没有则用推荐数量
+    const requiredCount = order?.requiredAvatars || recommendations.length
+    const avatarsToDispatch = recommendations.slice(0, requiredCount)
+    
+    if (avatarsToDispatch.length === 0) {
       showToast({ title: '暂无可分配分身', icon: 'none' })
       return
     }
     
     setDispatching(true)
-    showLoading({ title: '分配中...' })
+    showLoading({ title: '分配并通知中...' })
     
     try {
       const res = await Network.request({
         url: '/api/order-dispatch/dispatch-to-all',
         method: 'POST',
-        data: { orderId }
+        data: { 
+          orderId,
+          avatarIds: avatarsToDispatch.map(a => a.id)
+        }
       })
       
       hideLoading()
@@ -185,44 +194,6 @@ export default function OrderMatchingPage() {
       hideLoading()
       console.error('分配失败:', error)
       showToast({ title: '分配失败', icon: 'none' })
-    } finally {
-      setDispatching(false)
-    }
-  }
-
-  const notifySelected = async () => {
-    if (selectedIds.size === 0) {
-      showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
-    
-    setDispatching(true)
-    showLoading({ title: '发送通知...' })
-    
-    try {
-      const res = await Network.request({
-        url: '/api/order-dispatch/notify',
-        method: 'POST',
-        data: { 
-          orderId,
-          avatarIds: Array.from(selectedIds)
-        }
-      })
-      
-      hideLoading()
-      
-      if (res.data?.code === 200) {
-        showToast({ 
-          title: `已发送${res.data.data?.smsSentCount || selectedIds.size}条短信`, 
-          icon: 'success' 
-        })
-      } else {
-        showToast({ title: res.data?.msg || '发送失败', icon: 'none' })
-      }
-    } catch (error) {
-      hideLoading()
-      console.error('发送失败:', error)
-      showToast({ title: '发送失败', icon: 'none' })
     } finally {
       setDispatching(false)
     }
@@ -438,17 +409,12 @@ export default function OrderMatchingPage() {
         </View>
       </ScrollView>
 
-      {/* 底部操作栏 */}
+      {/* 底部操作栏 - 分配 + 通知 */}
       {step < 3 && recommendations.length > 0 && (
         <View className="action-bar">
-          <Button 
-            className="notify-btn"
-            onClick={notifySelected}
-            disabled={dispatching || selectedIds.size === 0}
-          >
-            <MessageSquare size={18} color="#06b6d4" />
-            <Text className="btn-text">通知</Text>
-          </Button>
+          <View className="select-hint">
+            <Text className="hint-text">已为您匹配 {recommendations.length} 个分身</Text>
+          </View>
           <Button 
             className="dispatch-all-btn"
             onClick={dispatchToAll}
@@ -457,9 +423,9 @@ export default function OrderMatchingPage() {
             {dispatching ? (
               <Loader size={18} color="#fff" className="animate-spin" />
             ) : (
-              <Zap size={18} color="#fff" />
+              <Send size={18} color="#fff" />
             )}
-            <Text className="btn-text">一键全部分配</Text>
+            <Text className="btn-text">一键分配并通知</Text>
           </Button>
         </View>
       )}

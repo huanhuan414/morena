@@ -232,7 +232,7 @@
 /* 滚动区域 */
 .recommend-scroll {
   flex: 1;
-  padding-bottom: 140rpx;
+  padding-bottom: 200rpx;
 }
 
 /* 空状态 */
@@ -515,14 +515,15 @@
   flex: 1;
 }
 
-/* 底部操作栏 */
+/* 底部操作栏 - 一键分配并通知 */
 .action-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  gap: 24rpx;
+  flex-direction: column;
+  gap: 12rpx;
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   background: #fff;
@@ -531,39 +532,25 @@
   z-index: 100;
 }
 
-.action-bar.completed {
-  justify-content: space-between;
-  align-items: center;
-}
-
-.notify-btn {
-  flex: 1;
+.select-hint {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 8rpx;
-  padding: 24rpx;
-  background: #fff;
-  border: 2rpx solid #06b6d4;
-  border-radius: 24rpx;
-  color: #06b6d4;
+  align-items: center;
+  padding: 8rpx 0;
 }
 
-.notify-btn:not(:disabled):active {
-  background: rgba(6, 182, 212, 0.08);
-}
-
-.notify-btn:disabled {
-  opacity: 0.5;
+.hint-text {
+  font-size: 24rpx;
+  color: #64748b;
 }
 
 .dispatch-all-btn {
-  flex: 2;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8rpx;
-  padding: 24rpx;
+  gap: 12rpx;
+  padding: 28rpx;
   background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
   border-radius: 24rpx;
   border: none;
@@ -580,7 +567,7 @@
 }
 
 .btn-text {
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: inherit;
 }
@@ -596,15 +583,4 @@
   font-size: 26rpx;
   color: #22c55e;
   font-weight: 500;
-}
-
-.done-btn {
-  padding: 20rpx 40rpx;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  border-radius: 20rpx;
-  border: none;
-}
-
-.done-btn .btn-text {
-  color: #fff;
 }
