@@ -34,10 +34,14 @@ export class OrderService {
     const values = Object.values(insertData)
     const placeholders = values.map(() => '?').join(', ')
 
+    // INSERT 成功即返回
     await db.query(
       `INSERT INTO orders (${fields}) VALUES (${placeholders})`,
       values
-    )
+    ).catch((err: any) => {
+      console.error('[OrderService] INSERT 失败:', err)
+      throw err
+    })
 
     return { id, ...insertData }
   }

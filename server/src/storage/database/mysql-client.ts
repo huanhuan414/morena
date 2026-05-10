@@ -350,6 +350,10 @@ export class MysqlClient {
     try {
       const pool = getPool();
       const [rows] = await pool.query<RowDataPacket[]>(sqlOrTable, paramsOrConditions || []);
+      // INSERT 语句返回 OkPacket，不是数组
+      if (!Array.isArray(rows)) {
+        return rows;
+      }
       return rows.map((row: any) => convertKeysToCamel(row));
     } catch (error: any) {
       throw error;
