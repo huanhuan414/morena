@@ -11,11 +11,14 @@ export const request = (option) => {
   const userId = (() => {
     try {
       const userInfo = getStorageSync('userInfo')
+      console.log('[Network] 获取userInfo:', userInfo)
       return userInfo?.id || ''
     } catch {
       return ''
     }
   })()
+  
+  console.log('[Network] 当前userId:', userId)
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {

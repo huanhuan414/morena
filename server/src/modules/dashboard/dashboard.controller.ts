@@ -2,6 +2,9 @@
 import { Controller, Get, Headers } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 
+// 测试用户ID列表
+const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
+
 @Controller('dashboard')
 export class DashboardController {
   
@@ -12,13 +15,15 @@ export class DashboardController {
     try {
       // 获取用户分身数量
       let avatarCount = 0
-      // 测试/开发用户返回所有分身数量
-      const isTestUser = userId && (userId === 'dev_user' || userId === 'guest-user')
+      const isTestUser = userId && TEST_USER_IDS.includes(userId)
+      const hasValidUserId = userId && userId.trim() && !isTestUser
+      
       if (isTestUser || !userId || !userId.trim()) {
         // 测试用户或无用户ID时，返回所有活跃分身数量
         const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE status = ?', ['active'])
         avatarCount = countResult?.[0]?.count || 0
-      } else {
+      } else if (hasValidUserId) {
+        // 有效用户：只查询该用户自己的分身
         const avatarResult = await db.select('avatars', { user_id: userId })
         avatarCount = avatarResult?.data?.length || 0
       }

@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Module } from '@nestjs/common';
-import { UserController } from './user.controller';
-import { UserService } from './user.service';
+import { Module, Global } from '@nestjs/common'
+import { UserService } from './user.service'
 
+@Global()
 @Module({
-  controllers: [UserController],
-  providers: [UserService]
+  providers: [UserService],
+  exports: [UserService],
 })
 export class UserModule {}

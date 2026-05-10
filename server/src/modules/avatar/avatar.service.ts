@@ -5,12 +5,23 @@ import { Config } from 'coze-coding-dev-sdk'
 import { LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
 
+// 测试用户ID列表
+const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
+
 @Injectable()
 export class AvatarService {
   /**
    * 创建分身
+   * @param userId - 用户ID（从 x-user-id header 获取）
    */
   async createAvatar(userId: string, avatarData: any) {
+    // 统一用户ID规范：必须有有效的用户ID
+    const effectiveUserId = userId && !TEST_USER_IDS.includes(userId) ? userId : userId
+    
+    if (!effectiveUserId) {
+      console.warn('[AvatarService] 创建分身时userId为空，使用默认测试ID')
+    }
+    
     const db = getMySQLClient()
     const { 
       name, 
@@ -29,10 +40,10 @@ export class AvatarService {
     })
 
     const insertData = {
-      user_id: userId || 'anonymous',
+      user_id: effectiveUserId || 'dev_user', // 统一使用传入的 userId
       name,
       description: '',
-      avatar_url: photo || '', // 使用 avatar_url 列
+      avatar_url: photo || '',
       personality,
       skills: '{}',
       config: '{}',
@@ -40,7 +51,7 @@ export class AvatarService {
       status: voice_type === 'clone' ? 'training' : 'active',
     }
 
-    console.log('[AvatarService] 创建分身，插入数据:', insertData)
+    console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', insertData)
     
     const result = await db.insert('avatars', insertData)
     
@@ -61,20 +72,32 @@ export class AvatarService {
 
   /**
    * 获取用户的所有分身
+   * @param userId - 用户ID（从 x-user-id header 获取）
    */
   async getUserAvatars(userId?: string) {
     const db = getMySQLClient()
     let rows: any[]
     
-    // 测试/开发用户返回所有分身
-    const isTestUser = userId && (userId === 'dev_user' || userId === 'guest-user')
-    // 如果有 userId 且非测试用户，按用户查询；否则返回所有活跃的分身
-    if (userId && userId.trim() && !isTestUser) {
+    // 统一用户ID规范
+    const isTestUser = userId && TEST_USER_IDS.includes(userId)
+    
+    // 有效用户ID：非空且非测试用户ID
+    const hasValidUserId = userId && userId.trim() && !isTestUser
+    
+    if (hasValidUserId) {
+      // 有效用户：只查询该用户自己的分身
+      console.log('[AvatarService] 查询用户分身，userId:', userId)
       const result = await db.select('avatars', { user_id: userId })
       rows = result.data || []
+    } else if (isTestUser) {
+      // 测试用户：返回所有分身（开发环境）
+      console.log('[AvatarService] 测试用户，返回所有分身')
+      const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+      rows = Array.isArray(result) ? result : (result?.data || [])
     } else {
-      // 返回所有活跃的分身（用于展示）
-      rows = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+      // 无用户ID：返回空
+      console.log('[AvatarService] 无效用户ID，返回空列表')
+      rows = []
     }
     
     // 格式化返回数据
