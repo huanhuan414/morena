@@ -147,23 +147,48 @@ export default function OrderMatchingPage() {
         const order = res.data.data
         console.log('[OrderMatching] 获取订单成功:', order)
         
+        // 解析 platforms（可能是字符串或数组）
+        let platforms = order.platforms
+        if (typeof platforms === 'string') {
+          try {
+            platforms = JSON.parse(platforms)
+          } catch {
+            platforms = []
+          }
+        }
+        
+        // 解析 requirements（可能是字符串或对象）
+        let requirements = order.requirements
+        if (typeof requirements === 'string') {
+          try {
+            requirements = JSON.parse(requirements)
+          } catch {
+            requirements = {}
+          }
+        }
+        
+        // 解析 contentType
+        let contentType = order.contentType || 'copywriting'
+        
         setOrderParams({
           title: order.title,
           description: order.description,
-          platforms: order.platforms,
-          requirements: order.requirements || {},
+          platforms: platforms || [],
+          requirements: requirements || {},
           avatarCount: order.avatarCount || 1,
-          totalPrice: order.budget || 0
+          totalPrice: order.budget || 0,
+          contentType: contentType
         })
         
         // 开始匹配流程
         startMatchingWithParams({
           title: order.title,
           description: order.description,
-          platforms: order.platforms,
-          requirements: order.requirements || {},
+          platforms: platforms || [],
+          requirements: requirements || {},
           avatarCount: order.avatarCount || 1,
-          totalPrice: order.budget || 0
+          totalPrice: order.budget || 0,
+          contentType: contentType
         })
       } else {
         console.error('[OrderMatching] 获取订单失败:', res.data.msg)
