@@ -85,10 +85,10 @@ export class AvatarService {
     const hasValidUserId = userId && userId.trim() && !isTestUser
     
     if (hasValidUserId) {
-      // 有效用户：只查询该用户自己的分身
+      // 有效用户：只查询该用户自己的分身（直接使用SQL，数据库列名是驼峰userId）
       console.log('[AvatarService] 查询用户分身，userId:', userId)
-      const result = await db.select('avatars', { user_id: userId })
-      rows = result.data || []
+      const result = await db.query(`SELECT * FROM avatars WHERE userId = ?`, [userId])
+      rows = Array.isArray(result) ? result : (result?.data || [])
     } else if (isTestUser) {
       // 测试用户：返回所有分身（开发环境）
       console.log('[AvatarService] 测试用户，返回所有分身')
