@@ -30,9 +30,23 @@ const Index: React.FC = () => {
       const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
       console.log('userInfo:', storedUserInfo?.data)
       
-      // 用户ID：优先从storage获取，否则使用测试用户ID
-      const userId = storedUserInfo?.data?.id || 'd29e16ea-65ff-4a63-9436-1df115e27373'
-      console.log('使用用户ID:', userId)
+      // 检查是否已登录
+      if (!storedUserInfo?.data?.id) {
+        console.log('用户未登录，跳转到登录页')
+        Taro.showModal({
+          title: '提示',
+          content: '您还未登录，请先登录',
+          confirmText: '去登录',
+          success: (res) => {
+            if (res.confirm) {
+              Taro.navigateTo({ url: '/pages/login/index' })
+            }
+          }
+        })
+        return
+      }
+      const userId = storedUserInfo.data.id
+      console.log('用户ID:', userId)
       
       // 从用户统计接口获取所有分身的汇总数据
       const res = await Network.request({ 

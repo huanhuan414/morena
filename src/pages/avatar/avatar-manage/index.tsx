@@ -169,13 +169,23 @@ export default function AvatarManagePage() {
         userId = userInfo.id // openid 用户可能需要特殊处理
       }
       
-      // 临时解决方案：如果没有用户ID，使用真实用户ID
+      // 检查是否已登录
       if (!userId) {
-        console.log('[fetchAvatars] 未找到用户ID，使用用户18785282948的ID')
-        userId = 'd29e16ea-65ff-4a63-9436-1df115e27373' // 用户18785282948
+        console.log('[fetchAvatars] 用户未登录，提示登录')
+        Taro.showModal({
+          title: '提示',
+          content: '您还未登录，请先登录',
+          confirmText: '去登录',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              Taro.navigateTo({ url: '/pages/login/index' })
+            }
+          }
+        })
+        return
       }
       
-      console.log('[fetchAvatars] 最终使用 userId:', userId)
+      console.log('[fetchAvatars] 用户 userId:', userId)
       
       // 添加时间戳绕过浏览器缓存
       const timestamp = Date.now()
