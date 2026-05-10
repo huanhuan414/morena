@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, navigateTo, navigateBack, showToast, showActionSheet, showLoading, hideLoading } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, navigateTo, navigateBack, showToast, showActionSheet, showLoading, hideLoading } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -120,6 +120,21 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
+  // 获取用户ID
+  const getUserId = async (): Promise<string> => {
+    try {
+      const userInfo = Taro.getStorageSync('userInfo')
+      if (userInfo?.id) return userInfo.id
+      // 如果没有存储，尝试获取用户信息
+      const res = await Network.request({ url: '/api/user/info' })
+      if (res.data?.data?.id) {
+        Taro.setStorageSync('userInfo', res.data.data)
+        return res.data.data.id
+      }
+    } catch (e) {}
+    return 'default-user-id'
+  }
+
   useLoad(() => {
     // 页面加载
   })
@@ -137,11 +152,13 @@ export default function OrderListPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      let url = '/api/order/list'
+      // 获取用户ID
+      const userId = await getUserId()
       
       const res = await Network.request({
-        url,
-        data: activeTab !== 'all' ? { status: activeTab } : {}
+        url: '/api/order/list',
+        data: activeTab !== 'all' ? { status: activeTab } : {},
+        header: { 'x-user-id': userId }
       })
 
       if (res.data?.code === 200) {
@@ -160,7 +177,11 @@ export default function OrderListPage() {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      const res = await Network.request({ url: '/api/order/stats' })
+      const userId = await getUserId()
+      const res = await Network.request({ 
+        url: '/api/order/stats',
+        header: { 'x-user-id': userId }
+      })
       if (res.data?.code === 200) {
         setStats({
           ...res.data.data,
