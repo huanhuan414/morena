@@ -10,7 +10,7 @@ import {
   Clock,
   Zap,
   Trash2,
-  Loader2
+  Loader
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'

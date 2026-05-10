@@ -42,6 +42,11 @@ export class OrderDispatchService {
     
     return { success: true }
   }
+
+  async getUserPendingRequests(userId: string) {
+    const db = getMySQLClient()
+    return await db.query('order_dispatch_requests', { user_id: userId, status: 'pending' }) as any
+  }
 }
 
 import * as crypto from 'crypto'
