@@ -46,7 +46,7 @@ export class OrderDispatchService {
   async getUserPendingRequests(userId: string) {
     const db = getMySQLClient()
     // 直接使用SQL查询，避免蛇形转换问题
-    return await db.query('SELECT * FROM order_dispatch_requests WHERE userId = ? AND status = ?', [userId, 'pending']) as any
+    return await db.query('SELECT * FROM order_dispatch_requests WHERE user_id = ? AND status = ?', [userId, 'pending']) as any
   }
 }
 

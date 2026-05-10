@@ -14,33 +14,39 @@ export class DashboardController {
     
     try {
       // 获取用户分身数量
-      let avatarCount = 0
       const isTestUser = userId && TEST_USER_IDS.includes(userId)
       const hasValidUserId = userId && userId.trim() && !isTestUser
-      
-      if (isTestUser || !userId || !userId.trim()) {
-        // 测试用户或无用户ID时，返回所有活跃分身数量
-        const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE status = ?', ['active'])
-        avatarCount = countResult?.[0]?.count || 0
-      } else if (hasValidUserId) {
-        // 有效用户：只查询该用户自己的分身（数据库列名是驼峰userId）
-        const avatarResult = await db.query('SELECT * FROM avatars WHERE userId = ?', [userId])
-        avatarCount = Array.isArray(avatarResult) ? avatarResult.length : 0
+      let avatarCount = 0
+      try {
+        if (!userId || !userId.trim() || userId.length < 10) {
+          // 无用户ID或测试用户，返回所有分身数量
+          const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE status = ?', ['active'])
+          avatarCount = countResult?.[0]?.count || 0
+          console.log('[Dashboard] 无用户ID/测试用户，返回所有分身数量:', avatarCount)
+        } else {
+          // 有效用户：查询该用户自己的分身
+          console.log('[Dashboard] 有效用户:', userId)
+          const avatarResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE user_id = ? AND status = ?', [userId, 'active'])
+          avatarCount = avatarResult?.[0]?.count || 0
+          console.log('[Dashboard] 查询结果:', JSON.stringify(avatarResult))
+        }
+      } catch (err) {
+        console.error('[Dashboard] 查询失败:', err)
       }
       
-      // 获取用户订单数量（数据库列名可能是userId或user_id）
+      // 获取用户订单数量
       let orderCount = 0
       if (userId && userId.trim()) {
-        const orderResult = await db.query('SELECT COUNT(*) as count FROM orders WHERE userId = ? OR user_id = ?', [userId, userId])
+        const orderResult = await db.query('SELECT COUNT(*) as count FROM orders WHERE user_id = ?', [userId])
         orderCount = orderResult?.[0]?.count || 0
       }
       
-      // 获取用户收入（数据库列名可能是userId或user_id）
+      // 获取用户收入
       let totalEarnings = '0.00'
       if (userId && userId.trim()) {
         const earningResult = await db.query(
-          'SELECT SUM(amount) as total FROM earnings WHERE userId = ? OR user_id = ?',
-          [userId, userId]
+          'SELECT SUM(amount) as total FROM earnings WHERE user_id = ?',
+          [userId]
         )
         totalEarnings = earningResult?.[0]?.total || '0.00'
       }
