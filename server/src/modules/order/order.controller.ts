@@ -40,7 +40,14 @@ export class OrderController {
     @Query('avatar_id') avatarId?: string
   ) {
     console.log('[OrderController] list 被调用, userId:', userId, 'status:', status, 'avatarId:', avatarId)
-    const orders = await this.orderService.getOrders(userId, status, avatarId)
+    const filters: Record<string, any> = {}
+    if (status) {
+      filters.status = status
+    }
+    if (avatarId) {
+      filters.avatar_id = avatarId
+    }
+    const orders = await this.orderService.getOrders(userId, filters)
     return { code: 200, data: orders, message: '获取成功' }
   }
 

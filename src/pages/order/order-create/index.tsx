@@ -311,7 +311,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         <Text className="nav-title">新建订单</Text>
         <View 
           className="nav-right" 
-          onClick={() => Taro.navigateTo({ url: '/pages/order/order-create/index' })}
+          onClick={() => Taro.navigateTo({ url: '/pages/order/order-list/index' })}
         >
           <FileText size={20} color="#1890ff" />
           <Text className="nav-text">发单记录</Text>
