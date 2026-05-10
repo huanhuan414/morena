@@ -29,148 +29,179 @@ export class OrderService {
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
       is_paid: 0,
     }
-    
-    const insertResult = await db.insert('orders', insertData)
-    
-    if (insertResult.error) {
-      console.error('[OrderService] 订单插入失败:', insertResult.error)
-      throw new Error('订单创建失败: ' + insertResult.error.message)
-    }
-    
-    console.log('[OrderService] 订单创建成功，ID:', id, 'affectedRows:', insertResult.data?.affectedRows)
-    return { id, status: 'pending_payment' }
+
+    const fields = Object.keys(insertData).join(', ')
+    const values = Object.values(insertData)
+    const placeholders = values.map(() => '?').join(', ')
+
+    await db.query(
+      `INSERT INTO orders (${fields}) VALUES (${placeholders})`,
+      values
+    )
+
+    return { id, ...insertData }
   }
 
-  // 转换订单数据中的日期对象
-  private transformOrderData(order: any): any {
-    if (!order) return order
-    const result: any = { ...order }
-    // 转换日期对象为 ISO 字符串
-    if (result.created_at instanceof Date) {
-      result.created_at = result.created_at.toISOString()
-    }
-    if (result.updated_at instanceof Date) {
-      result.updated_at = result.updated_at.toISOString()
-    }
-    if (result.completed_at instanceof Date) {
-      result.completed_at = result.completed_at.toISOString()
-    }
-    return result
-  }
-
-  async getOrder(orderId: string) {
+  async getOrderById(orderId: string) {
     const db = getMySQLClient()
-    const order = await db.queryOne('orders', { id: orderId }) as any
     
-    if (!order) {
+    // 查询订单基本信息
+    const orderRows = await db.query(
+      'SELECT * FROM orders WHERE id = ?',
+      [orderId]
+    )
+    
+    if (!orderRows || orderRows.length === 0) {
       return null
     }
     
-    // 查询订单关联的分身请求
-    const avatarRequests = await db.query('order_requests', { order_id: orderId }) as any[]
+    const order = orderRows[0]
     
-    // 如果有分身请求，关联查询分身详情
-    if (avatarRequests.length > 0) {
-      const avatarIds = avatarRequests.map((r: any) => r.avatar_id).filter(Boolean)
-      if (avatarIds.length > 0) {
-        const placeholders = avatarIds.map(() => '?').join(',')
-        const avatars = await db.execute(
-          `SELECT id, nickname, avatar_url, platforms, status, total_tasks, completed_tasks FROM avatars WHERE id IN (${placeholders})`,
-          avatarIds
-        ) as any[]
-        
-        // 关联分身信息和请求状态
-        const avatarStats = avatarRequests.map((req: any) => {
-          const avatar = avatars.find((a: any) => a.id === req.avatar_id)
-          return {
-            avatarId: req.avatar_id,
-            requestId: req.id,
-            nickname: avatar?.nickname || '未知分身',
-            avatarUrl: avatar?.avatar_url || '',
-            platforms: avatar?.platforms || [],
-            status: req.status || 'pending',
-            totalTasks: avatar?.total_tasks || 0,
-            completedTasks: avatar?.completed_tasks || 0,
-            submittedAt: req.created_at
-          }
-        })
-        
-        order.avatarStats = avatarStats
-        order.summary_stats = {
-          avatarStats,
-          totalAvatars: avatarStats.length,
-          pendingAvatars: avatarStats.filter((a: any) => a.status === 'pending').length,
-          inProgressAvatars: avatarStats.filter((a: any) => a.status === 'in_progress').length,
-          completedAvatars: avatarStats.filter((a: any) => a.status === 'completed').length
+    // 查询分身分发列表
+    const avatarRows = await db.query(
+      `SELECT odr.id, odr.avatar_id, odr.status, odr.created_at,
+              a.nickname, a.avatar_url, a.platforms
+       FROM order_requests odr
+       LEFT JOIN avatars a ON odr.avatar_id = a.id
+       WHERE odr.order_id = ?
+       ORDER BY odr.created_at DESC`,
+      [orderId]
+    )
+    
+    // 转换分身数据格式
+    const avatarStats = (avatarRows || []).map((row: any) => {
+      let platforms = row.platforms
+      if (typeof platforms === 'string') {
+        try {
+          platforms = JSON.parse(platforms)
+        } catch {
+          platforms = []
         }
       }
-    }
+      return {
+        id: row.id,
+        avatarId: row.avatar_id,
+        nickname: row.nickname || '未知分身',
+        avatarUrl: row.avatar_url || '',
+        platform: Array.isArray(platforms) ? platforms[0] || 'unknown' : 'unknown',
+        status: row.status || 'pending',
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
+      }
+    })
     
-    return this.transformOrderData(order)
+    // 转换日期格式
+    const createdAt = order.created_at instanceof Date 
+      ? order.created_at.toISOString() 
+      : String(order.created_at)
+    
+    return {
+      ...order,
+      id: order.id,
+      title: order.title,
+      description: order.description,
+      contentType: order.content_type,
+      platforms: typeof order.platforms === 'string' 
+        ? JSON.parse(order.platforms) 
+        : (order.platforms || []),
+      requirements: typeof order.requirements === 'string' 
+        ? JSON.parse(order.requirements) 
+        : (order.requirements || {}),
+      budget: order.budget,
+      status: order.status,
+      avatarCount: order.avatar_count || order.expected_quantity || 0,
+      createdAt
+    }
   }
 
   async getOrders(userId: string, filters: Record<string, any> = {}) {
     const db = getMySQLClient()
-    filters.user_id = userId
-    const orders = await db.query('orders', filters) as any[]
     
-    // 批量获取分身数量
-    const orderIds = orders.map(o => o.id)
-    let avatarCounts: Record<string, number> = {}
-    if (orderIds.length > 0) {
-      const placeholders = orderIds.map(() => '?').join(',')
-      const counts = await db.execute(
-        `SELECT order_id, COUNT(*) as count FROM order_requests WHERE order_id IN (${placeholders}) GROUP BY order_id`,
-        orderIds
-      ) as any[]
-      avatarCounts = counts.reduce((acc, row) => {
-        acc[row.order_id] = row.count
-        return acc
-      }, {} as Record<string, number>)
+    let whereClause = 'WHERE user_id = ?'
+    const params: any[] = [userId]
+    
+    if (filters.status) {
+      whereClause += ' AND status = ?'
+      params.push(filters.status)
     }
     
-    return orders.map(order => ({
-      ...this.transformOrderData(order),
-      dispatchedCount: avatarCounts[order.id] || 0
-    }))
+    const rows = await db.query(
+      `SELECT id, title, description, content_type, platforms, requirements, 
+              budget, status, avatar_count, is_paid, created_at
+       FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
+      params
+    )
+    
+    return (rows || []).map((row: any) => {
+      // 处理 platforms 字段
+      let platforms = row.platforms
+      if (typeof platforms === 'string') {
+        try {
+          platforms = JSON.parse(platforms)
+        } catch {
+          platforms = []
+        }
+      }
+      
+      // 处理 requirements 字段
+      let requirements = row.requirements
+      if (typeof requirements === 'string') {
+        try {
+          requirements = JSON.parse(requirements)
+        } catch {
+          requirements = {}
+        }
+      }
+      
+      // 处理 avatar_stats 字段
+      let avatarStats = row.avatar_stats
+      if (typeof avatarStats === 'string') {
+        try {
+          avatarStats = JSON.parse(avatarStats)
+        } catch {
+          avatarStats = []
+        }
+      }
+      
+      // 处理日期
+      const createdAt = row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at)
+      
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        contentType: row.content_type,
+        platforms,
+        requirements,
+        budget: row.budget,
+        status: row.status,
+        avatarCount: row.avatar_count || 0,
+        avatarStats: avatarStats || [],
+        isPaid: row.is_paid === 1,
+        createdAt
+      }
+    })
   }
 
-  async updateOrderStatus(orderId: string, status: string) {
+  async getOrderStats(userId: string) {
     const db = getMySQLClient()
-    const order = await db.queryOne('orders', { id: orderId }) as any
-    if (!order) {
-      throw new Error('订单不存在')
+    
+    const rows = await db.query(
+      `SELECT 
+         COUNT(*) as total,
+         SUM(CASE WHEN status = 'pending_payment' THEN 1 ELSE 0 END) as pendingPayment,
+         SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as inProgress,
+         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+         SUM(budget) as totalBudget
+       FROM orders WHERE user_id = ?`,
+      [userId]
+    )
+    
+    if (!rows || rows.length === 0) {
+      return { total: 0, pendingPayment: 0, inProgress: 0, completed: 0, totalBudget: 0 }
     }
     
-    await db.updateWhere('orders', { id: orderId }, {
-      status,
-      updated_at: new Date()
-    })
-    
-    return { success: true }
-  }
-
-  async cancelOrder(orderId: string, userId: string) {
-    const db = getMySQLClient()
-    const order = await db.queryOne('orders', { id: orderId }) as any
-    
-    if (!order) {
-      throw new Error('订单不存在')
-    }
-    
-    if (order.user_id !== userId) {
-      throw new Error('无权限取消此订单')
-    }
-    
-    if (['completed', 'cancelled'].includes(order.status)) {
-      throw new Error('当前状态不允许取消')
-    }
-    
-    await db.updateWhere('orders', { id: orderId }, {
-      status: 'cancelled',
-      updated_at: new Date()
-    })
-    
-    return { success: true }
+    return rows[0]
   }
 }
