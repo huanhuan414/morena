@@ -147,7 +147,7 @@ export class RecommendationService {
     
     // 先获取订单详情
     const orders = await db.query(
-      `SELECT id, title, description, platforms, content_type, budget, requirements, avatar_count 
+      `SELECT id, title, description, platforms, content_type, budget, requirements, avatar_count, expected_quantity
        FROM orders WHERE id = ? AND user_id = ?`,
       [orderId, userId]
     ) as any[]
@@ -241,7 +241,7 @@ export class RecommendationService {
     enhancedAvatars.sort((a, b) => b.matchScore - a.matchScore)
     
     // 获取订单需要的分身数量（数据库字段已转换为驼峰命名）
-    const orderAvatarCount = order.avatarCount || order.avatar_count || 1
+    const orderAvatarCount = order.expectedQuantity || order.expected_quantity || 1
     console.log('[RecommendationService] 订单avatar_count:', orderAvatarCount)
     
     // 只返回订单需要的分身数量

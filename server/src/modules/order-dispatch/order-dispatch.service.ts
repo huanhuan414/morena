@@ -175,8 +175,15 @@ export class OrderDispatchService {
     const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
     const order = orders[0]
     
+    if (!order) {
+      return { count: 0, avatarIds: [], smsSentCount: 0 }
+    }
+    
+    // 获取订单需要的分身数量
+    const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1
+    
     // 查询所有开启托管的分身，并关联用户表获取手机号
-    const avatars = await db.query(`
+    const allAvatars = await db.query(`
       SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
@@ -184,8 +191,11 @@ export class OrderDispatchService {
       ['active']
     ) as any[]
     
+    // 只取订单需要的数量
+    const avatars = allAvatars.slice(0, requiredCount)
+    
     if (avatars.length === 0) {
-      return { count: 0, avatarIds: [] }
+      return { count: 0, avatarIds: [], smsSentCount: 0 }
     }
     
     const avatarIds: string[] = []
