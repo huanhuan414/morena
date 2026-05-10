@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
@@ -16,6 +16,7 @@ interface PendingOrder {
   deadline: string
   status: string
   avatar_name?: string
+  avatar_url?: string
   avatar_level?: number
   target_audience?: string
   hints?: string[]
@@ -146,10 +147,13 @@ export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null)
+  const [avatars, setAvatars] = useState<any[]>([])
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetchOrders()
+    fetchAvatars()
   }, [])
 
   // 倒计时更新
@@ -180,14 +184,37 @@ export default function PendingOrderListPage() {
     }
   }, [orders])
 
+  const fetchAvatars = async () => {
+    try {
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200) {
+        setAvatars(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取分身列表失败:', error)
+    }
+  }
+
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      const res = await Network.request({
-        url: '/api/order-dispatch/pending-requests'
-      })
-      if (res.data?.code === 200) {
-        setOrders(res.data.data || [])
+      // 优先获取用户订单（带分身信息）
+      const res = await Network.request({ url: '/api/user-stats/orders' })
+      if (res.data?.code === 200 && res.data.data?.orders?.length > 0) {
+        // 使用真实数据，转换为组件格式
+        const realOrders = res.data.data.orders.map((order: any) => ({
+          id: order.id,
+          title: order.title || '订单内容',
+          description: order.description || '',
+          budget: order.budget || 0,
+          platforms: JSON.parse(order.platforms || '[]'),
+          deadline: order.deadline || '',
+          status: order.status,
+          avatar_name: order.avatar_name || '我的分身',
+          avatar_url: order.avatar_url || '',
+          countdown_seconds: 3600
+        }))
+        setOrders(realOrders)
       } else {
         setOrders(MOCK_ORDERS)
       }
@@ -200,9 +227,11 @@ export default function PendingOrderListPage() {
   }
 
   // 筛选订单
-  const filteredOrders = selectedPlatform
-    ? orders.filter(order => order.platforms.includes(selectedPlatform))
-    : orders
+  const filteredOrders = orders.filter(order => {
+    const platformMatch = !selectedPlatform || order.platforms.includes(selectedPlatform)
+    const avatarMatch = !selectedAvatar || order.avatar_name === avatars.find(a => a.id === selectedAvatar)?.name
+    return platformMatch && avatarMatch
+  })
 
   // 获取平台信息
   const getPlatformInfo = (key: string) => {
@@ -284,6 +313,42 @@ export default function PendingOrderListPage() {
         </ScrollView>
       </View>
 
+      {/* 分身筛选 */}
+      {avatars.length > 0 && (
+        <View className="platform-filter">
+          <ScrollView className="platform-scroll" scrollX>
+            <View
+              className={`platform-tag ${selectedAvatar === null ? 'active' : ''}`}
+              onClick={() => setSelectedAvatar(null)}
+            >
+              <Users size={14} color={selectedAvatar === null ? '#6366F1' : '#64748B'} />
+              <Text className="platform-tag-text" style={selectedAvatar === null ? { color: '#6366F1' } : {}}>全部分身</Text>
+            </View>
+            {avatars.map((avatar) => (
+              <View
+                key={avatar.id}
+                className={`platform-tag ${selectedAvatar === avatar.id ? 'active' : ''}`}
+                onClick={() => setSelectedAvatar(selectedAvatar === avatar.id ? null : avatar.id)}
+                style={selectedAvatar === avatar.id ? { background: 'rgba(99, 102, 241, 0.1)', borderColor: '#6366F1' } : {}}
+              >
+                {avatar.avatar_url ? (
+                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
+                    <TaroImage src={avatar.avatar_url} className="w-full h-full" />
+                  </View>
+                ) : (
+                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 10, color: '#fff' }}>{avatar.name?.charAt(0) || '?'}</Text>
+                  </View>
+                )}
+                <Text className="platform-tag-text" style={selectedAvatar === avatar.id ? { color: '#6366F1' } : {}}>
+                  {avatar.name}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* 订单列表 */}
       <ScrollView className="order-list" scrollY>
         {loading ? (
@@ -305,8 +370,21 @@ export default function PendingOrderListPage() {
 
             return (
               <View key={order.id} className="order-card">
-                {/* 卡片头部 - 平台标签 + 倒计时 */}
+                {/* 卡片头部 - 分身标签 + 平台标签 + 倒计时 */}
                 <View className="card-header">
+                  {/* 分身标签 */}
+                  {order.avatar_name && (
+                    <View className="avatar-tag">
+                      <View className="avatar-avatar">
+                        {order.avatar_url ? (
+                          <TaroImage src={order.avatar_url} className="avatar-img" />
+                        ) : (
+                          <Text className="avatar-initial">{order.avatar_name.charAt(0)}</Text>
+                        )}
+                      </View>
+                      <Text className="avatar-name">{order.avatar_name}</Text>
+                    </View>
+                  )}
                   <View className="platform-tags">
                     {order.platforms.map((platformKey) => {
                       const platform = getPlatformInfo(platformKey)

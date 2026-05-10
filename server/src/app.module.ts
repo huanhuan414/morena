@@ -34,6 +34,7 @@ import { TikHubModule } from './modules/tikhub/tikhub.module';
 import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
 import { EarningsModule } from './modules/earnings/earnings.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
+import { UserStatsModule } from './modules/user-stats/user-stats.module';
 
 @Module({
   imports: [
@@ -68,7 +69,8 @@ import { ActivitiesModule } from './modules/activities/activities.module';
     AdminModule,
     PalmReadingModule,
     EarningsModule,
-    ActivitiesModule
+    ActivitiesModule,
+    UserStatsModule
   ],
   controllers: [AppController],
   providers: [AppService],

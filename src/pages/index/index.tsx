@@ -24,19 +24,18 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      // 直接从分身接口获取用户分身数量
-      const res = await Network.request({ url: '/api/avatar' })
+      // 从用户统计接口获取所有分身的汇总数据
+      const res = await Network.request({ url: '/api/user-stats/overview' })
       console.log('统计数据:', res.data)
       
-      // 从 x-user-id header 获取用户 ID（在 Network 中处理）
-      if (res.data?.code === 200) {
-        const avatarCount = Array.isArray(res.data?.data) ? res.data.data.length : 0
-        setMindClones(avatarCount)
+      if (res.data?.code === 200 && res.data?.data) {
+        const statsData = res.data.data
+        setMindClones(statsData.avatarCount || 0)
         setStats([
-          { label: '我的分身', value: String(avatarCount), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-          { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
-          { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
-          { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+          { label: '我的分身', value: String(statsData.avatarCount || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
+          { label: '待接订单', value: String(statsData.pendingOrders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
+          { label: '生成内容', value: String(statsData.generatedContents || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
+          { label: '累计收益', value: String(statsData.totalEarnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
         ])
       }
     } catch (err) {

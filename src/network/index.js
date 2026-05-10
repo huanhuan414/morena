@@ -25,11 +25,11 @@ export const request = (option) => {
       return url
     }
     
-    // 开发环境下使用相对路径，由 Vite proxy 转发
-    // @ts-ignore
-    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
-    if (isDev || !USER_DOMAIN) {
-      return url  // 开发环境使用相对路径
+    // 在小程序环境中使用相对路径（由 Vite proxy 转发）
+    // eslint-disable-next-line no-restricted-properties
+    const env = Taro.getEnv()
+    if (env === 'WEAPP' || env === 'RN' || !USER_DOMAIN) {
+      return url
     }
     return `${USER_DOMAIN}${url}`
   }
@@ -70,10 +70,10 @@ export const uploadFile = (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-    // 开发环境下使用相对路径
-    // @ts-ignore
-    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
-    if (isDev || !USER_DOMAIN) {
+    // 在小程序环境中使用相对路径（由 Vite proxy 转发）
+    // eslint-disable-next-line no-restricted-properties
+    const env = Taro.getEnv()
+    if (env === 'WEAPP' || env === 'RN' || !USER_DOMAIN) {
       return url
     }
     return `${USER_DOMAIN}${url}`

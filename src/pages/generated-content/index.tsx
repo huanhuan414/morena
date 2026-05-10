@@ -27,6 +27,8 @@ interface GeneratedContent {
   earnings?: number
   created_at: string
   status: string
+  avatar_name?: string
+  avatar_url?: string
 }
 
 // 内容状态配置
@@ -158,6 +160,8 @@ export default function GeneratedContentPage() {
   const [contents, setContents] = useState<GeneratedContent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState<ContentStatus>('all')
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null)
+  const [avatars, setAvatars] = useState<any[]>([])
   
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
@@ -171,16 +175,43 @@ export default function GeneratedContentPage() {
 
   useEffect(() => {
     fetchContents()
+    fetchAvatars()
   }, [])
+
+  const fetchAvatars = async () => {
+    try {
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data?.code === 200) {
+        setAvatars(res.data.data || [])
+      }
+    } catch (error) {
+      console.error('获取分身列表失败:', error)
+    }
+  }
 
   const fetchContents = async () => {
     setLoading(true)
     try {
-      const res = await Network.request({
-        url: '/api/content-generation/my-contents'
-      })
-      if (res.data?.code === 200) {
-        setContents(res.data.data || [])
+      // 优先获取用户内容（带分身信息）
+      const res = await Network.request({ url: '/api/user-stats/contents' })
+      if (res.data?.code === 200 && res.data.data?.contents?.length > 0) {
+        const realContents = res.data.data.contents.map((content: any) => ({
+          id: content.id,
+          title: content.title || '内容标题',
+          content: content.content || '',
+          type: content.type || 'text',
+          platform: content.platform || 'xiaohongshu',
+          thumbnail: content.thumbnail || '',
+          images: content.images ? JSON.parse(content.images) : [],
+          tags: content.tags ? JSON.parse(content.tags) : [],
+          stats: content.stats || { views: 0, likes: 0, comments: 0, shares: 0 },
+          earnings: content.earnings || 0,
+          created_at: content.created_at,
+          status: content.status || 'pending',
+          avatar_name: content.avatar_name || '我的分身',
+          avatar_url: content.avatar_url || ''
+        }))
+        setContents(realContents)
       } else {
         setContents(MOCK_CONTENTS)
       }
@@ -206,7 +237,8 @@ export default function GeneratedContentPage() {
   // 筛选内容
   const filteredContents = contents.filter(content => {
     const statusMatch = selectedStatus === 'all' || content.status === selectedStatus
-    return statusMatch
+    const avatarMatch = !selectedAvatar || avatars.find(a => a.id === selectedAvatar)?.name === content.avatar_name
+    return statusMatch && avatarMatch
   })
 
   // 获取状态信息
@@ -360,6 +392,36 @@ export default function GeneratedContentPage() {
         </ScrollView>
       </View>
 
+      {/* 分身筛选 */}
+      {avatars.length > 0 && (
+        <View className="platform-filter" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+          <ScrollView className="status-scroll" scrollX>
+            <View
+              className={`status-tag ${selectedAvatar === null ? 'active' : ''}`}
+              style={selectedAvatar === null ? { background: '#6366F1', color: '#fff' } : {}}
+              onClick={() => setSelectedAvatar(null)}
+            >
+              <Text className="status-tag-text" style={selectedAvatar === null ? { color: '#fff' } : {}}>全部分身</Text>
+            </View>
+            {avatars.map((avatar) => (
+              <View
+                key={avatar.id}
+                className={`status-tag ${selectedAvatar === avatar.id ? 'active' : ''}`}
+                style={selectedAvatar === avatar.id ? { background: '#6366F1', color: '#fff' } : {}}
+                onClick={() => setSelectedAvatar(selectedAvatar === avatar.id ? null : avatar.id)}
+              >
+                {avatar.avatar_url ? (
+                  <Image src={avatar.avatar_url} style={{ width: 24, height: 24, borderRadius: 12, marginRight: 6 }} />
+                ) : null}
+                <Text className="status-tag-text" style={selectedAvatar === avatar.id ? { color: '#fff' } : {}}>
+                  {avatar.name}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* 内容列表 */}
       <ScrollView className="content-list" scrollY>
         {loading ? (
@@ -383,6 +445,20 @@ export default function GeneratedContentPage() {
               <View key={content.id} className="content-card">
                 {/* 卡片头部信息 */}
                 <View className="card-top-info">
+                  {/* 分身标签 */}
+                  {content.avatar_name && (
+                    <View className="avatar-tag" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', padding: '4px 8px', borderRadius: '12px', display: 'flex', flexDirection: 'row', alignItems: 'center', marginRight: '12rpx' }}>
+                      {content.avatar_url ? (
+                        <Image src={content.avatar_url} style={{ width: 20, height: 20, borderRadius: 10, marginRight: 4 }} />
+                      ) : (
+                        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 4 }}>
+                          <Text style={{ fontSize: 10, color: '#fff' }}>{content.avatar_name.charAt(0)}</Text>
+                        </View>
+                      )}
+                      <Text style={{ fontSize: '22rpx', color: '#6366F1', fontWeight: 500 }}>{content.avatar_name}</Text>
+                    </View>
+                  )}
+                  
                   {/* 平台标签 - 简洁显示 */}
                   <View className="platform-badge" style={{ background: platformInfo.bg }}>
                     <Text className="platform-name" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
