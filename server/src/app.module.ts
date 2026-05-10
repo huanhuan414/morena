@@ -26,6 +26,7 @@ import { RecommendationModule } from './modules/recommendation/recommendation.mo
 import { VideoModule } from './modules/video/video.module';
 import { VisionModule } from './modules/vision/vision.module';
 import { VoiceCloneModule } from './modules/voice-clone/voice-clone.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -61,6 +62,7 @@ import { ActivitiesModule } from './modules/activities/activities.module';
     VideoModule,
     VisionModule,
     VoiceCloneModule,
+    DashboardModule,
     TikHubModule,
     OrderProcessingModule,
     AdminModule,
