@@ -65,6 +65,9 @@ export default function AvatarCreate() {
   // 提交状态
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // 检测小程序环境（组件级别，供所有函数使用）
+  const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+
   // 初始化录音管理器
   useEffect(() => {
     // 仅在小程序环境初始化
@@ -136,9 +139,6 @@ export default function AvatarCreate() {
 
   // 图片上传来源选择（支持拍照、相册、微信聊天记录）
   const handleUploadPhoto = () => {
-    // 检测是否为小程序环境
-    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
-    
     if (!isMiniApp) {
       // H5端只支持相册
       Taro.chooseImage({
@@ -258,6 +258,12 @@ export default function AvatarCreate() {
 
   // 录音开始/停止
   const handleToggleRecord = () => {
+    // H5 环境不支持录音
+    if (!isMiniApp) {
+      Taro.showToast({ title: '录音功能仅在小程序中可用', icon: 'none' })
+      return
+    }
+
     if (isRecording) {
       recorderManager?.stop()
     } else {
@@ -566,7 +572,14 @@ export default function AvatarCreate() {
 
           {formData.voice === 'clone' && (
             <View className="clone-area">
-              {formData.voiceUrl ? (
+              {!isMiniApp ? (
+                <View className="clone-status">
+                  <Mic size={18} color="#9CA3AF" />
+                  <Text className="clone-text" style={{ color: '#9CA3AF' }}>
+                    请在微信/抖音小程序中录制声音
+                  </Text>
+                </View>
+              ) : formData.voiceUrl ? (
                 <View className="recording-status">
                   <Headphones size={20} color="#8B5CF6" />
                   <Text className="clone-text">声音已录制</Text>
