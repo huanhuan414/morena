@@ -82,8 +82,8 @@ export default function OrderContentCreation() {
         })
       }
 
-      // 获取已分配到此订单的分身
-      const avatarsRes = await Network.request({ url: `/api/order-dispatch/${orderId}/avatars` })
+      // 获取推荐到此订单的分身
+      const avatarsRes = await Network.request({ url: `/api/recommendation/avatar/order/${orderId}` })
       if (avatarsRes.data?.code === 200) {
         const avatarList = avatarsRes.data.data || []
         setAvatars(avatarList)
