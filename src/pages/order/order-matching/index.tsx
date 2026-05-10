@@ -170,12 +170,8 @@ export default function OrderMatchingPage() {
     
     try {
       const res = await Network.request({
-        url: '/api/order-dispatch/dispatch-to-all',
-        method: 'POST',
-        data: { 
-          orderId,
-          avatarIds: avatarsToDispatch.map(a => a.id)
-        }
+        url: `/api/order-dispatch/${orderId}/dispatch-all`,
+        method: 'POST'
       })
       
       hideLoading()
