@@ -147,16 +147,31 @@ export default function OrderMatchingPage() {
     // 兼容 H5 和小程序的参数获取方式
     let options: Record<string, string> = {}
     
-    // H5 模式：从 URL hash 中解析参数
+    // H5 模式：从完整 URL 中解析参数
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isH5) {
+      const fullUrl = window.location.href
+      console.log('[OrderMatching] H5完整URL:', fullUrl)
+      
+      // 尝试从 hash 中获取参数
       const hash = window.location.hash
       if (hash) {
-        const queryString = hash.split('?')[1] || ''
-        const urlParams = new URLSearchParams(queryString)
-        urlParams.forEach((value, key) => {
-          options[key] = value
-        })
+        const queryString = hash.includes('?') ? hash.split('?')[1] : ''
+        console.log('[OrderMatching] Hash查询字符串:', queryString)
+        if (queryString) {
+          const urlParams = new URLSearchParams(queryString)
+          urlParams.forEach((value, key) => {
+            options[key] = value
+          })
+        }
+      }
+      
+      // 备用：从完整 URL 中解析
+      if (!options.orderParams && fullUrl.includes('orderParams=')) {
+        const match = fullUrl.match(/orderParams=([^&]*)/)
+        if (match) {
+          options.orderParams = match[1]
+        }
       }
     } else {
       // 小程序模式

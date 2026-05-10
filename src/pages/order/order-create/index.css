@@ -4,6 +4,33 @@
   padding-bottom: 120px;
 }
 
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.nav-title {
+  font-size: 34px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.nav-text {
+  font-size: 28px;
+  color: #1890ff;
+}
+
 .scroll-container {
   height: calc(100vh - 120px);
 }

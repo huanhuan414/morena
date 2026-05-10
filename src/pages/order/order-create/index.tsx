@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Sparkles, Send, Check, ChevronRight, Loader } from 'lucide-react-taro'
+import { Sparkles, Send, Check, ChevronRight, Loader, ChevronLeft, FileText } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -90,6 +90,7 @@ export default function OrderCreate() {
     quantityPerAvatar: 1,
   })
   const [aiLoading, setAiLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
 
   // 计算价格
@@ -233,23 +234,70 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       return
     }
 
-    // 构建订单参数，跳转到分身推荐页
-    const orderParams = {
-      title: form.title,
-      description: form.description,
-      contentType: form.contentType,
-      platforms: form.platforms,
-      requirements: form.optionalRequirements,
-      avatarCount: form.avatarCount,
-      quantityPerAvatar: form.quantityPerAvatar,
-      totalPrice: totalPrice.total,
-    }
+    setIsSubmitting(true)
 
-    // 跳转到AI智能匹配分身页面，传递订单参数
-    const params = encodeURIComponent(JSON.stringify(orderParams))
-    Taro.navigateTo({
-      url: `/pages/order/order-matching/index?orderParams=${params}`
-    })
+    try {
+      // 先创建订单，获取订单ID
+      const orderData = {
+        title: form.title,
+        description: form.description,
+        content_type: form.contentType,
+        platforms: form.platforms,
+        avatar_count: form.avatarCount,
+        quantity_per_avatar: form.quantityPerAvatar,
+        total_price: totalPrice.total,
+      }
+
+      console.log('创建订单请求:', {
+        url: '/api/order',
+        method: 'POST',
+        data: orderData
+      })
+
+      const res = await Network.request({
+        url: '/api/order',
+        method: 'POST',
+        data: orderData,
+      })
+
+      console.log('创建订单响应:', res.data)
+
+      if (res.data.code === 200 && res.data.data?.id) {
+        const orderId = res.data.data.id
+        
+        // 构建订单参数，包含订单ID
+        const orderParams = {
+          orderId: orderId,
+          title: form.title,
+          description: form.description,
+          contentType: form.contentType,
+          platforms: form.platforms,
+          requirements: form.optionalRequirements,
+          avatarCount: form.avatarCount,
+          quantityPerAvatar: form.quantityPerAvatar,
+          totalPrice: totalPrice.total,
+        }
+
+        // 跳转到AI智能匹配分身页面，传递订单参数
+        const params = encodeURIComponent(JSON.stringify(orderParams))
+        Taro.navigateTo({
+          url: `/pages/order/order-matching/index?orderParams=${params}`
+        })
+      } else {
+        Taro.showToast({ 
+          title: res.data.msg || '创建订单失败', 
+          icon: 'none' 
+        })
+      }
+    } catch (err: any) {
+      console.error('创建订单失败:', err)
+      Taro.showToast({ 
+        title: err?.message || '网络错误，请重试', 
+        icon: 'none' 
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // 获取选中平台的特殊要求
@@ -263,6 +311,21 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   return (
     <View className="order-create-page">
+      {/* 顶部导航 */}
+      <View className="top-nav">
+        <View className="nav-left" onClick={() => Taro.navigateBack()}>
+          <ChevronLeft size={24} color="#333" />
+        </View>
+        <Text className="nav-title">新建订单</Text>
+        <View 
+          className="nav-right" 
+          onClick={() => Taro.navigateTo({ url: '/pages/order/order-create/index' })}
+        >
+          <FileText size={20} color="#1890ff" />
+          <Text className="nav-text">发单记录</Text>
+        </View>
+      </View>
+      
       <ScrollView scrollY className="scroll-container">
         {/* 任务标题 */}
         <View className="section">
@@ -452,10 +515,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         {/* 提交按钮 */}
         <View className="submit-section">
           <View
-            className={`submit-button ${aiLoading ? 'loading' : ''}`}
-            onClick={aiLoading ? undefined : handleSubmit}
+            className={`submit-button ${isSubmitting ? 'loading' : ''}`}
+            onClick={isSubmitting || aiLoading ? undefined : handleSubmit}
           >
-            {aiLoading ? (
+            {isSubmitting ? (
               <Loader size={20} color="#fff" className="btn-loading" />
             ) : (
               <>
