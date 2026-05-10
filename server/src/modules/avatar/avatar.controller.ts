@@ -234,7 +234,7 @@ export class AvatarController {
     @Body() body: { trust_enabled: boolean }
   ) {
     try {
-      await this.avatarService.updateTrust(parseInt(id), body.trust_enabled)
+      await this.avatarService.updateTrust(id, body.trust_enabled)
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
       console.error('更新托管状态失败:', err)

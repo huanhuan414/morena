@@ -350,17 +350,19 @@ export class AvatarService {
     }
 
     const countResult = await db.query(`SELECT COUNT(*) as total FROM avatars WHERE ${where}`, values)
-    const total = countResult?.data?.[0]?.total || 0
+    const countArray = Array.isArray(countResult) ? countResult : (countResult?.data || [])
+    const total = countArray[0]?.total || 0
 
     const listResult = await db.query(
       `SELECT * FROM avatars WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...values, pageSize, offset]
     )
+    const listArray = Array.isArray(listResult) ? listResult : (listResult?.data || [])
 
     return {
       success: true,
       data: {
-        list: listResult.data || [],
+        list: listArray,
         total,
         page,
         pageSize
@@ -383,7 +385,7 @@ export class AvatarService {
   /**
    * 更新单个分身托管状态
    */
-  async updateTrust(avatarId: number, trustEnabled: boolean) {
+  async updateTrust(avatarId: string, trustEnabled: boolean) {
     const db = getMySQLClient()
     
     // 先查询分身确保存在
