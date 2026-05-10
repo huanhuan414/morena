@@ -8,6 +8,9 @@ import * as crypto from 'crypto'
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 
+// 内存缓存，用于数据库不可用时降级（共享给 user-stats.service.ts）
+import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
+
 @Injectable()
 export class AvatarService {
   /**
@@ -22,56 +25,75 @@ export class AvatarService {
       console.warn('[AvatarService] 创建分身时userId为空，使用默认测试ID')
     }
     
-    const db = getMySQLClient()
-    const { 
-      name, 
-      photo, 
-      tags, 
-      voice_type, 
-      voice_url, 
-      preset_voice_id, 
-      abilities 
-    } = avatarData
-
-    // 构建 personality JSON
-    const personality = JSON.stringify({
-      tags: tags || [],
-      abilities: abilities || {}
-    })
-
     // 生成 UUID 作为 id
     const id = `avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const now = new Date().toISOString()
     
-    const insertData = {
+    const newAvatar = {
       id,
-      user_id: effectiveUserId || 'dev_user', // 统一使用传入的 userId
-      name,
-      description: '',
-      avatar_url: photo || '',
-      personality,
+      user_id: effectiveUserId || 'dev_user',
+      name: avatarData.name,
+      description: avatarData.description || '',
+      avatar_url: avatarData.photo || avatarData.avatar_url || '',
+      personality: JSON.stringify({ tags: avatarData.tags || [], abilities: avatarData.abilities || {} }),
       skills: '{}',
       config: '{}',
-      voice_id: preset_voice_id || voice_type || 'preset',
-      status: voice_type === 'clone' ? 'training' : 'active',
+      voice_id: avatarData.preset_voice_id || avatarData.voice_type || 'preset',
+      status: avatarData.voice_type === 'clone' ? 'training' : 'active',
+      created_at: now,
+      updated_at: now
     }
 
-    console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', insertData)
-    
-    const result = await db.insert('avatars', insertData)
-    
-    console.log('[AvatarService] 插入结果:', result)
-
-    if ((result as any)?.data?.affectedRows > 0) {
-      const avatarId = (result as any)?.data?.insertId
-      
-      // 如果是原声复刻，触发声音训练任务
-      if (voice_type === 'clone' && voice_url) {
-        console.log(`触发声音复刻训练任务，avatarId: ${avatarId}, voiceUrl: ${voice_url}`)
+    // 尝试使用数据库
+    try {
+      const db = getMySQLClient()
+      const insertData = {
+        id,
+        user_id: effectiveUserId || 'dev_user',
+        name: avatarData.name,
+        description: '',
+        avatar_url: avatarData.photo || '',
+        personality: JSON.stringify({ tags: avatarData.tags || [], abilities: avatarData.abilities || {} }),
+        skills: '{}',
+        config: '{}',
+        voice_id: avatarData.preset_voice_id || avatarData.voice_type || 'preset',
+        status: avatarData.voice_type === 'clone' ? 'training' : 'active',
       }
 
-      return { success: true, id: avatarId, data: avatarData }
+      console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', insertData)
+      const result = await db.insert('avatars', insertData)
+      
+      console.log('[AvatarService] 插入结果:', result)
+
+      // 检查是否有错误
+      if (result.error) {
+        console.warn('[AvatarService] 数据库插入失败，使用内存缓存:', result.error.message)
+        // 使用内存缓存
+        const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
+        userAvatars.unshift(newAvatar)
+        sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+        return { success: true, id, data: newAvatar }
+      }
+
+      if ((result as any)?.data?.affectedRows > 0) {
+        // 存入内存缓存
+        const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
+        userAvatars.unshift(newAvatar)
+        sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+        
+        return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
+      }
+      
+      return { success: false, error: '创建分身失败' }
+    } catch (error) {
+      console.warn('[AvatarService] 数据库不可用，使用内存缓存:', error.message)
+      // 使用内存缓存
+      const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
+      userAvatars.unshift(newAvatar)
+      sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+      
+      return { success: true, id, data: newAvatar }
     }
-    return { success: false, error: '创建分身失败' }
   }
 
   /**
@@ -79,8 +101,7 @@ export class AvatarService {
    * @param userId - 用户ID（从 x-user-id header 获取）
    */
   async getUserAvatars(userId?: string) {
-    const db = getMySQLClient()
-    let rows: any[]
+    let rows: any[] = []
     
     // 统一用户ID规范
     const isTestUser = userId && TEST_USER_IDS.includes(userId)
@@ -88,20 +109,37 @@ export class AvatarService {
     // 有效用户ID：非空且非测试用户ID
     const hasValidUserId = userId && userId.trim() && !isTestUser
     
-    if (hasValidUserId) {
-      // 有效用户：只查询该用户自己的分身（直接使用SQL，数据库列名是驼峰userId）
-      console.log('[AvatarService] 查询用户分身，userId:', userId)
-      const result = await db.query(`SELECT * FROM avatars WHERE user_id = ?`, [userId])
-      rows = Array.isArray(result) ? result : (result?.data || [])
-    } else if (isTestUser) {
-      // 测试用户：返回所有分身（开发环境）
-      console.log('[AvatarService] 测试用户，返回所有分身')
-      const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
-      rows = Array.isArray(result) ? result : (result?.data || [])
-    } else {
-      // 无用户ID：返回空
-      console.log('[AvatarService] 无效用户ID，返回空列表')
-      rows = []
+    // 尝试使用数据库
+    try {
+      const db = getMySQLClient()
+      
+      if (hasValidUserId) {
+        // 有效用户：只查询该用户自己的分身（直接使用SQL，数据库列名是驼峰userId）
+        console.log('[AvatarService] 查询用户分身，userId:', userId)
+        const result = await db.query(`SELECT * FROM avatars WHERE user_id = ?`, [userId])
+        rows = Array.isArray(result) ? result : (result?.data || [])
+      } else if (isTestUser) {
+        // 测试用户：返回所有分身（开发环境）
+        console.log('[AvatarService] 测试用户，返回所有分身')
+        const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+        rows = Array.isArray(result) ? result : (result?.data || [])
+      } else {
+        // 无用户ID：返回空
+        rows = []
+      }
+      
+      // 存入内存缓存
+      if (hasValidUserId && userId) {
+        sharedMemoryAvatars.set(userId, rows)
+      }
+    } catch (error) {
+      console.warn('[AvatarService] 数据库不可用，使用内存缓存')
+      // 使用内存缓存
+      if (hasValidUserId && userId) {
+        rows = sharedMemoryAvatars.get(userId) || []
+      } else {
+        rows = []
+      }
     }
     
     // 格式化返回数据（query已转换为驼峰，需转回蛇形兼容前端）
