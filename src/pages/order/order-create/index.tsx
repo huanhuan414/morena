@@ -119,22 +119,37 @@ export default function OrderCreate() {
       const platformNames = form.platforms.map(p => PLATFORM_CONFIG[p]?.label || p).join('、')
       const contentTypeName = selectedType?.label || '文案'
       
-      // 构建提示词
-      const prompt = `你是一个专业的内容创作者，请根据以下要求生成内容：
+      // 构建提示词 - 生成爆款任务描述
+      const prompt = `你是抖音/小红书/快手等平台的专业内容策划师，擅长打造爆款内容。请根据以下任务信息，生成一份【任务描述】，用于给达人/博主明确的创作指引。
 
-任务主题：${form.title}
-内容类型：${contentTypeName}
-发布平台：${platformNames}
-${form.description ? `补充信息：${form.description}` : ''}
+【任务主题】
+${form.title}
 
-要求：
-1. 内容要符合${platformNames}的平台风格
-2. ${contentTypeName === '纯文案' ? '吸引人，有传播性' : ''}
-3. ${contentTypeName === '图文笔记' ? '包含标题、正文、话题标签' : ''}
-4. ${contentTypeName === '短视频脚本' ? '包含开场、过程、结尾，有镜头建议' : ''}
-5. ${contentTypeName === '直播话术' ? '包含开场话术、产品介绍、促单话术' : ''}
+【内容类型】
+${contentTypeName}
 
-请直接输出内容，不要有其他解释。`
+【目标平台】
+${platformNames}
+
+${form.description ? `【品牌/产品补充信息】\n${form.description}\n` : ''}
+
+【输出要求】
+请按以下格式生成任务描述，每部分都要写清楚：
+
+1. 【产品亮点】（2-3个）：用数字、对比、场景化方式突出卖点
+2. 【用户痛点】：描述目标用户的需求和痛点，让博主能感同身受
+3. 【内容方向】（2-3个）：具体可执行的内容方向，如"测评对比"、"场景种草"、"避坑指南"等
+4. 【爆款钩子】（1-2个）：开头3秒抓人眼球的方法，如疑问句、冲突对比、惊人数据等
+5. 【必须植入的关键词】：至少5个热搜词/话题标签
+6. 【禁忌事项】：避免提到的内容或词语
+7. 【预期效果】：如"引发共鸣"、"促进讨论"、"引导购买"等
+
+风格要求：
+- 语言专业但易懂，方便博主理解和执行
+- 突出平台的爆款逻辑和流量密码
+- 每条都要具体可执行，不要空话套话
+
+请直接输出任务描述内容，不要有其他解释。`
 
       // 调用AI接口
       const res = await Network.request({
