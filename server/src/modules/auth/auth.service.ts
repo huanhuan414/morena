@@ -85,7 +85,7 @@ export class AuthService {
     
     // 查找用户（使用手机号作为唯一标识）
     const result = await db.query('users', { phone })
-    const existingUser = (result as any)?.data?.[0]
+    const existingUser = (Array.isArray(result) ? result[0] : (result as any)?.data?.[0])
     
     if (existingUser) {
       // 已注册用户，直接登录
@@ -237,7 +237,7 @@ export class AuthService {
     
     // 查找用户
     const result = await db.query('users', { openid })
-    const existingUser = (result as any)?.data?.[0]
+    const existingUser = (Array.isArray(result) ? result[0] : (result as any)?.data?.[0])
     
     if (existingUser) {
       return {
@@ -296,7 +296,7 @@ export class AuthService {
     
     const db = getMySQLClient()
     const result = await db.query('users', { id: userId })
-    const user = (result as any)?.data?.[0]
+    const user = (Array.isArray(result) ? result[0] : (result as any)?.data?.[0])
     
     if (!user) {
       throw new UnauthorizedException('用户不存在')
@@ -311,7 +311,7 @@ export class AuthService {
   async getUserById(userId: string) {
     const db = getMySQLClient()
     const result = await db.query('users', { id: userId })
-    return (result as any)?.data?.[0]
+    return (Array.isArray(result) ? result[0] : (result as any)?.data?.[0])
   }
 
   /**
