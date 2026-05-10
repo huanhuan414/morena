@@ -97,6 +97,7 @@ export default function AvatarManagePage() {
   })
 
   useDidShow(() => {
+    console.log('[useDidShow] 页面显示，开始加载数据')
     fetchAvatars()
     loadSubscriptionInfo()
   })
