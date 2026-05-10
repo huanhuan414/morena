@@ -152,7 +152,7 @@ export default function OrderMatchingPage() {
           description: order.description,
           platforms: order.platforms,
           requirements: order.requirements || {},
-          avatarCount: order.avatar_count || 1,
+          avatarCount: order.avatarCount || 1,
           totalPrice: order.budget || 0
         })
         
@@ -162,7 +162,7 @@ export default function OrderMatchingPage() {
           description: order.description,
           platforms: order.platforms,
           requirements: order.requirements || {},
-          avatarCount: order.avatar_count || 1,
+          avatarCount: order.avatarCount || 1,
           totalPrice: order.budget || 0
         })
       } else {
