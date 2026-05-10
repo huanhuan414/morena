@@ -73,7 +73,7 @@ export default function OrderMatchingPage() {
           budget: orderData.budget,
           contentType: orderData.content_type || orderData.contentType,
           requirements: orderData.requirements,
-          avatarCount: orderData.avatar_count || orderData.avatarCount
+          avatarCount: orderData.expected_quantity || orderData.expectedQuantity || orderData.avatar_count || orderData.avatarCount || 0
         })
       }
       

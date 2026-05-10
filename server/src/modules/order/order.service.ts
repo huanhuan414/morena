@@ -216,7 +216,7 @@ export class OrderService {
       // 获取实际分配的分身数量
       const dispatchedCount = dispatchCounts[row.id] || 0
       // MySQL client 返回驼峰格式的字段名
-      const needAvatarCount = row.avatarCount || row.expectedQuantity || 0
+      const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
       
       return {
         id: row.id,

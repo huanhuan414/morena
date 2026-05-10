@@ -20,6 +20,7 @@ interface Order {
   platforms?: string | string[]
   requirements?: string | { platforms?: string[] }
   avatarCount?: number
+  dispatchedCount?: number
   contentType?: string
   // 兼容字段
   created_at?: string | Date
