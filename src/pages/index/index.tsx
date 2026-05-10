@@ -29,6 +29,52 @@ const Index: React.FC = () => {
     pollInterval: 10000 // 10 秒轮询
   })
 
+  // 获取订单列表
+  const fetchOrderNotifications = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/order/list'
+      })
+      console.log('[首页] 获取订单列表:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        // 转换订单数据为通知格式
+        const orders = (res.data.data || []).map((order: any) => ({
+          id: order.id,
+          platform: order.platform || '通用',
+          platformColor: getPlatformColor(order.platform),
+          title: order.title,
+          budget: order.budget || '待定',
+          deadline: order.deadline || '长期有效',
+          desc: order.description || '暂无描述'
+        }))
+        
+        // 如果有订单且弹窗未打开，自动显示第一个订单
+        if (orders.length > 0 && !showOrderModal && !orderModalData) {
+          setOrderModalData(orders[0])
+          setShowOrderModal(true)
+        }
+      }
+    } catch (err) {
+      console.error('获取订单列表失败:', err)
+    }
+  }
+
+  // 根据平台返回颜色
+  const getPlatformColor = (platform: string) => {
+    const colors: Record<string, string> = {
+      '小红书': '#FF2442',
+      '抖音': '#00F2EA',
+      '微信': '#07C160',
+      '微博': '#FF8200',
+      '快手': '#FF4906',
+      'B站': '#FB7299',
+      '知乎': '#0084FF',
+      '公众号': '#07C160',
+    }
+    return colors[platform] || '#6366F1'
+  }
+
   // 获取统计数据
   const fetchStats = async () => {
     try {
@@ -143,7 +189,7 @@ const Index: React.FC = () => {
       await loadUserFromStorage()
       // 等待一小段时间确保 storage 写入完成
       await new Promise(resolve => setTimeout(resolve, 100))
-      await Promise.all([fetchStats(), fetchActivities()])
+      await Promise.all([fetchStats(), fetchActivities(), fetchOrderNotifications()])
     }
     initData()
   }, [])
@@ -160,11 +206,7 @@ const Index: React.FC = () => {
 
   // 从API获取实时动态
 
-  // 订单通知数据
-  const orderNotifications = [
-    { id: 1, platform: '小红书', platformColor: '#FF2442', title: '美妆种草笔记', budget: '¥150-200', deadline: '剩余2小时', desc: '需要突出产品功效，配图3张以上' },
-    { id: 2, platform: '抖音', platformColor: '#00F2EA', title: '探店视频脚本', budget: '¥80-120', deadline: '剩余5小时', desc: '脚本时长1-2分钟，需包含热门元素' },
-  ]
+  // 订单通知数据 - 已改为从API获取
 
   // 复制活动数据用于无缝滚动
   const allActivities = [...activities, ...activities]
@@ -187,19 +229,6 @@ const Index: React.FC = () => {
 
     return () => clearInterval(timer)
   }, [activities.length])
-
-  // 模拟收到订单通知
-  useEffect(() => {
-    // 3秒后显示订单弹窗（演示用）
-    const timer = setTimeout(() => {
-      if (mindClones > 0) {
-        setOrderModalData(orderNotifications[0])
-        setShowOrderModal(true)
-      }
-    }, 3000)
-    
-    return () => clearTimeout(timer)
-  }, [mindClones])
 
   const goToPage = (path: string) => {
     Taro.navigateTo({ url: path })
