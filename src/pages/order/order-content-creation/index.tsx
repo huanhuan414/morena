@@ -139,7 +139,8 @@ export default function OrderContentCreation() {
           orderDescription: orderInfo?.description || orderInfo?.requirements || '',
           platforms: orderInfo?.platforms || [],
           contentType: orderInfo?.contentType || 'image',
-          targetAudience: orderInfo?.requirements || ''
+          targetAudience: orderInfo?.requirements || '',
+          contentQuantity: orderInfo?.expectedQuantity || 1  // 每个分身需要生成的内容数量
         }
       })
 

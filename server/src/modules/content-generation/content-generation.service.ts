@@ -63,8 +63,9 @@ export class ContentGenerationService {
 
         // 3. 生成视频（如果需要）
         if (needVideo) {
-          const video = await this.generateVideo(platform, input)
-          platformResult.video = video
+          const videos = await this.generateVideos(platform, input)
+          platformResult.videos = videos
+          platformResult.video = videos.length > 0 ? videos[0] : null
         }
 
         // 保存到数据库
@@ -77,7 +78,7 @@ export class ContentGenerationService {
           status: 'completed',
           content: platformResult.content || '',
           images: platformResult.images?.length > 0 ? JSON.stringify(platformResult.images) : null,
-          video_url: platformResult.video || null,
+          video_url: platformResult.videos?.length > 0 ? JSON.stringify(platformResult.videos) : null,
           created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
         })
 
@@ -87,7 +88,8 @@ export class ContentGenerationService {
           success: true,
           content: platformResult.content,
           images: platformResult.images,
-          video: platformResult.video
+          videos: platformResult.videos,
+          video: platformResult.videos?.[0] || null
         })
       } catch (error: any) {
         this.logger.error(`生成内容失败: ${error.message}`)
@@ -130,76 +132,99 @@ export class ContentGenerationService {
    * 生成图片
    */
   private async generateImages(platform: string, input: any): Promise<string[]> {
-    const { orderTitle, orderDescription, avatarName } = input
+    const { orderTitle, orderDescription, avatarName, contentQuantity = 1 } = input
+    const imageCount = Math.max(1, Math.min(contentQuantity, 9)) // 限制最多9张
+    const images: string[] = []
+
+    this.logger.log(`需要生成 ${imageCount} 张图片`)
 
     try {
-      // 构建图片生成提示词
-      const imagePrompt = this.buildImagePrompt(platform, orderTitle, orderDescription, avatarName)
+      // 根据内容数量生成相应数量的图片
+      for (let i = 0; i < imageCount; i++) {
+        const imagePrompt = this.buildImagePrompt(platform, orderTitle, orderDescription, avatarName, i + 1, imageCount)
 
-      this.logger.log(`生成图片，提示词: ${imagePrompt}`)
+        this.logger.log(`生成第 ${i + 1}/${imageCount} 张图片`)
 
-      const response = await this.imageClient.generate({
-        prompt: imagePrompt,
-        size: '2K'
-      })
+        try {
+          const response = await this.imageClient.generate({
+            prompt: imagePrompt,
+            size: '2K'
+          })
 
-      const helper = this.imageClient.getResponseHelper(response)
+          const helper = this.imageClient.getResponseHelper(response)
 
-      if (helper.success) {
-        this.logger.log(`图片生成成功: ${helper.imageUrls.length} 张`)
-        return helper.imageUrls
-      } else {
-        this.logger.error(`图片生成失败: ${helper.errorMessages.join(', ')}`)
-        // 返回模拟图片
-        return [
-          `https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle)}`
-        ]
+          if (helper.success && helper.imageUrls.length > 0) {
+            images.push(helper.imageUrls[0])
+            this.logger.log(`第 ${i + 1} 张图片生成成功`)
+          } else {
+            this.logger.error(`第 ${i + 1} 张图片生成失败，使用占位图`)
+            images.push(`https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle + '-' + (i + 1))}`)
+          }
+        } catch (error: any) {
+          this.logger.error(`第 ${i + 1} 张图片生成失败: ${error.message}`)
+          images.push(`https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle + '-' + (i + 1))}`)
+        }
       }
+
+      return images
     } catch (error: any) {
       this.logger.error(`图片生成失败: ${error.message}`)
       // 返回模拟图片
-      return [
-        `https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle)}`
-      ]
+      return Array(imageCount).fill(null).map((_, i) => 
+        `https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle + '-' + (i + 1))}`
+      )
     }
   }
 
   /**
-   * 生成视频
+   * 生成视频（支持多个）
    */
-  private async generateVideo(platform: string, input: any): Promise<string | null> {
-    const { orderTitle, orderDescription, images } = input
+  private async generateVideos(platform: string, input: any): Promise<string[]> {
+    const { orderTitle, orderDescription, images, contentQuantity = 1 } = input
+    const videoCount = Math.max(1, Math.min(contentQuantity, 5)) // 限制最多5个视频
+    const videos: string[] = []
+
+    this.logger.log(`需要生成 ${videoCount} 个视频`)
 
     try {
-      // 构建视频生成提示词
-      const videoPrompt = this.buildVideoPrompt(platform, orderTitle, orderDescription)
+      // 根据内容数量生成相应数量的视频
+      for (let i = 0; i < videoCount; i++) {
+        const videoPrompt = this.buildVideoPrompt(platform, orderTitle, orderDescription, i + 1, videoCount)
 
-      this.logger.log(`生成视频，提示词: ${videoPrompt}`)
+        this.logger.log(`生成第 ${i + 1}/${videoCount} 个视频`)
 
-      const request = {
-        prompt: videoPrompt,
-        duration: 5
+        try {
+          const request: any = {
+            prompt: videoPrompt,
+            duration: 5
+          }
+
+          // 如果有生成的图片，用对应索引的图片作为参考
+          if (images && images.length > i) {
+            request.image = images[i]
+          } else if (images && images.length > 0) {
+            request.image = images[0]
+          }
+
+          const response = await this.videoClient.generate(request)
+      
+          const helper = this.videoClient.getResponseHelper(response)
+
+          if (helper.success) {
+            videos.push(helper.videoUrl)
+            this.logger.log(`第 ${i + 1} 个视频生成成功: ${helper.videoUrl}`)
+          } else {
+            this.logger.error(`第 ${i + 1} 个视频生成失败`)
+          }
+        } catch (error: any) {
+          this.logger.error(`第 ${i + 1} 个视频生成失败: ${error.message}`)
+        }
       }
 
-      // 如果有生成的图片，可以用作视频的参考
-      if (images && images.length > 0) {
-        (request as any).image = images[0]
-      }
-
-      const response = await this.videoClient.generate(request)
-
-      const helper = this.videoClient.getResponseHelper(response)
-
-      if (helper.success) {
-        this.logger.log(`视频生成成功: ${helper.videoUrl}`)
-        return helper.videoUrl
-      } else {
-        this.logger.error(`视频生成失败: ${helper.errorMessages.join(', ')}`)
-        return null
-      }
+      return videos
     } catch (error: any) {
       this.logger.error(`视频生成失败: ${error.message}`)
-      return null
+      return []
     }
   }
 
@@ -276,7 +301,7 @@ export class ContentGenerationService {
   /**
    * 构建图片提示词
    */
-  private buildImagePrompt(platform: string, title: string, description: string, avatarName?: string): string {
+  private buildImagePrompt(platform: string, title: string, description: string, avatarName?: string, index?: number, total?: number): string {
     const platformStyles: Record<string, string> = {
       wechat_mp: '专业商务风格，高质量的配图，适合公众号封面',
       xiaohongshu: '精致生活风格，温暖色调，高颜值图片',
@@ -288,14 +313,18 @@ export class ContentGenerationService {
     }
 
     const style = platformStyles[platform] || '高质量商业摄影风格'
+    const partInfo = total && total > 1 ? `（第${index}/${total}张）` : ''
 
-    let prompt = `${style}的推广配图。\n\n`
+    let prompt = `${style}的推广配图${partInfo}。\n\n`
     prompt += `主题：${title}\n`
     if (description) {
       prompt += `内容：${description}\n`
     }
     if (avatarName) {
       prompt += `风格参考：${avatarName}的人设风格\n`
+    }
+    if (total && total > 1) {
+      prompt += `\n这是系列图片的第${index}张，需要与后续图片风格统一。`
     }
     prompt += `\n要求：图片要精美，吸引眼球，适合社交媒体传播`
 
@@ -305,7 +334,7 @@ export class ContentGenerationService {
   /**
    * 构建视频提示词
    */
-  private buildVideoPrompt(platform: string, title: string, description: string): string {
+  private buildVideoPrompt(platform: string, title: string, description: string, index?: number, total?: number): string {
     const platformStyles: Record<string, string> = {
       douyin: '抖音短视频风格，节奏快，视觉冲击强',
       bilibili: 'B站风格，可以有创意有深度',
@@ -313,11 +342,15 @@ export class ContentGenerationService {
     }
 
     const style = platformStyles[platform] || '短视频风格'
+    const partInfo = total && total > 1 ? `（第${index}/${total}个）` : ''
 
-    let prompt = `生成一个${style}的推广短视频。\n\n`
+    let prompt = `生成一个${style}的推广短视频${partInfo}。\n\n`
     prompt += `主题：${title}\n`
     if (description) {
       prompt += `内容：${description}\n`
+    }
+    if (total && total > 1) {
+      prompt += `\n这是系列视频的第${index}个，需要与后续视频形成连贯的内容。`
     }
     prompt += `\n要求：开头要有吸引力，整体节奏紧凑，适合短视频平台传播`
 
