@@ -7,7 +7,7 @@ function getPool(): Pool {
   if (!pool) {
     pool = createPool({
       host: process.env.MYSQL_HOST || '127.0.0.1',
-      port: parseInt(process.env.MYSQL_PORT || '16033'),
+      port: parseInt(process.env.MYSQL_PORT || '3306'),
       user: process.env.MYSQL_USER || 'mrl',
       password: process.env.MYSQL_PASSWORD || 'SYDPHJB8aGBn83Eh',
       database: process.env.MYSQL_DATABASE || 'mrl',

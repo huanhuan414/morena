@@ -240,16 +240,19 @@ export class RecommendationService {
     // 按匹配度降序排序
     enhancedAvatars.sort((a, b) => b.matchScore - a.matchScore)
     
-    // 只返回订单需要的分身数量，默认为3个
-    const requiredCount = order.required_avatars || order.avatar_count || 3
-    const limitedAvatars = enhancedAvatars.slice(0, requiredCount)
+    // 获取订单需要的分身数量（数据库字段已转换为驼峰命名）
+    const orderAvatarCount = order.avatarCount || order.avatar_count || 1
+    console.log('[RecommendationService] 订单avatar_count:', orderAvatarCount)
+    
+    // 只返回订单需要的分身数量
+    const limitedAvatars = enhancedAvatars.slice(0, orderAvatarCount)
     
     // 标记最佳推荐（分数最高的1个）
     limitedAvatars.forEach((avatar, index) => {
       avatar.isBest = index === 0
     })
     
-    console.log('[RecommendationService] 订单需要分身数:', requiredCount, '，返回推荐分身数量:', limitedAvatars.length)
+    console.log('[RecommendationService] 订单需要分身数:', orderAvatarCount, '，返回推荐分身数量:', limitedAvatars.length)
     
     return limitedAvatars
   }
