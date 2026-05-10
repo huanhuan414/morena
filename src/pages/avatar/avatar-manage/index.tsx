@@ -12,7 +12,7 @@ import './index.css'
 interface Avatar {
   id: string
   name: string
-  avatar_url: string
+  avatarUrl: string  // 后端返回的是驼峰格式
   level: number
   personality: string
   exp: number
@@ -437,9 +437,9 @@ export default function AvatarManagePage() {
                 {/* 分身信息 */}
                 <View className="avatar-info-section">
                   <View className="avatar-avatar">
-                    {avatar.avatar_url && avatar.avatar_url.trim() !== '' ? (
+                    {avatar.avatarUrl && avatar.avatarUrl.trim() !== '' ? (
                       <Image
-                        src={avatar.avatar_url}
+                        src={avatar.avatarUrl}
                         className={`avatar-img style-${avatar.appearance_style || 'real'}`}
                         mode="aspectFill"
                       />
