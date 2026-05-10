@@ -40,14 +40,15 @@ const Index: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         // 转换订单数据为通知格式
         const orders = (res.data.data || []).map((order: any) => {
-          // 处理平台信息（后端返回platforms数组）
+          // 处理平台信息（后端返回platforms数组），转换为中文
           const platforms = Array.isArray(order.platforms) ? order.platforms : (order.platform ? [order.platform] : ['通用'])
-          const platform = platforms[0] || '通用'
+          const platformKey = platforms[0] || '通用'
+          const platformName = getPlatformName(platformKey)
           
           return {
             id: order.id,
-            platform,
-            platformColor: getPlatformColor(platform),
+            platform: platformName,
+            platformColor: getPlatformColor(platformName),
             title: order.title,
             budget: order.budget ? `¥${order.budget}` : '待定',
             deadline: order.deadline || '长期有效'
@@ -65,17 +66,32 @@ const Index: React.FC = () => {
     }
   }
 
+  // 将英文平台名转换为中文
+  const getPlatformName = (platform: string): string => {
+    const nameMap: Record<string, string> = {
+      'wechat': '微信',
+      'wechat_mp': '公众号',
+      'xiaohongshu': '小红书',
+      'douyin': '抖音',
+      'kuaishou': '快手',
+      'bilibili': 'B站',
+      'weibo': '微博',
+      'zhihu': '知乎',
+    }
+    return nameMap[platform] || platform
+  }
+
   // 根据平台返回颜色
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
+      '微信': '#07C160',
+      '公众号': '#07C160',
       '小红书': '#FF2442',
       '抖音': '#00F2EA',
-      '微信': '#07C160',
       '微博': '#FF8200',
       '快手': '#FF4906',
       'B站': '#FB7299',
       '知乎': '#0084FF',
-      '公众号': '#07C160',
     }
     return colors[platform] || '#6366F1'
   }
@@ -240,9 +256,12 @@ const Index: React.FC = () => {
   }
 
   // 处理订单弹窗
+  // 跳转到内容生成页面
   const handleOrderAccept = () => {
-    setShowOrderModal(false)
-    Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })
+    if (orderModalData?.id) {
+      setShowOrderModal(false)
+      Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderModalData.id}` })
+    }
   }
 
   const handleOrderDismiss = () => {
