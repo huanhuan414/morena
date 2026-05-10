@@ -106,8 +106,8 @@ export class AuthService {
       exp: 0,
       credits: 100, // 新用户赠送100积分
       referral_code: this.generateReferralCode(),
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     }
     
     const insertResult = await db.insert('users', newUserData)
@@ -168,7 +168,7 @@ export class AuthService {
       referee_id: inviteeId,
       referral_code: referralCode,
       status: 'completed',
-      created_at: new Date(),
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     
     // 发放邀请奖励（给邀请人）
@@ -182,14 +182,14 @@ export class AuthService {
       amount: REWARD_AMOUNT,
       description: `邀请新用户奖励`,
       status: 'settled',
-      created_at: new Date(),
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     
     // 更新邀请人余额和总收益
     await db.update('users', inviter.id, {
       credits: inviter.credits + REWARD_CREDITS,
       total_earnings: (inviter.total_earnings || 0) + REWARD_AMOUNT,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     
     return { inviterId: inviter.id, reward: REWARD_AMOUNT }
@@ -254,8 +254,8 @@ export class AuthService {
       exp: 0,
       credits: 100,
       referral_code: this.generateReferralCode(),
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     }
     
     await db.insert('users', newUserData)
