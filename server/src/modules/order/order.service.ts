@@ -41,15 +41,34 @@ export class OrderService {
     return { id, status: 'pending_payment' }
   }
 
+  // 转换订单数据中的日期对象
+  private transformOrderData(order: any): any {
+    if (!order) return order
+    const result: any = { ...order }
+    // 转换日期对象为 ISO 字符串
+    if (result.created_at instanceof Date) {
+      result.created_at = result.created_at.toISOString()
+    }
+    if (result.updated_at instanceof Date) {
+      result.updated_at = result.updated_at.toISOString()
+    }
+    if (result.completed_at instanceof Date) {
+      result.completed_at = result.completed_at.toISOString()
+    }
+    return result
+  }
+
   async getOrder(orderId: string) {
     const db = getMySQLClient()
-    return await db.queryOne('orders', { id: orderId }) as any
+    const order = await db.queryOne('orders', { id: orderId }) as any
+    return this.transformOrderData(order)
   }
 
   async getOrders(userId: string, filters: Record<string, any> = {}) {
     const db = getMySQLClient()
     filters.user_id = userId
-    return await db.query('orders', filters) as any
+    const orders = await db.query('orders', filters) as any[]
+    return orders.map(order => this.transformOrderData(order))
   }
 
   async updateOrderStatus(orderId: string, status: string) {

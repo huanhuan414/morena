@@ -56,6 +56,10 @@ function convertKeysToCamel(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(convertKeysToCamel);
   }
+  if (obj instanceof Date) {
+    // 将 Date 对象转换为 ISO 字符串
+    return obj.toISOString();
+  }
   if (typeof obj === 'object') {
     const result: any = {};
     for (const key in obj) {

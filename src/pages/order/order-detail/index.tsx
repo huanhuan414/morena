@@ -269,7 +269,35 @@ export default function OrderDetailPage() {
       const res = await Network.request({ url: `/api/order/${id}` })
       if (res.data?.code === 200) {
         const orderData = res.data.data
-        setOrder(orderData)
+        
+        // 处理后端返回的数据格式
+        // 后端返回 platforms (数组或JSON字符串), contentType, requirements (JSON字符串)
+        let platforms = orderData.platforms
+        let contentType = orderData.contentType
+        let requirements = orderData.requirements
+        
+        // 解析 JSON 字符串
+        if (typeof platforms === 'string') {
+          try { platforms = JSON.parse(platforms) } catch (e) { platforms = [] }
+        }
+        if (typeof requirements === 'string' && requirements !== '{}') {
+          try { requirements = JSON.parse(requirements) } catch (e) { requirements = {} }
+        }
+        if (!requirements || requirements === '{}') {
+          requirements = {}
+        }
+        
+        // 构建前端期望的数据格式
+        const processedOrder = {
+          ...orderData,
+          requirements: {
+            platforms: platforms || [],
+            contentType: contentType || '',
+            ...requirements
+          }
+        }
+        
+        setOrder(processedOrder)
         setFormData({
           title: orderData.title,
           description: orderData.description,
