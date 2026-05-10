@@ -60,7 +60,7 @@ export class OrderService {
     // 查询分身分发列表
     const avatarRows = await db.query(
       `SELECT odr.id, odr.avatar_id, odr.status, odr.created_at,
-              a.nickname, a.avatar_url, a.platforms
+              a.name as nickname, a.avatar_url
        FROM order_requests odr
        LEFT JOIN avatars a ON odr.avatar_id = a.id
        WHERE odr.order_id = ?

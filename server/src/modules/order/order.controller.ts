@@ -73,7 +73,7 @@ export class OrderController {
   @Get(':id')
   async get(@Param('id') orderId: string) {
     console.log('[OrderController] get 被调用, orderId:', orderId)
-    const order = await this.orderService.getOrder(orderId)
+    const order = await this.orderService.getOrderById(orderId)
     return { code: 200, data: order, message: '获取成功' }
   }
 
