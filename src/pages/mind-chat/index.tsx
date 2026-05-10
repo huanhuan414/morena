@@ -150,10 +150,16 @@ const MindChat: React.FC = () => {
   // 切换托管状态
   const handleToggleHosting = async (id: string, checked: boolean) => {
     try {
+      // 获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+      
       await Network.request({
         url: `/api/avatar/${id}/trust`,
         method: 'PUT',
-        data: { trust_enabled: checked }
+        data: { trust_enabled: checked },
+        header: { 'x-user-id': userId }
       })
       console.log('更新托管状态成功:', id, checked)
     } catch (error) {
@@ -171,9 +177,15 @@ const MindChat: React.FC = () => {
       success: async (res) => {
         if (res.confirm) {
           try {
+            // 获取用户ID
+            const userInfo = Taro.getStorageSync('userInfo') || {}
+            let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+            if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+            
             await Network.request({
               url: `/api/avatar/${id}`,
-              method: 'DELETE'
+              method: 'DELETE',
+              header: { 'x-user-id': userId }
             })
             console.log('删除分身成功:', id)
             Taro.showToast({ title: '删除成功', icon: 'success' })

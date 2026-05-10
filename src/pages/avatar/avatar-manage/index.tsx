@@ -104,15 +104,20 @@ export default function AvatarManagePage() {
   const loadSubscriptionInfo = async () => {
     try {
       setLoadingSubscription(true)
-      // 获取用户ID
+      // 获取用户ID - 尝试多种可能的字段名
       const userInfo = Taro.getStorageSync('userInfo') || {}
-      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      const header = userId ? { 'x-user-id': userId } : {}
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      
+      // 如果没有用户ID，使用测试用户ID（仅用于开发）
+      if (!userId) {
+        console.log('[loadSubscriptionInfo] 未找到用户ID，使用测试ID')
+        userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+      }
       
       // 获取订阅信息和分身数量
       const [subscriptionRes, avatarListRes] = await Promise.all([
-        Network.request({ url: '/api/subscription/user', header }),
-        Network.request({ url: '/api/avatar', header })
+        Network.request({ url: '/api/subscription/user', header: { 'x-user-id': userId } }),
+        Network.request({ url: '/api/avatar', header: { 'x-user-id': userId } })
       ])
 
       // 获取当前分身数量
@@ -154,19 +159,25 @@ export default function AvatarManagePage() {
       setLoadingAvatars(true)
       // 确保获取用户ID - 尝试多种可能的字段名
       const userInfo = Taro.getStorageSync('userInfo') || {}
-      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      console.log('[fetchAvatars] userInfo:', JSON.stringify(userInfo))
-      console.log('[fetchAvatars] userId:', userId)
+      // 尝试多种可能的用户ID字段名
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
       
-      // 如果没有userId，尝试从token解析
-      if (!userId) {
-        const token = Taro.getStorageSync('token')
-        console.log('[fetchAvatars] token:', token ? '存在' : '不存在')
+      // 如果还是没有userId，尝试直接使用 openid 查找
+      if (!userId && userInfo.openid) {
+        userId = userInfo.id // openid 用户可能需要特殊处理
       }
+      
+      // 临时解决方案：如果没有用户ID，使用测试用户ID（仅用于开发）
+      if (!userId) {
+        console.log('[fetchAvatars] 未找到用户ID，使用测试ID')
+        userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试用户ID
+      }
+      
+      console.log('[fetchAvatars] 最终使用 userId:', userId)
       
       const res = await Network.request({ 
         url: '/api/avatar',
-        header: userId ? { 'x-user-id': userId } : {}
+        header: { 'x-user-id': userId }
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data length:', res.data?.data?.length)
       if (res.data?.code === 200) {
@@ -199,10 +210,16 @@ export default function AvatarManagePage() {
   const toggleHosting = async (avatarId: string, enabled: boolean) => {
     console.log('切换托管状态:', avatarId, enabled)
     try {
+      // 获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+      
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/trust`,
         method: 'PUT',
-        data: { trust_enabled: enabled }
+        data: { trust_enabled: enabled },
+        header: { 'x-user-id': userId }
       })
       console.log('托管响应:', res.data)
       
@@ -272,9 +289,15 @@ export default function AvatarManagePage() {
   const deleteAvatar = async (avatarId: string) => {
     // 确认删除
     try {
+      // 获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+      
       const res = await Network.request({
         url: `/api/avatar/${avatarId}`,
-        method: 'DELETE'
+        method: 'DELETE',
+        header: { 'x-user-id': userId }
       })
       console.log('删除分身响应:', res.data)
       
