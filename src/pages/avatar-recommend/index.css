@@ -429,3 +429,116 @@
   color: #666;
   font-weight: 400;
 }
+
+/* ============ 订单信息头部 ============ */
+.order-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 0;
+}
+
+.order-info-content {
+  flex: 1;
+}
+
+.order-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.order-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.order-platform-tag {
+  font-size: 22rpx;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.order-count-tag {
+  font-size: 22rpx;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.publish-btn {
+  background: #fff;
+  padding: 16rpx 32rpx;
+  border-radius: 30rpx;
+  margin-left: 24rpx;
+}
+
+.publish-btn-text {
+  font-size: 26rpx;
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* ============ 选择分身样式 ============ */
+.avatar-card .action-btn.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+/* ============ 底部发布栏 ============ */
+.confirm-publish-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 16rpx 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.15);
+}
+
+.selected-summary {
+  display: flex;
+  flex-direction: column;
+  margin-right: 24rpx;
+}
+
+.summary-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.summary-count {
+  font-size: 32rpx;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.confirm-publish-btn {
+  flex: 1;
+  background: #e0e0e0;
+  border-radius: 30rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+
+.confirm-publish-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.confirm-publish-btn.disabled {
+  background: #e0e0e0;
+}
+
+.confirm-text {
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: 600;
+}
+

@@ -36,8 +36,25 @@ export default function AvatarRecommendPage() {
     longitude: null
   })
   const [activeFilter, setActiveFilter] = useState<'all' | 'level' | 'distance' | 'personality'>('all')
+  const [orderParams, setOrderParams] = useState<any>(null)
+  const [selectedAvatars, setSelectedAvatars] = useState<string[]>([])
 
   useLoad(() => {
+    // 解析URL参数
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const options = currentPage?.options || {}
+    
+    if (options.orderParams) {
+      try {
+        const params = JSON.parse(decodeURIComponent(options.orderParams))
+        console.log('接收到的订单参数:', params)
+        setOrderParams(params)
+      } catch (err) {
+        console.error('解析订单参数失败:', err)
+      }
+    }
+    
     loadCurrentAvatar()
     loadRecommendations()
   })
@@ -181,8 +198,74 @@ export default function AvatarRecommendPage() {
   }
 
   const handleSkip = () => {
-    // 跳过推荐，直接跳转回分身列表（我的分身页面）
-    switchTab({ url: '/pages/avatar/avatar-manage/index' })
+    if (orderParams) {
+      // 有订单参数，跳转到我的分身页面
+      switchTab({ url: '/pages/avatar/avatar-manage/index' })
+    } else {
+      // 跳过推荐，直接跳转回分身列表（我的分身页面）
+      switchTab({ url: '/pages/avatar/avatar-manage/index' })
+    }
+  }
+
+  // 切换选择分身
+  const toggleSelectAvatar = (avatarId: string) => {
+    setSelectedAvatars(prev => {
+      if (prev.includes(avatarId)) {
+        return prev.filter(id => id !== avatarId)
+      } else {
+        // 根据订单要求限制选择数量
+        const maxCount = orderParams?.avatarCount || 1
+        if (prev.length >= maxCount) {
+          Taro.showToast({ title: `最多选择${maxCount}个分身`, icon: 'none' })
+          return prev
+        }
+        return [...prev, avatarId]
+      }
+    })
+  }
+
+  // 发布任务
+  const publishOrder = async () => {
+    if (selectedAvatars.length === 0) {
+      Taro.showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    if (!currentAvatarId) {
+      Taro.showToast({ title: '请先选择你的分身', icon: 'none' })
+      return
+    }
+
+    try {
+      const res = await Network.request({
+        url: '/api/order',
+        method: 'POST',
+        header: { 'x-user-id': currentAvatarId },
+        data: {
+          title: orderParams?.title,
+          description: orderParams?.description,
+          content_type: orderParams?.contentType,
+          platforms: orderParams?.platforms,
+          requirements: orderParams?.requirements,
+          avatar_count: selectedAvatars.length,
+          quantity_per_avatar: orderParams?.quantityPerAvatar || 1,
+          selected_avatar_ids: selectedAvatars,
+          total_price: orderParams?.totalPrice || 0,
+        },
+      })
+
+      if (res.data?.code === 200 || res.data?.code === 0) {
+        Taro.showToast({ title: '订单发布成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.switchTab({ url: '/pages/order/order-list/index' })
+        }, 1500)
+      } else {
+        Taro.showToast({ title: res.data?.msg || '发布失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('发布订单失败:', error)
+      Taro.showToast({ title: '发布失败', icon: 'none' })
+    }
   }
 
   const getMatchReason = (avatar: RecommendedAvatar): string => {
@@ -215,10 +298,33 @@ export default function AvatarRecommendPage() {
 
   return (
     <View className="recommend-page">
+      {/* 订单信息头部 */}
+      {orderParams && (
+        <View className="order-info-header">
+          <View className="order-info-content">
+            <Text className="order-title">{orderParams.title}</Text>
+            <View className="order-tags">
+              {orderParams.platforms?.map((p: string) => (
+                <Text key={p} className="order-platform-tag">{p}</Text>
+              ))}
+              <Text className="order-count-tag">需 {orderParams.avatarCount || 1} 个分身</Text>
+            </View>
+          </View>
+          <View 
+            className="publish-btn"
+            onClick={publishOrder}
+          >
+            <Text className="publish-btn-text">立即发布</Text>
+          </View>
+        </View>
+      )}
+
       {/* 头部 */}
       <View className="page-header">
-        <Text className="page-title">推荐分身</Text>
-        <Text className="page-subtitle">为你精选的优质AI分身</Text>
+        <Text className="page-title">{orderParams ? '选择接单分身' : '推荐分身'}</Text>
+        <Text className="page-subtitle">
+          {orderParams ? `已选 ${selectedAvatars.length}/${orderParams.avatarCount || 1} 个分身` : '为你精选的优质AI分身'}
+        </Text>
       </View>
 
       {/* 推荐理由标签 */}
@@ -336,26 +442,51 @@ export default function AvatarRecommendPage() {
 
               {/* 操作按钮 */}
               <View className="action-buttons">
-                <View 
-                  className="action-btn secondary"
-                  onClick={() => viewAvatar(avatar.id)}
-                >
-                  <Text className="action-text">查看动态</Text>
-                </View>
-                <View 
-                  className="action-btn primary"
-                  onClick={() => sendFriendRequest(avatar.id)}
-                >
-                  <Send size={16} color="#ffffff" />
-                  <Text className="action-text">添加好友</Text>
-                </View>
+                {orderParams ? (
+                  <>
+                    <View 
+                      className={`action-btn ${selectedAvatars.includes(avatar.id) ? 'selected' : 'secondary'}`}
+                      onClick={() => toggleSelectAvatar(avatar.id)}
+                    >
+                      {selectedAvatars.includes(avatar.id) ? (
+                        <>
+                          <Text className="action-text">已选择</Text>
+                        </>
+                      ) : (
+                        <Text className="action-text">选择分身</Text>
+                      )}
+                    </View>
+                    <View 
+                      className="action-btn secondary"
+                      onClick={() => viewAvatar(avatar.id)}
+                    >
+                      <Text className="action-text">查看详情</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View 
+                      className="action-btn secondary"
+                      onClick={() => viewAvatar(avatar.id)}
+                    >
+                      <Text className="action-text">查看动态</Text>
+                    </View>
+                    <View 
+                      className="action-btn primary"
+                      onClick={() => sendFriendRequest(avatar.id)}
+                    >
+                      <Send size={16} color="#ffffff" />
+                      <Text className="action-text">添加好友</Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           ))
         )}
       </ScrollView>
 
-      {/* 全局跳过按钮 */}
+      {/* 全局底部按钮 */}
       <View
         style={{
           position: 'fixed',
@@ -365,12 +496,27 @@ export default function AvatarRecommendPage() {
           zIndex: 100
         }}
       >
-        <View
-          className="skip-btn-full"
-          onClick={handleSkip}
-        >
-          <Text className="skip-text-full">跳过，暂不添加</Text>
-        </View>
+        {orderParams ? (
+          <View className="confirm-publish-bar">
+            <View className="selected-summary">
+              <Text className="summary-text">已选分身</Text>
+              <Text className="summary-count">{selectedAvatars.length}/{orderParams.avatarCount || 1}</Text>
+            </View>
+            <View 
+              className={`confirm-publish-btn ${selectedAvatars.length > 0 ? 'active' : 'disabled'}`}
+              onClick={selectedAvatars.length > 0 ? publishOrder : undefined}
+            >
+              <Text className="confirm-text">确认发布任务</Text>
+            </View>
+          </View>
+        ) : (
+          <View
+            className="skip-btn-full"
+            onClick={handleSkip}
+          >
+            <Text className="skip-text-full">跳过，暂不添加</Text>
+          </View>
+        )}
       </View>
     </View>
   )

@@ -89,7 +89,6 @@ export default function OrderCreate() {
     avatarCount: 1,
     quantityPerAvatar: 1,
   })
-  const [loading, setLoading] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
 
@@ -223,7 +222,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     }))
   }
 
-  // 提交订单
+  // 提交订单并跳转分身推荐
   const handleSubmit = async () => {
     if (!form.title.trim()) {
       Taro.showToast({ title: '请输入任务标题', icon: 'none' })
@@ -234,38 +233,23 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       return
     }
 
-    setLoading(true)
-    try {
-      const userInfo = Taro.getStorageSync('userInfo') || {}
-      const res = await Network.request({
-        url: '/api/order',
-        method: 'POST',
-        header: { 'x-user-id': userInfo.id || 'default_user' },
-        data: {
-          title: form.title,
-          description: form.description,
-          content_type: form.contentType,
-          platforms: form.platforms,
-          requirements: form.optionalRequirements,
-          avatar_count: form.avatarCount,
-          quantity_per_avatar: form.quantityPerAvatar,
-          media: [],
-          total_price: totalPrice.total,
-        },
-      })
-
-      if (res.data.code === 200 || res.data.code === 0) {
-        Taro.showToast({ title: '订单创建成功', icon: 'success' })
-        setTimeout(() => Taro.navigateBack(), 1500)
-      } else {
-        Taro.showToast({ title: res.data.msg || '创建失败', icon: 'none' })
-      }
-    } catch (error) {
-      console.error('[提交订单] 错误:', error)
-      Taro.showToast({ title: '创建失败', icon: 'none' })
-    } finally {
-      setLoading(false)
+    // 构建订单参数，跳转到分身推荐页
+    const orderParams = {
+      title: form.title,
+      description: form.description,
+      contentType: form.contentType,
+      platforms: form.platforms,
+      requirements: form.optionalRequirements,
+      avatarCount: form.avatarCount,
+      quantityPerAvatar: form.quantityPerAvatar,
+      totalPrice: totalPrice.total,
     }
+
+    // 跳转到分身推荐页，传递订单参数
+    const params = encodeURIComponent(JSON.stringify(orderParams))
+    Taro.navigateTo({
+      url: `/pages/avatar-recommend/index?orderParams=${params}`
+    })
   }
 
   // 获取选中平台的特殊要求
@@ -468,10 +452,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         {/* 提交按钮 */}
         <View className="submit-section">
           <View
-            className={`submit-button ${loading ? 'loading' : ''}`}
-            onClick={loading ? undefined : handleSubmit}
+            className={`submit-button ${aiLoading ? 'loading' : ''}`}
+            onClick={aiLoading ? undefined : handleSubmit}
           >
-            {loading ? (
+            {aiLoading ? (
               <Loader size={20} color="#fff" className="btn-loading" />
             ) : (
               <>
