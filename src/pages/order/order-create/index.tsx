@@ -265,27 +265,13 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       if (res.data.code === 200 && res.data.data?.id) {
         const orderId = res.data.data.id
         
-        // 构建订单参数，包含订单ID
-        const orderParams = {
-          orderId: orderId,
-          title: form.title,
-          description: form.description,
-          contentType: form.contentType,
-          platforms: form.platforms,
-          requirements: form.optionalRequirements,
-          avatarCount: form.avatarCount,
-          quantityPerAvatar: form.quantityPerAvatar,
-          totalPrice: totalPrice.total,
-        }
-
         console.log('[OrderCreate] 订单创建成功，订单ID:', orderId, '准备跳转')
         
-        // 构建跳转 URL
-        const params = encodeURIComponent(JSON.stringify(orderParams))
-        const targetUrl = `/pages/order/order-matching/index?orderParams=${params}`
+        // 只带订单ID跳转，智能匹配页面会根据ID获取详情
+        const targetUrl = `/pages/order/order-matching/index?orderId=${orderId}`
         console.log('[OrderCreate] 跳转URL:', targetUrl)
         
-        // 跳转到AI智能匹配分身页面，传递订单参数
+        // 跳转到AI智能匹配分身页面
         Taro.navigateTo({
           url: targetUrl
         })

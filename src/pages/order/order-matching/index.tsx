@@ -124,13 +124,61 @@ export default function OrderMatchingPage() {
   const [selectedAvatars, setSelectedAvatars] = useState<string[]>([])  // 选中的分身
 
   const [recommendedCount, setRecommendedCount] = useState(0)  // 推荐分身数量
+  const [resolvedOrderId, setResolvedOrderId] = useState<string>('')  // 解析后的订单ID
 
   // 状态栏和胶囊按钮适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsuleWidth, setCapsuleWidth] = useState(160)
 
+  // 根据订单ID获取订单详情
+  const fetchOrderDetails = async (orderIdParam: string) => {
+    console.log('[OrderMatching] fetchOrderDetails 开始获取订单:', orderId)
+    setLoading(true)
+    
+    try {
+      const res = await Network.request({
+        url: `/api/order/${orderIdParam}`,
+        method: 'GET'
+      })
+      
+      console.log('[OrderMatching] 获取订单响应:', res.data)
+      
+      if (res.data.code === 200 && res.data.data) {
+        const order = res.data.data
+        console.log('[OrderMatching] 获取订单成功:', order)
+        
+        setOrderParams({
+          title: order.title,
+          description: order.description,
+          platforms: order.platforms,
+          requirements: order.requirements || {},
+          avatarCount: order.avatar_count || 1,
+          totalPrice: order.budget || 0
+        })
+        
+        // 开始匹配流程
+        startMatchingWithParams({
+          title: order.title,
+          description: order.description,
+          platforms: order.platforms,
+          requirements: order.requirements || {},
+          avatarCount: order.avatar_count || 1,
+          totalPrice: order.budget || 0
+        })
+      } else {
+        console.error('[OrderMatching] 获取订单失败:', res.data.msg)
+        Taro.showToast({ title: '获取订单信息失败', icon: 'none' })
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('[OrderMatching] 获取订单异常:', err)
+      Taro.showToast({ title: '网络错误', icon: 'none' })
+      setLoading(false)
+    }
+  }
+
   useLoad(() => {
-    console.log('[OrderMatching] 页面加载，orderId:', orderId)
+    console.log('[OrderMatching] 页面加载')
 
     // 初始化状态栏和胶囊按钮信息
     const systemInfo = Taro.getSystemInfoSync()
@@ -143,54 +191,34 @@ export default function OrderMatchingPage() {
       setCapsuleWidth(capsuleWidthWithMargins)
     }
 
-    // 解析订单参数（从创建订单页面传递）
-    // 兼容 H5 和小程序的参数获取方式
-    let options: Record<string, string> = {}
+    // 解析订单ID参数（从创建订单页面传递）
+    let parsedOrderId = ''
     
-    // H5 模式：从完整 URL 中解析参数
+    // H5 模式
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isH5) {
       const fullUrl = window.location.href
-      console.log('[OrderMatching] H5 URL:', fullUrl.substring(0, 300))
+      console.log('[OrderMatching] H5 URL:', fullUrl)
       
-      // 最可靠的方式：直接解析问号后面的所有内容
+      // 查找 orderId= 的位置
       const questionMarkIndex = fullUrl.indexOf('?')
       if (questionMarkIndex !== -1) {
         const queryString = fullUrl.substring(questionMarkIndex + 1)
-        console.log('[OrderMatching] QueryString:', queryString.substring(0, 200))
-        
-        // 查找 orderParams= 的位置
-        const paramStartIndex = queryString.indexOf('orderParams=')
-        if (paramStartIndex !== -1) {
-          // orderParams= 之后的所有内容
-          const paramValue = queryString.substring(paramStartIndex + 12)
-          
-          // 解码
-          try {
-            options.orderParams = decodeURIComponent(paramValue)
-            console.log('[OrderMatching] 解析到 orderParams，长度:', options.orderParams.length)
-          } catch (e) {
-            console.error('[OrderMatching] 解码失败:', e)
-            options.orderParams = paramValue
-          }
+        const orderIdMatch = queryString.match(/orderId=([^&]*)/)
+        if (orderIdMatch) {
+          parsedOrderId = decodeURIComponent(orderIdMatch[1])
         }
       }
       
-      // 备用：从小程序格式的 hash 中获取
-      if (!options.orderParams && fullUrl.includes('#/')) {
+      // 备用：从 hash 格式获取
+      if (!parsedOrderId && fullUrl.includes('#/')) {
         const hashPart = fullUrl.split('#/')[1] || ''
         const hashQuestionMark = hashPart.indexOf('?')
         if (hashQuestionMark !== -1) {
           const hashQuery = hashPart.substring(hashQuestionMark + 1)
-          const hashParamStart = hashQuery.indexOf('orderParams=')
-          if (hashParamStart !== -1) {
-            const hashParamValue = hashQuery.substring(hashParamStart + 12)
-            try {
-              options.orderParams = decodeURIComponent(hashParamValue)
-              console.log('[OrderMatching] 从hash解析到 orderParams')
-            } catch (e) {
-              options.orderParams = hashParamValue
-            }
+          const orderIdMatch = hashQuery.match(/orderId=([^&]*)/)
+          if (orderIdMatch) {
+            parsedOrderId = decodeURIComponent(orderIdMatch[1])
           }
         }
       }
@@ -198,74 +226,22 @@ export default function OrderMatchingPage() {
       // 小程序模式
       const pages = Taro.getCurrentPages()
       const currentPage = pages[pages.length - 1]
-      options = currentPage?.options || {}
+      parsedOrderId = currentPage?.options?.orderId || ''
     }
     
-    console.log('[OrderMatching] 解析到的参数 options:', options)
+    console.log('[OrderMatching] 获取到订单ID:', parsedOrderId)
     
-    // 尝试解析 orderParams
-    if (options.orderParams) {
-      try {
-        let paramsStr = options.orderParams
-        // 如果包含 %7B 等编码字符，先解码
-        if (paramsStr.includes('%')) {
-          paramsStr = decodeURIComponent(paramsStr)
-        }
-        console.log('[OrderMatching] 解析前参数字符串:', paramsStr.substring(0, 200))
-        
-        const params = JSON.parse(paramsStr)
-        console.log('[OrderMatching] 解析成功，订单参数:', params)
-        
-        setOrderParams(params)
-        
-        // 有订单参数时，直接开始匹配流程
-        startMatchingWithParams(params)
-        return
-      } catch (err) {
-        console.error('[OrderMatching] 解析订单参数失败:', err)
-        console.error('[OrderMatching] 原始参数字符串:', options.orderParams)
-      }
+    if (!parsedOrderId) {
+      console.error('[OrderMatching] 未获取到订单ID')
+      Taro.showToast({ title: '订单ID无效', icon: 'none' })
+      Taro.navigateBack()
+      return
     }
-
-    // 如果没有 orderParams，检查是否有 orderId
-    if (orderId) {
-      console.log('[OrderMatching] 开始智能匹配（通过orderId）')
-      startMatching()
-    } else {
-      console.error('[OrderMatching] orderId 和 orderParams 都为空，无法开始匹配')
-      showToast({ title: '订单信息无效，请重新创建订单', icon: 'none' })
-      setLoading(false)
-    }
+    
+    // 根据订单ID获取订单详情
+    setResolvedOrderId(parsedOrderId)
+    fetchOrderDetails(parsedOrderId)
   })
-
-  const startMatching = async () => {
-    console.log('[OrderMatching] startMatching 开始执行')
-    setLoading(true)
-    setMatchedAvatars([])
-
-    // 逐步执行算法动画
-    for (let i = 0; i < ALGORITHM_STEPS.length; i++) {
-      console.log(`[OrderMatching] 执行步骤 ${i + 1}/${ALGORITHM_STEPS.length}: ${ALGORITHM_STEPS[i].name}`)
-      // 更新当前步骤为 processing
-      setSteps(prev => prev.map((s, idx) =>
-        idx === i ? { ...s, status: 'processing' } : s
-      ))
-
-      // 模拟算法处理时间
-      await new Promise(resolve => setTimeout(resolve, 600))
-
-      // 更新为 completed
-      setSteps(prev => prev.map((s, idx) =>
-        idx === i ? { ...s, status: 'completed' } : s
-      ))
-
-      setCurrentStep(i + 1)
-    }
-
-    console.log('[OrderMatching] 算法步骤完成，开始获取匹配结果')
-    // 获取匹配结果
-    await fetchMatchingResults()
-  }
 
   // 使用订单参数开始匹配（从创建订单页面跳转）
   const startMatchingWithParams = async (params: any) => {
@@ -400,7 +376,7 @@ export default function OrderMatchingPage() {
         return
       }
 
-      const newOrderId = orderRes.data?.data?.id || orderId
+      const newOrderId = orderRes.data?.data?.id || resolvedOrderId
       console.log('[OrderMatching] 订单创建成功，订单ID:', newOrderId)
 
       // 2. 分配选中的分身
@@ -421,81 +397,6 @@ export default function OrderMatchingPage() {
       showToast({ title: '发布失败', icon: 'none' })
     } finally {
       setDispatching(false)
-    }
-  }
-
-  const fetchMatchingResults = async () => {
-    try {
-      console.log('[OrderMatching] fetchMatchingResults 开始执行')
-      // 先获取订单信息
-      console.log('[OrderMatching] 请求订单信息:', `/api/order/${orderId}`)
-      const orderRes = await Network.request({ url: `/api/order/${orderId}` })
-      console.log('[OrderMatching] 订单信息响应:', orderRes.data)
-
-      if (orderRes.data?.code !== 200) {
-        console.error('[OrderMatching] 获取订单信息失败:', orderRes.data)
-        showToast({ title: '获取订单信息失败', icon: 'none' })
-        setLoading(false)
-        return
-      }
-
-      const orderData = orderRes.data.data
-      console.log('[OrderMatching] 订单数据:', orderData)
-
-      // 使用订单的 expected_quantity 作为 limit 参数
-      const expectedQuantity = orderData.expected_quantity || 1
-      console.log('[OrderMatching] 预期分身数量:', expectedQuantity)
-
-      // 获取推荐分身，传入数量限制（使用 query 参数）
-      console.log('[OrderMatching] 请求推荐分身:', `/api/order-dispatch/recommend/${orderId}?limit=${expectedQuantity}`)
-      const recommendRes = await Network.request({
-        url: `/api/order-dispatch/recommend/${orderId}?limit=${expectedQuantity}`
-      })
-      console.log('[OrderMatching] 推荐分身响应:', recommendRes.data)
-
-      // 获取推荐分身
-      if (recommendRes.data?.code === 200) {
-        const avatars = recommendRes.data.data || []
-        const totalAvatars = avatars.length
-        console.log('[OrderMatching] 推荐分身数量:', totalAvatars)
-        setRecommendedCount(totalAvatars)
-
-        // 计算每个分身的预估收益（平台抽成20%后）
-        const orderBudget = orderData.budget || 0
-        const distributableAmount = orderBudget * 0.8
-        const incomePerAvatar = totalAvatars > 0 ? distributableAmount / totalAvatars : 0
-
-        // 为每个分身添加预估收益
-        const avatarsWithIncome = avatars.map((avatar) => ({
-          ...avatar,
-          estimatedIncome: incomePerAvatar,
-          estimatedTaskRatio: `${Math.round(100 / totalAvatars)}%`,  // 每个分身承担的任务比例
-        }))
-
-        if (totalAvatars > 0) {
-          console.log('[OrderMatching] 开始显示分身卡片')
-          // 逐步显示分身卡片
-          for (let i = 0; i < totalAvatars; i++) {
-            await new Promise(resolve => setTimeout(resolve, 300))
-            setMatchedAvatars(prev => [...prev, avatarsWithIncome[i]])
-          }
-          console.log('[OrderMatching] 分身卡片显示完成')
-        } else {
-          console.log('[OrderMatching] 没有推荐分身')
-          // 如果没有推荐，显示空状态
-          setMatchedAvatars([])
-        }
-        setLoading(false)
-      } else {
-        console.error('[OrderMatching] 推荐分身接口返回失败:', recommendRes.data)
-        showToast({ title: recommendRes.data?.message || '获取推荐分身失败', icon: 'none' })
-        setMatchedAvatars([])
-        setLoading(false)
-      }
-    } catch (error) {
-      console.error('[OrderMatching] 获取匹配结果失败:', error)
-      showToast({ title: '匹配失败', icon: 'none' })
-      setLoading(false)
     }
   }
 
