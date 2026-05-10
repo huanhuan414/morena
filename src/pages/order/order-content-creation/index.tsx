@@ -22,6 +22,17 @@ interface GeneratedContent {
   platforms: string[]
 }
 
+interface OrderInfo {
+  title?: string
+  description?: string
+  platforms?: string[]
+  platform?: string
+  contentType?: string
+  targetAudience?: string
+  expectedQuantity?: number
+  avatarCount?: number
+}
+
 interface ProcessingData {
   orderId: string
   orderTitle: string
@@ -62,7 +73,7 @@ export default function OrderContentCreation() {
         url: '/api/order/' + oId
       })
       
-      let orderData = null
+      let orderData: OrderInfo | null = null
       if (orderRes.data.code === 200) {
         orderData = orderRes.data.data
       }
@@ -153,12 +164,12 @@ export default function OrderContentCreation() {
         url: '/api/order-processing/status/' + reqId
       })
       console.log('订单状态:', res.data)
-      if (res.data.code === 200) {
+      if (res.data.code === 200 && res.data.data) {
         const data = res.data.data
         setProcessingData({
           orderId: data.orderId || orderId,
           orderTitle: data.orderTitle || '商单内容',
-          status: data.status,
+          status: data.status || 'pending',
           generatedContent: data.generatedContent,
           errorMessage: data.errorMessage
         })

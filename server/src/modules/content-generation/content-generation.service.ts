@@ -1,16 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Config, LLMClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { setCache, getCache, getSharedCache } from '../../common/shared-cache'
 
 @Injectable()
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
   private readonly llmClient: LLMClient
   private db: any
-
+  
   constructor() {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+  }
+  
+  // 保存到共享缓存
+  private saveToCache(requestId: string, data: any) {
+    this.logger.log(`[ContentGeneration] 保存缓存: ${requestId}`)
+    setCache(requestId, data)
+    this.logger.log(`[ContentGeneration] 缓存保存完成, 当前缓存大小: ${getSharedCache().size}`)
   }
 
   getDatabase() {
@@ -72,19 +80,40 @@ export class ContentGenerationService {
           platformResult.video = videos.length > 0 ? videos[0] : null
         }
 
-        // 保存到数据库
+        // 生成 requestId
         const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        await db.insert('content_generation_requests', {
-          id: requestId,
-          avatar_id: input.avatarId,
+        
+        // 保存到数据库，同时保存到缓存以便查询
+        const cacheData = {
+          requestId,
           order_id: input.orderId,
+          avatar_id: input.avatarId,
           platform,
           status: 'completed',
           content: platformResult.content || '',
-          images: platformResult.images?.length > 0 ? JSON.stringify(platformResult.images) : null,
-          video_url: platformResult.videos?.length > 0 ? JSON.stringify(platformResult.videos) : null,
-          created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-        })
+          images: platformResult.images || [],
+          videos: platformResult.videos || [],
+          created_at: new Date().toISOString()
+        }
+        
+        try {
+          await db.insert('content_generation_requests', {
+            id: requestId,
+            avatar_id: input.avatarId,
+            order_id: input.orderId,
+            platform,
+            status: 'completed',
+            content: platformResult.content || '',
+            images: platformResult.images?.length > 0 ? JSON.stringify(platformResult.images) : null,
+            video_url: platformResult.videos?.length > 0 ? JSON.stringify(platformResult.videos) : null,
+            created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          })
+        } catch (dbError: any) {
+          this.logger.warn(`数据库保存失败: ${dbError.message}`)
+        }
+        
+        // 保存到共享缓存（OrderProcessingService 会从这里读取）
+        this.saveToCache(requestId, cacheData)
 
         results.push({
           platform,

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getCache } from '../../common/shared-cache'
 
 // 内存缓存，用于数据库不可用时
 const memoryCache = new Map<string, any>()
@@ -100,6 +101,25 @@ export class OrderProcessingService {
       this.dbAvailable = false
       // 从内存缓存获取
       processing = memoryCache.get(processingId)
+    }
+    
+    // 如果数据库和内存缓存都没有，检查共享缓存（content-generation 生成的数据）
+    if (!processing && processingId.startsWith('req_')) {
+      const cachedData = getCache(processingId)
+      if (cachedData) {
+        // 直接返回缓存的生成结果
+        return {
+          orderId: cachedData.order_id || processingId,
+          orderTitle: cachedData.orderTitle || '商单内容',
+          status: cachedData.status === 'completed' ? 'completed' : 'generating',
+          generatedContent: {
+            content: cachedData.content || '',
+            images: cachedData.images || [],
+            videos: cachedData.videos || [],
+            platforms: [cachedData.platform].filter(Boolean)
+          }
+        }
+      }
     }
     
     if (!processing) {
