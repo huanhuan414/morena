@@ -49,17 +49,23 @@ export class OrderService {
   async getOrderById(orderId: string) {
     const db = getMySQLClient()
     
-    // 查询订单基本信息
+    // 查询订单基本信息，显式选择字段避免驼峰转换问题
     const orderRows = await db.query(
-      'SELECT * FROM orders WHERE id = ?',
+      `SELECT id, user_id, avatar_id, title, description, content_type, 
+       platforms, requirements, budget, status, result, created_at, updated_at,
+       completed_at, latitude, longitude, location_text, target_audience,
+       expected_quantity, deadline, order_type, priority, assigned_to,
+       avatar_count, quantity_per_avatar, is_paid
+       FROM orders WHERE id = ?`,
       [orderId]
     )
     
     if (!orderRows || orderRows.length === 0) {
       return null
     }
-    
     const order = orderRows[0]
+    console.log('[OrderService] getOrderDetail order keys:', Object.keys(order))
+    console.log('[OrderService] avatar_count value:', order['avatar_count'], 'avatarCount:', order['avatarCount'])
     
     // 查询分身分发列表
     const avatarRows = await db.query(
@@ -98,6 +104,8 @@ export class OrderService {
       ? order.created_at.toISOString() 
       : String(order.created_at)
     
+    console.log('[OrderService] getOrderDetail avatar_count:', order.avatar_count, 'expected_quantity:', order.expected_quantity)
+    
     return {
       ...order,
       id: order.id,
@@ -112,7 +120,7 @@ export class OrderService {
         : (order.requirements || {}),
       budget: order.budget,
       status: order.status,
-      avatarCount: order.avatar_count || order.expected_quantity || 0,
+      avatarCount: order.avatarCount || order.avatar_count || 1,
       createdAt
     }
   }

@@ -60,8 +60,8 @@ export class OrderDispatchService {
   async getRecommendedAvatars(orderId: string, limit: number = 0) {
     const db = getMySQLClient()
     
-    // 查询开启托管的分身（trust_enabled = 1 且 status = active）
-    let sql = 'SELECT * FROM avatars WHERE trust_enabled = 1 AND status = ? ORDER BY updated_at DESC'
+    // 查询开启托管的分身（is_hosted = 1 且 status = active）
+    let sql = 'SELECT * FROM avatars WHERE is_hosted = 1 AND status = ? ORDER BY updated_at DESC'
     if (limit > 0) {
       sql += ` LIMIT ${parseInt(String(limit))}`
     }
@@ -177,10 +177,10 @@ export class OrderDispatchService {
     
     // 查询所有开启托管的分身，并关联用户表获取手机号
     const avatars = await db.query(`
-      SELECT a.*, u.phone as user_phone 
+      SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
-      WHERE a.trust_enabled = 1 AND a.status = ?`, 
+      WHERE a.is_hosted = 1 AND a.status = ?`, 
       ['active']
     ) as any[]
     
@@ -207,7 +207,8 @@ export class OrderDispatchService {
       avatarIds.push(avatar.id)
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
-      const userPhone = avatar.user_phone || avatar.phone
+      const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
+      console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         const smsContent = `【莫瑞拉】您有新的订单任务：${order?.title || '内容创作'}，请及时查收并完成。详情请登录查看。`
         
@@ -266,7 +267,7 @@ export class OrderDispatchService {
     for (const avatarId of avatarIds) {
       // 查询分身信息，并关联用户表获取手机号
       const avatars = await db.query(`
-        SELECT a.*, u.phone as user_phone 
+        SELECT a.*, u.phone AS user_phone 
         FROM avatars a 
         LEFT JOIN users u ON a.user_id = u.id 
         WHERE a.id = ?`, [avatarId]) as any[]
@@ -293,7 +294,8 @@ export class OrderDispatchService {
       })
       
       // 发送真实短信 - 使用分身所属账号的手机号
-      const userPhone = avatar.user_phone || avatar.phone
+      const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
+      console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         try {
           const smsResult = await this.smsService.sendSms(
