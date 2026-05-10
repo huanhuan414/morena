@@ -61,6 +61,51 @@ export class OrderService {
   async getOrder(orderId: string) {
     const db = getMySQLClient()
     const order = await db.queryOne('orders', { id: orderId }) as any
+    
+    if (!order) {
+      return null
+    }
+    
+    // 查询订单关联的分身请求
+    const avatarRequests = await db.query('order_requests', { order_id: orderId }) as any[]
+    
+    // 如果有分身请求，关联查询分身详情
+    if (avatarRequests.length > 0) {
+      const avatarIds = avatarRequests.map((r: any) => r.avatar_id).filter(Boolean)
+      if (avatarIds.length > 0) {
+        const placeholders = avatarIds.map(() => '?').join(',')
+        const avatars = await db.execute(
+          `SELECT id, nickname, avatar_url, platforms, status, total_tasks, completed_tasks FROM avatars WHERE id IN (${placeholders})`,
+          avatarIds
+        ) as any[]
+        
+        // 关联分身信息和请求状态
+        const avatarStats = avatarRequests.map((req: any) => {
+          const avatar = avatars.find((a: any) => a.id === req.avatar_id)
+          return {
+            avatarId: req.avatar_id,
+            requestId: req.id,
+            nickname: avatar?.nickname || '未知分身',
+            avatarUrl: avatar?.avatar_url || '',
+            platforms: avatar?.platforms || [],
+            status: req.status || 'pending',
+            totalTasks: avatar?.total_tasks || 0,
+            completedTasks: avatar?.completed_tasks || 0,
+            submittedAt: req.created_at
+          }
+        })
+        
+        order.avatarStats = avatarStats
+        order.summary_stats = {
+          avatarStats,
+          totalAvatars: avatarStats.length,
+          pendingAvatars: avatarStats.filter((a: any) => a.status === 'pending').length,
+          inProgressAvatars: avatarStats.filter((a: any) => a.status === 'in_progress').length,
+          completedAvatars: avatarStats.filter((a: any) => a.status === 'completed').length
+        }
+      }
+    }
+    
     return this.transformOrderData(order)
   }
 
@@ -68,7 +113,26 @@ export class OrderService {
     const db = getMySQLClient()
     filters.user_id = userId
     const orders = await db.query('orders', filters) as any[]
-    return orders.map(order => this.transformOrderData(order))
+    
+    // 批量获取分身数量
+    const orderIds = orders.map(o => o.id)
+    let avatarCounts: Record<string, number> = {}
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(',')
+      const counts = await db.execute(
+        `SELECT order_id, COUNT(*) as count FROM order_requests WHERE order_id IN (${placeholders}) GROUP BY order_id`,
+        orderIds
+      ) as any[]
+      avatarCounts = counts.reduce((acc, row) => {
+        acc[row.order_id] = row.count
+        return acc
+      }, {} as Record<string, number>)
+    }
+    
+    return orders.map(order => ({
+      ...this.transformOrderData(order),
+      dispatchedCount: avatarCounts[order.id] || 0
+    }))
   }
 
   async updateOrderStatus(orderId: string, status: string) {

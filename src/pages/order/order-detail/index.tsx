@@ -50,6 +50,14 @@ interface Order {
   created_at: string
   updated_at: string
   completed_at?: string
+  avatarCount?: number
+  avatarStats?: Array<{
+    id: string
+    nickname: string
+    avatar: string
+    platform: string
+    status: string
+  }>
   avatars?: {
     id: string
     name: string
@@ -529,7 +537,7 @@ export default function OrderDetailPage() {
             </View>
             <View className="info-item">
               <Users size={18} color="#666666" />
-              <Text className="info-label">{order.expected_quantity || 1}人</Text>
+              <Text className="info-label">{(order as any).avatarCount || (order as any).avatar_count || 1}人</Text>
             </View>
           </View>
         </View>
@@ -838,7 +846,8 @@ export default function OrderDetailPage() {
             {avatarStats.length === 0 && (
               <View className="empty-state">
                 <User size={64} color="#CBD5E1" />
-                <Text className="empty-text block">暂无分身执行</Text>
+                <Text className="empty-text block">暂无分身接单</Text>
+                <Text className="empty-desc block">需要 {(order as any).avatarCount || (order as any).avatar_count || 0} 个分身</Text>
               </View>
             )}
           </View>
