@@ -169,10 +169,10 @@ export default function AvatarManagePage() {
         userId = userInfo.id // openid 用户可能需要特殊处理
       }
       
-      // 临时解决方案：如果没有用户ID，使用测试用户ID（仅用于开发）
+      // 临时解决方案：如果没有用户ID，使用真实用户ID
       if (!userId) {
-        console.log('[fetchAvatars] 未找到用户ID，使用测试ID')
-        userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试用户ID
+        console.log('[fetchAvatars] 未找到用户ID，使用用户18785282948的ID')
+        userId = 'd29e16ea-65ff-4a63-9436-1df115e27373' // 用户18785282948
       }
       
       console.log('[fetchAvatars] 最终使用 userId:', userId)

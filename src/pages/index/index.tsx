@@ -24,8 +24,21 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
+      // 调试：检查storage中的userInfo
+      const storageInfo: any = await Taro.getStorageInfo()
+      console.log('storage keys:', storageInfo.keys || [])
+      const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
+      console.log('userInfo:', storedUserInfo?.data)
+      
+      // 用户ID：优先从storage获取，否则使用测试用户ID
+      const userId = storedUserInfo?.data?.id || 'd29e16ea-65ff-4a63-9436-1df115e27373'
+      console.log('使用用户ID:', userId)
+      
       // 从用户统计接口获取所有分身的汇总数据
-      const res = await Network.request({ url: '/api/user-stats/overview' })
+      const res = await Network.request({ 
+        url: '/api/user-stats/overview',
+        header: { 'x-user-id': userId }
+      })
       console.log('统计数据:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
