@@ -118,38 +118,48 @@ export default function OrderCreate() {
       // 构建平台名称列表
       const platformNames = form.platforms.map(p => PLATFORM_CONFIG[p]?.label || p).join('、')
       const contentTypeName = selectedType?.label || '文案'
+      const platformIds = form.platforms.join(',')
       
       // 构建提示词 - 生成爆款任务描述
-      const prompt = `你是抖音/小红书/快手等平台的专业内容策划师，擅长打造爆款内容。请根据以下任务信息，生成一份【任务描述】，用于给达人/博主明确的创作指引。
+      const prompt = `你是一位短视频/图文内容策划专家，擅长为达人博主打造各平台爆款内容。
 
-【任务主题】
-${form.title}
+请根据以下【任务信息】生成一份【任务描述】，用于指导达人创作：
 
-【内容类型】
-${contentTypeName}
+**【任务标题】** ${form.title}
+**【目标平台】** ${platformNames}（平台ID: ${platformIds}）
+**【内容类型】** ${contentTypeName}
+${form.description ? `**【补充说明】** ${form.description}` : ''}
 
-【目标平台】
-${platformNames}
+**【输出格式】** 生成一份专业的任务描述，要求：
 
-${form.description ? `【品牌/产品补充信息】\n${form.description}\n` : ''}
+【1. 产品/主题核心卖点】
+- 列出2-3个最具吸引力的卖点
+- 用具体数字或对比突出优势
 
-【输出要求】
-请按以下格式生成任务描述，每部分都要写清楚：
+【2. 目标用户画像】
+- 描述目标受众的特征和需求
+- 明确用户的痛点和期待
 
-1. 【产品亮点】（2-3个）：用数字、对比、场景化方式突出卖点
-2. 【用户痛点】：描述目标用户的需求和痛点，让博主能感同身受
-3. 【内容方向】（2-3个）：具体可执行的内容方向，如"测评对比"、"场景种草"、"避坑指南"等
-4. 【爆款钩子】（1-2个）：开头3秒抓人眼球的方法，如疑问句、冲突对比、惊人数据等
-5. 【必须植入的关键词】：至少5个热搜词/话题标签
-6. 【禁忌事项】：避免提到的内容或词语
-7. 【预期效果】：如"引发共鸣"、"促进讨论"、"引导购买"等
+【3. 爆款内容方向】（3个具体可执行的方案）
+- 方案A：...
+- 方案B：...
+- 方案C：...
 
-风格要求：
-- 语言专业但易懂，方便博主理解和执行
-- 突出平台的爆款逻辑和流量密码
-- 每条都要具体可执行，不要空话套话
+【4. 开头3秒钩子设计】
+- 提供2个抓人眼球的开头方式
+- 运用悬念、冲突、数据等技巧
 
-请直接输出任务描述内容，不要有其他解释。`
+【5. 必须植入的关键词/话题】（5-8个热搜词）
+- 贴合${platformNames}平台的热词
+
+【6. 达人创作注意事项】
+- 必须包含的内容点
+- 禁止出现的内容/词汇
+
+【7. 预期传播效果】
+- 如：引发共鸣/促进互动/引导购买等
+
+请生成专业、具体、可执行的任务描述，语言风格要符合达人博主的调性。`
 
       // 调用AI接口
       const res = await Network.request({
@@ -381,11 +391,11 @@ ${form.description ? `【品牌/产品补充信息】\n${form.description}\n` : 
           <View className="textarea-wrapper">
             <Textarea
               className="desc-textarea"
+              style={{ height: '240px' }}
               placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
               value={form.description}
               onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
               maxlength={2000}
-              autoHeight
             />
           </View>
           <Text className="char-count">{form.description.length}/2000</Text>
