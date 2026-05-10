@@ -122,26 +122,23 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  // 测试用户ID - 强制使用确保能获取数据
-  const TEST_USER_ID = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
-  
-  // 获取用户ID - 优先从存储获取，失败则使用测试ID
-  const getUserId = async (): Promise<string> => {
+  // 检查用户登录状态
+  const checkUserLogin = (): { userId: string | null; isLoggedIn: boolean } => {
     try {
       const userInfoStr = Taro.getStorageSync('userInfo')
       if (userInfoStr) {
         const userInfo = typeof userInfoStr === 'string' ? JSON.parse(userInfoStr) : userInfoStr
-        if (userInfo?.id) return userInfo.id
-        if (userInfo?.userId) return userInfo.userId
-        if (userInfo?.user_id) return userInfo.user_id
+        console.log('[OrderList] Storage中的userInfo:', userInfo)
+        if (userInfo?.id) {
+          return { userId: userInfo.id, isLoggedIn: true }
+        }
       }
+      console.log('[OrderList] 未找到用户登录信息')
+      return { userId: null, isLoggedIn: false }
     } catch (e) {
       console.error('[OrderList] 获取用户信息失败:', e)
+      return { userId: null, isLoggedIn: false }
     }
-    
-    // 如果没有存储的用户信息，使用测试用户ID
-    console.log('[OrderList] 使用测试ID:', TEST_USER_ID)
-    return TEST_USER_ID
   }
 
   useLoad(() => {
@@ -149,6 +146,11 @@ export default function OrderListPage() {
   })
 
   useDidShow(() => {
+    // 每次显示页面时检查登录状态并获取数据
+    const { isLoggedIn } = checkUserLogin()
+    if (!isLoggedIn) {
+      showToast({ title: '请先登录', icon: 'none' })
+    }
     fetchOrders()
     fetchStats()
   })
@@ -161,21 +163,20 @@ export default function OrderListPage() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      // 获取用户ID
-      const userId = await getUserId()
-      
+      // Network模块会自动从Storage获取userId并设置header
       const res = await Network.request({
         url: '/api/order/list',
-        data: activeTab !== 'all' ? { status: activeTab } : {},
-        header: { 'x-user-id': userId }
+        data: activeTab !== 'all' ? { status: activeTab } : {}
       })
 
       console.log('[OrderList] API响应:', res.data)
       if (res.data?.code === 200) {
         // 后端返回格式: { code: 200, data: [...orders] }
         const ordersData = res.data.data || []
-        console.log('[OrderList] 订单数据:', ordersData)
+        console.log('[OrderList] 订单数据条数:', ordersData.length)
         setOrders(ordersData)
+      } else if (res.data?.code === 401) {
+        showToast({ title: '请先登录', icon: 'none' })
       }
     } catch (error) {
       console.error('获取订单失败:', error)
@@ -189,10 +190,9 @@ export default function OrderListPage() {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      const userId = await getUserId()
+      // Network模块会自动从Storage获取userId并设置header
       const res = await Network.request({ 
-        url: '/api/order/stats',
-        header: { 'x-user-id': userId }
+        url: '/api/order/stats'
       })
       if (res.data?.code === 200) {
         setStats({

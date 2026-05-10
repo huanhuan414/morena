@@ -166,10 +166,27 @@ export class OrderService {
         }
       }
       
-      // 处理日期
-      const createdAt = row.created_at instanceof Date
-        ? row.created_at.toISOString()
-        : String(row.created_at)
+      // 处理日期 - 修复 created_at 为 undefined/null 时返回 "undefined" 字符串的问题
+      let createdAt = ''
+      if (row.created_at) {
+        if (row.created_at instanceof Date) {
+          createdAt = row.created_at.toISOString()
+        } else if (typeof row.created_at === 'string' && row.created_at.length > 0) {
+          // 尝试解析数据库返回的日期字符串
+          try {
+            const date = new Date(row.created_at)
+            if (!Number.isNaN(date.getTime())) {
+              createdAt = date.toISOString()
+            }
+          } catch {
+            createdAt = row.created_at // 如果解析失败，返回原始字符串
+          }
+        }
+      }
+      // 如果 createdAt 是 "undefined" 或 "null" 字符串，设为空
+      if (createdAt === 'undefined' || createdAt === 'null' || createdAt === '') {
+        createdAt = new Date().toISOString() // 使用当前时间作为默认值
+      }
       
       return {
         id: row.id,
