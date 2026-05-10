@@ -1,41 +1,33 @@
-import { useLoad, useDidShow, useRouter, navigateTo, navigateBack, showToast, showActionSheet, showLoading, hideLoading } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, navigateBack, showToast, showActionSheet, showLoading, hideLoading } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import {
-  Clock, ChevronRight, Sparkles, Plus,
-  Check, DollarSign,
-  Package, Loader, Circle, SlidersHorizontal, ArrowLeft, Settings
+  Plus, Loader, ArrowLeft, Settings, FileText, Users
 } from 'lucide-react-taro'
-import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
+// 订单接口
 interface Order {
   id: string
   title: string
-  description: string
-  budget: number
+  description?: string
+  budget?: string | number
   status: string
-  created_at: string
-  updated_at: string
-  request_id?: string
-  avatars?: {
-    id: string
-    name: string
-    avatar_url: string
-  }
-  users?: {
-    nickname: string
-    avatar: string
-  }
-  requirements?: {
-    platforms?: string[]
-    targetAudience?: string
-    contentType?: string
-  }
+  createdAt?: string | Date | { toDateString?: () => string }
+  updatedAt?: string | Date
+  platforms?: string | string[]
+  requirements?: string | { platforms?: string[] }
+  avatarCount?: number
+  contentType?: string
+  // 兼容字段
+  created_at?: string | Date
+  updated_at?: string | Date
+  avatar_count?: number
 }
 
+// 订单统计
 interface OrderStats {
   total: number
   open: number
@@ -44,22 +36,14 @@ interface OrderStats {
   reviewing: number
 }
 
-interface ExecutionStep {
-  id: string
-  step_number: number
-  step_name: string
-  description: string
-  status: string
-  started_at?: string
-  completed_at?: string
-}
-
-const STATUS_CONFIG = {
-  open: { label: '待接单', color: '#f59e0b', icon: Clock },
-  in_progress: { label: '进行中', color: '#3b82f6', icon: Loader },
-  reviewing: { label: '待验收', color: '#8b5cf6', icon: Check },
-  completed: { label: '已完成', color: '#22c55e', icon: Check },
-  cancelled: { label: '已取消', color: '#6b7280', icon: Circle }
+// 状态配置
+const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+  pending_payment: { label: '待支付', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.1)' },
+  open: { label: '待接单', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)' },
+  in_progress: { label: '进行中', color: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.1)' },
+  reviewing: { label: '待验收', color: '#06b6d4', bgColor: 'rgba(6, 182, 212, 0.1)' },
+  completed: { label: '已完成', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)' },
+  cancelled: { label: '已取消', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.1)' }
 }
 
 // 平台名称映射
@@ -76,10 +60,7 @@ const PLATFORM_NAMES: Record<string, string> = {
   'kuaishou': '快手'
 }
 
-const getPlatformName = (platform: string): string => {
-  return PLATFORM_NAMES[platform] || platform
-}
-
+// Tab配置
 const TABS = [
   { key: 'all', label: '全部' },
   { key: 'open', label: '待接单' },
@@ -88,103 +69,96 @@ const TABS = [
   { key: 'completed', label: '已完成' }
 ]
 
+// 格式化日期
+const formatDate = (dateStr: any): string => {
+  if (!dateStr) return ''
+  try {
+    // 如果是字符串
+    if (typeof dateStr === 'string') {
+      const date = new Date(dateStr)
+      if (Number.isNaN(date.getTime())) return ''
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}.${month}.${day}`
+    }
+    // 如果是 Date 对象
+    if (dateStr instanceof Date) {
+      const year = dateStr.getFullYear()
+      const month = String(dateStr.getMonth() + 1).padStart(2, '0')
+      const day = String(dateStr.getDate()).padStart(2, '0')
+      return `${year}.${month}.${day}`
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+// 获取平台列表
+const getPlatformList = (platforms: string | string[] | undefined): string[] => {
+  if (!platforms) return []
+  if (Array.isArray(platforms)) return platforms
+  try {
+    return JSON.parse(platforms)
+  } catch {
+    return []
+  }
+}
+
+// 获取平台名称
+const getPlatformName = (platform: string): string => {
+  return PLATFORM_NAMES[platform] || platform
+}
+
 export default function OrderListPage() {
-  const router = useRouter()
-  const { mode } = router.params as { mode?: 'business' | 'avatar' }
-  
   const [orders, setOrders] = useState<Order[]>([])
   const [stats, setStats] = useState<OrderStats>({ 
     total: 0, open: 0, inProgress: 0, completed: 0, reviewing: 0 
   })
-  const [activeTab, setActiveTab] = useState(mode === 'avatar' ? 'open' : 'all')
+  const [activeTab, setActiveTab] = useState('all')
   const [loading, setLoading] = useState(false)
-  const [showFilter, setShowFilter] = useState(false)
-  const [orderProgress, setOrderProgress] = useState<Record<string, ExecutionStep[]>>({})
-
-  // 安全区域适配
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+  const [refreshing, setRefreshing] = useState(false)
 
   useLoad(() => {
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+    // 页面加载
   })
 
   useDidShow(() => {
-    console.log('[OrderList] useDidShow 触发，当前 activeTab:', activeTab)
     fetchOrders()
     fetchStats()
   })
 
-  // 监听 activeTab 变化，重新获取订单
   useEffect(() => {
-    console.log('[OrderList] activeTab 变化:', activeTab, 'mode:', mode)
-    if (mode === 'avatar') return // 分身模式不需要筛选
     fetchOrders()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
 
+  // 获取订单列表
   const fetchOrders = async () => {
     setLoading(true)
     try {
       let url = '/api/order/list'
-      let queryParams: Record<string, any> = {}
-
-      if (mode === 'avatar') {
-        // 分身模式：只显示待接单的订单
-        url = '/api/order/open'
-      } else {
-        // 商家模式：根据 activeTab 筛选
-        if (activeTab !== 'all') {
-          queryParams.status = activeTab
-        }
-      }
-
+      
       const res = await Network.request({
         url,
-        data: queryParams
+        data: activeTab !== 'all' ? { status: activeTab } : {}
       })
 
       if (res.data?.code === 200) {
         const ordersData = res.data.data?.orders || res.data.data || []
         setOrders(ordersData)
-
-        // 获取每个订单的执行进度
-        if (mode !== 'avatar') {
-          fetchOrdersProgress(ordersData)
-        }
       }
     } catch (error) {
       console.error('获取订单失败:', error)
+      showToast({ title: '获取订单失败', icon: 'none' })
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  const fetchOrdersProgress = async (ordersList: Order[]) => {
-    const progressMap: Record<string, ExecutionStep[]> = {}
-    
-    for (const order of ordersList) {
-      if (order.status === 'in_progress' || order.status === 'reviewing') {
-        try {
-          const res = await Network.request({ 
-            url: `/api/order-dispatch/${order.id}/progress` 
-          })
-          if (res.data?.code === 200) {
-            progressMap[order.id] = res.data.data
-          }
-        } catch (e) {
-          console.error('获取进度失败:', e)
-        }
-      }
-    }
-    
-    setOrderProgress(progressMap)
-  }
-
+  // 获取统计数据
   const fetchStats = async () => {
-    if (mode === 'avatar') return
-    
     try {
       const res = await Network.request({ url: '/api/order/stats' })
       if (res.data?.code === 200) {
@@ -198,169 +172,37 @@ export default function OrderListPage() {
     }
   }
 
-  const handleAcceptOrder = async (orderId: string) => {
-    try {
-      const avatarRes = await Network.request({ url: '/api/avatar' })
-      const avatars = avatarRes.data?.data || []
-      
-      if (avatars.length === 0) {
-        showToast({ title: '请先创建AI分身', icon: 'none' })
-        return
-      }
-      
-      const avatarId = avatars[0].id
-      
-      const res = await Network.request({
-        url: `/api/order/${orderId}/accept`,
-        method: 'PUT',
-        data: { avatar_id: avatarId }
-      })
-      
-      if (res.data?.code === 200) {
-        showToast({ title: '接单成功', icon: 'success' })
-        fetchOrders()
-        fetchStats()
-      }
-    } catch (error) {
-      console.error('接单失败:', error)
-      showToast({ title: '接单失败', icon: 'none' })
-    }
+  // 下拉刷新
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchOrders()
+    fetchStats()
   }
 
-  // 根据订单状态跳转到不同页面
+  // 处理订单点击
   const handleOrderClick = (order: Order) => {
-    const status = order.status
-    const isAvatarMode = mode === 'avatar'
-    
-    // 根据不同状态跳转到不同页面
-    switch (status) {
-      case 'open':
-        // 待接单 - 跳转到订单详情（可接单）
-        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-        break
-      case 'pending_payment':
-        // 待支付 - 跳转到订单详情（可支付）
-        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-        break
-      case 'in_progress':
-        // 进行中
-        if (isAvatarMode) {
-          // 接单者（分身）跳转到内容创作页面
-          navigateTo({ url: `/pages/order/order-content-creation/index?id=${order.id}&requestId=${order.request_id}&avatarId=${router.params.avatarId || ''}` })
-        } else {
-          // 发单者跳转到订单详情（查看进度）
-          navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-        }
-        break
-      case 'awaiting_acceptance':
-        // 待验收 - 跳转到订单详情（待验收确认）
-        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-        break
-      case 'completed':
-        // 已完成 - 跳转到订单反馈页面
-        navigateTo({ url: `/pages/order-feedback/index?id=${order.id}&requestId=${order.request_id}` })
-        break
-      case 'cancelled':
-        // 已取消 - 跳转到订单详情
-        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-        break
-      case 'published':
-        // 已发布待反馈 - 跳转到发布反馈页面
-        navigateTo({ url: `/pages/order/order-publish-feedback/index?id=${order.id}&requestId=${order.request_id}` })
-        break
-      default:
-        // 默认跳转到订单详情
-        navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
-    }
+    navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
   }
 
-  const getProgressPercent = (steps: ExecutionStep[]) => {
-    if (!steps || steps.length === 0) return 0
-    const completed = steps.filter(s => s.status === 'completed').length
-    return Math.round((completed / steps.length) * 100)
-  }
-
-  const getCurrentStep = (steps: ExecutionStep[]) => {
-    return steps?.find(s => s.status === 'in_progress') || 
-           steps?.find(s => s.status === 'pending')
-  }
-
-  // 订单管理功能
-  const handleManageOrder = (order: Order, e: any) => {
+  // 更多操作
+  const handleMoreAction = (order: Order, e: any) => {
     e.stopPropagation()
-    
-    const actions: string[] = []
-    const status = order.status
-    
-    // 根据订单状态显示不同的操作选项
-    if (status === 'open' || status === 'pending_payment') {
-      actions.push('编辑订单')
-      actions.push('取消订单')
-    } else if (status === 'in_progress' || status === 'awaiting_acceptance') {
-      // 进行中的订单不能编辑，只能查看详情
-    } else if (status === 'completed') {
-      actions.push('再次发布')
-      actions.push('删除订单')
-    } else if (status === 'cancelled') {
-      actions.push('删除订单')
-      actions.push('重新发布')
-    }
-    
-    if (actions.length === 0) return
-    
     showActionSheet({
-      itemList: actions,
+      itemList: ['查看详情', '再次发布', '删除订单'],
       success: (res) => {
-        const action = actions[res.tapIndex]
-        handleOrderAction(action, order)
+        const action = ['查看详情', '再次发布', '删除订单'][res.tapIndex]
+        if (action === '查看详情') {
+          handleOrderClick(order)
+        } else if (action === '再次发布') {
+          navigateTo({ url: `/pages/order/order-create/index?copy=${order.id}` })
+        } else if (action === '删除订单') {
+          handleDeleteOrder(order.id)
+        }
       }
     })
   }
-  
-  const handleOrderAction = async (action: string, order: Order) => {
-    switch (action) {
-      case '编辑订单':
-        navigateTo({ url: `/pages/order/order-create/index?edit=${order.id}` })
-        break
-        
-      case '取消订单':
-        await handleCancelOrder(order.id)
-        break
-        
-      case '删除订单':
-        await handleDeleteOrder(order.id)
-        break
-        
-      case '再次发布':
-      case '重新发布':
-        navigateTo({ url: `/pages/order/order-create/index?copy=${order.id}` })
-        break
-    }
-  }
-  
-  const handleCancelOrder = async (orderId: string) => {
-    try {
-      showLoading({ title: '取消中...' })
-      const res = await Network.request({
-        url: `/api/order/${orderId}/cancel`,
-        method: 'PUT'
-      })
-      hideLoading()
-      
-      if (res.data?.code === 200) {
-        showToast({ title: '订单已取消', icon: 'success' })
-        fetchOrders()
-        fetchStats()
-      } else {
-        showToast({ title: res.data?.msg || '取消失败', icon: 'none' })
-      }
-    } catch (error) {
-      hideLoading()
-      console.error('取消订单失败:', error)
-      showToast({ title: '取消失败', icon: 'none' })
-    }
-  }
-  
+
+  // 删除订单
   const handleDeleteOrder = async (orderId: string) => {
     try {
       showLoading({ title: '删除中...' })
@@ -371,11 +213,10 @@ export default function OrderListPage() {
       hideLoading()
       
       if (res.data?.code === 200) {
-        showToast({ title: '订单已删除', icon: 'success' })
+        showToast({ title: '删除成功', icon: 'success' })
         fetchOrders()
-        fetchStats()
       } else {
-        showToast({ title: res.data?.msg || '删除失败', icon: 'none' })
+        showToast({ title: '删除失败', icon: 'none' })
       }
     } catch (error) {
       hideLoading()
@@ -389,66 +230,56 @@ export default function OrderListPage() {
       {/* 头部 */}
       <View className="page-header">
         <View className="header-top">
-          <View className="back-button" onClick={() => navigateBack()}>
-            <ArrowLeft size={24} color="#1f2937" />
+          <View className="back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={22} color="#1e293b" />
           </View>
-          <View className="header-title-container">
-            <Text className="page-title">
-              {mode === 'avatar' ? '任务大厅' : '我的订单'}
-            </Text>
+          <Text className="page-title">发单记录</Text>
+          <View 
+            className="create-btn"
+            onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
+          >
+            <Plus size={18} color="#fff" />
+            <Text className="create-btn-text">新建</Text>
           </View>
-          {mode !== 'avatar' && (
-            <View className="header-actions" style={{ width: `${capsulePlaceholderWidth}rpx` }}>
-              <View
-                className={`filter-btn ${showFilter ? 'active' : ''}`}
-                onClick={() => setShowFilter(!showFilter)}
-              >
-                <SlidersHorizontal size={18} color="#fff" />
-              </View>
-              <View
-                className="add-btn"
-                onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
-              >
-                <Plus size={18} color="#fff" />
-                <Text className="add-btn-text">新建</Text>
-              </View>
-            </View>
-          )}
         </View>
-        
+
+        {/* 统计卡片 */}
+        <View className="stats-cards">
+          <View className="stat-card">
+            <Text className="stat-num">{stats.total}</Text>
+            <Text className="stat-label">全部订单</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-card">
+            <Text className="stat-num" style={{ color: '#f59e0b' }}>{stats.open}</Text>
+            <Text className="stat-label">待接单</Text>
+          </View>
+          <View className="stat-divider" />
+          <View className="stat-card">
+            <Text className="stat-num" style={{ color: '#22c55e' }}>{stats.completed}</Text>
+            <Text className="stat-label">已完成</Text>
+          </View>
+        </View>
+
         {/* Tab切换 */}
-        <View className="tab-bar">
-          {TABS.map(tab => (
-            <View
-              key={tab.key}
-              className={`tab-item ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              <Text className="tab-text">{tab.label}</Text>
-              {/* 显示数量徽章 */}
-              {tab.key === 'open' && stats.open > 0 && (
-                <View className="tab-badge open">
-                  <Text className="tab-badge-text">{stats.open}</Text>
-                </View>
-              )}
-              {tab.key === 'in_progress' && stats.inProgress > 0 && (
-                <View className="tab-badge in-progress">
-                  <Text className="tab-badge-text">{stats.inProgress}</Text>
-                </View>
-              )}
-              {tab.key === 'reviewing' && stats.reviewing > 0 && (
-                <View className="tab-badge reviewing">
-                  <Text className="tab-badge-text">{stats.reviewing}</Text>
-                </View>
-              )}
-              {tab.key === 'completed' && stats.completed > 0 && (
-                <View className="tab-badge completed">
-                  <Text className="tab-badge-text">{stats.completed}</Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+        <ScrollView className="tab-scroll" scrollX enableFlex>
+          <View className="tab-bar">
+            {TABS.map(tab => (
+              <View
+                key={tab.key}
+                className={`tab-item ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <Text className="tab-text">{tab.label}</Text>
+                {tab.key !== 'all' && stats[tab.key as keyof OrderStats] > 0 && (
+                  <View className="tab-count">
+                    <Text className="tab-count-text">{stats[tab.key as keyof OrderStats]}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       {/* 订单列表 */}
@@ -456,171 +287,99 @@ export default function OrderListPage() {
         className="order-scroll" 
         scrollY 
         refresherEnabled
-        onRefresherRefresh={fetchOrders}
+        refresherTriggered={refreshing}
+        onRefresherRefresh={handleRefresh}
       >
         {loading && orders.length === 0 ? (
           <View className="loading-state">
-            <Loader size={32} color="#00f5ff" className="animate-spin" />
+            <Loader size={36} color="#6366f1" className="animate-spin" />
             <Text className="loading-text">加载中...</Text>
           </View>
         ) : orders.length === 0 ? (
           <View className="empty-state">
-            <Package size={64} color="rgba(255,255,255,0.2)" />
-            <Text className="empty-text">暂无订单</Text>
-            {mode !== 'avatar' && (
-              <Button 
-                className="mt-4"
-                onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
-              >
-                <Plus size={16} color="#fff" />
-                <Text>创建订单</Text>
-              </Button>
-            )}
+            <View className="empty-icon">
+              <FileText size={48} color="#cbd5e1" />
+            </View>
+            <Text className="empty-title">暂无订单</Text>
+            <Text className="empty-desc">点击右上角&quot;新建&quot;创建您的第一个订单</Text>
+            <Button 
+              className="empty-btn"
+              onClick={() => navigateTo({ url: '/pages/order/order-create/index' })}
+            >
+              <Plus size={16} color="#fff" />
+              <Text>创建订单</Text>
+            </Button>
           </View>
         ) : (
           <View className="order-list">
-            {orders.map(order => {
-              const config = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.open
-              const StatusIcon = config.icon
-              const progress = orderProgress[order.id] || []
-              const progressPercent = getProgressPercent(progress)
-              const currentStep = getCurrentStep(progress)
+            {orders.map((order, index) => {
+              const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.open
+              const platforms = getPlatformList(order.platforms || order.requirements as any)
               
               return (
                 <View 
                   key={order.id}
                   className="order-card"
                   onClick={() => handleOrderClick(order)}
+                  style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  {/* 订单头部 */}
-                  <View className="order-header">
-                    <View className="order-status" style={{ background: `${config.color}20` }}>
-                      <StatusIcon size={14} color={config.color} />
-                      <Text className="order-status-text" style={{ color: config.color }}>
-                        {config.label}
-                      </Text>
+                  {/* 卡片顶部 */}
+                  <View className="card-top">
+                    <View className="card-left">
+                      <View className="status-badge" style={{ background: config.bgColor }}>
+                        <Text className="status-text" style={{ color: config.color }}>{config.label}</Text>
+                      </View>
                     </View>
-                    <View className="order-header-right">
-                      <Text className="order-time">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </Text>
-                      {mode !== 'avatar' && (
-                        <View 
-                          className="order-more-btn"
-                          onClick={(e) => handleManageOrder(order, e)}
-                        >
-                          <Settings size={18} color="#9ca3af" />
-                        </View>
-                      )}
+                    <View className="card-right">
+                      <Text className="card-date">{formatDate(order.createdAt || order.created_at)}</Text>
+                      <View 
+                        className="more-btn"
+                        onClick={(e) => handleMoreAction(order, e)}
+                      >
+                        <Settings size={18} color="#94a3b8" />
+                      </View>
                     </View>
                   </View>
-                  
+
                   {/* 订单标题 */}
-                  <Text className="order-title">{order.title}</Text>
-                  
-                  {/* 订单描述 */}
-                  {order.description && (
-                    <Text className="order-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {order.description}
-                    </Text>
-                  )}
-                  
+                  <Text className="card-title">{order.title}</Text>
+
                   {/* 平台标签 */}
-                  {order.requirements?.platforms && order.requirements.platforms.length > 0 && (
-                    <View className="platform-tags">
-                      {order.requirements.platforms.map((platform, idx) => (
+                  {platforms.length > 0 && (
+                    <View className="platform-row">
+                      {platforms.slice(0, 3).map((platform, idx) => (
                         <View key={idx} className="platform-tag">
-                          <Text className="platform-tag-text">{getPlatformName(platform)}</Text>
+                          <Text className="platform-text">{getPlatformName(platform)}</Text>
                         </View>
                       ))}
-                    </View>
-                  )}
-                  
-                  {/* 执行进度 */}
-                  {progress.length > 0 && (
-                    <View className="order-progress">
-                      <View className="progress-header">
-                        <Text className="progress-label">执行进度</Text>
-                        <Text className="progress-percent">{progressPercent}%</Text>
-                      </View>
-                      <View className="progress-bar">
-                        <View 
-                          className="progress-fill" 
-                          style={{ 
-                            width: `${progressPercent}%`,
-                            background: order.status === 'reviewing' ? '#8b5cf6' : '#00f5ff'
-                          }} 
-                        />
-                      </View>
-                      {currentStep && (
-                        <Text className="current-step">
-                          当前: {currentStep.step_name}
-                        </Text>
+                      {platforms.length > 3 && (
+                        <Text className="platform-more">+{platforms.length - 3}</Text>
                       )}
                     </View>
                   )}
-                  
-                  {/* 分身信息 */}
-                  {order.avatars && (
-                    <View className="avatar-info">
-                      <View className="avatar-avatar">
-                        {order.avatars.avatar_url ? (
-                          <Image 
-                            src={order.avatars.avatar_url} 
-                            className="avatar-img"
-                            mode="aspectFill"
-                          />
-                        ) : (
-                          <Sparkles size={20} color="#00f5ff" />
-                        )}
-                      </View>
-                      <Text className="avatar-name">{order.avatars.name}</Text>
+
+                  {/* 卡片底部 */}
+                  <View className="card-bottom">
+                    <View className="card-info">
+                      <Users size={14} color="#94a3b8" />
+                      <Text className="info-text">需 {order.avatarCount || order.avatar_count || 1} 个分身</Text>
                     </View>
-                  )}
-                  
-                  {/* 底部信息 */}
-                  <View className="order-footer">
-                    <View className="order-budget">
-                      <DollarSign size={14} color="#f59e0b" />
-                      <Text className="budget-text">¥{order.budget || 0}</Text>
+                    <View className="card-price">
+                      <Text className="price-symbol">¥</Text>
+                      <Text className="price-value">{order.budget || 0}</Text>
                     </View>
-                    
-                    {mode === 'avatar' && order.status === 'open' && (
-                      <View className="order-actions">
-                        <Button 
-                          size="sm" 
-                          className="accept-btn"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleAcceptOrder(order.id)
-                          }}
-                        >
-                          <Check size={14} color="#fff" />
-                          <Text>接单</Text>
-                        </Button>
-                      </View>
-                    )}
-                    
-                    {mode !== 'avatar' && order.status === 'open' && !order.avatars && (
-                      <View className="order-actions">
-                        {/* 按钮已隐藏 */}
-                      </View>
-                    )}
-                    
-                    {order.status === 'reviewing' && (
-                      <View className="reviewing-tip">
-                        <Circle size={14} color="#8b5cf6" />
-                        <Text className="tip-text">内容已提交，请前往验收</Text>
-                      </View>
-                    )}
-                    
-                    <ChevronRight size={20} color="rgba(255,255,255,0.3)" />
                   </View>
+
+                  {/* 底部装饰线 */}
+                  <View className="card-accent" style={{ background: config.color }} />
                 </View>
               )
             })}
           </View>
         )}
+        
+        {/* 底部安全区 */}
+        <View className="safe-bottom" />
       </ScrollView>
     </View>
   )
