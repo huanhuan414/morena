@@ -32,6 +32,15 @@ const PLATFORM_CONFIG: Record<string, {
       { id: 'cert', label: '需蓝V认证', placeholder: '是/否' },
     ]
   },
+  wechat_mp: {
+    label: '微信公众号',
+    icon: '📢',
+    color: '#1677FF',
+    requirements: [
+      { id: 'fans', label: '粉丝量要求', placeholder: '如：500' },
+      { id: 'account_type', label: '账号类型', placeholder: '订阅号/服务号' },
+    ]
+  },
   xiaohongshu: {
     label: '小红书',
     icon: '📕',
@@ -133,8 +142,8 @@ ${form.description ? `补充信息：${form.description}` : ''}
         method: 'POST',
         data: {
           prompt,
-          platform: form.platforms[0],
-          content_type: form.contentType,
+          platforms: form.platforms,
+          contentType: form.contentType === 'text' ? 'copywriting' : form.contentType === 'video' ? 'video_script' : 'copywriting',
         },
       })
 
