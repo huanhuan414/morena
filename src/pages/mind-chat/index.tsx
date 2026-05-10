@@ -9,7 +9,8 @@ import {
   Clock,
   Zap,
   Trash2,
-  Loader
+  Loader,
+  Sparkles
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -258,11 +259,14 @@ const MindChat: React.FC = () => {
           </View>
         ) : filteredClones.length === 0 ? (
           <View className="empty-state">
-            <Text className="empty-text">
-              {activeTab === 'my' ? '暂无分身' : '暂无分身'}
+            <View className="empty-icon-wrap">
+              <Sparkles size={56} color="rgba(6, 182, 212, 0.6)" />
+            </View>
+            <Text className="empty-title">
+              {activeTab === 'my' ? '还没有分身' : '暂无内容'}
             </Text>
             <Text className="empty-desc">
-              {activeTab === 'my' ? '点击右上角"新建"创建你的第一个分身' : '分身广场暂无内容'}
+              {activeTab === 'my' ? '创建你的第一个AI分身\n开启智能社交新体验' : '稍后再来看看吧'}
             </Text>
           </View>
         ) : activeTab === 'my' ? (

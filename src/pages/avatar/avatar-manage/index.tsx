@@ -145,7 +145,15 @@ export default function AvatarManagePage() {
 
   const fetchAvatars = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar' })
+      // 确保获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      const userId = userInfo.id || userInfo.userId || ''
+      console.log('[fetchAvatars] userId:', userId)
+      
+      const res = await Network.request({ 
+        url: '/api/avatar',
+        header: { 'x-user-id': userId }
+      })
       console.log('获取分身响应:', res.data)
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
