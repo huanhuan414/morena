@@ -48,10 +48,9 @@ const Index: React.FC = () => {
       const userId = storedUserInfo.data.id
       console.log('用户ID:', userId)
       
-      // 从用户统计接口获取所有分身的汇总数据
+      // 从用户统计接口获取所有分身的汇总数据（Network模块会自动添加userId）
       const res = await Network.request({ 
-        url: '/api/user-stats/overview',
-        header: { 'x-user-id': userId }
+        url: '/api/user-stats/overview'
       })
       console.log('统计数据:', res.data)
       

@@ -187,11 +187,9 @@ export default function AvatarManagePage() {
       
       console.log('[fetchAvatars] 用户 userId:', userId)
       
-      // 添加时间戳绕过浏览器缓存
-      const timestamp = Date.now()
+      // 获取分身列表（Network模块会自动添加userId）
       const res = await Network.request({ 
-        url: `/api/avatar?_=${timestamp}`,
-        header: { 'x-user-id': userId }
+        url: '/api/avatar'
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
