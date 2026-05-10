@@ -139,7 +139,7 @@ export default function OrderContentCreation() {
     if (processingData?.generatedContent?.content) {
       setEditedContent(processingData.generatedContent.content)
     }
-  }, [processingData?.generatedContent?.content])
+  }, [processingData])
 
   // 轮询获取状态（当状态为生成中或排队中时）
   useEffect(() => {
