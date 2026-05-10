@@ -97,7 +97,9 @@ export class AuthService {
     }
     
     // 新用户，自动注册
+    const userId = require('uuid').v4()
     const newUserData = {
+      id: userId,
       phone,
       openid: `phone_${phone}`, // 用手机号生成唯一openid
       nickname: nickname || `用户${phone.slice(-4)}`,
@@ -246,7 +248,9 @@ export class AuthService {
     }
     
     // 创建新用户
+    const userId = require('uuid').v4()
     const newUserData = {
+      id: userId,
       openid,
       nickname: nickname || '微信用户',
       avatar: avatar || '',
