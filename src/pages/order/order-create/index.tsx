@@ -1,72 +1,72 @@
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { 
-  ArrowLeft, Sparkles, Image, Video, Music,
-  DollarSign, Calendar, Check, Info, Send, CircleAlert
-} from 'lucide-react-taro'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Sparkles, Send, Check, ChevronRight, Loader } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
-// 内容类型
+// 内容类型配置
 const CONTENT_TYPES = [
-  { id: 'text', label: '图文笔记', icon: Image, price: 10, color: '#f59e0b' },
-  { id: 'video', label: '短视频', icon: Video, price: 30, color: '#ef4444' },
-  { id: 'audio', label: '语音/音频', icon: Music, price: 15, color: '#8b5cf6' },
+  { id: 'text', label: '纯文案', icon: '📝', price: 5, prompt: '撰写吸引人的文案' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, prompt: '撰写图文笔记内容' },
+  { id: 'video', label: '短视频脚本', icon: '🎬', price: 20, prompt: '撰写短视频脚本' },
+  { id: 'live', label: '直播话术', icon: '📺', price: 25, prompt: '撰写直播带货话术' },
 ]
 
-// 价格配置
-const PRICE_CONFIG = {
-  avatarBase: 5,
-  maxAvatars: 10,
-  maxQuantityPerAvatar: 20,
-}
-
-// 平台配置（带邀请说明）
+// 平台配置
 const PLATFORM_CONFIG: Record<string, {
   label: string
   icon: string
   color: string
-  requirement: string
+  requirements: { id: string; label: string; placeholder: string }[]
 }> = {
   douyin: {
     label: '抖音',
     icon: '🎵',
-    color: '#00f2ea',
-    requirement: '发布人需开通「抖音团购」功能'
+    color: '#000000',
+    requirements: [
+      { id: 'fans', label: '粉丝量要求', placeholder: '如：1000' },
+      { id: 'group', label: '需开通团购', placeholder: '是/否' },
+      { id: 'cert', label: '需蓝V认证', placeholder: '是/否' },
+    ]
   },
   xiaohongshu: {
     label: '小红书',
     icon: '📕',
-    color: '#ff2442',
-    requirement: '发布人需开通「小红书专业号」'
-  },
-  weibo: {
-    label: '微博',
-    icon: '📱',
-    color: '#ff6b35',
-    requirement: '无特殊要求'
+    color: '#FF2442',
+    requirements: [
+      { id: 'fans', label: '粉丝量要求', placeholder: '如：500' },
+      { id: 'cert', label: '需专业号', placeholder: '是/否' },
+    ]
   },
   wechat: {
     label: '微信',
     icon: '💬',
-    color: '#07c160',
-    requirement: '发布人需开通「视频号」'
+    color: '#07C160',
+    requirements: [
+      { id: 'fans', label: '视频号粉丝', placeholder: '如：1000' },
+      { id: 'moments', label: '需发朋友圈', placeholder: '是/否' },
+    ]
   },
-  bilibili: {
-    label: 'B站',
-    icon: '📺',
-    color: '#00a1d6',
-    requirement: '发布人需开通「创作激励」'
+  weibo: {
+    label: '微博',
+    icon: '🌐',
+    color: '#FF8200',
+    requirements: [
+      { id: 'fans', label: '粉丝量要求', placeholder: '如：10000' },
+      { id: 'cert', label: '需认证', placeholder: '是/否' },
+    ]
   },
   kuaishou: {
     label: '快手',
     icon: '📸',
-    color: '#ff4906',
-    requirement: '发布人需开通「快手小店」'
+    color: '#FF4906',
+    requirements: [
+      { id: 'fans', label: '粉丝量要求', placeholder: '如：1000' },
+      { id: 'shop', label: '需开通快手小店', placeholder: '是/否' },
+    ]
   },
 }
 
@@ -76,22 +76,82 @@ export default function OrderCreate() {
     description: '',
     contentType: 'text',
     platforms: [] as string[],
-    requirements: {
-      deadline: '',
-    },
+    optionalRequirements: {} as Record<string, string>,
     avatarCount: 1,
     quantityPerAvatar: 1,
   })
   const [loading, setLoading] = useState(false)
-  const [showPlatformTip, setShowPlatformTip] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [showPlatformReq, setShowPlatformReq] = useState(false)
 
   // 计算价格
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
   const contentPricePerUnit = selectedType?.price || 10
   const totalPrice = {
-    base: PRICE_CONFIG.avatarBase * form.avatarCount,
+    base: 50 * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
+  }
+
+  // AI帮写
+  const handleAIGenerate = async () => {
+    if (form.platforms.length === 0) {
+      Taro.showToast({ title: '请先选择发布平台', icon: 'none' })
+      return
+    }
+    if (!form.title.trim()) {
+      Taro.showToast({ title: '请输入任务标题', icon: 'none' })
+      return
+    }
+
+    setAiLoading(true)
+    try {
+      // 构建平台名称列表
+      const platformNames = form.platforms.map(p => PLATFORM_CONFIG[p]?.label || p).join('、')
+      const contentTypeName = selectedType?.label || '文案'
+      
+      // 构建提示词
+      const prompt = `你是一个专业的内容创作者，请根据以下要求生成内容：
+
+任务主题：${form.title}
+内容类型：${contentTypeName}
+发布平台：${platformNames}
+${form.description ? `补充信息：${form.description}` : ''}
+
+要求：
+1. 内容要符合${platformNames}的平台风格
+2. ${contentTypeName === '纯文案' ? '吸引人，有传播性' : ''}
+3. ${contentTypeName === '图文笔记' ? '包含标题、正文、话题标签' : ''}
+4. ${contentTypeName === '短视频脚本' ? '包含开场、过程、结尾，有镜头建议' : ''}
+5. ${contentTypeName === '直播话术' ? '包含开场话术、产品介绍、促单话术' : ''}
+
+请直接输出内容，不要有其他解释。`
+
+      // 调用AI接口
+      const res = await Network.request({
+        url: '/api/ai/generate-content',
+        method: 'POST',
+        data: {
+          prompt,
+          platform: form.platforms[0],
+          content_type: form.contentType,
+        },
+      })
+
+      console.log('[AI生成] 响应:', res.data)
+
+      if (res.data.code === 200 && res.data.data?.content) {
+        setForm(prev => ({ ...prev, description: res.data.data.content }))
+        Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: 'AI帮写失败，请手动输入', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('[AI生成] 错误:', error)
+      Taro.showToast({ title: 'AI帮写失败，请手动输入', icon: 'none' })
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   // 切换内容类型
@@ -105,26 +165,34 @@ export default function OrderCreate() {
       const platforms = prev.platforms.includes(platformId)
         ? prev.platforms.filter(p => p !== platformId)
         : [...prev.platforms, platformId]
-      return { ...prev, platforms }
+      // 清空已选平台的要求
+      const newReqs = { ...prev.optionalRequirements }
+      if (!platforms.includes(platformId)) {
+        Object.keys(newReqs).forEach(key => {
+          if (key.startsWith(platformId + '_')) {
+            delete newReqs[key]
+          }
+        })
+      }
+      return { ...prev, platforms, optionalRequirements: newReqs }
     })
   }
 
-  // 获取选中平台的邀请说明
-  const getPlatformRequirement = () => {
-    if (form.platforms.length === 0) return null
-    const requirements = form.platforms.map(p => PLATFORM_CONFIG[p]?.requirement).filter(Boolean)
-    if (requirements.length === 0) return null
-    return [...new Set(requirements)]
+  // 更新平台要求
+  const handleRequirementChange = (platformId: string, reqId: string, value: string) => {
+    setForm(prev => ({
+      ...prev,
+      optionalRequirements: {
+        ...prev.optionalRequirements,
+        [`${platformId}_${reqId}`]: value
+      }
+    }))
   }
 
   // 提交订单
   const handleSubmit = async () => {
     if (!form.title.trim()) {
       Taro.showToast({ title: '请输入任务标题', icon: 'none' })
-      return
-    }
-    if (!form.description.trim()) {
-      Taro.showToast({ title: '请输入任务描述', icon: 'none' })
       return
     }
     if (form.platforms.length === 0) {
@@ -144,7 +212,7 @@ export default function OrderCreate() {
           description: form.description,
           content_type: form.contentType,
           platforms: form.platforms,
-          requirements: form.requirements,
+          requirements: form.optionalRequirements,
           avatar_count: form.avatarCount,
           quantity_per_avatar: form.quantityPerAvatar,
           media: [],
@@ -158,64 +226,105 @@ export default function OrderCreate() {
       } else {
         Taro.showToast({ title: res.data.msg || '创建失败', icon: 'none' })
       }
-    } catch (err) {
-      console.error('创建订单失败:', err)
+    } catch (error) {
+      console.error('[提交订单] 错误:', error)
       Taro.showToast({ title: '创建失败', icon: 'none' })
     } finally {
       setLoading(false)
     }
   }
 
+  // 获取选中平台的特殊要求
+  const getSelectedPlatformReqs = () => {
+    return form.platforms.map(platformId => ({
+      platformId,
+      platform: PLATFORM_CONFIG[platformId],
+      requirements: PLATFORM_CONFIG[platformId]?.requirements || []
+    }))
+  }
+
   return (
     <View className="order-create-page">
-      {/* 顶部导航 */}
-      <View className="nav-header">
-        <View className="nav-content">
-          <View className="back-btn" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={24} color="#1f2937" />
-          </View>
-          <Text className="nav-title">创建任务</Text>
-          <View className="nav-right" />
-        </View>
-      </View>
-
-      <ScrollView className="content-scroll" scrollY>
+      <ScrollView scrollY className="scroll-container">
         {/* 任务标题 */}
-        <View className="title-section">
-          <Input
-            className="title-input"
-            placeholder="输入任务标题，如：推广新品口红"
-            placeholderClass="title-placeholder"
-            value={form.title}
-            onInput={(e: any) => setForm(prev => ({ ...prev, title: e.detail.value }))}
-            maxlength={50}
-          />
-        </View>
-
-        {/* 任务描述 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Text className="card-title">任务描述</Text>
-            <View className="ai-write-btn">
-              <Sparkles size={16} color="#7c3aed" />
-              <Text className="ai-btn-text">AI帮写</Text>
-            </View>
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">任务标题</Text>
+            <Text className="section-tag">必填</Text>
           </View>
-          <Textarea
-            className="desc-textarea"
-            placeholder="详细描述任务要求，包括内容风格、表达方式、禁止出现的元素等..."
-            placeholderClass="textarea-placeholder"
-            value={form.description}
-            onInput={(e: any) => setForm(prev => ({ ...prev, description: e.detail.value }))}
-            maxlength={2000}
-          />
-          <Text className="char-count">{form.description.length}/2000</Text>
+          <View className="input-wrapper">
+            <Input
+              className="title-input"
+              placeholder="简洁明确的任务主题，如：新品发布推广"
+              value={form.title}
+              onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
+              maxlength={50}
+            />
+          </View>
         </View>
 
-        {/* 内容类型 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Text className="card-title">内容类型</Text>
+        {/* 发布平台 - 放到前面 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">发布平台</Text>
+            <Text className="section-tag">必填</Text>
+          </View>
+          <View className="platform-grid">
+            {Object.entries(PLATFORM_CONFIG).map(([id, config]) => (
+              <View
+                key={id}
+                className={`platform-card ${form.platforms.includes(id) ? 'active' : ''}`}
+                onClick={() => handlePlatformToggle(id)}
+              >
+                <View className="platform-icon" style={{ background: config.color + '20' }}>
+                  <Text className="platform-emoji">{config.icon}</Text>
+                </View>
+                <Text className="platform-name">{config.label}</Text>
+                {form.platforms.includes(id) && (
+                  <View className="platform-check">
+                    <Check size={12} color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+          
+          {/* 平台可选要求 */}
+          {form.platforms.length > 0 && (
+            <View className="platform-requirements">
+              <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
+                <Text className="req-title">平台要求（可选）</Text>
+                <ChevronRight size={16} color="#666" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
+              </View>
+              {showPlatformReq && (
+                <View className="req-content">
+                  {getSelectedPlatformReqs().map(({ platformId, platform, requirements }) => (
+                    <View key={platformId} className="platform-req-section">
+                      <Text className="platform-req-title">{platform?.icon} {platform?.label} 要求</Text>
+                      {requirements.map(req => (
+                        <View key={req.id} className="req-item">
+                          <Text className="req-label">{req.label}</Text>
+                          <Input
+                            className="req-input"
+                            placeholder={req.placeholder}
+                            value={form.optionalRequirements[`${platformId}_${req.id}`] || ''}
+                            onInput={e => handleRequirementChange(platformId, req.id, e.detail.value)}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* 内容类型 - 放到前面 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">内容类型</Text>
+            <Text className="section-tag">必填</Text>
           </View>
           <View className="type-grid">
             {CONTENT_TYPES.map(type => (
@@ -224,196 +333,120 @@ export default function OrderCreate() {
                 className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
                 onClick={() => handleTypeChange(type.id)}
               >
-                {form.contentType === type.id && (
-                  <View className="type-check">
-                    <Check size={20} color="#fff" strokeWidth={3} />
-                  </View>
-                )}
-                <View className="type-icon-wrapper">
-                  <type.icon size={32} color={type.color} />
-                </View>
-                <Text className={`type-text ${form.contentType === type.id ? 'active' : ''}`}>
-                  {type.label}
-                </Text>
-                <Text className="type-price">¥{type.price}/份</Text>
+                <Text className="type-icon">{type.icon}</Text>
+                <Text className="type-label">{type.label}</Text>
+                <Text className="type-price">¥{type.price}/个</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* 发布平台 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Text className="card-title">发布平台</Text>
-            <View 
-              className="info-tip"
-              onClick={() => setShowPlatformTip(!showPlatformTip)}
-            >
-              <Info size={16} color="#6b7280" />
+        {/* 任务描述 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">任务描述</Text>
+            <View className="ai-button" onClick={handleAIGenerate}>
+              {aiLoading ? (
+                <Loader size={14} color="#fff" className="ai-loading" />
+              ) : (
+                <Sparkles size={14} color="#fff" />
+              )}
+              <Text className="ai-text">AI帮写</Text>
             </View>
           </View>
-          <View className="platform-grid">
-            {Object.entries(PLATFORM_CONFIG).map(([id, config]) => (
-              <View
-                key={id}
-                className={`platform-chip ${form.platforms.includes(id) ? 'active' : ''}`}
-                onClick={() => handlePlatformToggle(id)}
-              >
-                <Text className="platform-icon">{config.icon}</Text>
-                <Text className={`platform-name ${form.platforms.includes(id) ? 'active' : ''}`}>
-                  {config.label}
-                </Text>
-                {form.platforms.includes(id) && (
-                  <Check size={14} color="#3b82f6" />
-                )}
-              </View>
-            ))}
+          <View className="textarea-wrapper">
+            <Textarea
+              className="desc-textarea"
+              placeholder="详细描述任务要求，如：产品特点、推广重点、禁忌词等..."
+              value={form.description}
+              onInput={e => setForm(prev => ({ ...prev, description: e.detail.value }))}
+              maxlength={2000}
+              autoHeight
+            />
           </View>
+          <Text className="char-count">{form.description.length}/2000</Text>
+        </View>
 
-          {/* 平台邀请说明 */}
-          {showPlatformTip && form.platforms.length > 0 && (
-            <View className="platform-tip-card">
-              <View className="tip-header">
-                <CircleAlert size={18} color="#f59e0b" />
-                <Text className="tip-title">平台要求</Text>
-              </View>
-              {getPlatformRequirement()?.map((req, i) => (
-                <View key={i} className="tip-item">
-                  <Text className="tip-text">{req}</Text>
+        {/* 分身数量 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">分身设置</Text>
+          </View>
+          <View className="counter-row">
+            <View className="counter-item">
+              <Text className="counter-label">使用分身数</Text>
+              <View className="counter-control">
+                <View
+                  className="counter-btn minus"
+                  onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.max(1, prev.avatarCount - 1) }))}
+                >
+                  <Text>-</Text>
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* 任务数量 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Text className="card-title">任务数量</Text>
-          </View>
-
-          <View className="counter-row">
-            <View className="counter-info">
-              <Text className="counter-label">选择分身数量</Text>
-              <Text className="counter-hint">系统自动匹配符合条件的分身接单</Text>
-            </View>
-            <View className="counter-wrapper">
-              <View
-                className={`counter-btn ${form.avatarCount <= 1 ? 'disabled' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.max(1, prev.avatarCount - 1) }))}
-              >
-                <Text className="counter-btn-text">−</Text>
-              </View>
-              <Input
-                className="counter-input"
-                type="number"
-                value={form.avatarCount.toString()}
-                onInput={(e: any) => {
-                  const value = parseInt(e.detail.value) || 1
-                  setForm(prev => ({ ...prev, avatarCount: Math.max(1, Math.min(PRICE_CONFIG.maxAvatars, value)) }))
-                }}
-              />
-              <View
-                className={`counter-btn ${form.avatarCount >= PRICE_CONFIG.maxAvatars ? 'disabled' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, avatarCount: Math.min(PRICE_CONFIG.maxAvatars, prev.avatarCount + 1) }))}
-              >
-                <Text className="counter-btn-text">+</Text>
+                <Text className="counter-value">{form.avatarCount}</Text>
+                <View
+                  className="counter-btn plus"
+                  onClick={() => setForm(prev => ({ ...prev, avatarCount: prev.avatarCount + 1 }))}
+                >
+                  <Text>+</Text>
+                </View>
               </View>
             </View>
-          </View>
-
-          <View className="counter-row">
-            <View className="counter-info">
-              <Text className="counter-label">每分身{selectedType?.label || '内容'}</Text>
-              <Text className="counter-hint">每分身需创作的份数</Text>
-            </View>
-            <View className="counter-wrapper">
-              <View
-                className={`counter-btn ${form.quantityPerAvatar <= 1 ? 'disabled' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: Math.max(1, prev.quantityPerAvatar - 1) }))}
-              >
-                <Text className="counter-btn-text">−</Text>
-              </View>
-              <Input
-                className="counter-input"
-                type="number"
-                value={form.quantityPerAvatar.toString()}
-                onInput={(e: any) => {
-                  const value = parseInt(e.detail.value) || 1
-                  setForm(prev => ({ ...prev, quantityPerAvatar: Math.max(1, Math.min(PRICE_CONFIG.maxQuantityPerAvatar, value)) }))
-                }}
-              />
-              <View
-                className={`counter-btn ${form.quantityPerAvatar >= PRICE_CONFIG.maxQuantityPerAvatar ? 'disabled' : ''}`}
-                onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: Math.min(PRICE_CONFIG.maxQuantityPerAvatar, prev.quantityPerAvatar + 1) }))}
-              >
-                <Text className="counter-btn-text">+</Text>
+            <View className="counter-item">
+              <Text className="counter-label">每个分身产出</Text>
+              <View className="counter-control">
+                <View
+                  className="counter-btn minus"
+                  onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: Math.max(1, prev.quantityPerAvatar - 1) }))}
+                >
+                  <Text>-</Text>
+                </View>
+                <Text className="counter-value">{form.quantityPerAvatar}</Text>
+                <View
+                  className="counter-btn plus"
+                  onClick={() => setForm(prev => ({ ...prev, quantityPerAvatar: prev.quantityPerAvatar + 1 }))}
+                >
+                  <Text>+</Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {/* 截止日期 */}
-        <View className="section-card">
-          <View className="card-header">
-            <Text className="card-title">截止日期</Text>
-          </View>
-          <View className="date-picker-btn">
-            {form.requirements.deadline ? (
-              <Text className="date-value">{form.requirements.deadline}</Text>
-            ) : (
-              <Text className="date-placeholder">选择任务截止日期</Text>
-            )}
-            <Calendar size={20} color="#9ca3af" />
-          </View>
-        </View>
-
-        {/* 价格汇总 */}
-        <View className="section-card price-card">
+        {/* 价格预览 */}
+        <View className="price-preview">
           <View className="price-row">
-            <Text className="price-label">分身基础费</Text>
-            <Text className="price-value">¥{PRICE_CONFIG.avatarBase} × {form.avatarCount}</Text>
+            <Text className="price-label">基础费用</Text>
+            <Text className="price-value">¥{totalPrice.base}</Text>
           </View>
           <View className="price-row">
-            <Text className="price-label">{selectedType?.label || '内容'}费</Text>
-            <Text className="price-value">¥{contentPricePerUnit} × {form.quantityPerAvatar} × {form.avatarCount}</Text>
+            <Text className="price-label">
+              内容费用 ({selectedType?.label} × {form.quantityPerAvatar} × {form.avatarCount})
+            </Text>
+            <Text className="price-value">¥{totalPrice.content}</Text>
           </View>
           <View className="price-divider" />
-          <View className="price-total">
-            <Text className="total-label">预估总价</Text>
-            <View className="total-amount">
-              <Text className="amount-value">¥{totalPrice.total.toFixed(2)}</Text>
-            </View>
+          <View className="price-row total">
+            <Text className="price-label">预计总价</Text>
+            <Text className="price-value">¥{totalPrice.total}</Text>
           </View>
         </View>
 
         {/* 提交按钮 */}
         <View className="submit-section">
-          <Button
-            className="submit-btn secondary"
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            <Send size={18} color="#3b82f6" />
-            <Text className="btn-text">暂不支付，创建订单</Text>
-          </Button>
-          <Button
-            className="submit-btn primary"
-            onClick={handleSubmit}
-            disabled={loading}
+          <View
+            className={`submit-button ${loading ? 'loading' : ''}`}
+            onClick={loading ? undefined : handleSubmit}
           >
             {loading ? (
-              <Text className="btn-text">发布中...</Text>
+              <Loader size={20} color="#fff" className="btn-loading" />
             ) : (
               <>
-                <DollarSign size={18} color="#fff" />
-                <Text className="btn-text">支付 ¥{totalPrice.total.toFixed(2)} 并发布</Text>
+                <Send size={18} color="#fff" />
+                <Text className="submit-text">发布任务</Text>
               </>
             )}
-          </Button>
+          </View>
         </View>
-
-        <View className="bottom-space" />
       </ScrollView>
     </View>
   )
