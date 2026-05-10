@@ -1,22 +1,22 @@
-/* 订单创建页面 - 明亮模式 + 跨端兼容 */
+/* 订单创建页面 - 高级简洁风格 */
 
+/* 页面容器 */
 .order-create-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
   display: flex;
   flex-direction: column;
 }
 
 /* 顶部导航 */
 .nav-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
 }
 
 .nav-content {
@@ -31,9 +31,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
   transition: background-color 0.2s;
 }
 
@@ -42,87 +42,80 @@
 }
 
 .nav-title {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: #111827;
 }
 
 .nav-right {
-  width: 80rpx;
+  width: 72rpx;
 }
 
-/* 内容滚动区域 */
+/* 内容区域 */
 .content-scroll {
   flex: 1;
-  padding: 0 32rpx 160rpx;
-  min-height: 0;
+  padding: 0 32rpx 200rpx;
 }
 
-/* 标题输入区域 */
+/* 标题输入 */
 .title-section {
   background: #ffffff;
-  border-radius: 32rpx;
-  margin-top: 32rpx;
-  padding: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  border-radius: 24rpx;
+  margin-top: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .title-input {
   width: 100%;
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: #111827;
   background: transparent;
   border: none;
-  padding: 16rpx 0;
+  padding: 0;
 }
 
 .title-placeholder {
-  color: #9ca3af;
+  color: #d1d5db;
 }
 
 /* 卡片通用样式 */
 .section-card {
   background: #ffffff;
-  border-radius: 32rpx;
-  margin-top: 24rpx;
+  border-radius: 24rpx;
+  margin-top: 20rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-bottom: 32rpx;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
 }
 
 .card-title {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 600;
-  color: #1f2937;
-  flex: 1;
+  color: #111827;
 }
 
 /* AI帮写按钮 */
 .ai-write-btn {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  padding: 12rpx 24rpx;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
   background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border: 2rpx solid #8b5cf6;
+  border: 1px solid #c4b5fd;
   border-radius: 40rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
   color: #7c3aed;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.ai-write-btn:active {
-  transform: scale(0.95);
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
 }
 
 .ai-btn-text {
@@ -132,11 +125,11 @@
 /* 描述输入 */
 .desc-textarea {
   width: 100%;
-  min-height: 240rpx;
-  font-size: 30rpx;
-  color: #1f2937;
+  min-height: 200rpx;
+  font-size: 28rpx;
+  color: #374151;
   background: #f9fafb;
-  border-radius: 24rpx;
+  border-radius: 16rpx;
   padding: 24rpx;
   border: 1px solid #e5e7eb;
   box-sizing: border-box;
@@ -147,152 +140,67 @@
 }
 
 .char-count {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #9ca3af;
   text-align: right;
-  margin-top: 16rpx;
-}
-
-/* 附件上传 */
-.attachment-section {
-  margin-top: 32rpx;
-  padding-top: 32rpx;
-  border-top: 1px solid #e5e7eb;
-}
-
-.attachment-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #374151;
-  display: block;
-  margin-bottom: 24rpx;
-}
-
-.upload-buttons {
-  display: flex;
-  gap: 16rpx;
-  flex-wrap: wrap;
-  margin-bottom: 24rpx;
-}
-
-.upload-btn {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 16rpx 32rpx;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 16rpx;
-  font-size: 28rpx;
-  color: #1e40af;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.upload-btn:active {
-  background: #dbeafe;
-  transform: scale(0.98);
-}
-
-.upload-btn.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.attachment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.attachment-item {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 20rpx;
-  background: #f9fafb;
-  border-radius: 16rpx;
-  border: 1px solid #e5e7eb;
-}
-
-.attachment-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 80rpx;
-  height: 80rpx;
-  background: #ffffff;
-  border-radius: 12rpx;
-  flex-shrink: 0;
-}
-
-.attachment-name {
-  flex: 1;
-  font-size: 28rpx;
-  color: #374151;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attachment-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 12rpx;
-  flex-shrink: 0;
-  transition: background-color 0.2s;
-}
-
-.attachment-remove:active {
-  background-color: #fee2e2;
-}
-
-.uploading-text {
-  font-size: 26rpx;
-  color: #3b82f6;
-  margin-top: 16rpx;
-  display: block;
+  margin-top: 12rpx;
 }
 
 /* 内容类型网格 */
 .type-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24rpx;
-  padding: 4rpx;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
 }
 
 .type-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  border: 2px solid #e5e7eb;
+  padding: 28rpx 16rpx;
+  border-radius: 20rpx;
+  border: 2rpx solid #e5e7eb;
   background: #f9fafb;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s ease;
   position: relative;
-  box-sizing: border-box;
 }
 
 .type-card.active {
-  border-color: #3b82f6 !important;
-  border-style: solid !important;
-  border-width: 2px !important;
-  background: #eff6ff;
-  transform: translateY(-4rpx);
-  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.15);
+}
+
+.type-check {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b82f6;
+}
+
+.type-icon-wrapper {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 }
 
 .type-text {
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #6b7280;
-  margin-top: 16rpx;
   font-weight: 500;
+  margin-bottom: 4rpx;
 }
 
 .type-text.active {
@@ -300,48 +208,27 @@
   font-weight: 600;
 }
 
-.type-check {
-  position: absolute;
-  top: 16rpx;
-  right: 16rpx;
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #3b82f6;
-  animation: checkPop 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.type-price {
+  font-size: 22rpx;
+  color: #9ca3af;
 }
 
-@keyframes checkPop {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* 发布平台网格 */
+/* 平台选择 */
 .platform-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .platform-chip {
-  padding: 16rpx 32rpx;
-  border-radius: 16rpx;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 40rpx;
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  transition: all 0.2s;
 }
 
 .platform-chip.active {
@@ -349,74 +236,108 @@
   border-color: #3b82f6;
 }
 
-.platform-text {
+.platform-icon {
   font-size: 28rpx;
-  color: #6b7280;
 }
 
-.platform-text.active {
-  color: #1f2937;
+.platform-name {
+  font-size: 26rpx;
+  color: #6b7280;
   font-weight: 500;
 }
 
-/* 价格计算器 */
-.price-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid #e5e7eb;
+.platform-name.active {
+  color: #1f2937;
+  font-weight: 600;
 }
 
-.price-row {
+/* 平台提示 */
+.info-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #f3f4f6;
+}
+
+.platform-tip-card {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 16rpx;
+  border: 1px solid #fcd34d;
+}
+
+.tip-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.tip-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.tip-item {
+  padding: 8rpx 0;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #b45309;
+  line-height: 1.6;
+}
+
+/* 数量选择 */
+.counter-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24rpx;
+  padding: 20rpx 0;
 }
 
-.price-label {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
+.counter-row + .counter-row {
+  border-top: 1px solid #f3f4f6;
+}
+
+.counter-info {
   flex: 1;
 }
 
-.label-text {
+.counter-label {
   font-size: 28rpx;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 500;
+  color: #374151;
   display: block;
 }
 
-.label-hint {
-  font-size: 24rpx;
+.counter-hint {
+  font-size: 22rpx;
   color: #9ca3af;
   display: block;
+  margin-top: 4rpx;
 }
 
-/* 计数器 */
 .counter-wrapper {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 8rpx;
-  border: 1px solid #e5e7eb;
 }
 
 .counter-btn {
   width: 64rpx;
   height: 64rpx;
-  border-radius: 12rpx;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #1f2937;
   transition: all 0.2s;
-  flex-shrink: 0;
 }
 
 .counter-btn:active {
@@ -426,239 +347,143 @@
 
 .counter-btn.disabled {
   opacity: 0.4;
-  pointer-events: none;
+}
+
+.counter-btn-text {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #374151;
 }
 
 .counter-input {
-  width: 96rpx !important;
-  height: 64rpx !important;
-  padding: 0 !important;
-  background: #ffffff !important;
-  border: none !important;
-  border-radius: 8rpx !important;
+  width: 80rpx;
+  height: 64rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+  background: #f3f4f6;
+  border-radius: 12rpx;
 }
 
-/* 覆盖 BaseInput 内部的 TaroInput 样式 */
-.counter-input input,
-.counter-input .taro-input {
-  width: 96rpx !important;
-  height: 64rpx !important;
-  font-size: 40rpx !important;
-  font-weight: 800 !important;
-  color: #000000 !important;
-  background: #ffffff !important;
-  text-align: center !important;
-  padding: 0 !important;
-  border: none !important;
-  -webkit-text-fill-color: #000000 !important;
-  line-height: 64rpx !important;
-}
-
-/* 确保输入框的容器样式也被覆盖 */
-.counter-input > View,
-.counter-input > div {
-  width: 96rpx !important;
-  height: 64rpx !important;
-  padding: 0 !important;
-  background: #ffffff !important;
-  border: none !important;
-  min-height: 64rpx !important;
-}
-
-/* 价格明细 */
-.price-breakdown {
-  margin: 32rpx 0;
-  padding: 32rpx;
+/* 日期选择 */
+.date-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
   background: #f9fafb;
-  border-radius: 24rpx;
+  border-radius: 16rpx;
   border: 1px solid #e5e7eb;
 }
 
-.breakdown-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16rpx;
-}
-
-.breakdown-label {
+.date-value {
   font-size: 28rpx;
-  color: #6b7280;
+  color: #111827;
   font-weight: 500;
 }
 
-.breakdown-value {
-  font-size: 26rpx;
+.date-placeholder {
+  font-size: 28rpx;
   color: #9ca3af;
 }
 
-.breakdown-price {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16rpx;
+/* 价格卡片 */
+.price-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e5e7eb;
 }
 
-.price-amount {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-/* 总价 */
-.total-price-section {
+.price-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 32rpx;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 24rpx;
-  margin-top: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
+  padding: 12rpx 0;
+}
+
+.price-label {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.price-value {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+.price-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 16rpx 0;
+}
+
+.price-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .total-label {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.total-text {
-  font-size: 32rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: #111827;
 }
 
 .total-amount {
   display: flex;
-  align-items: center;
+  align-items: baseline;
 }
 
-.amount-text {
-  font-size: 48rpx;
+.amount-value {
+  font-size: 40rpx;
   font-weight: 700;
-  color: #ffffff;
+  color: #ef4444;
 }
 
-/* 其他信息 */
-.info-item {
-  margin-bottom: 32rpx;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-label {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.info-input {
-  width: 100%;
-  padding: 24rpx;
-  background: #f9fafb;
-  border-radius: 20rpx;
-  border: 1px solid #e5e7eb;
-  font-size: 30rpx;
-  color: #1f2937;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.info-input:focus {
-  border-color: #d1d5db;
-}
-
-.date-input {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-}
-
-.date-input:active {
-  background: #f3f4f6;
-}
-
-.date-text {
-  font-size: 30rpx;
-  color: #1f2937;
-}
-
-.date-placeholder {
-  font-size: 30rpx;
-  color: #9ca3af;
-}
-
-.info-textarea {
-  width: 100%;
-  min-height: 160rpx;
-  padding: 24rpx;
-  background: #f9fafb;
-  border-radius: 20rpx;
-  border: 1px solid #e5e7eb;
-  font-size: 30rpx;
-  color: #1f2937;
-  box-sizing: border-box;
-}
-
-/* 提交按钮区域 */
+/* 提交区域 */
 .submit-section {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 24rpx 32rpx;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.03);
-  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 32rpx;
+  padding: 24rpx 0;
 }
 
 .submit-btn {
   width: 100%;
-  height: 100rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border: none;
+  height: 96rpx;
+  border-radius: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
+  gap: 12rpx;
   font-size: 32rpx;
   font-weight: 600;
-  color: #ffffff;
+}
+
+.submit-btn.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
   box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.submit-btn:active {
-  transform: translateY(-4rpx);
-  box-shadow: 0 12rpx 32rpx rgba(59, 130, 246, 0.4);
-}
-
-.submit-btn.loading {
-  opacity: 0.7;
+.submit-btn.secondary {
+  background: #ffffff;
+  color: #3b82f6;
+  border: 2rpx solid #3b82f6;
 }
 
 .btn-text {
-  color: #ffffff;
-  font-size: 32rpx;
+  color: inherit;
   font-weight: 600;
 }
 
-/* 底部占位 */
 .bottom-space {
-  height: 160rpx;
+  height: 60rpx;
 }
 
 /* 日期选择器弹窗 */
-.date-picker-modal {
+.date-picker-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -667,89 +492,74 @@
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: flex-end;
-  justify-content: center;
-  z-index: 999;
+  z-index: 1000;
 }
 
 .date-picker-content {
-  background: #ffffff;
   width: 100%;
+  background: #fff;
   border-radius: 32rpx 32rpx 0 0;
-  overflow: hidden;
-  animation: slideUp 0.3s ease-out;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.date-picker-header {
+.picker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32rpx 40rpx;
+  padding: 32rpx;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.date-picker-title {
-  font-size: 36rpx;
+.picker-title {
+  font-size: 32rpx;
   font-weight: 600;
-  color: #1f2937;
+  color: #111827;
 }
 
-.date-picker-close {
-  font-size: 30rpx;
-  color: #6b7280;
-  padding: 16rpx 24rpx;
-  border-radius: 16rpx;
-  transition: background-color 0.2s;
-}
-
-.date-picker-close:active {
-  background-color: #f3f4f6;
-}
-
-.date-picker-body {
-  display: flex;
-  padding: 40rpx;
-  gap: 24rpx;
-}
-
-.picker-item {
-  flex: 1;
-  padding: 24rpx;
-  background: #f9fafb;
-  border-radius: 20rpx;
-  border: 1px solid #e5e7eb;
+.picker-close {
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.picker-text {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1f2937;
+.picker-body {
+  display: flex;
+  justify-content: space-around;
+  padding: 32rpx;
 }
 
-.date-picker-footer {
-  padding: 32rpx 40rpx;
+.picker-column {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.picker-value {
+  font-size: 32rpx;
+  color: #111827;
+  font-weight: 500;
+}
+
+.picker-footer {
+  padding: 24rpx 32rpx;
   border-top: 1px solid #e5e7eb;
 }
 
-.date-picker-confirm {
+.picker-confirm {
   width: 100%;
-  height: 96rpx;
+  height: 88rpx;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 24rpx;
-  border: none;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-text {
   font-size: 32rpx;
   font-weight: 600;
-  color: #ffffff;
-  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.3);
+  color: #fff;
 }
