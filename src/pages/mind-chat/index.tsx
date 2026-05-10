@@ -8,7 +8,6 @@ import {
   Phone,
   Clock,
   Zap,
-  Trash2,
   Loader,
   Sparkles
 } from 'lucide-react-taro'
@@ -178,37 +177,6 @@ const MindChat: React.FC = () => {
     }
   }
 
-  // 删除分身
-  const handleDeleteClone = (id: string) => {
-    Taro.showModal({
-      title: '确认删除',
-      content: '确定要删除这个分身吗？此操作不可恢复。',
-      confirmColor: '#EF4444',
-      success: async (res) => {
-        if (res.confirm) {
-          try {
-            // 获取用户ID
-            const userInfo = Taro.getStorageSync('userInfo') || {}
-            let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-            if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
-            
-            await Network.request({
-              url: `/api/avatar/${id}`,
-              method: 'DELETE',
-              header: { 'x-user-id': userId }
-            })
-            console.log('删除分身成功:', id)
-            Taro.showToast({ title: '删除成功', icon: 'success' })
-            loadMyClones()
-          } catch (error) {
-            console.error('删除分身失败:', error)
-            Taro.showToast({ title: '删除失败', icon: 'none' })
-          }
-        }
-      }
-    })
-  }
-
   const formatFollowers = (num: number) => {
     if (num >= 10000) {
       return (num / 10000).toFixed(1) + 'w'
@@ -337,10 +305,6 @@ const MindChat: React.FC = () => {
                       <Phone size={15} />
                       <Text className="toolbar-label">通话</Text>
                     </View>
-                    <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
-                      <Trash2 size={15} color="#EF4444" />
-                      <Text className="toolbar-label delete-label">删除</Text>
-                    </View>
                   </View>
                   <View className="hosting-control">
                     <Zap size={12} className="hosting-icon" />
@@ -400,10 +364,6 @@ const MindChat: React.FC = () => {
                     <View className="toolbar-btn" onClick={() => Taro.showToast({ title: '通话功能开发中', icon: 'none' })}>
                       <Phone size={15} />
                       <Text className="toolbar-label">通话</Text>
-                    </View>
-                    <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
-                      <Trash2 size={15} color="#EF4444" />
-                      <Text className="toolbar-label delete-label">删除</Text>
                     </View>
                   </View>
                   <View className={cn('follow-action-btn', clone.isFollowing && 'following')}>
