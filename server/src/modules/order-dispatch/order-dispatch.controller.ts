@@ -215,4 +215,34 @@ export class OrderDispatchController {
       message: '状态更新成功'
     }
   }
+
+  /**
+   * 一键分配订单给所有可用分身
+   */
+  @Post(':orderId/dispatch-all')
+  async dispatchToAllAvatars(@Param('orderId') orderId: string) {
+    const result = await this.dispatchService.dispatchToAllAvatars(orderId)
+    return {
+      code: 200,
+      data: result,
+      message: `已分配给 ${result.count} 个分身`
+    }
+  }
+
+  /**
+   * 发送短信通知给分身
+   */
+  @Post(':orderId/notify')
+  async notifyAvatars(
+    @Param('orderId') orderId: string,
+    @Body('avatarIds') avatarIds: string[],
+    @Body('message') message?: string
+  ) {
+    const result = await this.dispatchService.notifyAvatars(orderId, avatarIds, message)
+    return {
+      code: 200,
+      data: result,
+      message: `已发送 ${result.count} 条通知`
+    }
+  }
 }
