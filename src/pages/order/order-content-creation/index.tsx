@@ -32,6 +32,7 @@ interface AvatarInfo {
   avatarUrl: string
   personality?: string
   matchReason?: string
+  dispatchId?: string
 }
 
 interface ProcessingData {
@@ -109,8 +110,6 @@ export default function OrderContentCreation() {
     setGeneratingStep('正在准备...')
 
     try {
-      const selectedAvatar = avatars.find(a => a.id === selectedAvatarId)
-
       // 模拟进度
       const steps = [
         '正在分析订单需求...',
@@ -135,10 +134,11 @@ export default function OrderContentCreation() {
         data: {
           orderId,
           avatarId: selectedAvatarId,
-          avatarName: selectedAvatar?.name,
-          avatarPersonality: selectedAvatar?.personality,
-          platforms: orderInfo?.platforms,
-          contentType: orderInfo?.contentType
+          orderTitle: orderInfo?.title || '商单内容',
+          orderDescription: orderInfo?.description || orderInfo?.requirements || '',
+          platforms: orderInfo?.platforms || [],
+          contentType: orderInfo?.contentType || 'image',
+          targetAudience: orderInfo?.requirements || ''
         }
       })
 
