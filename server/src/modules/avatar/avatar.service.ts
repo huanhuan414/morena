@@ -116,10 +116,14 @@ export class AvatarService {
         console.error('解析 avatar 数据失败:', e)
       }
 
+      // 如果没有头像，生成默认头像（使用 PNG 格式，兼容小程序）
+      const defaultAvatarUrl = avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatar.id)}&size=200`
+
       return {
         ...avatar,
-        avatar_url: avatar.avatarUrl || '', // 蛇形兼容前端
-        photo: avatar.avatarUrl || '',
+        avatar_url: defaultAvatarUrl, // 蛇形兼容前端
+        photo: defaultAvatarUrl,
+        avatarUrl: defaultAvatarUrl, // 驼峰格式也加上
         tags: personality.tags || [],
         abilities: personality.abilities || {},
         voice_type: avatar.voiceType || 'preset',
@@ -156,8 +160,9 @@ export class AvatarService {
       success: true, 
       data: {
         ...avatar,
-        avatar_url: avatar.avatarUrl || '', // 蛇形兼容前端
-        photo: avatar.avatarUrl || '',
+        avatar_url: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`, // 蛇形兼容前端
+        photo: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
+        avatarUrl: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
         tags: personality.tags || [],
         abilities: personality.abilities || {},
         voice_type: avatar.voiceType || 'preset',
