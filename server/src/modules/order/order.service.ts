@@ -25,6 +25,9 @@ export class OrderService {
       budget: orderData.total_price || orderData.budget || 0,
       status: 'pending_payment',
       expected_quantity: orderData.avatar_count || orderData.avatarCount || 1,
+      avatar_count: orderData.avatar_count || orderData.avatarCount || 1,
+      quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
+      is_paid: 0,
     }
     
     const insertResult = await db.insert('orders', insertData)
