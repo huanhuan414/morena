@@ -10,9 +10,8 @@ export class UserStatsService {
   async getUserStatsOverview(userId: string) {
     const db = getMySQLClient()
     
-    // 1. 获取用户所有分身
-    const avatars = await db.query('avatars', { user_id: userId }) as any
-    const avatarList = avatars?.data || []
+    // 1. 获取用户所有分身（db.query 返回数组，不是 { data: [] }）
+    const avatarList = await db.query('avatars', { user_id: userId }) as any[]
     const avatarIds = avatarList.map((a: any) => a.id)
     const avatarCount = avatarList.length
     
@@ -23,8 +22,8 @@ export class UserStatsService {
       const pendingResult = await db.queryWhere(
         'orders',
         `avatar_id IN (${avatarIdList}) AND status IN ('pending_dispatch', 'processing')`
-      ) as any
-      pendingOrders = pendingResult?.data?.length || 0
+      ) as any[]
+      pendingOrders = pendingResult?.length || 0
     }
     
     // 3. 统计生成内容数（根据 avatar_id 关联的内容）
@@ -36,8 +35,8 @@ export class UserStatsService {
         const contentResult = await db.queryWhere(
           'content_generation',
           `avatar_id IN (${avatarIdList})`
-        ) as any
-        generatedContents = contentResult?.data?.length || 0
+        ) as any[]
+        generatedContents = contentResult?.length || 0
       } catch (e) {
         // 表不存在，使用0
         generatedContents = 0
@@ -56,8 +55,8 @@ export class UserStatsService {
         const earningsResult = await db.queryWhere(
           'earnings',
           `avatar_id IN (${avatarIdList}) AND status = 'completed'`
-        ) as any
-        const avatarEarnings = earningsResult?.data?.reduce(
+        ) as any[]
+        const avatarEarnings = earningsResult?.reduce(
           (sum: number, e: any) => sum + Number(e.amount || 0), 0
         ) || 0
         totalEarnings += avatarEarnings
