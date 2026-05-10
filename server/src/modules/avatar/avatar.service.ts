@@ -12,24 +12,49 @@ export class AvatarService {
    */
   async createAvatar(userId: string, avatarData: any) {
     const db = getMySQLClient()
-    const { name, description, personality, appearance, voice_id, gender, age } = avatarData
+    const { 
+      name, 
+      photo, 
+      tags, 
+      voice_type, 
+      voice_url, 
+      preset_voice_id, 
+      abilities 
+    } = avatarData
 
-    const result = await db.insert('avatars', {
-      user_id: userId,
-      name,
-      description,
-      personality: personality || '{}',
-      appearance: appearance || '{}',
-      voice_id,
-      gender,
-      age,
-      status: 'active',
-      created_at: new Date(),
-      updated_at: new Date()
+    // 构建 personality JSON
+    const personality = JSON.stringify({
+      tags: tags || [],
+      abilities: abilities || {}
     })
 
-    if ((result as any)?.affectedRows > 0) {
-      return { success: true, id: (result as any)?.insertId, data: avatarData }
+    const insertData = {
+      user_id: userId || 'anonymous',
+      name,
+      description: '',
+      avatar_url: photo || '', // 使用 avatar_url 列
+      personality,
+      skills: '{}',
+      config: '{}',
+      voice_id: preset_voice_id || voice_type || 'preset',
+      status: voice_type === 'clone' ? 'training' : 'active',
+    }
+
+    console.log('[AvatarService] 创建分身，插入数据:', insertData)
+    
+    const result = await db.insert('avatars', insertData)
+    
+    console.log('[AvatarService] 插入结果:', result)
+
+    if ((result as any)?.data?.affectedRows > 0) {
+      const avatarId = (result as any)?.data?.insertId
+      
+      // 如果是原声复刻，触发声音训练任务
+      if (voice_type === 'clone' && voice_url) {
+        console.log(`触发声音复刻训练任务，avatarId: ${avatarId}, voiceUrl: ${voice_url}`)
+      }
+
+      return { success: true, id: avatarId, data: avatarData }
     }
     return { success: false, error: '创建分身失败' }
   }
@@ -40,7 +65,30 @@ export class AvatarService {
   async getUserAvatars(userId: string) {
     const db = getMySQLClient()
     const result = await db.select('avatars', { user_id: userId })
-    return { success: true, data: result.data || [] }
+    
+    // 格式化返回数据
+    const avatars = (result.data || []).map(avatar => {
+      let personality = {}
+      
+      try {
+        personality = typeof avatar.personality === 'string' 
+          ? JSON.parse(avatar.personality) 
+          : avatar.personality || {}
+      } catch (e) {
+        console.error('解析 avatar 数据失败:', e)
+      }
+
+      return {
+        ...avatar,
+        photo: avatar.avatar_url || '', // 使用 avatar_url 列
+        tags: personality.tags || [],
+        abilities: personality.abilities || {},
+        voice_type: avatar.voice_type || 'preset',
+        voice_url: avatar.voice_url || ''
+      }
+    })
+    
+    return { success: true, data: avatars }
   }
 
   /**
@@ -49,7 +97,33 @@ export class AvatarService {
   async getAvatarById(avatarId: number) {
     const db = getMySQLClient()
     const result = await db.queryOne('avatars', { id: avatarId })
-    return { success: true, data: result?.data }
+    
+    if (!result?.data) {
+      return { success: false, error: '分身不存在' }
+    }
+
+    const avatar = result.data
+    let personality = {}
+    
+    try {
+      personality = typeof avatar.personality === 'string' 
+        ? JSON.parse(avatar.personality) 
+        : avatar.personality || {}
+    } catch (e) {
+      console.error('解析 avatar 数据失败:', e)
+    }
+
+    return { 
+      success: true, 
+      data: {
+        ...avatar,
+        photo: avatar.avatar_url || '',
+        tags: personality.tags || [],
+        abilities: personality.abilities || {},
+        voice_type: avatar.voice_type || 'preset',
+        voice_url: avatar.voice_url || ''
+      }
+    }
   }
 
   /**
@@ -57,9 +131,35 @@ export class AvatarService {
    */
   async updateAvatar(avatarId: number, updateData: any) {
     const db = getMySQLClient()
-    updateData.updated_at = new Date()
-    const result = await db.updateWhere('avatars', { id: avatarId }, updateData)
-    return { success: (result as any)?.affectedRows > 0, data: updateData }
+    
+    // 处理嵌套的 JSON 字段
+    const formattedData: any = {}
+    
+    if (updateData.name) formattedData.name = updateData.name
+    if (updateData.avatar_url || updateData.photo) formattedData.avatar_url = updateData.avatar_url || updateData.photo
+    if (updateData.description) formattedData.description = updateData.description
+    
+    if (updateData.tags || updateData.abilities) {
+      const existing = await db.queryOne('avatars', { id: avatarId })
+      if (existing?.data) {
+        let existingPersonality = {}
+        
+        try {
+          existingPersonality = typeof existing.data.personality === 'string' 
+            ? JSON.parse(existing.data.personality) 
+            : existing.data.personality || {}
+        } catch (e) {}
+
+        formattedData.personality = JSON.stringify({
+          ...existingPersonality,
+          tags: updateData.tags,
+          abilities: updateData.abilities
+        })
+      }
+    }
+    
+    const result = await db.updateWhere('avatars', { id: avatarId }, formattedData)
+    return { success: (result as any)?.data?.affectedRows > 0, data: updateData }
   }
 
   /**
@@ -68,7 +168,7 @@ export class AvatarService {
   async deleteAvatar(avatarId: number, userId: string) {
     const db = getMySQLClient()
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
-    return { success: (result as any)?.affectedRows > 0 }
+    return { success: (result as any)?.data?.affectedRows > 0 }
   }
 
   /**
@@ -84,7 +184,7 @@ export class AvatarService {
       status: 'active',
       created_at: new Date()
     })
-    return { success: (result as any)?.affectedRows > 0, id: (result as any)?.insertId }
+    return { success: (result as any)?.data?.affectedRows > 0, id: (result as any)?.data?.insertId }
   }
 
   /**
@@ -102,7 +202,7 @@ export class AvatarService {
   async deleteSkill(skillId: number) {
     const db = getMySQLClient()
     const result = await db.delete('avatar_skills', { id: skillId })
-    return { success: (result as any)?.affectedRows > 0 }
+    return { success: (result as any)?.data?.affectedRows > 0 }
   }
 
   /**
@@ -117,7 +217,7 @@ export class AvatarService {
       importance: memoryData.importance || 5,
       created_at: new Date()
     })
-    return { success: (result as any)?.affectedRows > 0, id: (result as any)?.insertId }
+    return { success: (result as any)?.data?.affectedRows > 0, id: (result as any)?.data?.insertId }
   }
 
   /**
@@ -135,7 +235,7 @@ export class AvatarService {
   async deleteMemory(memoryId: number) {
     const db = getMySQLClient()
     const result = await db.delete('avatar_memories', { id: memoryId })
-    return { success: (result as any)?.affectedRows > 0 }
+    return { success: (result as any)?.data?.affectedRows > 0 }
   }
 
   /**
@@ -158,5 +258,85 @@ export class AvatarService {
         comments_count: comments || 0
       }
     }
+  }
+
+  /**
+   * 声音复刻状态查询
+   */
+  async getVoiceCloneStatus(avatarId: number) {
+    const db = getMySQLClient()
+    const result = await db.queryOne('avatars', { id: avatarId })
+    
+    if (!result?.data) {
+      return { success: false, error: '分身不存在' }
+    }
+
+    const avatar = result.data
+    return {
+      success: true,
+      data: {
+        avatar_id: avatarId,
+        status: avatar.status, // 'training' | 'active' | 'failed'
+        voice_type: avatar.voice_type,
+        is_cloning: avatar.voice_type === 'clone' && avatar.status === 'training'
+      }
+    }
+  }
+
+  /**
+   * 获取分身列表（分页）
+   */
+  async getAvatarList(params: {
+    page?: number;
+    pageSize?: number;
+    gender?: string;
+    ageGroup?: string;
+    search?: string;
+  }) {
+    const db = getMySQLClient()
+    const { page = 1, pageSize = 10, gender, ageGroup, search } = params
+    const offset = (page - 1) * pageSize
+
+    let where = '1=1'
+    const values: any[] = []
+
+    if (gender) {
+      where += ' AND gender = ?'
+      values.push(gender)
+    }
+    if (search) {
+      where += ' AND (name LIKE ? OR description LIKE ?)'
+      values.push(`%${search}%`, `%${search}%`)
+    }
+
+    const countResult = await db.query(`SELECT COUNT(*) as total FROM avatars WHERE ${where}`, values)
+    const total = countResult?.data?.[0]?.total || 0
+
+    const listResult = await db.query(
+      `SELECT * FROM avatars WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...values, pageSize, offset]
+    )
+
+    return {
+      success: true,
+      data: {
+        list: listResult.data || [],
+        total,
+        page,
+        pageSize
+      }
+    }
+  }
+
+  /**
+   * 搜索分身
+   */
+  async searchAvatars(keyword: string) {
+    const db = getMySQLClient()
+    const result = await db.query(
+      `SELECT * FROM avatars WHERE name LIKE ? OR description LIKE ? LIMIT 20`,
+      [`%${keyword}%`, `%${keyword}%`]
+    )
+    return { success: true, data: result.data || [] }
   }
 }

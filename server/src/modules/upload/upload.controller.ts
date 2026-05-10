@@ -156,4 +156,58 @@ export class UploadController {
       }
     }
   }
+
+  /**
+   * 🔴 通用文件上传接口
+   * 根据文件类型自动选择上传服务
+   */
+  @Post()
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+    console.log('[UploadController] 接收到通用文件上传请求')
+    console.log('[UploadController] 文件信息:', {
+      originalname: file?.originalname,
+      size: file?.size,
+      mimetype: file?.mimetype,
+      hasBuffer: !!file?.buffer
+    })
+
+    if (!file) {
+      return {
+        code: 400,
+        message: '未接收到文件',
+        error: 'File not found'
+      }
+    }
+
+    try {
+      // 根据 mimetype 判断文件类型
+      const mimetype = file.mimetype || ''
+      let result: any
+
+      if (mimetype.startsWith('image/')) {
+        result = await this.uploadService.uploadImage(file)
+      } else if (mimetype.startsWith('audio/')) {
+        result = await this.uploadService.uploadAudio(file)
+      } else if (mimetype.startsWith('video/')) {
+        result = await this.uploadService.uploadVideo(file)
+      } else {
+        // 其他文件类型当作图片处理
+        result = await this.uploadService.uploadImage(file)
+      }
+
+      return {
+        code: 200,
+        message: '上传成功',
+        data: result
+      }
+    } catch (error) {
+      console.error('[UploadController] 文件上传失败:', error)
+      return {
+        code: 500,
+        message: error.message || '上传失败',
+        error: error.message
+      }
+    }
+  }
 }

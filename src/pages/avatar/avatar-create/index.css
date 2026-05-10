@@ -4,11 +4,11 @@
   background: #F8FAFC;
 }
 
-/* 顶部渐变背景 */
-.page-header {
+/* 顶部渐变背景 - 覆盖全局padding-top */
+.create-page .page-header {
   position: relative;
   background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
-  padding: env(safe-area-inset-top) 0 32rpx 0;
+  padding: 0 0 32rpx 0 !important;
   overflow: hidden;
 }
 
@@ -213,10 +213,11 @@
   align-items: center;
 }
 
-.preview-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.preview-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .preview-text {
@@ -420,6 +421,32 @@
 .clone-upload-text {
   font-size: 24rpx;
   color: #8B5CF6;
+}
+
+/* 录音状态 */
+.recording-status {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.recording-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #EF4444;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.recording-time {
+  font-size: 24rpx;
+  color: #EF4444;
+  font-weight: 500;
 }
 
 /* 音色网格 */
