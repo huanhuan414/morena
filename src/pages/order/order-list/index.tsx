@@ -395,7 +395,9 @@ export default function OrderListPage() {
                   <View className="card-bottom">
                     <View className="card-info">
                       <Users size={14} color="#94a3b8" />
-                      <Text className="info-text">需 {order.avatarCount || order.avatar_count || 1} 个分身</Text>
+                      <Text className="info-text">
+                        已分配 {order.dispatchedCount || 0}/{order.avatarCount || order.avatar_count || 1} 个分身
+                      </Text>
                     </View>
                     <View className="card-price">
                       <Text className="price-symbol">¥</Text>

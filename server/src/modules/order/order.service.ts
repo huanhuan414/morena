@@ -14,6 +14,9 @@ export class OrderService {
     const id = crypto.randomUUID()
     console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
+    // 数据库表使用 expected_quantity 字段
+    const avatarCount = orderData.avatar_count || orderData.avatarCount || orderData.requiredAvatars || 1
+    
     const insertData: Record<string, any> = {
       id,
       user_id: userId,
@@ -24,8 +27,7 @@ export class OrderService {
       requirements: JSON.stringify(orderData.requirements || {}),
       budget: orderData.total_price || orderData.budget || 0,
       status: 'pending_payment',
-      expected_quantity: orderData.avatar_count || orderData.avatarCount || 1,
-      avatar_count: orderData.avatar_count || orderData.avatarCount || 1,
+      expected_quantity: avatarCount, // 使用 expected_quantity 字段
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
       is_paid: 0,
     }
@@ -43,7 +45,7 @@ export class OrderService {
       throw err
     })
 
-    return { id, ...insertData }
+    return { id, ...insertData, avatarCount }
   }
 
   async getOrderById(orderId: string) {
@@ -138,10 +140,25 @@ export class OrderService {
     
     const rows = await db.query(
       `SELECT id, title, description, content_type, platforms, requirements, 
-              budget, status, avatar_count, is_paid, created_at
+              budget, status, expected_quantity, avatar_count, is_paid, created_at
        FROM orders ${whereClause} ORDER BY created_at DESC LIMIT 100`,
       params
     )
+    
+    // 获取每个订单的分发请求数量
+    const orderIds = (rows || []).map((row: any) => row.id)
+    let dispatchCounts: Record<string, number> = {}
+    
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(', ')
+      const countRows = await db.query(
+        `SELECT order_id, COUNT(*) as count FROM order_dispatch_requests WHERE order_id IN (${placeholders}) GROUP BY order_id`,
+        orderIds
+      )
+      for (const row of countRows) {
+        dispatchCounts[row.order_id] = row.count
+      }
+    }
     
     return (rows || []).map((row: any) => {
       // 处理 platforms 字段
@@ -196,18 +213,24 @@ export class OrderService {
         createdAt = new Date().toISOString() // 使用当前时间作为默认值
       }
       
+      // 获取实际分配的分身数量
+      const dispatchedCount = dispatchCounts[row.id] || 0
+      // MySQL client 返回驼峰格式的字段名
+      const needAvatarCount = row.avatarCount || row.expectedQuantity || 0
+      
       return {
         id: row.id,
         title: row.title,
         description: row.description,
-        contentType: row.content_type,
+        contentType: row.contentType,
         platforms,
         requirements,
         budget: row.budget,
         status: row.status,
-        avatarCount: row.avatar_count || 0,
+        avatarCount: needAvatarCount,
+        dispatchedCount, // 实际已分配的分身数量
         avatarStats: avatarStats || [],
-        isPaid: row.is_paid === 1,
+        isPaid: row.isPaid,
         createdAt
       }
     })
