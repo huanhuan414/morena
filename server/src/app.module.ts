@@ -25,6 +25,7 @@ import { AsrModule } from './modules/asr/asr.module';
 import { RecommendationModule } from './modules/recommendation/recommendation.module';
 import { VideoModule } from './modules/video/video.module';
 import { VisionModule } from './modules/vision/vision.module';
+import { VoiceCloneModule } from './modules/voice-clone/voice-clone.module';
 
 import { OrderProcessingModule } from './modules/order-processing/order-processing.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -58,6 +59,7 @@ import { EarningsModule } from './modules/earnings/earnings.module';
     RecommendationModule,
     VideoModule,
     VisionModule,
+    VoiceCloneModule,
     TikHubModule,
     OrderProcessingModule,
     AdminModule,

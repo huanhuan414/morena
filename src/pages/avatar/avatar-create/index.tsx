@@ -134,55 +134,126 @@ export default function AvatarCreate() {
     setFormData(prev => ({ ...prev, [key]: value }))
   }
 
-  // 上传照片到后端
+  // 图片上传来源选择（支持拍照、相册、微信聊天记录）
   const handleUploadPhoto = () => {
-    Taro.chooseImage({
-      count: 1,
-      sourceType: ['album', 'camera'],
-      success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0]
-        updateFormData('photo', tempFilePath)
-        Taro.showLoading({ title: '上传中...' })
+    // 检测是否为小程序环境
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    
+    if (!isMiniApp) {
+      // H5端只支持相册
+      Taro.chooseImage({
+        count: 1,
+        sourceType: ['album'],
+        success: async (res: any) => {
+          const tempFilePath = res.tempFilePaths[0]
+          updateFormData('photo', tempFilePath)
+          await uploadPhotoToServer(tempFilePath)
+        },
+        fail: () => {
+          Taro.showToast({ title: '请选择图片', icon: 'none' })
+        }
+      })
+      return
+    }
+
+    // 小程序端显示选择菜单
+    Taro.showActionSheet({
+      itemList: ['拍照', '从相册选择', '从微信聊天记录选择'],
+      success: async (res: any) => {
+        const tapIndex = res.tapIndex
         
-        try {
-          // 调用后端上传接口
-          const uploadRes = await Network.uploadFile({
-            url: '/api/upload',
-            filePath: tempFilePath,
-            name: 'file',
-          })
-          
-          console.log('照片上传响应:', uploadRes)
-          
-          // 解析响应 - 根据后端返回格式
-          if (uploadRes.data) {
-            const resData = typeof uploadRes.data === 'string' 
-              ? JSON.parse(uploadRes.data) 
-              : uploadRes.data
-            
-            if (resData.code === 200 && resData.data?.url) {
-              updateFormData('photoUrl', resData.data.url)
-              Taro.showToast({ title: '照片上传成功', icon: 'success' })
-            } else {
-              // 兼容其他格式
-              const fileUrl = resData.data?.fileUrl || resData.url || resData.file_path
-              if (fileUrl) {
-                updateFormData('photoUrl', fileUrl)
-                Taro.showToast({ title: '照片上传成功', icon: 'success' })
-              } else {
-                console.warn('上传响应格式异常:', resData)
-                Taro.showToast({ title: '照片已选择', icon: 'success' })
-              }
+        if (tapIndex === 0) {
+          // 拍照
+          Taro.chooseImage({
+            count: 1,
+            sourceType: ['camera'],
+            success: async (imageRes: any) => {
+              const tempFilePath = imageRes.tempFilePaths[0]
+              updateFormData('photo', tempFilePath)
+              await uploadPhotoToServer(tempFilePath)
             }
+          })
+        } else if (tapIndex === 1) {
+          // 从相册选择
+          Taro.chooseImage({
+            count: 1,
+            sourceType: ['album'],
+            success: async (imageRes: any) => {
+              const tempFilePath = imageRes.tempFilePaths[0]
+              updateFormData('photo', tempFilePath)
+              await uploadPhotoToServer(tempFilePath)
+            }
+          })
+        } else if (tapIndex === 2) {
+          // 从微信聊天记录选择（仅微信小程序支持）
+          if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
+            Taro.chooseMessageFile({
+              count: 1,
+              type: 'image',
+              success: async (msgRes: any) => {
+                const tempFilePath = msgRes.tempFilePaths[0]
+                updateFormData('photo', tempFilePath)
+                await uploadPhotoToServer(tempFilePath)
+              },
+              fail: () => {
+                Taro.showToast({ title: '请从相册选择', icon: 'none' })
+              }
+            })
+          } else {
+            // 抖音小程序不支持，从相册选择
+            Taro.chooseImage({
+              count: 1,
+              sourceType: ['album'],
+              success: async (imageRes: any) => {
+                const tempFilePath = imageRes.tempFilePaths[0]
+                updateFormData('photo', tempFilePath)
+                await uploadPhotoToServer(tempFilePath)
+              }
+            })
           }
-        } catch (err) {
-          console.error('上传失败:', err)
-          Taro.showToast({ title: '上传失败', icon: 'none' })
-        } finally {
-          Taro.hideLoading()
         }
       }
     })
+  }
+
+  // 上传照片到服务器
+  const uploadPhotoToServer = async (tempFilePath: string) => {
+    Taro.showLoading({ title: '上传中...' })
+    
+    try {
+      const uploadRes = await Network.uploadFile({
+        url: '/api/upload',
+        filePath: tempFilePath,
+        name: 'file',
+      })
+      
+      console.log('照片上传响应:', uploadRes)
+      
+      if (uploadRes.data) {
+        const resData = typeof uploadRes.data === 'string' 
+          ? JSON.parse(uploadRes.data) 
+          : uploadRes.data
+        
+        if (resData.code === 200 && resData.data?.url) {
+          updateFormData('photoUrl', resData.data.url)
+          Taro.showToast({ title: '照片上传成功', icon: 'success' })
+        } else {
+          const fileUrl = resData.data?.fileUrl || resData.url || resData.file_path
+          if (fileUrl) {
+            updateFormData('photoUrl', fileUrl)
+            Taro.showToast({ title: '照片上传成功', icon: 'success' })
+          } else {
+            console.warn('上传响应格式异常:', resData)
+            Taro.showToast({ title: '照片已选择', icon: 'success' })
+          }
+        }
+      }
+    } catch (err) {
+      console.error('上传失败:', err)
+      Taro.showToast({ title: '上传失败', icon: 'none' })
+    } finally {
+      Taro.hideLoading()
+    }
   }
 
   // 录音开始/停止
@@ -220,11 +291,12 @@ export default function AvatarCreate() {
     })
   }
 
-  // 上传录音文件
+  // 上传录音文件并触发声音复刻
   const uploadVoiceFile = async (tempFilePath: string) => {
     Taro.showLoading({ title: '上传中...' })
     
     try {
+      // 先上传录音文件到服务器
       const uploadRes = await Network.uploadFile({
         url: '/api/upload',
         filePath: tempFilePath,
@@ -233,24 +305,55 @@ export default function AvatarCreate() {
       
       console.log('录音上传响应:', uploadRes)
       
+      let voiceUrl = ''
+      
       if (uploadRes.data) {
         const resData = typeof uploadRes.data === 'string' 
           ? JSON.parse(uploadRes.data) 
           : uploadRes.data
         
         if (resData.code === 200 && resData.data?.url) {
-          updateFormData('voiceUrl', resData.data.url)
-          Taro.showToast({ title: '声音录制成功', icon: 'success' })
+          voiceUrl = resData.data.url
         } else {
-          const fileUrl = resData.data?.fileUrl || resData.url || resData.file_path
-          if (fileUrl) {
-            updateFormData('voiceUrl', fileUrl)
-            Taro.showToast({ title: '声音录制成功', icon: 'success' })
-          } else {
-            console.warn('录音上传响应格式异常:', resData)
-            Taro.showToast({ title: '声音已录制', icon: 'success' })
-          }
+          voiceUrl = resData.data?.fileUrl || resData.url || resData.file_path || ''
         }
+      }
+      
+      // 如果上传成功，调用后端声音复刻接口
+      if (voiceUrl) {
+        console.log('开始声音复刻，音频URL:', voiceUrl)
+        
+        try {
+          const cloneRes = await Network.request({
+            url: '/api/voice-clone/start',
+            method: 'POST',
+            data: {
+              audio_url: voiceUrl,
+              user_id: 'anonymous' // 可以从全局状态获取实际user_id
+            }
+          })
+          
+          console.log('声音复刻响应:', cloneRes)
+          
+          if (cloneRes.data?.code === 200 && cloneRes.data?.data) {
+            // 保存复刻声音ID
+            updateFormData('voiceUrl', voiceUrl)
+            updateFormData('presetVoiceId', cloneRes.data.data.voice_id)
+            Taro.showToast({ title: '声音录制成功，复刻训练开始', icon: 'success' })
+          } else {
+            // 即使复刻接口失败，也保存录音URL
+            updateFormData('voiceUrl', voiceUrl)
+            Taro.showToast({ title: '声音录制成功', icon: 'success' })
+          }
+        } catch (cloneErr) {
+          console.error('声音复刻接口调用失败:', cloneErr)
+          // 复刻接口失败不影响录音保存
+          updateFormData('voiceUrl', voiceUrl)
+          Taro.showToast({ title: '声音录制成功', icon: 'success' })
+        }
+      } else {
+        console.warn('录音上传响应格式异常:', uploadRes.data)
+        Taro.showToast({ title: '声音已录制', icon: 'success' })
       }
     } catch (err) {
       console.error('录音上传失败:', err)
