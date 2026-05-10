@@ -4,17 +4,25 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 
 @Injectable()
 export class RecommendationService {
-  async getRecommendations(userId: string, type: string = 'avatar') {
+  async getRecommendations(userId: string, type: string = 'avatar', limit: number = 10, platforms?: string[], contentType?: string) {
     const db = getMySQLClient()
     
     if (type === 'avatar') {
-      const avatars = await db.query('avatars', {}) as any[]
-      return avatars?.slice(0, 10) || []
+      // 查询活跃的分身
+      let sql = 'SELECT * FROM avatars WHERE status = ? ORDER BY updated_at DESC'
+      const params: any[] = ['active']
+      
+      if (limit > 0) {
+        sql += ` LIMIT ${parseInt(String(limit))}`
+      }
+      
+      const avatars = await db.query(sql, params) as any[]
+      return avatars || []
     }
     
     if (type === 'content') {
       const posts = await db.query('posts', {}) as any[]
-      return posts?.slice(0, 10) || []
+      return posts?.slice(0, limit) || []
     }
     
     return []

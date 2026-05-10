@@ -234,7 +234,7 @@ export default function OrderMatchingPage() {
       console.log('[OrderMatching] 请求推荐分身，数量:', avatarCount)
       
       const recommendRes = await Network.request({
-        url: '/api/avatar/recommendations',
+        url: '/api/recommendation/recommendations',
         method: 'POST',
         data: {
           platforms: params.platforms,

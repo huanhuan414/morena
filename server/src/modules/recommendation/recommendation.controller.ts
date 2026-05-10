@@ -14,12 +14,14 @@ export class RecommendationController {
     @Headers('x-user-id') userId: string,
     @Body() body: any
   ) {
-    const { location, limit = 20 } = body
+    const { platforms, contentType, limit = 20 } = body
 
     const recommendations = await this.recommendationService.getRecommendations(
       userId,
-      location,
-      limit
+      'avatar',
+      limit,
+      platforms,
+      contentType
     )
 
     return {
