@@ -183,11 +183,12 @@ export class OrderDispatchService {
     const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1
     
     // 查询所有开启托管的分身，并关联用户表获取手机号
+    // 注意：is_hosted 可能是字符串 'true'/'false' 或数字 1/0
     const allAvatars = await db.query(`
       SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
-      WHERE a.is_hosted = 1 AND a.status = ?`, 
+      WHERE (a.is_hosted = 1 OR a.is_hosted = 'true') AND a.status = ?`, 
       ['active']
     ) as any[]
     
@@ -220,13 +221,13 @@ export class OrderDispatchService {
       const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
       console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
-        const smsContent = `【莫瑞拉】您有新的订单任务：${order?.title || '内容创作'}，请及时查收并完成。详情请登录查看。`
+        const smsContent = `${order?.title || '内容创作'}`
         
         try {
           const smsResult = await this.smsService.sendSms(
             userPhone,
-            'SMS_DEFAULT_TEMPLATE',
-            { content: smsContent }
+            'SMS_505555078',
+            { name: avatar.name }
           )
           
           if (smsResult) {
@@ -310,8 +311,8 @@ export class OrderDispatchService {
         try {
           const smsResult = await this.smsService.sendSms(
             userPhone,
-            'SMS_DEFAULT_TEMPLATE',
-            { content: smsContent }
+            'SMS_505555078',
+            { name: avatar.name }
           )
           
           if (smsResult) {
