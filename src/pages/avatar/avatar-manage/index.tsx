@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link, ArrowLeft, Trash2 } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, ArrowLeft, Trash2, Phone } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import * as Taro from '@tarojs/taro'
 import './index.css'
@@ -145,7 +145,7 @@ export default function AvatarManagePage() {
 
   const fetchAvatars = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar/my' })
+      const res = await Network.request({ url: '/api/avatar' })
       console.log('获取分身响应:', res.data)
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
@@ -584,38 +584,15 @@ export default function AvatarManagePage() {
                           </View>
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: `/pages/avatar-orders/index?avatarId=${avatar.id}` })}
-                          >
-                            <View className="quick-entry-icon">
-                              <Package size={24} color="#06b6d4" />
-                            </View>
-                            <Text className="quick-entry-label">商单</Text>
-                          </View>
-                          <View
-                            className="quick-entry-btn"
                             onClick={() => {
-                              const targetUrl = `/pages/avatar/avatar-account-config/index?avatarId=${avatar.id}&avatarName=${encodeURIComponent(avatar.name)}`
-                              console.log('[AvatarManage] 点击账号绑定按钮')
-                              console.log('[AvatarManage] avatarId:', avatar.id)
-                              console.log('[AvatarManage] avatarName:', avatar.name)
-                              console.log('[AvatarManage] 目标URL:', targetUrl)
-
-                              navigateTo({
-                                url: targetUrl,
-                                success: () => {
-                                  console.log('[AvatarManage] 跳转成功')
-                                },
-                                fail: (err) => {
-                                  console.error('[AvatarManage] 跳转失败:', err)
-                                  showToast({ title: `跳转失败: ${err.errMsg || '未知错误'}`, icon: 'none' })
-                                }
-                              })
+                              // 通话功能
+                              showToast({ title: '通话功能开发中', icon: 'none' })
                             }}
                           >
                             <View className="quick-entry-icon">
-                              <Link size={24} color="#06b6d4" />
+                              <Phone size={24} color="#06b6d4" />
                             </View>
-                            <Text className="quick-entry-label">账号绑定</Text>
+                            <Text className="quick-entry-label">通话</Text>
                           </View>
                         </View>
                       </View>

@@ -205,7 +205,7 @@ export class AvatarService {
   /**
    * 删除分身
    */
-  async deleteAvatar(avatarId: number, userId: string) {
+  async deleteAvatar(avatarId: string, userId: string) {
     const db = getMySQLClient()
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
     return { success: (result as any)?.data?.affectedRows > 0 }

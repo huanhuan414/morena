@@ -140,7 +140,7 @@ export class AvatarController {
     @Headers('x-user-id') userId: string
   ) {
     try {
-      await this.avatarService.deleteAvatar(parseInt(id), userId)
+      await this.avatarService.deleteAvatar(id, userId)
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
       console.error('删除分身失败:', err)
