@@ -71,10 +71,12 @@ const TABS = [
 
 // 格式化日期
 const formatDate = (dateStr: any): string => {
-  if (!dateStr) return ''
+  if (!dateStr || dateStr === 'undefined' || dateStr === 'null') return ''
   try {
     // 如果是字符串
     if (typeof dateStr === 'string') {
+      // 跳过无效字符串
+      if (dateStr.length < 8) return ''
       const date = new Date(dateStr)
       if (Number.isNaN(date.getTime())) return ''
       const year = date.getFullYear()
@@ -120,19 +122,26 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
+  // 测试用户ID - 强制使用确保能获取数据
+  const TEST_USER_ID = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+  
   // 获取用户ID - 优先从存储获取，失败则使用测试ID
   const getUserId = async (): Promise<string> => {
     try {
-      const userInfo = Taro.getStorageSync('userInfo')
-      if (userInfo?.id) return userInfo.id
-      if (userInfo?.userId) return userInfo.userId
-      if (userInfo?.user_id) return userInfo.user_id
-    } catch (e) {}
+      const userInfoStr = Taro.getStorageSync('userInfo')
+      if (userInfoStr) {
+        const userInfo = typeof userInfoStr === 'string' ? JSON.parse(userInfoStr) : userInfoStr
+        if (userInfo?.id) return userInfo.id
+        if (userInfo?.userId) return userInfo.userId
+        if (userInfo?.user_id) return userInfo.user_id
+      }
+    } catch (e) {
+      console.error('[OrderList] 获取用户信息失败:', e)
+    }
     
     // 如果没有存储的用户信息，使用测试用户ID
-    const testUserId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
-    console.log('[OrderList] 未找到用户ID，使用测试ID:', testUserId)
-    return testUserId
+    console.log('[OrderList] 使用测试ID:', TEST_USER_ID)
+    return TEST_USER_ID
   }
 
   useLoad(() => {
@@ -161,8 +170,11 @@ export default function OrderListPage() {
         header: { 'x-user-id': userId }
       })
 
+      console.log('[OrderList] API响应:', res.data)
       if (res.data?.code === 200) {
-        const ordersData = res.data.data?.orders || res.data.data || []
+        // 后端返回格式: { code: 200, data: [...orders] }
+        const ordersData = res.data.data || []
+        console.log('[OrderList] 订单数据:', ordersData)
         setOrders(ordersData)
       }
     } catch (error) {
