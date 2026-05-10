@@ -2,11 +2,13 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
+import { NotificationService } from '../notification/notification.service'
 
 @Injectable()
 export class OrderDispatchService {
   constructor(
-    @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService
+    @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService,
+    @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService
   ) {}
 
   async createDispatchRequest(data: {
@@ -254,7 +256,72 @@ export class OrderDispatchService {
       }
     }
     
+    // 为用户创建通知（记录分配成功）
+    if (avatars.length > 0) {
+      try {
+        await this.notificationService.createNotification({
+          user_id: order.user_id,
+          type: 'order_dispatched',
+          title: '订单已分配',
+          content: `已将订单"${order.title || '内容创作'}"分配给 ${avatars.length} 个分身，已发送短信通知。`,
+          metadata: {
+            orderId,
+            avatarIds,
+            count: avatars.length
+          }
+        })
+      } catch (err) {
+        console.error('[dispatchToAllAvatars] 创建用户通知失败:', err)
+      }
+    }
+    
     return { count: avatars.length, avatarIds, smsSentCount }
+  }
+
+  /**
+   * 分身接受订单
+   */
+  async acceptOrder(avatarId: string, orderId: string) {
+    const db = getMySQLClient()
+    
+    // 查询分发请求
+    const requests = await db.query(`
+      SELECT r.*, o.title as order_title, o.user_id as owner_user_id 
+      FROM order_dispatch_requests r 
+      LEFT JOIN orders o ON r.order_id = o.id 
+      WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
+      [avatarId, orderId]
+    ) as any[]
+    
+    const request = requests?.[0]
+    if (!request) {
+      throw new Error('订单不存在或已处理')
+    }
+    
+    // 更新状态为 accepted
+    await db.updateWhere('order_dispatch_requests', { id: request.id }, {
+      status: 'accepted',
+      updated_at: new Date()
+    })
+    
+    // 为订单所有者创建通知（分身接受了订单）
+    try {
+      await this.notificationService.createNotification({
+        user_id: request.owner_user_id,
+        type: 'avatar_accepted_order',
+        title: '分身已接受订单',
+        content: `分身"${request.avatar_name || '未知'}"已接受订单"${request.order_title || '内容创作'}"`,
+        metadata: {
+          avatarId,
+          orderId,
+          dispatchRequestId: request.id
+        }
+      })
+    } catch (err) {
+      console.error('[acceptOrder] 创建通知失败:', err)
+    }
+    
+    return { success: true }
   }
 
   /**

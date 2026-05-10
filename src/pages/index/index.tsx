@@ -4,6 +4,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { useNotifications } from '@/hooks/useNotifications'
 import './index.css'
 
 const Index: React.FC = () => {
@@ -22,6 +23,11 @@ const Index: React.FC = () => {
   const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
   const scrollRef = useRef(0)
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
+
+  // 通知 hook
+  const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
+    pollInterval: 10000 // 10 秒轮询
+  })
 
   // 获取统计数据
   const fetchStats = async () => {
@@ -251,9 +257,13 @@ const Index: React.FC = () => {
             </View>
           </View>
           <View className="header-right">
-            <View className="icon-btn">
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/notification/index' })}>
               <Bell size={44} color="#FFFFFF" />
-              <View className="notification-badge">3</View>
+              {unreadCount > 0 && (
+                <View className="notification-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </View>
+              )}
             </View>
             <View className="icon-btn">
               <Settings size={44} color="#FFFFFF" />
@@ -441,6 +451,33 @@ const Index: React.FC = () => {
               </View>
               <View className="order-modal-btn accept" onClick={handleOrderAccept}>
                 <Text className="order-modal-btn-text accept">立即接单</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 通知弹窗 */}
+      {showModal && currentNotification && (
+        <View className="notification-modal-overlay" onClick={closeModal}>
+          <View className="notification-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="notification-modal-header">
+              <Text className="notification-modal-title">{currentNotification.title}</Text>
+              <View className="notification-modal-close" onClick={closeModal}>
+                <Text className="notification-modal-close-text">×</Text>
+              </View>
+            </View>
+            
+            <View className="notification-modal-content">
+              <Text className="notification-modal-text">{currentNotification.content}</Text>
+              <Text className="notification-modal-time">
+                {new Date(currentNotification.createdAt).toLocaleString()}
+              </Text>
+            </View>
+            
+            <View className="notification-modal-footer">
+              <View className="notification-modal-btn" onClick={closeModal}>
+                <Text className="notification-modal-btn-text">我知道了</Text>
               </View>
             </View>
           </View>

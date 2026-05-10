@@ -185,6 +185,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 分身接受订单
+   */
+  @Post('avatar/:avatarId/accept/:orderId')
+  async acceptOrder(@Param('avatarId') avatarId: string, @Param('orderId') orderId: string) {
+    const result = await this.dispatchService.acceptOrder(avatarId, orderId)
+    return {
+      code: 200,
+      data: result,
+      message: '订单已接受'
+    }
+  }
+
+  /**
    * 更新执行步骤状态
    */
   @Put('execution/:executionId/status')

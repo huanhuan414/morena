@@ -4,10 +4,11 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, ArrowLeft, Trash2, Phone } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, ArrowLeft, Trash2, Phone, Bell } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import * as Taro from '@tarojs/taro'
 import { useUserStore } from '@/stores/user'
+import { useNotifications } from '@/hooks/useNotifications'
 import './index.css'
 
 interface Avatar {
@@ -59,6 +60,11 @@ export default function AvatarManagePage() {
   const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
   
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
+
+  // 通知 hook
+  const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
+    pollInterval: 10000 // 10 秒轮询
+  })
   
   // 人格类型中文映射
   const PERSONALITY_LABELS: Record<string, string> = {
@@ -411,6 +417,16 @@ export default function AvatarManagePage() {
             <Plus size={16} color="#00f5ff" />
             <Text className="create-text-small">创建</Text>
           </Button>
+        </View>
+        <View className="header-right-wrap">
+          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/notification/index' })}>
+            <Bell size={22} color="#fff" />
+            {unreadCount > 0 && (
+              <View className="notification-badge-small">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </View>
+            )}
+          </View>
         </View>
         <View className="header-right-placeholder" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
       </View>
@@ -782,6 +798,33 @@ export default function AvatarManagePage() {
               <Button className="time-confirm-btn" onClick={saveTimeSlots}>
                 <Text className="time-confirm-text">确认</Text>
               </Button>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 通知弹窗 */}
+      {showModal && currentNotification && (
+        <View className="notification-modal-overlay" onClick={closeModal}>
+          <View className="notification-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="notification-modal-header">
+              <Text className="notification-modal-title">{currentNotification.title}</Text>
+              <View className="notification-modal-close" onClick={closeModal}>
+                <Text className="notification-modal-close-text">×</Text>
+              </View>
+            </View>
+            
+            <View className="notification-modal-content">
+              <Text className="notification-modal-text">{currentNotification.content}</Text>
+              <Text className="notification-modal-time">
+                {new Date(currentNotification.createdAt).toLocaleString()}
+              </Text>
+            </View>
+            
+            <View className="notification-modal-footer">
+              <View className="notification-modal-btn" onClick={closeModal}>
+                <Text className="notification-modal-btn-text">我知道了</Text>
+              </View>
             </View>
           </View>
         </View>
