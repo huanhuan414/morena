@@ -245,10 +245,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       totalPrice: totalPrice.total,
     }
 
-    // 跳转到分身推荐页，传递订单参数
+    // 跳转到AI智能匹配分身页面，传递订单参数
     const params = encodeURIComponent(JSON.stringify(orderParams))
     Taro.navigateTo({
-      url: `/pages/avatar-recommend/index?orderParams=${params}`
+      url: `/pages/order/order-matching/index?orderParams=${params}`
     })
   }
 

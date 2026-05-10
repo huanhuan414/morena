@@ -120,6 +120,8 @@ export default function OrderMatchingPage() {
   const [matchedAvatars, setMatchedAvatars] = useState<MatchedAvatar[]>([])
   const [loading, setLoading] = useState(true)
   const [dispatching, setDispatching] = useState(false)
+  const [orderParams, setOrderParams] = useState<any>(null)  // 从创建订单页面传递的参数
+  const [selectedAvatars, setSelectedAvatars] = useState<string[]>([])  // 选中的分身
 
   const [recommendedCount, setRecommendedCount] = useState(0)  // 推荐分身数量
 
@@ -139,6 +141,24 @@ export default function OrderMatchingPage() {
       const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
       const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
       setCapsuleWidth(capsuleWidthWithMargins)
+    }
+
+    // 解析订单参数（从创建订单页面传递）
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const options = currentPage?.options || {}
+    
+    if (options.orderParams) {
+      try {
+        const params = JSON.parse(decodeURIComponent(options.orderParams))
+        console.log('[OrderMatching] 接收到订单参数:', params)
+        setOrderParams(params)
+        // 有订单参数时，直接开始匹配流程
+        startMatchingWithParams(params)
+        return
+      } catch (err) {
+        console.error('[OrderMatching] 解析订单参数失败:', err)
+      }
     }
 
     if (orderId) {
@@ -178,6 +198,163 @@ export default function OrderMatchingPage() {
     console.log('[OrderMatching] 算法步骤完成，开始获取匹配结果')
     // 获取匹配结果
     await fetchMatchingResults()
+  }
+
+  // 使用订单参数开始匹配（从创建订单页面跳转）
+  const startMatchingWithParams = async (params: any) => {
+    console.log('[OrderMatching] startMatchingWithParams 开始执行')
+    setLoading(true)
+    setMatchedAvatars([])
+
+    // 逐步执行算法动画
+    for (let i = 0; i < ALGORITHM_STEPS.length; i++) {
+      console.log(`[OrderMatching] 执行步骤 ${i + 1}/${ALGORITHM_STEPS.length}: ${ALGORITHM_STEPS[i].name}`)
+      setSteps(prev => prev.map((s, idx) =>
+        idx === i ? { ...s, status: 'processing' } : s
+      ))
+      await new Promise(resolve => setTimeout(resolve, 600))
+      setSteps(prev => prev.map((s, idx) =>
+        idx === i ? { ...s, status: 'completed' } : s
+      ))
+      setCurrentStep(i + 1)
+    }
+
+    console.log('[OrderMatching] 算法步骤完成，开始获取匹配结果')
+    // 获取匹配结果
+    await fetchMatchingResultsWithParams(params)
+  }
+
+  // 使用订单参数获取匹配结果
+  const fetchMatchingResultsWithParams = async (params: any) => {
+    try {
+      console.log('[OrderMatching] fetchMatchingResultsWithParams 开始执行')
+      
+      // 调用推荐分身接口，传入订单参数
+      const avatarCount = params.avatarCount || 1
+      console.log('[OrderMatching] 请求推荐分身，数量:', avatarCount)
+      
+      const recommendRes = await Network.request({
+        url: '/api/avatar/recommendations',
+        method: 'POST',
+        data: {
+          platforms: params.platforms,
+          contentType: params.contentType,
+          limit: avatarCount * 3,  // 多获取一些供选择
+          requirements: params.requirements
+        }
+      })
+      console.log('[OrderMatching] 推荐分身响应:', recommendRes.data)
+
+      if (recommendRes.data?.code === 200) {
+        const avatars = recommendRes.data.data || []
+        const totalAvatars = avatars.length
+        console.log('[OrderMatching] 推荐分身数量:', totalAvatars)
+        setRecommendedCount(totalAvatars)
+
+        // 为每个分身添加预估收益
+        const orderBudget = params.totalPrice || 0
+        const distributableAmount = orderBudget * 0.8
+        const incomePerAvatar = totalAvatars > 0 ? distributableAmount / totalAvatars : 0
+
+        const avatarsWithIncome = avatars.map((avatar: any) => ({
+          ...avatar,
+          estimatedIncome: incomePerAvatar,
+          estimatedTaskRatio: `${Math.round(100 / totalAvatars)}%`,
+        }))
+
+        if (totalAvatars > 0) {
+          console.log('[OrderMatching] 开始显示分身卡片')
+          for (let i = 0; i < totalAvatars; i++) {
+            await new Promise(resolve => setTimeout(resolve, 300))
+            setMatchedAvatars(prev => [...prev, avatarsWithIncome[i]])
+          }
+          console.log('[OrderMatching] 分身卡片显示完成')
+        } else {
+          setMatchedAvatars([])
+        }
+        setLoading(false)
+      } else {
+        console.error('[OrderMatching] 推荐分身接口返回失败:', recommendRes.data)
+        showToast({ title: recommendRes.data?.message || '获取推荐分身失败', icon: 'none' })
+        setMatchedAvatars([])
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('[OrderMatching] 获取匹配结果失败:', error)
+      showToast({ title: '匹配失败', icon: 'none' })
+      setLoading(false)
+    }
+  }
+
+  // 切换分身选择
+  const toggleAvatarSelection = (avatarId: string) => {
+    setSelectedAvatars(prev => {
+      if (prev.includes(avatarId)) {
+        return prev.filter(id => id !== avatarId)
+      } else {
+        const maxCount = orderParams?.avatarCount || 1
+        if (prev.length >= maxCount) {
+          showToast({ title: `最多选择${maxCount}个分身`, icon: 'none' })
+          return prev
+        }
+        return [...prev, avatarId]
+      }
+    })
+  }
+
+  // 发布订单并分配分身
+  const handlePublishAndDispatch = async () => {
+    if (selectedAvatars.length === 0) {
+      showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+
+    setDispatching(true)
+    try {
+      // 1. 先创建订单
+      const orderRes = await Network.request({
+        url: '/api/order',
+        method: 'POST',
+        data: {
+          title: orderParams?.title,
+          description: orderParams?.description,
+          content_type: orderParams?.contentType,
+          platforms: orderParams?.platforms,
+          requirements: orderParams?.requirements,
+          avatar_count: selectedAvatars.length,
+          quantity_per_avatar: orderParams?.quantityPerAvatar || 1,
+          total_price: orderParams?.totalPrice || 0,
+        },
+      })
+
+      if (orderRes.data?.code !== 200 && orderRes.data?.code !== 0) {
+        showToast({ title: orderRes.data?.msg || '创建订单失败', icon: 'none' })
+        setDispatching(false)
+        return
+      }
+
+      const newOrderId = orderRes.data?.data?.id || orderId
+      console.log('[OrderMatching] 订单创建成功，订单ID:', newOrderId)
+
+      // 2. 分配选中的分身
+      for (const avatarId of selectedAvatars) {
+        await Network.request({
+          url: `/api/order-dispatch/${newOrderId}/dispatch-avatar`,
+          method: 'POST',
+          data: { avatarId }
+        })
+      }
+
+      showToast({ title: '订单发布成功', icon: 'success' })
+      setTimeout(() => {
+        Taro.switchTab({ url: '/pages/order/order-list/index' })
+      }, 1500)
+    } catch (error) {
+      console.error('[OrderMatching] 发布订单失败:', error)
+      showToast({ title: '发布失败', icon: 'none' })
+    } finally {
+      setDispatching(false)
+    }
   }
 
   const fetchMatchingResults = async () => {
@@ -479,10 +656,28 @@ export default function OrderMatchingPage() {
 
       {/* 匹配结果区域 */}
       <View className="results-section">
+        {/* 订单信息头部（从创建订单页面跳转时显示） */}
+        {orderParams && (
+          <View className="order-info-banner">
+            <View className="order-info-content">
+              <Text className="order-info-title">{orderParams.title}</Text>
+              <View className="order-info-tags">
+                {orderParams.platforms?.map((p: string) => (
+                  <Text key={p} className="order-tag">{p}</Text>
+                ))}
+              </View>
+            </View>
+            <View className="selection-summary">
+              <Text className="selection-label">已选</Text>
+              <Text className="selection-count">{selectedAvatars.length}/{orderParams.avatarCount || 1}</Text>
+            </View>
+          </View>
+        )}
+
         <View className="results-header">
           <View className="results-title-row">
             <Crown size={18} color="#fbbf24" />
-            <Text className="results-title">推荐分身</Text>
+            <Text className="results-title">{orderParams ? '选择接单分身' : '推荐分身'}</Text>
           </View>
           <Text className="results-count">{matchedAvatars.length} 位候选</Text>
         </View>
@@ -597,20 +792,65 @@ export default function OrderMatchingPage() {
 
                 {/* 操作区域 */}
                 <View className="card-actions">
-                  <View
-                    className="view-detail-btn"
-                    style={{ flex: 1 }}
-                    onClick={() => handleQuickDispatch(avatar)}
-                  >
-                    <Text className="view-detail-text">分配给此分身</Text>
-                    <ArrowRight size={14} color="#00f5ff" />
-                  </View>
+                  {orderParams ? (
+                    // 选择模式
+                    <View
+                      className={`select-avatar-btn ${selectedAvatars.includes(avatar.id) ? 'selected' : ''}`}
+                      style={{ flex: 1 }}
+                      onClick={() => toggleAvatarSelection(avatar.id)}
+                    >
+                      {selectedAvatars.includes(avatar.id) ? (
+                        <>
+                          <Check size={16} color="#fff" />
+                          <Text className="select-text selected">已选择</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text className="select-text">选择此分身</Text>
+                          <ArrowRight size={14} color="#00f5ff" />
+                        </>
+                      )}
+                    </View>
+                  ) : (
+                    // 分配模式
+                    <View
+                      className="view-detail-btn"
+                      style={{ flex: 1 }}
+                      onClick={() => handleQuickDispatch(avatar)}
+                    >
+                      <Text className="view-detail-text">分配给此分身</Text>
+                      <ArrowRight size={14} color="#00f5ff" />
+                    </View>
+                  )}
                 </View>
               </View>
             ))}
             
-            {/* 统一匹配给所有分身 */}
-            {matchedAvatars.length > 0 && !loading && (
+            {/* 发布订单按钮（从创建订单页面跳转时显示） */}
+            {orderParams && matchedAvatars.length > 0 && !loading && (
+              <View className="publish-order-section">
+                <Button 
+                  className={`publish-order-btn ${selectedAvatars.length > 0 ? 'active' : 'disabled'}`}
+                  onClick={selectedAvatars.length > 0 ? handlePublishAndDispatch : undefined}
+                  disabled={dispatching || selectedAvatars.length === 0}
+                >
+                  {dispatching ? (
+                    <Loader size={20} color="#fff" className="spin" />
+                  ) : (
+                    <Sparkles size={20} color="#fff" />
+                  )}
+                  <Text className="publish-text">
+                    {dispatching ? '发布中...' : `确认发布（已选 ${selectedAvatars.length} 个分身）`}
+                  </Text>
+                </Button>
+                <Text className="publish-tip">
+                  订单将自动分配给选中的分身
+                </Text>
+              </View>
+            )}
+
+            {/* 统一匹配给所有分身（无订单参数时显示） */}
+            {!orderParams && matchedAvatars.length > 0 && !loading && (
               <View className="batch-dispatch-section">
                 <Button 
                   className="batch-dispatch-btn"
