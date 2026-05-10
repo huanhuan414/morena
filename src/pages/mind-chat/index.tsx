@@ -258,7 +258,7 @@ const MindChat: React.FC = () => {
       >
         {loading ? (
           <View className="loading-state">
-            <Loader2 size={32} className="animate-spin" />
+            <Loader size={32} className="animate-spin" />
             <Text className="loading-text">加载中...</Text>
           </View>
         ) : filteredClones.length === 0 ? (
