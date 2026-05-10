@@ -39,7 +39,11 @@ export class AvatarService {
       abilities: abilities || {}
     })
 
+    // 生成 UUID 作为 id
+    const id = `avatar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
     const insertData = {
+      id,
       user_id: effectiveUserId || 'dev_user', // 统一使用传入的 userId
       name,
       description: '',

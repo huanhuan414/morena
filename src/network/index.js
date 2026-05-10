@@ -24,14 +24,14 @@ export const request = (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-
-    // 优先使用用户配置的域名，Coze 平台域名作为备用
+    
+    // 开发环境下使用相对路径，由 Vite proxy 转发
     // @ts-ignore
-    const cozeDomain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
-    // 用户自定义域名（用于直连服务器运营）
-    const USER_DOMAIN = 'https://mrlweb.51webjs.com'
-    const domain = USER_DOMAIN || cozeDomain || ''
-    return `${domain}${url}`
+    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+    if (isDev || !USER_DOMAIN) {
+      return url  // 开发环境使用相对路径
+    }
+    return `${USER_DOMAIN}${url}`
   }
 
   const headers = {
@@ -70,13 +70,13 @@ export const uploadFile = (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-    // 优先使用用户配置的域名，Coze 平台域名作为备用
+    // 开发环境下使用相对路径
     // @ts-ignore
-    const cozeDomain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
-    // 用户自定义域名（用于直连服务器运营）
-    const USER_DOMAIN = 'https://mrlweb.51webjs.com'
-    const domain = USER_DOMAIN || cozeDomain || ''
-    return `${domain}${url}`
+    const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+    if (isDev || !USER_DOMAIN) {
+      return url
+    }
+    return `${USER_DOMAIN}${url}`
   }
 
   const headers = {
