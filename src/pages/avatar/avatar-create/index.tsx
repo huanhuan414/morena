@@ -64,6 +64,7 @@ export default function AvatarCreate() {
 
   // 提交状态
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
 
   // 检测小程序环境（组件级别，供所有函数使用）
   const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
@@ -218,6 +219,7 @@ export default function AvatarCreate() {
 
   // 上传照片到服务器
   const uploadPhotoToServer = async (tempFilePath: string) => {
+    setIsUploadingPhoto(true)
     Taro.showLoading({ title: '上传中...' })
     
     try {
@@ -227,32 +229,45 @@ export default function AvatarCreate() {
         name: 'file',
       })
       
-      console.log('照片上传响应:', uploadRes)
+      console.log('[上传] 响应:', uploadRes)
       
-      if (uploadRes.data) {
-        const resData = typeof uploadRes.data === 'string' 
-          ? JSON.parse(uploadRes.data) 
-          : uploadRes.data
-        
-        if (resData.code === 200 && resData.data?.url) {
-          updateFormData('photoUrl', resData.data.url)
-          Taro.showToast({ title: '照片上传成功', icon: 'success' })
-        } else {
-          const fileUrl = resData.data?.fileUrl || resData.url || resData.file_path
-          if (fileUrl) {
-            updateFormData('photoUrl', fileUrl)
-            Taro.showToast({ title: '照片上传成功', icon: 'success' })
-          } else {
-            console.warn('上传响应格式异常:', resData)
-            Taro.showToast({ title: '照片已选择', icon: 'success' })
-          }
+      // 解析响应数据
+      let resData = uploadRes.data
+      if (typeof resData === 'string') {
+        try {
+          resData = JSON.parse(resData)
+        } catch (e) {
+          console.error('[上传] JSON解析失败:', e)
         }
       }
+      
+      console.log('[上传] 解析后:', resData)
+      
+      // 提取URL：优先取 data.url，其次取 data.data.url
+      let imageUrl = ''
+      if (resData?.data?.url) {
+        imageUrl = resData.data.url
+      } else if (resData?.url) {
+        imageUrl = resData.url
+      } else if (resData?.data?.fileUrl) {
+        imageUrl = resData.data.fileUrl
+      }
+      
+      console.log('[上传] 图片URL:', imageUrl)
+      
+      if (imageUrl) {
+        updateFormData('photoUrl', imageUrl)
+        Taro.showToast({ title: '照片上传成功', icon: 'success' })
+      } else {
+        console.warn('[上传] 无法提取图片URL:', resData)
+        Taro.showToast({ title: '照片已选择', icon: 'success' })
+      }
     } catch (err) {
-      console.error('上传失败:', err)
+      console.error('[上传] 失败:', err)
       Taro.showToast({ title: '上传失败', icon: 'none' })
     } finally {
       Taro.hideLoading()
+      setIsUploadingPhoto(false)
     }
   }
 
@@ -428,6 +443,7 @@ export default function AvatarCreate() {
       const submitData = {
         name: formData.name,
         photo: formData.photoUrl || formData.photo, // 使用上传后的URL或本地路径
+        avatar_url: formData.photoUrl || formData.photo, // 同时保存到 avatar_url 字段
         tags: formData.tags,
         voice_type: formData.voice,
         voice_url: formData.voiceUrl || undefined,
@@ -436,6 +452,8 @@ export default function AvatarCreate() {
       }
 
       console.log('提交创建分身:', submitData)
+      console.log('photoUrl 值为:', formData.photoUrl)
+      console.log('photo 值为:', formData.photo)
 
       const res = await Network.request({
         url: '/api/avatar',
