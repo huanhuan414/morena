@@ -183,9 +183,17 @@ export default function AvatarManagePage() {
         url: `/api/avatar?_=${timestamp}`,
         header: { 'x-user-id': userId }
       })
-      console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data length:', res.data?.data?.length)
+      console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
-        const avatarList = res.data.data || []
+        // 兼容多种响应格式
+        let avatarList = res.data.data
+        if (avatarList?.data?.list) {
+          avatarList = avatarList.data.list
+        } else if (Array.isArray(avatarList)) {
+          avatarList = avatarList
+        } else {
+          avatarList = []
+        }
         console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: any) => ({
