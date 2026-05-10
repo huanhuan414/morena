@@ -106,7 +106,7 @@ export default function FriendshipManagement() {
       const userId = getUserId()
       // 先获取用户的分身
       const avatarRes = await networkRequest({
-        url: '/api/avatar/my-avatars',
+        url: '/api/avatar',
         method: 'GET',
         data: { user_id: userId }
       })

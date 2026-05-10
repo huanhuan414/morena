@@ -104,7 +104,7 @@ export class AvatarService {
       rows = []
     }
     
-    // 格式化返回数据
+    // 格式化返回数据（query已转换为驼峰，需转回蛇形兼容前端）
     const avatars = rows.map((avatar: any) => {
       let personality = {}
       
@@ -118,11 +118,12 @@ export class AvatarService {
 
       return {
         ...avatar,
-        photo: avatar.avatar_url || '', // 使用 avatar_url 列
+        avatar_url: avatar.avatarUrl || '', // 蛇形兼容前端
+        photo: avatar.avatarUrl || '',
         tags: personality.tags || [],
         abilities: personality.abilities || {},
-        voice_type: avatar.voice_type || 'preset',
-        voice_url: avatar.voice_url || ''
+        voice_type: avatar.voiceType || 'preset',
+        voice_url: avatar.voiceUrl || ''
       }
     })
     
@@ -155,11 +156,12 @@ export class AvatarService {
       success: true, 
       data: {
         ...avatar,
-        photo: avatar.avatar_url || '',
+        avatar_url: avatar.avatarUrl || '', // 蛇形兼容前端
+        photo: avatar.avatarUrl || '',
         tags: personality.tags || [],
         abilities: personality.abilities || {},
-        voice_type: avatar.voice_type || 'preset',
-        voice_url: avatar.voice_url || ''
+        voice_type: avatar.voiceType || 'preset',
+        voice_url: avatar.voiceUrl || ''
       }
     }
   }
@@ -174,7 +176,7 @@ export class AvatarService {
     const formattedData: any = {}
     
     if (updateData.name) formattedData.name = updateData.name
-    if (updateData.avatar_url || updateData.photo) formattedData.avatar_url = updateData.avatar_url || updateData.photo
+    if (updateData.avatarUrl || updateData.photo) formattedData.avatarUrl = updateData.avatarUrl || updateData.photo
     if (updateData.description) formattedData.description = updateData.description
     
     if (updateData.tags || updateData.abilities) {

@@ -45,7 +45,7 @@ export default function AvatarRecommendPage() {
   const loadCurrentAvatar = async () => {
     try {
       const res = await Network.request({
-        url: '/api/avatar/my'
+        url: '/api/avatar'
       })
       console.log('获取分身列表:', res.data)
       if (res.data?.data?.length > 0) {

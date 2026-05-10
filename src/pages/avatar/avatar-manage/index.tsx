@@ -105,7 +105,7 @@ export default function AvatarManagePage() {
       // 获取订阅信息和分身数量
       const [subscriptionRes, avatarListRes] = await Promise.all([
         Network.request({ url: '/api/subscription/user' }),
-        Network.request({ url: '/api/avatar/my' })
+        Network.request({ url: '/api/avatar' })
       ])
 
       // 获取当前分身数量

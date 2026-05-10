@@ -66,7 +66,7 @@ function convertKeysToCamel(obj: any): any {
   return obj;
 }
 
-// 递归转换对象键到下划线
+// 递归转换对象键到下划线（只转换驼峰，已是蛇形的不变）
 function convertKeysToSnake(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) {
@@ -75,7 +75,13 @@ function convertKeysToSnake(obj: any): any {
   if (typeof obj === 'object') {
     const result: any = {};
     for (const key in obj) {
-      result[toSnakeCase(key)] = convertKeysToSnake(obj[key]);
+      // 如果已经是蛇形（有下划线且全小写），保持不变
+      if (/^[a-z]+(_[a-z]+)+$/.test(key)) {
+        result[key] = convertKeysToSnake(obj[key]);
+      } else {
+        // 驼峰转蛇形
+        result[toSnakeCase(key)] = convertKeysToSnake(obj[key]);
+      }
     }
     return result;
   }

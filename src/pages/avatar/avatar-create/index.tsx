@@ -64,7 +64,6 @@ export default function AvatarCreate() {
 
   // 提交状态
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
 
   // 检测小程序环境（组件级别，供所有函数使用）
   const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
@@ -219,7 +218,6 @@ export default function AvatarCreate() {
 
   // 上传照片到服务器
   const uploadPhotoToServer = async (tempFilePath: string) => {
-    setIsUploadingPhoto(true)
     Taro.showLoading({ title: '上传中...' })
     
     try {
@@ -245,12 +243,12 @@ export default function AvatarCreate() {
       
       // 提取URL：优先取 data.url，其次取 data.data.url
       let imageUrl = ''
-      if (resData?.data?.url) {
-        imageUrl = resData.data.url
-      } else if (resData?.url) {
-        imageUrl = resData.url
-      } else if (resData?.data?.fileUrl) {
-        imageUrl = resData.data.fileUrl
+      if ((resData as any)?.data?.url) {
+        imageUrl = (resData as any).data.url
+      } else if ((resData as any)?.url) {
+        imageUrl = (resData as any).url
+      } else if ((resData as any)?.data?.fileUrl) {
+        imageUrl = (resData as any).data.fileUrl
       }
       
       console.log('[上传] 图片URL:', imageUrl)
@@ -267,7 +265,6 @@ export default function AvatarCreate() {
       Taro.showToast({ title: '上传失败', icon: 'none' })
     } finally {
       Taro.hideLoading()
-      setIsUploadingPhoto(false)
     }
   }
 

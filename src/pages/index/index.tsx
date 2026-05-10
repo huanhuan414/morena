@@ -7,9 +7,9 @@ import './index.css'
 
 const Index: React.FC = () => {
   const [userName] = useState('用户')
-  const [avatar, setAvatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
   const [translateX, setTranslateX] = useState(0)
   const [mindClones, setMindClones] = useState(0) // 分身数量
+  const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
   const [stats, setStats] = useState([
     { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
     { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
@@ -24,22 +24,20 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      const res = await Network.request({ url: '/api/dashboard/stats' })
+      // 直接从分身接口获取用户分身数量
+      const res = await Network.request({ url: '/api/avatar' })
       console.log('统计数据:', res.data)
-      if (res.data?.code === 200 && res.data?.data) {
-        const data = res.data.data
-        setMindClones(data.avatar_count || 0)
+      
+      // 从 x-user-id header 获取用户 ID（在 Network 中处理）
+      if (res.data?.code === 200) {
+        const avatarCount = Array.isArray(res.data?.data) ? res.data.data.length : 0
+        setMindClones(avatarCount)
         setStats([
-          { label: '我的分身', value: String(data.avatar_count || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-          { label: '待接订单', value: String(data.pending_orders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
-          { label: '生成内容', value: String(data.generated_content || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
-          { label: '累计收益', value: String(data.total_earnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+          { label: '我的分身', value: String(avatarCount), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
+          { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
+          { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
+          { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
         ])
-        // 更新头像
-        if (data.user_avatar) setAvatar(data.user_avatar)
-        if (data.user_name) {
-          // 需要找到userName的setter
-        }
       }
     } catch (err) {
       console.error('获取统计数据失败:', err)
