@@ -39,15 +39,20 @@ const Index: React.FC = () => {
       
       if (res.data?.code === 200 && res.data?.data) {
         // 转换订单数据为通知格式
-        const orders = (res.data.data || []).map((order: any) => ({
-          id: order.id,
-          platform: order.platform || '通用',
-          platformColor: getPlatformColor(order.platform),
-          title: order.title,
-          budget: order.budget || '待定',
-          deadline: order.deadline || '长期有效',
-          desc: order.description || '暂无描述'
-        }))
+        const orders = (res.data.data || []).map((order: any) => {
+          // 处理平台信息（后端返回platforms数组）
+          const platforms = Array.isArray(order.platforms) ? order.platforms : (order.platform ? [order.platform] : ['通用'])
+          const platform = platforms[0] || '通用'
+          
+          return {
+            id: order.id,
+            platform,
+            platformColor: getPlatformColor(platform),
+            title: order.title,
+            budget: order.budget ? `¥${order.budget}` : '待定',
+            deadline: order.deadline || '长期有效'
+          }
+        })
         
         // 如果有订单且弹窗未打开，自动显示第一个订单
         if (orders.length > 0 && !showOrderModal && !orderModalData) {
@@ -460,7 +465,6 @@ const Index: React.FC = () => {
                 {orderModalData.platform}
               </View>
               <Text className="order-modal-order-title">{orderModalData.title}</Text>
-              <Text className="order-modal-desc">{orderModalData.desc}</Text>
               
               <View className="order-modal-info">
                 <View className="order-modal-info-item">
