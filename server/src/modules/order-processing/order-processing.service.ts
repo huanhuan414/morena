@@ -49,6 +49,46 @@ export class OrderProcessingService {
     return { success: true }
   }
 
+  async getProcessingStatus(processingId: string) {
+    const db = getMySQLClient()
+    const processing = await db.queryOne('order_processing', { id: processingId }) as any
+    
+    if (!processing) {
+      return null
+    }
+    
+    // 映射状态
+    let statusName = 'generating'
+    let statusMessage = '生成中'
+    
+    if (processing.status === 'queued') {
+      statusName = 'queuing'
+      statusMessage = '排队中'
+    } else if (processing.status === 'accepted') {
+      statusName = 'accepted'
+      statusMessage = '已接受'
+    } else if (processing.status === 'generating') {
+      statusName = 'generating'
+      statusMessage = '生成中'
+    } else if (processing.status === 'completed') {
+      statusName = 'completed'
+      statusMessage = '已完成'
+    } else if (processing.status === 'failed') {
+      statusName = 'failed'
+      statusMessage = '生成失败'
+    }
+    
+    return {
+      requestId: processing.id,
+      id: processing.id,
+      status: statusName,
+      statusName,
+      statusMessage,
+      result: processing.result ? JSON.parse(processing.result) : null,
+      progress: processing.status === 'completed' ? 100 : processing.status === 'generating' ? 50 : 10
+    }
+  }
+
   async getProcessingOrders(userId: string) {
     const db = getMySQLClient()
     return await db.query('order_processing', { user_id: userId }) as any

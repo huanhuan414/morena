@@ -39,13 +39,88 @@ export default function OrderContentCreation() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [error, setError] = useState('')
 
+  // 获取分身信息的辅助函数
+  const fetchFirstAvatar = async (): Promise<string | null> => {
+    try {
+      const res = await Network.request({ url: '/api/avatar' })
+      if (res.data.code === 200 && res.data.data?.length > 0) {
+        return res.data.data[0].id
+      }
+    } catch (err) {
+      console.error('获取分身失败:', err)
+    }
+    return null
+  }
+
+  // 初始化：获取订单信息并开始生成
+  const initContentGeneration = async (oId: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      // 获取订单信息
+      const orderRes = await Network.request({
+        url: '/api/order/' + oId
+      })
+      
+      let orderData = null
+      if (orderRes.data.code === 200) {
+        orderData = orderRes.data.data
+      }
+      
+      // 获取第一个分身
+      const avatarId = await fetchFirstAvatar()
+      if (!avatarId) {
+        setError('未找到可用分身')
+        setLoading(false)
+        return
+      }
+      
+      // 调用生成接口
+      const generateRes = await Network.request({
+        url: '/api/content-generation/generate',
+        method: 'POST',
+        data: {
+          orderId: oId,
+          avatarId: avatarId,
+          orderTitle: orderData?.title || '商单内容',
+          orderDescription: orderData?.description || '',
+          platforms: orderData?.platforms || orderData?.platform || ['wechat_mp'],
+          contentType: orderData?.contentType || 'article',
+          targetAudience: orderData?.targetAudience || '普通用户',
+          contentQuantity: orderData?.expectedQuantity || orderData?.avatarCount || 1
+        }
+      })
+      
+      console.log('生成接口响应:', generateRes.data)
+      
+      if (generateRes.data.code === 200) {
+        // generateRes.data.data 是 results 数组，取第一个的 requestId
+        const results = generateRes.data.data
+        const firstResult = Array.isArray(results) ? results[0] : results
+        const reqId = firstResult?.requestId || oId
+        setRequestId(reqId)
+        // 开始轮询获取状态
+        fetchOrderStatus(reqId)
+      } else {
+        setError(generateRes.data.message || '生成失败')
+        setLoading(false)
+      }
+    } catch (err: any) {
+      console.error('初始化生成失败:', err)
+      setError(err.message || '网络请求失败')
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     const params = Taro.getCurrentInstance()?.router?.params || {}
     const { requestId: rId, orderId: oId } = params
-    if (rId) setRequestId(rId)
-    if (oId) setOrderId(oId)
     if (rId) {
+      setRequestId(rId)
       fetchOrderStatus(rId)
+    } else if (oId) {
+      setOrderId(oId)
+      initContentGeneration(oId)
     }
   }, [])
 
