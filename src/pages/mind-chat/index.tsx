@@ -5,8 +5,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import {
   Search,
   Plus,
-  Image as ImageIcon,
-  FileText,
+  Phone,
   Clock,
   Zap,
   Trash2,
@@ -45,7 +44,7 @@ const MindChat: React.FC = () => {
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
-  const [hostingToggles, setHostingToggles] = useState<Record<number, boolean>>({})
+
 
   // 获取用户ID
   const getUserId = useCallback(() => {
@@ -148,26 +147,22 @@ const MindChat: React.FC = () => {
   )
 
   // 切换托管状态
-  const handleToggleHosting = async (id: number) => {
-    const newValue = !hostingToggles[id]
-    setHostingToggles(prev => ({ ...prev, [id]: newValue }))
-    
+  const handleToggleHosting = async (id: string, checked: boolean) => {
     try {
       await Network.request({
-        url: `/api/avatar/${id}`,
+        url: `/api/avatar/${id}/trust`,
         method: 'PUT',
-        data: { hosting: newValue ? 1 : 0 }
+        data: { trust_enabled: checked }
       })
-      console.log('更新托管状态成功:', id, newValue)
+      console.log('更新托管状态成功:', id, checked)
     } catch (error) {
       console.error('更新托管状态失败:', error)
-      // 回滚状态
-      setHostingToggles(prev => ({ ...prev, [id]: !newValue }))
+      Taro.showToast({ title: '更新失败', icon: 'none' })
     }
   }
 
   // 删除分身
-  const handleDeleteClone = (id: number) => {
+  const handleDeleteClone = (id: string) => {
     Taro.showModal({
       title: '确认删除',
       content: '确定要删除这个分身吗？此操作不可恢复。',
@@ -312,13 +307,9 @@ const MindChat: React.FC = () => {
                 {/* 操作栏 */}
                 <View className="clone-toolbar">
                   <View className="toolbar-actions">
-                    <View className="toolbar-btn">
-                      <ImageIcon size={15} />
-                      <Text className="toolbar-label">形象</Text>
-                    </View>
-                    <View className="toolbar-btn">
-                      <FileText size={15} />
-                      <Text className="toolbar-label">内容</Text>
+                    <View className="toolbar-btn" onClick={() => Taro.showToast({ title: '通话功能开发中', icon: 'none' })}>
+                      <Phone size={15} />
+                      <Text className="toolbar-label">通话</Text>
                     </View>
                     <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
                       <Trash2 size={15} color="#EF4444" />
@@ -329,9 +320,9 @@ const MindChat: React.FC = () => {
                     <Zap size={12} className="hosting-icon" />
                     <Text className="hosting-label">自动托管</Text>
                     <Switch
-                      checked={hostingToggles[clone.id] || false}
+                      checked={clone.trust || false}
                       color="#7B3FE4"
-                      onChange={() => handleToggleHosting(clone.id)}
+                      onChange={(checked) => handleToggleHosting(clone.id, checked)}
                     />
                   </View>
                 </View>
@@ -380,13 +371,9 @@ const MindChat: React.FC = () => {
                 {/* 操作栏 */}
                 <View className="clone-toolbar">
                   <View className="toolbar-actions">
-                    <View className="toolbar-btn">
-                      <ImageIcon size={15} />
-                      <Text className="toolbar-label">形象</Text>
-                    </View>
-                    <View className="toolbar-btn">
-                      <FileText size={15} />
-                      <Text className="toolbar-label">内容</Text>
+                    <View className="toolbar-btn" onClick={() => Taro.showToast({ title: '通话功能开发中', icon: 'none' })}>
+                      <Phone size={15} />
+                      <Text className="toolbar-label">通话</Text>
                     </View>
                     <View className="toolbar-btn delete-btn" onClick={() => handleDeleteClone(clone.id)}>
                       <Trash2 size={15} color="#EF4444" />
