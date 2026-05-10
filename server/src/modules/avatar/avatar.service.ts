@@ -62,12 +62,21 @@ export class AvatarService {
   /**
    * 获取用户的所有分身
    */
-  async getUserAvatars(userId: string) {
+  async getUserAvatars(userId?: string) {
     const db = getMySQLClient()
-    const result = await db.select('avatars', { user_id: userId })
+    let rows: any[]
+    
+    // 如果有 userId，按用户查询；否则返回所有活跃的分身
+    if (userId && userId.trim()) {
+      const result = await db.select('avatars', { user_id: userId })
+      rows = result.data || []
+    } else {
+      // 返回所有活跃的分身（用于展示）
+      rows = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
+    }
     
     // 格式化返回数据
-    const avatars = (result.data || []).map(avatar => {
+    const avatars = rows.map((avatar: any) => {
       let personality = {}
       
       try {
