@@ -175,9 +175,12 @@ export class OrderDispatchService {
     const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
     const order = orders[0]
     
-    // 查询所有开启托管的分身
-    const avatars = await db.query(
-      'SELECT * FROM avatars WHERE trust_enabled = 1 AND status = ?', 
+    // 查询所有开启托管的分身，并关联用户表获取手机号
+    const avatars = await db.query(`
+      SELECT a.*, u.phone as user_phone 
+      FROM avatars a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.trust_enabled = 1 AND a.status = ?`, 
       ['active']
     ) as any[]
     
@@ -203,20 +206,21 @@ export class OrderDispatchService {
       })
       avatarIds.push(avatar.id)
       
-      // 发送真实短信通知
-      if (avatar.phone) {
+      // 发送真实短信通知 - 使用分身所属账号的手机号
+      const userPhone = avatar.user_phone || avatar.phone
+      if (userPhone) {
         const smsContent = `【莫瑞拉】您有新的订单任务：${order?.title || '内容创作'}，请及时查收并完成。详情请登录查看。`
         
         try {
           const smsResult = await this.smsService.sendSms(
-            avatar.phone,
+            userPhone,
             'SMS_DEFAULT_TEMPLATE',
             { content: smsContent }
           )
           
           if (smsResult) {
             smsSentCount++
-            console.log(`[SMS] 成功发送给分身 ${avatar.name} (${avatar.phone})`)
+            console.log(`[SMS] 成功发送给分身 ${avatar.name} (用户手机: ${userPhone})`)
           }
         } catch (err) {
           console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
@@ -260,8 +264,12 @@ export class OrderDispatchService {
     
     // 为每个分身创建通知并发送短信
     for (const avatarId of avatarIds) {
-      // 查询分身信息
-      const avatars = await db.query('SELECT * FROM avatars WHERE id = ?', [avatarId]) as any[]
+      // 查询分身信息，并关联用户表获取手机号
+      const avatars = await db.query(`
+        SELECT a.*, u.phone as user_phone 
+        FROM avatars a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        WHERE a.id = ?`, [avatarId]) as any[]
       const avatar = avatars[0]
       
       if (!avatar) continue
@@ -284,24 +292,25 @@ export class OrderDispatchService {
         updated_at: new Date()
       })
       
-      // 发送真实短信
-      if (avatar.phone) {
+      // 发送真实短信 - 使用分身所属账号的手机号
+      const userPhone = avatar.user_phone || avatar.phone
+      if (userPhone) {
         try {
           const smsResult = await this.smsService.sendSms(
-            avatar.phone,
+            userPhone,
             'SMS_DEFAULT_TEMPLATE',
             { content: smsContent }
           )
           
           if (smsResult) {
             smsSentCount++
-            console.log(`[SMS] 通知短信发送给 ${avatar.name} (${avatar.phone}) 成功`)
+            console.log(`[SMS] 通知短信发送给 ${avatar.name} (用户手机: ${userPhone}) 成功`)
           }
         } catch (err) {
           console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
         }
       } else {
-        console.log(`[SMS] 分身 ${avatar.name} 未绑定手机号，跳过短信发送`)
+        console.log(`[SMS] 分身 ${avatar.name} 的账号未绑定手机号，跳过短信发送`)
       }
       
       notifiedCount++

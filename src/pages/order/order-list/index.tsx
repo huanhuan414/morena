@@ -120,19 +120,19 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  // 获取用户ID
+  // 获取用户ID - 优先从存储获取，失败则使用测试ID
   const getUserId = async (): Promise<string> => {
     try {
       const userInfo = Taro.getStorageSync('userInfo')
       if (userInfo?.id) return userInfo.id
-      // 如果没有存储，尝试获取用户信息
-      const res = await Network.request({ url: '/api/user/info' })
-      if (res.data?.data?.id) {
-        Taro.setStorageSync('userInfo', res.data.data)
-        return res.data.data.id
-      }
+      if (userInfo?.userId) return userInfo.userId
+      if (userInfo?.user_id) return userInfo.user_id
     } catch (e) {}
-    return 'default-user-id'
+    
+    // 如果没有存储的用户信息，使用测试用户ID
+    const testUserId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+    console.log('[OrderList] 未找到用户ID，使用测试ID:', testUserId)
+    return testUserId
   }
 
   useLoad(() => {

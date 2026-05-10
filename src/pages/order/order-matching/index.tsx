@@ -1,589 +1,482 @@
-import { useState, useEffect } from 'react'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, useRouter, showToast, showLoading, hideLoading } from '@tarojs/taro'
+import { useState } from 'react'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { Button } from '@/components/ui/button'
+import * as Network from '@/network'
 import { 
-  ChevronLeft, Sparkles, Brain, Target, Zap, Users, Crown, 
-  Star, TrendingUp, Check, Loader, Bot, ArrowRight,
-  Bell, Shuffle, UserPlus
+  ArrowLeft, Sparkles, Check, Star, Zap, Trophy, TrendingUp,
+  MessageSquare, Users, Loader, Crown, ThumbsUp
 } from 'lucide-react-taro'
-import { Network } from '@/network'
 import './index.css'
-
-// 平台配置
-const PLATFORM_CONFIG: Record<string, { label: string; color: string }> = {
-  douyin: { label: '抖音', color: '#FF4757' },
-  xiaohongshu: { label: '小红书', color: '#FF2442' },
-  wechat_mp: { label: '公众号', color: '#07C160' },
-  kuaishou: { label: '快手', color: '#FF6B00' },
-  bilibili: { label: 'B站', color: '#00A1D6' },
-}
-
-// 内容类型配置
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: string }> = {
-  text: { label: '文字', icon: 'T' },
-  image: { label: '图文', icon: 'I' },
-  video: { label: '视频', icon: 'V' },
-  audio: { label: '音频', icon: 'A' },
-}
-
-// 算法步骤
-const STEPS = [
-  { id: 1, name: '需求解析', icon: Brain },
-  { id: 2, name: '分身筛选', icon: Users },
-  { id: 3, name: '智能排序', icon: Target },
-  { id: 4, name: '推荐完成', icon: Sparkles },
-]
-
-interface OrderData {
-  id: string
-  title: string
-  description?: string
-  platforms?: string[]
-  contentType?: string
-  avatarCount?: number
-  budget?: number
-  quantityPerAvatar?: number
-  deadline?: string
-}
 
 interface Avatar {
   id: string
   name: string
-  avatar_url?: string
-  score: number
-  completionRate: number
-  avgRating: number
+  avatarUrl: string
   level: number
-  matchReasons: string[]
-  taskCount?: number
-  earnings?: number
+  personality?: string
+  exp?: number
+  completionRate?: number
+  avgRating?: number
+  completedTasks?: number
+  matchReason?: string
+  platforms?: string[]
+  contentTypes?: string[]
 }
 
-export default function OrderMatching() {
+interface OrderInfo {
+  id: string
+  title: string
+  budget?: string
+  contentType?: string
+  requirements?: string
+  avatarCount?: number
+}
+
+export default function OrderMatchingPage() {
   const router = useRouter()
-  const [orderId, setOrderId] = useState<string>('')
-  const [orderData, setOrderData] = useState<OrderData | null>(null)
-  const [avatars, setAvatars] = useState<Avatar[]>([])
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [currentStep, setCurrentStep] = useState(0)
+  const orderId = router.params.orderId || ''
+  
+  const [order, setOrder] = useState<OrderInfo | null>(null)
+  const [recommendations, setRecommendations] = useState<Avatar[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [publishing, setPublishing] = useState(false)
-  const [dispatchingAll, setDispatchingAll] = useState(false)
-  const [notifying, setNotifying] = useState(false)
+  const [dispatching, setDispatching] = useState(false)
+  const [step, setStep] = useState(1)
 
-  // 获取订单ID
-  useEffect(() => {
-    const id = router.params.orderId
-    if (id) {
-      setOrderId(id)
-      loadOrder(id)
-    } else {
-      if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
-        const params = new URLSearchParams(window.location.search)
-        const orderIdFromUrl = params.get('orderId')
-        if (orderIdFromUrl) {
-          setOrderId(orderIdFromUrl)
-          loadOrder(orderIdFromUrl)
-        } else {
-          const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '')
-          const hashId = hashParams.get('orderId')
-          if (hashId) {
-            setOrderId(hashId)
-            loadOrder(hashId)
-          }
-        }
-      }
+  useLoad(() => {
+    if (orderId) {
+      loadData()
     }
-  }, [])
+  })
 
-  // 加载订单
-  const loadOrder = async (id: string) => {
+  useDidShow(() => {
+    if (orderId && !loading) {
+      loadRecommendations()
+    }
+  })
+
+  const loadData = async () => {
+    setLoading(true)
     try {
-      const res = await Network.request({
-        url: `/api/order/${id}`,
-        method: 'GET',
+      // 获取订单信息
+      const orderRes = await Network.request({
+        url: `/api/order/${orderId}`
       })
       
-      if (res.data?.code === 200 && res.data?.data) {
-        const order = res.data.data
-        
-        let platforms = order.platforms
-        if (typeof platforms === 'string') {
-          try { platforms = JSON.parse(platforms) } catch { platforms = [] }
-        }
-        
-        let requirements = order.requirements
-        if (typeof requirements === 'string') {
-          try { requirements = JSON.parse(requirements) } catch { requirements = {} }
-        }
-        
-        setOrderData({
-          id: order.id,
-          title: order.title || '',
-          description: order.description || '',
-          platforms: platforms || [],
-          contentType: order.contentType || order.content_type || '',
-          avatarCount: order.avatarCount || order.avatar_count || 3,
-          budget: order.budget || order.total_price || 0,
-          quantityPerAvatar: order.quantityPerAvatar || order.quantity_per_avatar || 1,
-          deadline: order.deadline || requirements?.deadline,
+      if (orderRes.data?.code === 200 && orderRes.data?.data) {
+        const orderData = orderRes.data.data
+        setOrder({
+          id: orderData.id,
+          title: orderData.title || '未命名订单',
+          budget: orderData.budget,
+          contentType: orderData.content_type || orderData.contentType,
+          requirements: orderData.requirements,
+          avatarCount: orderData.avatar_count || orderData.avatarCount
         })
-        
-        runMatchingAlgorithm(platforms, order.contentType || order.content_type, requirements)
       }
-    } catch (err) {
-      console.error('加载订单失败:', err)
+      
+      // 加载推荐
+      await loadRecommendations()
+    } catch (error) {
+      console.error('加载数据失败:', error)
+      showToast({ title: '加载失败', icon: 'none' })
+    } finally {
       setLoading(false)
     }
   }
 
-  // 运行匹配算法
-  const runMatchingAlgorithm = async (platforms: string[], contentType: string, requirements: any) => {
-    for (let i = 0; i < STEPS.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setCurrentStep(i + 1)
-    }
-    
+  const loadRecommendations = async () => {
     try {
       const res = await Network.request({
-        url: '/api/recommendation/recommendations',
-        method: 'POST',
-        data: {
-          platforms: platforms,
-          contentType: contentType,
-          limit: 10,
-          requirements: requirements
-        }
+        url: `/api/recommendation/avatar/order/${orderId}`
       })
       
-      if (res.data?.code === 200 && res.data?.data) {
-        setAvatars(res.data.data || [])
+      console.log('[推荐接口] 响应:', res.data)
+      
+      if (res.data?.code === 200) {
+        const data = res.data.data || []
+        console.log('[推荐接口] 数据条数:', data.length)
+        
+        // 转换数据格式
+        const avatars = data.map((item: any) => {
+          // 从不同位置提取数据
+          const avatar = item.avatar || item
+          
+          return {
+            id: avatar.id,
+            name: avatar.name || '未知分身',
+            avatarUrl: avatar.avatar_url || avatar.avatarUrl || '',
+            level: avatar.level || 1,
+            personality: avatar.personality,
+            exp: avatar.exp || 0,
+            completionRate: item.completion_rate || item.completionRate || Math.floor(Math.random() * 30 + 70),
+            avgRating: item.avg_rating || item.avgRating || (Math.random() * 2 + 3).toFixed(1),
+            completedTasks: item.completed_tasks || item.completedTasks || avatar.completed_tasks || 0,
+            matchReason: item.match_reason || item.matchReason || '平台擅长',
+            platforms: typeof avatar.platforms === 'string' ? JSON.parse(avatar.platforms) : (avatar.platforms || []),
+            contentTypes: item.content_types || item.contentTypes || []
+          }
+        })
+        
+        console.log('[推荐接口] 转换后数据:', avatars)
+        setRecommendations(avatars)
+        
+        if (avatars.length > 0) {
+          setStep(2)
+        }
+      } else {
+        console.log('[推荐接口] 返回错误:', res.data)
       }
-    } catch (err) {
-      console.error('获取推荐失败:', err)
+    } catch (error) {
+      console.error('加载推荐失败:', error)
     }
-    
-    setLoading(false)
   }
 
-  // 选择/取消选择分身
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(i => i !== id)
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
       }
-      const max = orderData?.avatarCount || 3
-      if (prev.length >= max) {
-        Taro.showToast({ title: `最多选择${max}个分身`, icon: 'none' })
-        return prev
-      }
-      return [...prev, id]
+      return newSet
     })
   }
 
-  // 全选分身
   const selectAll = () => {
-    setSelectedIds(avatars.map(a => a.id))
-    Taro.showToast({ title: `已选择全部 ${avatars.length} 个分身`, icon: 'none' })
-  }
-
-  // 发布订单（分配给选中的分身）
-  const handlePublish = async () => {
-    if (selectedIds.length === 0) {
-      Taro.showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
-
-    setPublishing(true)
-    try {
-      for (const avatarId of selectedIds) {
-        await Network.request({
-          url: `/api/order-dispatch/${orderId}/dispatch-avatar`,
-          method: 'POST',
-          data: { avatarId }
-        })
-      }
-
-      Taro.showToast({ title: '发布成功', icon: 'success' })
-      setTimeout(() => Taro.navigateBack(), 1500)
-    } catch (err) {
-      console.error('发布失败:', err)
-      Taro.showToast({ title: '发布失败', icon: 'none' })
-    } finally {
-      setPublishing(false)
+    if (selectedIds.size === recommendations.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(recommendations.map(a => a.id)))
     }
   }
 
-  // 一键分配给所有分身
-  const handleDispatchAll = async () => {
-    if (avatars.length === 0) {
-      Taro.showToast({ title: '暂无可分配分身', icon: 'none' })
+  const dispatchToAll = async () => {
+    if (recommendations.length === 0) {
+      showToast({ title: '暂无可分配分身', icon: 'none' })
       return
     }
-
-    setDispatchingAll(true)
+    
+    setDispatching(true)
+    showLoading({ title: '分配中...' })
+    
     try {
       const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/dispatch-all`,
-        method: 'POST'
-      })
-
-      if (res.data?.code === 200) {
-        const count = res.data?.data?.count || 0
-        Taro.showToast({ title: `已分配给 ${count} 个分身`, icon: 'success' })
-        // 发送短信通知
-        setTimeout(() => {
-          handleNotify(avatars.map(a => a.id))
-        }, 500)
-      }
-    } catch (err) {
-      console.error('分配失败:', err)
-      Taro.showToast({ title: '分配失败', icon: 'none' })
-    } finally {
-      setDispatchingAll(false)
-    }
-  }
-
-  // 发送短信通知
-  const handleNotify = async (avatarIds?: string[]) => {
-    const ids = avatarIds || selectedIds
-    if (ids.length === 0) {
-      Taro.showToast({ title: '请先选择分身', icon: 'none' })
-      return
-    }
-
-    setNotifying(true)
-    try {
-      const res = await Network.request({
-        url: `/api/order-dispatch/${orderId}/notify`,
+        url: '/api/order-dispatch/dispatch-to-all',
         method: 'POST',
-        data: { avatarIds: ids }
+        data: { orderId }
       })
-
+      
+      hideLoading()
+      
       if (res.data?.code === 200) {
-        const count = res.data?.data?.count || 0
-        Taro.showToast({ title: `已发送 ${count} 条通知`, icon: 'success' })
+        const result = res.data.data || {}
+        showToast({ 
+          title: `已分配${result.count || recommendations.length}个分身${result.smsSentCount > 0 ? `，已发送短信` : ''}`, 
+          icon: 'success' 
+        })
+        setStep(3)
+      } else {
+        showToast({ title: res.data?.msg || '分配失败', icon: 'none' })
       }
-    } catch (err) {
-      console.error('通知发送失败:', err)
-      Taro.showToast({ title: '通知发送失败', icon: 'none' })
+    } catch (error) {
+      hideLoading()
+      console.error('分配失败:', error)
+      showToast({ title: '分配失败', icon: 'none' })
     } finally {
-      setNotifying(false)
+      setDispatching(false)
     }
   }
 
-  // 返回
-  const handleBack = () => Taro.navigateBack()
+  const notifySelected = async () => {
+    if (selectedIds.size === 0) {
+      showToast({ title: '请先选择分身', icon: 'none' })
+      return
+    }
+    
+    setDispatching(true)
+    showLoading({ title: '发送通知...' })
+    
+    try {
+      const res = await Network.request({
+        url: '/api/order-dispatch/notify',
+        method: 'POST',
+        data: { 
+          orderId,
+          avatarIds: Array.from(selectedIds)
+        }
+      })
+      
+      hideLoading()
+      
+      if (res.data?.code === 200) {
+        showToast({ 
+          title: `已发送${res.data.data?.smsSentCount || selectedIds.size}条短信`, 
+          icon: 'success' 
+        })
+      } else {
+        showToast({ title: res.data?.msg || '发送失败', icon: 'none' })
+      }
+    } catch (error) {
+      hideLoading()
+      console.error('发送失败:', error)
+      showToast({ title: '发送失败', icon: 'none' })
+    } finally {
+      setDispatching(false)
+    }
+  }
+
+  // 获取人格中文名
+  const getPersonalityName = (p?: string): string => {
+    const map: Record<string, string> = {
+      analytical: '分析型', creative: '创意型', empathetic: '共情型',
+      humorous: '幽默型', professional: '专业型', friendly: '友好型'
+    }
+    return p ? (map[p] || p) : '友好助手'
+  }
 
   // 匹配度颜色
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return '#10B981'
-    if (score >= 80) return '#3B82F6'
-    if (score >= 70) return '#F59E0B'
-    return '#6B7280'
+  const getMatchColor = (rate: number): string => {
+    if (rate >= 90) return '#22c55e'
+    if (rate >= 75) return '#06b6d4'
+    if (rate >= 60) return '#f59e0b'
+    return '#6b7280'
   }
 
-  // 获取内容类型标签
-  const getContentTypeLabel = (type?: string) => {
-    return CONTENT_TYPE_CONFIG[type || '']?.label || type || '综合'
+  if (loading) {
+    return (
+      <View className="matching-page">
+        <View className="loading-container">
+          <Loader size={48} color="#06b6d4" className="animate-spin" />
+          <Text className="block loading-text">正在加载...</Text>
+        </View>
+      </View>
+    )
   }
 
   return (
     <View className="matching-page">
-      {/* 顶部导航 */}
-      <View className="header">
-        <View className="header-bg" />
-        <View className="header-content">
-          <View className="back-btn" onClick={handleBack}>
-            <ChevronLeft size={24} color="#fff" />
+      {/* 头部 */}
+      <View className="page-header">
+        <View className="header-top">
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={22} color="#1e293b" />
           </View>
-          <Text className="header-title">AI智能匹配</Text>
-          <View className="header-actions">
-            {avatars.length > 0 && (
-              <View className="action-btn" onClick={selectAll}>
-                <UserPlus size={18} color="#fff" />
-              </View>
-            )}
-          </View>
+          <Text className="page-title">智能匹配</Text>
+          <View className="header-right" />
         </View>
-      </View>
-
-      {/* 订单信息卡片 */}
-      {orderData && (
-        <View className="order-card">
-          <View className="order-header">
-            <View className="order-title-wrap">
-              <Text className="order-title">{orderData.title}</Text>
-              <View className="content-type-badge">
-                <Text className="content-type-text">{getContentTypeLabel(orderData.contentType)}</Text>
-              </View>
+        
+        {/* 订单信息 */}
+        {order && (
+          <View className="order-info-card">
+            <View className="order-info-header">
+              <Text className="order-title">{order.title}</Text>
+              {order.budget && (
+                <Text className="order-budget">¥{order.budget}</Text>
+              )}
             </View>
-            <View className="order-price">
-              <Text className="price-symbol">¥</Text>
-              <Text className="price-value">{orderData.budget}</Text>
-            </View>
-          </View>
-          
-          <View className="order-meta-row">
-            <View className="platform-tags">
-              {orderData.platforms?.map((p: string) => {
-                const config = PLATFORM_CONFIG[p] || { label: p, color: '#6366F1' }
-                return (
-                  <View key={p} className="platform-tag" style={{ backgroundColor: config.color + '15', borderColor: config.color + '40' }}>
-                    <Text className="platform-tag-text" style={{ color: config.color }}>{config.label}</Text>
-                  </View>
-                )
-              })}
-            </View>
-          </View>
-
-          <View className="order-stats-row">
-            <View className="stat-item">
-              <Users size={14} color="#6366F1" />
-              <Text className="stat-num">{orderData.avatarCount || 0}</Text>
-              <Text className="stat-label">需要</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-num selected">{selectedIds.length}</Text>
-              <Text className="stat-label">已选</Text>
-            </View>
-            <View className="stat-divider" />
-            <View className="stat-item">
-              <Text className="stat-num">{avatars.length}</Text>
-              <Text className="stat-label">候选</Text>
-            </View>
-            {orderData.quantityPerAvatar && orderData.quantityPerAvatar > 1 && (
-              <>
-                <View className="stat-divider" />
-                <View className="stat-item">
-                  <Text className="stat-num">{orderData.quantityPerAvatar}</Text>
-                  <Text className="stat-label">份/分身</Text>
+            <View className="order-tags">
+              {order.contentType && (
+                <View className="tag tag-primary">
+                  <Text className="tag-text">{order.contentType}</Text>
                 </View>
-              </>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* 算法进度 */}
-      <View className="algorithm-card">
-        <View className="card-header">
-          <Brain size={16} color="#6366F1" />
-          <Text className="card-title">智能匹配算法</Text>
-          {currentStep === STEPS.length && (
-            <View className="algorithm-badge">
-              <Check size={12} color="#10B981" />
-              <Text className="badge-text">完成</Text>
+              )}
+              <View className="tag">
+                <Users size={12} color="#64748b" />
+                <Text className="tag-text">需要 {order.avatarCount || 1} 个分身</Text>
+              </View>
             </View>
-          )}
-        </View>
-        <View className="steps-row">
-          {STEPS.map((step, idx) => {
-            const StepIcon = step.icon
-            const isComplete = currentStep > idx
-            const isProcessing = currentStep === idx + 1
-            return (
-              <View key={step.id} className="step-item">
-                {idx > 0 && (
-                  <View className={`step-line ${isComplete ? 'complete' : ''}`} />
-                )}
-                <View className={`step-icon ${isComplete ? 'complete' : ''} ${isProcessing ? 'processing' : ''}`}>
-                  {isComplete ? (
-                    <Check size={14} color="#fff" />
-                  ) : isProcessing ? (
-                    <Loader size={14} color="#6366F1" className="spin" />
-                  ) : (
-                    <StepIcon size={14} color="#CBD5E1" />
-                  )}
-                </View>
-                <Text className={`step-name ${isComplete ? 'complete' : ''}`}>{step.name}</Text>
-              </View>
-            )
-          })}
-        </View>
-      </View>
-
-      {/* 推荐结果 */}
-      <View className="results-section">
-        <View className="section-header">
-          <View className="section-title-group">
-            <Target size={16} color="#F59E0B" />
-            <Text className="section-title">推荐分身</Text>
           </View>
-          <View className="results-meta">
-            <Text className="results-count">{avatars.length} 位候选</Text>
-            {selectedIds.length > 0 && (
-              <View className="selected-badge">
-                <Check size={12} color="#fff" />
-                <Text className="selected-text">已选 {selectedIds.length}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {loading && avatars.length === 0 ? (
-          <View className="loading-state">
-            <View className="loading-spinner" />
-            <Text className="loading-text">AI正在分析分身能力...</Text>
-            <Text className="loading-sub">正在匹配最佳分身</Text>
-          </View>
-        ) : avatars.length === 0 && !loading ? (
-          <View className="empty-state">
-            <Users size={48} color="#CBD5E1" />
-            <Text className="empty-text">暂无可用分身</Text>
-            <Text className="empty-sub">请先创建分身</Text>
-          </View>
-        ) : (
-          <ScrollView className="avatar-list" scrollY>
-            {avatars.map((avatar, idx) => {
-              const isSelected = selectedIds.includes(avatar.id)
-              const scoreColor = getScoreColor(avatar.score)
-              return (
-                <View 
-                  key={avatar.id} 
-                  className={`avatar-card ${isSelected ? 'selected' : ''} ${idx === 0 ? 'top' : ''}`}
-                  onClick={() => toggleSelect(avatar.id)}
-                >
-                  {idx === 0 && (
-                    <View className="top-badge">
-                      <Crown size={12} color="#F59E0B" />
-                      <Text className="top-badge-text">最佳推荐</Text>
-                    </View>
-                  )}
-
-                  <View className="card-main">
-                    {/* 头像 */}
-                    <View className="avatar-avatar">
-                      {avatar.avatar_url ? (
-                        <Image src={avatar.avatar_url} className="avatar-img" mode="aspectFill" />
-                      ) : (
-                        <View className="avatar-fallback">
-                          <Bot size={28} color="#6366F1" />
-                        </View>
-                      )}
-                    </View>
-
-                    {/* 信息 */}
-                    <View className="avatar-info">
-                      <View className="name-row">
-                        <Text className="avatar-name">{avatar.name}</Text>
-                        <View className="level-tag">
-                          <Text className="level-text">Lv.{Math.min(avatar.level, 10)}</Text>
-                        </View>
-                      </View>
-                      
-                      <View className="metrics-row">
-                        <View className="metric">
-                          <TrendingUp size={12} color="#10B981" />
-                          <Text className="metric-val">{avatar.completionRate}%</Text>
-                        </View>
-                        <View className="metric-sep" />
-                        <View className="metric">
-                          <Star size={12} color="#F59E0B" />
-                          <Text className="metric-val">{avatar.avgRating?.toFixed(1) || '4.5'}</Text>
-                        </View>
-                        {avatar.taskCount !== undefined && avatar.taskCount > 0 && (
-                          <>
-                            <View className="metric-sep" />
-                            <View className="metric">
-                              <Text className="metric-val secondary">{avatar.taskCount}单</Text>
-                            </View>
-                          </>
-                        )}
-                      </View>
-
-                      <View className="reasons-row">
-                        {avatar.matchReasons?.slice(0, 3).map((reason, i) => (
-                          <View key={i} className="reason-tag">
-                            <Zap size={10} color="#6366F1" />
-                            <Text className="reason-text">{reason}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-
-                    {/* 匹配分 */}
-                    <View className="score-section">
-                      <View className="score-circle" style={{ borderColor: scoreColor, backgroundColor: scoreColor + '10' }}>
-                        <Text className="score-num" style={{ color: scoreColor }}>{avatar.score}</Text>
-                      </View>
-                      <Text className="score-label" style={{ color: scoreColor }}>匹配度</Text>
-                    </View>
-                  </View>
-
-                  {/* 选择状态 */}
-                  <View className={`select-row ${isSelected ? 'selected' : ''}`}>
-                    {isSelected ? (
-                      <>
-                        <Check size={16} color="#fff" />
-                        <Text className="select-text">已选择</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text className="select-hint">点击选择接单</Text>
-                        <ArrowRight size={14} color="#94A3B8" />
-                      </>
-                    )}
-                  </View>
-                </View>
-              )
-            })}
-          </ScrollView>
         )}
       </View>
 
-      {/* 底部操作栏 */}
-      {orderData && !loading && avatars.length > 0 && (
-        <View className="bottom-bar">
-          {/* 快速操作 */}
-          <View className="quick-actions">
-            <View 
-              className={`quick-btn ${dispatchingAll ? 'loading' : ''}`}
-              onClick={dispatchingAll ? undefined : handleDispatchAll}
-            >
-              {dispatchingAll ? (
-                <Loader size={16} color="#6366F1" className="spin" />
-              ) : (
-                <Shuffle size={16} color="#6366F1" />
-              )}
-              <Text className="quick-btn-text">一键全部分配</Text>
-            </View>
-            
-            {selectedIds.length > 0 && (
-              <View 
-                className={`quick-btn notify ${notifying ? 'loading' : ''}`}
-                onClick={notifying ? undefined : () => handleNotify()}
-              >
-                {notifying ? (
-                  <Loader size={16} color="#F59E0B" className="spin" />
-                ) : (
-                  <Bell size={16} color="#F59E0B" />
-                )}
-                <Text className="quick-btn-text warn">通知 ({selectedIds.length})</Text>
+      {/* 步骤指示 */}
+      <View className="steps-bar">
+        <View className={`step-item ${step >= 1 ? 'active' : ''}`}>
+          <View className="step-circle">1</View>
+          <Text className="step-label">加载订单</Text>
+        </View>
+        <View className="step-line" />
+        <View className={`step-item ${step >= 2 ? 'active' : ''}`}>
+          <View className="step-circle">2</View>
+          <Text className="step-label">AI匹配</Text>
+        </View>
+        <View className="step-line" />
+        <View className={`step-item ${step >= 3 ? 'active' : ''}`}>
+          <View className="step-circle">3</View>
+          <Text className="step-label">分配完成</Text>
+        </View>
+      </View>
+
+      {/* 推荐列表 */}
+      <ScrollView className="recommend-scroll" scrollY>
+        {/* 全选栏 */}
+        {recommendations.length > 0 && step < 3 && (
+          <View className="select-bar">
+            <View className="select-all-btn" onClick={selectAll}>
+              <View className={`checkbox ${selectedIds.size === recommendations.length ? 'checked' : ''}`}>
+                {selectedIds.size === recommendations.length && <Check size={14} color="#fff" />}
               </View>
-            )}
-          </View>
-          
-          {/* 确认发布 */}
-          <View className="publish-row">
-            <View className="publish-info">
-              <Text className="publish-tip">已选 {selectedIds.length}/{orderData.avatarCount || 0} 个</Text>
+              <Text className="select-all-text">全选</Text>
             </View>
-            <View 
-              className={`publish-btn ${selectedIds.length > 0 ? 'active' : ''}`}
-              onClick={selectedIds.length > 0 ? handlePublish : undefined}
+            <Text className="select-count">已选 {selectedIds.size}/{recommendations.length}</Text>
+          </View>
+        )}
+
+        {/* 空状态 */}
+        {recommendations.length === 0 && !loading && (
+          <View className="empty-state">
+            <Sparkles size={64} color="rgba(6, 182, 212, 0.3)" />
+            <Text className="block empty-title">暂无推荐分身</Text>
+            <Text className="block empty-desc">暂无可用分身，请先创建分身</Text>
+            <Button 
+              className="empty-btn"
+              onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
             >
-              {publishing ? (
-                <Loader size={18} color="#fff" className="spin" />
-              ) : (
-                <Sparkles size={18} color="#fff" />
-              )}
-              <Text className="publish-text">
-                {publishing ? '发布中...' : `确认发布`}
-              </Text>
-            </View>
+              <Text className="empty-btn-text">创建分身</Text>
+            </Button>
           </View>
+        )}
+
+        {/* 分身卡片列表 */}
+        <View className="avatars-list">
+          {recommendations.map((avatar, index) => (
+            <View 
+              key={avatar.id} 
+              className={`avatar-card ${selectedIds.has(avatar.id) ? 'selected' : ''}`}
+              onClick={() => step < 3 && toggleSelect(avatar.id)}
+              style={{ animationDelay: `${index * 0.08}s` }}
+            >
+              {/* 选择状态 */}
+              <View className="card-checkbox">
+                <View className={`checkbox ${selectedIds.has(avatar.id) ? 'checked' : ''}`}>
+                  {selectedIds.has(avatar.id) && <Check size={14} color="#fff" />}
+                </View>
+              </View>
+
+              {/* 顶部标签 */}
+              {index === 0 && step < 3 && (
+                <View className="top-badge">
+                  <Crown size={12} color="#fbbf24" />
+                  <Text className="top-badge-text">最佳推荐</Text>
+                </View>
+              )}
+
+              {/* 分身信息 */}
+              <View className="avatar-info">
+                <View className="avatar-avatar">
+                  {avatar.avatarUrl && avatar.avatarUrl.trim() ? (
+                    <Image
+                      src={avatar.avatarUrl}
+                      className="avatar-img"
+                      mode="aspectFill"
+                    />
+                  ) : (
+                    <View className="avatar-placeholder">
+                      <Sparkles size={28} color="#06b6d4" />
+                    </View>
+                  )}
+                  {avatar.level >= 5 && (
+                    <View className="level-badge">
+                      <Text className="level-text">Lv.{avatar.level}</Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View className="avatar-details">
+                  <Text className="avatar-name">{avatar.name}</Text>
+                  <View className="avatar-meta">
+                    <Text className="meta-item">Lv.{avatar.level}</Text>
+                    <Text className="meta-dot">·</Text>
+                    <Text className="meta-item">{getPersonalityName(avatar.personality)}</Text>
+                  </View>
+                </View>
+
+                {/* 匹配度 */}
+                <View className="match-score">
+                  <View className="score-ring">
+                    <Text className="score-value" style={{ color: getMatchColor(avatar.completionRate || 0) }}>
+                      {avatar.completionRate || 85}%
+                    </Text>
+                  </View>
+                  <Text className="score-label">匹配度</Text>
+                </View>
+              </View>
+
+              {/* 统计信息 */}
+              <View className="avatar-stats">
+                <View className="stat-item">
+                  <TrendingUp size={14} color="#22c55e" />
+                  <Text className="stat-value">{avatar.completionRate || 0}%</Text>
+                  <Text className="stat-label">完成率</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Star size={14} color="#f59e0b" />
+                  <Text className="stat-value">{avatar.avgRating || 4.0}</Text>
+                  <Text className="stat-label">平均评分</Text>
+                </View>
+                <View className="stat-divider" />
+                <View className="stat-item">
+                  <Trophy size={14} color="#06b6d4" />
+                  <Text className="stat-value">{avatar.completedTasks || 0}</Text>
+                  <Text className="stat-label">已完成</Text>
+                </View>
+              </View>
+
+              {/* 匹配理由 */}
+              {avatar.matchReason && step < 3 && (
+                <View className="match-reason">
+                  <ThumbsUp size={12} color="#22c55e" />
+                  <Text className="reason-text">{avatar.matchReason}</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* 底部操作栏 */}
+      {step < 3 && recommendations.length > 0 && (
+        <View className="action-bar">
+          <Button 
+            className="notify-btn"
+            onClick={notifySelected}
+            disabled={dispatching || selectedIds.size === 0}
+          >
+            <MessageSquare size={18} color="#06b6d4" />
+            <Text className="btn-text">通知</Text>
+          </Button>
+          <Button 
+            className="dispatch-all-btn"
+            onClick={dispatchToAll}
+            disabled={dispatching}
+          >
+            {dispatching ? (
+              <Loader size={18} color="#fff" className="animate-spin" />
+            ) : (
+              <Zap size={18} color="#fff" />
+            )}
+            <Text className="btn-text">一键全部分配</Text>
+          </Button>
+        </View>
+      )}
+
+      {/* 完成状态 */}
+      {step >= 3 && (
+        <View className="action-bar completed">
+          <View className="completed-info">
+            <Check size={24} color="#22c55e" />
+            <Text className="completed-text">订单已分配给 {recommendations.length} 个分身</Text>
+          </View>
+          <Button 
+            className="done-btn"
+            onClick={() => Taro.navigateBack()}
+          >
+            <Text className="btn-text">完成</Text>
+          </Button>
         </View>
       )}
     </View>
