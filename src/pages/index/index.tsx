@@ -55,11 +55,54 @@ const Index: React.FC = () => {
       const res = await Network.request({ url: '/api/activities/recent' })
       console.log('实时动态:', res.data)
       if (res.data?.code === 200 && res.data?.data) {
-        setActivities(res.data.data)
+        // 将API数据转换为组件期望的格式
+        const mappedActivities = res.data.data.map((item: any, index: number) => {
+          // 根据type映射图标
+          let ActivityIcon = Coins
+          let activityAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=user' + index
+          if (item.type === 'chat') {
+            ActivityIcon = Users
+          } else if (item.type === 'content') {
+            ActivityIcon = FileText
+          } else if (item.type === 'order') {
+            ActivityIcon = ShoppingBag
+          } else if (item.type === 'earning') {
+            ActivityIcon = Coins
+          }
+          
+          // 计算相对时间
+          const timeAgo = getTimeAgo(item.timestamp)
+          
+          return {
+            name: item.title,
+            action: item.type === 'earning' ? '收益到账' : item.type === 'chat' ? '对话' : item.type === 'content' ? '内容' : '订单',
+            desc: item.description,
+            icon: ActivityIcon,
+            avatar: activityAvatar,
+            time: timeAgo,
+            amount: item.type === 'earning' ? '+¥' + (Math.random() * 100 + 50).toFixed(2) : null,
+            type: item.type === 'earning' ? 'coin' : item.type === 'order' ? 'order' : 'chat'
+          }
+        })
+        setActivities(mappedActivities)
       }
     } catch (err) {
       console.error('获取实时动态失败:', err)
     }
+  }
+  
+  // 计算相对时间
+  const getTimeAgo = (timestamp: string): string => {
+    const now = new Date()
+    const date = new Date(timestamp)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    
+    if (diffMins < 60) return diffMins + '分钟前'
+    if (diffHours < 24) return diffHours + '小时前'
+    return diffDays + '天前'
   }
 
   useEffect(() => {
