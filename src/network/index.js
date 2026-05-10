@@ -1,23 +1,25 @@
 /* eslint-disable no-undef */
 // @ts-nocheck
-import Taro, { getStorageSync } from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 
 /**
  * Network Request Module
  * Wraps Taro.request, Taro.uploadFile, Taro.downloadFile with automatic domain prefix
  */
 
-export const request = (option) => {
-  const userId = (() => {
-    try {
-      const userInfo = getStorageSync('userInfo')
-      console.log('[Network] 获取userInfo:', userInfo)
-      return userInfo?.id || ''
-    } catch {
-      return ''
-    }
-  })()
-  
+// 异步获取用户ID
+const getUserId = async () => {
+  try {
+    const userInfo = await Taro.getStorage({ key: 'userInfo' })
+    console.log('[Network] 获取userInfo:', userInfo?.data)
+    return userInfo?.data?.id || ''
+  } catch {
+    return ''
+  }
+}
+
+export const request = async (option) => {
+  const userId = await getUserId()
   console.log('[Network] 当前userId:', userId)
 
   const createUrl = (url) => {
@@ -63,15 +65,8 @@ export const request = (option) => {
   })
 }
 
-export const uploadFile = (option) => {
-  const userId = (() => {
-    try {
-      const userInfo = getStorageSync('userInfo')
-      return userInfo?.id || ''
-    } catch {
-      return ''
-    }
-  })()
+export const uploadFile = async (option) => {
+  const userId = await getUserId()
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -104,15 +99,8 @@ export const uploadFile = (option) => {
   })
 }
 
-export const downloadFile = (option) => {
-  const userId = (() => {
-    try {
-      const userInfo = getStorageSync('userInfo')
-      return userInfo?.id || ''
-    } catch {
-      return ''
-    }
-  })()
+export const downloadFile = async (option) => {
+  const userId = await getUserId()
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {

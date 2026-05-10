@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
 import { Network } from '@/network'
+import { useUserStore } from '@/stores/user'
 import './index.css'
 
 const Index: React.FC = () => {
@@ -20,6 +21,7 @@ const Index: React.FC = () => {
   const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
   const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
   const scrollRef = useRef(0)
+  const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
   // 获取统计数据
   const fetchStats = async () => {
@@ -131,6 +133,10 @@ const Index: React.FC = () => {
   useEffect(() => {
     // 初始化加载数据
     const initData = async () => {
+      // 先确保用户信息加载完成
+      await loadUserFromStorage()
+      // 等待一小段时间确保 storage 写入完成
+      await new Promise(resolve => setTimeout(resolve, 100))
       await Promise.all([fetchStats(), fetchActivities()])
     }
     initData()

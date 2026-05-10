@@ -7,6 +7,7 @@ import * as Network from '@/network'
 import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, ArrowLeft, Trash2, Phone } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
 import * as Taro from '@tarojs/taro'
+import { useUserStore } from '@/stores/user'
 import './index.css'
 
 interface Avatar {
@@ -57,6 +58,8 @@ export default function AvatarManagePage() {
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
   const [customSlots, setCustomSlots] = useState<string[]>(['09:00', '18:00'])
   
+  const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
+  
   // 人格类型中文映射
   const PERSONALITY_LABELS: Record<string, string> = {
     'analytical': '分析型',
@@ -96,10 +99,14 @@ export default function AvatarManagePage() {
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
   })
 
-  useDidShow(() => {
+  useDidShow(async () => {
     console.log('[useDidShow] 页面显示，开始加载数据')
-    fetchAvatars()
-    loadSubscriptionInfo()
+    // 先确保用户信息加载完成
+    await loadUserFromStorage()
+    // 等待一小段时间确保 storage 写入完成
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await fetchAvatars()
+    await loadSubscriptionInfo()
   })
 
   const loadSubscriptionInfo = async () => {
