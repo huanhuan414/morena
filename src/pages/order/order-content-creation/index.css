@@ -995,3 +995,50 @@
   height: 160px;
 }
 
+/* 图片预览 */
+.images-preview {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+
+.images-scroll {
+  width: 100%;
+}
+
+.images-container {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding-bottom: 16px;
+}
+
+.preview-image {
+  width: 480px;
+  height: 360px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+
+/* 视频预览 */
+.video-preview {
+  margin-bottom: 32px;
+}
+
+.video-container {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: #000;
+}
+
+.preview-video {
+  width: 100%;
+  height: 540px;
+}
+

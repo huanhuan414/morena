@@ -1,25 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Config, LLMClient } from 'coze-coding-dev-sdk'
+import { Config, LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
-
-const PLATFORM_TOOL_MAPPING: Record<string, string> = {
-  wechat_mp: 'write_wechat_mp_article',
-  xiaohongshu: 'write_xiaohongshu_note',
-  douyin: 'generate_video',
-  weibo: 'write_wechat_mp_article',
-  bilibili: 'generate_video',
-  kuaishou: 'generate_video',
-  wechat_moments: 'write_wechat_moments_content'
-}
 
 @Injectable()
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
   private readonly llmClient: LLMClient
+  private readonly imageClient: ImageGenerationClient
+  private readonly videoClient: VideoGenerationClient
 
   constructor() {
     const config = new Config()
     this.llmClient = new LLMClient(config)
+    this.imageClient = new ImageGenerationClient(config)
+    this.videoClient = new VideoGenerationClient(config)
   }
 
   async generateContent(input: {
@@ -36,15 +30,44 @@ export class ContentGenerationService {
   }): Promise<any[]> {
     const results: any[] = []
     const db = getMySQLClient()
+    const { contentType } = input
+
+    // 根据内容类型决定生成什么
+    const needImage = contentType === 'image' || contentType === 'image_text' || contentType === 'video'
+    const needText = contentType === 'text' || contentType === 'image_text' || contentType === 'video'
+    const needVideo = contentType === 'video'
 
     for (const platform of input.platforms) {
       try {
-        this.logger.log(`为平台 ${platform} 生成内容...`)
+        this.logger.log(`为平台 ${platform} 生成 ${contentType} 类型内容...`)
 
-        // 生成内容
-        let generatedContent = await this.generateContentByPlatform(platform, input)
+        const platformResult: any = {
+          platform,
+          success: true,
+          content: null,
+          images: [],
+          video: null
+        }
 
-        // 保存生成请求和内容
+        // 1. 生成文字内容
+        if (needText) {
+          const textContent = await this.generateTextContent(platform, input)
+          platformResult.content = textContent
+        }
+
+        // 2. 生成图片
+        if (needImage) {
+          const images = await this.generateImages(platform, input)
+          platformResult.images = images
+        }
+
+        // 3. 生成视频（如果需要）
+        if (needVideo) {
+          const video = await this.generateVideo(platform, input)
+          platformResult.video = video
+        }
+
+        // 保存到数据库
         const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         await db.insert('content_generation_requests', {
           id: requestId,
@@ -52,7 +75,9 @@ export class ContentGenerationService {
           order_id: input.orderId,
           platform,
           status: 'completed',
-          content: generatedContent,
+          content: platformResult.content || '',
+          images: platformResult.images?.length > 0 ? JSON.stringify(platformResult.images) : null,
+          video_url: platformResult.video || null,
           created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
         })
 
@@ -60,7 +85,9 @@ export class ContentGenerationService {
           platform,
           requestId,
           success: true,
-          content: generatedContent
+          content: platformResult.content,
+          images: platformResult.images,
+          video: platformResult.video
         })
       } catch (error: any) {
         this.logger.error(`生成内容失败: ${error.message}`)
@@ -76,13 +103,12 @@ export class ContentGenerationService {
   }
 
   /**
-   * 根据平台生成内容
+   * 生成文字内容
    */
-  private async generateContentByPlatform(platform: string, input: any): Promise<string> {
+  private async generateTextContent(platform: string, input: any): Promise<string> {
     const { orderTitle, orderDescription, targetAudience, contentType, avatarName, avatarPersonality } = input
 
-    // 根据平台构建不同的生成提示词
-    const prompt = this.buildPrompt(platform, orderTitle, orderDescription, targetAudience, contentType)
+    const prompt = this.buildTextPrompt(platform, orderTitle, orderDescription, targetAudience, contentType)
 
     try {
       const response = await this.llmClient.invoke([
@@ -96,15 +122,91 @@ export class ContentGenerationService {
       return response.content || '内容生成完成'
     } catch (error: any) {
       this.logger.error(`LLM 调用失败: ${error.message}`)
-      // 如果 LLM 调用失败，返回模拟内容
       return this.getMockContent(platform, orderTitle)
     }
   }
 
   /**
-   * 构建生成提示词
+   * 生成图片
    */
-  private buildPrompt(platform: string, title: string, description: string, targetAudience: string, contentType: string): string {
+  private async generateImages(platform: string, input: any): Promise<string[]> {
+    const { orderTitle, orderDescription, avatarName } = input
+
+    try {
+      // 构建图片生成提示词
+      const imagePrompt = this.buildImagePrompt(platform, orderTitle, orderDescription, avatarName)
+
+      this.logger.log(`生成图片，提示词: ${imagePrompt}`)
+
+      const response = await this.imageClient.generate({
+        prompt: imagePrompt,
+        size: '2K'
+      })
+
+      const helper = this.imageClient.getResponseHelper(response)
+
+      if (helper.success) {
+        this.logger.log(`图片生成成功: ${helper.imageUrls.length} 张`)
+        return helper.imageUrls
+      } else {
+        this.logger.error(`图片生成失败: ${helper.errorMessages.join(', ')}`)
+        // 返回模拟图片
+        return [
+          `https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle)}`
+        ]
+      }
+    } catch (error: any) {
+      this.logger.error(`图片生成失败: ${error.message}`)
+      // 返回模拟图片
+      return [
+        `https://via.placeholder.com/800x600/FF6B6B/FFFFFF?text=${encodeURIComponent(orderTitle)}`
+      ]
+    }
+  }
+
+  /**
+   * 生成视频
+   */
+  private async generateVideo(platform: string, input: any): Promise<string | null> {
+    const { orderTitle, orderDescription, images } = input
+
+    try {
+      // 构建视频生成提示词
+      const videoPrompt = this.buildVideoPrompt(platform, orderTitle, orderDescription)
+
+      this.logger.log(`生成视频，提示词: ${videoPrompt}`)
+
+      const request = {
+        prompt: videoPrompt,
+        duration: 5
+      }
+
+      // 如果有生成的图片，可以用作视频的参考
+      if (images && images.length > 0) {
+        (request as any).image = images[0]
+      }
+
+      const response = await this.videoClient.generate(request)
+
+      const helper = this.videoClient.getResponseHelper(response)
+
+      if (helper.success) {
+        this.logger.log(`视频生成成功: ${helper.videoUrl}`)
+        return helper.videoUrl
+      } else {
+        this.logger.error(`视频生成失败: ${helper.errorMessages.join(', ')}`)
+        return null
+      }
+    } catch (error: any) {
+      this.logger.error(`视频生成失败: ${error.message}`)
+      return null
+    }
+  }
+
+  /**
+   * 构建文字提示词
+   */
+  private buildTextPrompt(platform: string, title: string, description: string, targetAudience: string, contentType: string): string {
     const platformNames: Record<string, string> = {
       wechat_mp: '微信公众号',
       xiaohongshu: '小红书',
@@ -117,14 +219,14 @@ export class ContentGenerationService {
 
     const platformName = platformNames[platform] || platform
 
-    let prompt = `请为${platformName}平台生成一篇推广内容。\n\n`
+    let prompt = `请为${platformName}平台生成推广内容。\n\n`
     prompt += `主题：${title}\n`
     prompt += `详细需求：${description || '根据主题自由发挥'}\n`
     if (targetAudience) {
       prompt += `目标受众：${targetAudience}\n`
     }
 
-    // 根据平台和内容类型调整提示词
+    // 根据平台调整提示词
     switch (platform) {
       case 'wechat_mp':
         prompt += `\n要求：
@@ -156,49 +258,84 @@ export class ContentGenerationService {
         prompt += `\n要求：
 1. 话题性强，容易引发讨论
 2. 语言简洁有力，适合快速阅读
-3. 字数在100-300字之间
-4. 可以配合热门话题标签`
+3. 字数在100-300字之间`
         break
       case 'wechat_moments':
         prompt += `\n要求：
 1. 适合朋友圈分享
-2. 语言自然，像朋友间的推荐
-3. 字数在50-150字之间
-4. 不要太商业化`
+2. 内容轻松自然，不要太正式
+3. 字数在50-200字之间
+4. 多使用emoji
+5. 结尾要自然，不要太营销感`
         break
-      default:
-        prompt += `\n要求：内容吸引人，符合平台风格`
     }
 
     return prompt
   }
 
   /**
-   * 获取模拟内容（当 LLM 调用失败时使用）
+   * 构建图片提示词
+   */
+  private buildImagePrompt(platform: string, title: string, description: string, avatarName?: string): string {
+    const platformStyles: Record<string, string> = {
+      wechat_mp: '专业商务风格，高质量的配图，适合公众号封面',
+      xiaohongshu: '精致生活风格，温暖色调，高颜值图片',
+      douyin: '潮流时尚风格，视觉冲击力强，适合短视频封面',
+      weibo: '多元化风格，可以是资讯图解或生活分享',
+      bilibili: '年轻化风格，二次元元素可选，活泼有趣',
+      kuaishou: '接地气风格，真实生活感',
+      wechat_moments: '生活化风格，自然真实，像是用手机拍的'
+    }
+
+    const style = platformStyles[platform] || '高质量商业摄影风格'
+
+    let prompt = `${style}的推广配图。\n\n`
+    prompt += `主题：${title}\n`
+    if (description) {
+      prompt += `内容：${description}\n`
+    }
+    if (avatarName) {
+      prompt += `风格参考：${avatarName}的人设风格\n`
+    }
+    prompt += `\n要求：图片要精美，吸引眼球，适合社交媒体传播`
+
+    return prompt
+  }
+
+  /**
+   * 构建视频提示词
+   */
+  private buildVideoPrompt(platform: string, title: string, description: string): string {
+    const platformStyles: Record<string, string> = {
+      douyin: '抖音短视频风格，节奏快，视觉冲击强',
+      bilibili: 'B站风格，可以有创意有深度',
+      kuaishou: '快手风格，接地气，真实感'
+    }
+
+    const style = platformStyles[platform] || '短视频风格'
+
+    let prompt = `生成一个${style}的推广短视频。\n\n`
+    prompt += `主题：${title}\n`
+    if (description) {
+      prompt += `内容：${description}\n`
+    }
+    prompt += `\n要求：开头要有吸引力，整体节奏紧凑，适合短视频平台传播`
+
+    return prompt
+  }
+
+  /**
+   * 获取模拟内容（当LLM调用失败时使用）
    */
   private getMockContent(platform: string, title: string): string {
     const mockContents: Record<string, string> = {
-      wechat_mp: `【${title}】\n\n今天想和大家分享一些关于这个话题的心得体会。\n\n在这个快速发展的时代，我们每天都会接触到各种各样的信息。而今天这个话题，恰恰是我们每个人都值得关注和思考的。\n\n首先，让我们来了解一下背景...\n\n（此处应有详细分析内容）\n\n总的来说，${title}对于我们的生活有着重要的影响。希望今天的分享能够给大家带来一些启发。\n\n如果觉得有帮助，记得点个赞和关注哦！`,
-      xiaohongshu: `# ${title} #\n\n姐妹们！今天必须来聊聊这个！💕\n\n最近发现了一个超棒的事情，关于${title}，真的绝了！\n\n✨\n\n首先，${title}真的太好用了！\n其次，操作简单易上手\n最后，效果真的惊艳到我了\n\n💡 小贴士：\n1. 第一步\n2. 第二步\n3. 第三步\n\n姐妹们快冲！冲冲冲！🏃‍♀️\n\n你们有没有类似的经历？评论区聊聊呀~ 👇`,
-      douyin: `家人们！今天必须给你们安利一下！🔥\n\n${title}真的太绝了！\n\n首先，${title}的效果真的没话说\n其次，性价比超高\n最后，操作简单好上手\n\n而且！用了之后效果真的太明显了！\n\n心动不如行动！赶紧去试试！\n\n觉得有用的点个赞！我们下期见！`,
-      weibo: `# ${title} #\n\n今天来聊聊${title}这件事。\n\n说实话，之前一直没太在意，但最近深入了解后发现真的很有意思。\n\n大家怎么看？欢迎评论区讨论~`,
-      wechat_moments: `${title}，真的越来越好了！👍`
+      wechat_mp: `# ${title}\n\n这是一篇关于${title}的专业文章。\n\n## 引言\n\n${title}是我们今天要讨论的重点主题...\n\n## 正文内容\n\n在这里我们会详细展开关于${title}的各种内容...\n\n## 总结\n\n以上就是关于${title}的全部内容，希望对你有所帮助！`,
+      xiaohongshu: `# 🔥 ${title}\n\n姐妹们！今天必须跟你们分享这个！💕\n\n最近我发现了一个超级棒的东西——${title}！\n\n✨ 使用体验：\n- 效果真的绝绝子\n- 使用感满分\n- 性价比超高\n\n强烈推荐给大家！冲鸭！🦆\n\n#${title.replace(/\s+/g, '')} #好物推荐`,
+      douyin: `家人们谁懂啊！${title}也太绝了吧！😭\n\n真的不是吹，这个${title}我用了之后直接封神！\n\n喜欢的赶紧冲！👇链接在评论区！`,
+      weibo: `${title}\n\n今天来聊聊${title}这个话题~\n\n你们觉得怎么样？评论区见！\n\n#${title.replace(/\s+/g, '')} #生活日常`,
+      wechat_moments: `${title} 🌟\n\n今天又是美好的一天～\n\n分享一个最近的心头好✨`
     }
 
-    return mockContents[platform] || `关于${title}的内容，已为您生成。`
-  }
-
-  async getGeneratedContent(requestId: string, avatarId: string): Promise<any> {
-    const db = getMySQLClient()
-    const result = await db.query('content_generation_requests', {
-      id: requestId,
-      avatar_id: avatarId
-    })
-    return result?.data?.[0] || null
-  }
-
-  async updateContentStatus(contentId: string, status: string): Promise<void> {
-    const db = getMySQLClient()
-    await db.updateWhere('content_generation_requests', { id: contentId }, { status })
+    return mockContents[platform] || `关于${title}的分享内容`
   }
 }

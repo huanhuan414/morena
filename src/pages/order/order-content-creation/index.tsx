@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video } from '@tarojs/components'
 import Taro, { useRouter, showToast } from '@tarojs/taro'
 import { ArrowLeft, Loader, Sparkles, Check, CircleAlert, RefreshCw, Send } from 'lucide-react-taro'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ interface GeneratedContent {
   title?: string
   content: string
   images?: string[]
+  video?: string
   platforms: string[]
 }
 
@@ -296,6 +297,41 @@ export default function OrderContentCreation() {
             </View>
 
             <View className="content-preview">
+              {/* 图片展示 */}
+              {processingData.generatedContent?.images && processingData.generatedContent.images.length > 0 && (
+                <View className="images-preview">
+                  <Text className="section-title">生成的图片</Text>
+                  <ScrollView scrollX className="images-scroll">
+                    <View className="images-container">
+                      {processingData.generatedContent.images.map((img, idx) => (
+                        <Image
+                          key={idx}
+                          className="preview-image"
+                          src={img}
+                          mode="aspectFill"
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* 视频展示 */}
+              {processingData.generatedContent?.video && (
+                <View className="video-preview">
+                  <Text className="section-title">生成的视频</Text>
+                  <View className="video-container">
+                    <Video
+                      className="preview-video"
+                      src={processingData.generatedContent.video}
+                      controls
+                      poster={processingData.generatedContent.images?.[0]}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* 文字内容 */}
               <Text className="content-text">{editedContent || processingData.generatedContent?.content}</Text>
             </View>
 
