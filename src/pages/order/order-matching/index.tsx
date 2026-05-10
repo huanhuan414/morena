@@ -144,9 +144,28 @@ export default function OrderMatchingPage() {
     }
 
     // 解析订单参数（从创建订单页面传递）
-    const pages = Taro.getCurrentPages()
-    const currentPage = pages[pages.length - 1]
-    const options = currentPage?.options || {}
+    // 兼容 H5 和小程序的参数获取方式
+    let options: Record<string, string> = {}
+    
+    // H5 模式：从 URL hash 中解析参数
+    const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+    if (isH5) {
+      const hash = window.location.hash
+      if (hash) {
+        const queryString = hash.split('?')[1] || ''
+        const urlParams = new URLSearchParams(queryString)
+        urlParams.forEach((value, key) => {
+          options[key] = value
+        })
+      }
+    } else {
+      // 小程序模式
+      const pages = Taro.getCurrentPages()
+      const currentPage = pages[pages.length - 1]
+      options = currentPage?.options || {}
+    }
+    
+    console.log('[OrderMatching] 解析到的参数:', options)
     
     if (options.orderParams) {
       try {
