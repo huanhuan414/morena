@@ -129,7 +129,7 @@ ${form.description ? `补充信息：${form.description}` : ''}
 
       // 调用AI接口
       const res = await Network.request({
-        url: '/api/ai/generate-content',
+        url: '/api/ai/generate',
         method: 'POST',
         data: {
           prompt,

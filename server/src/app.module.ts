@@ -35,6 +35,7 @@ import { PalmReadingModule } from './modules/palm-reading/palm-reading.module';
 import { EarningsModule } from './modules/earnings/earnings.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
 import { UserStatsModule } from './modules/user-stats/user-stats.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -70,7 +71,8 @@ import { UserStatsModule } from './modules/user-stats/user-stats.module';
     PalmReadingModule,
     EarningsModule,
     ActivitiesModule,
-    UserStatsModule
+    UserStatsModule,
+    AiModule
   ],
   controllers: [AppController],
   providers: [AppService],
