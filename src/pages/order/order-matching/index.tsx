@@ -150,49 +150,48 @@ export default function OrderMatchingPage() {
     // H5 模式：从完整 URL 中解析参数
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isH5) {
-      // 尝试多种方式获取 URL
-      const hash = window.location.hash
-      const search = window.location.search
       const fullUrl = window.location.href
+      console.log('[OrderMatching] H5 URL:', fullUrl.substring(0, 300))
       
-      console.log('[OrderMatching] H5 URL信息:', { hash, search, fullUrl })
-      
-      // 方法1: 从 hash 中获取 query string
-      if (hash) {
-        const queryPart = hash.split('?')[1]
-        if (queryPart) {
-          const urlParams = new URLSearchParams(queryPart)
-          urlParams.forEach((value, key) => {
-            if (!options[key]) options[key] = value
-          })
-        }
-      }
-      
-      // 方法2: 从 search 中获取（某些路由模式）
-      if (search) {
-        const urlParams = new URLSearchParams(search)
-        urlParams.forEach((value, key) => {
-          if (!options[key]) options[key] = value
-        })
-      }
-      
-      // 方法3: 正则匹配（最可靠）
-      if (!options.orderParams) {
-        const match = fullUrl.match(/orderParams=([^&]*)/)
-        if (match) {
-          options.orderParams = decodeURIComponent(match[1])
-        }
-      }
-      
-      // 方法4: 直接从 URL 解析 JSON 参数
-      if (!options.orderParams && fullUrl.includes('orderParams')) {
-        try {
-          const paramsMatch = fullUrl.match(/orderParams=({[^}]+})/)
-          if (paramsMatch) {
-            options.orderParams = decodeURIComponent(paramsMatch[1])
+      // 最可靠的方式：直接解析问号后面的所有内容
+      const questionMarkIndex = fullUrl.indexOf('?')
+      if (questionMarkIndex !== -1) {
+        const queryString = fullUrl.substring(questionMarkIndex + 1)
+        console.log('[OrderMatching] QueryString:', queryString.substring(0, 200))
+        
+        // 查找 orderParams= 的位置
+        const paramStartIndex = queryString.indexOf('orderParams=')
+        if (paramStartIndex !== -1) {
+          // orderParams= 之后的所有内容
+          const paramValue = queryString.substring(paramStartIndex + 12)
+          
+          // 解码
+          try {
+            options.orderParams = decodeURIComponent(paramValue)
+            console.log('[OrderMatching] 解析到 orderParams，长度:', options.orderParams.length)
+          } catch (e) {
+            console.error('[OrderMatching] 解码失败:', e)
+            options.orderParams = paramValue
           }
-        } catch (e) {
-          console.error('[OrderMatching] 正则解析失败:', e)
+        }
+      }
+      
+      // 备用：从小程序格式的 hash 中获取
+      if (!options.orderParams && fullUrl.includes('#/')) {
+        const hashPart = fullUrl.split('#/')[1] || ''
+        const hashQuestionMark = hashPart.indexOf('?')
+        if (hashQuestionMark !== -1) {
+          const hashQuery = hashPart.substring(hashQuestionMark + 1)
+          const hashParamStart = hashQuery.indexOf('orderParams=')
+          if (hashParamStart !== -1) {
+            const hashParamValue = hashQuery.substring(hashParamStart + 12)
+            try {
+              options.orderParams = decodeURIComponent(hashParamValue)
+              console.log('[OrderMatching] 从hash解析到 orderParams')
+            } catch (e) {
+              options.orderParams = hashParamValue
+            }
+          }
         }
       }
     } else {
