@@ -185,14 +185,18 @@ export default function AvatarManagePage() {
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
-        // 兼容多种响应格式
-        let avatarList = res.data.data
-        if (avatarList?.data?.list) {
-          avatarList = avatarList.data.list
-        } else if (Array.isArray(avatarList)) {
-          avatarList = avatarList
-        } else {
-          avatarList = []
+        // 兼容多种响应格式：{ success: true, data: { list: [...] } }
+        const responseData = res.data?.data
+        let avatarList: any[] = []
+        if (responseData?.success && responseData?.data?.list) {
+          // 格式：{ success: true, data: { list: [...] } }
+          avatarList = responseData.data.list
+        } else if (Array.isArray(responseData)) {
+          // 格式：[...]
+          avatarList = responseData
+        } else if (responseData?.data?.list) {
+          // 格式：{ data: { list: [...] } }
+          avatarList = responseData.data.list
         }
         console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
