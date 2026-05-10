@@ -6,6 +6,278 @@
   background: #F8F7FC;
 }
 
+/* 支付操作栏 */
+.payment-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  padding: 24rpx 32rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.payment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.payment-label {
+  font-size: 24rpx;
+  color: #94A3B8;
+}
+
+.payment-amount {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #EF4444;
+}
+
+.payment-actions {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.payment-btn-cancel {
+  padding: 24rpx 40rpx;
+  background: #F1F5F9;
+  border-radius: 40rpx;
+}
+
+.payment-btn-cancel text {
+  font-size: 28rpx;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.payment-btn-primary {
+  padding: 24rpx 56rpx;
+  background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+  border-radius: 40rpx;
+}
+
+.payment-btn-primary text {
+  font-size: 28rpx;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* 待支付状态样式 */
+.status-pending-payment {
+  background: #FEE2E2;
+}
+
+.status-pending-payment text {
+  color: #EF4444;
+}
+
+/* 状态标签样式增强 */
+.status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.status-pending {
+  background: #FEF3C7;
+}
+
+.status-pending text {
+  color: #D97706;
+}
+
+.status-accepted {
+  background: #DBEAFE;
+}
+
+.status-accepted text {
+  color: #2563EB;
+}
+
+.status-generating {
+  background: #E0E7FF;
+}
+
+.status-generating text {
+  color: #4F46E5;
+}
+
+.status-completed {
+  background: #D1FAE5;
+}
+
+.status-completed text {
+  color: #059669;
+}
+
+.status-cancelled {
+  background: #F1F5F9;
+}
+
+.status-cancelled text {
+  color: #94A3B8;
+}
+
+/* 订单头部卡片优化 */
+.order-header-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  border: 1rpx solid #F1F5F9;
+}
+
+.order-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.order-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1A1A2E;
+  flex: 1;
+  margin-right: 16rpx;
+  line-height: 1.4;
+}
+
+.order-info-row {
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+  flex-wrap: wrap;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.info-label {
+  font-size: 26rpx;
+  color: #94A3B8;
+}
+
+.info-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A1A2E;
+}
+
+.info-value-budget {
+  color: #EF4444;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+/* Tab 样式优化 */
+.tab-container {
+  margin: 0 24rpx 24rpx;
+}
+
+.tab-list {
+  display: flex;
+  background: #F8FAFC;
+  border-radius: 16rpx;
+  padding: 8rpx;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  transition: all 0.2s ease;
+}
+
+.tab-item-active {
+  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+}
+
+.tab-item-icon {
+  width: 24rpx;
+  height: 24rpx;
+}
+
+.tab-item-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #64748B;
+}
+
+.tab-item-active .tab-item-text {
+  color: #FFFFFF;
+}
+
+/* 内容区域优化 */
+.content-section {
+  padding: 0 24rpx 120rpx;
+}
+
+.section-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  border: 1rpx solid #F1F5F9;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #F1F5F9;
+}
+
+.section-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1A1A2E;
+}
+
+/* 空状态优化 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0;
+  gap: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #94A3B8;
+}
+
 /* 加载状态 */
 .loading-container,
 .error-container {

@@ -113,6 +113,7 @@ const getPlatformName = (platform: string): string => {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending_payment: { label: '待支付', className: 'status-pending-payment' },
   open: { label: '待接单', className: 'status-pending' },
   in_progress: { label: '进行中', className: 'status-accepted' },
   reviewing: { label: '待验收', className: 'status-generating' },
@@ -313,6 +314,32 @@ export default function OrderDetailPage() {
       showToast({ title: '保存失败', icon: 'none' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // 支付订单
+  const handlePayment = async () => {
+    showToast({ title: '支付功能开发中', icon: 'none' })
+  }
+
+  // 取消订单
+  const handleCancelOrder = async () => {
+    if (!order) return
+    try {
+      const res = await Network.request({
+        url: `/api/order/${order.id}/cancel`,
+        method: 'PUT'
+      })
+
+      if (res.data?.code === 200) {
+        showToast({ title: '订单已取消', icon: 'success' })
+        fetchOrder()
+      } else {
+        showToast({ title: res.data?.message || '取消失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('取消订单失败:', error)
+      showToast({ title: '取消失败', icon: 'none' })
     }
   }
 
@@ -841,6 +868,24 @@ export default function OrderDetailPage() {
           </View>
         )}
       </ScrollView>
+
+      {/* 待支付操作栏 */}
+      {order?.status === 'pending_payment' && (
+        <View className="payment-bar">
+          <View className="payment-info">
+            <Text className="payment-label">应付金额</Text>
+            <Text className="payment-amount">¥{order.budget || 0}</Text>
+          </View>
+          <View className="payment-actions">
+            <View className="payment-btn-cancel" onClick={handleCancelOrder}>
+              <Text className="block">取消订单</Text>
+            </View>
+            <View className="payment-btn-primary" onClick={handlePayment}>
+              <Text className="block">立即支付</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* 验收弹窗 */}
       {showRating && (
