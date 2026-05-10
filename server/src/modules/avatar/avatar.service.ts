@@ -66,8 +66,10 @@ export class AvatarService {
     const db = getMySQLClient()
     let rows: any[]
     
-    // 如果有 userId，按用户查询；否则返回所有活跃的分身
-    if (userId && userId.trim()) {
+    // 测试/开发用户返回所有分身
+    const isTestUser = userId && (userId === 'dev_user' || userId === 'guest-user')
+    // 如果有 userId 且非测试用户，按用户查询；否则返回所有活跃的分身
+    if (userId && userId.trim() && !isTestUser) {
       const result = await db.select('avatars', { user_id: userId })
       rows = result.data || []
     } else {
