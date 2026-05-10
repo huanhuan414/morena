@@ -1,9 +1,14 @@
 // @ts-nocheck
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { SmsService } from '../sms/sms.service'
 
 @Injectable()
 export class OrderDispatchService {
+  constructor(
+    @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService
+  ) {}
+
   async createDispatchRequest(data: {
     order_id: string
     avatar_id: string
@@ -166,6 +171,10 @@ export class OrderDispatchService {
   async dispatchToAllAvatars(orderId: string) {
     const db = getMySQLClient()
     
+    // 查询订单信息
+    const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
+    const order = orders[0]
+    
     // 查询所有开启托管的分身
     const avatars = await db.query(
       'SELECT * FROM avatars WHERE trust_enabled = 1 AND status = ?', 
@@ -177,8 +186,9 @@ export class OrderDispatchService {
     }
     
     const avatarIds: string[] = []
+    let smsSentCount = 0
     
-    // 为每个分身创建分发请求
+    // 为每个分身创建分发请求并发送短信
     for (const avatar of avatars) {
       const id = crypto.randomUUID()
       await db.insert('order_dispatch_requests', {
@@ -192,13 +202,47 @@ export class OrderDispatchService {
         updated_at: new Date()
       })
       avatarIds.push(avatar.id)
+      
+      // 发送真实短信通知
+      if (avatar.phone) {
+        const smsContent = `【莫瑞拉】您有新的订单任务：${order?.title || '内容创作'}，请及时查收并完成。详情请登录查看。`
+        
+        try {
+          const smsResult = await this.smsService.sendSms(
+            avatar.phone,
+            'SMS_DEFAULT_TEMPLATE',
+            { content: smsContent }
+          )
+          
+          if (smsResult) {
+            smsSentCount++
+            console.log(`[SMS] 成功发送给分身 ${avatar.name} (${avatar.phone})`)
+          }
+        } catch (err) {
+          console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
+        }
+        
+        // 创建通知记录
+        const notifId = crypto.randomUUID()
+        await db.insert('avatar_notifications', {
+          id: notifId,
+          avatar_id: avatar.id,
+          order_id: orderId,
+          type: 'order_assigned',
+          title: '新订单分配',
+          content: smsContent,
+          status: 'unread',
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+      }
     }
     
-    return { count: avatars.length, avatarIds }
+    return { count: avatars.length, avatarIds, smsSentCount }
   }
 
   /**
-   * 发送短信通知给分身
+   * 发送短信通知给指定分身
    */
   async notifyAvatars(orderId: string, avatarIds: string[], customMessage?: string) {
     const db = getMySQLClient()
@@ -212,8 +256,9 @@ export class OrderDispatchService {
     }
     
     let notifiedCount = 0
+    let smsSentCount = 0
     
-    // 为每个分身创建通知
+    // 为每个分身创建通知并发送短信
     for (const avatarId of avatarIds) {
       // 查询分身信息
       const avatars = await db.query('SELECT * FROM avatars WHERE id = ?', [avatarId]) as any[]
@@ -223,6 +268,7 @@ export class OrderDispatchService {
       
       // 生成通知内容
       const message = customMessage || `您有新的订单任务：${order.title || '内容创作'}，请及时查收并完成。`
+      const smsContent = `【莫瑞拉】${message}`
       
       // 创建通知记录
       const id = crypto.randomUUID()
@@ -238,15 +284,29 @@ export class OrderDispatchService {
         updated_at: new Date()
       })
       
-      // 记录短信发送日志（模拟）
-      console.log(`[SMS通知] 分身 ${avatar.name} (${avatar.phone || '无电话'}) - 订单: ${order.title}`)
-      console.log(`[SMS内容] ${message}`)
+      // 发送真实短信
+      if (avatar.phone) {
+        try {
+          const smsResult = await this.smsService.sendSms(
+            avatar.phone,
+            'SMS_DEFAULT_TEMPLATE',
+            { content: smsContent }
+          )
+          
+          if (smsResult) {
+            smsSentCount++
+            console.log(`[SMS] 通知短信发送给 ${avatar.name} (${avatar.phone}) 成功`)
+          }
+        } catch (err) {
+          console.error(`[SMS] 发送给 ${avatar.name} 失败:`, err)
+        }
+      } else {
+        console.log(`[SMS] 分身 ${avatar.name} 未绑定手机号，跳过短信发送`)
+      }
       
       notifiedCount++
     }
     
-    return { count: notifiedCount }
+    return { count: notifiedCount, smsSentCount }
   }
 }
-
-import * as crypto from 'crypto'
