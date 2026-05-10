@@ -379,4 +379,40 @@ export class AvatarService {
     )
     return { success: true, data: result.data || [] }
   }
+
+  /**
+   * 更新单个分身托管状态
+   */
+  async updateTrust(avatarId: number, trustEnabled: boolean) {
+    const db = getMySQLClient()
+    
+    // 先查询分身确保存在
+    const avatar = await db.query(`SELECT * FROM avatars WHERE id = ?`, [avatarId])
+    const avatars = Array.isArray(avatar) ? avatar : (avatar?.data || [])
+    
+    if (avatars.length === 0) {
+      throw new Error('分身不存在')
+    }
+    
+    await db.update('avatars', { trust_enabled: trustEnabled ? 1 : 0 }, { id: avatarId })
+    return { success: true }
+  }
+
+  /**
+   * 批量更新用户所有分身的托管状态
+   */
+  async enableAllTrust(userId: string, trustEnabled: boolean) {
+    const db = getMySQLClient()
+    
+    // 统一用户ID规范
+    const isTestUser = userId && TEST_USER_IDS.includes(userId)
+    const hasValidUserId = userId && userId.trim() && !isTestUser
+    
+    if (!hasValidUserId) {
+      throw new Error('无效的用户ID')
+    }
+    
+    await db.update('avatars', { trust_enabled: trustEnabled ? 1 : 0 }, { user_id: userId })
+    return { success: true }
+  }
 }

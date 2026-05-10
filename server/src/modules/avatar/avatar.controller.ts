@@ -226,4 +226,33 @@ export class AvatarController {
       return { code: 500, msg: '服务器错误', data: null }
     }
   }
+
+  // 托管状态管理
+  @Put(':id/trust')
+  async updateTrust(
+    @Param('id') id: string,
+    @Body() body: { trust_enabled: boolean }
+  ) {
+    try {
+      await this.avatarService.updateTrust(parseInt(id), body.trust_enabled)
+      return { code: 200, msg: 'success', data: null }
+    } catch (err) {
+      console.error('更新托管状态失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Put('trust/all')
+  async enableAllTrust(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { trust_enabled: boolean }
+  ) {
+    try {
+      await this.avatarService.enableAllTrust(userId, body.trust_enabled)
+      return { code: 200, msg: 'success', data: null }
+    } catch (err) {
+      console.error('批量更新托管状态失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
 }

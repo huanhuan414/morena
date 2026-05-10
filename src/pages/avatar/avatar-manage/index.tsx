@@ -4,8 +4,9 @@ import { View, Text, ScrollView, Image, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link, ArrowLeft } from 'lucide-react-taro'
+import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, X, Check, Crown, Package, Link, ArrowLeft, Trash2 } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
+import * as Taro from '@tarojs/taro'
 import './index.css'
 
 interface Avatar {
@@ -16,7 +17,7 @@ interface Avatar {
   personality: string
   exp: number
   appearance_style?: string
-  is_hosted?: boolean
+  trust_enabled?: boolean  // 托管状态
   config?: {
     hosting_settings?: {
       auto_post?: boolean
@@ -149,9 +150,9 @@ export default function AvatarManagePage() {
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
         // 展开托管设置到顶层，便于前端使用
-        setAvatars(avatarList.map((avatar: Avatar) => ({
+        setAvatars(avatarList.map((avatar: any) => ({
           ...avatar,
-          is_hosted: avatar.is_hosted || false,
+          trust_enabled: Boolean(avatar.trust_enabled),
           hosting_settings: avatar.config?.hosting_settings || {
             auto_post: true,
             auto_comment: true,
@@ -172,16 +173,16 @@ export default function AvatarManagePage() {
     console.log('切换托管状态:', avatarId, enabled)
     try {
       const res = await Network.request({
-        url: `/api/avatar/${avatarId}/hosting`,
-        method: 'POST',
-        data: { enabled }
+        url: `/api/avatar/${avatarId}/trust`,
+        method: 'PUT',
+        data: { trust_enabled: enabled }
       })
       console.log('托管响应:', res.data)
       
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
           avatar.id === avatarId 
-            ? { ...avatar, is_hosted: enabled }
+            ? { ...avatar, trust_enabled: enabled }
             : avatar
         ))
         showToast({ 
@@ -189,7 +190,7 @@ export default function AvatarManagePage() {
           icon: 'success' 
         })
       } else {
-        showToast({ title: res.data?.message || '设置失败', icon: 'none' })
+        showToast({ title: res.data?.msg || '设置失败', icon: 'none' })
       }
     } catch (error) {
       console.error('托管设置失败:', error)
@@ -239,6 +240,27 @@ export default function AvatarManagePage() {
 
   const goToSettings = (avatarId: string) => {
     navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatarId}` })
+  }
+
+  const deleteAvatar = async (avatarId: string) => {
+    // 确认删除
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}`,
+        method: 'DELETE'
+      })
+      console.log('删除分身响应:', res.data)
+      
+      if (res.data?.code === 200) {
+        setAvatars(prev => prev.filter(a => a.id !== avatarId))
+        showToast({ title: '删除成功', icon: 'success' })
+      } else {
+        showToast({ title: res.data?.msg || '删除失败', icon: 'none' })
+      }
+    } catch (error) {
+      console.error('删除分身失败:', error)
+      showToast({ title: '删除失败', icon: 'none' })
+    }
   }
 
   // 打开时间选择弹窗
@@ -382,8 +404,27 @@ export default function AvatarManagePage() {
                     </View>
                     <Text className="avatar-personality">{getPersonalityName(avatar.personality)}</Text>
                   </View>
-                  <View className="settings-btn" onClick={() => goToSettings(avatar.id)}>
-                    <Settings size={24} color="#ffffff" />
+                  <View className="avatar-actions">
+                    <View
+                      className="action-btn delete-btn"
+                      onClick={() => {
+                        Taro.showModal({
+                          title: '确认删除',
+                          content: `确定要删除分身"${avatar.name}"吗？此操作不可恢复。`,
+                          confirmColor: '#ff4444',
+                          success: (res) => {
+                            if (res.confirm) {
+                              deleteAvatar(avatar.id)
+                            }
+                          }
+                        })
+                      }}
+                    >
+                      <Trash2 size={18} color="#ff4444" />
+                    </View>
+                    <View className="action-btn" onClick={() => goToSettings(avatar.id)}>
+                      <Settings size={24} color="#ffffff" />
+                    </View>
                   </View>
                 </View>
 
@@ -391,21 +432,21 @@ export default function AvatarManagePage() {
                 <View className="hosting-section">
                   <View className="hosting-header">
                     <View className="hosting-title-wrap">
-                      <Zap size={18} color={avatar.is_hosted ? '#00f5ff' : 'rgba(255,255,255,0.3)'} />
+                      <Zap size={18} color={avatar.trust_enabled ? '#00f5ff' : 'rgba(255,255,255,0.3)'} />
                       <Text className="hosting-title">自动托管</Text>
-                      {avatar.is_hosted && (
+                      {avatar.trust_enabled && (
                         <View className="hosting-badge">
                           <Text className="hosting-badge-text">运行中</Text>
                         </View>
                       )}
                     </View>
                     <Switch 
-                      checked={avatar.is_hosted || false}
+                      checked={avatar.trust_enabled || false}
                       onCheckedChange={(checked) => toggleHosting(avatar.id, checked)}
                     />
                   </View>
                   
-                  {avatar.is_hosted && (
+                  {avatar.trust_enabled && (
                     <View className="hosting-settings">
                       <Text className="settings-desc">
                         开启后，分身将自动帮你发帖、交友、互动
@@ -463,7 +504,7 @@ export default function AvatarManagePage() {
                           <Switch
                             checked={avatar.hosting_settings?.auto_post ?? false}
                             onCheckedChange={async (checked) => {
-                              if (!avatar.is_hosted) {
+                              if (!avatar.trust_enabled) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
                                 return
                               }
@@ -495,7 +536,7 @@ export default function AvatarManagePage() {
                           <Switch
                             checked={avatar.hosting_settings?.auto_comment ?? false}
                             onCheckedChange={async (checked) => {
-                              if (!avatar.is_hosted) {
+                              if (!avatar.trust_enabled) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
                                 return
                               }
@@ -508,7 +549,7 @@ export default function AvatarManagePage() {
                           <Switch
                             checked={avatar.hosting_settings?.auto_like ?? false}
                             onCheckedChange={async (checked) => {
-                              if (!avatar.is_hosted) {
+                              if (!avatar.trust_enabled) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
                                 return
                               }
@@ -521,7 +562,7 @@ export default function AvatarManagePage() {
                           <Switch
                             checked={avatar.hosting_settings?.auto_friend ?? false}
                             onCheckedChange={async (checked) => {
-                              if (!avatar.is_hosted) {
+                              if (!avatar.trust_enabled) {
                                 showToast({ title: '请先开启托管', icon: 'none' })
                                 return
                               }

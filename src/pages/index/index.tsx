@@ -177,6 +177,26 @@ const Index: React.FC = () => {
     setShowOrderModal(false)
   }
 
+  // 一键开启所有分身托管
+  const enableAllTrust = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/avatar/trust/all',
+        method: 'PUT',
+        data: { trust_enabled: true }
+      })
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
+        fetchStats() // 刷新统计数据
+      } else {
+        Taro.showToast({ title: res.data?.msg || '开启失败', icon: 'none' })
+      }
+    } catch (err) {
+      console.error('开启托管失败:', err)
+      Taro.showToast({ title: '开启失败', icon: 'none' })
+    }
+  }
+
   return (
     <View className="index-page">
       {/* 顶部通栏 */}
@@ -232,7 +252,16 @@ const Index: React.FC = () => {
         </View>
 
         {/* 推广Banner - 根据是否有分身显示不同内容 */}
-        <View className="banner" onClick={() => goToPage('/pages/avatar/avatar-create/index')}>
+        <View
+          className="banner"
+          onClick={() => {
+            if (mindClones > 0) {
+              enableAllTrust()
+            } else {
+              goToPage('/pages/avatar/avatar-create/index')
+            }
+          }}
+        >
           <View className="banner-bg" />
           <View className="banner-content">
             {mindClones > 0 ? (
