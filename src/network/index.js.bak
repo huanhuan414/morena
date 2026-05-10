@@ -45,19 +45,12 @@ export const request = (option) => {
   const fullUrl = createUrl(option.url)
   console.log('[Network.request]', option.method || 'GET', fullUrl)
 
-  // 添加时间戳防止GET请求被缓存
-  let requestUrl = fullUrl
-  if (!option.method || option.method === 'GET') {
-    const separator = fullUrl.includes('?') ? '&' : '?'
-    requestUrl = fullUrl + separator + '_t=' + Date.now()
-  }
-
   const timeout = option.timeout || 300000
 
   // eslint-disable-next-line no-restricted-properties
   return Taro.request({
     ...option,
-    url: requestUrl,
+    url: fullUrl,
     header: headers,
     timeout
   })
