@@ -82,6 +82,7 @@ export default function AvatarManagePage() {
   const [avatarCount, setAvatarCount] = useState(0)
   const [maxAvatars, setMaxAvatars] = useState(1)
   const [loadingSubscription, setLoadingSubscription] = useState(true)
+  const [loadingAvatars, setLoadingAvatars] = useState(true) // 分身加载状态
   const [userSubscription, setUserSubscription] = useState<any>(null) // 🔴 用户订阅信息
 
   // 安全区域适配
@@ -103,10 +104,15 @@ export default function AvatarManagePage() {
   const loadSubscriptionInfo = async () => {
     try {
       setLoadingSubscription(true)
+      // 获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      const header = userId ? { 'x-user-id': userId } : {}
+      
       // 获取订阅信息和分身数量
       const [subscriptionRes, avatarListRes] = await Promise.all([
-        Network.request({ url: '/api/subscription/user' }),
-        Network.request({ url: '/api/avatar' })
+        Network.request({ url: '/api/subscription/user', header }),
+        Network.request({ url: '/api/avatar', header })
       ])
 
       // 获取当前分身数量
@@ -145,18 +151,27 @@ export default function AvatarManagePage() {
 
   const fetchAvatars = async () => {
     try {
-      // 确保获取用户ID
+      setLoadingAvatars(true)
+      // 确保获取用户ID - 尝试多种可能的字段名
       const userInfo = Taro.getStorageSync('userInfo') || {}
-      const userId = userInfo.id || userInfo.userId || ''
+      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      console.log('[fetchAvatars] userInfo:', JSON.stringify(userInfo))
       console.log('[fetchAvatars] userId:', userId)
+      
+      // 如果没有userId，尝试从token解析
+      if (!userId) {
+        const token = Taro.getStorageSync('token')
+        console.log('[fetchAvatars] token:', token ? '存在' : '不存在')
+      }
       
       const res = await Network.request({ 
         url: '/api/avatar',
-        header: { 'x-user-id': userId }
+        header: userId ? { 'x-user-id': userId } : {}
       })
-      console.log('获取分身响应:', res.data)
+      console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data length:', res.data?.data?.length)
       if (res.data?.code === 200) {
         const avatarList = res.data.data || []
+        console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: any) => ({
           ...avatar,
@@ -170,10 +185,14 @@ export default function AvatarManagePage() {
             active_hours: ['09:00-12:00', '14:00-18:00', '20:00-22:00']
           }
         })))
+      } else {
+        console.log('[fetchAvatars] 接口返回错误:', res.data)
       }
     } catch (error) {
       console.error('获取分身失败:', error)
       showToast({ title: '获取分身失败', icon: 'none' })
+    } finally {
+      setLoadingAvatars(false)
     }
   }
 
@@ -372,8 +391,12 @@ export default function AvatarManagePage() {
           </View>
         )}
 
-        {/* 分身列表 */}
-        {avatars.length === 0 ? (
+        {/* 分身列表 - 加载中 */}
+        {loadingAvatars ? (
+          <View className="flex justify-center items-center py-20">
+            <Text className="block text-gray-400">加载中...</Text>
+          </View>
+        ) : avatars.length === 0 ? (
           <View className="empty-section">
             <View className="empty-icon">
               <Sparkles size={64} color="rgba(0, 245, 255, 0.3)" />
