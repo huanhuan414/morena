@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Controller, Post, Get, Body, Headers, Query, Inject } from '@nestjs/common'
+import { Controller, Post, Get, Body, Headers, Query, Inject, Param } from '@nestjs/common'
 import { RecommendationService } from './recommendation.service'
 
 @Controller('recommendation')
@@ -40,6 +40,26 @@ export class RecommendationController {
       undefined,
       type,
       20
+    )
+
+    return {
+      code: 200,
+      msg: 'success',
+      data: recommendations
+    }
+  }
+
+  /**
+   * 根据订单获取推荐分身 - GET
+   */
+  @Get('avatar/order/:orderId')
+  async getRecommendationsByOrder(
+    @Headers('x-user-id') userId: string,
+    @Param('orderId') orderId: string
+  ) {
+    const recommendations = await this.recommendationService.getRecommendationsByOrderId(
+      userId,
+      orderId
     )
 
     return {
