@@ -150,27 +150,49 @@ export default function OrderMatchingPage() {
     // H5 模式：从完整 URL 中解析参数
     const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
     if (isH5) {
-      const fullUrl = window.location.href
-      console.log('[OrderMatching] H5完整URL:', fullUrl)
-      
-      // 尝试从 hash 中获取参数
+      // 尝试多种方式获取 URL
       const hash = window.location.hash
+      const search = window.location.search
+      const fullUrl = window.location.href
+      
+      console.log('[OrderMatching] H5 URL信息:', { hash, search, fullUrl })
+      
+      // 方法1: 从 hash 中获取 query string
       if (hash) {
-        const queryString = hash.includes('?') ? hash.split('?')[1] : ''
-        console.log('[OrderMatching] Hash查询字符串:', queryString)
-        if (queryString) {
-          const urlParams = new URLSearchParams(queryString)
+        const queryPart = hash.split('?')[1]
+        if (queryPart) {
+          const urlParams = new URLSearchParams(queryPart)
           urlParams.forEach((value, key) => {
-            options[key] = value
+            if (!options[key]) options[key] = value
           })
         }
       }
       
-      // 备用：从完整 URL 中解析
-      if (!options.orderParams && fullUrl.includes('orderParams=')) {
+      // 方法2: 从 search 中获取（某些路由模式）
+      if (search) {
+        const urlParams = new URLSearchParams(search)
+        urlParams.forEach((value, key) => {
+          if (!options[key]) options[key] = value
+        })
+      }
+      
+      // 方法3: 正则匹配（最可靠）
+      if (!options.orderParams) {
         const match = fullUrl.match(/orderParams=([^&]*)/)
         if (match) {
-          options.orderParams = match[1]
+          options.orderParams = decodeURIComponent(match[1])
+        }
+      }
+      
+      // 方法4: 直接从 URL 解析 JSON 参数
+      if (!options.orderParams && fullUrl.includes('orderParams')) {
+        try {
+          const paramsMatch = fullUrl.match(/orderParams=({[^}]+})/)
+          if (paramsMatch) {
+            options.orderParams = decodeURIComponent(paramsMatch[1])
+          }
+        } catch (e) {
+          console.error('[OrderMatching] 正则解析失败:', e)
         }
       }
     } else {
@@ -180,27 +202,39 @@ export default function OrderMatchingPage() {
       options = currentPage?.options || {}
     }
     
-    console.log('[OrderMatching] 解析到的参数:', options)
+    console.log('[OrderMatching] 解析到的参数 options:', options)
     
+    // 尝试解析 orderParams
     if (options.orderParams) {
       try {
-        const params = JSON.parse(decodeURIComponent(options.orderParams))
-        console.log('[OrderMatching] 接收到订单参数:', params)
+        let paramsStr = options.orderParams
+        // 如果包含 %7B 等编码字符，先解码
+        if (paramsStr.includes('%')) {
+          paramsStr = decodeURIComponent(paramsStr)
+        }
+        console.log('[OrderMatching] 解析前参数字符串:', paramsStr.substring(0, 200))
+        
+        const params = JSON.parse(paramsStr)
+        console.log('[OrderMatching] 解析成功，订单参数:', params)
+        
         setOrderParams(params)
+        
         // 有订单参数时，直接开始匹配流程
         startMatchingWithParams(params)
         return
       } catch (err) {
         console.error('[OrderMatching] 解析订单参数失败:', err)
+        console.error('[OrderMatching] 原始参数字符串:', options.orderParams)
       }
     }
 
+    // 如果没有 orderParams，检查是否有 orderId
     if (orderId) {
-      console.log('[OrderMatching] 开始智能匹配')
+      console.log('[OrderMatching] 开始智能匹配（通过orderId）')
       startMatching()
     } else {
-      console.error('[OrderMatching] orderId 为空，无法开始匹配')
-      showToast({ title: '订单ID无效', icon: 'none' })
+      console.error('[OrderMatching] orderId 和 orderParams 都为空，无法开始匹配')
+      showToast({ title: '订单信息无效，请重新创建订单', icon: 'none' })
       setLoading(false)
     }
   })

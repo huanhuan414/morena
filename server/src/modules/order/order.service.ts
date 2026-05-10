@@ -12,21 +12,29 @@ export class OrderService {
     const db = getMySQLClient()
     
     const id = crypto.randomUUID()
-    await db.insert('orders', {
+    console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
+    
+    const insertData: Record<string, any> = {
       id,
       user_id: userId,
       title: orderData.title,
       description: orderData.description || '',
-      content_type: orderData.content_type || 'text',
+      content_type: orderData.content_type || orderData.contentType || 'text',
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
-      budget: orderData.budget || 0,
-      is_paid: orderData.is_paid !== false,
+      budget: orderData.total_price || orderData.budget || 0,
       status: 'pending_payment',
-      created_at: new Date(),
-      updated_at: new Date()
-    })
+      expected_quantity: orderData.avatar_count || orderData.avatarCount || 1,
+    }
     
+    const insertResult = await db.insert('orders', insertData)
+    
+    if (insertResult.error) {
+      console.error('[OrderService] 订单插入失败:', insertResult.error)
+      throw new Error('订单创建失败: ' + insertResult.error.message)
+    }
+    
+    console.log('[OrderService] 订单创建成功，ID:', id, 'affectedRows:', insertResult.data?.affectedRows)
     return { id, status: 'pending_payment' }
   }
 

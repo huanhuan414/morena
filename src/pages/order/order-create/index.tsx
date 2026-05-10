@@ -278,10 +278,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           totalPrice: totalPrice.total,
         }
 
-        // 跳转到AI智能匹配分身页面，传递订单参数
+        console.log('[OrderCreate] 订单创建成功，订单ID:', orderId, '准备跳转')
+        
+        // 构建跳转 URL
         const params = encodeURIComponent(JSON.stringify(orderParams))
+        const targetUrl = `/pages/order/order-matching/index?orderParams=${params}`
+        console.log('[OrderCreate] 跳转URL:', targetUrl)
+        
+        // 跳转到AI智能匹配分身页面，传递订单参数
         Taro.navigateTo({
-          url: `/pages/order/order-matching/index?orderParams=${params}`
+          url: targetUrl
         })
       } else {
         Taro.showToast({ 
