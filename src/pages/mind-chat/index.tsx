@@ -57,41 +57,45 @@ const MindChat: React.FC = () => {
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
+      // 获取用户ID
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+      
       const res = await Network.request({
         url: '/api/avatar',
-        method: 'GET'
+        method: 'GET',
+        header: { 'x-user-id': userId }
       })
       console.log('加载分身列表:', res.data)
       
+      // 正确处理API返回格式：{ code: 200, data: [...] }
       if (res.data?.code === 200 && res.data?.data) {
-        const avatars = res.data.data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
+        const avatarsData = Array.isArray(res.data.data) ? res.data.data : []
+        const avatars = avatarsData.map((item: any) => ({
+          id: item.id || '',
+          name: item.name || '未命名分身',
           role: item.description || '通用助手',
           status: item.isOnline ? '在线' as const : '离线' as const,
           task: '待命中',
           income: `¥${item.totalEarnings || '0.00'}`,
-          image: item.avatar_url || item.photo || 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
-          hosting: item.hostingEnabled === 1,
+          image: item.avatarUrl || item.avatar_url || item.photo || '',
+          hosting: item.isHosted === true || item.isHosted === 1 || item.trustEnabled === 1,
           type: 'my',
           posts: item.totalPosts || 0,
-          voice_id: item.voice_id,
+          voice_id: item.voiceId || item.voice_id,
           personality: item.personality,
           skills: item.skills,
-          created_at: item.created_at
+          created_at: item.createdAt || item.created_at
         }))
+        console.log('处理后的分身列表:', avatars)
         setMyClones(avatars)
-        
-        // 初始化托管开关状态
-        const toggles: Record<number, boolean> = {}
-        avatars.forEach((avatar: Avatar) => {
-          toggles[avatar.id] = avatar.hosting
-        })
-        setHostingToggles(toggles)
+      } else {
+        console.log('API返回数据为空')
+        setMyClones([])
       }
     } catch (error) {
       console.error('加载分身失败:', error)
-      // 使用示例数据
       setMyClones([])
     } finally {
       setLoading(false)
@@ -108,24 +112,30 @@ const MindChat: React.FC = () => {
       })
       console.log('加载分身广场:', res.data)
       
-      if (res.data?.code === 200 && res.data?.data) {
-        const avatars = res.data.data.slice(0, 6).map((item: any) => ({
-          id: item.id,
-          name: item.name,
+      // 正确处理API返回格式：{ code: 200, data: { success: true, data: { list: [...] } } }
+      if (res.data?.code === 200 && res.data?.data?.data?.list) {
+        const listData = res.data.data.data.list
+        const avatars = listData.slice(0, 6).map((item: any) => ({
+          id: item.id || '',
+          name: item.name || '未命名分身',
           role: item.personality || '通用助手',
           gender: '未知',
           age: '未知',
           tags: item.personality ? [item.personality] : ['AI助手'],
           posts: item.posts || 0,
           followers: item.followers || 0,
-          image: item.avatar_url || 'https://modao.cc/agent-py/media/generated_images/2026-05-09/de8603ebec534b02a82711c7f9a10744.jpg',
+          image: item.avatarUrl || item.avatar_url || item.photo || '',
           type: 'square' as const,
           isFollowing: false,
           status: '在线' as const,
           task: '待命中',
           hosting: false
         }))
+        console.log('处理后的广场分身列表:', avatars)
         setSquareClones(avatars)
+      } else {
+        console.log('广场数据为空')
+        setSquareClones([])
       }
     } catch (error) {
       console.error('加载分身广场失败:', error)
