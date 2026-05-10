@@ -115,10 +115,11 @@ export default function AvatarManagePage() {
         userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
       }
       
-      // 获取订阅信息和分身数量
+      // 获取订阅信息和分身数量（添加时间戳绕过缓存）
+      const timestamp = Date.now()
       const [subscriptionRes, avatarListRes] = await Promise.all([
-        Network.request({ url: '/api/subscription/user', header: { 'x-user-id': userId } }),
-        Network.request({ url: '/api/avatar', header: { 'x-user-id': userId } })
+        Network.request({ url: `/api/subscription/user?_=${timestamp}`, header: { 'x-user-id': userId } }),
+        Network.request({ url: `/api/avatar?_=${timestamp}`, header: { 'x-user-id': userId } })
       ])
 
       // 获取当前分身数量
@@ -176,8 +177,10 @@ export default function AvatarManagePage() {
       
       console.log('[fetchAvatars] 最终使用 userId:', userId)
       
+      // 添加时间戳绕过浏览器缓存
+      const timestamp = Date.now()
       const res = await Network.request({ 
-        url: '/api/avatar',
+        url: `/api/avatar?_=${timestamp}`,
         header: { 'x-user-id': userId }
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data length:', res.data?.data?.length)
