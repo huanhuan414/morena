@@ -126,7 +126,7 @@ export default function LoginPage() {
           })
         }
         setTimeout(() => {
-          switchTab({ url: '/pages/social/index' })
+          switchTab({ url: '/pages/index/index' })
         }, referralReward ? 1500 : 500)
       } else {
         showToast({ title: res.data?.message || '登录失败', icon: 'none' })
@@ -143,7 +143,7 @@ export default function LoginPage() {
     // 如果已有登录用户，不覆盖
     const currentUser = useUserStore.getState().userInfo
     if (currentUser?.id && currentUser.id !== 'guest-user-id') {
-      switchTab({ url: '/pages/social/index' })
+      switchTab({ url: '/pages/index/index' })
       return
     }
     setUserInfo({
@@ -154,7 +154,7 @@ export default function LoginPage() {
       exp: 0,
       credits: 0
     })
-    switchTab({ url: '/pages/social/index' })
+    switchTab({ url: '/pages/index/index' })
   }
 
   return (

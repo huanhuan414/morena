@@ -67,7 +67,7 @@ export class ReferralService {
     const id = crypto.randomUUID()
     await db.insert('referrals', {
       id,
-      inviter_id: inviter.id,
+      referrer_id: inviter.id,
       invitee_id: inviteeId,
       referral_code: code,
       status: 'completed',
@@ -98,7 +98,7 @@ export class ReferralService {
   async getReferralStats(userId: string) {
     const db = getMySQLClient()
     
-    const referrals = await db.query('referrals', { inviter_id: userId }) as any
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
     
     return {
@@ -115,7 +115,7 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const offset = (page - 1) * pageSize
-    const referrals = await db.query('referrals', { inviter_id: userId }) as any
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     
     const total = referrals?.length || 0
     const paginatedReferrals = referrals?.slice(offset, offset + pageSize) || []
