@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getSharedCache } from '../../common/shared-cache'
 
 // 共享内存缓存（与 avatar.service.ts 共享）
 export const sharedMemoryAvatars = new Map<string, any[]>()
@@ -18,6 +19,28 @@ export class UserStatsService {
     let generatedContents = 0
     let totalEarnings = 0
     
+    // 跨服务数据同步：从全局共享缓存同步 AvatarService 的数据
+    const syncFromSharedCache = () => {
+      try {
+        const sharedCache = getSharedCache()
+        const cacheKey = `avatars_${userId}`
+        const cachedAvatars = sharedCache.get(cacheKey) || []
+        
+        if (cachedAvatars.length > 0) {
+          // 合并数据（去重）
+          const existingIds = new Set(avatarList.map(a => a.id))
+          const newAvatars = cachedAvatars.filter((a: any) => !existingIds.has(a.id))
+          if (newAvatars.length > 0) {
+            avatarList = [...avatarList, ...newAvatars]
+            avatarCount = avatarList.length
+            console.log('[UserStats] 从共享缓存同步 AvatarService 数据:', newAvatars.length)
+          }
+        }
+      } catch (e) {
+        console.warn('[UserStats] 同步共享缓存失败:', e.message)
+      }
+    }
+
     // 尝试使用数据库
     try {
       const db = getMySQLClient()
@@ -26,6 +49,10 @@ export class UserStatsService {
       const dbAvatars = await db.query('avatars', { user_id: userId }) as any[]
       console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
       avatarList = dbAvatars || []
+      
+      // 同步 AvatarService 的内存数据
+      syncFromSharedCache()
+      
       const avatarIds = avatarList.map((a: any) => a.id)
       avatarCount = avatarList.length
       

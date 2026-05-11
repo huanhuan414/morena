@@ -4,6 +4,7 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { Config } from 'coze-coding-dev-sdk'
 import { LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
+import { getSharedCache } from '../../common/shared-cache'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -72,6 +73,14 @@ export class AvatarService {
         const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
         userAvatars.unshift(newAvatar)
         sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+        
+        // 同步到全局共享缓存（供 UserStatsService 使用）
+        const sharedCache = getSharedCache()
+        const cacheKey = `avatars_${effectiveUserId}`
+        const cachedAvatars = sharedCache.get(cacheKey) || []
+        cachedAvatars.unshift(newAvatar)
+        sharedCache.set(cacheKey, cachedAvatars)
+        
         return { success: true, id, data: newAvatar }
       }
 
@@ -80,6 +89,13 @@ export class AvatarService {
         const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
         userAvatars.unshift(newAvatar)
         sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+        
+        // 同步到全局共享缓存（供 UserStatsService 使用）
+        const sharedCache = getSharedCache()
+        const cacheKey = `avatars_${effectiveUserId}`
+        const cachedAvatars = sharedCache.get(cacheKey) || []
+        cachedAvatars.unshift(newAvatar)
+        sharedCache.set(cacheKey, cachedAvatars)
         
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }
@@ -91,6 +107,13 @@ export class AvatarService {
       const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
       userAvatars.unshift(newAvatar)
       sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+      
+      // 同步到全局共享缓存（供 UserStatsService 使用）
+      const sharedCache = getSharedCache()
+      const cacheKey = `avatars_${effectiveUserId}`
+      const cachedAvatars = sharedCache.get(cacheKey) || []
+      cachedAvatars.unshift(newAvatar)
+      sharedCache.set(cacheKey, cachedAvatars)
       
       return { success: true, id, data: newAvatar }
     }
