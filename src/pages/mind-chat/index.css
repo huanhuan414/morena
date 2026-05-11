@@ -668,3 +668,16 @@
   line-height: 1.7;
   white-space: pre-line;
 }
+
+.login-redirect-btn {
+  margin-top: 32rpx;
+  padding: 16rpx 64rpx;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 40rpx;
+}
+
+.login-redirect-text {
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 500;
+}

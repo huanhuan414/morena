@@ -51,37 +51,36 @@ const MindChat: React.FC = () => {
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
-      const userInfo = Taro.getStorageSync('userInfo') || {}
-      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      if (!userId) {
+      // 检查用户登录状态
+      const storedUserInfo: any = Taro.getStorageSync('userInfo') || {}
+      const userId = storedUserInfo.id || ''
+      if (!userId || userId === 'guest-user-id') {
         setIsLoggedIn(false)
         setMyClones([])
+        setLoading(false)
         return
       }
       setIsLoggedIn(true)
-      
+
+      // Network 模块会自动从 storage 获取 userId 并添加 x-user-id header
       const res = await Network.request({
         url: '/api/avatar',
         method: 'GET',
-        header: { 'x-user-id': userId }
       })
       console.log('加载分身列表:', res.data)
       
-      // 兼容多种返回：{ code, data: [...] } / { code, data: { list: [...] } } / { code, data: { data: { list: [...] } } }
       if (res.data?.code === 200 && res.data?.data) {
         const rawData = res.data.data
-        const avatarsData = Array.isArray(rawData)
-          ? rawData
-          : rawData?.list || rawData?.data?.list || []
-        const avatars = avatarsData.map((item: any) => ({
+        const data = Array.isArray(rawData) ? rawData : []
+        const avatars = data.map((item: any) => ({
           id: item.id || '',
           name: item.name || '未命名分身',
-          role: item.description || '通用助手',
-          status: (item.trust_enabled || item.trustEnabled || item.isHosted) ? '在线' as const : '离线' as const,
+          role: item.description || item.personality || '通用助手',
+          status: (item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled) ? '在线' as const : '离线' as const,
           task: '待命中',
-          income: `¥${item.totalEarnings || '0.00'}`,
+          income: `¥${item.totalEarnings || item.todayEarnings || '0.00'}`,
           image: item.avatarUrl || item.avatar_url || item.photo || '',
-          hosting: Boolean(item.isHosted || item.trustEnabled || item.trust_enabled),
+          hosting: Boolean(item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled),
           type: 'my',
           posts: item.totalPosts || 0,
           voice_id: item.voiceId || item.voice_id,
@@ -171,17 +170,10 @@ const MindChat: React.FC = () => {
     )
 
     try {
-      const userInfo = Taro.getStorageSync('userInfo') || {}
-      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      if (!userId) {
-        throw new Error('用户未登录')
-      }
-      
       const res = await Network.request({
         url: `/api/avatar/${id}/trust`,
         method: 'PUT',
         data: { trust_enabled: checked },
-        header: { 'x-user-id': userId }
       })
       if (res.data?.code !== 200) {
         throw new Error(res.data?.msg || '更新失败')
@@ -285,6 +277,14 @@ const MindChat: React.FC = () => {
                     : '登录后可管理你的分身与托管能力')
                   : '稍后再来看看吧'}
             </Text>
+            {!isLoggedIn && activeTab === 'my' && !searchValue && (
+              <View
+                className="login-redirect-btn"
+                onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
+              >
+                <Text className="login-redirect-text">去登录</Text>
+              </View>
+            )}
           </View>
         ) : activeTab === 'my' ? (
           <View className="my-clones-list">

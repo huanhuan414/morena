@@ -40,8 +40,8 @@ export const request = async (option) => {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
+    ...(userId ? { 'x-user-id': userId } : {}),
     ...(option.header || {}),
-    ...(userId ? { 'x-user-id': userId } : {})
   }
 
   const fullUrl = createUrl(option.url)
@@ -82,13 +82,13 @@ export const uploadFile = async (option) => {
   }
 
   const headers = {
+    ...(userId ? { 'x-user-id': userId } : {}),
     ...(option.header || {}),
-    ...(userId ? { 'x-user-id': userId } : {})
   }
 
   console.log('[Network.uploadFile]', option.url, option.filePath)
 
-  const timeout = option.timeout || 300000
+  const timeout = option.timeout || 3000000
 
   // eslint-disable-next-line no-restricted-properties
   return Taro.uploadFile({
@@ -112,8 +112,8 @@ export const downloadFile = async (option) => {
   }
 
   const headers = {
+    ...(userId ? { 'x-user-id': userId } : {}),
     ...(option.header || {}),
-    ...(userId ? { 'x-user-id': userId } : {})
   }
 
   const timeout = option.timeout || 300000
