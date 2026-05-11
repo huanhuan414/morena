@@ -357,11 +357,11 @@ export class OrderDispatchService {
   async acceptOrder(avatarId: string, orderId: string) {
     const db = getMySQLClient()
     
-    let requests: any[]
-    
-    // 如果没有指定 avatarId，自动选择第一个可用的分发请求
+    let request: any = null
+
+    // 尝试从 order_dispatch_requests 查找 pending 的分派记录
     if (!avatarId || avatarId === 'undefined') {
-      requests = await db.query(`
+      const requests = await db.query(`
         SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r 
         LEFT JOIN orders o ON r.order_id = o.id 
@@ -369,23 +369,76 @@ export class OrderDispatchService {
         LIMIT 1`, 
         [orderId]
       ) as any[]
+      request = requests?.[0]
     } else {
-      requests = await db.query(`
+      const requests = await db.query(`
         SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r 
         LEFT JOIN orders o ON r.order_id = o.id 
         WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
         [avatarId, orderId]
       ) as any[]
+      request = requests?.[0]
     }
-    
-    const request = requests?.[0]
+
+    // 如果没有分派记录，尝试直接从 orders 表查找可接单的订单，自动创建分派记录
     if (!request) {
-      throw new Error('订单不存在或已处理')
+      console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
+      const orders = await db.query(`
+        SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
+        FROM orders WHERE id = ?`, 
+        [orderId]
+      ) as any[]
+      const order = orders?.[0]
+      
+      if (!order) {
+        throw new Error('订单不存在')
+      }
+      
+      // 检查订单状态是否允许接单
+      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned']
+      if (!acceptablStatuses.includes(order.status)) {
+        throw new Error(`订单已${order.status === 'in_progress' ? '进行中' : order.status === 'completed' ? '完成' : '处理'}, 无法接单`)
+      }
+
+      // 自动创建分派记录
+      const dispatchId = 'odr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8)
+      const insertResult = await db.insert('order_dispatch_requests', {
+        id: dispatchId,
+        order_id: orderId,
+        avatar_id: avatarId || null,
+        user_id: order.owner_user_id || null,
+        platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
+        status: 'pending',
+      })
+      
+      if (insertResult.error) {
+        console.error('[acceptOrder] 创建分派记录失败:', insertResult.error)
+        throw new Error('创建分派记录失败: ' + (insertResult.error.message || JSON.stringify(insertResult.error)))
+      }
+      console.log(`[acceptOrder] 自动创建分派记录成功: ${dispatchId}`)
+
+      // 用订单数据构造 request 对象（避免重新查询的延迟问题）
+      request = {
+        id: dispatchId,
+        order_id: orderId,
+        avatar_id: avatarId || null,
+        user_id: order.owner_user_id || null,
+        platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
+        status: 'pending',
+        order_title: order.title,
+        owner_user_id: order.owner_user_id,
+        description: order.description,
+        platforms: order.platforms,
+        budget: order.budget,
+        expected_quantity: order.expected_quantity,
+        quantity_per_avatar: order.quantity_per_avatar,
+        target_audience: order.target_audience,
+      }
     }
     
     // 使用实际的 avatarId（可能是自动选择的）
-    const actualAvatarId = request.avatar_id || request.avatarId
+    const actualAvatarId = request.avatar_id || request.avatarId || avatarId
     
     // 更新状态为 accepted
     await db.updateWhere('order_dispatch_requests', { id: request.id }, {

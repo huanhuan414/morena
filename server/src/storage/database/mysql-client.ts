@@ -76,6 +76,9 @@ function convertKeysToSnake(obj: any): any {
   if (Array.isArray(obj)) {
     return obj.map(convertKeysToSnake);
   }
+  if (obj instanceof Date) {
+    return obj;
+  }
   if (typeof obj === 'object') {
     const result: any = {};
     for (const key in obj) {
