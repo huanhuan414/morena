@@ -357,19 +357,35 @@ export class OrderDispatchService {
   async acceptOrder(avatarId: string, orderId: string) {
     const db = getMySQLClient()
     
-    // 查询分发请求
-    const requests = await db.query(`
-      SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
-      FROM order_dispatch_requests r 
-      LEFT JOIN orders o ON r.order_id = o.id 
-      WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
-      [avatarId, orderId]
-    ) as any[]
+    let requests: any[]
+    
+    // 如果没有指定 avatarId，自动选择第一个可用的分发请求
+    if (!avatarId || avatarId === 'undefined') {
+      requests = await db.query(`
+        SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
+        FROM order_dispatch_requests r 
+        LEFT JOIN orders o ON r.order_id = o.id 
+        WHERE r.order_id = ? AND r.status = 'pending' 
+        LIMIT 1`, 
+        [orderId]
+      ) as any[]
+    } else {
+      requests = await db.query(`
+        SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
+        FROM order_dispatch_requests r 
+        LEFT JOIN orders o ON r.order_id = o.id 
+        WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
+        [avatarId, orderId]
+      ) as any[]
+    }
     
     const request = requests?.[0]
     if (!request) {
       throw new Error('订单不存在或已处理')
     }
+    
+    // 使用实际的 avatarId（可能是自动选择的）
+    const actualAvatarId = request.avatar_id || request.avatarId
     
     // 更新状态为 accepted
     await db.updateWhere('order_dispatch_requests', { id: request.id }, {
@@ -391,7 +407,7 @@ export class OrderDispatchService {
         title: '分身已接受订单',
         content: `分身"${request.avatar_name || '未知'}"已接受订单"${request.order_title || '内容创作'}"`,
         metadata: {
-          avatarId,
+          avatarId: actualAvatarId,
           orderId,
           dispatchRequestId: request.id
         }
@@ -401,7 +417,7 @@ export class OrderDispatchService {
     }
     
     // 自动启动内容生成流程（异步执行，不阻塞返回）
-    this.startContentGeneration(orderId, avatarId, request).catch(err => {
+    this.startContentGeneration(orderId, actualAvatarId, request).catch(err => {
       console.error('[acceptOrder] 启动内容生成失败:', err)
     })
     
