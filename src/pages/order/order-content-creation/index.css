@@ -343,6 +343,24 @@
   font-style: normal;
 }
 
+.markdown-body .md-image-wrapper {
+  margin: 24rpx 0;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.markdown-body .md-image {
+  width: 100%;
+  border-radius: 16rpx;
+}
+
+.markdown-body .md-image-caption {
+  text-align: center;
+  font-size: 22rpx;
+  color: #94A3B8;
+  margin-top: 8rpx;
+}
+
 /* 图片网格 */
 .images-grid {
   display: flex;
