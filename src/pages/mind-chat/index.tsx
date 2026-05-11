@@ -74,22 +74,33 @@ const MindChat: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         const rawData = res.data.data
         const data = Array.isArray(rawData) ? rawData : []
-        const avatars = data.map((item: any) => ({
-          id: item.id || '',
-          name: item.name || '未命名分身',
-          role: item.description || item.personality || '通用助手',
-          status: (item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled) ? '在线' as const : '离线' as const,
-          task: '待命中',
-          income: `¥${item.totalEarnings || item.todayEarnings || '0.00'}`,
-          image: item.avatarUrl || item.avatar_url || item.photo || '',
-          hosting: Boolean(item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled),
-          type: 'my',
-          posts: item.totalPosts || 0,
-          voice_id: item.voiceId || item.voice_id,
-          personality: item.personality,
-          skills: item.skills,
-          created_at: item.createdAt || item.created_at
-        }))
+        const avatars = data.map((item: any) => {
+          // 解析 personality JSON 字符串，提取标签
+          let roleLabel = '通用助手'
+          try {
+            const p = typeof item.personality === 'string' ? JSON.parse(item.personality) : item.personality
+            if (p?.tags?.length) {
+              roleLabel = p.tags.slice(0, 3).join('·')
+            }
+          } catch {}
+          
+          return {
+            id: item.id || '',
+            name: item.name || '未命名分身',
+            role: item.description || roleLabel,
+            status: (item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled) ? '在线' as const : '离线' as const,
+            task: '待命中',
+            income: `¥${item.totalEarnings || item.todayEarnings || '0.00'}`,
+            image: item.avatarUrl || item.avatar_url || item.photo || '',
+            hosting: Boolean(item.isHosted || item.trustEnabled || item.trust_enabled || item.hostingEnabled),
+            type: 'my',
+            posts: item.totalPosts || 0,
+            voice_id: item.voiceId || item.voice_id,
+            personality: item.personality,
+            skills: item.skills,
+            created_at: item.createdAt || item.created_at
+          }
+        })
         console.log('处理后的分身列表:', avatars)
         setMyClones(avatars)
       } else {
@@ -117,22 +128,35 @@ const MindChat: React.FC = () => {
       // 兼容多种返回结构
       if (res.data?.code === 200) {
         const listData = res.data?.data?.data?.list || res.data?.data?.list || []
-        const avatars = listData.slice(0, 6).map((item: any) => ({
-          id: item.id || '',
-          name: item.name || '未命名分身',
-          role: item.personality || '通用助手',
-          gender: '未知',
-          age: '未知',
-          tags: item.personality ? [item.personality] : ['AI助手'],
-          posts: item.posts || 0,
-          followers: item.followers || 0,
-          image: item.avatarUrl || item.avatar_url || item.photo || '',
-          type: 'square' as const,
-          isFollowing: false,
-          status: '在线' as const,
-          task: '待命中',
-          hosting: false
-        }))
+        const avatars = listData.slice(0, 6).map((item: any) => {
+          // 解析 personality JSON 字符串
+          let tags = ['AI助手']
+          let roleLabel = '通用助手'
+          try {
+            const p = typeof item.personality === 'string' ? JSON.parse(item.personality) : item.personality
+            if (p?.tags?.length) {
+              tags = p.tags
+              roleLabel = p.tags.slice(0, 3).join('·')
+            }
+          } catch {}
+          
+          return {
+            id: item.id || '',
+            name: item.name || '未命名分身',
+            role: roleLabel,
+            gender: '未知',
+            age: '未知',
+            tags,
+            posts: item.posts || 0,
+            followers: item.followers || 0,
+            image: item.avatarUrl || item.avatar_url || item.photo || '',
+            type: 'square' as const,
+            isFollowing: false,
+            status: '在线' as const,
+            task: '待命中',
+            hosting: false
+          }
+        })
         console.log('处理后的广场分身列表:', avatars)
         setSquareClones(avatars)
       } else {
@@ -160,9 +184,18 @@ const MindChat: React.FC = () => {
     activeTabRef.current = activeTab
   }, [activeTab])
 
-  useDidShow(() => {
+  // 首次挂载就加载数据（H5 端 useDidShow 可能不触发）
+  useEffect(() => {
     hasPageShownRef.current = true
     void loadCurrentTabData()
+  }, [])
+
+  useDidShow(() => {
+    if (hasPageShownRef.current) {
+      // 非首次显示时重新加载（从其他页面返回）
+      void loadCurrentTabData()
+    }
+    hasPageShownRef.current = true
   })
 
   useEffect(() => {
