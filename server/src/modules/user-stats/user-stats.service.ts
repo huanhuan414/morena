@@ -24,6 +24,7 @@ export class UserStatsService {
       
       // 1. 获取用户所有分身
       const dbAvatars = await db.query('avatars', { user_id: userId }) as any[]
+      console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
       avatarList = dbAvatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       avatarCount = avatarList.length
