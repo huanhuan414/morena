@@ -12,7 +12,7 @@ const Index: React.FC = () => {
   const [translateX, setTranslateX] = useState(0)
   const [mindClones, setMindClones] = useState(0) // 分身数量
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
-  const { avatarId: currentAvatarId } = useUserStore(state => state)
+  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
   const [stats, setStats] = useState([
     { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
     { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
@@ -260,9 +260,27 @@ const Index: React.FC = () => {
   const handleOrderAccept = async () => {
     if (orderModalData?.id) {
       try {
+        // 获取当前分身ID，如果没有则查询用户的第一个分身
+        let avatarIdToUse = currentAvatarId
+        if (!avatarIdToUse || avatarIdToUse === 'undefined') {
+          const avatarRes = await Network.request({ url: '/api/avatar' })
+          if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
+            avatarIdToUse = avatarRes.data.data[0].id || ''
+            if (!avatarIdToUse) {
+              Taro.showToast({ title: '分身数据异常', icon: 'none' })
+              return
+            }
+            setAvatarId(avatarIdToUse)
+            console.log('[接单] 自动选择分身:', avatarIdToUse)
+          } else {
+            Taro.showToast({ title: '请先创建分身', icon: 'none' })
+            return
+          }
+        }
+
         // 先调用接受订单接口
         const res = await Network.request({
-          url: `/api/order-dispatch/avatar/${currentAvatarId}/accept/${orderModalData.id}`,
+          url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderModalData.id}`,
           method: 'POST'
         })
         if (res.data?.code === 200) {
