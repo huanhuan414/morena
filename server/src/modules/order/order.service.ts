@@ -2,11 +2,15 @@
 import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
+import { NotificationService } from '../notification/notification.service'
 import * as crypto from 'crypto'
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly earningService: EarningService) {}
+  constructor(
+    private readonly earningService: EarningService,
+    private readonly notificationService: NotificationService
+  ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
     if (value === null || value === undefined) return fallback
@@ -41,13 +45,32 @@ export class OrderService {
     ].includes(this.normalizeDispatchStatus(status))
   }
 
+  // 订单状态流转映射
+  private statusTransitions: Record<string, string[]> = {
+    'pending_payment': ['open', 'cancelled'],
+    'open': ['pending_dispatch', 'cancelled'],
+    'pending_dispatch': ['pending_acceptance', 'cancelled'],
+    'pending_acceptance': ['in_progress', 'rejected', 'cancelled'],
+    'in_progress': ['submitted', 'cancelled'],
+    'submitted': ['awaiting_acceptance', 'revision_requested'],
+    'awaiting_acceptance': ['completed', 'revision_requested'],
+    'revision_requested': ['in_progress'],
+    'completed': [],
+    'cancelled': [],
+    'rejected': []
+  }
+
+  private isValidTransition(fromStatus: string, toStatus: string): boolean {
+    const allowedTransitions = this.statusTransitions[fromStatus] || []
+    return allowedTransitions.includes(toStatus)
+  }
+
   async createOrder(userId: string, orderData: Record<string, any>) {
     const db = getMySQLClient()
     
     const id = crypto.randomUUID()
     console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
-    // 数据库表使用 expected_quantity 字段
     const avatarCount = orderData.avatar_count || orderData.avatarCount || orderData.requiredAvatars || 1
     
     const insertData: Record<string, any> = {
@@ -60,16 +83,17 @@ export class OrderService {
       requirements: JSON.stringify(orderData.requirements || {}),
       budget: orderData.total_price || orderData.budget || 0,
       status: 'pending_payment',
-      expected_quantity: avatarCount, // 使用 expected_quantity 字段
+      expected_quantity: avatarCount,
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
       is_paid: 0,
+      target_audience: orderData.targetAudience || orderData.target_audience || '',
+      priority: orderData.priority || 'normal'
     }
 
     const fields = Object.keys(insertData).join(', ')
     const values = Object.values(insertData)
     const placeholders = values.map(() => '?').join(', ')
 
-    // INSERT 成功即返回
     await db.query(
       `INSERT INTO orders (${fields}) VALUES (${placeholders})`,
       values
@@ -84,7 +108,6 @@ export class OrderService {
   async getOrderById(orderId: string) {
     const db = getMySQLClient()
     
-    // 查询订单基本信息，显式选择字段避免驼峰转换问题
     const orderRows = await db.query(
       `SELECT id, user_id, avatar_id, title, description, content_type, 
        platforms, requirements, budget, status, result, created_at, updated_at,
@@ -99,10 +122,7 @@ export class OrderService {
       return null
     }
     const order = orderRows[0]
-    console.log('[OrderService] getOrderDetail order keys:', Object.keys(order))
-    console.log('[OrderService] avatar_count value:', order['avatar_count'], 'avatarCount:', order['avatarCount'])
     
-    // 查询分发请求列表
     const avatarRows = await db.query(
       `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.created_at,
               a.name as nickname, a.avatar_url
@@ -129,7 +149,6 @@ export class OrderService {
       }
     }
     
-    // 转换分身数据格式
     const avatarStats = (avatarRows || []).map((row: any) => {
       const avatarId = row.avatarId || row.avatar_id
       const processing = latestProcessingMap.get(avatarId)
@@ -164,12 +183,9 @@ export class OrderService {
       avatarStats
     }
     
-    // 转换日期格式
     const createdAt = order.created_at instanceof Date 
       ? order.created_at.toISOString() 
       : String(order.created_at)
-    
-    console.log('[OrderService] getOrderDetail avatar_count:', order.avatar_count, 'expected_quantity:', order.expected_quantity)
     
     return {
       ...order,
@@ -210,7 +226,6 @@ export class OrderService {
       params
     )
     
-    // 获取每个订单的分发请求数量
     const orderIds = (rows || []).map((row: any) => row.id)
     let dispatchCounts: Record<string, number> = {}
     
@@ -226,7 +241,6 @@ export class OrderService {
     }
     
     return (rows || []).map((row: any) => {
-      // 处理 platforms 字段
       let platforms = row.platforms
       if (typeof platforms === 'string') {
         try {
@@ -236,7 +250,6 @@ export class OrderService {
         }
       }
       
-      // 处理 requirements 字段
       let requirements = row.requirements
       if (typeof requirements === 'string') {
         try {
@@ -246,7 +259,6 @@ export class OrderService {
         }
       }
       
-      // 处理 avatar_stats 字段
       let avatarStats = row.avatar_stats
       if (typeof avatarStats === 'string') {
         try {
@@ -256,31 +268,26 @@ export class OrderService {
         }
       }
       
-      // 处理日期 - 修复 created_at 为 undefined/null 时返回 "undefined" 字符串的问题
       let createdAt = ''
       if (row.created_at) {
         if (row.created_at instanceof Date) {
           createdAt = row.created_at.toISOString()
         } else if (typeof row.created_at === 'string' && row.created_at.length > 0) {
-          // 尝试解析数据库返回的日期字符串
           try {
             const date = new Date(row.created_at)
             if (!Number.isNaN(date.getTime())) {
               createdAt = date.toISOString()
             }
           } catch {
-            createdAt = row.created_at // 如果解析失败，返回原始字符串
+            createdAt = row.created_at
           }
         }
       }
-      // 如果 createdAt 是 "undefined" 或 "null" 字符串，设为空
       if (createdAt === 'undefined' || createdAt === 'null' || createdAt === '') {
-        createdAt = new Date().toISOString() // 使用当前时间作为默认值
+        createdAt = new Date().toISOString()
       }
       
-      // 获取实际分配的分身数量
       const dispatchedCount = dispatchCounts[row.id] || 0
-      // MySQL client 返回驼峰格式的字段名
       const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
       
       return {
@@ -293,7 +300,7 @@ export class OrderService {
         budget: row.budget,
         status: row.status,
         avatarCount: needAvatarCount,
-        dispatchedCount, // 实际已分配的分身数量
+        dispatchedCount,
         avatarStats: avatarStats || [],
         isPaid: row.isPaid,
         createdAt
@@ -476,6 +483,17 @@ export class OrderService {
 
   async updateOrderStatus(orderId: string, status: string, avatarId?: string) {
     const db = getMySQLClient()
+    
+    const currentOrder = await this.getOrderById(orderId)
+    if (!currentOrder) {
+      throw new Error('订单不存在')
+    }
+
+    const currentStatus = currentOrder.status
+    if (!this.isValidTransition(currentStatus, status)) {
+      throw new Error(`无法从状态 "${currentStatus}" 转换到 "${status}"`)
+    }
+
     const payload: Record<string, any> = {
       status,
       updated_at: new Date()
@@ -492,6 +510,13 @@ export class OrderService {
     const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
     const params = [...Object.values(payload), orderId]
     await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+
+    await this.notifyStatusChange(orderId, status)
+
+    if (status === 'completed') {
+      await this.triggerSettlement(orderId)
+    }
+
     return this.getOrderById(orderId)
   }
 
@@ -530,7 +555,137 @@ export class OrderService {
   async deleteOrder(orderId: string) {
     const db = getMySQLClient()
     await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM content_generation_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM orders WHERE id = ?', [orderId])
+  }
+
+  async handlePaymentSuccess(orderId: string, transactionId: string) {
+    const db = getMySQLClient()
+    
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    if (order.isPaid === 1) {
+      throw new Error('订单已支付')
+    }
+
+    await db.query(
+      'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
+      ['open', new Date(), orderId]
+    )
+
+    await this.notificationService.createNotification({
+      user_id: order.user_id,
+      type: 'order_paid',
+      title: '订单支付成功',
+      content: `订单"${order.title}"支付成功，正在分配分身...`,
+      metadata: { orderId, transactionId }
+    })
+
+    return this.getOrderById(orderId)
+  }
+
+  async handlePaymentFailure(orderId: string, reason: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order) return
+
+    await this.notificationService.createNotification({
+      user_id: order.user_id,
+      type: 'order_payment_failed',
+      title: '订单支付失败',
+      content: `订单"${order.title}"支付失败: ${reason}`,
+      metadata: { orderId }
+    })
+  }
+
+  private async notifyStatusChange(orderId: string, status: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order) return
+
+    const statusMessages: Record<string, string> = {
+      'open': '订单已打开，等待派单',
+      'pending_dispatch': '订单正在分配中',
+      'pending_acceptance': '订单已分配，等待分身确认',
+      'in_progress': '订单开始处理',
+      'submitted': '订单结果已提交',
+      'awaiting_acceptance': '等待验收',
+      'completed': '订单已完成',
+      'cancelled': '订单已取消',
+      'rejected': '订单被拒绝',
+      'revision_requested': '需要修改'
+    }
+
+    const message = statusMessages[status] || `订单状态变更为: ${status}`
+
+    await this.notificationService.createNotification({
+      user_id: order.user_id,
+      type: `order_${status}`,
+      title: '订单状态变更',
+      content: message,
+      metadata: { orderId, status }
+    })
+  }
+
+  private async triggerSettlement(orderId: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order || order.status !== 'completed') return
+
+    const db = getMySQLClient()
+    
+    const dispatchRequests = await db.query(
+      'SELECT avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
+      [orderId, 'accepted']
+    )
+
+    const totalAmount = Number(order.budget || 0)
+    const participantCount = dispatchRequests.length || 1
+    const amountPerAvatar = totalAmount / participantCount
+
+    const participants = dispatchRequests.map((request: any) => ({
+      user_id: request.user_id || request.userId,
+      avatar_id: request.avatar_id || request.avatarId,
+      amount: amountPerAvatar
+    }))
+
+    await this.earningService.createOrderEarnings(orderId, participants)
+    
+    await this.earningService.settleOrderEarnings(orderId)
+
+    console.log(`[OrderService] 订单 ${orderId} 结算完成，共 ${participantCount} 个参与者，每人 ${amountPerAvatar.toFixed(2)} 元`)
+  }
+
+  async submitRating(orderId: string, rating: number, comment?: string) {
+    const db = getMySQLClient()
+    
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    if (order.status !== 'completed') {
+      throw new Error('只有已完成的订单才能评价')
+    }
+
+    const id = crypto.randomUUID()
+    await db.query(
+      `INSERT INTO order_results (id, order_id, avatar_id, user_id, result, customer_rating, customer_comment, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        orderId,
+        order.avatar_id,
+        order.user_id,
+        JSON.stringify({ rating, comment }),
+        rating,
+        comment || '',
+        new Date(),
+        new Date()
+      ]
+    )
+
+    return { success: true, message: '评价成功' }
   }
 }

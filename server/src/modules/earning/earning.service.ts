@@ -119,6 +119,121 @@ export class EarningService {
   }
 
   /**
+   * 订单完成后批量创建收益记录
+   */
+  async createOrderEarnings(orderId: string, participants: Array<{
+    user_id: string
+    avatar_id: string
+    amount: number
+  }>) {
+    const db = getMySQLClient()
+    
+    const results = []
+    for (const participant of participants) {
+      const id = crypto.randomUUID()
+      await db.insert('earnings', {
+        id,
+        user_id: participant.user_id,
+        type: 'order_reward',
+        amount: participant.amount,
+        status: 'pending',
+        source: `order-${orderId}`,
+        description: `订单收益`,
+        avatar_id: participant.avatar_id,
+        order_id: orderId,
+        created_at: new Date(),
+        updated_at: new Date()
+      })
+      results.push({ id, ...participant })
+    }
+    
+    return results
+  }
+
+  /**
+   * 结算订单收益（将pending状态转为completed并加入余额）
+   */
+  async settleOrderEarnings(orderId: string) {
+    const db = getMySQLClient()
+    
+    const earnings = await db.query('SELECT * FROM earnings WHERE order_id = ? AND status = ?', [orderId, 'pending']) as any[]
+    
+    for (const earning of earnings) {
+      await db.updateWhere('earnings', { id: earning.id }, {
+        status: 'completed',
+        updated_at: new Date()
+      })
+      
+      await db.query(
+        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
+        [earning.amount, earning.amount, new Date(), earning.user_id]
+      )
+    }
+    
+    return { count: earnings.length }
+  }
+
+  /**
+   * 获取订单相关的所有收益记录
+   */
+  async getOrderEarnings(orderId: string) {
+    const db = getMySQLClient()
+    
+    const earnings = await db.query('SELECT * FROM earnings WHERE order_id = ? ORDER BY created_at DESC', [orderId]) as any[]
+    
+    return earnings
+  }
+
+  /**
+   * 确认提现申请
+   */
+  async confirmWithdrawal(withdrawalId: string) {
+    const db = getMySQLClient()
+    
+    const withdrawal = await db.queryOne('withdrawals', { id: withdrawalId }) as any
+    if (!withdrawal || withdrawal.status !== 'pending') {
+      throw new Error('提现申请不存在或已处理')
+    }
+    
+    await db.updateWhere('withdrawals', { id: withdrawalId }, {
+      status: 'completed',
+      updated_at: new Date()
+    })
+    
+    await db.query(
+      'UPDATE users SET frozen_balance = frozen_balance - ?, updated_at = ? WHERE id = ?',
+      [withdrawal.amount, new Date(), withdrawal.user_id]
+    )
+    
+    return await db.queryOne('withdrawals', { id: withdrawalId })
+  }
+
+  /**
+   * 拒绝提现申请
+   */
+  async rejectWithdrawal(withdrawalId: string, reason?: string) {
+    const db = getMySQLClient()
+    
+    const withdrawal = await db.queryOne('withdrawals', { id: withdrawalId }) as any
+    if (!withdrawal || withdrawal.status !== 'pending') {
+      throw new Error('提现申请不存在或已处理')
+    }
+    
+    await db.updateWhere('withdrawals', { id: withdrawalId }, {
+      status: 'rejected',
+      rejected_reason: reason || '',
+      updated_at: new Date()
+    })
+    
+    await db.query(
+      'UPDATE users SET balance = balance + ?, frozen_balance = frozen_balance - ?, updated_at = ? WHERE id = ?',
+      [withdrawal.amount, withdrawal.amount, new Date(), withdrawal.user_id]
+    )
+    
+    return await db.queryOne('withdrawals', { id: withdrawalId })
+  }
+
+  /**
    * 更新收益状态
    */
   async updateEarningStatus(earningId: string, status: string) {

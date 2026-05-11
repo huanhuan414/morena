@@ -1,12 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
+import { OrderService } from '../order/order.service'
 
 @Injectable()
 export class OrderProcessingService {
   private readonly logger = new Logger(OrderProcessingService.name)
   private columnsCache: Set<string> | null = null
+
+  constructor(
+    @Inject(forwardRef(() => OrderService))
+    private readonly orderService: OrderService
+  ) {}
   private readonly platformAliasMap: Record<string, string> = {
     wechat: 'wechat_channel',
     wechat_channel: 'wechat_channel',
@@ -409,11 +415,61 @@ export class OrderProcessingService {
           new Date(),
           orderId
         ])
+        
+        await this.orderService.updateOrderStatus(orderId, 'completed')
       } else {
         await db.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', ['in_progress', new Date(), orderId])
       }
     } catch (error: any) {
       this.logger.warn(`同步订单状态失败: orderId=${orderId}, error=${error.message}`)
     }
+  }
+
+  /**
+   * 请求修改（进入修改流程）
+   */
+  async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
+    const record = await this.updateRecordByIdentifier(identifier, {
+      status: 'revision_requested',
+      publish_feedback: JSON.stringify(feedback || {})
+    })
+    if (!record) return null
+
+    const normalized = this.normalizeRecord(record)
+    setCache(normalized.requestId, normalized)
+    setCache(normalized.orderId, normalized)
+
+    return normalized
+  }
+
+  /**
+   * 获取订单的所有处理记录
+   */
+  async getOrderProcessings(orderId: string): Promise<any[]> {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT * FROM content_generation_requests WHERE order_id = ? ORDER BY created_at DESC`,
+      [orderId]
+    ) as any[]
+
+    return rows.map(row => this.normalizeRecord(row))
+  }
+
+  /**
+   * 删除处理记录
+   */
+  async deleteProcessing(requestId: string): Promise<boolean> {
+    const db = getMySQLClient()
+    const record = await this.findByRequestId(requestId)
+    if (!record) return false
+
+    await db.query('DELETE FROM content_generation_requests WHERE id = ?', [requestId])
+    
+    const orderId = record.orderId || record.order_id
+    if (orderId) {
+      await this.trySyncOrderStatus(orderId)
+    }
+
+    return true
   }
 }

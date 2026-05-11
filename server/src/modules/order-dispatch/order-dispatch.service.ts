@@ -396,6 +396,87 @@ export class OrderDispatchService {
   }
 
   /**
+   * 取消订单分配
+   */
+  async cancelDispatch(orderId: string) {
+    const db = getMySQLClient()
+    
+    // 更新所有未处理的分发请求为已取消
+    await db.updateWhere('order_dispatch_requests', { order_id: orderId, status: 'pending' }, {
+      status: 'cancelled',
+      updated_at: new Date()
+    })
+    
+    return { success: true }
+  }
+
+  /**
+   * 获取分身已接受的订单列表
+   */
+  async getAvatarAcceptedOrders(avatarId: string) {
+    const db = getMySQLClient()
+    
+    const results = await db.query(`
+      SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at
+      FROM order_dispatch_requests r
+      LEFT JOIN orders o ON r.order_id = o.id
+      WHERE r.avatar_id = ? AND r.status = 'accepted'
+      ORDER BY r.updated_at DESC
+    `, [avatarId]) as any[]
+    
+    return results
+  }
+
+  /**
+   * 获取用户所有已接受的订单（通过分身）
+   */
+  async getUserAcceptedOrders(userId: string) {
+    const db = getMySQLClient()
+    
+    const results = await db.query(`
+      SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at, a.name as avatar_name
+      FROM order_dispatch_requests r
+      LEFT JOIN orders o ON r.order_id = o.id
+      LEFT JOIN avatars a ON r.avatar_id = a.id
+      WHERE r.user_id = ? AND r.status = 'accepted'
+      ORDER BY r.updated_at DESC
+    `, [userId]) as any[]
+    
+    return results
+  }
+
+  /**
+   * 检查订单是否已被任何分身接受
+   */
+  async hasAcceptedRequest(orderId: string): Promise<boolean> {
+    const db = getMySQLClient()
+    
+    const requests = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM order_dispatch_requests 
+      WHERE order_id = ? AND status = 'accepted'
+    `, [orderId]) as any[]
+    
+    return requests[0]?.count > 0
+  }
+
+  /**
+   * 获取订单的所有接受者分身
+   */
+  async getOrderAcceptors(orderId: string) {
+    const db = getMySQLClient()
+    
+    const results = await db.query(`
+      SELECT a.*, r.id as dispatch_request_id
+      FROM order_dispatch_requests r
+      LEFT JOIN avatars a ON r.avatar_id = a.id
+      WHERE r.order_id = ? AND r.status = 'accepted'
+    `, [orderId]) as any[]
+    
+    return results
+  }
+
+  /**
    * 发送短信通知给指定分身
    */
   async notifyAvatars(orderId: string, avatarIds: string[], customMessage?: string) {
