@@ -73,6 +73,14 @@ export class OrderService {
     
     const avatarCount = orderData.avatar_count || orderData.avatarCount || orderData.requiredAvatars || 1
     
+    // 将优先级字符串转换为整数
+    const priorityMap: Record<string, number> = {
+      'low': 1,
+      'normal': 2,
+      'high': 3
+    }
+    const priorityValue = priorityMap[orderData.priority] || priorityMap['normal']
+    
     const insertData: Record<string, any> = {
       id,
       user_id: userId,
@@ -87,7 +95,7 @@ export class OrderService {
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
       is_paid: 0,
       target_audience: orderData.targetAudience || orderData.target_audience || '',
-      priority: orderData.priority || 'normal'
+      priority: priorityValue
     }
 
     const fields = Object.keys(insertData).join(', ')
