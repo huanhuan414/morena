@@ -95,13 +95,13 @@ function renderInlineText(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|#[^\s#]+[^\s]*)/g)
   return parts.map((part, idx) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <Text key={idx} className='md-bold'>{part.slice(2, -2)}</Text>
+      return <Text key={idx} className="md-bold">{part.slice(2, -2)}</Text>
     }
     if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
-      return <Text key={idx} className='md-italic'>{part.slice(1, -1)}</Text>
+      return <Text key={idx} className="md-italic">{part.slice(1, -1)}</Text>
     }
     if (part.startsWith('#')) {
-      return <Text key={idx} className='md-hashtag'>{part}</Text>
+      return <Text key={idx} className="md-hashtag">{part}</Text>
     }
     return <Text key={idx}>{part}</Text>
   })
@@ -113,25 +113,25 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const elements = parseMarkdownSimple(content)
 
   return (
-    <View className='markdown-body'>
+    <View className="markdown-body">
       {elements.map((el, idx) => {
         if (el.type === 'h1') {
-          return <Text key={idx} className='block md-heading md-heading-1'>{renderInlineText(el.text)}</Text>
+          return <Text key={idx} className="block md-heading md-heading-1">{renderInlineText(el.text)}</Text>
         }
         if (el.type === 'h2') {
-          return <Text key={idx} className='block md-heading md-heading-2'>{renderInlineText(el.text)}</Text>
+          return <Text key={idx} className="block md-heading md-heading-2">{renderInlineText(el.text)}</Text>
         }
         if (el.type === 'h3') {
-          return <Text key={idx} className='block md-heading md-heading-3'>{renderInlineText(el.text)}</Text>
+          return <Text key={idx} className="block md-heading md-heading-3">{renderInlineText(el.text)}</Text>
         }
         if (el.type === 'li') {
           return (
-            <View key={idx} className='md-list-item'>
+            <View key={idx} className="md-list-item">
               <Text>{renderInlineText(el.text)}</Text>
             </View>
           )
         }
-        return <Text key={idx} className='block md-paragraph'>{renderInlineText(el.text)}</Text>
+        return <Text key={idx} className="block md-paragraph">{renderInlineText(el.text)}</Text>
       })}
     </View>
   )

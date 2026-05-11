@@ -31,6 +31,7 @@ interface OrderInfo {
   title: string
   description: string
   platforms: string[]
+  platform?: string
   budget: string
   expectedQuantity: number
   quantityPerAvatar: number
@@ -127,14 +128,27 @@ export default function OrderContentCreation() {
     try {
       setPageStatus('generating')
       const order = orderInfo
+      // 从 platforms 数组取第一个平台，支持 "wechat"/"general" 等
+      const platformList = order?.platforms || []
+      const platforms = platformList.length > 0
+        ? platformList.map((p: string) => p === 'general' ? 'wechat' : p)
+        : ['wechat']
+
+      // 从描述中智能提取目标受众
+      const descText = order?.description || ''
+      const audienceMatch = descText.match(/目标用户画像[）)]?\s*[：:\n]*\s*[-•]?\s*特征[：:]\s*([^\n]+)/)
+        || descText.match(/目标人群[：:]\s*([^\n]+)/)
+        || descText.match(/面向[：:]?\s*([^\n]+)/)
+      const targetAudience = order?.targetAudience || audienceMatch?.[1]?.trim() || '年轻用户'
+
       const params: Record<string, any> = {
         orderId: id,
         avatarId: 'default',
         orderTitle: order?.title || '内容生成',
         orderDescription: order?.description || '',
-        platforms: order?.platforms || ['wechat'],
+        platforms,
         contentType: 'image_text',
-        targetAudience: order?.targetAudience || '目标用户',
+        targetAudience,
         contentQuantity: order?.quantityPerAvatar || order?.expectedQuantity || 3,
       }
       console.log('[内容生成] 调用生成接口:', params)
@@ -219,6 +233,7 @@ export default function OrderContentCreation() {
   }
 
   const platformName = orderInfo?.platforms?.[0] || 'wechat'
+  const displayPlatformName = PLATFORM_MAP[platformName] || PLATFORM_MAP[platformName === 'general' ? 'wechat' : platformName] || platformName
   const platformColor = PLATFORM_COLORS[platformName] || '#6366F1'
 
   // 渲染订单信息卡片
@@ -228,7 +243,7 @@ export default function OrderContentCreation() {
       <View className="order-card">
         <View className="order-card-header">
           <View className="order-platform-badge" style={{ backgroundColor: platformColor }}>
-            <Text className="order-platform-text">{PLATFORM_MAP[platformName] || platformName}</Text>
+            <Text className="order-platform-text">{displayPlatformName}</Text>
           </View>
           <View className="order-type-tag">
             <FileText size={12} color="#6366F1" />

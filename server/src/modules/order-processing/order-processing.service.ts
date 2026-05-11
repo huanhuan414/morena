@@ -50,7 +50,7 @@ export class OrderProcessingService {
             content: record.content || '',
             images,
             videos,
-            platform: record.platform
+            platforms: record.platform ? [record.platform] : [],
           },
           created_at: record.created_at
         }

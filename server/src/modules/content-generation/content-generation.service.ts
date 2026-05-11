@@ -140,7 +140,7 @@ export class ContentGenerationService {
       content: textContent,
       images,
       videos,
-      platform
+      platforms: [platform]
     })
   }
 
@@ -279,23 +279,25 @@ export class ContentGenerationService {
 
     const prompt = `你是一个顶级社交媒体内容创作高手，深谙各平台的内容玩法和用户心理。
 
-【商单任务】
-标题：${input.orderTitle}
-详细要求：${input.orderDescription}
+【商单任务 - 必须严格围绕以下信息创作】
+品牌/产品名：${input.orderTitle}
+详细创作要求：
+${input.orderDescription}
 目标平台：${platform}
-目标受众：${input.targetAudience}
+目标受众：${input.targetAudience || '年轻用户'}
 ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersonality || '专业有趣'}` : ''}
 
 【${guide}】
 
-【创作要求】
-1. 严格按照上述平台风格创作，不要用其他平台的风格
-2. 内容必须紧扣商单主题，突出产品/服务的核心卖点
-3. 文案要有感染力，让目标受众产生购买欲或行动欲
+【绝对红线 - 必须遵守】
+1. 文案必须围绕"${input.orderTitle}"这个品牌/产品来写，不是泛泛而谈
+2. 必须体现订单要求中的核心卖点，不能偏离
+3. 要让读者看完就想了解/购买这个产品
 4. 禁止出现"作为AI"、"我是一个"等AI痕迹
 5. 直接输出文案内容，不要输出任何创作说明或注释
+6. 如果订单要求中提到具体卖点，必须包含在文案中
 
-请创作一条完整的高质量推广文案：`
+请创作一条紧扣品牌/产品、有感染力的高质量推广文案：`
 
     try {
       const response = await this.llmClient.invoke(
@@ -316,7 +318,7 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     const images: string[] = []
 
     // 根据平台和订单构建精准的图片提示词
-    const imagePrompts = this.buildImagePrompts(platform, input, textContent, quantity)
+    const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
     for (let i = 0; i < imagePrompts.length; i++) {
       try {
@@ -342,43 +344,112 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   /**
    * 构建图片提示词 - 让每张图都有明确主题，与订单强相关
    */
-  private buildImagePrompts(platform: string, input: any, textContent: string, quantity: number): string[] {
-    const title = input.orderTitle || '产品展示'
+  private async buildImagePrompts(platform: string, input: any, textContent: string, quantity: number): Promise<string[]> {
+    const title = input.orderTitle || 'product'
     const desc = input.orderDescription || ''
-    const audience = input.targetAudience || '年轻人'
+    const audience = input.targetAudience || 'young people'
 
     // 不同平台的图片风格
     const styleMap: Record<string, string> = {
-      wechat: 'warm, lifestyle, natural lighting, cozy atmosphere, high quality photo',
-      xiaohongshu: 'aesthetic, trendy, soft pastel tones, clean composition, Instagram style',
-      douyin: 'vibrant, eye-catching, dynamic, trendy, high contrast, short video thumbnail style',
-      weibo: 'bold, modern, clean design, professional look',
-      bilibili: 'creative, playful, anime-inspired elements, colorful',
-      kuaishou: 'authentic, real-life, down-to-earth, natural'
+      wechat: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo',
+      xiaohongshu: 'aesthetic flat lay, trendy pastel tones, clean minimal composition, Instagram worthy, soft natural light, lifestyle inspiration',
+      douyin: 'vibrant eye-catching, dynamic composition, high contrast colors, trending visual style, thumb-stopping thumbnail, bold and fresh',
+      weibo: 'bold modern design, clean professional look, striking visual impact, celebrity endorsement style',
+      bilibili: 'creative playful, colorful, anime-inspired elements, fun and imaginative, youth culture',
+      kuaishou: 'authentic real-life, down-to-earth, natural unposed, relatable everyday scene, warm and genuine'
     }
     const style = styleMap[platform] || styleMap.wechat
 
+    // 从订单描述中提取关键信息构建图片提示词（异步：可能需要LLM翻译）
+    const productKeywords = await this.extractProductKeywords(title, desc)
+
     const prompts: string[] = []
 
-    // 第1张：主图 - 展示核心产品/服务
-    prompts.push(`Commercial product photography, ${title}, ${desc.substring(0, 100)}, ${style}, professional lighting, 4K, attractive and appealing to ${audience}`)
+    // 第1张：主图 - 产品核心展示，强吸引力
+    prompts.push(`Professional product showcase for ${productKeywords}, ${style}, central composition, premium quality, attractive and desirable, targeting ${audience}, 4K, commercial photography`)
 
-    // 第2张：场景图 - 使用场景/生活化
+    // 第2张：使用场景 - 生活化代入感
     if (quantity >= 2) {
-      prompts.push(`Lifestyle scene photography, people using ${title} in daily life, ${style}, natural and engaging, showing real benefits, 4K, appealing to ${audience}`)
+      prompts.push(`Lifestyle scene of a person using ${productKeywords}, ${style}, relatable everyday moment, showing real benefits and joy, natural and engaging, targeting ${audience}, 4K`)
     }
 
-    // 第3张：细节/效果图
+    // 第3张：效果/细节 - 说服力
     if (quantity >= 3) {
-      prompts.push(`Detail and effect showcase, ${title} close-up showing quality and features, ${style}, professional product shot, 4K, convincing and desirable to ${audience}`)
+      prompts.push(`Close-up detail and effect of ${productKeywords}, ${style}, showing quality and transformation, convincing evidence, premium feel, targeting ${audience}, 4K`)
     }
 
     // 第4张及以后：更多角度
     for (let i = 3; i < quantity; i++) {
-      prompts.push(`Creative promotional image for ${title}, unique angle ${i + 1}, ${style}, eye-catching design, 4K, appealing to ${audience}`)
+      prompts.push(`Creative promotional image for ${productKeywords}, unique angle ${i + 1}, ${style}, eye-catching design, appealing to ${audience}, 4K`)
     }
 
     return prompts
+  }
+
+  /**
+   * 从订单标题和描述中提取英文产品关键词，用于图片生成
+   * 先尝试本地关键词映射，如果匹配不足则调用 LLM 动态翻译
+   */
+  private async extractProductKeywords(title: string, desc: string): Promise<string> {
+    // 常见中文产品/服务关键词到英文的映射
+    const keywordMap: Record<string, string> = {
+      // 产品类
+      '护肤品': 'skincare products', '面膜': 'face mask', '口红': 'lipstick', '粉底': 'foundation',
+      '香水': 'perfume', '洗发水': 'shampoo', '沐浴露': 'body wash', '防晒': 'sunscreen',
+      '手机': 'smartphone', '耳机': 'earphones', '电脑': 'laptop', '平板': 'tablet',
+      '衣服': 'fashion clothing', '鞋子': 'shoes', '包包': 'handbag', '手表': 'watch',
+      '零食': 'snacks', '茶叶': 'tea', '咖啡': 'coffee', '饮品': 'drinks',
+      // 服务类
+      'AI助手': 'AI assistant app', '智能助手': 'smart AI assistant', '赚钱': 'money making app',
+      '课程': 'online course', '培训': 'training program', '健身': 'fitness program',
+      // 场景类
+      '旅行': 'travel', '美食': 'gourmet food', '家居': 'home decor', '办公': 'office',
+      // 效果类
+      '美白': 'whitening', '抗老': 'anti-aging', '补水': 'hydrating', '修复': 'repairing',
+      '副业': 'side hustle', '收入': 'income',
+      '减肥': 'weight loss', '瘦身': 'slimming', '增肌': 'muscle building',
+    }
+
+    const fullText = `${title} ${desc}`
+    const matchedKeywords: string[] = []
+
+    for (const [cn, en] of Object.entries(keywordMap)) {
+      if (fullText.includes(cn) && !matchedKeywords.includes(en)) {
+        matchedKeywords.push(en)
+      }
+    }
+
+    // 如果本地关键词匹配不足，使用 LLM 动态翻译整个订单描述为英文图片关键词
+    if (matchedKeywords.length < 2) {
+      try {
+        this.logger.log(`本地关键词匹配不足(${matchedKeywords.length})，调用LLM动态翻译...`)
+        const llmPrompt = `将以下中文产品/服务描述翻译成3-5个英文关键词，用于AI图片生成的提示词。只输出关键词，用逗号分隔，不要解释。
+
+产品标题：${title}
+产品描述：${desc.substring(0, 300)}
+
+英文关键词：`
+
+        const response = await this.llmClient.invoke(
+          [{ role: 'user', content: llmPrompt }]
+        )
+        const keywords = response?.content?.trim() || ''
+        this.logger.log(`LLM翻译结果: ${keywords}`)
+        if (keywords) {
+          return keywords
+        }
+      } catch (err: any) {
+        this.logger.warn(`LLM关键词翻译失败: ${err.message}`)
+      }
+    }
+
+    // 如果匹配到了足够的本地关键词，组合返回
+    if (matchedKeywords.length > 0) {
+      return matchedKeywords.slice(0, 4).join(' and ')
+    }
+
+    // 兜底：用标题的拼音或通用描述
+    return 'premium product service'
   }
 
   /**
