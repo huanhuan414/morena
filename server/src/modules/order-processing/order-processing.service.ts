@@ -239,7 +239,7 @@ export class OrderProcessingService {
       order_id: data.order_id,
       avatar_id: data.avatar_id,
       user_id: data.user_id || '',
-      status: 'queuing',
+      status: 'processing',
       content: '',
       config: JSON.stringify(data.config || {}),
       created_at: now,

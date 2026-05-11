@@ -86,12 +86,21 @@ export default function OrderContentCreation() {
         if (data.status === 'completed' && data.generatedContent) {
           setPageStatus('completed')
           stopPolling()
-        } else if (data.status === 'processing' || data.status === 'pending') {
-          setPageStatus('generating')
-          startPolling(id)
         } else if (data.status === 'failed') {
           setPageStatus('failed')
           setErrorMsg('内容生成失败')
+          stopPolling()
+        } else if (data.status === 'queuing' || data.status === 'processing' || data.status === 'pending') {
+          // 排队中、处理中、等待中都视为生成中
+          setPageStatus('generating')
+          startPolling(id)
+        } else if (data.status === 'publishing' || data.status === 'published') {
+          // 发布状态也显示为已完成
+          setPageStatus('completed')
+          stopPolling()
+        } else if (data.status === 'awaiting_acceptance') {
+          // 等待验收也显示为已完成
+          setPageStatus('completed')
           stopPolling()
         }
       } else {
@@ -176,6 +185,10 @@ export default function OrderContentCreation() {
           } else if (data.status === 'failed') {
             setPageStatus('failed')
             setErrorMsg('内容生成失败')
+            stopPolling()
+          } else if (data.status === 'publishing' || data.status === 'published' || data.status === 'awaiting_acceptance') {
+            // 发布中、已发布、等待验收都视为已完成
+            setPageStatus('completed')
             stopPolling()
           }
         }
