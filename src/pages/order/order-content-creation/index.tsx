@@ -4,27 +4,8 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
 import { Loader, RefreshCw, Send, ChevronLeft, Image as ImageIcon, FileText, Video as VideoIcon, Wallet, Users } from 'lucide-react-taro'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import './index.css'
-
-// 平台名映射
-const PLATFORM_MAP: Record<string, string> = {
-  wechat: '微信',
-  douyin: '抖音',
-  xiaohongshu: '小红书',
-  weibo: '微博',
-  bilibili: 'B站',
-  kuaishou: '快手',
-}
-
-// 平台颜色
-const PLATFORM_COLORS: Record<string, string> = {
-  wechat: '#07C160',
-  douyin: '#FE2C55',
-  xiaohongshu: '#FF2442',
-  weibo: '#FF8200',
-  bilibili: '#00A1D6',
-  kuaishou: '#FF4906',
-}
 
 interface OrderInfo {
   id: string
@@ -135,6 +116,7 @@ export default function OrderContentCreation() {
       const platforms = platformList.length > 0
         ? platformList.map((p: string) => p === 'general' ? 'wechat' : p)
         : ['wechat']
+      const normalizedPlatforms = canonicalizePlatforms(platforms)
 
       // 从描述中智能提取目标受众
       const descText = order?.description || ''
@@ -148,7 +130,7 @@ export default function OrderContentCreation() {
         avatarId: 'default',
         orderTitle: order?.title || '内容生成',
         orderDescription: order?.description || '',
-        platforms,
+        platforms: normalizedPlatforms,
         contentType: 'image_text',
         targetAudience,
         contentQuantity: order?.quantityPerAvatar || order?.expectedQuantity || 3,
@@ -238,10 +220,10 @@ export default function OrderContentCreation() {
     }
 
     const targetPlatforms = content.platforms?.length
-      ? content.platforms
+      ? canonicalizePlatforms(content.platforms)
       : orderInfo?.platforms?.length
-        ? orderInfo.platforms
-        : ['wechat']
+        ? canonicalizePlatforms(orderInfo.platforms)
+        : ['wechat_channel']
 
     const title = orderInfo?.title || processingData?.orderTitle || '内容发布'
     const requestId = processingData?.requestId || ''
@@ -264,9 +246,9 @@ export default function OrderContentCreation() {
     })
   }
 
-  const platformName = orderInfo?.platforms?.[0] || 'wechat'
-  const displayPlatformName = PLATFORM_MAP[platformName] || PLATFORM_MAP[platformName === 'general' ? 'wechat' : platformName] || platformName
-  const platformColor = PLATFORM_COLORS[platformName] || '#6366F1'
+  const platformName = canonicalizePlatforms(orderInfo?.platforms || ['wechat_channel'])[0]
+  const displayPlatformName = getPlatformLabel(platformName)
+  const platformColor = getPlatformMeta(platformName)?.color || '#6366F1'
 
   // 渲染订单信息卡片
   const renderOrderCard = () => {
@@ -339,9 +321,9 @@ export default function OrderContentCreation() {
       <View className="content-section">
         {/* 平台标签 */}
         <View className="content-platform-bar">
-          {(content.platforms || []).map((p: string) => (
-            <View key={p} className="content-platform-tag" style={{ backgroundColor: PLATFORM_COLORS[p] || '#6366F1' }}>
-              <Text className="content-platform-name">{PLATFORM_MAP[p] || p}</Text>
+          {canonicalizePlatforms(content.platforms || []).map((p: string) => (
+            <View key={p} className="content-platform-tag" style={{ backgroundColor: getPlatformMeta(p)?.color || '#6366F1' }}>
+              <Text className="content-platform-name">{getPlatformLabel(p)}</Text>
             </View>
           ))}
         </View>

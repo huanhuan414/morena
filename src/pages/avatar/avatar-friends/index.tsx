@@ -1,10 +1,11 @@
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useLoad, useRouter, navigateBack, showToast } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import * as Network from '@/network'
+import { Button } from '@/components/ui/button'
 import {
   Sparkles, ArrowLeft, UserPlus, Heart, Phone,
-  MessageCircle, Star, Zap, Users, Check, X, Bell, Clock
+  MessageCircle, Star, Zap, Users, Check, X, Bell, Clock, TriangleAlert
 } from 'lucide-react-taro'
 import { getAvatarStyleClass } from '@/utils/avatar-style'
 import './index.css'
@@ -47,6 +48,7 @@ interface FriendChat {
 export default function AvatarFriendsPage() {
   const router = useRouter()
   const { avatarId } = router.params
+  const hasAvatarId = typeof avatarId === 'string' && avatarId.trim().length > 0
   
   const [friends, setFriends] = useState<AvatarFriend[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,9 +72,13 @@ export default function AvatarFriendsPage() {
       setCapsuleWidth(capsuleWidthWithMargins)
     }
     
-    if (avatarId) {
+    if (hasAvatarId) {
       fetchFriends()
+      return
     }
+
+    setLoading(false)
+    showToast({ title: '未找到分身信息，请从分身入口进入', icon: 'none' })
   })
 
   // 分离已接受的好友和待确认的好友请求
@@ -80,6 +86,11 @@ export default function AvatarFriendsPage() {
   const pendingRequests = friends.filter(f => f.isPending)
 
   const fetchFriends = async () => {
+    if (!hasAvatarId) {
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       const res = await Network.request({ url: `/api/avatar/${avatarId}/friends` })
@@ -93,6 +104,14 @@ export default function AvatarFriendsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const openUserFriendshipManagement = () => {
+    navigateTo({ url: '/pages/friendship-management/index' })
+  }
+
+  const openAvatarManage = () => {
+    navigateTo({ url: '/pages/avatar/avatar-manage/index' })
   }
 
   // 接受好友请求
@@ -214,6 +233,31 @@ export default function AvatarFriendsPage() {
 
   // 渲染好友列表内容
   const renderFriendsList = () => {
+    if (!hasAvatarId) {
+      return (
+        <View className="af-empty">
+          <View className="af-empty-icon">
+            <TriangleAlert size={64} color="rgba(255, 215, 0, 0.65)" />
+          </View>
+          <Text className="af-empty-title">缺少分身信息</Text>
+          <Text className="af-empty-desc">
+            当前页面需要带上 avatarId 才能查看某个分身的好友列表。
+          </Text>
+          <Text className="af-empty-desc">
+            你可以先去用户级好友管理查看请求，或从“我的分身”中选择具体分身进入。
+          </Text>
+          <View className="mt-6 flex w-full gap-3">
+            <Button className="flex-1" onClick={openUserFriendshipManagement}>
+              <Text className="text-primary-foreground">去好友管理</Text>
+            </Button>
+            <Button className="flex-1" variant="outline" onClick={openAvatarManage}>
+              <Text>去我的分身</Text>
+            </Button>
+          </View>
+        </View>
+      )
+    }
+
     if (loading) {
       return (
         <View className="af-loading">

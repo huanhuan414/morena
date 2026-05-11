@@ -57,6 +57,11 @@ SET @sql = IF(@column_exists = 0, 'ALTER TABLE avatars ADD COLUMN color VARCHAR(
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SELECT COUNT(*) INTO @column_exists FROM information_schema.columns 
+WHERE table_schema = 'mrl' AND table_name = 'avatars' AND column_name = 'is_hosted';
+SET @sql = IF(@column_exists = 0, 'ALTER TABLE avatars ADD COLUMN is_hosted TINYINT(1) DEFAULT 0', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SELECT COUNT(*) INTO @column_exists FROM information_schema.columns 
 WHERE table_schema = 'mrl' AND table_name = 'avatars' AND column_name = 'is_online';
 SET @sql = IF(@column_exists = 0, 'ALTER TABLE avatars ADD COLUMN is_online TINYINT(1) DEFAULT 0', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -80,6 +85,17 @@ SELECT COUNT(*) INTO @column_exists FROM information_schema.columns
 WHERE table_schema = 'mrl' AND table_name = 'avatars' AND column_name = 'total_earnings';
 SET @sql = IF(@column_exists = 0, 'ALTER TABLE avatars ADD COLUMN total_earnings DECIMAL(10,2) DEFAULT 0', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SELECT COUNT(*) INTO @avatar_has_trust_enabled FROM information_schema.columns
+WHERE table_schema = 'mrl' AND table_name = 'avatars' AND column_name = 'trust_enabled';
+SELECT COUNT(*) INTO @avatar_has_is_hosted FROM information_schema.columns
+WHERE table_schema = 'mrl' AND table_name = 'avatars' AND column_name = 'is_hosted';
+SET @avatar_sync_sql = IF(
+  @avatar_has_trust_enabled > 0 AND @avatar_has_is_hosted > 0,
+  'UPDATE avatars SET is_hosted = CASE WHEN trust_enabled IN (1, ''1'', true, ''true'') THEN 1 ELSE 0 END',
+  'SELECT 1'
+);
+PREPARE stmt FROM @avatar_sync_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ============================================
 -- 3. 补充 posts 表缺失字段

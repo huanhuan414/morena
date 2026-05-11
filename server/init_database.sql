@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS avatars (
   total_earnings DECIMAL(10,2) DEFAULT 0,
   color VARCHAR(20) DEFAULT '#7B3FE4',
   status VARCHAR(20) DEFAULT 'active',
+  is_hosted BOOLEAN DEFAULT FALSE,
   is_online BOOLEAN DEFAULT FALSE,
   last_active_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

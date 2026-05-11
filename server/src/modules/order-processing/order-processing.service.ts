@@ -7,6 +7,26 @@ import { getCache, setCache } from '../../common/shared-cache'
 export class OrderProcessingService {
   private readonly logger = new Logger(OrderProcessingService.name)
   private columnsCache: Set<string> | null = null
+  private readonly platformAliasMap: Record<string, string> = {
+    wechat: 'wechat_channel',
+    wechat_channel: 'wechat_channel',
+    wechat_mp: 'wechat_mp',
+    wechat_moments: 'wechat_moments',
+    douyin: 'douyin',
+    xiaohongshu: 'xiaohongshu',
+    xhs: 'xiaohongshu',
+    weibo: 'weibo',
+    bilibili: 'bilibili',
+    bili: 'bilibili',
+    kuaishou: 'kuaishou',
+    zhihu: 'zhihu',
+    toutiao: 'toutiao'
+  }
+
+  private canonicalizePlatform(platform?: string): string {
+    const key = String(platform || '').trim().toLowerCase()
+    return this.platformAliasMap[key] || key
+  }
 
   private async getTableColumns(): Promise<Set<string>> {
     if (this.columnsCache) {
@@ -59,19 +79,22 @@ export class OrderProcessingService {
   private normalizePlatforms(input: any): string[] {
     if (!input) return []
     if (Array.isArray(input)) {
-      return input.map((item) => String(item || '').trim()).filter(Boolean)
+      const normalized = input.map((item) => this.canonicalizePlatform(String(item || ''))).filter(Boolean)
+      return Array.from(new Set(normalized))
     }
     if (typeof input === 'string') {
       try {
         const parsed = JSON.parse(input)
         if (Array.isArray(parsed)) {
-          return parsed.map((item) => String(item || '').trim()).filter(Boolean)
+          const normalized = parsed.map((item) => this.canonicalizePlatform(String(item || ''))).filter(Boolean)
+          return Array.from(new Set(normalized))
         }
       } catch {
-        return input
+        const normalized = input
           .split(',')
-          .map((item) => item.trim())
+          .map((item) => this.canonicalizePlatform(item))
           .filter(Boolean)
+        return Array.from(new Set(normalized))
       }
     }
     return []
@@ -83,8 +106,10 @@ export class OrderProcessingService {
   ): Record<string, any> {
     const base = { ...(existing || {}) }
     Object.entries(incoming || {}).forEach(([platform, payload]) => {
-      const prev = base[platform] || {}
-      base[platform] = { ...prev, ...(payload || {}) }
+      const canonicalPlatform = this.canonicalizePlatform(platform)
+      if (!canonicalPlatform) return
+      const prev = base[canonicalPlatform] || {}
+      base[canonicalPlatform] = { ...prev, ...(payload || {}) }
     })
     return base
   }
@@ -122,7 +147,7 @@ export class OrderProcessingService {
     const images = this.parseJsonArray(record.images)
     const videos = this.parseJsonArray(record.videoUrl || record.video_url)
     const publishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
-    const publishFeedback = this.parseJsonObject(record.publishFeedback || record.publish_feedback, {})
+    const publishFeedback = this.mergeFeedback({}, this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}))
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
 
     return {
@@ -134,7 +159,7 @@ export class OrderProcessingService {
       avatarId: record.avatarId || record.avatar_id,
       user_id: record.userId || record.user_id,
       userId: record.userId || record.user_id,
-      platform: record.platform,
+      platform: this.canonicalizePlatform(record.platform),
       status: record.status || 'completed',
       contentType: config.contentType || config.content_type || 'image',
       generatedContent: {
@@ -147,7 +172,10 @@ export class OrderProcessingService {
           ? this.normalizePlatforms(config.platforms)
           : (record.platform ? [record.platform] : [])
       },
-      publishStatus,
+      publishStatus: {
+        ...publishStatus,
+        platforms: this.normalizePlatforms(publishStatus.platforms || [])
+      },
       publishFeedback,
       created_at: record.createdAt || record.created_at,
       updated_at: record.updatedAt || record.updated_at

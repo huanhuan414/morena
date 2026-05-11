@@ -21,6 +21,26 @@ export class OrderService {
     return fallback
   }
 
+  private normalizeDispatchStatus(status?: string): string {
+    if (status === 'confirmed') {
+      return 'accepted'
+    }
+    return status || 'pending'
+  }
+
+  private isAcceptedDispatchStatus(status?: string): boolean {
+    return [
+      'accepted',
+      'generating',
+      'preview',
+      'publishing',
+      'published',
+      'feedback_submitted',
+      'awaiting_acceptance',
+      'completed'
+    ].includes(this.normalizeDispatchStatus(status))
+  }
+
   async createOrder(userId: string, orderData: Record<string, any>) {
     const db = getMySQLClient()
     
@@ -82,37 +102,67 @@ export class OrderService {
     console.log('[OrderService] getOrderDetail order keys:', Object.keys(order))
     console.log('[OrderService] avatar_count value:', order['avatar_count'], 'avatarCount:', order['avatarCount'])
     
-    // 查询分身分发列表
+    // 查询分发请求列表
     const avatarRows = await db.query(
-      `SELECT odr.id, odr.avatar_id, odr.status, odr.created_at,
+      `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.created_at,
               a.name as nickname, a.avatar_url
-       FROM order_requests odr
+       FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON odr.avatar_id = a.id
        WHERE odr.order_id = ?
        ORDER BY odr.created_at DESC`,
       [orderId]
     )
+
+    const processingRows = await db.query(
+      `SELECT id, order_id, avatar_id, status, publish_feedback, publish_status, created_at, updated_at
+       FROM content_generation_requests
+       WHERE order_id = ?
+       ORDER BY updated_at DESC, created_at DESC`,
+      [orderId]
+    ).catch(() => [])
+
+    const latestProcessingMap = new Map<string, any>()
+    for (const row of processingRows || []) {
+      const avatarId = row.avatarId || row.avatar_id
+      if (avatarId && !latestProcessingMap.has(avatarId)) {
+        latestProcessingMap.set(avatarId, row)
+      }
+    }
     
     // 转换分身数据格式
     const avatarStats = (avatarRows || []).map((row: any) => {
-      let platforms = row.platforms
-      if (typeof platforms === 'string') {
-        try {
-          platforms = JSON.parse(platforms)
-        } catch {
-          platforms = []
-        }
-      }
+      const avatarId = row.avatarId || row.avatar_id
+      const processing = latestProcessingMap.get(avatarId)
+      const normalizedStatus = this.normalizeDispatchStatus(processing?.status || row.status)
+
       return {
         id: row.id,
-        avatarId: row.avatar_id,
+        requestId: processing?.id || row.id,
+        avatarId,
+        avatarName: row.nickname || '未知分身',
         nickname: row.nickname || '未知分身',
-        avatarUrl: row.avatar_url || '',
-        platform: Array.isArray(platforms) ? platforms[0] || 'unknown' : 'unknown',
-        status: row.status || 'pending',
+        avatarUrl: row.avatarUrl || row.avatar_url || '',
+        platform: row.platform || 'unknown',
+        status: normalizedStatus,
+        publishFeedback: this.safeParseJson(processing?.publishFeedback || processing?.publish_feedback, {}),
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
       }
     })
+
+    const summaryStats = {
+      totalAvatars: avatarStats.length,
+      acceptedAvatars: avatarStats.filter((row: any) => this.isAcceptedDispatchStatus(row.status)).length,
+      completedAvatars: avatarStats.filter((row: any) => row.status === 'completed').length,
+      totalPosts: 0,
+      totalPlatforms: 0,
+      totalPublished: avatarStats.filter((row: any) => ['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
+      totalManual: 0,
+      totalViews: 0,
+      totalLikes: 0,
+      totalComments: 0,
+      totalShares: 0,
+      avatarStats
+    }
     
     // 转换日期格式
     const createdAt = order.created_at instanceof Date 
@@ -136,6 +186,8 @@ export class OrderService {
       budget: order.budget,
       status: order.status,
       avatarCount: order.avatarCount || order.avatar_count || 1,
+      avatarStats,
+      summary_stats: summaryStats,
       createdAt
     }
   }

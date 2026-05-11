@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro, { useLoad, navigateTo, switchTab } from '@tarojs/taro'
+import Taro, { useLoad, navigateTo } from '@tarojs/taro'
 import * as Network from '@/network'
 import { User, MapPin, Star, Zap, Heart, Sparkles, Send } from 'lucide-react-taro'
 import { getAvatarStyleClass } from '@/utils/avatar-style'
@@ -193,17 +193,17 @@ export default function AvatarRecommendPage() {
 
   const viewAvatar = (avatarId: string) => {
     navigateTo({
-      url: `/pages/avatar-profile/index?avatarId=${avatarId}`
+      url: `/pages/avatar-profile/index?id=${avatarId}`
     })
   }
 
   const handleSkip = () => {
     if (orderParams) {
       // 有订单参数，跳转到我的分身页面
-      switchTab({ url: '/pages/avatar/avatar-manage/index' })
+      navigateTo({ url: '/pages/avatar/avatar-manage/index' })
     } else {
       // 跳过推荐，直接跳转回分身列表（我的分身页面）
-      switchTab({ url: '/pages/avatar/avatar-manage/index' })
+      navigateTo({ url: '/pages/avatar/avatar-manage/index' })
     }
   }
 

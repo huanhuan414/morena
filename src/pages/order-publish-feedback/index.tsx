@@ -7,21 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, Image as ImageIcon, Video, FileText, Eye, CircleCheck, Plus, X } from 'lucide-react-taro'
+import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
-
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信公众号',
-  wechat_channel: '视频号',
-  wechat_moments: '朋友圈',
-  weibo: '微博',
-  xiaohongshu: '小红书',
-  douyin: '抖音',
-  zhihu: '知乎',
-  bilibili: '哔哩哔哩',
-  toutiao: '今日头条',
-  kuaishou: '快手',
-  other: '其他平台'
-}
 
 const CONTENT_TYPE_NAMES: Record<string, string> = {
   image: '图片',
@@ -78,17 +65,24 @@ export default function OrderPublishFeedback() {
         const data = response.data.data
         setGeneratedContent(data.generatedContent)
         setContentType(data.contentType || 'image')
-        setCurrentPlatform(data.generatedContent?.platforms?.[0] || '')
+        setCurrentPlatform(canonicalizePlatform(data.generatedContent?.platforms?.[0] || ''))
 
         // 获取发布结果
-        const platforms = data.publishStatus?.platforms || data.publish_status?.platforms || []
+        const platforms = canonicalizePlatforms(data.publishStatus?.platforms || data.publish_status?.platforms || [])
+        const platformStatusMap = data.publishStatus?.platformStatus || data.publish_status?.platformStatus || {}
 
         if (platforms.length > 0) {
-          setPublishPlatforms(platforms)
+          setPublishPlatforms(
+            platforms.map((platform) => ({
+              platform,
+              status: platformStatusMap?.[platform]?.status || 'manual',
+              message: platformStatusMap?.[platform]?.message
+            }))
+          )
         } else {
           // 根据生成内容的平台创建待发布的平台列表
           if (data.generatedContent?.platforms) {
-            const pendingPlatforms = data.generatedContent.platforms.map((p: string) => ({
+            const pendingPlatforms = canonicalizePlatforms(data.generatedContent.platforms).map((p: string) => ({
               platform: p,
               status: 'manual',
               message: '需要手动发布'
@@ -278,7 +272,7 @@ export default function OrderPublishFeedback() {
     }
     return (
       <View className={`platform-badge ${colors[platform] || 'platform-default'}`}>
-        <Text className="block">{PLATFORM_NAMES[platform] || platform}</Text>
+        <Text className="block">{getPlatformLabel(platform)}</Text>
       </View>
     )
   }
@@ -518,7 +512,7 @@ export default function OrderPublishFeedback() {
           ) : (
             publishPlatforms.map((result: PublishPlatform, index: number) => {
               const platform = result.platform
-              const platformName = PLATFORM_NAMES[platform] || platform
+      const platformName = getPlatformLabel(platform)
               const fb = feedback[platform] || { images: [], link: '' }
 
               return (

@@ -5,6 +5,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Sparkles, Send, Check, ChevronRight, Loader, ChevronLeft, FileText } from 'lucide-react-taro'
 import { Network } from '@/network'
+import {
+  PLATFORM_UI_ORDER,
+  PLATFORM_META_MAP,
+  canonicalizePlatform,
+  canonicalizePlatforms
+} from '@/constants/publish-platform'
 import './index.css'
 
 // 内容类型配置
@@ -15,69 +21,9 @@ const CONTENT_TYPES = [
   { id: 'live', label: '直播话术', icon: '📺', price: 25, prompt: '撰写直播带货话术' },
 ]
 
-// 平台配置
-const PLATFORM_CONFIG: Record<string, {
-  label: string
-  icon: string
-  color: string
-  requirements: { id: string; label: string; placeholder: string }[]
-}> = {
-  douyin: {
-    label: '抖音',
-    icon: '🎵',
-    color: '#000000',
-    requirements: [
-      { id: 'fans', label: '粉丝量要求', placeholder: '如：1000' },
-      { id: 'group', label: '需开通团购', placeholder: '是/否' },
-      { id: 'cert', label: '需蓝V认证', placeholder: '是/否' },
-    ]
-  },
-  wechat_mp: {
-    label: '微信公众号',
-    icon: '📢',
-    color: '#1677FF',
-    requirements: [
-      { id: 'fans', label: '粉丝量要求', placeholder: '如：500' },
-      { id: 'account_type', label: '账号类型', placeholder: '订阅号/服务号' },
-    ]
-  },
-  xiaohongshu: {
-    label: '小红书',
-    icon: '📕',
-    color: '#FF2442',
-    requirements: [
-      { id: 'fans', label: '粉丝量要求', placeholder: '如：500' },
-      { id: 'cert', label: '需专业号', placeholder: '是/否' },
-    ]
-  },
-  wechat: {
-    label: '微信',
-    icon: '💬',
-    color: '#07C160',
-    requirements: [
-      { id: 'fans', label: '视频号粉丝', placeholder: '如：1000' },
-      { id: 'moments', label: '需发朋友圈', placeholder: '是/否' },
-    ]
-  },
-  weibo: {
-    label: '微博',
-    icon: '🌐',
-    color: '#FF8200',
-    requirements: [
-      { id: 'fans', label: '粉丝量要求', placeholder: '如：10000' },
-      { id: 'cert', label: '需认证', placeholder: '是/否' },
-    ]
-  },
-  kuaishou: {
-    label: '快手',
-    icon: '📸',
-    color: '#FF4906',
-    requirements: [
-      { id: 'fans', label: '粉丝量要求', placeholder: '如：1000' },
-      { id: 'shop', label: '需开通快手小店', placeholder: '是/否' },
-    ]
-  },
-}
+const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
+  .map((key) => ({ id: key, ...PLATFORM_META_MAP[key] }))
+  .filter((item) => Array.isArray(item.requirements))
 
 export default function OrderCreate() {
   const [form, setForm] = useState({
@@ -116,7 +62,7 @@ export default function OrderCreate() {
     setAiLoading(true)
     try {
       // 构建平台名称列表
-      const platformNames = form.platforms.map(p => PLATFORM_CONFIG[p]?.label || p).join('、')
+      const platformNames = form.platforms.map((p) => PLATFORM_META_MAP[p as keyof typeof PLATFORM_META_MAP]?.name || p).join('、')
       const contentTypeName = selectedType?.label || '文案'
       const platformIds = form.platforms.join(',')
       
@@ -195,15 +141,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   // 切换平台
   const handlePlatformToggle = (platformId: string) => {
+    const canonicalId = canonicalizePlatform(platformId)
     setForm(prev => {
-      const platforms = prev.platforms.includes(platformId)
-        ? prev.platforms.filter(p => p !== platformId)
-        : [...prev.platforms, platformId]
+      const platforms = prev.platforms.includes(canonicalId)
+        ? prev.platforms.filter(p => p !== canonicalId)
+        : [...prev.platforms, canonicalId]
       // 清空已选平台的要求
       const newReqs = { ...prev.optionalRequirements }
-      if (!platforms.includes(platformId)) {
+      if (!platforms.includes(canonicalId)) {
         Object.keys(newReqs).forEach(key => {
-          if (key.startsWith(platformId + '_')) {
+          if (key.startsWith(canonicalId + '_')) {
             delete newReqs[key]
           }
         })
@@ -242,7 +189,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         title: form.title,
         description: form.description,
         content_type: form.contentType,
-        platforms: form.platforms,
+        platforms: canonicalizePlatforms(form.platforms),
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
@@ -294,10 +241,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   // 获取选中平台的特殊要求
   const getSelectedPlatformReqs = () => {
-    return form.platforms.map(platformId => ({
+    return canonicalizePlatforms(form.platforms).map(platformId => ({
       platformId,
-      platform: PLATFORM_CONFIG[platformId],
-      requirements: PLATFORM_CONFIG[platformId]?.requirements || []
+      platform: PLATFORM_META_MAP[platformId as keyof typeof PLATFORM_META_MAP],
+      requirements: PLATFORM_META_MAP[platformId as keyof typeof PLATFORM_META_MAP]?.requirements || []
     }))
   }
 
@@ -343,17 +290,17 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <Text className="section-tag">必填</Text>
           </View>
           <View className="platform-grid">
-            {Object.entries(PLATFORM_CONFIG).map(([id, config]) => (
+            {PLATFORM_OPTIONS.map((config) => (
               <View
-                key={id}
-                className={`platform-card ${form.platforms.includes(id) ? 'active' : ''}`}
-                onClick={() => handlePlatformToggle(id)}
+                key={config.id}
+                className={`platform-card ${form.platforms.includes(config.id) ? 'active' : ''}`}
+                onClick={() => handlePlatformToggle(config.id)}
               >
                 <View className="platform-icon" style={{ background: config.color + '20' }}>
                   <Text className="platform-emoji">{config.icon}</Text>
                 </View>
-                <Text className="platform-name">{config.label}</Text>
-                {form.platforms.includes(id) && (
+                <Text className="platform-name">{config.name}</Text>
+                {form.platforms.includes(config.id) && (
                   <View className="platform-check">
                     <Check size={12} color="#fff" />
                   </View>
@@ -373,7 +320,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 <View className="req-content">
                   {getSelectedPlatformReqs().map(({ platformId, platform, requirements }) => (
                     <View key={platformId} className="platform-req-section">
-                      <Text className="platform-req-title">{platform?.icon} {platform?.label} 要求</Text>
+                      <Text className="platform-req-title">{platform?.icon} {platform?.name} 要求</Text>
                       {requirements.map(req => (
                         <View key={req.id} className="req-item">
                           <Text className="req-label">{req.label}</Text>

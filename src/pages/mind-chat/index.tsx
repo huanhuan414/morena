@@ -1,6 +1,6 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react'
-import Taro from '@tarojs/taro'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import {
   Search,
@@ -46,6 +46,8 @@ const MindChat: React.FC = () => {
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(true)
+  const hasPageShownRef = useRef(false)
+  const activeTabRef = useRef<CloneType>('my')
 
   // 加载我的分身列表
   const loadMyClones = useCallback(async () => {
@@ -145,13 +147,31 @@ const MindChat: React.FC = () => {
     }
   }, [])
 
-  useEffect(() => {
-    if (activeTab === 'my') {
-      loadMyClones()
-    } else {
-      loadSquareClones()
+  const loadCurrentTabData = useCallback(async () => {
+    if (activeTabRef.current === 'my') {
+      await loadMyClones()
+      return
     }
-  }, [activeTab, loadMyClones, loadSquareClones])
+
+    await loadSquareClones()
+  }, [loadMyClones, loadSquareClones])
+
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+
+  useDidShow(() => {
+    hasPageShownRef.current = true
+    void loadCurrentTabData()
+  })
+
+  useEffect(() => {
+    if (!hasPageShownRef.current) {
+      return
+    }
+
+    void loadCurrentTabData()
+  }, [activeTab, loadCurrentTabData])
 
   const filteredClones = (activeTab === 'my' ? myClones : squareClones).filter(clone =>
     clone.name.toLowerCase().includes(searchValue.toLowerCase())

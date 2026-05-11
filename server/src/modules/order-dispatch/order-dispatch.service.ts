@@ -1,15 +1,77 @@
 // @ts-nocheck
-import { Injectable, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
 
 @Injectable()
 export class OrderDispatchService {
+  private readonly logger = new Logger(OrderDispatchService.name)
+  private avatarColumnsCache: Set<string> | null = null
+
   constructor(
     @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService,
     @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService
   ) {}
+
+  private normalizeDispatchStatus(status?: string): string {
+    if (status === 'confirmed') {
+      return 'accepted'
+    }
+    return status || 'pending'
+  }
+
+  private async getAvatarTableColumns(): Promise<Set<string>> {
+    if (this.avatarColumnsCache) {
+      return this.avatarColumnsCache
+    }
+
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'avatars'
+    `)
+
+    this.avatarColumnsCache = new Set(
+      (rows || [])
+        .map((row: any) => String(row.columnName || row.COLUMN_NAME || row.column_name || '').toLowerCase())
+        .filter(Boolean)
+    )
+
+    return this.avatarColumnsCache
+  }
+
+  private buildHostedColumnChecks(columnExpression: string): string[] {
+    return [
+      `${columnExpression} = 1`,
+      `${columnExpression} = true`,
+      `${columnExpression} = '1'`,
+      `${columnExpression} = 'true'`
+    ]
+  }
+
+  private async buildHostedWhereClause(alias?: string): Promise<string> {
+    const columns = await this.getAvatarTableColumns()
+    const prefix = alias ? `${alias}.` : ''
+    const conditions: string[] = []
+
+    if (columns.has('is_hosted')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}is_hosted`))
+    }
+
+    if (columns.has('trust_enabled')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}trust_enabled`))
+    }
+
+    if (conditions.length === 0) {
+      this.logger.warn('avatars 表缺少 is_hosted / trust_enabled 字段，自动派单将返回空结果')
+      return '1 = 0'
+    }
+
+    return `(${conditions.join(' OR ')})`
+  }
 
   async createDispatchRequest(data: {
     order_id: string
@@ -61,9 +123,10 @@ export class OrderDispatchService {
    */
   async getRecommendedAvatars(orderId: string, limit: number = 0) {
     const db = getMySQLClient()
-    
-    // 查询开启托管的分身（is_hosted = 1 且 status = active）
-    let sql = 'SELECT * FROM avatars WHERE is_hosted = 1 AND status = ? ORDER BY updated_at DESC'
+    const hostedWhereClause = await this.buildHostedWhereClause()
+
+    // 查询开启托管的分身（兼容 is_hosted / trust_enabled 双字段）
+    let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = ? ORDER BY updated_at DESC`
     if (limit > 0) {
       sql += ` LIMIT ${parseInt(String(limit))}`
     }
@@ -114,11 +177,15 @@ export class OrderDispatchService {
   async getDispatchStatus(orderId: string) {
     const db = getMySQLClient()
     const requests = await db.query('order_dispatch_requests', { order_id: orderId }) as any[]
+    const normalizedStatuses = requests.map((request) => this.normalizeDispatchStatus(request.status))
+    const acceptedCount = normalizedStatuses.filter((status) => status === 'accepted').length
+
     return {
       total: requests.length,
-      pending: requests.filter(r => r.status === 'pending').length,
-      confirmed: requests.filter(r => r.status === 'confirmed').length,
-      rejected: requests.filter(r => r.status === 'rejected').length
+      pending: normalizedStatuses.filter((status) => status === 'pending').length,
+      accepted: acceptedCount,
+      confirmed: acceptedCount,
+      rejected: normalizedStatuses.filter((status) => status === 'rejected').length
     }
   }
 
@@ -157,7 +224,10 @@ export class OrderDispatchService {
 
   async confirmDispatch(requestId: string, avatarId: string) {
     const db = getMySQLClient()
-    await db.update('order_dispatch_requests', { status: 'confirmed' }, { id: requestId })
+    await db.updateWhere('order_dispatch_requests', { id: requestId }, {
+      status: 'accepted',
+      updated_at: new Date()
+    })
     return { success: true }
   }
 
@@ -185,12 +255,13 @@ export class OrderDispatchService {
     const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1
     
     // 查询所有开启托管的分身，并关联用户表获取手机号
-    // 注意：is_hosted 可能是字符串 'true'/'false' 或数字 1/0
+    // 兼容 is_hosted / trust_enabled，且兼容字符串/数字布尔值
+    const hostedWhereClause = await this.buildHostedWhereClause('a')
     const allAvatars = await db.query(`
       SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
-      WHERE (a.is_hosted = 1 OR a.is_hosted = 'true') AND a.status = ?`, 
+      WHERE ${hostedWhereClause} AND a.status = ?`, 
       ['active']
     ) as any[]
     

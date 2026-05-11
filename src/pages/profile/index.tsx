@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, navigateTo, reLaunch, showModal, switchTab } from '@tarojs/taro'
+import { useLoad, useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -271,11 +271,11 @@ export default function ProfilePage() {
             <Text className="h-stat-value">{stats.taskCount}</Text>
             <Text className="h-stat-label">商单</Text>
           </View>
-          <View className="h-stat-item" onClick={() => switchTab({ url: '/pages/social/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/social/index' })}>
             <Text className="h-stat-value">{stats.postCount}</Text>
             <Text className="h-stat-label">动态</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-friends/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/friendship-management/index' })}>
             <Text className="h-stat-value">{stats.friendCount}</Text>
             <Text className="h-stat-label">好友</Text>
           </View>

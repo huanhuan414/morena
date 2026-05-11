@@ -1,24 +1,83 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
-import { getMySQLClient } from '../../storage/database/mysql-client'
-import { Config } from 'coze-coding-dev-sdk'
-import { LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
+import { Config, LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
+import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
+import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 
-// 内存缓存，用于数据库不可用时降级（共享给 user-stats.service.ts）
-import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
-
 @Injectable()
 export class AvatarService {
   constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {}
+  private avatarColumnsCache: Set<string> | null = null
 
   private hasOwnKey(obj: any, key: string) {
     return Object.prototype.hasOwnProperty.call(obj || {}, key)
+  }
+
+  private parseBoolean(value: any): boolean {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'number') return value === 1
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      return normalized === '1' || normalized === 'true'
+    }
+    return false
+  }
+
+  private resolveTrustEnabled(avatar: any): boolean {
+    return this.parseBoolean(
+      avatar?.isHosted
+      ?? avatar?.is_hosted
+      ?? avatar?.trustEnabled
+      ?? avatar?.trust_enabled
+    )
+  }
+
+  private async getAvatarTableColumns(): Promise<Set<string>> {
+    if (this.avatarColumnsCache) {
+      return this.avatarColumnsCache
+    }
+
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'avatars'
+    `)
+
+    this.avatarColumnsCache = new Set(
+      (rows || [])
+        .map((row: any) => String(row.columnName || row.COLUMN_NAME || row.column_name || '').toLowerCase())
+        .filter(Boolean)
+    )
+
+    return this.avatarColumnsCache
+  }
+
+  private async buildHostingTrustUpdate(trustEnabled: boolean): Promise<Record<string, any>> {
+    const columns = await this.getAvatarTableColumns()
+    const updateData: Record<string, any> = {}
+    const hostingFlag = trustEnabled ? 1 : 0
+
+    if (columns.has('is_hosted')) {
+      updateData.is_hosted = hostingFlag
+    }
+
+    if (columns.has('trust_enabled')) {
+      updateData.trust_enabled = hostingFlag
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new Error('avatars 表缺少托管状态字段，请先补齐 is_hosted 或 trust_enabled 列')
+    }
+
+    return updateData
   }
 
   private safeParseJson<T = any>(value: any, fallback: T): T {
@@ -187,6 +246,7 @@ export class AvatarService {
     const avatars = rows.map((avatar: any) => {
       const personality = this.safeParseJson(avatar.personality, {})
       const config = this.safeParseJson(avatar.config, {})
+      const trustEnabled = this.resolveTrustEnabled(avatar)
 
       // 如果没有头像，生成默认头像（使用 PNG 格式，兼容小程序）
       const defaultAvatarUrl = avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatar.id)}&size=200`
@@ -199,7 +259,9 @@ export class AvatarService {
         avatarUrl: defaultAvatarUrl, // 驼峰格式也加上
         tags: personality.tags || [],
         abilities: personality.abilities || {},
-        trust_enabled: Boolean(avatar.trustEnabled ?? avatar.trust_enabled),
+        trust_enabled: trustEnabled,
+        is_hosted: trustEnabled,
+        isHosted: trustEnabled,
         location_text: avatar.locationText || avatar.location_text || '',
         locationText: avatar.locationText || avatar.location_text || '',
         latitude: avatar.latitude ?? null,
@@ -226,6 +288,7 @@ export class AvatarService {
     const avatar = result.data
     const personality = this.safeParseJson(avatar.personality, {})
     const config = this.safeParseJson(avatar.config, {})
+    const trustEnabled = this.resolveTrustEnabled(avatar)
 
     return { 
       success: true, 
@@ -237,7 +300,9 @@ export class AvatarService {
         avatarUrl: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
         tags: personality.tags || [],
         abilities: personality.abilities || {},
-        trust_enabled: Boolean(avatar.trustEnabled ?? avatar.trust_enabled),
+        trust_enabled: trustEnabled,
+        is_hosted: trustEnabled,
+        isHosted: trustEnabled,
         location_text: avatar.locationText || avatar.location_text || '',
         locationText: avatar.locationText || avatar.location_text || '',
         latitude: avatar.latitude ?? null,
@@ -530,8 +595,9 @@ export class AvatarService {
     if (avatars.length === 0) {
       throw new Error('分身不存在')
     }
-    
-    await db.updateWhere('avatars', { id: avatarId }, { trust_enabled: trustEnabled ? 1 : 0 })
+
+    const updateData = await this.buildHostingTrustUpdate(trustEnabled)
+    await db.updateWhere('avatars', { id: avatarId }, updateData)
     return { success: true }
   }
 
@@ -548,8 +614,9 @@ export class AvatarService {
     if (!hasValidUserId) {
       throw new Error('无效的用户ID')
     }
-    
-    await db.updateWhere('avatars', { user_id: userId }, { trust_enabled: trustEnabled ? 1 : 0 })
+
+    const updateData = await this.buildHostingTrustUpdate(trustEnabled)
+    await db.updateWhere('avatars', { user_id: userId }, updateData)
     return { success: true }
   }
 
@@ -601,11 +668,14 @@ export class AvatarService {
     }
 
     const config = this.safeParseJson(existing.data.config, {})
+    const trustEnabled = this.resolveTrustEnabled(existing.data)
     return {
       success: true,
       data: {
         id: avatarId,
-        trust_enabled: Boolean(existing.data.trustEnabled ?? existing.data.trust_enabled),
+        trust_enabled: trustEnabled,
+        is_hosted: trustEnabled,
+        isHosted: trustEnabled,
         hosting_settings: this.safeParseJson(config.hosting_settings, {})
       }
     }

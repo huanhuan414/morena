@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { useLoad, useRouter, navigateBack } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { ArrowLeft, MapPin, Star, Sparkles, Users, Calendar, BookOpen, Heart, Eye, MessageCircle, ThumbsUp } from 'lucide-react-taro'
 import { getSafeArea } from '@/utils/safe-area'
@@ -58,7 +58,6 @@ const PERSONALITY_MAP: Record<string, string> = {
 
 export default function AvatarProfilePage() {
   const router = useRouter()
-  const avatarId = router.params.id
   
   const [profile, setProfile] = useState<AvatarProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -66,12 +65,35 @@ export default function AvatarProfilePage() {
   const [postsLoading, setPostsLoading] = useState(false)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
+  const getAvatarIdFromRoute = () => {
+    const routerParams = router.params || {}
+    const avatarIdFromRouter = routerParams.avatarId
+    const idFromRouter = routerParams.id
+
+    if (avatarIdFromRouter || idFromRouter) {
+      return avatarIdFromRouter || idFromRouter
+    }
+
+    const pages = Taro.getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const options = currentPage?.options || {}
+
+    return options.avatarId || options.id || ''
+  }
+
   useLoad(() => {
     const safeArea = getSafeArea()
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
-    if (avatarId) {
-      fetchAvatarProfile(avatarId)
+
+    const avatarId = getAvatarIdFromRoute()
+
+    if (!avatarId) {
+      console.warn('[avatar-profile] 未接收到 avatarId/id 参数')
+      setLoading(false)
+      return
     }
+
+    fetchAvatarProfile(avatarId)
   })
 
   const fetchAvatarProfile = async (id: string) => {

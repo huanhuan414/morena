@@ -23,11 +23,36 @@ ADD COLUMN IF NOT EXISTS gender VARCHAR(20) AFTER voice_id,
 ADD COLUMN IF NOT EXISTS age VARCHAR(20) AFTER gender,
 ADD COLUMN IF NOT EXISTS interests JSON AFTER age,
 ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT '#7B3FE4' AFTER total_earnings,
-ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE AFTER status,
+ADD COLUMN IF NOT EXISTS is_hosted BOOLEAN DEFAULT FALSE AFTER status,
+ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE AFTER is_hosted,
 ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP NULL AFTER is_online,
 ADD COLUMN IF NOT EXISTS total_interactions INT DEFAULT 0 AFTER experience,
 ADD COLUMN IF NOT EXISTS total_posts INT DEFAULT 0 AFTER total_interactions,
 ADD COLUMN IF NOT EXISTS total_earnings DECIMAL(10,2) DEFAULT 0 AFTER total_posts;
+
+-- 如果存在旧字段 trust_enabled，则回填到统一字段 is_hosted
+SET @avatar_has_trust_enabled = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'avatars'
+    AND column_name = 'trust_enabled'
+);
+SET @avatar_has_is_hosted = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'avatars'
+    AND column_name = 'is_hosted'
+);
+SET @sync_avatar_hosting_sql = IF(
+  @avatar_has_trust_enabled > 0 AND @avatar_has_is_hosted > 0,
+  'UPDATE avatars SET is_hosted = CASE WHEN trust_enabled IN (1, ''1'', true, ''true'') THEN 1 ELSE 0 END',
+  'SELECT 1'
+);
+PREPARE stmt_avatar_hosting_sync FROM @sync_avatar_hosting_sql;
+EXECUTE stmt_avatar_hosting_sync;
+DEALLOCATE PREPARE stmt_avatar_hosting_sync;
 
 -- ============================================
 -- 3. 补充 posts 表缺失字段

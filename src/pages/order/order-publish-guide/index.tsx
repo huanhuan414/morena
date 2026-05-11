@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
+import {
+  PLATFORM_META_MAP,
+  canonicalizePlatform,
+  canonicalizePlatforms,
+  getPlatformLabel,
+  type CanonicalPlatformKey,
+  type PlatformMeta
+} from '@/constants/publish-platform'
 import { 
   ChevronLeft, Copy, Check, 
   FileText, Image as ImageIcon, Video,
@@ -16,72 +24,6 @@ interface AvatarAccount {
   account_name: string
   account_url?: string
   appid?: string
-}
-
-// 平台配置
-const PLATFORM_CONFIG: Record<string, {
-  name: string
-  icon: string
-  color: string
-  bgColor: string
-  description: string
-  contentTips: string[]
-  requiresBinding: boolean
-}> = {
-  xiaohongshu: {
-    name: '小红书',
-    icon: '📕',
-    color: '#FF2442',
-    bgColor: '#FFF0F0',
-    description: '发布图文笔记，吸引年轻用户',
-    contentTips: ['封面图要精美，吸引眼球', '标题要有悬念或共鸣', '正文要简洁有条理', '添加相关话题标签'],
-    requiresBinding: false
-  },
-  douyin: {
-    name: '抖音',
-    icon: '🎵',
-    color: '#00F2EA',
-    bgColor: '#E0FFFD',
-    description: '发布短视频，获取流量曝光',
-    contentTips: ['视频前3秒要抓住眼球', '配文要简短有力', '添加热门音乐', '使用热门话题标签'],
-    requiresBinding: false
-  },
-  wechat_moments: {
-    name: '朋友圈',
-    icon: '💬',
-    color: '#07C160',
-    bgColor: '#E8FFF0',
-    description: '分享生活点滴，增强社交互动',
-    contentTips: ['朋友圈建议3-9张图', '文案要生活化、真实', '配图风格要统一', '可以适当添加表情'],
-    requiresBinding: false
-  },
-  wechat_mp: {
-    name: '公众号',
-    icon: '📧',
-    color: '#07C160',
-    bgColor: '#E8FFF0',
-    description: '发布深度文章，建立专业形象',
-    contentTips: ['标题要吸引人', '封面图要高清', '排版要整洁美观', '文章要有价值输出'],
-    requiresBinding: true
-  },
-  weibo: {
-    name: '微博',
-    icon: '🌐',
-    color: '#E6162D',
-    bgColor: '#FFE8E8',
-    description: '发布短内容，扩大影响力',
-    contentTips: ['配图要精美', '话题标签要相关', '文案要简洁', '可以@相关账号'],
-    requiresBinding: false
-  },
-  bilibili: {
-    name: 'Bilibili',
-    icon: '📺',
-    color: '#FB7299',
-    bgColor: '#FFF0F5',
-    description: '发布视频内容，吸引年轻用户',
-    contentTips: ['封面图要吸引人', '标题要有吸引力', '视频质量要清晰', '添加相关标签'],
-    requiresBinding: false
-  }
 }
 
 // 内容类型配置
@@ -112,9 +54,22 @@ const CONTENT_TYPE_CONFIG: Record<string, {
   }
 }
 
+const PLATFORM_CONFIG = PLATFORM_META_MAP
+
+const getValidatedPlatformMeta = (platform?: string): PlatformMeta | undefined => {
+  const canonicalPlatform = canonicalizePlatform(platform) as CanonicalPlatformKey
+  return PLATFORM_CONFIG[canonicalPlatform]
+}
+
+const getValidatedPlatforms = (platforms: string[] = []): CanonicalPlatformKey[] => {
+  return canonicalizePlatforms(platforms).filter((platform): platform is CanonicalPlatformKey => {
+    return Boolean(getValidatedPlatformMeta(platform))
+  })
+}
+
 export default function OrderPublishGuide() {
   const router = useRouter()
-  const [platforms, setPlatforms] = useState<string[]>([])
+  const [platforms, setPlatforms] = useState<CanonicalPlatformKey[]>([])
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -123,7 +78,7 @@ export default function OrderPublishGuide() {
   const [avatarId, setAvatarId] = useState('')
   const [avatarAccounts, setAvatarAccounts] = useState<AvatarAccount[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentPlatform, setCurrentPlatform] = useState<string>('')
+  const [currentPlatform, setCurrentPlatform] = useState<CanonicalPlatformKey | ''>('')
   const [requestId, setRequestId] = useState<string>('')
   const [publishing, setPublishing] = useState(false)
   const [orderId, setOrderId] = useState<string>('')
@@ -131,7 +86,7 @@ export default function OrderPublishGuide() {
   // 解析 URL 参数
   useEffect(() => {
     const params = router.params
-    const platformsFromQuery = params.platforms ? params.platforms.split(',') : []
+    const platformsFromQuery = params.platforms ? getValidatedPlatforms(params.platforms.split(',')) : []
     if (platformsFromQuery.length > 0) {
       setPlatforms(platformsFromQuery)
       setCurrentPlatform(platformsFromQuery[0])
@@ -204,7 +159,7 @@ export default function OrderPublishGuide() {
 
   // 检查平台是否需要绑定账号
   const getPlatformBindingStatus = (platform: string) => {
-    const config = PLATFORM_CONFIG[platform]
+    const config = getValidatedPlatformMeta(platform)
     if (!config || !config.requiresBinding) {
       return { required: false, bound: true }
     }
@@ -221,7 +176,7 @@ export default function OrderPublishGuide() {
 
   // 处理打开APP/发布
   const handleOpenApp = (platform: string) => {
-    const info = PLATFORM_CONFIG[platform]
+    const info = getValidatedPlatformMeta(platform)
     if (!info) return
 
     const bindingStatus = getPlatformBindingStatus(platform)
@@ -310,7 +265,10 @@ export default function OrderPublishGuide() {
           try {
             const result = await Network.request({
               url: `/api/order-processing/publish/${requestId}`,
-              method: 'POST'
+              method: 'POST',
+              data: {
+                platforms: canonicalizePlatforms(platforms)
+              }
             })
             
             if (result.data?.code === 200) {
@@ -443,7 +401,7 @@ export default function OrderPublishGuide() {
           
           <View className="platform-grid">
             {platforms.map((platform) => {
-              const config = PLATFORM_CONFIG[platform] || {
+              const config = getValidatedPlatformMeta(platform) || {
                 name: platform,
                 icon: '📱',
                 color: '#6366f1',
@@ -482,26 +440,26 @@ export default function OrderPublishGuide() {
         </View>
 
         {/* 当前平台发布指南 */}
-        {currentPlatform && PLATFORM_CONFIG[currentPlatform] && (
+        {currentPlatform && getValidatedPlatformMeta(currentPlatform) && (
           <View className="section-container">
             <View className="publish-guide-card"
-              style={{ borderLeftColor: PLATFORM_CONFIG[currentPlatform].color }}
+              style={{ borderLeftColor: getValidatedPlatformMeta(currentPlatform)?.color }}
             >
               <View className="guide-card-header">
                 <Text className="guide-platform-icon">
-                  {PLATFORM_CONFIG[currentPlatform].icon}
+                  {getValidatedPlatformMeta(currentPlatform)?.icon}
                 </Text>
                 <Text className="guide-platform-name">
-                  {PLATFORM_CONFIG[currentPlatform].name}
+                  {getPlatformLabel(currentPlatform)}
                 </Text>
               </View>
               <Text className="guide-platform-desc">
-                {PLATFORM_CONFIG[currentPlatform].description}
+                {getValidatedPlatformMeta(currentPlatform)?.description}
               </Text>
               
               <View className="guide-tips">
                 <Text className="tips-header">发布技巧</Text>
-                {PLATFORM_CONFIG[currentPlatform].contentTips.map((tip, index) => (
+                {(getValidatedPlatformMeta(currentPlatform)?.contentTips || []).map((tip, index) => (
                   <View key={index} className="tip-row">
                     <Text className="tip-number">{index + 1}</Text>
                     <Text className="tip-content">{tip}</Text>
@@ -511,7 +469,7 @@ export default function OrderPublishGuide() {
 
               <View 
                 className="publish-btn"
-                style={{ backgroundColor: PLATFORM_CONFIG[currentPlatform].color }}
+                style={{ backgroundColor: getValidatedPlatformMeta(currentPlatform)?.color }}
                 onClick={() => handleOpenApp(currentPlatform)}
               >
                 <Send size={18} color="#FFFFFF" />
