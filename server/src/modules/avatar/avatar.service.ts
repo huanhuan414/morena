@@ -198,7 +198,7 @@ export class AvatarService {
   /**
    * 获取分身详情
    */
-  async getAvatarById(avatarId: number) {
+  async getAvatarById(avatarId: string) {
     const db = getMySQLClient()
     const result = await db.queryOne('avatars', { id: avatarId })
     
@@ -235,7 +235,7 @@ export class AvatarService {
   /**
    * 更新分身信息
    */
-  async updateAvatar(avatarId: number, updateData: any) {
+  async updateAvatar(avatarId: string, updateData: any) {
     const db = getMySQLClient()
     
     // 处理嵌套的 JSON 字段
@@ -280,7 +280,7 @@ export class AvatarService {
   /**
    * 添加分身技能
    */
-  async addSkill(avatarId: number, skillData: any) {
+  async addSkill(avatarId: string, skillData: any) {
     const db = getMySQLClient()
     const result = await db.insert('avatar_skills', {
       avatar_id: avatarId,
@@ -296,7 +296,7 @@ export class AvatarService {
   /**
    * 获取分身技能列表
    */
-  async getSkills(avatarId: number) {
+  async getSkills(avatarId: string) {
     const db = getMySQLClient()
     const result = await db.select('avatar_skills', { avatar_id: avatarId })
     return { success: true, data: result.data || [] }
@@ -314,7 +314,7 @@ export class AvatarService {
   /**
    * 添加分身记忆
    */
-  async addMemory(avatarId: number, memoryData: any) {
+  async addMemory(avatarId: string, memoryData: any) {
     const db = getMySQLClient()
     const result = await db.insert('avatar_memories', {
       avatar_id: avatarId,
@@ -329,7 +329,7 @@ export class AvatarService {
   /**
    * 获取分身记忆列表
    */
-  async getMemories(avatarId: number) {
+  async getMemories(avatarId: string) {
     const db = getMySQLClient()
     const result = await db.select('avatar_memories', { avatar_id: avatarId })
     return { success: true, data: result.data || [] }
@@ -347,7 +347,7 @@ export class AvatarService {
   /**
    * 获取分身统计数据
    */
-  async getStats(avatarId: number) {
+  async getStats(avatarId: string) {
     const db = getMySQLClient()
     const [fans, posts, likes, comments] = await Promise.all([
       db.count('follows', { avatar_id: avatarId }),
@@ -369,7 +369,7 @@ export class AvatarService {
   /**
    * 声音复刻状态查询
    */
-  async getVoiceCloneStatus(avatarId: number) {
+  async getVoiceCloneStatus(avatarId: string) {
     const db = getMySQLClient()
     const result = await db.queryOne('avatars', { id: avatarId })
     

@@ -98,4 +98,98 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 确认内容并进入发布流程
+   * 支持 requestId / orderId
+   */
+  @Post('confirm/:id')
+  async confirmContent(
+    @Param('id') id: string,
+    @Body('content') content?: string
+  ) {
+    try {
+      const result = await this.processingService.confirmProcessing(id, content)
+      return {
+        code: 200,
+        data: result,
+        message: result ? '确认成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '确认失败'
+      }
+    }
+  }
+
+  /**
+   * 执行发布
+   * 支持 requestId / orderId
+   */
+  @Post('publish/:id')
+  async publishContent(@Param('id') id: string) {
+    try {
+      const result = await this.processingService.publishProcessing(id)
+      return {
+        code: 200,
+        data: result,
+        message: result ? '发布成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '发布失败'
+      }
+    }
+  }
+
+  /**
+   * 提交发布反馈
+   * 支持 requestId / orderId
+   */
+  @Post('feedback/:id')
+  async submitFeedback(
+    @Param('id') id: string,
+    @Body('feedback') feedback: Record<string, any>
+  ) {
+    try {
+      const result = await this.processingService.submitFeedback(id, feedback || {})
+      return {
+        code: 200,
+        data: result,
+        message: result ? '反馈提交成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '反馈提交失败'
+      }
+    }
+  }
+
+  /**
+   * 验收通过
+   * 支持 requestId / orderId
+   */
+  @Put('accept/:id')
+  async acceptContent(@Param('id') id: string) {
+    try {
+      const result = await this.processingService.acceptProcessing(id)
+      return {
+        code: 200,
+        data: result,
+        message: result ? '验收成功' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '验收失败'
+      }
+    }
+  }
 }

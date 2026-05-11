@@ -10,6 +10,28 @@ const getUserId = () => {
   }
 }
 
+const getToken = () => {
+  try {
+    const token = Taro.getStorageSync('token')
+    if (typeof token === 'string') {
+      return token
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+const createAuthHeaders = () => {
+  const userId = getUserId()
+  const token = getToken()
+
+  return {
+    ...(userId ? { 'X-User-Id': userId } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
 const createUrl = (url: string) => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
@@ -19,11 +41,10 @@ const createUrl = (url: string) => {
 }
 
 const request = (option: any) => {
-  const userId = getUserId()
   const url = createUrl(option.url)
   const header = {
     'Content-Type': 'application/json',
-    ...(userId ? { 'X-User-Id': userId } : {}),
+    ...createAuthHeaders(),
     ...(option.header || {}),
   }
   return Taro.request({ ...option, url, header })
@@ -31,12 +52,20 @@ const request = (option: any) => {
 
 const uploadFile = (option: any) => {
   const url = createUrl(option.url)
-  return Taro.uploadFile({ ...option, url })
+  const header = {
+    ...createAuthHeaders(),
+    ...(option.header || {}),
+  }
+  return Taro.uploadFile({ ...option, url, header })
 }
 
 const downloadFile = (option: any) => {
   const url = createUrl(option.url)
-  return Taro.downloadFile({ ...option, url })
+  const header = {
+    ...createAuthHeaders(),
+    ...(option.header || {}),
+  }
+  return Taro.downloadFile({ ...option, url, header })
 }
 
 const Network = { request, uploadFile, downloadFile }

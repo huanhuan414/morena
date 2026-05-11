@@ -88,7 +88,7 @@ export class AvatarController {
   @Get(':id')
   async getAvatarDetail(@Param('id') id: string) {
     try {
-      const avatar = await this.avatarService.getAvatarById(parseInt(id))
+      const avatar = await this.avatarService.getAvatarById(id)
       return { code: 200, msg: 'success', data: avatar }
     } catch (err) {
       console.error('获取分身详情失败:', err)
@@ -99,7 +99,7 @@ export class AvatarController {
   @Get(':id/voice-status')
   async getVoiceCloneStatus(@Param('id') id: string) {
     try {
-      const status = await this.avatarService.getVoiceCloneStatus(parseInt(id))
+      const status = await this.avatarService.getVoiceCloneStatus(id)
       return { code: 200, msg: 'success', data: status }
     } catch (err) {
       console.error('获取声音复刻状态失败:', err)
@@ -120,7 +120,7 @@ export class AvatarController {
     }
   ) {
     try {
-      await this.avatarService.updateAvatar(parseInt(id), {
+      await this.avatarService.updateAvatar(id, {
         name: body.name,
         photo: body.photo || body.avatar_url,
         tags: body.tags,
@@ -152,7 +152,7 @@ export class AvatarController {
   @Get(':id/skills')
   async getSkills(@Param('id') id: string) {
     try {
-      const skills = await this.avatarService.getSkills(parseInt(id))
+      const skills = await this.avatarService.getSkills(id)
       return { code: 200, msg: 'success', data: skills }
     } catch (err) {
       return { code: 500, msg: '服务器错误', data: [] }
@@ -165,7 +165,7 @@ export class AvatarController {
     @Body() body: { skill_name: string; skill_description?: string; skill_config?: any }
   ) {
     try {
-      const skill = await this.avatarService.addSkill(parseInt(id), body)
+      const skill = await this.avatarService.addSkill(id, body)
       return { code: 200, msg: 'success', data: skill }
     } catch (err) {
       return { code: 500, msg: '服务器错误', data: null }
@@ -186,7 +186,7 @@ export class AvatarController {
   @Get(':id/memories')
   async getMemories(@Param('id') id: string) {
     try {
-      const memories = await this.avatarService.getMemories(parseInt(id))
+      const memories = await this.avatarService.getMemories(id)
       return { code: 200, msg: 'success', data: memories }
     } catch (err) {
       return { code: 500, msg: '服务器错误', data: [] }
@@ -199,7 +199,7 @@ export class AvatarController {
     @Body() body: { memory_type: string; memory_content: string; importance?: number }
   ) {
     try {
-      const memory = await this.avatarService.addMemory(parseInt(id), body)
+      const memory = await this.avatarService.addMemory(id, body)
       return { code: 200, msg: 'success', data: memory }
     } catch (err) {
       return { code: 500, msg: '服务器错误', data: null }
@@ -220,7 +220,7 @@ export class AvatarController {
   @Get(':id/stats')
   async getStats(@Param('id') id: string) {
     try {
-      const stats = await this.avatarService.getStats(parseInt(id))
+      const stats = await this.avatarService.getStats(id)
       return { code: 200, msg: 'success', data: stats }
     } catch (err) {
       return { code: 500, msg: '服务器错误', data: null }
