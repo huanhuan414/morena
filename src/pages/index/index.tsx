@@ -30,40 +30,52 @@ const Index: React.FC = () => {
     pollInterval: 10000 // 10 秒轮询
   })
 
-  // 获取订单列表
+  // 获取待接订单通知（从分派记录中获取，只显示状态为 pending 的订单）
   const fetchOrderNotifications = async () => {
     try {
       const res = await Network.request({
-        url: '/api/order/list'
+        url: '/api/order-dispatch/pending-requests'
       })
-      console.log('[首页] 获取订单列表:', res.data)
+      console.log('[首页] 获取待接订单:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        // 转换订单数据为通知格式
-        const orders = (res.data.data || []).map((order: any) => {
-          // 处理平台信息（后端返回platforms数组），转换为中文
-          const platforms = Array.isArray(order.platforms) ? order.platforms : (order.platform ? [order.platform] : ['通用'])
+        // 转换分派请求数据为通知格式，按 orderId 去重（同一订单可能有多个分身）
+        const seen = new Set<string>()
+        const orders = (res.data.data || []).filter((item: any) => {
+          const oid = item.orderId
+          if (seen.has(oid)) return false
+          seen.add(oid)
+          return true
+        }).map((item: any) => {
+          // 处理平台信息
+          let platforms = item.platforms
+          if (typeof platforms === 'string') {
+            try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
+          }
+          if (!Array.isArray(platforms)) platforms = platforms ? [platforms] : ['通用']
           const platformKey = platforms[0] || '通用'
           const platformName = getPlatformName(platformKey)
           
           return {
-            id: order.id,
+            id: item.orderId,
+            dispatchId: item.dispatchId,
+            avatarId: item.avatarId,
             platform: platformName,
             platformColor: getPlatformColor(platformName),
-            title: order.title,
-            budget: order.budget ? `¥${order.budget}` : '待定',
-            deadline: order.deadline || '长期有效'
+            title: item.title || '新订单',
+            budget: item.budget ? `¥${item.budget}` : '待定',
+            deadline: '长期有效'
           }
         })
         
-        // 如果有订单且弹窗未打开，自动显示第一个订单
+        // 如果有待接订单且弹窗未打开，自动显示第一个
         if (orders.length > 0 && !showOrderModal && !orderModalData) {
           setOrderModalData(orders[0])
           setShowOrderModal(true)
         }
       }
     } catch (err) {
-      console.error('获取订单列表失败:', err)
+      console.error('获取待接订单失败:', err)
     }
   }
 

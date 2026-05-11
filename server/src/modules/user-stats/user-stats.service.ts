@@ -56,14 +56,18 @@ export class UserStatsService {
       const avatarIds = avatarList.map((a: any) => a.id)
       avatarCount = avatarList.length
       
-      // 2. 统计待接订单数
+      // 2. 统计待接订单数（从 order_dispatch_requests 表查询，状态为 pending 的分派请求）
       if (avatarIds.length > 0) {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
-        const pendingResult = await db.queryWhere(
-          'orders',
-          `avatar_id IN (${avatarIdList}) AND status IN ('pending_dispatch', 'processing')`
-        ) as any[]
-        pendingOrders = pendingResult?.length || 0
+        try {
+          const pendingResult = await db.query(
+            `SELECT COUNT(*) as cnt FROM order_dispatch_requests WHERE avatar_id IN (${avatarIdList}) AND status = 'pending'`
+          ) as any[]
+          pendingOrders = pendingResult?.[0]?.cnt || 0
+        } catch (e) {
+          console.error('[UserStats] 查询待接订单失败:', e.message)
+          pendingOrders = 0
+        }
       }
       
       // 3. 统计生成内容数

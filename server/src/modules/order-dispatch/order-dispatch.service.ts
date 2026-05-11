@@ -120,8 +120,16 @@ export class OrderDispatchService {
 
   async getUserPendingRequests(userId: string) {
     const db = getMySQLClient()
-    // 直接使用SQL查询，避免蛇形转换问题
-    return await db.query('SELECT * FROM order_dispatch_requests WHERE user_id = ? AND status = ?', [userId, 'pending']) as any
+    // 查询分派给当前用户分身的待接订单，关联订单表获取完整信息
+    return await db.query(
+      `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
+              o.title, o.description, o.content_type, o.platforms, o.budget,
+              o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
+              o.created_at as order_created_at
+       FROM order_dispatch_requests r
+       LEFT JOIN orders o ON r.order_id = o.id
+       WHERE r.user_id = ? AND r.status = 'pending'
+       ORDER BY r.created_at DESC`, [userId]) as any
   }
 
   /**
@@ -164,7 +172,7 @@ export class OrderDispatchService {
       id,
       order_id: orderId,
       avatar_id: avatar.id,
-      user_id: avatar.user_id,
+      user_id: avatar.userId || avatar.user_id,
       platform: 'auto',
       status: 'pending',
       created_at: new Date(),
@@ -174,7 +182,7 @@ export class OrderDispatchService {
     return { avatar_id: avatar.id, avatar_name: avatar.name }
   }
 
-  async getExecutionProgress(orderId: string) {
+async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     const requests = await db.query('order_dispatch_requests', { order_id: orderId }) as any[]
     return requests
@@ -212,7 +220,7 @@ export class OrderDispatchService {
       id,
       order_id: orderId,
       avatar_id: avatarId,
-      user_id: avatar.user_id,
+      user_id: avatar.userId || avatar.user_id,
       platform: 'manual',
       status: 'pending',
       created_at: new Date(),
@@ -288,7 +296,7 @@ export class OrderDispatchService {
         id,
         order_id: orderId,
         avatar_id: avatar.id,
-        user_id: avatar.user_id,
+        user_id: avatar.userId || avatar.user_id || avatar.userPhone,
         platform: 'auto',
         status: 'pending',
         created_at: new Date(),
