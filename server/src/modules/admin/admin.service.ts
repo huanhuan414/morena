@@ -583,10 +583,21 @@ export class AdminService {
 
   async verifyToken(token: string): Promise<any> {
     try {
-      if (!token || !token.startsWith('Bearer ')) {
+      if (!token) {
         return null;
       }
-      const tokenData = Buffer.from(token.replace('Bearer ', ''), 'base64').toString();
+
+      const normalizedToken = token.trim()
+      if (!normalizedToken) {
+        return null
+      }
+
+      const tokenValue = normalizedToken.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || normalizedToken
+      if (!tokenValue) {
+        return null
+      }
+
+      const tokenData = Buffer.from(tokenValue, 'base64').toString();
       const parsed = JSON.parse(tokenData);
       
       if (parsed.exp && Date.now() > parsed.exp) {

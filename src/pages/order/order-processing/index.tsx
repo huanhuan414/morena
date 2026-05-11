@@ -208,7 +208,7 @@ export default function OrderProcessingPage() {
         showToast({ title: '发布成功', icon: 'success' })
         // 跳转到订单详情页
         setTimeout(() => {
-          navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })
+          navigateTo({ url: `/pages/order/order-detail/index?id=${orderId}` })
         }, 1500)
       } else {
         showToast({ title: res.data?.message || '发布失败', icon: 'none' })
@@ -346,7 +346,7 @@ export default function OrderProcessingPage() {
       {processingData?.publishStatus?.message && (
         <Text className="status-desc block">{processingData.publishStatus.message}</Text>
       )}
-      <Button className="action-btn" onClick={() => navigateTo({ url: `/pages/order-detail/index?id=${orderId}` })}>
+      <Button className="action-btn" onClick={() => navigateTo({ url: `/pages/order/order-detail/index?id=${orderId}` })}>
         <Text className="btn-text block">查看订单详情</Text>
       </Button>
     </View>

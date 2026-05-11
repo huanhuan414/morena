@@ -48,6 +48,13 @@ const PLATFORM_CONFIG: Record<string, { color: string; icon: string }> = {
   kuaishou: { color: '#FF4906', icon: '📱' },
 }
 
+const formatCreatedAt = (value?: string) => {
+  if (!value) return '刚刚'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString()
+}
+
 interface OrderItem {
   id: string
   title: string
@@ -82,16 +89,45 @@ export default function OrderSquarePage() {
     setLoading(true)
     try {
       const res = await Network.request({
-        url: '/api/order/square',
+        url: '/api/order/open',
         data: {
-          platform: selectedPlatform,
-          type: selectedType,
-          budget: selectedBudget
+          page: 1,
+          pageSize: 50
         }
       })
       
       if (res.data?.code === 200) {
-        setOrders(res.data.data || [])
+        const data = res.data?.data
+        const items = Array.isArray(data) ? data : (data?.items || [])
+        const mapped = items.map((item: any) => ({
+          id: item.id,
+          title: item.title || '未命名订单',
+          description: item.description || '',
+          budget: Number(item.budget || 0),
+          platform: Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : 'all',
+          contentType: item.contentType || 'content',
+          estimatedEarning: Number(item.budget || 0),
+          deliveryDays: 3,
+          requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : [],
+          publisher: { nickname: '发布方', avatar: '', rating: 5 },
+          createdAt: formatCreatedAt(item.createdAt)
+        })) as OrderItem[]
+
+        const filteredByPlatform = selectedPlatform === 'all'
+          ? mapped
+          : mapped.filter((item) => item.platform === selectedPlatform)
+
+        const filtered = selectedBudget === 'all'
+          ? filteredByPlatform
+          : filteredByPlatform.filter((item) => {
+            if (selectedBudget === '0-100') return item.budget <= 100
+            if (selectedBudget === '100-500') return item.budget > 100 && item.budget <= 500
+            if (selectedBudget === '500-1000') return item.budget > 500 && item.budget <= 1000
+            if (selectedBudget === '1000+') return item.budget > 1000
+            return true
+          })
+
+        setOrders(filtered)
       } else {
         // 模拟数据
         setOrders(getMockOrders())

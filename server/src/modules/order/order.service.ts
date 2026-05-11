@@ -8,6 +8,19 @@ import * as crypto from 'crypto'
 export class OrderService {
   constructor(private readonly earningService: EarningService) {}
 
+  private safeParseJson<T>(value: any, fallback: T): T {
+    if (value === null || value === undefined) return fallback
+    if (typeof value === 'object') return value as T
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as T
+      } catch {
+        return fallback
+      }
+    }
+    return fallback
+  }
+
   async createOrder(userId: string, orderData: Record<string, any>) {
     const db = getMySQLClient()
     
@@ -255,5 +268,217 @@ export class OrderService {
     }
     
     return rows[0]
+  }
+
+  async updateOrder(orderId: string, updateData: Record<string, any>) {
+    const db = getMySQLClient()
+
+    const fieldMap: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      content_type: 'content_type',
+      contentType: 'content_type',
+      platforms: 'platforms',
+      requirements: 'requirements',
+      budget: 'budget',
+      status: 'status',
+      expected_quantity: 'expected_quantity',
+      expectedQuantity: 'expected_quantity',
+      avatar_count: 'avatar_count',
+      avatarCount: 'avatar_count',
+      quantity_per_avatar: 'quantity_per_avatar',
+      quantityPerAvatar: 'quantity_per_avatar',
+      avatar_id: 'avatar_id',
+      avatarId: 'avatar_id',
+      result: 'result',
+      deadline: 'deadline',
+      priority: 'priority',
+      order_type: 'order_type',
+      orderType: 'order_type',
+      location_text: 'location_text',
+      locationText: 'location_text',
+      latitude: 'latitude',
+      longitude: 'longitude',
+      target_audience: 'target_audience',
+      targetAudience: 'target_audience'
+    }
+
+    const normalized: Record<string, any> = {}
+    for (const [key, value] of Object.entries(updateData || {})) {
+      const dbField = fieldMap[key]
+      if (!dbField) continue
+      if (dbField === 'platforms') {
+        normalized[dbField] = JSON.stringify(Array.isArray(value) ? value : this.safeParseJson<any[]>(value, []))
+      } else if (dbField === 'requirements' || dbField === 'result') {
+        normalized[dbField] = typeof value === 'string' ? value : JSON.stringify(value ?? {})
+      } else {
+        normalized[dbField] = value
+      }
+    }
+
+    if (Object.keys(normalized).length > 0) {
+      normalized.updated_at = new Date()
+      const setClause = Object.keys(normalized).map((key) => `${key} = ?`).join(', ')
+      const params = [...Object.values(normalized), orderId]
+      await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+    }
+
+    return this.getOrderById(orderId)
+  }
+
+  async getOpenOrders(page: number = 1, pageSize: number = 20) {
+    const db = getMySQLClient()
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+    const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 100) : 20
+    const offset = (safePage - 1) * safePageSize
+
+    const whereClause = `
+      WHERE (
+        status IN ('open', 'pending_dispatch', 'pending_acceptance')
+        OR (status = 'pending_payment' AND IFNULL(is_paid, 0) = 1)
+      )
+    `
+
+    const rows = await db.query(
+      `SELECT id, user_id, avatar_id, title, description, content_type, platforms, requirements,
+              budget, status, expected_quantity, avatar_count, quantity_per_avatar, is_paid,
+              created_at, updated_at
+       FROM orders
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT ${safePageSize} OFFSET ${offset}`
+    )
+
+    const totalRows = await db.query(
+      `SELECT COUNT(*) as total FROM orders ${whereClause}`
+    )
+    const total = Number(totalRows?.[0]?.total || 0)
+
+    const items = (rows || []).map((row: any) => ({
+      id: row.id,
+      userId: row.userId || row.user_id,
+      avatarId: row.avatarId || row.avatar_id,
+      title: row.title,
+      description: row.description || '',
+      contentType: row.contentType || row.content_type || 'text',
+      platforms: this.safeParseJson<any[]>(row.platforms, []),
+      requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
+      budget: Number(row.budget || 0),
+      status: row.status,
+      avatarCount: row.expectedQuantity || row.avatarCount || row.expected_quantity || row.avatar_count || 1,
+      quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
+      isPaid: row.isPaid ?? row.is_paid ?? 0,
+      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      updatedAt: row.updatedAt || row.updated_at || null
+    }))
+
+    return {
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      items
+    }
+  }
+
+  async getOrderFeedback(orderId: string) {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT id, order_id, avatar_id, result, created_at, updated_at
+       FROM order_results
+       WHERE order_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [orderId]
+    )
+
+    const row = rows?.[0]
+    if (!row) return null
+
+    return {
+      id: row.id,
+      orderId: row.orderId || row.order_id,
+      avatarId: row.avatarId || row.avatar_id,
+      result: this.safeParseJson<Record<string, any>>(row.result, {}),
+      createdAt: row.createdAt || row.created_at,
+      updatedAt: row.updatedAt || row.updated_at
+    }
+  }
+
+  async getOrderRating(orderId: string) {
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT
+         AVG(CASE WHEN customer_rating IS NOT NULL THEN customer_rating END) as average_rating,
+         COUNT(CASE WHEN customer_rating IS NOT NULL THEN 1 END) as rating_count
+       FROM order_results
+       WHERE order_id = ?`,
+      [orderId]
+    )
+
+    const data = rows?.[0] || {}
+    return {
+      averageRating: Number(data.averageRating || data.average_rating || 0),
+      ratingCount: Number(data.ratingCount || data.rating_count || 0)
+    }
+  }
+
+  async updateOrderStatus(orderId: string, status: string, avatarId?: string) {
+    const db = getMySQLClient()
+    const payload: Record<string, any> = {
+      status,
+      updated_at: new Date()
+    }
+
+    if (avatarId) {
+      payload.avatar_id = avatarId
+    }
+
+    if (status === 'completed') {
+      payload.completed_at = new Date()
+    }
+
+    const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
+    const params = [...Object.values(payload), orderId]
+    await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+    return this.getOrderById(orderId)
+  }
+
+  async acceptOrder(orderId: string, avatarId?: string) {
+    const db = getMySQLClient()
+    const orderRows = await db.query(
+      `SELECT id, status, is_paid FROM orders WHERE id = ? LIMIT 1`,
+      [orderId]
+    )
+    const order = orderRows?.[0]
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+
+    const isPaid = Number(order.isPaid ?? order.is_paid ?? 0)
+    if (order.status === 'pending_payment' && isPaid !== 1) {
+      throw new Error('订单未支付，暂不可接单')
+    }
+
+    return this.updateOrderStatus(orderId, 'in_progress', avatarId)
+  }
+
+  async submitOrderResult(orderId: string, result: Record<string, any>) {
+    const db = getMySQLClient()
+    const payload = {
+      result: JSON.stringify(result || {}),
+      status: 'submitted',
+      updated_at: new Date()
+    }
+    const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
+    const params = [...Object.values(payload), orderId]
+    await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+    return this.getOrderById(orderId)
+  }
+
+  async deleteOrder(orderId: string) {
+    const db = getMySQLClient()
+    await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM orders WHERE id = ?', [orderId])
   }
 }

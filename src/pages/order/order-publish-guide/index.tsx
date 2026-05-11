@@ -131,7 +131,11 @@ export default function OrderPublishGuide() {
   // 解析 URL 参数
   useEffect(() => {
     const params = router.params
-    if (params.platforms) setPlatforms(params.platforms.split(','))
+    const platformsFromQuery = params.platforms ? params.platforms.split(',') : []
+    if (platformsFromQuery.length > 0) {
+      setPlatforms(platformsFromQuery)
+      setCurrentPlatform(platformsFromQuery[0])
+    }
     if (params.content) setContent(decodeURIComponent(params.content))
     if (params.title) setTitle(decodeURIComponent(params.title))
     if (params.images) setImages(params.images.split(',').filter(Boolean))
@@ -139,7 +143,6 @@ export default function OrderPublishGuide() {
     if (params.contentType) setContentType(decodeURIComponent(params.contentType))
     if (params.requestId) setRequestId(params.requestId)
     if (params.orderId) setOrderId(params.orderId)
-    if (platforms.length > 0) setCurrentPlatform(platforms[0])
   }, [])
 
   // 获取分身绑定的账号信息
@@ -151,15 +154,23 @@ export default function OrderPublishGuide() {
       }
 
       try {
+        const statusIdentifier = requestId || orderId
+        if (!statusIdentifier) {
+          setLoading(false)
+          return
+        }
         const res = await Network.request({
-          url: '/api/order-processing/status',
-          method: 'POST',
-          data: { avatarId }
+          url: `/api/order-processing/status/${statusIdentifier}`
         })
         
         const resData = res.data as any
-        if (resData?.code === 200 && resData?.data?.avatarAccounts) {
-          setAvatarAccounts(resData.data.avatarAccounts)
+        if (resData?.code === 200 && resData?.data) {
+          if (resData.data.avatarId && !avatarId) {
+            setAvatarId(resData.data.avatarId)
+          }
+          if (Array.isArray(resData.data.avatarAccounts)) {
+            setAvatarAccounts(resData.data.avatarAccounts)
+          }
         }
       } catch (error) {
         console.error('获取分身账号信息失败:', error)
@@ -298,9 +309,8 @@ export default function OrderPublishGuide() {
           setPublishing(true)
           try {
             const result = await Network.request({
-              url: `/api/order-processing/confirm/${requestId}`,
-              method: 'POST',
-              data: { content: content }
+              url: `/api/order-processing/publish/${requestId}`,
+              method: 'POST'
             })
             
             if (result.data?.code === 200) {

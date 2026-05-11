@@ -48,6 +48,8 @@ interface GeneratedContent {
 }
 
 interface ProcessingData {
+  requestId?: string
+  avatarId?: string
   orderId: string
   orderTitle: string
   status: string
@@ -229,7 +231,37 @@ export default function OrderContentCreation() {
 
   // 发布
   const handlePublish = () => {
-    Taro.showToast({ title: '发布成功', icon: 'success' })
+    const content = processingData?.generatedContent
+    if (!content) {
+      Taro.showToast({ title: '暂无可发布内容', icon: 'none' })
+      return
+    }
+
+    const targetPlatforms = content.platforms?.length
+      ? content.platforms
+      : orderInfo?.platforms?.length
+        ? orderInfo.platforms
+        : ['wechat']
+
+    const title = orderInfo?.title || processingData?.orderTitle || '内容发布'
+    const requestId = processingData?.requestId || ''
+    const avatarId = processingData?.avatarId || orderInfo?.id || ''
+    const images = content.images || []
+
+    const query = [
+      `platforms=${encodeURIComponent(targetPlatforms.join(','))}`,
+      `content=${encodeURIComponent(content.content || '')}`,
+      `title=${encodeURIComponent(title)}`,
+      `images=${encodeURIComponent(images.join(','))}`,
+      `contentType=${encodeURIComponent('图文')}`,
+      `orderId=${encodeURIComponent(orderId)}`,
+      `requestId=${encodeURIComponent(requestId)}`,
+      `avatarId=${encodeURIComponent(avatarId)}`,
+    ].join('&')
+
+    Taro.navigateTo({
+      url: `/pages/order/order-publish-guide/index?${query}`
+    })
   }
 
   const platformName = orderInfo?.platforms?.[0] || 'wechat'

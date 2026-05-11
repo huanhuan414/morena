@@ -129,9 +129,12 @@ export class OrderProcessingController {
    * 支持 requestId / orderId
    */
   @Post('publish/:id')
-  async publishContent(@Param('id') id: string) {
+  async publishContent(
+    @Param('id') id: string,
+    @Body('platforms') platforms?: string[]
+  ) {
     try {
-      const result = await this.processingService.publishProcessing(id)
+      const result = await this.processingService.publishProcessing(id, platforms)
       return {
         code: 200,
         data: result,

@@ -91,7 +91,7 @@ export default function OrderFeedbackPage() {
     const id = avatarIdParam || avatarId
     if (!id) return
     try {
-      const res = await Network.request({ url: `/api/avatars/${id}` })
+      const res = await Network.request({ url: `/api/avatar/${id}` })
       if (res.data?.code === 200) {
         setAvatarData(res.data.data)
       }

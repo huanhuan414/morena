@@ -5,6 +5,16 @@ import { AdminService } from './admin.service'
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  private getAdminAuthHeader(headers: Record<string, string | string[] | undefined>): string | undefined {
+    const authorization = headers.authorization ?? headers.Authorization
+    const adminToken = headers['admin_token'] ?? headers['admin-token'] ?? headers['Admin-Token']
+
+    const firstValue = (value: string | string[] | undefined): string | undefined =>
+      Array.isArray(value) ? value[0] : value
+
+    return firstValue(authorization) ?? firstValue(adminToken)
+  }
+
   /**
    * 管理员登录
    */
@@ -22,8 +32,8 @@ export class AdminController {
    * 获取仪表盘统计数据
    */
   @Get('dashboard/stats')
-  async getDashboardStats(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getDashboardStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -43,12 +53,12 @@ export class AdminController {
    */
   @Get('users')
   async getUsers(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('keyword') keyword?: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -66,10 +76,10 @@ export class AdminController {
    */
   @Get('users/:id')
   async getUserDetail(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') userId: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -87,10 +97,10 @@ export class AdminController {
    */
   @Get('users/:id/stats')
   async getUserStats(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') userId: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -108,11 +118,11 @@ export class AdminController {
    */
   @Post('users/ban')
   async banUser(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('user_id') userId: string,
     @Body('action') action: 'ban' | 'unban'
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -132,13 +142,13 @@ export class AdminController {
    */
   @Get('avatars')
   async getAvatars(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('keyword') keyword?: string,
     @Query('status') status?: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -156,11 +166,11 @@ export class AdminController {
    */
   @Post('avatars/toggle-status')
   async toggleAvatarStatus(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('avatar_id') avatarId: string,
     @Body('status') status: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -180,13 +190,13 @@ export class AdminController {
    */
   @Get('orders')
   async getOrders(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('keyword') keyword?: string,
     @Query('status') status?: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -204,11 +214,11 @@ export class AdminController {
    */
   @Post('orders/update-status')
   async updateOrderStatus(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('order_id') orderId: string,
     @Body('status') status: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -227,8 +237,8 @@ export class AdminController {
    * 获取技能列表
    */
   @Get('skills')
-  async getSkills(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getSkills(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -246,10 +256,10 @@ export class AdminController {
    */
   @Post('skills')
   async createSkill(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() data: any
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -267,11 +277,11 @@ export class AdminController {
    */
   @Put('skills/:id')
   async updateSkill(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() data: any
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -289,10 +299,10 @@ export class AdminController {
    */
   @Delete('skills/:id')
   async deleteSkill(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -310,11 +320,11 @@ export class AdminController {
    */
   @Put('skills/:id/status')
   async toggleSkillStatus(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body('status') status: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -334,11 +344,11 @@ export class AdminController {
    */
   @Get('posts')
   async getPosts(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('status') status?: string,
     @Query('search') search?: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -357,11 +367,11 @@ export class AdminController {
    */
   @Put('posts/:id/review')
   async reviewPost(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body('status') status: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -379,10 +389,10 @@ export class AdminController {
    */
   @Delete('posts/:id')
   async deletePost(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -401,8 +411,8 @@ export class AdminController {
    * 获取财务统计
    */
   @Get('finance/stats')
-  async getFinanceStats(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getFinanceStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -420,11 +430,11 @@ export class AdminController {
    */
   @Get('finance/transactions')
   async getTransactions(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Query('type') type?: string,
     @Query('page') pageStr?: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -443,10 +453,10 @@ export class AdminController {
    */
   @Post('finance/withdraw/:id/approve')
   async approveWithdraw(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -464,11 +474,11 @@ export class AdminController {
    */
   @Post('finance/withdraw/:id/reject')
   async rejectWithdraw(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body('reason') reason: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -487,8 +497,8 @@ export class AdminController {
    * 获取推广统计
    */
   @Get('referral/stats')
-  async getReferralStats(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getReferralStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -505,8 +515,8 @@ export class AdminController {
    * 获取推广员列表
    */
   @Get('referral/list')
-  async getReferrers(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getReferrers(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -524,10 +534,10 @@ export class AdminController {
    */
   @Put('referral/settings')
   async updateReferralSettings(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('commissionRate') rate: number
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -546,8 +556,8 @@ export class AdminController {
    * 获取管理员列表
    */
   @Get('settings/admins')
-  async getAdmins(@Headers('authorization') token: string) {
-    const admin = await this.adminService.verifyToken(token)
+  async getAdmins(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -565,11 +575,11 @@ export class AdminController {
    */
   @Post('settings/admins')
   async addAdmin(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('username') username: string,
     @Body('password') password: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -587,10 +597,10 @@ export class AdminController {
    */
   @Delete('settings/admins/:id')
   async deleteAdmin(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -608,11 +618,11 @@ export class AdminController {
    */
   @Put('settings/password')
   async changePassword(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body('oldPassword') oldPassword: string,
     @Body('newPassword') newPassword: string
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -629,8 +639,8 @@ export class AdminController {
    * 获取系统配置
    */
   @Get('settings/config')
-  async getConfig(@Headers('authorization') token: string): Promise<{ code: number; data: any; message: string }> {
-    const admin = await this.adminService.verifyToken(token)
+  async getConfig(@Headers() headers: Record<string, string | string[] | undefined>): Promise<{ code: number; data: any; message: string }> {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
@@ -648,10 +658,10 @@ export class AdminController {
    */
   @Put('settings/config')
   async updateConfig(
-    @Headers('authorization') token: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() config: any
   ) {
-    const admin = await this.adminService.verifyToken(token)
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }

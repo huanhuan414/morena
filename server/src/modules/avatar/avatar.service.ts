@@ -5,6 +5,7 @@ import { Config } from 'coze-coding-dev-sdk'
 import { LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
 import { getSharedCache } from '../../common/shared-cache'
+import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
@@ -14,6 +15,23 @@ import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
 
 @Injectable()
 export class AvatarService {
+  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {}
+
+  private hasOwnKey(obj: any, key: string) {
+    return Object.prototype.hasOwnProperty.call(obj || {}, key)
+  }
+
+  private safeParseJson<T = any>(value: any, fallback: T): T {
+    if (value === null || value === undefined) return fallback
+    if (typeof value === 'object') return value as T
+    if (typeof value !== 'string') return fallback
+    try {
+      return JSON.parse(value) as T
+    } catch {
+      return fallback
+    }
+  }
+
   /**
    * 创建分身
    * @param userId - 用户ID（从 x-user-id header 获取）
@@ -167,26 +185,25 @@ export class AvatarService {
     
     // 格式化返回数据（query已转换为驼峰，需转回蛇形兼容前端）
     const avatars = rows.map((avatar: any) => {
-      let personality = {}
-      
-      try {
-        personality = typeof avatar.personality === 'string' 
-          ? JSON.parse(avatar.personality) 
-          : avatar.personality || {}
-      } catch (e) {
-        console.error('解析 avatar 数据失败:', e)
-      }
+      const personality = this.safeParseJson(avatar.personality, {})
+      const config = this.safeParseJson(avatar.config, {})
 
       // 如果没有头像，生成默认头像（使用 PNG 格式，兼容小程序）
       const defaultAvatarUrl = avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatar.id)}&size=200`
 
       return {
         ...avatar,
+        config,
         avatar_url: defaultAvatarUrl, // 蛇形兼容前端
         photo: defaultAvatarUrl,
         avatarUrl: defaultAvatarUrl, // 驼峰格式也加上
         tags: personality.tags || [],
         abilities: personality.abilities || {},
+        trust_enabled: Boolean(avatar.trustEnabled ?? avatar.trust_enabled),
+        location_text: avatar.locationText || avatar.location_text || '',
+        locationText: avatar.locationText || avatar.location_text || '',
+        latitude: avatar.latitude ?? null,
+        longitude: avatar.longitude ?? null,
         voice_type: avatar.voiceType || 'preset',
         voice_url: avatar.voiceUrl || ''
       }
@@ -207,25 +224,24 @@ export class AvatarService {
     }
 
     const avatar = result.data
-    let personality = {}
-    
-    try {
-      personality = typeof avatar.personality === 'string' 
-        ? JSON.parse(avatar.personality) 
-        : avatar.personality || {}
-    } catch (e) {
-      console.error('解析 avatar 数据失败:', e)
-    }
+    const personality = this.safeParseJson(avatar.personality, {})
+    const config = this.safeParseJson(avatar.config, {})
 
     return { 
       success: true, 
       data: {
         ...avatar,
+        config,
         avatar_url: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`, // 蛇形兼容前端
         photo: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
         avatarUrl: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
         tags: personality.tags || [],
         abilities: personality.abilities || {},
+        trust_enabled: Boolean(avatar.trustEnabled ?? avatar.trust_enabled),
+        location_text: avatar.locationText || avatar.location_text || '',
+        locationText: avatar.locationText || avatar.location_text || '',
+        latitude: avatar.latitude ?? null,
+        longitude: avatar.longitude ?? null,
         voice_type: avatar.voiceType || 'preset',
         voice_url: avatar.voiceUrl || ''
       }
@@ -237,35 +253,88 @@ export class AvatarService {
    */
   async updateAvatar(avatarId: string, updateData: any) {
     const db = getMySQLClient()
-    
-    // 处理嵌套的 JSON 字段
-    const formattedData: any = {}
-    
-    if (updateData.name) formattedData.name = updateData.name
-    if (updateData.avatarUrl || updateData.photo) formattedData.avatarUrl = updateData.avatarUrl || updateData.photo
-    if (updateData.description) formattedData.description = updateData.description
-    
-    if (updateData.tags || updateData.abilities) {
-      const existing = await db.queryOne('avatars', { id: avatarId })
-      if (existing?.data) {
-        let existingPersonality = {}
-        
-        try {
-          existingPersonality = typeof existing.data.personality === 'string' 
-            ? JSON.parse(existing.data.personality) 
-            : existing.data.personality || {}
-        } catch (e) {}
+    const existing = await db.queryOne('avatars', { id: avatarId })
 
-        formattedData.personality = JSON.stringify({
-          ...existingPersonality,
-          tags: updateData.tags,
-          abilities: updateData.abilities
-        })
+    if (!existing?.data) {
+      return { success: false, error: '分身不存在', data: null }
+    }
+
+    const existingRow = existing.data
+    const formattedData: any = {}
+
+    if (this.hasOwnKey(updateData, 'name')) formattedData.name = updateData.name
+    if (this.hasOwnKey(updateData, 'avatarUrl') || this.hasOwnKey(updateData, 'photo') || this.hasOwnKey(updateData, 'avatar_url')) {
+      formattedData.avatar_url = updateData.avatarUrl || updateData.photo || updateData.avatar_url || ''
+    }
+    if (this.hasOwnKey(updateData, 'description')) formattedData.description = updateData.description
+
+    // 设置页 config 更新（落库）
+    if (this.hasOwnKey(updateData, 'config')) {
+      const existingConfig = this.safeParseJson(existingRow.config, {})
+      const incomingConfig = this.safeParseJson(updateData.config, {})
+      formattedData.config = JSON.stringify({
+        ...existingConfig,
+        ...incomingConfig
+      })
+    }
+
+    // 设置页 personality 更新（落库）
+    if (this.hasOwnKey(updateData, 'personality')) {
+      formattedData.personality = typeof updateData.personality === 'string'
+        ? updateData.personality
+        : JSON.stringify(updateData.personality || {})
+    }
+
+    if (this.hasOwnKey(updateData, 'tags') || this.hasOwnKey(updateData, 'abilities')) {
+      const existingPersonality = this.safeParseJson(existingRow.personality, {})
+      const mergedPersonality = {
+        ...existingPersonality
+      }
+      if (this.hasOwnKey(updateData, 'tags')) {
+        mergedPersonality.tags = updateData.tags
+      }
+      if (this.hasOwnKey(updateData, 'abilities')) {
+        mergedPersonality.abilities = updateData.abilities
+      }
+      formattedData.personality = JSON.stringify(mergedPersonality)
+    }
+
+    // 设置页 location 更新（落库）
+    const hasLatitude = this.hasOwnKey(updateData, 'latitude')
+    const hasLongitude = this.hasOwnKey(updateData, 'longitude')
+    const hasLocationText = this.hasOwnKey(updateData, 'location_text') || this.hasOwnKey(updateData, 'locationText')
+
+    if (hasLatitude) formattedData.latitude = updateData.latitude
+    if (hasLongitude) formattedData.longitude = updateData.longitude
+
+    if (hasLocationText) {
+      formattedData.location_text = updateData.location_text || updateData.locationText || ''
+    } else if (hasLatitude && hasLongitude && Number.isFinite(Number(updateData.latitude)) && Number.isFinite(Number(updateData.longitude))) {
+      try {
+        const geo = await this.reverseGeocodingService.reverseGeocode(Number(updateData.latitude), Number(updateData.longitude))
+        formattedData.location_text = geo.formatted_address || geo.full_location_text || ''
+      } catch (error) {
+        console.warn('[AvatarService] 逆地理编码失败，回退为经纬度文本:', error?.message || error)
+        formattedData.location_text = `${Number(updateData.latitude).toFixed(6)}, ${Number(updateData.longitude).toFixed(6)}`
       }
     }
-    
+
+    if (Object.keys(formattedData).length === 0) {
+      return { success: true, data: null }
+    }
+
     const result = await db.updateWhere('avatars', { id: avatarId }, formattedData)
-    return { success: (result as any)?.data?.affectedRows > 0, data: updateData }
+    const success = (result as any)?.data?.affectedRows > 0
+
+    return {
+      success,
+      data: success
+        ? {
+            id: avatarId,
+            ...formattedData
+          }
+        : null
+    }
   }
 
   /**
@@ -462,7 +531,7 @@ export class AvatarService {
       throw new Error('分身不存在')
     }
     
-    await db.update('avatars', { trust_enabled: trustEnabled ? 1 : 0 }, { id: avatarId })
+    await db.updateWhere('avatars', { id: avatarId }, { trust_enabled: trustEnabled ? 1 : 0 })
     return { success: true }
   }
 
@@ -480,7 +549,65 @@ export class AvatarService {
       throw new Error('无效的用户ID')
     }
     
-    await db.update('avatars', { trust_enabled: trustEnabled ? 1 : 0 }, { user_id: userId })
+    await db.updateWhere('avatars', { user_id: userId }, { trust_enabled: trustEnabled ? 1 : 0 })
     return { success: true }
+  }
+
+  /**
+   * 更新分身托管配置（存入 avatars.config.hosting_settings）
+   */
+  async updateHostingSettings(avatarId: string, settings: Record<string, any>) {
+    const db = getMySQLClient()
+    const existing = await db.queryOne('avatars', { id: avatarId })
+
+    if (!existing?.data) {
+      throw new Error('分身不存在')
+    }
+
+    const existingConfig = this.safeParseJson(existing.data.config, {})
+    const currentHostingSettings = this.safeParseJson(existingConfig.hosting_settings, {})
+    const mergedHostingSettings = {
+      ...currentHostingSettings,
+      ...settings
+    }
+    const mergedConfig = {
+      ...existingConfig,
+      hosting_settings: mergedHostingSettings
+    }
+
+    const result = await db.updateWhere('avatars', { id: avatarId }, {
+      config: JSON.stringify(mergedConfig)
+    })
+
+    return {
+      success: (result as any)?.data?.affectedRows > 0,
+      data: {
+        id: avatarId,
+        hosting_settings: mergedHostingSettings,
+        config: mergedConfig
+      }
+    }
+  }
+
+  /**
+   * 获取分身托管配置
+   */
+  async getHostingSettings(avatarId: string) {
+    const db = getMySQLClient()
+    const existing = await db.queryOne('avatars', { id: avatarId })
+
+    if (!existing?.data) {
+      throw new Error('分身不存在')
+    }
+
+    const config = this.safeParseJson(existing.data.config, {})
+    return {
+      success: true,
+      data: {
+        id: avatarId,
+        trust_enabled: Boolean(existing.data.trustEnabled ?? existing.data.trust_enabled),
+        hosting_settings: this.safeParseJson(config.hosting_settings, {})
+      }
+    }
   }
 }

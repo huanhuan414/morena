@@ -40,6 +40,7 @@ function formatNumber(num: number): string {
 }
 
 interface AvatarStat {
+  requestId?: string
   avatarId: string
   avatarName: string
   avatarUrl: string
@@ -93,8 +94,13 @@ export default function OrderAcceptance() {
     if (!selectedAvatar) return
 
     try {
+      const requestId = selectedAvatar.requestId
+      if (!requestId) {
+        showToast({ title: '缺少请求ID，无法验收', icon: 'none' })
+        return
+      }
       const res = await Network.request({
-        url: `/api/order/${orderId}/avatar/${selectedAvatar.avatarId}/approve`,
+        url: `/api/order-processing/accept/${requestId}`,
         method: 'PUT'
       })
 
@@ -121,10 +127,15 @@ export default function OrderAcceptance() {
     }
 
     try {
+      const requestId = selectedAvatar.requestId
+      if (!requestId) {
+        showToast({ title: '缺少请求ID，无法驳回', icon: 'none' })
+        return
+      }
       const res = await Network.request({
-        url: `/api/order/${orderId}/avatar/${selectedAvatar.avatarId}/reject`,
-        method: 'PUT',
-        data: { reason: rejectReason }
+        url: `/api/order-processing/feedback/${requestId}`,
+        method: 'POST',
+        data: { rejectReason: rejectReason.trim(), status: 'rejected' }
       })
 
       if (res.data?.code === 200) {

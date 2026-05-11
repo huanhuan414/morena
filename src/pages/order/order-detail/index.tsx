@@ -363,8 +363,9 @@ export default function OrderDetailPage() {
     if (!order) return
     try {
       const res = await Network.request({
-        url: `/api/order/${order.id}/cancel`,
-        method: 'PUT'
+        url: `/api/order/${order.id}/status`,
+        method: 'PUT',
+        data: { status: 'cancelled' }
       })
 
       if (res.data?.code === 200) {
@@ -408,9 +409,9 @@ export default function OrderDetailPage() {
         }
       } else {
         const res = await Network.request({
-          url: `/api/order/${id}/approve`,
+          url: `/api/order/${id}/status`,
           method: 'PUT',
-          data: rating > 0 ? { rating: { score: rating, comment: ratingComment } } : {}
+          data: { status: 'completed' }
         })
 
         if (res.data?.code === 200) {
@@ -428,8 +429,9 @@ export default function OrderDetailPage() {
   const handleCancel = async () => {
     try {
       const res = await Network.request({
-        url: `/api/order/${id}/cancel`,
-        method: 'PUT'
+        url: `/api/order/${id}/status`,
+        method: 'PUT',
+        data: { status: 'cancelled' }
       })
 
       if (res.data?.code === 200) {

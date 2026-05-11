@@ -56,6 +56,39 @@ export class OrderProcessingService {
     return fallback
   }
 
+  private normalizePlatforms(input: any): string[] {
+    if (!input) return []
+    if (Array.isArray(input)) {
+      return input.map((item) => String(item || '').trim()).filter(Boolean)
+    }
+    if (typeof input === 'string') {
+      try {
+        const parsed = JSON.parse(input)
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item || '').trim()).filter(Boolean)
+        }
+      } catch {
+        return input
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      }
+    }
+    return []
+  }
+
+  private mergeFeedback(
+    existing: Record<string, any>,
+    incoming: Record<string, any>
+  ): Record<string, any> {
+    const base = { ...(existing || {}) }
+    Object.entries(incoming || {}).forEach(([platform, payload]) => {
+      const prev = base[platform] || {}
+      base[platform] = { ...prev, ...(payload || {}) }
+    })
+    return base
+  }
+
   private async findByRequestId(requestId: string): Promise<any | null> {
     const db = getMySQLClient()
     const rows = await db.query(
@@ -110,7 +143,9 @@ export class OrderProcessingService {
         images,
         videos,
         platform: record.platform,
-        platforms: config.platforms || (record.platform ? [record.platform] : [])
+        platforms: this.normalizePlatforms(config.platforms).length > 0
+          ? this.normalizePlatforms(config.platforms)
+          : (record.platform ? [record.platform] : [])
       },
       publishStatus,
       publishFeedback,
@@ -240,13 +275,38 @@ export class OrderProcessingService {
     return normalized
   }
 
-  async publishProcessing(identifier: string): Promise<any> {
+  async publishProcessing(identifier: string, targetPlatforms?: string[]): Promise<any> {
     const current = await this.findRecordByIdentifier(identifier)
     if (!current) return null
 
-    const publishStatus = this.parseJsonObject(current.publishStatus || current.publish_status, { platforms: [] })
+    const config = this.parseJsonObject<Record<string, any>>(current.config, {})
+    const configPlatforms = this.normalizePlatforms(config.platforms)
+    const existingStatus = this.parseJsonObject<Record<string, any>>(
+      current.publishStatus || current.publish_status,
+      {}
+    )
+    const requestedPlatforms = this.normalizePlatforms(targetPlatforms)
+    const resolvedPlatforms = requestedPlatforms.length > 0
+      ? requestedPlatforms
+      : configPlatforms.length > 0
+        ? configPlatforms
+        : (current.platform ? [current.platform] : [])
+    const dedupPlatforms = Array.from(new Set(resolvedPlatforms))
+    const previousPlatformStatus = this.parseJsonObject<Record<string, any>>(
+      existingStatus.platformStatus,
+      {}
+    )
+    const nextPlatformStatus = dedupPlatforms.reduce<Record<string, any>>((acc, platform) => {
+      acc[platform] = {
+        status: 'success',
+        message: '发布成功'
+      }
+      return acc
+    }, { ...previousPlatformStatus })
     const nextPublishStatus = {
-      ...publishStatus,
+      ...existingStatus,
+      platforms: dedupPlatforms,
+      platformStatus: nextPlatformStatus,
       status: 'success',
       message: '发布成功'
     }
@@ -264,9 +324,17 @@ export class OrderProcessingService {
   }
 
   async submitFeedback(identifier: string, feedback: Record<string, any>): Promise<any> {
+    const current = await this.findRecordByIdentifier(identifier)
+    if (!current) return null
+    const existingFeedback = this.parseJsonObject<Record<string, any>>(
+      current.publishFeedback || current.publish_feedback,
+      {}
+    )
+    const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
+
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'awaiting_acceptance',
-      publish_feedback: JSON.stringify(feedback || {})
+      publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
 

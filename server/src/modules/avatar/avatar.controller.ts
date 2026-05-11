@@ -117,6 +117,12 @@ export class AvatarController {
       abilities?: Record<string, boolean>;
       avatar_url?: string;
       description?: string;
+      config?: Record<string, any> | string;
+      personality?: Record<string, any> | string;
+      latitude?: number;
+      longitude?: number;
+      location_text?: string;
+      locationText?: string;
     }
   ) {
     try {
@@ -125,7 +131,12 @@ export class AvatarController {
         photo: body.photo || body.avatar_url,
         tags: body.tags,
         abilities: body.abilities,
-        description: body.description
+        description: body.description,
+        config: body.config,
+        personality: body.personality,
+        latitude: body.latitude,
+        longitude: body.longitude,
+        location_text: body.location_text || body.locationText
       })
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
@@ -252,6 +263,20 @@ export class AvatarController {
       return { code: 200, msg: 'success', data: null }
     } catch (err) {
       console.error('批量更新托管状态失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Post(':id/hosting/settings')
+  async updateHostingSettings(
+    @Param('id') id: string,
+    @Body() body: Record<string, any>
+  ) {
+    try {
+      const result = await this.avatarService.updateHostingSettings(id, body || {})
+      return { code: 200, msg: 'success', data: result?.data || null }
+    } catch (err) {
+      console.error('更新托管设置失败:', err)
       return { code: 500, msg: err.message || '服务器错误', data: null }
     }
   }

@@ -108,9 +108,10 @@ export class OrderController {
   @Put(':id/accept')
   async acceptOrder(
     @Param('id') orderId: string,
-    @Body('avatar_id') avatarId: string
+    @Body('avatar_id') avatarId?: string,
+    @Headers('x-user-id') userId?: string
   ) {
-    const order = await this.orderService.acceptOrder(orderId, avatarId)
+    const order = await this.orderService.acceptOrder(orderId, avatarId || userId)
     return { code: 200, data: order, message: '接单成功' }
   }
 

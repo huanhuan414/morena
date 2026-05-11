@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { Injectable, UnauthorizedException, BadRequestException, Inject } from '@nestjs/common'
+import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { AuthSmsService } from './sms.service'
-import * as crypto from 'crypto'
 
 @Injectable()
 export class AuthService {
@@ -283,11 +283,11 @@ export class AuthService {
    * 获取当前用户信息
    */
   async getCurrentUser(authHeader: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = this.extractAuthorizationToken(authHeader)
+    if (!token) {
       throw new UnauthorizedException('请先登录')
     }
-    
-    const token = authHeader.substring(7)
+
     const userId = this.verifyToken(token)
     
     if (!userId) {
@@ -303,6 +303,24 @@ export class AuthService {
     }
     
     return { user }
+  }
+
+  private extractAuthorizationToken(authHeader?: string): string | null {
+    if (!authHeader) {
+      return null
+    }
+
+    const normalized = authHeader.trim()
+    if (!normalized) {
+      return null
+    }
+
+    const matched = normalized.match(/^Bearer\s+(.+)$/i)
+    if (matched) {
+      return matched[1].trim()
+    }
+
+    return normalized
   }
 
   /**

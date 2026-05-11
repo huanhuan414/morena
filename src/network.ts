@@ -22,13 +22,38 @@ const getToken = () => {
   }
 }
 
-const createAuthHeaders = () => {
+const getAdminToken = () => {
+  try {
+    const token = Taro.getStorageSync('admin_token')
+    if (typeof token === 'string') {
+      return token
+    }
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+const normalizeBearerToken = (token: string) => {
+  if (!token) {
+    return ''
+  }
+  return /^Bearer\s+/i.test(token) ? token : `Bearer ${token}`
+}
+
+const isAdminApi = (url: string) => url.startsWith('/api/admin')
+
+const createAuthHeaders = (url: string, customHeader?: Record<string, any>) => {
   const userId = getUserId()
-  const token = getToken()
+  const userToken = getToken()
+  const adminToken = getAdminToken()
+  const customAuthorization = customHeader?.Authorization || customHeader?.authorization
+  const selectedToken = isAdminApi(url) ? (adminToken || userToken) : (userToken || adminToken)
 
   return {
     ...(userId ? { 'X-User-Id': userId } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(customAuthorization ? {} : (selectedToken ? { Authorization: normalizeBearerToken(selectedToken) } : {})),
+    ...(adminToken ? { 'admin_token': adminToken } : {}),
   }
 }
 
@@ -44,7 +69,7 @@ const request = (option: any) => {
   const url = createUrl(option.url)
   const header = {
     'Content-Type': 'application/json',
-    ...createAuthHeaders(),
+    ...createAuthHeaders(option.url, option.header),
     ...(option.header || {}),
   }
   return Taro.request({ ...option, url, header })
@@ -53,7 +78,7 @@ const request = (option: any) => {
 const uploadFile = (option: any) => {
   const url = createUrl(option.url)
   const header = {
-    ...createAuthHeaders(),
+    ...createAuthHeaders(option.url, option.header),
     ...(option.header || {}),
   }
   return Taro.uploadFile({ ...option, url, header })
@@ -62,7 +87,7 @@ const uploadFile = (option: any) => {
 const downloadFile = (option: any) => {
   const url = createUrl(option.url)
   const header = {
-    ...createAuthHeaders(),
+    ...createAuthHeaders(option.url, option.header),
     ...(option.header || {}),
   }
   return Taro.downloadFile({ ...option, url, header })

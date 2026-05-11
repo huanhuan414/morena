@@ -49,21 +49,29 @@ export class AuthController {
   }
 
   @Get('me')
-  async getCurrentUser(@Headers('authorization') authorization: string) {
-    // 从 token 中提取用户 ID
-    const token = authorization?.replace('Bearer ', '')
-    if (!token) {
-      return {
-        code: 401,
-        data: null,
-        message: '未登录',
-      }
-    }
-
+  async getCurrentUser(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const authorization = (headers.authorization || headers.Authorization) as string | undefined
+    const userIdFromHeader = (headers['x-user-id'] || headers['X-User-Id']) as string | undefined
     try {
-      const decoded = Buffer.from(token, 'base64').toString()
-      const [userId] = decoded.split(':')
-      const user = await this.authService.getUserById(userId)
+      if (authorization) {
+        const result = await this.authService.getCurrentUser(authorization)
+        return {
+          code: 200,
+          data: result.user,
+          message: '获取成功',
+        }
+      }
+
+      // 兼容旧链路：允许通过 X-User-Id 获取当前用户
+      if (!userIdFromHeader) {
+        return {
+          code: 401,
+          data: null,
+          message: '未登录',
+        }
+      }
+
+      const user = await this.authService.getUserById(userIdFromHeader)
       return {
         code: 200,
         data: user,
