@@ -3,6 +3,7 @@ import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
+import { ContentGenerationService } from '../content-generation/content-generation.service'
 
 @Injectable()
 export class OrderDispatchService {
@@ -11,7 +12,8 @@ export class OrderDispatchService {
 
   constructor(
     @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService,
-    @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService
+    @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenerationService: ContentGenerationService
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {
@@ -357,7 +359,7 @@ export class OrderDispatchService {
     
     // 查询分发请求
     const requests = await db.query(`
-      SELECT r.*, o.title as order_title, o.user_id as owner_user_id 
+      SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
       FROM order_dispatch_requests r 
       LEFT JOIN orders o ON r.order_id = o.id 
       WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
@@ -372,6 +374,12 @@ export class OrderDispatchService {
     // 更新状态为 accepted
     await db.updateWhere('order_dispatch_requests', { id: request.id }, {
       status: 'accepted',
+      updated_at: new Date()
+    })
+    
+    // 更新订单状态为 in_progress
+    await db.updateWhere('orders', { id: orderId }, {
+      status: 'in_progress',
       updated_at: new Date()
     })
     
@@ -392,7 +400,53 @@ export class OrderDispatchService {
       console.error('[acceptOrder] 创建通知失败:', err)
     }
     
+    // 自动启动内容生成流程（异步执行，不阻塞返回）
+    this.startContentGeneration(orderId, avatarId, request).catch(err => {
+      console.error('[acceptOrder] 启动内容生成失败:', err)
+    })
+    
     return { success: true }
+  }
+
+  /**
+   * 启动内容生成流程
+   */
+  private async startContentGeneration(orderId: string, avatarId: string, request: any) {
+    try {
+      const order = await this.getOrderById(orderId)
+      if (!order) {
+        console.warn(`[startContentGeneration] 订单不存在: ${orderId}`)
+        return
+      }
+
+      const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
+      const normalizedPlatforms = platforms.map((p: string) => p === 'general' ? 'wechat' : p)
+
+      // 调用内容生成服务
+      await this.contentGenerationService.generateContent({
+        orderId,
+        avatarId,
+        orderTitle: request.order_title || order.title || '内容生成',
+        orderDescription: request.description || order.description || '',
+        platforms: normalizedPlatforms,
+        contentType: 'image_text',
+        targetAudience: request.target_audience || order.target_audience || '年轻用户',
+        contentQuantity: request.quantity_per_avatar || request.expected_quantity || order.quantity_per_avatar || order.expected_quantity || 3
+      })
+
+      console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}`)
+    } catch (err) {
+      console.error('[startContentGeneration] 生成失败:', err)
+    }
+  }
+
+  /**
+   * 根据订单ID获取订单信息
+   */
+  private async getOrderById(orderId: string): Promise<any | null> {
+    const db = getMySQLClient()
+    const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
+    return orders?.[0] || null
   }
 
   /**

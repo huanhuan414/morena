@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 
@@ -110,6 +110,26 @@ export class ContentGenerationController {
       }
     } catch (error: any) {
       return { code: 500, message: '获取失败', error: error.message }
+    }
+  }
+
+  /**
+   * 清除订单的内容生成记录（重新生成时调用）
+   */
+  @Delete('clear/:orderId')
+  async clearGeneration(@Param('orderId') orderId: string) {
+    try {
+      const pool = await getMySQLClient()
+      await pool.query(
+        'DELETE FROM content_generation_requests WHERE order_id = ?',
+        [orderId]
+      )
+      return {
+        code: 200,
+        message: '清除成功'
+      }
+    } catch (error: any) {
+      return { code: 500, message: '清除失败', error: error.message }
     }
   }
 }

@@ -12,6 +12,7 @@ const Index: React.FC = () => {
   const [translateX, setTranslateX] = useState(0)
   const [mindClones, setMindClones] = useState(0) // 分身数量
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
+  const { avatarId: currentAvatarId } = useUserStore(state => state)
   const [stats, setStats] = useState([
     { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
     { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
@@ -255,12 +256,25 @@ const Index: React.FC = () => {
     Taro.navigateTo({ url: path })
   }
 
-  // 处理订单弹窗
-  // 跳转到内容生成页面
-  const handleOrderAccept = () => {
+  // 处理订单弹窗 - 先接受订单再跳转到内容生成页面
+  const handleOrderAccept = async () => {
     if (orderModalData?.id) {
-      setShowOrderModal(false)
-      Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderModalData.id}` })
+      try {
+        // 先调用接受订单接口
+        const res = await Network.request({
+          url: `/api/order-dispatch/avatar/${currentAvatarId}/accept/${orderModalData.id}`,
+          method: 'POST'
+        })
+        if (res.data?.code === 200) {
+          setShowOrderModal(false)
+          Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderModalData.id}` })
+        } else {
+          Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
+        }
+      } catch (err) {
+        console.error('接受订单失败:', err)
+        Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
+      }
     }
   }
 
