@@ -223,7 +223,8 @@ export class UserStatsService {
           orderDirection: 'desc',
           limit: 50
         }) as any
-        contents = result?.data || []
+        // queryWhere 直接返回数组，不是 { data: [] } 格式
+        contents = Array.isArray(result) ? result : (result?.data || [])
       } catch (e) {
         contents = []
       }
@@ -235,13 +236,15 @@ export class UserStatsService {
       avatarList = sharedMemoryAvatars.get(userId) || []
     }
     
-    // 关联分身信息
+    // 关联分身信息（queryWhere 返回的字段名已转为 camelCase）
     const contentsWithAvatar = contents.map((content: any) => {
-      const avatar = avatarList.find((a: any) => a.id === content.avatar_id)
+      const aid = content.avatarId || content.avatar_id
+      const avatar = avatarList.find((a: any) => a.id === aid)
       return {
         ...content,
-        avatar_name: avatar?.name || '未知分身',
-        avatar_url: avatar?.avatar_url || ''
+        avatar_name: avatar?.name || avatar?.userName || '未知分身',
+        avatar_url: avatar?.avatarUrl || avatar?.avatar_url || '',
+        avatarId: aid
       }
     })
     

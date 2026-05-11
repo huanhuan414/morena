@@ -10,6 +10,7 @@ import {
   type CanonicalPlatformKey,
   type PlatformMeta
 } from '@/constants/publish-platform'
+import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { 
   ChevronLeft, Copy, Check, 
   FileText, Image as ImageIcon, Video,
@@ -522,12 +523,19 @@ export default function OrderPublishGuide() {
                 <MessageSquare size={14} color="#8b5cf6" />
                 <Text className="preview-label-text">正文</Text>
               </View>
-              <Text className="preview-content">{content}</Text>
+              {/* 图文文章型：用 Markdown 渲染，图片嵌入文中 */}
+              {content.includes('![') ? (
+                <View className="preview-markdown-content">
+                  <MarkdownRenderer content={content} />
+                </View>
+              ) : (
+                <Text className="preview-content">{content}</Text>
+              )}
             </View>
           )}
 
-          {/* 图片 */}
-          {images.length > 0 && (
+          {/* 图片（仅文案+配图分离型时单独显示） */}
+          {images.length > 0 && !content.includes('![') && (
             <View className="content-preview-card">
               <View className="preview-label-row">
                 <View className="preview-label">

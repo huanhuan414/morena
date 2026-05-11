@@ -225,6 +225,47 @@
   font-weight: 500;
 }
 
+.step-item.done .step-dot {
+  background: #22C55E;
+}
+
+.step-item.done .step-text {
+  color: #22C55E;
+}
+
+/* 文案预览（配图生成中） */
+.partial-content-preview {
+  margin-top: 40rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  border: 1px solid #E2E8F0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.partial-content-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(135deg, #F5F3FF, #EEF2FF);
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.partial-content-title {
+  font-size: 26rpx;
+  color: #8B5CF6;
+  font-weight: 500;
+}
+
+.partial-content-body {
+  padding: 24rpx;
+  max-height: 600rpx;
+  overflow: hidden;
+  opacity: 0.7;
+}
+
 /* 内容展示 */
 .content-section {
   margin: 0 24rpx 24rpx;

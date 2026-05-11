@@ -288,6 +288,29 @@
   white-space: pre-wrap;
 }
 
+/* Markdown 内容预览 */
+.preview-markdown-content {
+  font-size: 28px;
+  color: #475569;
+  line-height: 1.8;
+}
+
+.preview-markdown-content h1,
+.preview-markdown-content h2,
+.preview-markdown-content h3 {
+  margin: 20px 0 10px;
+}
+
+.preview-markdown-content p {
+  margin: 8px 0;
+}
+
+.preview-markdown-content .md-image-wrapper {
+  margin: 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 /* 图片网格 */
 .image-grid {
   display: grid;
