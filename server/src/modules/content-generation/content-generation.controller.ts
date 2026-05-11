@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
+import { getMySQLClient } from '../../storage/database/mysql-client'
 
 @Controller('content-generation')
 export class ContentGenerationController {
@@ -19,7 +20,6 @@ export class ContentGenerationController {
     contentQuantity?: number
   }) {
     try {
-      // 确保 targetAudience 有默认值
       const payload = {
         ...body,
         targetAudience: body.targetAudience || '通用用户'
@@ -45,26 +45,30 @@ export class ContentGenerationController {
     @Param('avatarId') avatarId: string
   ) {
     try {
-      // 从数据库查询生成的内容
-      const db = this.contentGenerationService.getDatabase()
-      const results = await db.query(
+      const pool = await getMySQLClient()
+      const [rows]: any = await pool.query(
         'SELECT * FROM content_generation_requests WHERE id = ? AND avatar_id = ? LIMIT 1',
         [requestId, avatarId]
       )
-      
-      if (results.length === 0) {
+
+      if (!rows || rows.length === 0) {
         return { code: 404, message: '内容不存在', data: null }
       }
-      
-      const record = Array.isArray(results) ? results[0] : results
+
+      const record = rows[0]
+      let images = []
+      let video = null
+      try { images = record.images ? JSON.parse(record.images) : [] } catch { images = [] }
+      try { video = record.video_url ? JSON.parse(record.video_url) : null } catch { video = record.video_url || null }
+
       return {
         code: 200,
         message: '获取成功',
         data: {
           id: record.id,
           content: record.content,
-          images: record.images ? JSON.parse(record.images) : [],
-          video: record.video_url ? JSON.parse(record.video_url) : null,
+          images,
+          video,
           status: record.status,
           createdAt: record.created_at
         }
@@ -80,11 +84,10 @@ export class ContentGenerationController {
     @Body() body: { status: string }
   ) {
     try {
-      const db = this.contentGenerationService.getDatabase()
-      await db.update(
-        'content_generation_requests',
-        { status: body.status },
-        { id: contentId }
+      const pool = await getMySQLClient()
+      await pool.query(
+        'UPDATE content_generation_requests SET status = ? WHERE id = ?',
+        [body.status, contentId]
       )
       return { code: 200, message: '状态更新成功' }
     } catch (error: any) {
@@ -95,15 +98,15 @@ export class ContentGenerationController {
   @Get('history/avatar/:avatarId')
   async getHistory(@Param('avatarId') avatarId: string) {
     try {
-      const db = this.contentGenerationService.getDatabase()
-      const results = await db.query(
+      const pool = await getMySQLClient()
+      const [rows]: any = await pool.query(
         'SELECT * FROM content_generation_requests WHERE avatar_id = ? ORDER BY created_at DESC LIMIT 50',
         [avatarId]
       )
       return {
         code: 200,
         message: '获取成功',
-        data: results
+        data: rows
       }
     } catch (error: any) {
       return { code: 500, message: '获取失败', error: error.message }
