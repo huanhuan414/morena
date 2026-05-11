@@ -16,8 +16,8 @@ export interface SmsTemplate {
 
 @Injectable()
 export class SmsService {
-  private accessKeyId = 'REMOVED_KEY'
-  private accessKeySecret = 'REMOVED_SECRET'
+  private accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID || ''
+  private accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET || ''
   private signName = '贵州一枝梅信息科技'
 
   /**

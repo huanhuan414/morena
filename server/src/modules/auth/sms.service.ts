@@ -4,8 +4,8 @@ import * as crypto from 'crypto'
 
 @Injectable()
 export class AuthSmsService {
-  private accessKeyId = 'REMOVED_KEY'
-  private accessKeySecret = 'REMOVED_SECRET'
+  private accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID || ''
+  private accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET || ''
   private signName = '贵州一枝梅信息科技'
   private templateCode = 'SMS_262600614' // 阿里云短信模板编码
 
