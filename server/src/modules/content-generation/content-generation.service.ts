@@ -114,6 +114,8 @@ export class ContentGenerationService {
         
         // 保存到共享缓存（OrderProcessingService 会从这里读取）
         this.saveToCache(requestId, cacheData)
+        // 同时用 orderId 保存，方便前端用 orderId 查询
+        this.saveToCache(input.orderId, cacheData)
 
         results.push({
           platform,

@@ -104,7 +104,7 @@ export class OrderProcessingService {
     }
     
     // 如果数据库和内存缓存都没有，检查共享缓存（content-generation 生成的数据）
-    if (!processing && processingId.startsWith('req_')) {
+    if (!processing) {
       const cachedData = getCache(processingId)
       if (cachedData) {
         // 直接返回缓存的生成结果
