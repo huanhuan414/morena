@@ -11,18 +11,26 @@ export class OrderProcessingController {
   ) {}
 
   /**
-   * 获取处理状态
+   * 根据 orderId 查询内容生成状态
+   * 路径: GET /api/order-processing/status/:orderId
    */
-  @Get('status/:requestId')
+  @Get('status/:id')
   async getStatus(
-    @Param('requestId') requestId: string
+    @Param('id') id: string
   ) {
     try {
-      const status = await this.processingService.getProcessingStatus(requestId)
+      // 先按 orderId 查询
+      let status = await this.processingService.getProcessingStatus(id)
+
+      // 如果没找到，再按 requestId 查询
+      if (!status) {
+        status = await this.processingService.getProcessingByRequestId(id)
+      }
+
       return {
         code: 200,
         data: status,
-        message: '获取成功'
+        message: status ? '获取成功' : '暂无生成记录'
       }
     } catch (error: any) {
       return {
@@ -63,70 +71,30 @@ export class OrderProcessingController {
   }
 
   /**
-   * 获取订单的已发布作品列表
+   * 创建处理订单
    */
-  @Get('works/:orderId')
-  async getWorksByOrderId(@Param('orderId') orderId: string) {
+  @Post('create')
+  async createProcessing(
+    @Body() body: any,
+    @Headers('x-user-id') userId: string
+  ) {
     try {
-      const works = await this.linkValidationService.getWorksByOrderId?.(orderId) || []
-      return {
-        code: 200,
-        data: works,
-        message: '获取成功'
-      }
-    } catch (error: any) {
-      return {
-        code: 500,
-        data: [],
-        message: error.message || '获取失败'
-      }
-    }
-  }
-
-  /**
-   * 确认内容
-   */
-  @Post('confirm/:requestId')
-  async confirmContent(@Param('requestId') requestId: string) {
-    try {
-      const result = await this.processingService.confirmContent(requestId)
+      const result = await this.processingService.createProcessingOrder({
+        order_id: body.order_id,
+        avatar_id: body.avatar_id,
+        user_id: userId,
+        config: body.config
+      })
       return {
         code: 200,
         data: result,
-        message: '确认成功'
+        message: '创建成功'
       }
     } catch (error: any) {
       return {
         code: 500,
         data: null,
-        message: error.message || '确认失败'
-      }
-    }
-  }
-
-  /**
-   * 提交发布反馈
-   */
-  @Post('feedback/:requestId')
-  async submitFeedback(
-    @Param('requestId') requestId: string,
-    @Body() body: {
-      screenshot_urls?: string[]
-      link?: string
-      note?: string
-    }
-  ) {
-    try {
-      return {
-        code: 200,
-        data: { success: true },
-        message: '提交成功'
-      }
-    } catch (error: any) {
-      return {
-        code: 500,
-        data: null,
-        message: error.message || '提交失败'
+        message: error.message || '创建失败'
       }
     }
   }

@@ -1,413 +1,380 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { View, Text } from '@tarojs/components'
 import { Network } from '@/network'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
-import { RefreshCw, Copy, Play } from 'lucide-react-taro'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Loader, CircleCheck, CircleAlert, FileText, Image as ImageIcon, Video, RefreshCw } from 'lucide-react-taro'
 
-
-interface GeneratedContent {
-  content: string
-  images: string[]
-  videos: string[]
-  platforms: string[]
-}
-
-interface ProcessingData {
-  orderId: string
-  orderTitle: string
-  status: string
-  generatedContent: GeneratedContent | null
-  errorMessage?: string
-}
+// 生成状态类型
+type GenStatus = 'loading' | 'generating' | 'completed' | 'failed'
 
 export default function OrderContentCreation() {
   const [orderId, setOrderId] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState('')
-  const [processingData, setProcessingData] = useState<ProcessingData | null>(null)
-  const [editedContent, setEditedContent] = useState('')
+  const [status, setStatus] = useState<GenStatus>('loading')
+  const [orderTitle, setOrderTitle] = useState('商单内容')
+  const [orderDesc, setOrderDesc] = useState('')
+  const [platforms, setPlatforms] = useState<string[]>(['xiaohongshu'])
+  const [contentType, setContentType] = useState('image_text')
+  const [genContent, setGenContent] = useState('')
+  const [genImages, setGenImages] = useState<string[]>([])
+  const [genVideos, setGenVideos] = useState<string[]>([])
+  const [errorMsg, setErrorMsg] = useState('')
+  const pollTimer = useRef<any>(null)
+  const hasInit = useRef(false)
 
-  // 获取订单ID
+  // 获取路由参数并初始化
   useEffect(() => {
-    const pages = Taro.getCurrentPages()
-    const currentPage = pages[pages.length - 1]
-    if (currentPage?.options?.orderId) {
-      const id = currentPage.options.orderId
+    const instance = Taro.getCurrentInstance()
+    const id = instance?.router?.params?.orderId || ''
+    console.log('[内容生成] 路由参数 orderId:', id)
+    if (id && !hasInit.current) {
       setOrderId(id)
-      console.log('获取到订单ID:', id)
+      hasInit.current = true
+      initPage(id)
+    }
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current)
     }
   }, [])
 
-  // 当orderId变化时，获取订单信息和状态
-  useEffect(() => {
-    if (!orderId) return
-    fetchData()
-  }, [orderId])
-
-  // 获取数据
-  const fetchData = async () => {
-    setLoading(true)
-    setError('')
+  // 初始化页面：查询状态 → 已完成则展示，未生成则开始生成
+  const initPage = async (oid: string) => {
+    setStatus('loading')
+    setErrorMsg('')
 
     try {
-      // 1. 先获取订单详情
-      const orderRes = await Network.request({
-        url: '/api/order/' + orderId
-      })
-      console.log('订单详情:', orderRes.data)
-
-      // 2. 查询生成状态
+      // 1. 查询是否已有生成记录
+      console.log('[内容生成] 查询订单状态, orderId:', oid)
       const statusRes = await Network.request({
-        url: '/api/order-processing/status/' + orderId
+        url: '/api/order-processing/status/' + oid
       })
-      console.log('生成状态:', statusRes.data)
+      console.log('[内容生成] 状态查询结果:', JSON.stringify(statusRes.data))
 
-      if (statusRes.data.code === 200 && statusRes.data.data) {
+      if (statusRes.data?.code === 200 && statusRes.data?.data) {
         const data = statusRes.data.data
-        setProcessingData({
-          orderId: data.orderId || orderId,
-          orderTitle: data.orderTitle || '商单内容',
-          status: data.status || 'pending',
-          generatedContent: data.generatedContent,
-          errorMessage: data.errorMessage
-        })
-
-        // 如果有生成内容，设置编辑内容
-        if (data.generatedContent?.content) {
-          setEditedContent(data.generatedContent.content)
+        // 已完成 - 直接展示
+        if (data.status === 'completed' && data.generatedContent) {
+          showCompletedContent(data)
+          return
         }
-      } else if (statusRes.data.code === 200 && !statusRes.data.data) {
-        // 没有生成记录，设置待生成状态
-        setProcessingData({
-          orderId: orderId,
-          orderTitle: orderRes.data.data?.title || '商单内容',
-          status: 'not_started',
-          generatedContent: null
-        })
-      } else {
-        setError(statusRes.data.message || '获取订单状态失败')
+        // 生成中 - 开始轮询
+        if (data.status === 'processing' || data.status === 'pending') {
+          setStatus('generating')
+          startPolling(oid)
+          return
+        }
       }
+
+      // 2. 没有生成记录，获取订单信息后开始生成
+      await fetchOrderAndGenerate(oid)
+
     } catch (err: any) {
-      console.error('获取订单信息失败:', err)
-      setError(err.message || '网络请求失败')
-    } finally {
-      setLoading(false)
+      console.error('[内容生成] 初始化失败:', err)
+      await fetchOrderAndGenerate(oid)
     }
   }
 
-  // 开始生成内容
-  const handleGenerate = async () => {
-    if (!orderId) {
-      setError('订单ID不能为空')
-      return
-    }
+  // 展示已完成的内容
+  const showCompletedContent = (data: any) => {
+    const content = data.generatedContent?.content || data.generatedContent?.text || ''
+    const images = data.generatedContent?.images || []
+    const videos = data.generatedContent?.videos || (data.generatedContent?.video_url ? [data.generatedContent.video_url] : [])
+    const title = data.orderTitle || data.title || '商单内容'
 
-    setGenerating(true)
-    setError('')
+    setOrderTitle(title)
+    setGenContent(content)
+    setGenImages(images)
+    setGenVideos(videos)
+    setStatus('completed')
+  }
+
+  // 获取订单信息并开始生成
+  const fetchOrderAndGenerate = async (oid: string) => {
+    let title = '商单内容'
+    let desc = '请根据订单要求生成优质内容'
+    let plats = ['xiaohongshu']
+    let cType = 'image_text'
 
     try {
+      const orderRes = await Network.request({
+        url: '/api/order/' + oid
+      })
+      console.log('[内容生成] 订单详情:', JSON.stringify(orderRes.data))
+      if (orderRes.data?.data) {
+        const order = orderRes.data.data
+        title = order.title || order.name || '商单内容'
+        desc = order.description || order.content || title
+        plats = order.platforms || (order.platform ? [order.platform] : ['xiaohongshu'])
+        cType = order.contentType || order.content_type || 'image_text'
+      }
+    } catch (e) {
+      console.log('[内容生成] 获取订单详情失败，使用默认值')
+    }
+
+    setOrderTitle(title)
+    setOrderDesc(desc)
+    setPlatforms(plats)
+    setContentType(cType)
+
+    // 开始生成
+    await doGenerate(oid, title, desc, plats, cType)
+  }
+
+  // 调用后端生成接口
+  const doGenerate = async (oid: string, title: string, desc: string, plats: string[], cType: string) => {
+    setStatus('generating')
+    setErrorMsg('')
+
+    try {
+      console.log('[内容生成] 开始生成, orderId:', oid, 'title:', title)
       const res = await Network.request({
         url: '/api/content-generation/generate',
         method: 'POST',
         data: {
-          orderId: orderId,
-          avatarId: 'default-avatar',
-          orderTitle: processingData?.orderTitle || '商单内容',
-          orderDescription: '请根据订单要求生成内容',
-          platforms: ['xiaohongshu', 'douyin', 'wechat'],
-          contentType: 'image_text',
-          targetAudience: '年轻人',
+          orderId: oid,
+          avatarId: 'default',
+          orderTitle: title,
+          orderDescription: desc,
+          platforms: plats,
+          contentType: cType,
+          targetAudience: '年轻用户',
           contentQuantity: 3
         }
       })
-      console.log('生成接口响应:', res.data)
+      console.log('[内容生成] 生成接口返回:', JSON.stringify(res.data))
 
-      if (res.data.code === 200 && res.data.data) {
-        const requestId = res.data.data[0]?.requestId
-        if (requestId) {
-          // 更新状态为生成中
-          setProcessingData(prev => prev ? {
-            ...prev,
-            status: 'processing'
-          } : null)
+      if (res.data?.code === 200 && res.data?.data) {
+        const firstItem = res.data.data[0] || res.data.data
 
-          // 轮询查询状态
-          pollStatus(requestId)
+        // 如果生成已经完成（同步返回）
+        if (firstItem.status === 'completed' && firstItem.content) {
+          setGenContent(firstItem.content)
+          setGenImages(firstItem.images || [])
+          setGenVideos(firstItem.video_url ? [firstItem.video_url] : [])
+          setStatus('completed')
+          return
         }
+
+        // 开始轮询状态
+        startPolling(oid)
       } else {
-        setError(res.data.message || '生成失败')
-        setGenerating(false)
+        setErrorMsg(res.data?.message || '生成请求失败')
+        setStatus('failed')
       }
     } catch (err: any) {
-      console.error('生成失败:', err)
-      setError(err.message || '生成失败')
-      setGenerating(false)
+      console.error('[内容生成] 生成请求异常:', err)
+      setErrorMsg(err.message || '生成请求异常')
+      setStatus('failed')
     }
   }
 
-  // 轮询查询生成状态
-  const pollStatus = async (requestId: string) => {
-    const maxAttempts = 60
-    let attempts = 0
+  // 轮询生成状态
+  const startPolling = (oid: string) => {
+    if (pollTimer.current) clearInterval(pollTimer.current)
 
-    const poll = async () => {
-      if (attempts >= maxAttempts) {
-        setError('生成超时，请稍后重试')
-        setGenerating(false)
+    let count = 0
+    pollTimer.current = setInterval(async () => {
+      count++
+      if (count > 60) {
+        clearInterval(pollTimer.current)
+        setErrorMsg('生成超时，请重试')
+        setStatus('failed')
         return
       }
 
       try {
         const res = await Network.request({
-          url: '/api/order-processing/status/' + requestId
+          url: '/api/order-processing/status/' + oid
         })
-        console.log('轮询状态:', res.data)
+        console.log('[内容生成] 轮询结果:', JSON.stringify(res.data))
 
-        if (res.data.code === 200 && res.data.data) {
+        if (res.data?.code === 200 && res.data?.data) {
           const data = res.data.data
-          setProcessingData(prev => prev ? {
-            ...prev,
-            status: data.status,
-            generatedContent: data.generatedContent,
-            errorMessage: data.errorMessage
-          } : null)
-
           if (data.status === 'completed') {
-            if (data.generatedContent?.content) {
-              setEditedContent(data.generatedContent.content)
-            }
-            setGenerating(false)
+            clearInterval(pollTimer.current)
+            showCompletedContent(data)
             return
-          } else if (data.status === 'failed') {
-            setError(data.errorMessage || '生成失败')
-            setGenerating(false)
+          }
+          if (data.status === 'failed') {
+            clearInterval(pollTimer.current)
+            setErrorMsg(data.errorMessage || '生成失败')
+            setStatus('failed')
             return
           }
         }
-
-        attempts++
-        setTimeout(poll, 2000)
-      } catch (err) {
-        attempts++
-        setTimeout(poll, 2000)
+      } catch (e) {
+        console.log('[内容生成] 轮询异常，继续重试')
       }
-    }
-
-    poll()
+    }, 3000)
   }
 
-  // 刷新状态
-  const handleRefresh = async () => {
-    if (!orderId) return
-    await fetchData()
+  // 重新生成
+  const handleRegenerate = () => {
+    if (pollTimer.current) clearInterval(pollTimer.current)
+    hasInit.current = false
+    setErrorMsg('')
+    doGenerate(orderId, orderTitle, orderDesc || orderTitle, platforms, contentType)
   }
 
-  // 复制内容
-  const handleCopy = () => {
-    Taro.setClipboardData({
-      data: editedContent,
-      success: () => {
-        Taro.showToast({ title: '已复制', icon: 'success' })
-      }
-    })
+  // 获取平台中文名
+  const getPlatformName = (p: string) => {
+    const map: Record<string, string> = {
+      xiaohongshu: '小红书', douyin: '抖音', wechat: '微信',
+      wechat_mp: '微信公众号', weibo: '微博', bilibili: 'B站',
+      kuaishou: '快手', zhihu: '知乎'
+    }
+    return map[p] || p
   }
 
-  // 渲染状态
-  const renderStatus = () => {
-    if (!processingData) return null
-
-    const statusMap: Record<string, { label: string; color: string }> = {
-      not_started: { label: '待生成', color: 'bg-gray-100 text-gray-600' },
-      pending: { label: '等待中', color: 'bg-yellow-100 text-yellow-600' },
-      processing: { label: '生成中', color: 'bg-blue-100 text-blue-600' },
-      completed: { label: '已完成', color: 'bg-green-100 text-green-600' },
-      failed: { label: '失败', color: 'bg-red-100 text-red-600' }
-    }
-
-    const status = statusMap[processingData.status] || statusMap.pending
-
-    return (
-      <Badge className={status.color}>
-        {status.label}
-        {processingData.status === 'processing' && '...'}
-      </Badge>
-    )
-  }
-
-  // 渲染内容
-  const renderContent = () => {
-    if (!processingData) return null
-
-    const { status, generatedContent } = processingData
-
-    // 未开始状态
-    if (status === 'not_started') {
-      return (
-        <View className="flex flex-col items-center justify-center py-16">
-          <Text className="block text-gray-500 mb-4">该订单还未生成内容</Text>
-          <Button onClick={handleGenerate} disabled={generating}>
-            <Play size={16} color="#fff" className="mr-2" />
-            {generating ? '生成中...' : '开始生成'}
-          </Button>
-        </View>
-      )
-    }
-
-    // 生成中状态
-    if (status === 'processing') {
-      return (
-        <View className="flex flex-col items-center justify-center py-16">
-          <View className="animate-spin mb-4">
-            <RefreshCw size={32} color="#1890ff" />
-          </View>
-          <Text className="block text-gray-600 mb-2">内容生成中...</Text>
-          <Text className="block text-gray-400 text-sm">预计需要1-2分钟</Text>
-        </View>
-      )
-    }
-
-    // 失败状态
-    if (status === 'failed') {
-      return (
-        <View className="p-4">
-          <View className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <Text className="block text-red-600">{processingData.errorMessage || '生成失败'}</Text>
-          </View>
-          <View className="mt-4 flex justify-center">
-            <Button onClick={handleGenerate} disabled={generating}>
-              重新生成
-            </Button>
-          </View>
-        </View>
-      )
-    }
-
-    // 已完成状态 - 显示内容
-    if (status === 'completed' && generatedContent) {
-      return (
-        <View className="p-4">
-          {/* 平台标签 */}
-          <View className="flex flex-wrap gap-2 mb-4">
-            {generatedContent.platforms?.map((platform) => (
-              <Badge key={platform} variant="outline">
-                {platform}
-              </Badge>
-            ))}
-          </View>
-
-          {/* 内容区域 */}
-          <View className="bg-gray-50 rounded-xl p-4 mb-4">
-            <View className="flex items-center justify-between mb-2">
-              <Text className="block text-gray-500 text-sm">生成内容</Text>
-              <Button size="sm" variant="ghost" onClick={handleCopy}>
-                <Copy size={14} color="#666" className="mr-1" />
-                复制
-              </Button>
-            </View>
-
-            <Textarea
-              className="w-full min-h-48"
-              value={editedContent}
-              onChange={setEditedContent}
-              placeholder="生成的内容将显示在这里..."
-            />
-          </View>
-
-          {/* 图片区域 */}
-          {generatedContent.images && generatedContent.images.length > 0 && (
-            <View className="mb-4">
-              <Text className="block text-gray-500 text-sm mb-2">
-                生成图片 ({generatedContent.images.length})
-              </Text>
-              <View className="flex flex-wrap gap-2">
-                {generatedContent.images.map((_img, idx) => (
-                  <View key={idx} className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden">
-                    <View className="w-full h-full flex items-center justify-center bg-gray-200">
-                      <Text className="block text-gray-400 text-xs">图片 {idx + 1}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* 操作按钮 */}
-          <View className="flex gap-3 mt-4">
-            <Button variant="outline" onClick={handleRefresh}>
-              <RefreshCw size={14} color="#666" className="mr-1" />
-              刷新
-            </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
-              <RefreshCw size={14} color="#fff" className="mr-1" />
-              重新生成
-            </Button>
-          </View>
-        </View>
-      )
-    }
-
-    // 已完成但没有内容
-    if (status === 'completed' && !generatedContent) {
-      return (
-        <View className="flex flex-col items-center justify-center py-16">
-          <Text className="block text-gray-500 mb-4">生成完成，但未返回内容</Text>
-          <Button onClick={handleGenerate}>
-            重新生成
-          </Button>
-        </View>
-      )
-    }
-
-    return null
+  // 获取内容类型图标
+  const getTypeIcon = () => {
+    if (contentType === 'video') return <Video size={16} color="#1890ff" />
+    if (contentType === 'image') return <ImageIcon size={16} color="#1890ff" />
+    return <FileText size={16} color="#1890ff" />
   }
 
   return (
-    <View className="min-h-screen bg-gray-50">
-      {/* 头部 */}
-      <View className="bg-white px-4 py-3 flex items-center border-b border-gray-100">
-        <View onClick={() => Taro.navigateBack()} className="p-2">
-          <Text className="block text-lg">←</Text>
+    <View className="min-h-screen bg-gray-50 pb-6">
+      {/* 顶部标题栏 */}
+      <View className="bg-white px-4 py-3 border-b border-gray-100">
+        <Text className="block text-lg font-bold text-gray-800">{orderTitle}</Text>
+        <View className="flex flex-row items-center gap-2 mt-1">
+          {getTypeIcon()}
+          <Text className="block text-sm text-gray-500">
+            {platforms.map(p => getPlatformName(p)).join(' · ')}
+          </Text>
         </View>
-        <Text className="block text-lg font-semibold ml-2">内容生成</Text>
       </View>
 
-      {/* 内容区域 */}
-      <View className="p-4">
-        {error && (
-          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <Text className="block text-red-600 text-sm">{error}</Text>
-          </View>
-        )}
+      {/* 加载状态 */}
+      {status === 'loading' && (
+        <View className="flex flex-col items-center justify-center py-20">
+          <Loader size={40} color="#1890ff" className="animate-spin" />
+          <Text className="block text-gray-500 mt-4">正在获取订单信息...</Text>
+        </View>
+      )}
 
-        {/* 状态卡片 */}
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <View className="flex items-center justify-between">
-              <View>
-                <Text className="block text-gray-500 text-sm">订单编号</Text>
-                <Text className="block text-gray-900 font-mono text-sm mt-1">{orderId || '-'}</Text>
+      {/* 生成中状态 */}
+      {status === 'generating' && (
+        <View className="px-4 mt-6">
+          <Card>
+            <CardContent className="flex flex-col items-center py-10">
+              <Loader size={48} color="#1890ff" className="animate-spin" />
+              <Text className="block text-lg font-semibold text-gray-800 mt-6">AI正在创作内容</Text>
+              <Text className="block text-sm text-gray-500 mt-2">正在为「{orderTitle}」生成{platforms.map(p => getPlatformName(p)).join('、')}内容...</Text>
+              <View className="flex flex-row items-center gap-1 mt-4">
+                <View className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <View className="w-2 h-2 rounded-full bg-blue-300 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <View className="w-2 h-2 rounded-full bg-blue-200 animate-pulse" style={{ animationDelay: '0.4s' }} />
               </View>
-              {renderStatus()}
-            </View>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </View>
+      )}
 
-        {/* 加载状态 */}
-        {loading ? (
-          <View className="space-y-3">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-48 w-full" />
+      {/* 生成失败 */}
+      {status === 'failed' && (
+        <View className="px-4 mt-6">
+          <Card>
+            <CardContent className="flex flex-col items-center py-10">
+              <CircleAlert size={48} color="#ef4444" />
+              <Text className="block text-lg font-semibold text-gray-800 mt-4">生成失败</Text>
+              <Text className="block text-sm text-red-500 mt-2">{errorMsg}</Text>
+              <View className="mt-6">
+                <Button onClick={handleRegenerate}>
+                  <View className="flex flex-row items-center gap-2">
+                    <RefreshCw size={16} color="#fff" />
+                    <Text className="text-white">重新生成</Text>
+                  </View>
+                </Button>
+              </View>
+            </CardContent>
+          </Card>
+        </View>
+      )}
+
+      {/* 生成完成 - 展示内容 */}
+      {status === 'completed' && (
+        <View className="px-4 mt-4">
+          {/* 成功提示 */}
+          <View className="flex flex-row items-center gap-2 mb-4">
+            <CircleCheck size={20} color="#22c55e" />
+            <Text className="block text-green-600 font-semibold">内容生成完成</Text>
           </View>
-        ) : (
-          renderContent()
-        )}
-      </View>
+
+          {/* 文案内容 */}
+          {genContent && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">生成文案</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Text className="block text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{genContent}</Text>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 图片内容 */}
+          {genImages.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">生成图片 ({genImages.length}张)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <View className="grid grid-cols-3 gap-2">
+                  {genImages.map((img, idx) => (
+                    <View key={idx} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <Image src={img} mode="aspectFill" className="w-full h-full" />
+                    </View>
+                  ))}
+                </View>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 视频内容 */}
+          {genVideos.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">生成视频</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {genVideos.map((v, idx) => (
+                  <View key={idx} className="bg-gray-100 rounded-lg p-4 mb-2">
+                    <View className="flex flex-row items-center gap-2">
+                      <Video size={20} color="#1890ff" />
+                      <Text className="block text-sm text-blue-600 truncate">{v}</Text>
+                    </View>
+                  </View>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 操作按钮 */}
+          <View className="flex flex-row gap-3 mt-4">
+            <View className="flex-1">
+              <Button variant="outline" className="w-full" onClick={handleRegenerate}>
+                <View className="flex flex-row items-center gap-2">
+                  <RefreshCw size={16} color="#666" />
+                  <Text>重新生成</Text>
+                </View>
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button
+                className="w-full"
+                onClick={() => {
+                  Taro.setClipboardData({ data: genContent })
+                }}
+              >
+                <Text className="text-white">复制文案</Text>
+              </Button>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
