@@ -67,6 +67,10 @@ export class OrderDispatchService {
       conditions.push(...this.buildHostedColumnChecks(`${prefix}trust_enabled`))
     }
 
+    if (columns.has('hosting_enabled')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}hosting_enabled`))
+    }
+
     if (conditions.length === 0) {
       this.logger.warn('avatars 表缺少 is_hosted / trust_enabled 字段，自动派单将返回空结果')
       return '1 = 0'
