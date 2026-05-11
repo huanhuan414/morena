@@ -61,9 +61,10 @@ export default function OrderContentCreation() {
       const res = await Network.request({ url: `/api/order/${id}` })
       console.log('[内容生成] 订单信息:', res.data)
       if (res.data?.code === 200 && res.data?.data) {
-        setOrderInfo(res.data.data)
-        // 获取订单信息后，检查是否已有生成内容
-        checkGenerationStatus(id)
+        const order = res.data.data as OrderInfo
+        setOrderInfo(order)
+        // 获取订单信息后，检查是否已有生成内容，传入订单数据避免闭包陷阱
+        checkGenerationStatus(id, order)
       } else {
         setErrorMsg('订单信息获取失败')
         setPageStatus('failed')
@@ -76,7 +77,7 @@ export default function OrderContentCreation() {
   }
 
   // 检查生成状态
-  const checkGenerationStatus = async (id: string) => {
+  const checkGenerationStatus = async (id: string, order?: OrderInfo | null) => {
     try {
       const res = await Network.request({ url: `/api/order-processing/status/${id}` })
       console.log('[内容生成] 状态查询:', res.data)
@@ -106,24 +107,27 @@ export default function OrderContentCreation() {
       } else {
         // 没有生成记录，自动开始生成
         console.log('[内容生成] 无生成记录，开始生成')
-        startGeneration(id)
+        startGeneration(id, order)
       }
     } catch (err) {
       console.error('[内容生成] 状态查询失败:', err)
       // 查询失败也尝试生成
-      startGeneration(id)
+      startGeneration(id, order)
     }
   }
 
   // 开始生成
-  const startGeneration = async (id: string) => {
+  const startGeneration = async (id: string, orderParam?: OrderInfo | null) => {
     try {
       setPageStatus('generating')
-      const order = orderInfo
-      // 从 platforms 数组取第一个平台，支持 "wechat"/"general" 等
-      const platformList = order?.platforms || []
-      const platforms = platformList.length > 0
-        ? platformList.map((p: string) => p === 'general' ? 'wechat' : p)
+      const order = orderParam || orderInfo
+      // platforms 可能是字符串或数组，统一处理
+      const rawPlatforms = order?.platforms || (order as any)?.platform
+      const platformArr: string[] = Array.isArray(rawPlatforms)
+        ? rawPlatforms
+        : (typeof rawPlatforms === 'string' && rawPlatforms ? rawPlatforms.split(',').map((s: string) => s.trim()) : [])
+      const platforms = platformArr.length > 0
+        ? platformArr.map((p: string) => p === 'general' ? 'wechat' : p)
         : ['wechat']
       const normalizedPlatforms = canonicalizePlatforms(platforms)
 
@@ -259,7 +263,12 @@ export default function OrderContentCreation() {
     })
   }
 
-  const platformName = canonicalizePlatforms(orderInfo?.platforms || ['wechat_channel'])[0]
+  // platforms 可能是字符串或数组，统一转为数组
+  const rawPlatformData = orderInfo?.platforms || (orderInfo as any)?.platform
+  const orderPlatformArr: string[] = Array.isArray(rawPlatformData)
+    ? rawPlatformData
+    : (typeof rawPlatformData === 'string' && rawPlatformData ? rawPlatformData.split(',').map((s: string) => s.trim()) : [])
+  const platformName = canonicalizePlatforms(orderPlatformArr.length > 0 ? orderPlatformArr : ['wechat_channel'])[0]
   const displayPlatformName = getPlatformLabel(platformName)
   const platformColor = getPlatformMeta(platformName)?.color || '#6366F1'
 

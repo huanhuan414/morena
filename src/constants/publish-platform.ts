@@ -182,8 +182,9 @@ export const canonicalizePlatform = (platform?: string): string => {
   return ALIAS_TO_CANONICAL[key] || key
 }
 
-export const canonicalizePlatforms = (platforms: string[] = []): string[] => {
-  const normalized = platforms.map(canonicalizePlatform).filter(Boolean)
+export const canonicalizePlatforms = (platforms: string[] | string = []): string[] => {
+  const arr = Array.isArray(platforms) ? platforms : (typeof platforms === 'string' && platforms ? platforms.split(',').map(s => s.trim()) : [])
+  const normalized = arr.map(canonicalizePlatform).filter(Boolean)
   return Array.from(new Set(normalized))
 }
 
