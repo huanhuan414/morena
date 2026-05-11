@@ -2,314 +2,322 @@ import { useState, useEffect, useRef } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Loader, CircleCheck, CircleAlert, RefreshCw, Image as ImageIcon, Film } from 'lucide-react-taro'
+import { Loader, RefreshCw, CircleAlert, Camera, FileText, Play } from 'lucide-react-taro'
 import { Network } from '@/network'
 import MarkdownRenderer from '@/components/markdown-renderer'
 import './index.css'
+
+interface OrderInfo {
+  id: string
+  title: string
+  description: string
+  platform: string
+  expectedQuantity: number
+  quantityPerAvatar: number
+  status: string
+  brandName?: string
+  productInfo?: string
+  requirements?: string
+  price?: number
+}
 
 interface GeneratedContent {
   content: string
   images: string[]
   videos: string[]
-  platform: string
-}
-
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信公众号', xiaohongshu: '小红书', douyin: '抖音',
-  weibo: '微博', bilibili: 'B站', kuaishou: '快手', wechat_moments: '朋友圈',
-  wechat: '微信'
+  platforms: string[]
 }
 
 export default function OrderContentCreation() {
-  const [orderId, setOrderId] = useState('')
-  const [status, setStatus] = useState<'loading' | 'generating' | 'completed' | 'error' | 'idle'>('loading')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'generating' | 'completed' | 'failed'>('loading')
+  const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null)
-  const [errorMsg, setErrorMsg] = useState('')
   const [progressText, setProgressText] = useState('')
-  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [activeTab, setActiveTab] = useState<'content' | 'images' | 'videos'>('content')
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 1. 获取路由参数
   useEffect(() => {
-    const instance = Taro.getCurrentInstance()
-    const id = instance?.router?.params?.orderId || ''
-    console.log('[内容生成] 页面初始化, orderId:', id)
-    if (id) {
-      setOrderId(id)
+    const params = Taro.getCurrentInstance().router?.params
+    const oid = params?.orderId
+    if (oid) {
+      initPage(oid)
     } else {
-      setStatus('error')
-      setErrorMsg('缺少订单ID参数')
+      setStatus('failed')
+      setProgressText('缺少订单ID')
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
     }
   }, [])
 
-  // 2. 订单ID变化时，检查状态
-  useEffect(() => {
-    if (orderId) {
-      checkOrderStatus()
-    }
-    return () => {
-      if (pollTimer.current) clearTimeout(pollTimer.current)
-    }
-  }, [orderId])
+  const getPlatformLabel = (p: string) => {
+    const map: Record<string, string> = { wechat: '微信', xiaohongshu: '小红书', douyin: '抖音', weibo: '微博', bilibili: 'B站', kuaishou: '快手' }
+    return map[p] || p
+  }
 
-  // 查询订单的生成状态
-  const checkOrderStatus = async () => {
+  const getPlatformColor = (p: string) => {
+    const map: Record<string, string> = { wechat: '#07c160', xiaohongshu: '#fe2c55', douyin: '#000000', weibo: '#ff8200', bilibili: '#fb7299', kuaishou: '#ff4906' }
+    return map[p] || '#666'
+  }
+
+  const initPage = async (oid: string) => {
     try {
-      console.log('[内容生成] 查询订单状态, orderId:', orderId)
-      const res = await Network.request({
-        url: `/api/order-processing/status/${orderId}`
-      })
-      console.log('[内容生成] 状态查询结果:', JSON.stringify(res.data))
+      setStatus('loading')
+      setProgressText('获取订单信息...')
 
-      const data = res.data?.data
-      if (data && data.status === 'completed' && data.generatedContent) {
-        // 已有生成内容，直接展示
-        console.log('[内容生成] 已有生成内容，直接展示')
-        setGeneratedContent(data.generatedContent)
+      // 1. 获取订单详情
+      const orderRes = await Network.request({ url: `/api/order/${oid}` })
+      console.log('[内容生成] 订单详情:', JSON.stringify(orderRes.data))
+      const orderData = orderRes.data?.data
+      if (!orderData) {
+        setStatus('failed')
+        setProgressText('获取订单信息失败')
+        return
+      }
+      setOrderInfo(orderData)
+
+      // 2. 查询是否已有生成内容
+      const statusRes = await Network.request({ url: `/api/order-processing/status/${oid}` })
+      console.log('[内容生成] 状态查询:', JSON.stringify(statusRes.data))
+      const existingData = statusRes.data?.data
+
+      if (existingData?.status === 'completed' && existingData.generatedContent) {
+        setGeneratedContent(existingData.generatedContent)
         setStatus('completed')
-      } else if (data && data.status === 'processing') {
-        // 正在生成中，开始轮询
-        console.log('[内容生成] 正在生成中，开始轮询')
+      } else if (existingData?.status === 'processing') {
         setStatus('generating')
         setProgressText('内容生成中...')
-        if (data.generatedContent?.content) {
-          setGeneratedContent(data.generatedContent)
+        if (existingData.generatedContent?.content) {
+          setGeneratedContent(existingData.generatedContent)
         }
-        startPolling()
+        startPolling(oid)
       } else {
-        // 没有生成记录，开始生成
-        console.log('[内容生成] 没有生成记录，开始生成')
-        startGeneration()
+        // 3. 没有生成记录，自动开始生成
+        startGeneration(oid, orderData)
       }
     } catch (err: any) {
-      console.log('[内容生成] 查询失败，开始生成:', err.message)
-      startGeneration()
+      console.error('[内容生成] 初始化失败:', err.message)
+      setStatus('failed')
+      setProgressText('初始化失败: ' + err.message)
     }
   }
 
-  // 调用生成接口
-  const startGeneration = async () => {
+  const startGeneration = async (oid: string, order: OrderInfo) => {
     try {
       setStatus('generating')
       setProgressText('正在提交生成请求...')
 
-      console.log('[内容生成] 调用生成接口, orderId:', orderId)
+      const platform = order.platform || 'xiaohongshu'
+      const quantity = order.quantityPerAvatar || order.expectedQuantity || 3
+      const contentType = (order.description?.includes('视频') || platform === 'douyin') ? 'video' : 'image_text'
+
+      console.log('[内容生成] 生成参数:', { orderId: oid, platform, quantity, contentType, title: order.title, desc: order.description })
+
       const res = await Network.request({
         url: '/api/content-generation/generate',
         method: 'POST',
         data: {
-          orderId,
+          orderId: oid,
           avatarId: 'default',
-          orderTitle: '商单内容',
-          orderDescription: '根据商单要求生成内容',
-          platforms: ['xiaohongshu'],
-          contentType: 'image_text',
-          targetAudience: '年轻人',
-          contentQuantity: 3
+          orderTitle: order.title || '商单内容',
+          orderDescription: order.description || order.requirements || '',
+          platforms: [platform],
+          contentType,
+          targetAudience: '目标用户',
+          contentQuantity: quantity
         }
       })
-
-      console.log('[内容生成] 生成接口返回:', JSON.stringify(res.data))
+      console.log('[内容生成] 生成响应:', JSON.stringify(res.data))
 
       if (res.data?.code === 200) {
-        setProgressText('生成请求已提交，等待生成...')
-        // 开始轮询状态
-        startPolling()
+        setProgressText('内容生成中，请稍候...')
+        startPolling(oid)
       } else {
-        setStatus('error')
-        setErrorMsg(res.data?.message || '生成请求失败')
+        setStatus('failed')
+        setProgressText(res.data?.message || '生成请求失败')
       }
     } catch (err: any) {
-      console.error('[内容生成] 生成接口失败:', err.message)
-      setStatus('error')
-      setErrorMsg('生成请求失败: ' + err.message)
+      console.error('[内容生成] 生成失败:', err.message)
+      setStatus('failed')
+      setProgressText('生成失败: ' + err.message)
     }
   }
 
-  // 轮询生成状态
-  const startPolling = () => {
-    if (pollTimer.current) clearTimeout(pollTimer.current)
-
-    const poll = async () => {
+  const startPolling = (oid: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current)
+    pollingRef.current = setInterval(async () => {
       try {
-        const res = await Network.request({
-          url: `/api/order-processing/status/${orderId}`
-        })
+        const res = await Network.request({ url: `/api/order-processing/status/${oid}` })
         const data = res.data?.data
+        if (!data) return
 
-        if (data) {
-          if (data.status === 'completed' && data.generatedContent) {
-            console.log('[内容生成] 生成完成')
-            setGeneratedContent(data.generatedContent)
-            setStatus('completed')
-            return
-          } else if (data.status === 'processing') {
-            // 更新部分内容
-            if (data.generatedContent?.content) {
-              setGeneratedContent(data.generatedContent)
-              setProgressText('文案已生成，图片生成中...')
-            } else {
-              setProgressText('内容生成中...')
-            }
-          } else if (data.status === 'failed') {
-            setStatus('error')
-            setErrorMsg('内容生成失败')
-            return
-          }
+        if (data.status === 'completed' && data.generatedContent) {
+          setGeneratedContent(data.generatedContent)
+          setStatus('completed')
+          if (pollingRef.current) clearInterval(pollingRef.current)
+        } else if (data.status === 'failed') {
+          setStatus('failed')
+          setProgressText('内容生成失败')
+          if (pollingRef.current) clearInterval(pollingRef.current)
+        } else if (data.status === 'processing' && data.generatedContent) {
+          // 部分内容已生成，先展示
+          setGeneratedContent(data.generatedContent)
+          setProgressText('图片生成中...')
         }
-      } catch (err: any) {
-        console.warn('[内容生成] 轮询失败:', err.message)
+      } catch (err) {
+        console.error('[内容生成] 轮询失败:', err.message)
       }
-
-      // 3秒后继续轮询
-      pollTimer.current = setTimeout(poll, 3000)
-    }
-
-    // 立即开始第一次轮询
-    poll()
+    }, 3000)
   }
 
-  // 重新生成
-  const handleRegenerate = () => {
-    setGeneratedContent(null)
-    setStatus('idle')
-    setErrorMsg('')
-    startGeneration()
+  const handleRetry = () => {
+    if (orderInfo) {
+      startGeneration(orderInfo.id, orderInfo)
+    }
+  }
+
+  // ========== 渲染 ==========
+
+  if (status === 'loading') {
+    return (
+      <View className="ccc-page">
+        <View className="ccc-loading-box">
+          <Loader size={32} color="#1890ff" className="ccc-spin" />
+          <Text className="block text-gray-500 mt-4">{progressText || '加载中...'}</Text>
+        </View>
+      </View>
+    )
   }
 
   return (
-    <View className="content-creation-page">
-      {/* 顶部标题 */}
-      <View className="page-header">
-        <Text className="block text-lg font-bold">内容生成</Text>
-        {orderId && <Text className="block text-xs text-gray-400 mt-1">订单: {orderId.slice(0, 8)}...</Text>}
-      </View>
-
-      {/* 加载中 */}
-      {status === 'loading' && (
-        <View className="flex-1 flex items-center justify-center">
-          <Loader size={32} color="#1890ff" className="animate-spin" />
-          <Text className="block text-gray-500 mt-4">加载中...</Text>
-        </View>
-      )}
-
-      {/* 生成中 */}
-      {status === 'generating' && (
-        <View className="generating-container">
-          <View className="generating-card">
-            <Loader size={40} color="#1890ff" className="animate-spin" />
-            <Text className="block text-base font-semibold mt-4">{progressText || '内容生成中...'}</Text>
-            <Text className="block text-sm text-gray-400 mt-2">AI 正在为您创作内容，请耐心等待</Text>
-
-            {/* 如果已有部分内容，实时预览 */}
-            {generatedContent?.content && (
-              <View className="mt-4 w-full">
-                <Text className="block text-sm text-gray-500 mb-2">文案预览：</Text>
-                <View className="preview-box">
-                  <MarkdownRenderer content={generatedContent.content} />
-                </View>
-              </View>
-            )}
+    <View className="ccc-page">
+      {/* 顶部订单信息卡 */}
+      {orderInfo && (
+        <View className="ccc-order-card">
+          <View className="ccc-order-header">
+            <Text className="ccc-order-title">{orderInfo.title}</Text>
+            <View className="ccc-platform-tag" style={{ backgroundColor: getPlatformColor(orderInfo.platform) + '15', borderColor: getPlatformColor(orderInfo.platform) }}>
+              <Text className="ccc-platform-text" style={{ color: getPlatformColor(orderInfo.platform) }}>{getPlatformLabel(orderInfo.platform)}</Text>
+            </View>
+          </View>
+          {orderInfo.description && (
+            <Text className="ccc-order-desc">{orderInfo.description}</Text>
+          )}
+          <View className="ccc-order-meta">
+            <Text className="ccc-meta-item">需生成 {orderInfo.quantityPerAvatar || orderInfo.expectedQuantity || 3} 条内容</Text>
           </View>
         </View>
       )}
 
-      {/* 生成完成 */}
-      {status === 'completed' && generatedContent && (
-        <View className="content-container">
-          {/* 文案区域 */}
-          {generatedContent.content && (
-            <Card className="content-card">
-              <View className="card-header">
-                <CircleCheck size={18} color="#52c41a" />
-                <Text className="block font-semibold text-base ml-2">生成文案</Text>
-                {generatedContent.platform && (
-                  <Text className="block text-xs text-gray-400 ml-auto">
-                    {PLATFORM_NAMES[generatedContent.platform] || generatedContent.platform}
-                  </Text>
-                )}
-              </View>
-              <CardContent className="px-4 pb-4">
-                <View className="markdown-content">
-                  <MarkdownRenderer content={generatedContent.content} />
-                </View>
-              </CardContent>
-            </Card>
+      {/* 生成中状态 */}
+      {status === 'generating' && (
+        <View className="ccc-generating-card">
+          <View className="ccc-gen-header">
+            <Loader size={20} color="#1890ff" className="ccc-spin" />
+            <Text className="ccc-gen-title">{progressText || '内容生成中...'}</Text>
+          </View>
+          {/* 生成中的文案预览 */}
+          {generatedContent?.content && (
+            <View className="ccc-content-preview">
+              <Text className="ccc-preview-label">文案已生成，图片生成中...</Text>
+            </View>
           )}
-
-          {/* 图片区域 */}
-          {generatedContent.images && generatedContent.images.length > 0 && (
-            <Card className="content-card">
-              <View className="card-header">
-                <ImageIcon size={18} color="#1890ff" />
-                <Text className="block font-semibold text-base ml-2">生成图片 ({generatedContent.images.length}张)</Text>
-              </View>
-              <CardContent className="px-4 pb-4">
-                <View className="image-grid">
-                  {generatedContent.images.map((img, idx) => (
-                    <View key={idx} className="image-item">
-                      <Image
-                        src={img}
-                        mode="aspectFill"
-                        className="generated-image"
-                        onClick={() => {
-                          Taro.previewImage({ current: img, urls: generatedContent.images })
-                        }}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 视频区域 */}
-          {generatedContent.videos && generatedContent.videos.length > 0 && (
-            <Card className="content-card">
-              <View className="card-header">
-                <Film size={18} color="#722ed1" />
-                <Text className="block font-semibold text-base ml-2">生成视频</Text>
-              </View>
-              <CardContent className="px-4 pb-4">
-                {generatedContent.videos.map((video, idx) => (
-                  <View key={idx} className="video-item">
-                    <Text className="block text-sm text-blue-500">{video}</Text>
-                  </View>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 操作按钮 */}
-          <View className="action-bar">
-            <Button onClick={handleRegenerate} variant="outline" className="flex-1">
-              <RefreshCw size={14} color="#666" className="mr-1" />
-              <Text>重新生成</Text>
-            </Button>
-            <Button
-              onClick={() => {
-                Taro.setClipboardData({ data: generatedContent?.content || '' })
-              }}
-              className="flex-1"
-            >
-              <Text>复制文案</Text>
-            </Button>
+          <View className="ccc-progress-bar">
+            <View className="ccc-progress-fill" style={{ width: generatedContent?.content ? '60%' : '20%' }} />
           </View>
         </View>
       )}
 
       {/* 生成失败 */}
-      {status === 'error' && (
-        <View className="error-container">
-          <View className="error-card">
-            <CircleAlert size={40} color="#ff4d4f" />
-            <Text className="block text-base font-semibold mt-4">生成失败</Text>
-            <Text className="block text-sm text-gray-500 mt-2">{errorMsg}</Text>
-            <Button onClick={handleRegenerate} className="mt-4" variant="outline">
-              <RefreshCw size={14} color="#666" className="mr-1" />
-              <Text>重新生成</Text>
-            </Button>
+      {status === 'failed' && (
+        <View className="ccc-failed-card">
+          <CircleAlert size={32} color="#ff4d4f" />
+          <Text className="ccc-failed-title">生成失败</Text>
+          <Text className="ccc-failed-desc">{progressText}</Text>
+          <Button onClick={handleRetry} className="ccc-retry-btn">
+            <View className="ccc-btn-inner">
+              <RefreshCw size={14} color="#1890ff" />
+              <Text className="ccc-btn-text">重新生成</Text>
+            </View>
+          </Button>
+        </View>
+      )}
+
+      {/* 生成完成 - 内容展示 */}
+      {status === 'completed' && generatedContent && (
+        <View className="ccc-result-section">
+          {/* Tab 切换 */}
+          <View className="ccc-tabs">
+            <View
+              className={`ccc-tab ${activeTab === 'content' ? 'ccc-tab-active' : ''}`}
+              onClick={() => setActiveTab('content')}
+            >
+              <FileText size={14} color={activeTab === 'content' ? '#1890ff' : '#999'} />
+              <Text className={`ccc-tab-text ${activeTab === 'content' ? 'ccc-tab-text-active' : ''}`}>文案</Text>
+            </View>
+            <View
+              className={`ccc-tab ${activeTab === 'images' ? 'ccc-tab-active' : ''}`}
+              onClick={() => setActiveTab('images')}
+            >
+              <Camera size={14} color={activeTab === 'images' ? '#1890ff' : '#999'} />
+              <Text className={`ccc-tab-text ${activeTab === 'images' ? 'ccc-tab-text-active' : ''}`}>
+                图片 {generatedContent.images?.length > 0 ? `(${generatedContent.images.length})` : ''}
+              </Text>
+            </View>
+            <View
+              className={`ccc-tab ${activeTab === 'videos' ? 'ccc-tab-active' : ''}`}
+              onClick={() => setActiveTab('videos')}
+            >
+              <Play size={14} color={activeTab === 'videos' ? '#1890ff' : '#999'} />
+              <Text className={`ccc-tab-text ${activeTab === 'videos' ? 'ccc-tab-text-active' : ''}`}>
+                视频 {generatedContent.videos?.length > 0 ? `(${generatedContent.videos.length})` : ''}
+              </Text>
+            </View>
           </View>
+
+          {/* 文案内容 */}
+          {activeTab === 'content' && (
+            <View className="ccc-content-card">
+              <MarkdownRenderer content={generatedContent.content || ''} />
+            </View>
+          )}
+
+          {/* 图片内容 */}
+          {activeTab === 'images' && (
+            <View className="ccc-images-grid">
+              {generatedContent.images?.length > 0 ? (
+                generatedContent.images.map((img, idx) => (
+                  <View key={idx} className="ccc-image-item">
+                    <Image src={img} mode="aspectFill" className="ccc-image" />
+                  </View>
+                ))
+              ) : (
+                <View className="ccc-empty-box">
+                  <Camera size={40} color="#ccc" />
+                  <Text className="ccc-empty-text">暂无图片</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* 视频内容 */}
+          {activeTab === 'videos' && (
+            <View className="ccc-videos-list">
+              {generatedContent.videos?.length > 0 ? (
+                generatedContent.videos.map((_video, idx) => (
+                  <View key={idx} className="ccc-video-item">
+                    <Play size={20} color="#1890ff" />
+                    <Text className="ccc-video-text">视频 {idx + 1}</Text>
+                  </View>
+                ))
+              ) : (
+                <View className="ccc-empty-box">
+                  <Play size={40} color="#ccc" />
+                  <Text className="ccc-empty-text">暂无视频</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       )}
     </View>
