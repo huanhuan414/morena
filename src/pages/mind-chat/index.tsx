@@ -21,7 +21,7 @@ import './index.css'
 type CloneType = 'my' | 'square'
 
 interface Avatar {
-  id: number
+  id: string
   name: string
   role: string
   status: '在线' | '忙碌' | '离线'
@@ -29,9 +29,10 @@ interface Avatar {
   income: string
   image: string
   hosting: boolean
-  type: 'my'
+  type: 'my' | 'square'
   posts: number
   followers?: number
+  isFollowing?: boolean
   voice_id?: string
   personality?: string
   skills?: string
@@ -44,22 +45,20 @@ const MindChat: React.FC = () => {
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
-
-
-  // 获取用户ID
-  const getUserId = useCallback(() => {
-    const userInfo = Taro.getStorageSync('userInfo')
-    return userInfo?.id || 1 // 默认1用于测试
-  }, [])
+  const [isLoggedIn, setIsLoggedIn] = useState(true)
 
   // 加载我的分身列表
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
-      // 获取用户ID
       const userInfo = Taro.getStorageSync('userInfo') || {}
-      let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+      const userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
+      if (!userId) {
+        setIsLoggedIn(false)
+        setMyClones([])
+        return
+      }
+      setIsLoggedIn(true)
       
       const res = await Network.request({
         url: '/api/avatar',
@@ -68,18 +67,21 @@ const MindChat: React.FC = () => {
       })
       console.log('加载分身列表:', res.data)
       
-      // 正确处理API返回格式：{ code: 200, data: [...] }
+      // 兼容多种返回：{ code, data: [...] } / { code, data: { list: [...] } } / { code, data: { data: { list: [...] } } }
       if (res.data?.code === 200 && res.data?.data) {
-        const avatarsData = Array.isArray(res.data.data) ? res.data.data : []
+        const rawData = res.data.data
+        const avatarsData = Array.isArray(rawData)
+          ? rawData
+          : rawData?.list || rawData?.data?.list || []
         const avatars = avatarsData.map((item: any) => ({
           id: item.id || '',
           name: item.name || '未命名分身',
           role: item.description || '通用助手',
-          status: item.isOnline ? '在线' as const : '离线' as const,
+          status: (item.trust_enabled || item.trustEnabled || item.isHosted) ? '在线' as const : '离线' as const,
           task: '待命中',
           income: `¥${item.totalEarnings || '0.00'}`,
           image: item.avatarUrl || item.avatar_url || item.photo || '',
-          hosting: item.isHosted === true || item.isHosted === 1 || item.trustEnabled === 1,
+          hosting: Boolean(item.isHosted || item.trustEnabled || item.trust_enabled),
           type: 'my',
           posts: item.totalPosts || 0,
           voice_id: item.voiceId || item.voice_id,
@@ -99,7 +101,7 @@ const MindChat: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [getUserId])
+  }, [])
 
   // 加载分身广场
   const loadSquareClones = useCallback(async () => {
@@ -111,9 +113,9 @@ const MindChat: React.FC = () => {
       })
       console.log('加载分身广场:', res.data)
       
-      // 正确处理API返回格式：{ code: 200, data: { success: true, data: { list: [...] } } }
-      if (res.data?.code === 200 && res.data?.data?.data?.list) {
-        const listData = res.data.data.data.list
+      // 兼容多种返回结构
+      if (res.data?.code === 200) {
+        const listData = res.data?.data?.data?.list || res.data?.data?.list || []
         const avatars = listData.slice(0, 6).map((item: any) => ({
           id: item.id || '',
           name: item.name || '未命名分身',
@@ -158,20 +160,35 @@ const MindChat: React.FC = () => {
 
   // 切换托管状态
   const handleToggleHosting = async (id: string, checked: boolean) => {
+    const previous = myClones
+    // 乐观更新，避免用户感知“点击无反应”
+    setMyClones(prev =>
+      prev.map(clone =>
+        clone.id === id
+          ? { ...clone, hosting: checked, status: checked ? '在线' : '离线' }
+          : clone
+      )
+    )
+
     try {
-      // 获取用户ID
       const userInfo = Taro.getStorageSync('userInfo') || {}
       let userId = userInfo.id || userInfo.userId || userInfo.user_id || ''
-      if (!userId) userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691' // 测试ID
+      if (!userId) {
+        throw new Error('用户未登录')
+      }
       
-      await Network.request({
+      const res = await Network.request({
         url: `/api/avatar/${id}/trust`,
         method: 'PUT',
         data: { trust_enabled: checked },
         header: { 'x-user-id': userId }
       })
+      if (res.data?.code !== 200) {
+        throw new Error(res.data?.msg || '更新失败')
+      }
       console.log('更新托管状态成功:', id, checked)
     } catch (error) {
+      setMyClones(previous)
       console.error('更新托管状态失败:', error)
       Taro.showToast({ title: '更新失败', icon: 'none' })
     }
@@ -253,10 +270,20 @@ const MindChat: React.FC = () => {
               <Sparkles size={56} color="rgba(6, 182, 212, 0.6)" />
             </View>
             <Text className="empty-title">
-              {activeTab === 'my' ? '还没有分身' : '暂无内容'}
+              {searchValue
+                ? '没有匹配结果'
+                : activeTab === 'my'
+                  ? (isLoggedIn ? '还没有分身' : '请先登录')
+                  : '暂无内容'}
             </Text>
             <Text className="empty-desc">
-              {activeTab === 'my' ? '创建你的第一个AI分身\n开启智能社交新体验' : '稍后再来看看吧'}
+              {searchValue
+                ? '换个关键词试试'
+                : activeTab === 'my'
+                  ? (isLoggedIn
+                    ? '创建你的第一个AI分身\n开启智能社交新体验'
+                    : '登录后可管理你的分身与托管能力')
+                  : '稍后再来看看吧'}
             </Text>
           </View>
         ) : activeTab === 'my' ? (
@@ -310,9 +337,8 @@ const MindChat: React.FC = () => {
                     <Zap size={12} className="hosting-icon" />
                     <Text className="hosting-label">自动托管</Text>
                     <Switch
-                      checked={clone.trust || false}
-                      color="#7B3FE4"
-                      onChange={(checked) => handleToggleHosting(clone.id, checked)}
+                      checked={clone.hosting || false}
+                      onCheckedChange={(checked) => handleToggleHosting(clone.id, checked)}
                     />
                   </View>
                 </View>
