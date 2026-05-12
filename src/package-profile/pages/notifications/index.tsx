@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
 import { ChevronLeft, Bell, MessageCircle, Heart, UserPlus, Info, CheckCheck } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import '../../styles/variables.css'
+import '@/styles/variables.css'
 import './index.css'
 
 interface NotificationSetting {

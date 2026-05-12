@@ -8,7 +8,7 @@ import {
   Wallet, Crown, Trophy
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import '../../styles/variables.css'
+import '@/styles/variables.css'
 import './index.css' 
 
 interface UserStats {

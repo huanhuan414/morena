@@ -7,7 +7,7 @@ import {
   Info, Trash2, LogOut, User, ChevronRight
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import '../../styles/variables.css'
+import '@/styles/variables.css'
 import './index.css'
 
 interface SettingItem {
