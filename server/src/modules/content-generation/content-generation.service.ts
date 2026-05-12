@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Config, LLMClient, ImageGenerationClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
-import { OrderService } from '../order/order.service'
 
 @Injectable()
 export class ContentGenerationService {
@@ -173,8 +172,7 @@ export class ContentGenerationService {
 
     // 5. 同步订单状态
     try {
-      const orderService = new OrderService()
-      await orderService.syncOrderStatusByContent(input.orderId)
+      await this.syncOrderStatus(input.orderId)
     } catch (e: any) {
       this.logger.warn(`同步订单状态失败: ${e.message}`)
     }
@@ -698,5 +696,53 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
    */
   private async generateVideos(platform: string, input: any): Promise<string[]> {
     return []
+  }
+
+  /**
+   * 同步订单状态：根据内容生成记录推导订单状态
+   */
+  private async syncOrderStatus(orderId: string): Promise<void> {
+    try {
+      const db = getMySQLClient()
+      // 获取该订单所有内容生成记录
+      const contents = await db.queryWhere('content_generation_requests', { order_id: orderId })
+      if (!contents || contents.length === 0) return
+
+      // 获取所有分派记录
+      const dispatches = await db.queryWhere('order_dispatch_requests', { order_id: orderId })
+
+      const contentStatuses = contents.map(c => c.status)
+      const dispatchStatuses = dispatches.map(d => d.status)
+
+      let newOrderStatus: string | null = null
+
+      const allFeedback = contentStatuses.every(s =>
+        ['feedback_submitted', 'settled', 'done', 'awaiting_acceptance'].includes(s)
+      )
+      const allPublished = contentStatuses.every(s =>
+        ['published', 'feedback_submitted', 'settled', 'done', 'completed', 'awaiting_acceptance'].includes(s)
+      )
+      const allCompleted = contentStatuses.every(s =>
+        ['completed', 'published', 'feedback_submitted', 'settled', 'done', 'awaiting_acceptance'].includes(s)
+      )
+      const hasProcessing = contentStatuses.some(s =>
+        ['processing', 'generating_images', 'pending'].includes(s)
+      )
+
+      if (allFeedback) {
+        newOrderStatus = 'awaiting_acceptance'
+      } else if (allPublished || allCompleted) {
+        newOrderStatus = 'submitted'
+      } else if (hasProcessing) {
+        newOrderStatus = 'in_progress'
+      }
+
+      if (newOrderStatus) {
+        await db.updateWhere('orders', { status: newOrderStatus }, { id: orderId })
+        this.logger.log(`订单状态同步: ${orderId} → ${newOrderStatus}`)
+      }
+    } catch (err) {
+      this.logger.warn(`同步订单状态失败: ${err.message}`)
+    }
   }
 }
