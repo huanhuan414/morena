@@ -37,11 +37,18 @@ export default function PublishRedirectPage() {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
     
-    const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
-    if (menuButtonBoundingClientRect) {
-      const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
-      const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
-      setCapsuleWidth(capsuleWidthWithMargins)
+    const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+    if (isMiniApp) {
+      try {
+        const menuButtonBoundingClientRect = Taro.getMenuButtonBoundingClientRect()
+        if (menuButtonBoundingClientRect) {
+          const rightMargin = systemInfo.screenWidth - menuButtonBoundingClientRect.right
+          const capsuleWidthWithMargins = rightMargin * 2 + menuButtonBoundingClientRect.width
+          setCapsuleWidth(capsuleWidthWithMargins)
+        }
+      } catch (e) {
+        console.warn('[PublishRedirect] getMenuButtonBoundingClientRect 失败:', e)
+      }
     }
     
     // 从URL参数获取数据

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import { ArrowLeft, Trophy, TrendingUp, Sparkles, Medal, Crown, Zap } from 'lucide-react-taro'
 import * as Network from '@/network'
+import { formatLocal } from '@/utils/format'
 import './index.css'
 
 interface EarningsRecord {
@@ -153,7 +154,7 @@ export default function EarningsWallPage() {
           {/* 统计数据 */}
           <View className="stats-row">
             <View className="stat-item">
-              <Text className="stat-value">¥{stats.totalPlatformEarnings.toLocaleString()}</Text>
+              <Text className="stat-value">¥{formatLocal(stats.totalPlatformEarnings)}</Text>
               <Text className="stat-label">总收益</Text>
             </View>
             <View className="stat-divider" />
@@ -188,7 +189,7 @@ export default function EarningsWallPage() {
                 <Text className="avatar-initial">{records[1].avatarName.charAt(0)}</Text>
               </View>
               <Text className="avatar-name">{records[1].avatarName}</Text>
-              <Text className="avatar-earnings">¥{records[1].totalEarnings.toLocaleString()}</Text>
+              <Text className="avatar-earnings">¥{formatLocal(records[1].totalEarnings)}</Text>
             </View>
           )}
           
@@ -202,7 +203,7 @@ export default function EarningsWallPage() {
                 <Text className="avatar-initial avatar-initial-1">{records[0].avatarName.charAt(0)}</Text>
               </View>
               <Text className="avatar-name">{records[0].avatarName}</Text>
-              <Text className="avatar-earnings">¥{records[0].totalEarnings.toLocaleString()}</Text>
+              <Text className="avatar-earnings">¥{formatLocal(records[0].totalEarnings)}</Text>
             </View>
           )}
           
@@ -216,7 +217,7 @@ export default function EarningsWallPage() {
                 <Text className="avatar-initial">{records[2].avatarName.charAt(0)}</Text>
               </View>
               <Text className="avatar-name">{records[2].avatarName}</Text>
-              <Text className="avatar-earnings">¥{records[2].totalEarnings.toLocaleString()}</Text>
+              <Text className="avatar-earnings">¥{formatLocal(records[2].totalEarnings)}</Text>
             </View>
           )}
         </View>
@@ -247,7 +248,7 @@ export default function EarningsWallPage() {
               </View>
               
               <View className="earnings-info">
-                <Text className="earnings-value">¥{record.totalEarnings.toLocaleString()}</Text>
+                <Text className="earnings-value">¥{formatLocal(record.totalEarnings)}</Text>
                 <Text className="orders-count">{record.completedOrders}单</Text>
               </View>
             </View>

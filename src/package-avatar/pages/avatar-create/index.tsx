@@ -945,7 +945,7 @@ export default function AvatarCreate() {
           {quotaSummary.maxAvatars !== -1 && quotaSummary.remainingAvatars <= 1 ? (
             <View
               className="quota-summary-tip"
-              onClick={() => Taro.navigateTo({ url: '/pages/subscription/index' })}
+              onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })}
             >
               <Text className="quota-summary-tip-text">
                 {quotaSummary.remainingAvatars <= 0 ? '当前配额已用完，去升级订阅' : '当前剩余额度较少，可提前升级订阅'}

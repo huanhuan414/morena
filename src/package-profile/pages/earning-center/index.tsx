@@ -3,23 +3,24 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
+import { formatNum, toNumber } from '@/utils/format'
 import { ArrowDownToLine, ChevronRight, Gift, Sparkles, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
 interface EarningOverview {
-  balance: number
-  totalEarnings: number
-  pendingAmount: number
-  monthlyAmount: number
-  totalOrders: number
-  totalReferrals: number
+  balance: number | string
+  totalEarnings: number | string
+  pendingAmount: number | string
+  monthlyAmount: number | string
+  totalOrders: number | string
+  totalReferrals: number | string
 }
 
 interface EarningRecord {
   id: string
-  amount: number
-  type: 'order_income' | 'referral_bonus' | 'withdrawal'
-  status: 'completed' | 'pending' | 'processing'
+  amount: number | string
+  type: string
+  status: string
   created_at: string
   description: string
 }
@@ -66,7 +67,6 @@ export default function EarningCenterPage() {
       const res = await Network.request({ url: '/api/earnings' })
       console.log('收益记录返回:', res.data)
       if (res.data?.code === 200) {
-        // 后端返回 { list, total, page, pageSize }
         const data = res.data.data
         setRecords(data?.list || data || [])
       }
@@ -78,7 +78,7 @@ export default function EarningCenterPage() {
   }
 
   const handleWithdraw = async () => {
-    if (overview.balance < 100) {
+    if (toNumber(overview.balance) < 100) {
       showToast({ title: '余额不足100元，无法提现', icon: 'none' })
       return
     }
@@ -87,7 +87,7 @@ export default function EarningCenterPage() {
         url: '/api/earnings/withdraw',
         method: 'POST',
         data: {
-          amount: overview.balance,
+          amount: toNumber(overview.balance),
           method: 'wechat',
           accountInfo: {}
         }
@@ -143,23 +143,23 @@ export default function EarningCenterPage() {
             <Text className="overview-label">可提现余额</Text>
             <View className="balance-wrap">
               <Text className="currency">¥</Text>
-              <Text className="balance-amount">{overview.balance.toFixed(2)}</Text>
+              <Text className="balance-amount">{formatNum(overview.balance)}</Text>
             </View>
           </View>
 
           <View className="overview-stats">
             <View className="stat-col">
-              <Text className="stat-value">¥{overview.totalEarnings.toFixed(2)}</Text>
+              <Text className="stat-value">¥{formatNum(overview.totalEarnings)}</Text>
               <Text className="stat-label">累计收益</Text>
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{overview.monthlyAmount.toFixed(2)}</Text>
+              <Text className="stat-value">¥{formatNum(overview.monthlyAmount)}</Text>
               <Text className="stat-label">本月收益</Text>
             </View>
             <View className="stat-divider" />
             <View className="stat-col">
-              <Text className="stat-value">¥{overview.pendingAmount.toFixed(2)}</Text>
+              <Text className="stat-value">¥{formatNum(overview.pendingAmount)}</Text>
               <Text className="stat-label">待结算</Text>
             </View>
           </View>
@@ -221,7 +221,7 @@ export default function EarningCenterPage() {
                     </View>
                     <View className="record-right">
                       <Text className={`record-amount ${record.type === 'withdrawal' ? 'negative' : 'positive'}`}>
-                        {record.type === 'withdrawal' ? '-' : '+'}¥{record.amount.toFixed(2)}
+                        {record.type === 'withdrawal' ? '-' : '+'}¥{formatNum(record.amount)}
                       </Text>
                       <Text className="record-status" style={{ color: statusInfo.color }}>
                         {statusInfo.label}

@@ -331,7 +331,7 @@ export default function AvatarManagePage() {
         icon: 'none',
         duration: 3000
       })
-      navigateTo({ url: '/pages/subscription/index' })
+      navigateTo({ url: '/package-avatar/pages/subscription/index' })
       return
     }
     const remainingAvatars = maxAvatars === -1 ? -1 : Math.max(maxAvatars - avatarCount, 0)
@@ -478,7 +478,7 @@ export default function AvatarManagePage() {
           </Button>
         </View>
         <View className="header-right-wrap">
-          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications/index' })}>
+          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
             <Bell size={22} color="#fff" />
             {unreadCount > 0 && (
               <View className="notification-badge-small">
@@ -515,7 +515,7 @@ export default function AvatarManagePage() {
               {!canCreateAvatar && (
                 <View 
                   className="subscription-upgrade-btn"
-                  onClick={() => navigateTo({ url: '/pages/subscription/index' })}
+                  onClick={() => navigateTo({ url: '/package-avatar/pages/subscription/index' })}
                 >
                   <Text className="subscription-upgrade-text">升级订阅以创建更多</Text>
                   <ChevronRight size={16} color="#fbbf24" />
