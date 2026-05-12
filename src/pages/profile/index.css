@@ -1,6 +1,5 @@
 /* ========================================
    Profile Page - 个人中心页面
-   高级简洁设计风格
    ======================================== */
 
 @import '../../styles/variables.css';
@@ -14,47 +13,7 @@
 }
 
 /* ========================================
-   自定义导航栏
-   ======================================== */
-.custom-nav-bar {
-  position: relative;
-  z-index: 100;
-  background: transparent;
-}
-
-.nav-bar-content {
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20rpx;
-}
-
-.nav-bar-back {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.nav-bar-back:active {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.nav-bar-title {
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.nav-bar-right {
-  width: 72rpx;
-}
-
-/* ========================================
-   顶部渐变Header - 高级流光特效
+   顶部渐变Header
    ======================================== */
 .profile-header-gradient {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -63,7 +22,6 @@
   z-index: 10;
   flex-shrink: 0;
   overflow: hidden;
-  margin-top: 0;
 }
 
 /* 流光动画层 */
@@ -99,25 +57,14 @@
   animation: glowPulse 4s ease-in-out infinite;
 }
 
-/* 动画定义 */
 @keyframes lightStreamProfile {
-  0% {
-    transform: translateX(0) skewX(-15deg);
-  }
-  100% {
-    transform: translateX(50%) skewX(-15deg);
-  }
+  0% { transform: translateX(0) skewX(-15deg); }
+  100% { transform: translateX(50%) skewX(-15deg); }
 }
 
 @keyframes glowPulse {
-  0%, 100% {
-    opacity: 0.3;
-    transform: translateY(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: translateY(-50%) scale(1.1);
-  }
+  0%, 100% { opacity: 0.3; transform: translateY(-50%) scale(1); }
+  50% { opacity: 0.6; transform: translateY(-50%) scale(1.1); }
 }
 
 /* 网格背景 */
@@ -165,27 +112,9 @@
   50% { opacity: 1; transform: scale(1.5); }
 }
 
-/* 顶部操作栏 */
-.header-top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  z-index: 1;
-  margin-bottom: 32rpx;
-}
-
-.header-title-wrap {
-  flex: 1;
-}
-
-.header-title {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* 白色卡片区域 - 覆盖在header上 */
+/* ========================================
+   白色卡片区域
+   ======================================== */
 .profile-floating-card {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
@@ -196,7 +125,6 @@
   z-index: 20;
 }
 
-/* 卡片顶部行 */
 .card-top-row {
   display: flex;
   align-items: center;
@@ -204,7 +132,6 @@
   margin-bottom: 32rpx;
 }
 
-/* 卡片内操作按钮 */
 .card-actions {
   display: flex;
   align-items: center;
@@ -219,24 +146,6 @@
   justify-content: center;
   background: var(--bg-gray);
   border-radius: 50%;
-  position: relative;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.action-btn {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  backdrop-filter: blur(8rpx);
   position: relative;
 }
 
@@ -359,7 +268,7 @@
 }
 
 /* ========================================
-   菜单列表 - 高级简洁风格
+   菜单列表
    ======================================== */
 .menu-section {
   margin: 0 var(--page-padding) var(--space-3);
@@ -456,128 +365,6 @@
 .version-copyright {
   font-size: var(--text-xs);
   color: var(--text-quaternary);
-}
-
-/* ========================================
-   待确认订单弹窗
-   ======================================== */
-.pending-dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.pending-dialog {
-  width: 80%;
-  max-height: 70%;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.pending-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4);
-  border-bottom: 1rpx solid var(--border-light);
-}
-
-.pending-dialog-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.pending-dialog-title {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
-}
-
-.pending-dialog-close {
-  padding: var(--space-1);
-}
-
-.pending-dialog-content {
-  max-height: 600rpx;
-}
-
-.pending-request-card {
-  background: var(--bg-page);
-  border-radius: var(--radius-base);
-  padding: var(--space-4);
-  margin: var(--space-3);
-}
-
-.request-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.request-order-title {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--text-primary);
-  flex: 1;
-}
-
-.request-budget {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
-}
-
-.budget-label {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.budget-value {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--primary);
-}
-
-.request-meta {
-  display: flex;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.meta-item {
-  font-size: var(--text-sm);
-  color: var(--text-quaternary);
-  background: var(--bg-card);
-  padding: 4rpx 16rpx;
-  border-radius: var(--radius-full);
-}
-
-.view-request-btn {
-  width: 100%;
-  background: var(--primary);
-  border-radius: var(--radius-base);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-}
-
-.view-request-text {
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
-  color: var(--text-white);
 }
 
 /* ========================================
