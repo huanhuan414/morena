@@ -289,18 +289,18 @@
 }
 
 .po-platform-pill {
-  padding: 6rpx 14rpx;
+  padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }
 
 .po-platform-pill-text {
   font-size: 20rpx;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.4;
 }
 
 .po-type-pill {
-  padding: 6rpx 14rpx;
+  padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }
 
