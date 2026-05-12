@@ -1,3 +1,3 @@
 export default typeof definePageConfig === 'function'
-  ? definePageConfig({ navigationBarTitleText: '订单广场' })
-  : { navigationBarTitleText: '订单广场' }
+  ? definePageConfig({ navigationStyle: 'custom', navigationBarTitleText: '订单广场' })
+  : { navigationStyle: 'custom', navigationBarTitleText: '订单广场' }
