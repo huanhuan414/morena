@@ -116,10 +116,9 @@ const Login: React.FC = () => {
           level: user.level,
           exp: user.exp,
           credits: user.credits,
-          referral_code: user.referral_code,
           created_at: user.created_at,
           updated_at: user.updated_at,
-        })
+        } as any)
 
         // 如果有邀请奖励，提示用户
         if (data.referralReward && data.referralReward > 0) {

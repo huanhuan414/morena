@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Sparkles, Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Wand2, Users, Coins } from 'lucide-react-taro'
+import { Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Users, Coins } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
   PLATFORM_UI_ORDER,
@@ -437,7 +437,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               {aiLoading ? (
                 <Loader size={12} color="#fff" className="ai-loading" />
               ) : (
-                <Wand2 size={12} color="#fff" />
+                <Users size={12} color="#fff" />
               )}
               <Text className="ai-text">AI 帮写</Text>
             </View>

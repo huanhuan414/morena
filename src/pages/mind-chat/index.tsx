@@ -11,8 +11,7 @@ import {
   Loader,
   Sparkles,
   Users,
-  Trash2,
-  AlertTriangle
+  Trash2
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -250,10 +249,6 @@ const MindChat: React.FC = () => {
     Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
-  const openFriendshipManagement = () => {
-    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
-  }
-
   const handleMyCloneVoice = (avatarId: string) => {
     Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
@@ -285,7 +280,7 @@ const MindChat: React.FC = () => {
       })
       console.log('deleteAvatar result:', result)
       Taro.showToast({ title: '删除成功', icon: 'success' })
-      fetchMyClones()
+      loadMyClones()
     } catch (err) {
       console.error('deleteAvatar error:', err)
       Taro.showToast({ title: '删除失败', icon: 'error' })
