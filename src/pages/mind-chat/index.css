@@ -11,7 +11,7 @@
 .page-header {
   position: relative;
   width: 100%;
-  padding: 60rpx 28rpx 16rpx;
+  padding: 0 28rpx 16rpx;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
   flex-shrink: 0;
   border-radius: 0 0 40rpx 40rpx;

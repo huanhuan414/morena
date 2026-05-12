@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -342,7 +343,7 @@ const Index: React.FC = () => {
       {/* 顶部通栏 */}
       <View className="header">
         <View className="header-bg" />
-        <View className="header-content">
+        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 20}rpx` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
               <Image className="avatar" src={avatar} />

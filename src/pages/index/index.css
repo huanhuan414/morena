@@ -12,7 +12,6 @@
 .header {
   position: relative;
   width: 100%;
-  height: 200rpx;
   flex-shrink: 0;
   z-index: 100;
 }
@@ -32,8 +31,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 200rpx;
-  padding: 60rpx 30rpx 20rpx;
+  padding: var(--safe-top, 60rpx) 30rpx 20rpx;
 }
 
 .header-left {
