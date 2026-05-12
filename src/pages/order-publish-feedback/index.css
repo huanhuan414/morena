@@ -349,11 +349,13 @@
 
 /* 平台反馈卡片 */
 .platform-card {
+  width: calc(100% - 48rpx);
   margin: 0 24rpx 20rpx;
   background: #fff;
   border-radius: 24rpx;
   padding: 28rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
 }
 
 .platform-card-header {
