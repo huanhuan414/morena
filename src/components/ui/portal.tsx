@@ -1,19 +1,19 @@
 import * as React from "react"
-import * as TaroComponents from "@tarojs/components"
-import { createPortal } from "react-dom"
 import { isH5 } from "@/lib/platform"
-
-const RootPortal = (TaroComponents as any).RootPortal
 
 const Portal = ({ children }: { children: React.ReactNode }) => {
   if (isH5()) {
     if (typeof document === "undefined") return <>{children}</>
-    return createPortal(children, document.body)
+    // H5 端使用 React.createPortal
+    try {
+      const { createPortal } = require("react-dom")
+      return createPortal(children, document.body)
+    } catch {
+      return <>{children}</>
+    }
   }
-  if (!RootPortal) {
-    return <>{children}</>
-  }
-  return <RootPortal>{children}</RootPortal>
+  // 小程序端不使用 RootPortal（兼容性不可靠），直接渲染
+  return <>{children}</>
 }
 
 export { Portal }

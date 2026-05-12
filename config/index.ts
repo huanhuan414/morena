@@ -21,7 +21,7 @@ const generateTTProjectConfig = (outputRoot: string) => {
       urlCheck: false,
       es6: false,
       postcss: false,
-      minified: true,
+      minified: false,
     },
   };
   const outputDir = path.resolve(__dirname, '..', outputRoot);
@@ -47,7 +47,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       enhance: false,
       compileHotReLoad: false,
       postcss: false,
-      minified: true,
+      minified: false,
       newFeature: true,
       coverView: true,
       nodeModules: false,

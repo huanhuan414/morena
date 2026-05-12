@@ -2,6 +2,7 @@ import { PropsWithChildren, useEffect } from 'react';
 import { useUserStore } from '@/stores/user';
 import { LucideTaroProvider } from 'lucide-react-taro';
 import '@/app.css';
+import { Toaster } from '@/components/ui/toast';
 
 const App = ({ children }: PropsWithChildren) => {
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage);
@@ -14,6 +15,7 @@ const App = ({ children }: PropsWithChildren) => {
   return (
     <LucideTaroProvider defaultColor="#000" defaultSize={24}>
       {children}
+      <Toaster />
     </LucideTaroProvider>
   );
 };
