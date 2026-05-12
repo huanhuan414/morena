@@ -5,7 +5,6 @@ import Taro from '@tarojs/taro'
 import { Search, Eye, Ban } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
 import * as Network from '@/network'
-import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface User {
@@ -38,8 +37,8 @@ export default function UserManagement() {
       })
       
       if (res.data.code === 200) {
-        setUsers(unwrapList(res.data.data) as User[])
-        setTotal(unwrapObject(res.data.data, { total: 0 }).total)
+        setUsers(res.data.data.list)
+        setTotal(res.data.data.total)
       }
     } catch (err) {
       console.error('获取用户列表失败:', err)
@@ -77,7 +76,7 @@ export default function UserManagement() {
   }
 
   const handleViewDetail = (userId: string) => {
-    Taro.navigateTo({ url: `/pages/admin/users/detail/index?id=${userId}` })
+    Taro.navigateTo({ url: `/pages/admin/users/detail?id=${userId}` })
   }
 
   const handlePageChange = (newPage: number) => {

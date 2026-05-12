@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import {
@@ -60,10 +60,6 @@ export default function PendingOrderListPage() {
     fetchOrders()
   }, [])
 
-  useDidShow(() => {
-    fetchOrders()
-  })
-
   const fetchOrders = async () => {
     setLoading(true)
     try {
@@ -76,10 +72,7 @@ export default function PendingOrderListPage() {
         let avatarMap: Record<string, { name: string; avatarUrl?: string }> = {}
         try {
           const avatarRes = await Network.request({ url: '/api/avatar' })
-          const avatarData = avatarRes.data?.data
-          const avatarList = Array.isArray(avatarData)
-            ? avatarData
-            : avatarData?.data?.list || avatarData?.list || []
+          const avatarList = avatarRes.data?.data || []
           avatarList.forEach((a: any) => {
             avatarMap[a.id] = { name: a.name || '分身', avatarUrl: a.avatar_url || a.avatarUrl }
           })

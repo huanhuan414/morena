@@ -6,7 +6,6 @@ import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface FinanceStats {
@@ -51,13 +50,7 @@ export default function FinanceManagement() {
     try {
       const res = await Network.request({ url: '/api/admin/finance/stats' })
       if (res.data.code === 200) {
-        setStats(unwrapObject(res.data.data, {
-          totalRecharge: 0,
-          totalWithdraw: 0,
-          totalCommission: 0,
-          balance: 0,
-          pendingWithdraw: 0
-        }))
+        setStats(res.data.data)
       }
     } catch (err) {
       console.error('获取财务统计失败:', err)
@@ -72,7 +65,7 @@ export default function FinanceManagement() {
       }
       const res = await Network.request({ url })
       if (res.data.code === 200) {
-        setTransactions(unwrapList(res.data.data) as Transaction[])
+        setTransactions(res.data.data.list)
       }
     } catch (err) {
       console.error('获取交易记录失败:', err)

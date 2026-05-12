@@ -5,7 +5,6 @@ import Taro from '@tarojs/taro'
 import { Search } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
 import * as Network from '@/network'
-import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface Order {
@@ -43,8 +42,8 @@ export default function OrderManagement() {
       })
       
       if (res.data.code === 200) {
-        setOrders(unwrapList(res.data.data) as Order[])
-        setTotal(unwrapObject(res.data.data, { total: 0 }).total)
+        setOrders(res.data.data.list)
+        setTotal(res.data.data.total)
       }
     } catch (err) {
       console.error('获取订单列表失败:', err)

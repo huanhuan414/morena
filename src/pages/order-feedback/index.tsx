@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { safeNavigateBack } from '@/utils/navigation'
 import { TrendingUp, Heart, MessageCircle, Share2, Send, Upload, FileText, Image as ImageIcon, Check, Sparkles, X, Video, Play } from 'lucide-react-taro'
 import './index.css'
 
@@ -48,24 +47,6 @@ export default function OrderFeedbackPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
 
-  const unwrapList = (payload: any): any[] => {
-    if (Array.isArray(payload)) return payload
-    if (Array.isArray(payload?.list)) return payload.list
-    if (Array.isArray(payload?.data?.list)) return payload.data.list
-    if (Array.isArray(payload?.data)) return payload.data
-    return []
-  }
-
-  const unwrapObject = (payload: any): Record<string, any> | null => {
-    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-      if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-        return payload.data
-      }
-      return payload
-    }
-    return null
-  }
-
   useLoad(() => {
     // 如果没有 avatarId 但有 orderId，先获取订单数据再获取 avatarId
     if (orderId && !avatarId) {
@@ -97,7 +78,7 @@ export default function OrderFeedbackPage() {
     try {
       const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200) {
-        setOrderData(unwrapObject(res.data.data))
+        setOrderData(res.data.data)
       }
     } catch (error) {
       console.error('获取订单数据失败:', error)
@@ -112,7 +93,7 @@ export default function OrderFeedbackPage() {
     try {
       const res = await Network.request({ url: `/api/avatar/${id}` })
       if (res.data?.code === 200) {
-        setAvatarData(unwrapObject(res.data.data))
+        setAvatarData(res.data.data)
       }
     } catch (error) {
       console.error('获取分身数据失败:', error)
@@ -133,7 +114,7 @@ export default function OrderFeedbackPage() {
         console.log('生成内容接口响应:', contentRes)
 
         if (contentRes.data?.code === 200) {
-          const contents = unwrapList(contentRes.data.data)
+          const contents = contentRes.data.data || []
           console.log('获取到的内容数量:', contents.length)
           setGeneratedContents(contents)
 
@@ -274,7 +255,7 @@ export default function OrderFeedbackPage() {
               // 更新订单状态为已完成
               await updateOrderStatus()
               setTimeout(() => {
-                void safeNavigateBack('/pages/order/order-list/index')
+                navigateBack()
               }, 1500)
             } else {
               showToast({ title: result.data?.message || '提交失败', icon: 'none' })

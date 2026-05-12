@@ -152,12 +152,6 @@ export default function AvatarOrdersPage() {
   }
 
   const handleOrderClick = (order: any) => {
-    const processingQuery = [
-      `orderId=${encodeURIComponent(order.order_id || '')}`,
-      order.avatar_id ? `avatarId=${encodeURIComponent(order.avatar_id)}` : '',
-      order.id ? `requestId=${encodeURIComponent(order.id)}` : '',
-    ].filter(Boolean).join('&')
-
     switch (order.status) {
       case 'pending':
         handleViewPendingOrder(order)
@@ -165,23 +159,27 @@ export default function AvatarOrdersPage() {
       case 'accepted':
       case 'generating':
       case 'preview':
-      case 'publishing':
-      case 'published':
-        // 统一回到处理桥，避免形成第二套处理链
+        // 制作中/预览中状态跳转到内容创作页面
         navigateTo({
-          url: `/pages/order/order-processing/index?${processingQuery}`
+          url: `/pages/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
+        })
+        break
+      case 'published':
+        // 待反馈的订单跳转到反馈提交页面
+        navigateTo({
+          url: `/pages/order-publish-feedback/index?requestId=${order.id}&orderId=${order.order_id}`
         })
         break
       case 'awaiting_acceptance':
-        // 待验收统一回处理桥，避免形成独立验收旁路
+        // 待验收的订单跳转到待验收反馈页面，带上 role=avatar 表示分身视角
         navigateTo({
-          url: `/pages/order/order-processing/index?${processingQuery}`
+          url: `/pages/order-acceptance-feedback/index?requestId=${order.id}&orderId=${order.order_id}&role=avatar`
         })
         break
       case 'cancelled':
         // 已取消的订单跳转到订单详情页面
         navigateTo({
-          url: `/pages/order/order-detail/index?orderId=${order.order_id}`
+          url: `/pages/order/order-detail/index?id=${order.order_id}`
         })
         break
       case 'completed':
@@ -191,9 +189,9 @@ export default function AvatarOrdersPage() {
         })
         break
       default:
-        // 其他状态默认回处理桥
+        // 其他状态默认跳转到内容创作页面
         navigateTo({
-          url: `/pages/order/order-processing/index?${processingQuery}`
+          url: `/pages/order/order-content-creation/index?requestId=${order.id}&avatarId=${order.avatar_id}&orderId=${order.order_id}`
         })
     }
   }

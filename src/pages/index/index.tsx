@@ -30,24 +30,6 @@ const Index: React.FC = () => {
     pollInterval: 10000 // 10 秒轮询
   })
 
-  const unwrapList = (payload: any): any[] => {
-    if (Array.isArray(payload)) return payload
-    if (Array.isArray(payload?.list)) return payload.list
-    if (Array.isArray(payload?.data?.list)) return payload.data.list
-    if (Array.isArray(payload?.data)) return payload.data
-    return []
-  }
-
-  const unwrapObject = (payload: any): Record<string, any> => {
-    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-      if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-        return payload.data
-      }
-      return payload
-    }
-    return {}
-  }
-
   // 获取待接订单通知（从分派记录中获取，只显示状态为 pending 的订单）
   const fetchOrderNotifications = async () => {
     try {
@@ -59,7 +41,7 @@ const Index: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         // 转换分派请求数据为通知格式，按 orderId 去重（同一订单可能有多个分身）
         const seen = new Set<string>()
-        const orders = unwrapList(res.data.data).filter((item: any) => {
+        const orders = (res.data.data || []).filter((item: any) => {
           const oid = item.orderId
           if (seen.has(oid)) return false
           seen.add(oid)
@@ -161,7 +143,7 @@ const Index: React.FC = () => {
       console.log('统计数据:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        const statsData = unwrapObject(res.data.data)
+        const statsData = res.data.data
         setMindClones(statsData.avatarCount || 0)
         setStats([
           { label: '我的分身', value: String(statsData.avatarCount || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
@@ -185,7 +167,7 @@ const Index: React.FC = () => {
       console.log('实时动态:', res.data)
       if (res.data?.code === 200 && res.data?.data) {
         // 将API数据转换为组件期望的格式
-        const mappedActivities = unwrapList(res.data.data).map((item: any, index: number) => {
+        const mappedActivities = res.data.data.map((item: any, index: number) => {
           // 根据type映射图标
           let ActivityIcon = Coins
           let activityAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=user' + index
@@ -322,13 +304,7 @@ const Index: React.FC = () => {
         })
         if (res.data?.code === 200) {
           setShowOrderModal(false)
-          const result = res.data?.data || {}
-          const query = [
-            `orderId=${encodeURIComponent(result.orderId || orderModalData.id)}`,
-            `avatarId=${encodeURIComponent(result.avatarId || avatarIdToUse)}`,
-            result.requestId ? `requestId=${encodeURIComponent(result.requestId)}` : '',
-          ].filter(Boolean).join('&')
-          Taro.navigateTo({ url: `/pages/order/order-processing/index?${query}` })
+          Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderModalData.id}` })
         } else {
           Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
         }
@@ -385,7 +361,7 @@ const Index: React.FC = () => {
             </View>
           </View>
           <View className="header-right">
-            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/profile/notifications/index' })}>
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/notification/index' })}>
               <Bell size={44} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View className="notification-badge">

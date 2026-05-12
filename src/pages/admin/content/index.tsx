@@ -6,7 +6,6 @@ import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
-import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface Post {
@@ -50,8 +49,8 @@ export default function ContentManagement() {
 
       const res = await Network.request({ url })
       if (res.data.code === 200) {
-        setPosts(unwrapList(res.data.data) as Post[])
-        setTotal(unwrapObject(res.data.data, { total: 0 }).total)
+        setPosts(res.data.data.list)
+        setTotal(res.data.data.total)
       }
     } catch (err) {
       console.error('获取帖子列表失败:', err)

@@ -135,72 +135,17 @@ export class OrderProcessingService {
     return []
   }
 
-  private normalizeMetricValue(value: any): number | undefined {
-    const numeric = Number(value)
-    return Number.isFinite(numeric) ? numeric : undefined
-  }
-
-  private normalizeFeedbackItem(input: any): Record<string, any> {
-    const payload = typeof input === 'object' && input ? input : {}
-    const normalized: Record<string, any> = {}
-    const images = this.parseJsonArray(payload.images).filter(Boolean)
-    const screenshotUrls = this.parseJsonArray(payload.screenshot_urls).filter(Boolean)
-    const submittedAt = payload.submittedAt || payload.submitTime
-    const metricsSource = typeof payload.metrics === 'object' && payload.metrics ? payload.metrics : payload
-    const metrics: Record<string, number> = {}
-
-    if (images.length > 0) normalized.images = images
-    if (screenshotUrls.length > 0) normalized.screenshot_urls = screenshotUrls
-    if (typeof payload.image === 'string' && payload.image.trim()) normalized.image = payload.image.trim()
-    if (typeof payload.link === 'string' && payload.link.trim()) normalized.link = payload.link.trim()
-    if (typeof payload.note === 'string' && payload.note.trim()) normalized.note = payload.note.trim()
-    if (submittedAt) {
-      normalized.submittedAt = String(submittedAt)
-      normalized.submitTime = String(submittedAt)
-    }
-
-    const views = this.normalizeMetricValue(metricsSource.views)
-    const likes = this.normalizeMetricValue(metricsSource.likes)
-    const comments = this.normalizeMetricValue(metricsSource.comments)
-    const shares = this.normalizeMetricValue(metricsSource.shares)
-    if (views !== undefined) metrics.views = views
-    if (likes !== undefined) metrics.likes = likes
-    if (comments !== undefined) metrics.comments = comments
-    if (shares !== undefined) metrics.shares = shares
-    if (Object.keys(metrics).length > 0) normalized.metrics = metrics
-
-    if ('verified' in payload) normalized.verified = Boolean(payload.verified)
-    if (typeof payload.verifyMessage === 'string' && payload.verifyMessage.trim()) normalized.verifyMessage = payload.verifyMessage.trim()
-    if (typeof payload.verifyTitle === 'string' && payload.verifyTitle.trim()) normalized.verifyTitle = payload.verifyTitle.trim()
-
-    const derivedStatus = normalized.verified
-      ? 'verified'
-      : ((normalized.link || normalized.images?.length || normalized.screenshot_urls?.length || normalized.image) ? 'submitted' : 'manual')
-    normalized.status = typeof payload.status === 'string' && payload.status.trim()
-      ? payload.status.trim()
-      : derivedStatus
-
-    return normalized
-  }
-
-  private normalizeFeedbackPayload(
+  private mergeFeedback(
     existing: Record<string, any>,
     incoming: Record<string, any>
   ): Record<string, any> {
-    const base = Object.entries(existing || {}).reduce<Record<string, any>>((acc, [platform, payload]) => {
-      const canonicalPlatform = this.canonicalizePlatform(platform)
-      if (!canonicalPlatform) return acc
-      acc[canonicalPlatform] = this.normalizeFeedbackItem(payload)
-      return acc
-    }, {})
-
+    const base = { ...(existing || {}) }
     Object.entries(incoming || {}).forEach(([platform, payload]) => {
       const canonicalPlatform = this.canonicalizePlatform(platform)
       if (!canonicalPlatform) return
       const prev = base[canonicalPlatform] || {}
-      base[canonicalPlatform] = this.normalizeFeedbackItem({ ...prev, ...(payload || {}) })
+      base[canonicalPlatform] = { ...prev, ...(payload || {}) }
     })
-
     return base
   }
 
@@ -237,10 +182,7 @@ export class OrderProcessingService {
     const images = this.parseJsonArray(record.images)
     const videos = this.parseJsonArray(record.videoUrl || record.video_url)
     const rawPublishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
-    const publishFeedback = this.normalizeFeedbackPayload(
-      {},
-      this.parseJsonObject(record.publishFeedback || record.publish_feedback, {})
-    )
+    const publishFeedback = this.mergeFeedback({}, this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}))
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
     const configPlatforms = this.normalizePlatforms(config.platforms)
     const fallbackPlatforms = record.platform ? [this.canonicalizePlatform(record.platform)] : []
@@ -330,7 +272,7 @@ export class OrderProcessingService {
       order_id: data.order_id,
       avatar_id: data.avatar_id,
       user_id: data.user_id || '',
-      status: 'generating',
+      status: 'processing',
       content: '',
       config: JSON.stringify(data.config || {}),
       created_at: now,
@@ -421,8 +363,8 @@ export class OrderProcessingService {
     const previousPlatformStatus = this.normalizePlatformStatusMap(existingStatus.platformStatus)
     const nextPlatformStatus = dedupPlatforms.reduce<Record<string, any>>((acc, platform) => {
       acc[platform] = {
-        status: 'manual',
-        message: '待提交发布反馈'
+        status: 'success',
+        message: '发布成功'
       }
       return acc
     }, { ...previousPlatformStatus })
@@ -430,8 +372,8 @@ export class OrderProcessingService {
       ...existingStatus,
       platforms: dedupPlatforms,
       platformStatus: nextPlatformStatus,
-      status: 'manual',
-      message: '待提交发布反馈'
+      status: 'success',
+      message: '发布成功'
     }
 
     const record = await this.updateRecordByIdentifier(identifier, {
@@ -454,33 +396,11 @@ export class OrderProcessingService {
       current.publishFeedback || current.publish_feedback,
       {}
     )
-    const mergedFeedback = this.normalizeFeedbackPayload(existingFeedback, feedback || {})
-    const existingStatus = this.parseJsonObject<Record<string, any>>(
-      current.publishStatus || current.publish_status,
-      {}
-    )
-    const previousPlatformStatus = this.normalizePlatformStatusMap(existingStatus.platformStatus)
-    const nextPlatformStatus = { ...previousPlatformStatus }
-
-    Object.entries(mergedFeedback).forEach(([platform, item]) => {
-      nextPlatformStatus[platform] = {
-        ...(nextPlatformStatus[platform] || {}),
-        status: item?.status || 'submitted',
-        message: item?.verified ? '发布验证通过，待验收' : '已提交发布反馈'
-      }
-    })
-    const nextPublishStatus = {
-      ...existingStatus,
-      platforms: this.normalizePlatforms(existingStatus.platforms || Object.keys(mergedFeedback)),
-      platformStatus: nextPlatformStatus,
-      status: 'submitted',
-      message: '已提交发布反馈'
-    }
+    const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
 
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'awaiting_acceptance',
-      publish_feedback: JSON.stringify(mergedFeedback),
-      publish_status: JSON.stringify(nextPublishStatus)
+      publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
 
@@ -518,15 +438,9 @@ export class OrderProcessingService {
    * 请求修改（进入修改流程）
    */
   async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
-    const current = await this.findRecordByIdentifier(identifier)
-    if (!current) return null
-    const mergedFeedback = this.normalizeFeedbackPayload(
-      this.parseJsonObject<Record<string, any>>(current.publishFeedback || current.publish_feedback, {}),
-      feedback || {}
-    )
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'revision_requested',
-      publish_feedback: JSON.stringify(mergedFeedback)
+      publish_feedback: JSON.stringify(feedback || {})
     })
     if (!record) return null
 

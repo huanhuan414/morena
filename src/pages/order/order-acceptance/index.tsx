@@ -5,7 +5,6 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
-import { getPlatformLabel } from '@/constants/publish-platform'
 import {
   ArrowLeft, Check, CircleAlert, Link2, Image as ImageIcon, ExternalLink,
   ChevronRight, TrendingUp
@@ -21,7 +20,8 @@ const AVATAR_STATUS_LABELS: Record<string, string> = {
   generating: '生成中',
   publishing: '发布中',
   published: '已发布',
-  awaiting_acceptance: '待验收'
+  awaiting_acceptance: '待验收',
+  feedback_submitted: '已提交'
 }
 
 /**
@@ -37,23 +37,6 @@ function formatNumber(num: number): string {
     return (num / 1000).toFixed(1) + 'k'
   }
   return num.toString()
-}
-
-function getFeedbackMetrics(feedback: any) {
-  const metrics = typeof feedback?.metrics === 'object' && feedback.metrics ? feedback.metrics : feedback || {}
-  return {
-    views: metrics.views,
-    likes: metrics.likes,
-    comments: metrics.comments,
-    shares: metrics.shares
-  }
-}
-
-function getFeedbackImages(feedback: any): string[] {
-  if (Array.isArray(feedback?.images)) return feedback.images.filter(Boolean)
-  if (Array.isArray(feedback?.screenshot_urls)) return feedback.screenshot_urls.filter(Boolean)
-  if (typeof feedback?.image === 'string' && feedback.image) return [feedback.image]
-  return []
 }
 
 interface AvatarStat {
@@ -95,7 +78,7 @@ export default function OrderAcceptance() {
 
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
         const pendingAvatars = res.data.data.summary_stats.avatarStats.filter(
-          (avatar: AvatarStat) => avatar.status === 'awaiting_acceptance'
+          (avatar: AvatarStat) => avatar.status === 'awaiting_acceptance' || avatar.status === 'feedback_submitted'
         )
         setAvatars(pendingAvatars.map((a: AvatarStat) => ({ ...a, orderId })))
       }
@@ -286,37 +269,34 @@ export default function OrderAcceptance() {
               {/* 数据统计 - 独立卡片，占满宽度 */}
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
                 <View key={platform}>
-                  {(() => {
-                    const metricData = getFeedbackMetrics(feedback)
-                    return metricData.views !== undefined || metricData.likes !== undefined || metricData.comments !== undefined || metricData.shares !== undefined
-                  })() && (
+                  {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
                     <View className="stats-item">
                       <View className="stats-icon">
                         <TrendingUp size={22} color="#ffffff" />
                         <Text className="text-base font-semibold">数据统计</Text>
                       </View>
                       <View className="stats-row">
-                        {getFeedbackMetrics(feedback).views !== undefined && (
+                        {feedback.views !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(getFeedbackMetrics(feedback).views)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.views)}</Text>
                             <Text className="stat-label text-sm">浏览</Text>
                           </View>
                         )}
-                        {getFeedbackMetrics(feedback).likes !== undefined && (
+                        {feedback.likes !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(getFeedbackMetrics(feedback).likes)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.likes)}</Text>
                             <Text className="stat-label text-sm">点赞</Text>
                           </View>
                         )}
-                        {getFeedbackMetrics(feedback).comments !== undefined && (
+                        {feedback.comments !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(getFeedbackMetrics(feedback).comments)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.comments)}</Text>
                             <Text className="stat-label text-sm">评论</Text>
                           </View>
                         )}
-                        {getFeedbackMetrics(feedback).shares !== undefined && (
+                        {feedback.shares !== undefined && (
                           <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(getFeedbackMetrics(feedback).shares)}</Text>
+                            <Text className="stat-value font-bold">{formatNumber(feedback.shares)}</Text>
                             <Text className="stat-label text-sm">分享</Text>
                           </View>
                         )}
@@ -330,13 +310,13 @@ export default function OrderAcceptance() {
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
                 <View key={platform} className="platform-card">
                   {/* 只在有内容时才显示头部 */}
-                  {(feedback.link || getFeedbackImages(feedback).length > 0) && (
+                  {(feedback.link || feedback.image) && (
                     <View className="platform-header">
                       <View className="platform-icon">
                         <Link2 size={20} color="#6366f1" />
                       </View>
                       <Text className="platform-name text-base font-semibold">
-                        {getPlatformLabel(platform)}
+                        {platform === 'wechat_mp' ? '微信公众号' : platform}
                       </Text>
                     </View>
                   )}
@@ -355,22 +335,19 @@ export default function OrderAcceptance() {
                   )}
 
                   {/* 截图 */}
-                  {getFeedbackImages(feedback).length > 0 && (
+                  {feedback.image && (
                     <View className="image-item">
                       <View className="image-icon">
                         <ImageIcon size={16} color="#6366f1" />
                       </View>
                       <View className="image-content">
                         <Text className="image-label text-sm font-semibold">发布截图</Text>
-                        {getFeedbackImages(feedback).map((imageUrl: string) => (
-                          <Image
-                            key={imageUrl}
-                            src={imageUrl}
-                            className="screenshot-image"
-                            mode="widthFix"
-                            onClick={() => handleImagePreview(imageUrl)}
-                          />
-                        ))}
+                        <Image
+                          src={feedback.image}
+                          className="screenshot-image"
+                          mode="widthFix"
+                          onClick={() => handleImagePreview(feedback.image)}
+                        />
                       </View>
                     </View>
                   )}

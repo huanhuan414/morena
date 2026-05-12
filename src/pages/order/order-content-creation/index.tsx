@@ -39,8 +39,6 @@ interface ProcessingData {
 
 export default function OrderContentCreation() {
   const router = useRouter()
-  const routeAvatarId = router.params.avatarId || ''
-  const routeRequestId = router.params.requestId || ''
   const [orderId, setOrderId] = useState('')
   const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
   const [processingData, setProcessingData] = useState<ProcessingData | null>(null)
@@ -77,8 +75,7 @@ export default function OrderContentCreation() {
 
   const checkGenerationStatus = async (id: string, order?: OrderInfo | null) => {
     try {
-      const identifier = routeRequestId || id
-      const res = await Network.request({ url: `/api/order-processing/status/${identifier}` })
+      const res = await Network.request({ url: `/api/order-processing/status/${id}` })
       console.log('[内容生成] 状态查询:', res.data)
       if (res.data?.code === 200 && res.data?.data) {
         const data = res.data.data as ProcessingData
@@ -128,7 +125,7 @@ export default function OrderContentCreation() {
 
       const params: Record<string, any> = {
         orderId: id,
-        avatarId: routeAvatarId || processingData?.avatarId || 'default',
+        avatarId: 'default',
         orderTitle: order?.title || '内容生成',
         orderDescription: order?.description || '',
         platforms: normalizedPlatforms,
@@ -165,8 +162,7 @@ export default function OrderContentCreation() {
     setPageStatus('generating')
     pollTimer.current = setInterval(async () => {
       try {
-        const identifier = routeRequestId || id
-        const res = await Network.request({ url: `/api/order-processing/status/${identifier}` })
+        const res = await Network.request({ url: `/api/order-processing/status/${id}` })
         if (res.data?.code === 200 && res.data?.data) {
           const data = res.data.data as ProcessingData
           setProcessingData(data)
@@ -225,7 +221,7 @@ export default function OrderContentCreation() {
         : ['wechat_channel']
     const title = orderInfo?.title || processingData?.orderTitle || '内容发布'
     const requestId = processingData?.requestId || ''
-    const avatarId = processingData?.avatarId || routeAvatarId || ''
+    const avatarId = processingData?.avatarId || orderInfo?.id || ''
     const images = content.images || []
 
     const query = [
@@ -345,7 +341,7 @@ export default function OrderContentCreation() {
             </View>
 
             {/* 文案已生成 - 显示文案预览 */}
-            {processingData?.generatedContent?.content && currentStatus === 'generating' && (
+            {processingData?.generatedContent?.content && currentStatus === 'generating_images' && (
               <View className="cc-partial-preview">
                 <View className="cc-partial-header">
                   <FileText size={14} color="#8B5CF6" />
@@ -358,7 +354,7 @@ export default function OrderContentCreation() {
             )}
 
             {/* 配图已部分生成 - 显示图片预览 */}
-            {processingData?.generatedContent?.images && processingData.generatedContent.images.length > 0 && currentStatus === 'generating' && (
+            {processingData?.generatedContent?.images && processingData.generatedContent.images.length > 0 && currentStatus === 'generating_images' && (
               <View className="cc-partial-preview">
                 <View className="cc-partial-header">
                   <ImageIcon size={14} color="#8B5CF6" />

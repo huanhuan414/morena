@@ -1,9 +1,8 @@
-import { useLoad, useRouter, redirectTo, showToast } from '@tarojs/taro'
+import { useLoad, useRouter, redirectTo, navigateBack, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import { Network } from '@/network'
 import { Loader, ArrowLeft } from 'lucide-react-taro'
-import { safeNavigateBack } from '@/utils/navigation'
 import './index.css'
 
 interface OrderProcessingData {
@@ -27,9 +26,7 @@ export default function OrderProcessingPage() {
   useLoad(() => {
     if (!orderId) {
       showToast({ title: '参数错误', icon: 'none' })
-      setTimeout(() => {
-        void safeNavigateBack('/pages/index/index')
-      }, 1500)
+      setTimeout(() => navigateBack(), 1500)
       return
     }
 
@@ -59,12 +56,12 @@ export default function OrderProcessingPage() {
 
       if (!data) {
         await redirectTo({
-          url: `/pages/order/order-content-creation/index?${query || `orderId=${encodeURIComponent(orderId || '')}`}`
+          url: `/pages/order/order-content-creation/index?orderId=${encodeURIComponent(orderId || '')}`
         })
         return
       }
 
-      if (['published', 'awaiting_acceptance', 'completed'].includes(data.status || '')) {
+      if (['published', 'awaiting_acceptance'].includes(data.status || '')) {
         await redirectTo({
           url: `/pages/order-publish-feedback/index?${query}`
         })
@@ -72,14 +69,11 @@ export default function OrderProcessingPage() {
       }
 
       await redirectTo({
-        url: `/pages/order/order-content-creation/index?${query}`
+        url: `/pages/order/order-content-creation/index?orderId=${encodeURIComponent(normalizedOrderId)}`
       })
     } catch (error) {
       console.error('[OrderProcessingBridge] 跳转失败:', error)
       showToast({ title: '跳转失败', icon: 'none' })
-      setTimeout(() => {
-        void safeNavigateBack('/pages/order/order-list/index')
-      }, 1200)
     } finally {
       setLoading(false)
     }
@@ -99,7 +93,7 @@ export default function OrderProcessingPage() {
   return (
     <View className="order-processing-page">
       <View className="page-header">
-        <View className="header-left" onClick={() => { void safeNavigateBack('/pages/order/order-list/index') }}>
+        <View className="header-left" onClick={() => navigateBack()}>
           <ArrowLeft size={20} color="rgba(255,255,255,0.8)" />
         </View>
         <Text className="header-title block">订单处理中</Text>

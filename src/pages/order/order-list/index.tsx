@@ -54,20 +54,12 @@ export default function OrderListPage() {
   useDidShow(() => { loadOrders() })
   useEffect(() => { loadOrders() }, [])
 
-  const unwrapOrderList = (payload: any): any[] => {
-    if (Array.isArray(payload)) return payload
-    if (Array.isArray(payload?.list)) return payload.list
-    if (Array.isArray(payload?.data?.list)) return payload.data.list
-    if (Array.isArray(payload?.data)) return payload.data
-    return []
-  }
-
   const loadOrders = async () => {
     try {
       const res = await Network.request({ url: '/api/order/list' })
       console.log('[订单列表] res.data:', res.data)
-      const list = unwrapOrderList(res.data?.data)
-      setOrders(list)
+      const list = res.data?.data || []
+      setOrders(Array.isArray(list) ? list : [])
     } catch (err) {
       console.error('[订单列表] 加载失败:', err)
     } finally {
@@ -92,11 +84,18 @@ export default function OrderListPage() {
   }
 
   const handleOrderClick = (order: any) => {
-    navigateTo({ url: `/pages/order/order-detail/index?orderId=${order.id}` })
+    const status = order.status
+    if (['completed'].includes(status)) {
+      navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+    } else if (['submitted', 'awaiting_acceptance'].includes(status)) {
+      navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+    } else {
+      navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}` })
+    }
   }
 
   const handleVerify = (order: any) => {
-    navigateTo({ url: `/pages/order/order-detail/index?orderId=${order.id}&action=verify` })
+    navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}&action=verify` })
   }
 
   return (

@@ -3,7 +3,6 @@ import { View, Text, Image, ScrollView, Video } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Card, CardContent } from '@/components/ui/card'
-import { getPlatformLabel } from '@/constants/publish-platform'
 import { ArrowLeft, CircleCheck, Wallet, Clock, ExternalLink } from 'lucide-react-taro'
 import './index.css'
 
@@ -13,16 +12,6 @@ export default function OrderCompletedPage() {
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
-
-  const unwrapObject = (payload: any): Record<string, any> | null => {
-    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-      if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-        return payload.data
-      }
-      return payload
-    }
-    return null
-  }
 
   useLoad(() => {
     console.log('[OrderCompleted] 页面加载，params:', { requestId, orderId })
@@ -39,7 +28,7 @@ export default function OrderCompletedPage() {
       console.log('[OrderCompleted] 数据响应:', response.data)
 
       if (response.data?.code === 200) {
-        setData(unwrapObject(response.data.data))
+        setData(response.data.data)
       } else {
         Taro.showToast({
           title: response.data?.message || '加载失败',
@@ -79,19 +68,8 @@ export default function OrderCompletedPage() {
 
   const generatedContent = data.generatedContent || {}
   const publishFeedback = data.publishFeedback || {}
-  const feedbackEntries = Object.entries(publishFeedback || {}) as Array<[string, any]>
-  const visibleFeedbackEntries = feedbackEntries.filter(([, feedback]) => {
-    const screenshots = Array.isArray(feedback?.images)
-      ? feedback.images.filter(Boolean)
-      : Array.isArray(feedback?.screenshot_urls)
-        ? feedback.screenshot_urls.filter(Boolean)
-        : (typeof feedback?.image === 'string' && feedback.image ? [feedback.image] : [])
-    const link = typeof feedback?.link === 'string' ? feedback.link : ''
-    const note = typeof feedback?.note === 'string' ? feedback.note : ''
-    const metrics = typeof feedback?.metrics === 'object' && feedback.metrics ? feedback.metrics : {}
-    const hasMetrics = ['views', 'likes', 'comments', 'shares'].some((key) => metrics[key] !== undefined)
-    return screenshots.length > 0 || Boolean(link) || Boolean(note) || hasMetrics
-  })
+  const screenshotUrls = publishFeedback.screenshot_urls || []
+  const link = publishFeedback.link || ''
   const contentType = data.contentType || generatedContent.type || 'image'
 
   // 收益信息
@@ -332,62 +310,50 @@ export default function OrderCompletedPage() {
           <Text className="section-title">发布反馈</Text>
           <Card>
             <CardContent className="p-4">
-              {visibleFeedbackEntries.map(([platform, feedback]) => {
-                const screenshots = Array.isArray(feedback?.images)
-                  ? feedback.images.filter(Boolean)
-                  : Array.isArray(feedback?.screenshot_urls)
-                    ? feedback.screenshot_urls.filter(Boolean)
-                    : (typeof feedback?.image === 'string' && feedback.image ? [feedback.image] : [])
-                const link = typeof feedback?.link === 'string' ? feedback.link : ''
-                const note = typeof feedback?.note === 'string' ? feedback.note : ''
-                const metrics = typeof feedback?.metrics === 'object' && feedback.metrics ? feedback.metrics : {}
-                const hasMetrics = ['views', 'likes', 'comments', 'shares'].some((key) => metrics[key] !== undefined)
-
-                return (
-                  <View key={platform} className="feedback-item">
-                    <Text className="block feedback-label">{getPlatformLabel(platform)}</Text>
-
-                    {screenshots.length > 0 && (
-                      <View className="screenshot-list">
-                        {screenshots.map((url: string, idx: number) => (
-                          <Image
-                            key={`${platform}-${idx}`}
-                            src={url}
-                            className="screenshot-img"
-                            mode="aspectFill"
-                            onClick={() => Taro.previewImage({ urls: screenshots, current: url })}
-                          />
-                        ))}
-                      </View>
-                    )}
-
-                    {link && (
-                      <View className="link-box">
-                        <ExternalLink size={16} color="#07c160" />
-                        <Text
-                          className="block link-text"
-                          onClick={() => {
-                            Taro.setClipboardData({ data: link })
-                            Taro.showToast({ title: '链接已复制', icon: 'success' })
-                          }}
-                        >{link}</Text>
-                      </View>
-                    )}
-
-                    {hasMetrics && (
-                      <Text className="block note-text">
-                        {`浏览 ${metrics.views ?? 0} / 点赞 ${metrics.likes ?? 0} / 评论 ${metrics.comments ?? 0} / 分享 ${metrics.shares ?? 0}`}
-                      </Text>
-                    )}
-
-                    {note && (
-                      <Text className="block note-text">{note}</Text>
-                    )}
+              {/* 截图 */}
+              {screenshotUrls.length > 0 && (
+                <View className="feedback-item">
+                  <Text className="block feedback-label">发布截图</Text>
+                  <View className="screenshot-list">
+                    {screenshotUrls.map((url: string, idx: number) => (
+                      <Image
+                        key={idx}
+                        src={url}
+                        className="screenshot-img"
+                        mode="aspectFill"
+                        onClick={() => Taro.previewImage({ urls: screenshotUrls, current: url })}
+                      />
+                    ))}
                   </View>
-                )
-              })}
+                </View>
+              )}
 
-              {visibleFeedbackEntries.length === 0 && (
+              {/* 链接 */}
+              {link && (
+                <View className="feedback-item">
+                  <Text className="block feedback-label">发布链接</Text>
+                  <View className="link-box">
+                    <ExternalLink size={16} color="#07c160" />
+                    <Text
+                      className="block link-text"
+                      onClick={() => {
+                        Taro.setClipboardData({ data: link })
+                        Taro.showToast({ title: '链接已复制', icon: 'success' })
+                      }}
+                    >{link}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* 备注 */}
+              {publishFeedback.note && (
+                <View className="feedback-item">
+                  <Text className="block feedback-label">备注说明</Text>
+                  <Text className="block note-text">{publishFeedback.note}</Text>
+                </View>
+              )}
+
+              {!screenshotUrls.length && !link && !publishFeedback.note && (
                 <View className="empty-feedback">
                   <Text className="block empty-text">暂无反馈信息</Text>
                 </View>

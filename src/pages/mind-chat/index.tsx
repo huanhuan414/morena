@@ -50,14 +50,6 @@ const MindChat: React.FC = () => {
   const hasPageShownRef = useRef(false)
   const activeTabRef = useRef<CloneType>('my')
 
-  const unwrapList = (payload: any): any[] => {
-    if (Array.isArray(payload)) return payload
-    if (Array.isArray(payload?.list)) return payload.list
-    if (Array.isArray(payload?.data?.list)) return payload.data.list
-    if (Array.isArray(payload?.data)) return payload.data
-    return []
-  }
-
   // 加载我的分身列表
   const loadMyClones = useCallback(async () => {
     try {
@@ -77,7 +69,8 @@ const MindChat: React.FC = () => {
       console.log('加载分身列表:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        const data = unwrapList(res.data.data)
+        const rawData = res.data.data
+        const data = Array.isArray(rawData) ? rawData : []
         const avatars = data.map((item: any) => {
           // 解析 personality JSON 字符串，提取标签
           let roleLabel = '通用助手'
@@ -131,7 +124,7 @@ const MindChat: React.FC = () => {
       
       // 兼容多种返回结构
       if (res.data?.code === 200) {
-        const listData = unwrapList(res.data?.data)
+        const listData = res.data?.data?.data?.list || res.data?.data?.list || []
         const avatars = listData.slice(0, 6).map((item: any) => {
           // 解析 personality JSON 字符串
           let tags = ['AI助手']

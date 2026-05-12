@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
-import Taro, { useLoad, useRouter } from '@tarojs/taro'
+import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
-import { safeNavigateBack } from '@/utils/navigation'
 import './index.css'
 
 // 文章型平台判断（这些平台内容为 Markdown 格式，需要解析渲染）
@@ -44,15 +43,6 @@ interface PublishPlatform {
   message?: string
 }
 
-interface FeedbackDraft {
-  images: string[]
-  link: string
-  views?: string
-  likes?: string
-  comments?: string
-  shares?: string
-}
-
 export default function OrderPublishFeedback() {
   const router = useRouter()
   const { requestId, orderId, contentId } = router.params
@@ -62,7 +52,7 @@ export default function OrderPublishFeedback() {
 
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null)
   const [publishPlatforms, setPublishPlatforms] = useState<PublishPlatform[]>([])
-  const [feedback, setFeedback] = useState<Record<string, FeedbackDraft>>({})
+  const [feedback, setFeedback] = useState<Record<string, { images: string[]; link: string }>>({})
   const [contentType, setContentType] = useState<string>('')
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
   const [actualRequestId, setActualRequestId] = useState<string>('')
@@ -127,43 +117,6 @@ export default function OrderPublishFeedback() {
 
           const platforms = canonicalizePlatforms(data.publishStatus?.platforms || data.publish_status?.platforms || [])
           const platformStatusMap = data.publishStatus?.platformStatus || data.publish_status?.platformStatus || {}
-          const existingFeedback = data.publishFeedback || {}
-          const feedbackDraft = Object.entries(existingFeedback).reduce<Record<string, FeedbackDraft>>((acc, [platform, value]) => {
-            const item = typeof value === 'object' && value ? value as Record<string, any> : {}
-            const canonicalPlatform = canonicalizePlatform(platform)
-            if (!canonicalPlatform) return acc
-            const metrics = typeof item.metrics === 'object' && item.metrics ? item.metrics : item
-            acc[canonicalPlatform] = {
-              images: Array.isArray(item.images) ? item.images.filter(Boolean) : [],
-              link: typeof item.link === 'string' ? item.link : '',
-              ...(metrics.views !== undefined ? { views: String(metrics.views) } : {}),
-              ...(metrics.likes !== undefined ? { likes: String(metrics.likes) } : {}),
-              ...(metrics.comments !== undefined ? { comments: String(metrics.comments) } : {}),
-              ...(metrics.shares !== undefined ? { shares: String(metrics.shares) } : {})
-            }
-            return acc
-          }, {})
-          const hydratedVerifyResults = Object.entries(existingFeedback).reduce<Record<string, { verified: boolean; message: string; title?: string; verifying?: boolean }>>((acc, [platform, value]) => {
-            const item = typeof value === 'object' && value ? value as Record<string, any> : {}
-            const canonicalPlatform = canonicalizePlatform(platform)
-            if (!canonicalPlatform) return acc
-            if (item.verified || item.verifyMessage || item.verifyTitle || platformStatusMap?.[canonicalPlatform]?.status === 'verified') {
-              acc[canonicalPlatform] = {
-                verified: Boolean(item.verified || platformStatusMap?.[canonicalPlatform]?.status === 'verified'),
-                message: item.verifyMessage || platformStatusMap?.[canonicalPlatform]?.message || '',
-                title: item.verifyTitle,
-                verifying: false
-              }
-            }
-            return acc
-          }, {})
-
-          if (Object.keys(feedbackDraft).length > 0) {
-            setFeedback(feedbackDraft)
-          }
-          if (Object.keys(hydratedVerifyResults).length > 0) {
-            setVerifyResults(hydratedVerifyResults)
-          }
 
           if (platforms.length > 0) {
             setPublishPlatforms(
@@ -172,17 +125,6 @@ export default function OrderPublishFeedback() {
                 status: platformStatusMap?.[platform]?.status || 'manual',
                 message: platformStatusMap?.[platform]?.message
               }))
-            )
-          } else if (Object.keys(existingFeedback).length > 0) {
-            setPublishPlatforms(
-              Object.keys(existingFeedback).map((platform: string) => {
-                const canonicalPlatform = canonicalizePlatform(platform)
-                return {
-                  platform: canonicalPlatform,
-                  status: platformStatusMap?.[canonicalPlatform]?.status || 'submitted',
-                  message: platformStatusMap?.[canonicalPlatform]?.message || '已提交发布反馈'
-                }
-              })
             )
           } else if (!contentData && data.generatedContent?.platforms) {
             setPublishPlatforms(
@@ -270,23 +212,6 @@ export default function OrderPublishFeedback() {
         return next
       })
     }
-  }
-
-  const handleMetricChange = (
-    platform: string,
-    field: 'views' | 'likes' | 'comments' | 'shares',
-    value: string
-  ) => {
-    const normalized = value.replace(/[^\d]/g, '')
-    setFeedback(prev => ({
-      ...prev,
-      [platform]: {
-        ...prev[platform],
-        images: prev[platform]?.images || [],
-        link: prev[platform]?.link || '',
-        [field]: normalized
-      }
-    }))
   }
 
   // 是否需要验证
@@ -390,39 +315,15 @@ export default function OrderPublishFeedback() {
     setSubmitting(true)
     try {
       const reqId = actualRequestId || requestId
-      const payload = Object.entries(feedback).reduce<Record<string, any>>((acc, [platform, value]) => {
-        const canonicalPlatform = canonicalizePlatform(platform)
-        if (!canonicalPlatform) return acc
-        const verifyResult = verifyResults[canonicalPlatform]
-        const metrics = {
-          ...(value.views ? { views: Number(value.views) } : {}),
-          ...(value.likes ? { likes: Number(value.likes) } : {}),
-          ...(value.comments ? { comments: Number(value.comments) } : {}),
-          ...(value.shares ? { shares: Number(value.shares) } : {})
-        }
-        acc[canonicalPlatform] = {
-          images: value.images || [],
-          link: value.link || '',
-          submittedAt: new Date().toISOString(),
-          status: verifyResult?.verified ? 'verified' : 'submitted',
-          verified: Boolean(verifyResult?.verified),
-          ...(Object.keys(metrics).length > 0 ? { metrics } : {}),
-          ...(verifyResult?.message ? { verifyMessage: verifyResult.message } : {}),
-          ...(verifyResult?.title ? { verifyTitle: verifyResult.title } : {})
-        }
-        return acc
-      }, {})
       const response = await Network.request({
         url: `/api/order-processing/feedback/${reqId}`,
         method: 'POST',
-        data: { feedback: payload }
+        data: { feedback }
       })
 
       if (response.data?.code === 200) {
         Taro.showToast({ title: '反馈成功', icon: 'success', duration: 2000 })
-        setTimeout(() => {
-          void safeNavigateBack('/pages/order/order-list/index')
-        }, 2000)
+        setTimeout(() => navigateBack(), 2000)
       } else {
         Taro.showToast({ title: response.data?.message || '提交失败', icon: 'none' })
       }
@@ -603,61 +504,6 @@ export default function OrderPublishFeedback() {
             </View>
           </View>
 
-          <View className="feedback-section">
-            <Text className="feedback-label">互动数据</Text>
-            <View className="metrics-grid">
-              <View className="metric-input-card">
-                <Text className="metric-input-label">浏览</Text>
-                <View className="metric-input-shell">
-                  <Input
-                    style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
-                    type="number"
-                    placeholder="0"
-                    value={fb.views || ''}
-                    onInput={(e) => handleMetricChange(platform, 'views', e.detail.value)}
-                  />
-                </View>
-              </View>
-              <View className="metric-input-card">
-                <Text className="metric-input-label">点赞</Text>
-                <View className="metric-input-shell">
-                  <Input
-                    style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
-                    type="number"
-                    placeholder="0"
-                    value={fb.likes || ''}
-                    onInput={(e) => handleMetricChange(platform, 'likes', e.detail.value)}
-                  />
-                </View>
-              </View>
-              <View className="metric-input-card">
-                <Text className="metric-input-label">评论</Text>
-                <View className="metric-input-shell">
-                  <Input
-                    style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
-                    type="number"
-                    placeholder="0"
-                    value={fb.comments || ''}
-                    onInput={(e) => handleMetricChange(platform, 'comments', e.detail.value)}
-                  />
-                </View>
-              </View>
-              <View className="metric-input-card">
-                <Text className="metric-input-label">分享</Text>
-                <View className="metric-input-shell">
-                  <Input
-                    style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
-                    type="number"
-                    placeholder="0"
-                    value={fb.shares || ''}
-                    onInput={(e) => handleMetricChange(platform, 'shares', e.detail.value)}
-                  />
-                </View>
-              </View>
-            </View>
-            <Text className="feedback-hint">可选填写，用于验收和统计聚合</Text>
-          </View>
-
           {/* 发布验证（仅需要验证的平台） */}
           {isVerifyRequired(platform) && (
             <View className="feedback-section verify-section">
@@ -736,7 +582,7 @@ export default function OrderPublishFeedback() {
           <View className="feedback-header-circle circle-b" />
         </View>
         <View className="feedback-header-bar">
-          <View className="feedback-back-btn" onClick={() => { void safeNavigateBack('/pages/order/order-list/index') }}>
+          <View className="feedback-back-btn" onClick={() => navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="feedback-header-center">
