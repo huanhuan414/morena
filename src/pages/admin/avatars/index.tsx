@@ -5,6 +5,7 @@ import Taro from '@tarojs/taro'
 import { Search, Eye, Ban, MessageSquare } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
 import * as Network from '@/network'
+import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface Avatar {
@@ -46,8 +47,8 @@ export default function AvatarManagement() {
       })
       
       if (res.data.code === 200) {
-        setAvatars(res.data.data.list)
-        setTotal(res.data.data.total)
+        setAvatars(unwrapList(res.data.data) as Avatar[])
+        setTotal(unwrapObject(res.data.data, { total: 0 }).total)
       }
     } catch (err) {
       console.error('获取分身列表失败:', err)
@@ -85,11 +86,11 @@ export default function AvatarManagement() {
   }
 
   const handleViewDetail = (avatarId: string) => {
-    Taro.navigateTo({ url: `/pages/admin/avatars/detail?id=${avatarId}` })
+    Taro.showToast({ title: `分身ID：${avatarId}`, icon: 'none' })
   }
 
-  const handleViewChats = (avatarId: string) => {
-    Taro.navigateTo({ url: `/pages/admin/avatars/chats?avatar_id=${avatarId}` })
+  const handleViewChats = (_avatarId: string) => {
+    Taro.showToast({ title: '会话详情页暂未开放', icon: 'none' })
   }
 
   const statusOptions = [

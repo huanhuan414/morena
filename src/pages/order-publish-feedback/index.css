@@ -519,6 +519,34 @@
   line-height: 1.4;
 }
 
+.metrics-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.metric-input-card {
+  width: calc(50% - 8rpx);
+}
+
+.metric-input-label {
+  display: block;
+  font-size: 22rpx;
+  color: #6B7280;
+  margin-bottom: 10rpx;
+}
+
+.metric-input-shell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F9FAFB;
+  border: 1rpx solid #F3F4F6;
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
+}
+
 /* 底部提交栏 */
 .feedback-bottom-bar {
   position: fixed;

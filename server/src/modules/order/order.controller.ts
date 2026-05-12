@@ -111,8 +111,8 @@ export class OrderController {
     @Body('avatar_id') avatarId?: string,
     @Headers('x-user-id') userId?: string
   ) {
-    const order = await this.orderService.acceptOrder(orderId, avatarId || userId)
-    return { code: 200, data: order, message: '接单成功' }
+    const result = await this.dispatchService.acceptOrder(avatarId || userId || '', orderId)
+    return { code: 200, data: result, message: '接单成功' }
   }
 
   @Put(':id/result')

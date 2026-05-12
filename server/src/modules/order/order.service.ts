@@ -32,6 +32,20 @@ export class OrderService {
     return status || 'pending'
   }
 
+  private normalizeAvatarOrderStatus(status?: string): string {
+    const value = String(status || '').trim().toLowerCase()
+    if (!value) return 'pending'
+    if (value === 'confirmed') return 'accepted'
+    if (value === 'rejected') return 'declined'
+    if (['pending', 'accepted', 'publishing', 'published', 'awaiting_acceptance', 'completed', 'failed', 'declined'].includes(value)) {
+      return value
+    }
+    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
+    if (['settled', 'done'].includes(value)) return 'completed'
+    if (['completed', 'revision_requested'].includes(value)) return 'preview'
+    return value
+  }
+
   private isAcceptedDispatchStatus(status?: string): boolean {
     return [
       'accepted',
@@ -52,6 +66,60 @@ export class OrderService {
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'
     return value || 'generating'
+  }
+
+  private toNumber(value: any): number {
+    const num = Number(value ?? 0)
+    return Number.isFinite(num) ? num : 0
+  }
+
+  private extractFeedbackImages(feedback: Record<string, any>): string[] {
+    const images = feedback.images
+    const screenshotUrls = feedback.screenshot_urls
+    if (Array.isArray(images)) return images.filter(Boolean)
+    if (Array.isArray(screenshotUrls)) return screenshotUrls.filter(Boolean)
+    if (typeof feedback.image === 'string' && feedback.image) return [feedback.image]
+    return []
+  }
+
+  private buildPostsFromProcessing(processing: any, publishFeedback: Record<string, any>): Array<Record<string, any>> {
+    if (!processing) return []
+
+    const fallbackImages = this.safeParseJson<any[]>(processing.images, [])
+    const fallbackVideos = this.safeParseJson<any[]>(processing.video_url || processing.videoUrl, [])
+    const feedbackEntries = Object.entries(publishFeedback || {})
+
+    if (feedbackEntries.length === 0) {
+      return [{
+        id: processing.id,
+        content: processing.content || '',
+        images: fallbackImages,
+        videoUrl: fallbackVideos[0] || '',
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
+        viewsCount: 0,
+        createdAt: processing.updated_at || processing.created_at || new Date().toISOString(),
+        platforms: processing.platform ? [processing.platform] : []
+      }]
+    }
+
+    return feedbackEntries.map(([platform, feedback], index) => {
+      const item = typeof feedback === 'object' && feedback ? feedback : {}
+      const metrics = typeof item.metrics === 'object' && item.metrics ? item.metrics : item
+      return {
+        id: `${processing.id}-${platform}-${index}`,
+        content: processing.content || '',
+        images: this.extractFeedbackImages(item).length > 0 ? this.extractFeedbackImages(item) : fallbackImages,
+        videoUrl: fallbackVideos[0] || '',
+        likesCount: this.toNumber(metrics.likes),
+        commentsCount: this.toNumber(metrics.comments),
+        sharesCount: this.toNumber(metrics.shares),
+        viewsCount: this.toNumber(metrics.views),
+        createdAt: item.submitTime || item.submittedAt || processing.updated_at || processing.created_at || new Date().toISOString(),
+        platforms: platform ? [platform] : (processing.platform ? [processing.platform] : [])
+      }
+    })
   }
 
   // 订单状态流转映射
@@ -78,8 +146,9 @@ export class OrderService {
         [orderId]
       )
 
-      const allDispatchStatuses = (dispatches || []).map((d: any) => d.status)
-      const allContentStatuses = (contents || []).map((c: any) => this.normalizeContentStatus(c.status))
+      const allDispatchStatuses = (dispatches || []).map((d: any) => this.normalizeDispatchStatus(d.status))
+      const rawContentStatuses = (contents || []).map((c: any) => String(c.status || '').trim().toLowerCase())
+      const allContentStatuses = rawContentStatuses.map((status) => this.normalizeContentStatus(status))
       const totalDispatches = allDispatchStatuses.length
       const totalContents = allContentStatuses.length
 
@@ -87,14 +156,14 @@ export class OrderService {
 
       // 判断各状态集合
       const hasPending = allDispatchStatuses.includes('pending')
-      const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
+      const hasAccepted = allDispatchStatuses.some((status) => this.isAcceptedDispatchStatus(status))
       const allDispatchCompleted = allDispatchStatuses.every(s => ['completed', 'settled', 'done'].includes(s))
 
-      const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
-      const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
+      const hasProcessing = allContentStatuses.some(s => ['queuing', 'generating', 'publishing'].includes(s))
+      const hasRevisionRequested = rawContentStatuses.includes('revision_requested')
       const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
       const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
-      const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
+      const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(s))
 
       // 获取当前订单状态
       const currentOrder = await this.getOrderById(orderId)
@@ -113,11 +182,8 @@ export class OrderService {
         // 所有内容已进入待验收 → 订单待验收
         newStatus = 'awaiting_acceptance'
       } else if (allContentSubmitted) {
-        // 所有内容已生成或已发布 → 订单已提交
-        newStatus = 'awaiting_acceptance'
-        if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
-          newStatus = 'submitted'
-        }
+        // 所有内容至少已完成生成，可进入已提交阶段
+        newStatus = 'submitted'
       } else if (hasProcessing) {
         // 有内容正在生成 → 订单进行中
         newStatus = 'in_progress'
@@ -248,7 +314,7 @@ export class OrderService {
     )
 
     const processingRows = await db.query(
-      `SELECT id, order_id, avatar_id, status, publish_feedback, publish_status, created_at, updated_at
+      `SELECT id, order_id, avatar_id, status, content, images, video_url, platform, publish_feedback, publish_status, created_at, updated_at
        FROM content_generation_requests
        WHERE order_id = ?
        ORDER BY updated_at DESC, created_at DESC`,
@@ -267,8 +333,14 @@ export class OrderService {
       const avatarId = row.avatarId || row.avatar_id
       const processing = latestProcessingMap.get(avatarId)
       const normalizedStatus = processing
-        ? this.normalizeContentStatus(processing?.status)
-        : this.normalizeDispatchStatus(row.status)
+        ? this.normalizeAvatarOrderStatus(processing?.status)
+        : this.normalizeAvatarOrderStatus(row.status)
+      const publishFeedback = this.safeParseJson(processing?.publishFeedback || processing?.publish_feedback, {})
+      const posts = this.buildPostsFromProcessing(processing, publishFeedback)
+      const totalViews = posts.reduce((sum, post) => sum + this.toNumber(post.viewsCount), 0)
+      const totalLikes = posts.reduce((sum, post) => sum + this.toNumber(post.likesCount), 0)
+      const totalComments = posts.reduce((sum, post) => sum + this.toNumber(post.commentsCount), 0)
+      const totalShares = posts.reduce((sum, post) => sum + this.toNumber(post.sharesCount), 0)
 
       return {
         id: row.id,
@@ -279,23 +351,29 @@ export class OrderService {
         avatarUrl: row.avatarUrl || row.avatar_url || '',
         platform: row.platform || 'unknown',
         status: normalizedStatus,
-        publishFeedback: this.safeParseJson(processing?.publishFeedback || processing?.publish_feedback, {}),
+        publishFeedback,
+        postCount: posts.length,
+        totalViews,
+        totalLikes,
+        totalComments,
+        totalShares,
+        posts,
         createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
       }
     })
 
     const summaryStats = {
       totalAvatars: avatarStats.length,
-      acceptedAvatars: avatarStats.filter((row: any) => ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
+      acceptedAvatars: avatarStats.filter((row: any) => ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
       completedAvatars: avatarStats.filter((row: any) => row.status === 'completed').length,
-      totalPosts: 0,
+      totalPosts: avatarStats.reduce((sum: number, row: any) => sum + this.toNumber(row.postCount), 0),
       totalPlatforms: 0,
       totalPublished: avatarStats.filter((row: any) => ['published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
       totalManual: 0,
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
+      totalViews: avatarStats.reduce((sum: number, row: any) => sum + this.toNumber(row.totalViews), 0),
+      totalLikes: avatarStats.reduce((sum: number, row: any) => sum + this.toNumber(row.totalLikes), 0),
+      totalComments: avatarStats.reduce((sum: number, row: any) => sum + this.toNumber(row.totalComments), 0),
+      totalShares: avatarStats.reduce((sum: number, row: any) => sum + this.toNumber(row.totalShares), 0),
       avatarStats
     }
     
@@ -306,9 +384,10 @@ export class OrderService {
     return {
       ...order,
       id: order.id,
+      userId: order.userId || order.user_id,
       title: order.title,
       description: order.description,
-      contentType: order.content_type,
+      contentType: order.contentType || order.content_type,
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -317,10 +396,20 @@ export class OrderService {
         : (order.requirements || {}),
       budget: order.budget,
       status: order.status,
-      avatarCount: order.avatarCount || order.avatar_count || 1,
+      expectedQuantity: Number(order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1),
+      quantityPerAvatar: Number(order.quantityPerAvatar || order.quantity_per_avatar || 1),
+      orderType: order.orderType || order.order_type || order.content_type,
+      avatarCount: Number(order.avatarCount || order.avatar_count || order.expectedQuantity || order.expected_quantity || 1),
+      isPaid: Number(order.isPaid ?? order.is_paid ?? 0),
       avatarStats,
       summary_stats: summaryStats,
-      createdAt
+      createdAt,
+      updatedAt: order.updated_at instanceof Date
+        ? order.updated_at.toISOString()
+        : String(order.updated_at || ''),
+      completedAt: order.completed_at instanceof Date
+        ? order.completed_at.toISOString()
+        : String(order.completed_at || '')
     }
   }
 
@@ -785,6 +874,12 @@ export class OrderService {
       throw new Error('只有已完成的订单才能评价')
     }
 
+    const ratedAvatarId = order.avatarStats?.find((avatar: any) => avatar.status === 'completed')?.avatarId
+      || order.avatarStats?.find((avatar: any) => ['awaiting_acceptance', 'published', 'preview', 'generating', 'accepted'].includes(avatar.status))?.avatarId
+      || order.avatar_id
+      || order.avatarId
+      || null
+
     const id = crypto.randomUUID()
     await db.query(
       `INSERT INTO order_results (id, order_id, avatar_id, user_id, result, customer_rating, customer_comment, created_at, updated_at)
@@ -792,7 +887,7 @@ export class OrderService {
       [
         id,
         orderId,
-        order.avatar_id,
+        ratedAvatarId,
         order.user_id,
         JSON.stringify({ rating, comment }),
         rating,

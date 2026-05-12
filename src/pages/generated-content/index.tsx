@@ -21,7 +21,6 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   publishing: 'published',
   published: 'published',
   feedback_submitted: 'awaiting_acceptance',
-  reviewing: 'awaiting_acceptance',
   awaiting_acceptance: 'awaiting_acceptance',
   settled: 'completed',
   done: 'completed',
@@ -159,7 +158,12 @@ export default function GeneratedContentPage() {
 
   // 重新生成
   const handleRegenerate = (content: any) => {
-    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+    const query = [
+      `orderId=${encodeURIComponent(content.orderId || '')}`,
+      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
+      content.id ? `requestId=${encodeURIComponent(content.id)}` : '',
+    ].filter(Boolean).join('&')
+    Taro.navigateTo({ url: `/pages/order/order-processing/index?${query}` })
   }
 
   // 删除
@@ -204,14 +208,20 @@ export default function GeneratedContentPage() {
 
   // 反馈
   const handleFeedback = (content: any) => {
-    Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
+    const query = [
+      `orderId=${encodeURIComponent(content.orderId || '')}`,
+      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
+      content.id ? `requestId=${encodeURIComponent(content.id)}` : '',
+    ].filter(Boolean).join('&')
+
+    Taro.navigateTo({ url: `/pages/order/order-processing/index?${query}` })
   }
 
   // 获取卡片底部按钮配置
   const getCardActions = (rawStatus: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     switch (status) {
-      case 'completed':
+      case 'preview':
         return [
           { key: 'publish', label: '发布', icon: Send, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
@@ -221,13 +231,12 @@ export default function GeneratedContentPage() {
           { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
-      case 'reviewing':
+      case 'awaiting_acceptance':
         return [
           { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
-      case 'settled':
-      case 'done':
+      case 'completed':
         return [
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]

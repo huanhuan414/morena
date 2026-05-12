@@ -2,7 +2,8 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
+import { Network } from '@/network'
+import { unwrapList, unwrapValue } from '@/utils/api-response'
 import { Crown, ArrowLeft, Star, Zap, Shield, Users, Check, Sparkles } from 'lucide-react-taro'
 import './index.css'
 
@@ -26,11 +27,13 @@ interface SubscriptionPlan {
 
 interface UserSubscription {
   id: string
-  status: 'active' | 'expired' | 'cancelled'
+  status: 'active' | 'expired' | 'cancelled' | 'pending_activation'
   plan?: SubscriptionPlan
   start_date: string
   end_date: string
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export default function SubscriptionPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
@@ -55,7 +58,7 @@ export default function SubscriptionPage() {
         url: '/api/subscription/plans'
       })
       if (res.data?.code === 200) {
-        setPlans(res.data.data || [])
+        setPlans(unwrapList(res.data?.data) as SubscriptionPlan[])
       }
     } catch (error) {
       console.error('获取订阅计划失败:', error)
@@ -69,12 +72,26 @@ export default function SubscriptionPage() {
       const res = await Network.request({
         url: '/api/subscription/user'
       })
-      if (res.data?.code === 200 && res.data.data) {
-        setUserSubscription(res.data.data)
-      }
+      const subscription = res.data?.code === 200
+        ? unwrapValue<UserSubscription | null>(res.data?.data, null)
+        : null
+      setUserSubscription(subscription)
+      return subscription
     } catch (error) {
       console.error('获取用户订阅失败:', error)
+      return null
     }
+  }
+
+  const waitForSubscriptionActivation = async (planId: string) => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const subscription = await fetchUserSubscription()
+      if (subscription?.status === 'active' && subscription?.plan?.id === planId) {
+        return true
+      }
+      await sleep(1000)
+    }
+    return false
   }
 
   const handlePurchase = async (plan: SubscriptionPlan) => {
@@ -104,7 +121,7 @@ export default function SubscriptionPage() {
 
       // 创建支付订单
       const res = await Network.request({
-        url: '/api/subscription/order',
+        url: '/api/payment/wechat/create',
         method: 'POST',
         data: {
           planId: plan.id,
@@ -116,38 +133,27 @@ export default function SubscriptionPage() {
       console.log('[订阅] 订单创建响应:', res.data)
 
       if (res.data?.code === 200) {
-        const payParams = res.data.data
-        const message = res.data.message
+        const payParams = unwrapValue<Record<string, any>>(res.data?.data, {})
 
-        // 检查是否为模拟支付
-        if (message && message.includes('模拟支付')) {
-          // 模拟支付模式下，订阅已自动激活，直接刷新
-          console.log('[订阅] 使用模拟支付模式，订阅已激活')
-          showToast({ title: message, icon: 'success' })
-          await fetchUserSubscription()
-        } else if (payParams.isMock) {
-          // 模拟支付模式下直接调用支付成功回调
-          console.log('[订阅] 使用模拟支付模式')
-          showToast({ title: '支付成功（模拟）', icon: 'success' })
-          await fetchUserSubscription()
-        } else {
-          // 真实支付：调用微信支付
-          await Taro.requestPayment({
-            timeStamp: payParams.timeStamp,
-            nonceStr: payParams.nonceStr,
-            package: payParams.package,
-            signType: payParams.signType,
-            paySign: payParams.paySign,
-            success: async () => {
-              showToast({ title: '支付成功！', icon: 'success' })
-              await fetchUserSubscription()
-            },
-            fail: (err) => {
-              console.error('支付失败:', err)
-              showToast({ title: '支付已取消', icon: 'none' })
-            }
-          })
-        }
+        await Taro.requestPayment({
+          timeStamp: payParams.timeStamp,
+          nonceStr: payParams.nonceStr,
+          package: payParams.package,
+          signType: payParams.signType,
+          paySign: payParams.paySign,
+          success: async () => {
+            showToast({ title: '支付结果确认中', icon: 'loading' })
+            const activated = await waitForSubscriptionActivation(plan.id)
+            showToast({
+              title: activated ? '订阅已开通' : '支付成功，权益同步中',
+              icon: activated ? 'success' : 'none'
+            })
+          },
+          fail: (err) => {
+            console.error('支付失败:', err)
+            showToast({ title: '支付已取消', icon: 'none' })
+          }
+        })
       } else {
         showToast({ title: res.data?.message || '创建订单失败', icon: 'none' })
       }

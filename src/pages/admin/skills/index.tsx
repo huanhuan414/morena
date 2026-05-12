@@ -6,6 +6,7 @@ import AdminLayout from '@/components/admin/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
+import { unwrapList, unwrapObject } from '@/utils/api-response'
 import './index.css'
 
 interface Skill {
@@ -42,8 +43,8 @@ export default function SkillManagement() {
     try {
       const res = await Network.request({ url: '/api/admin/skills' })
       if (res.data.code === 200) {
-        setSkills(res.data.data.list)
-        setTotal(res.data.data.total)
+        setSkills(unwrapList(res.data.data) as Skill[])
+        setTotal(unwrapObject(res.data.data, { total: 0 }).total)
       }
     } catch (err) {
       console.error('获取技能列表失败:', err)

@@ -4,11 +4,76 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 
 @Injectable()
 export class RecommendationService {
+  private avatarColumnsCache: Set<string> | null = null
+
+  private parseBoolean(value: any): boolean {
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'number') return value === 1
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      return normalized === '1' || normalized === 'true'
+    }
+    return false
+  }
+
+  private async getAvatarTableColumns(): Promise<Set<string>> {
+    if (this.avatarColumnsCache) {
+      return this.avatarColumnsCache
+    }
+
+    const db = getMySQLClient()
+    const rows = await db.query(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'avatars'
+    `) as any[]
+
+    this.avatarColumnsCache = new Set(
+      (rows || [])
+        .map((row: any) => String(row.columnName || row.COLUMN_NAME || row.column_name || '').toLowerCase())
+        .filter(Boolean)
+    )
+
+    return this.avatarColumnsCache
+  }
+
+  private buildHostedColumnChecks(columnExpression: string): string[] {
+    return [
+      `${columnExpression} = 1`,
+      `${columnExpression} = true`,
+      `${columnExpression} = '1'`,
+      `${columnExpression} = 'true'`
+    ]
+  }
+
+  private async buildHostedWhereClause(alias?: string): Promise<string> {
+    const columns = await this.getAvatarTableColumns()
+    const prefix = alias ? `${alias}.` : ''
+    const conditions: string[] = []
+
+    if (columns.has('trust_enabled')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}trust_enabled`))
+    }
+
+    if (columns.has('is_hosted')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}is_hosted`))
+    }
+
+    if (columns.has('hosting_enabled')) {
+      conditions.push(...this.buildHostedColumnChecks(`${prefix}hosting_enabled`))
+    }
+
+    return conditions.length > 0 ? `(${conditions.join(' OR ')})` : '1 = 0'
+  }
+
   async getRecommendations(userId: string, type: string = 'avatar', limit: number = 10, platforms?: string[], contentType?: string, requirements?: any) {
     const db = getMySQLClient()
     
     if (type === 'avatar') {
-      // 查询活跃的分身（真实数据）
+      const hostedWhereClause = await this.buildHostedWhereClause('a')
+
+      // 查询开启托管的活跃分身
       let sql = `SELECT 
         a.id,
         a.name,
@@ -16,9 +81,12 @@ export class RecommendationService {
         a.status,
         a.level,
         a.created_at,
-        a.updated_at
+        a.updated_at,
+        a.trust_enabled,
+        a.is_hosted,
+        a.hosting_enabled
       FROM avatars a 
-      WHERE a.status = 'active'`
+      WHERE a.status = 'active' AND ${hostedWhereClause}`
       
       const params: any[] = []
       
@@ -60,7 +128,11 @@ export class RecommendationService {
           completionRate: completionRate,
           avgRating: avgRating,
           level: avatar.level || 1,
-          isHosted: avatar.status === 'hosted',
+          isHosted: this.parseBoolean(
+            avatar.trust_enabled
+            ?? avatar.is_hosted
+            ?? avatar.hosting_enabled
+          ),
           matchReasons: matchReasons,
           taskCount: avatar.task_count || 0,
           earnings: avatar.total_earnings || 0

@@ -113,7 +113,7 @@ const Login: React.FC = () => {
           const redirect = getRedirectUrl()
           if (redirect) {
             // 如果是 tabbar 页面用 switchTab，否则用 navigateTo
-            const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/pages/generated-content/index', '/pages/profile/index']
+            const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/pages/profile/index']
             if (tabbarPages.some(p => redirect.startsWith(p))) {
               Taro.switchTab({ url: redirect.split('?')[0] })
             } else {
