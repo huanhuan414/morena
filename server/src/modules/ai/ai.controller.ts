@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param } from '@nestjs/common'
 import { AiService } from './ai.service'
 
 @Controller('ai')
@@ -13,7 +13,7 @@ export class AiController {
     contentType: string
   }) {
     try {
-      const result = await this.aiService.generateContent(body)
+      const result = this.aiService.startGenerate(body)
       return {
         code: 200,
         message: 'success',
@@ -25,6 +25,24 @@ export class AiController {
         message: error.message || '生成失败',
         data: null
       }
+    }
+  }
+
+  @Get('status/:requestId')
+  @HttpCode(HttpStatus.OK)
+  async getStatus(@Param('requestId') requestId: string) {
+    const task = this.aiService.getTask(requestId)
+    if (!task) {
+      return {
+        code: 404,
+        message: 'not_found',
+        data: null,
+      }
+    }
+    return {
+      code: 200,
+      message: 'success',
+      data: task,
     }
   }
 }
