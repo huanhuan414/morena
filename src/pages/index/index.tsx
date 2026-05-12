@@ -5,6 +5,7 @@ import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Roc
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const Index: React.FC = () => {
@@ -342,7 +343,7 @@ const Index: React.FC = () => {
       {/* 顶部通栏 */}
       <View className="header">
         <View className="header-bg" />
-        <View className="header-content">
+        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 15}px` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
               <Image className="avatar" src={avatar} />

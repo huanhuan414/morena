@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import './index.css'
 
@@ -255,7 +256,7 @@ export default function GeneratedContentPage() {
   return (
     <View className="generated-content-page">
       {/* 顶部蓝色背景 */}
-      <View className="page-header">
+      <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 15}px` }}>
         <View className="header-decoration">
           <View className="decoration-circle circle-1" />
           <View className="decoration-circle circle-2" />

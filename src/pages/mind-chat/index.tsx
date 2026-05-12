@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import {
   Search,
   Plus,
@@ -290,7 +291,7 @@ const MindChat: React.FC = () => {
   return (
     <View className="mind-chat-page">
       {/* 顶部渐变背景 - 一体化设计 */}
-      <View className="page-header">
+      <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 15}px` }}>
         {/* 装饰元素 */}
         <View className="header-decoration">
           <View className="decoration-circle circle-1" />
