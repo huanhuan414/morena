@@ -66,7 +66,7 @@ export const request = async (option) => {
     requestUrl = fullUrl + separator + '_t=' + Date.now()
   }
 
-  const timeout = option.timeout || 300000
+  const timeout = option.timeout || 10000
 
   // eslint-disable-next-line no-restricted-properties
   return Taro.request({
@@ -102,7 +102,7 @@ export const uploadFile = async (option) => {
 
   console.log('[Network.uploadFile]', option.url, option.filePath)
 
-  const timeout = option.timeout || 3000000
+  const timeout = option.timeout || 100000
 
   // eslint-disable-next-line no-restricted-properties
   return Taro.uploadFile({
@@ -132,7 +132,7 @@ export const downloadFile = async (option) => {
     ...(option.header || {}),
   }
 
-  const timeout = option.timeout || 300000
+  const timeout = option.timeout || 10000
 
   // eslint-disable-next-line no-restricted-properties
   return Taro.downloadFile({

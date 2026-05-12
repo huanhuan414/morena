@@ -118,13 +118,19 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   // 初始加载和轮询
   useEffect(() => {
-    fetchNotifications()
+    // 延迟首次加载，避免与页面初始化并发
+    const timer = setTimeout(() => {
+      fetchNotifications()
+    }, 3000)
     
     const interval = setInterval(() => {
       fetchUnreadCount()
     }, pollInterval)
     
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(timer)
+      clearInterval(interval)
+    }
   }, [fetchNotifications, fetchUnreadCount, pollInterval])
 
   return {

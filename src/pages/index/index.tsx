@@ -120,17 +120,8 @@ const Index: React.FC = () => {
       
       // 检查是否已登录
       if (!storedUserInfo?.data?.id) {
-        console.log('用户未登录，跳转到登录页')
-        Taro.showModal({
-          title: '提示',
-          content: '您还未登录，请先登录',
-          confirmText: '去登录',
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({ url: '/pages/login/index' })
-            }
-          }
-        })
+        console.log('用户未登录，静默跳转到登录页')
+        Taro.navigateTo({ url: '/pages/login/index' })
         return
       }
       const userId = storedUserInfo.data.id
@@ -217,21 +208,24 @@ const Index: React.FC = () => {
   }
 
   useEffect(() => {
-    // 初始化加载数据
-    const initData = async () => {
-      // 先确保用户信息加载完成
-      await loadUserFromStorage()
-      // 等待一小段时间确保 storage 写入完成
-      await new Promise(resolve => setTimeout(resolve, 100))
-      await Promise.all([fetchStats(), fetchActivities(), fetchOrderNotifications()])
-    }
-    initData()
+    // 初始化加载数据 - 不阻塞页面渲染
+    loadUserFromStorage().then(() => {
+      fetchStats()
+      fetchActivities()
+      fetchOrderNotifications()
+    }).catch(err => {
+      console.error('初始化数据加载失败:', err)
+    })
   }, [])
 
   // 页面重新显示时刷新数据（如从登录页返回）
   useDidShow(() => {
     loadUserFromStorage().then(() => {
-      Promise.all([fetchStats(), fetchActivities(), fetchOrderNotifications()])
+      fetchStats()
+      fetchActivities()
+      fetchOrderNotifications()
+    }).catch(err => {
+      console.error('刷新数据失败:', err)
     })
   })
 
