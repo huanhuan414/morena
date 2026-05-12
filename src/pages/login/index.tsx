@@ -15,6 +15,13 @@ const Login: React.FC = () => {
   const [codeLoading, setCodeLoading] = useState(false)
   const { setUserInfo, setToken } = useUserStore(state => state)
 
+  // 获取重定向地址
+  const getRedirectUrl = () => {
+    const instance = Taro.getCurrentInstance()
+    const redirect = instance?.router?.params?.redirect || ''
+    return redirect ? decodeURIComponent(redirect) : ''
+  }
+
   const sendCode = async () => {
     if (!phone || phone.length !== 11) {
       Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
@@ -80,19 +87,41 @@ const Login: React.FC = () => {
       console.log('[登录] 登录响应:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
-        const userData = res.data.data
-        if (userData.token) {
-          setToken(userData.token)
+        const loginData = res.data.data
+        // 保存 token
+        if (loginData.token) {
+          setToken(loginData.token)
         }
+        // 保存完整的用户信息（后端返回的 user 对象包含所有字段）
+        const user = loginData.user || {}
         setUserInfo({
-          id: userData.userId || userData.id,
-          nickname: userData.nickname || phone,
-          avatar: userData.avatar || '',
-          phone: userData.phone || phone,
+          id: user.id || loginData.userId,
+          openid: user.openid,
+          nickname: user.nickname || `用户${phone.slice(-4)}`,
+          avatar: user.avatar || '',
+          avatarId: user.avatar_id || user.avatarId,
+          phone: user.phone || phone,
+          bio: user.bio,
+          level: user.level,
+          exp: user.exp,
+          credits: user.credits,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
         })
-        Taro.showToast({ title: '登录成功', icon: 'success' })
+        Taro.showToast({ title: loginData.isNewUser ? '注册成功' : '登录成功', icon: 'success' })
         setTimeout(() => {
-          Taro.switchTab({ url: '/pages/index/index' })
+          const redirect = getRedirectUrl()
+          if (redirect) {
+            // 如果是 tabbar 页面用 switchTab，否则用 navigateTo
+            const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/pages/generated-content/index', '/pages/profile/index']
+            if (tabbarPages.some(p => redirect.startsWith(p))) {
+              Taro.switchTab({ url: redirect.split('?')[0] })
+            } else {
+              Taro.navigateTo({ url: redirect })
+            }
+          } else {
+            Taro.switchTab({ url: '/pages/index/index' })
+          }
         }, 1000)
       } else {
         Taro.showToast({ title: res.data?.message || '登录失败，请重试', icon: 'none' })
