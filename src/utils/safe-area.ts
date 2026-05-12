@@ -123,22 +123,15 @@ export function getStatusBarHeight(): number {
   let statusBarHeight = 44
 
   try {
-    if (Taro.getEnv() === Taro.ENV_TYPE.WEAPP) {
-      // 小程序环境：使用 wx.getWindowInfo()
-      const windowInfo = Taro.getWindowInfo?.() as any
-      if (windowInfo) {
-        statusBarHeight = windowInfo.statusBarHeight || 44
-      }
-    } else {
-      // 其他环境：使用 Taro.getSystemInfoSync()
-      const systemInfo = Taro.getSystemInfoSync()
-      statusBarHeight = systemInfo.statusBarHeight || 44
-    }
+    // 统一使用 getSystemInfoSync，兼容性最好
+    const systemInfo = Taro.getSystemInfoSync()
+    statusBarHeight = systemInfo.statusBarHeight || 44
   } catch (error) {
     console.error('[SafeArea] 获取状态栏高度失败，使用默认值:', error)
     statusBarHeight = 44
   }
 
+  console.log('[SafeArea] statusBarHeight:', statusBarHeight)
   return statusBarHeight
 }
 
