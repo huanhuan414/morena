@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Users, Coins, Sparkles } from 'lucide-react-taro'
+import { Send, Check, ChevronRight, Loader, ChevronLeft, Users, Coins, Sparkles } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
   PLATFORM_UI_ORDER,
@@ -57,12 +57,16 @@ export default function OrderCreate() {
 
   const handleAIGenerate = async () => {
     if (aiLoading) return
+    if (!form.title.trim()) {
+      Taro.showToast({ title: '请先输入任务标题', icon: 'none' })
+      return
+    }
     if (form.platforms.length === 0) {
       Taro.showToast({ title: '请先选择发布平台', icon: 'none' })
       return
     }
-    if (!form.title.trim()) {
-      Taro.showToast({ title: '请输入任务标题', icon: 'none' })
+    if (!form.contentType) {
+      Taro.showToast({ title: '请先选择内容类型', icon: 'none' })
       return
     }
 
@@ -295,7 +299,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         <View className="header-decoration">
           <View className="deco-circle circle-1" />
           <View className="deco-circle circle-2" />
-          <View className="deco-circle circle-3" />
         </View>
         <View className="header-content">
           {/* 导航栏 */}
@@ -304,59 +307,36 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <ChevronLeft size={22} color="#fff" />
             </View>
             <Text className="nav-title">发布任务</Text>
-            <View
-              className="nav-action"
-              onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}
-            >
-              <FileText size={18} color="rgba(255,255,255,0.8)" />
-            </View>
+            <View className="nav-action-placeholder" />
           </View>
-          {/* 标题区 */}
-          <View className="header-info">
-            <View className="header-icon-wrap">
-              <Sparkles size={36} color="#fff" />
-            </View>
-            <View className="header-text-area">
-              <Text className="header-title">创建新任务</Text>
-              <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
-            </View>
+          {/* 标题区 - 居中排列 */}
+          <View className="header-center">
+            <Text className="header-title">创建新任务</Text>
+            <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
           </View>
         </View>
       </View>
 
       <ScrollView scrollY className="scroll-container">
-        {/* 内容类型 */}
+        {/* 任务标题 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">内容类型</Text>
+              <Text className="section-title">任务标题</Text>
             </View>
             <View className="required-tag">
               <Text className="required-text">必填</Text>
             </View>
           </View>
-          <View className="type-grid">
-            {CONTENT_TYPES.map(type => (
-              <View
-                key={type.id}
-                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
-                onClick={() => handleTypeChange(type.id)}
-              >
-                <Text className="type-icon">{type.icon}</Text>
-                <Text className="type-label">{type.label}</Text>
-                <Text className="type-desc">{type.desc}</Text>
-                <View className="type-price-row">
-                  <Coins size={10} color="#6366F1" />
-                  <Text className="type-price">¥{type.price}/个</Text>
-                </View>
-                {form.contentType === type.id && (
-                  <View className="type-check">
-                    <Check size={10} color="#fff" />
-                  </View>
-                )}
-              </View>
-            ))}
+          <View className="input-wrapper">
+            <Input
+              className="title-input"
+              placeholder="简洁明确的任务主题"
+              value={form.title}
+              onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
+              maxlength={50}
+            />
           </View>
         </View>
 
@@ -421,25 +401,38 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           )}
         </View>
 
-        {/* 任务标题 */}
+        {/* 内容类型 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">任务标题</Text>
+              <Text className="section-title">内容类型</Text>
             </View>
             <View className="required-tag">
               <Text className="required-text">必填</Text>
             </View>
           </View>
-          <View className="input-wrapper">
-            <Input
-              className="title-input"
-              placeholder="简洁明确的任务主题"
-              value={form.title}
-              onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
-              maxlength={50}
-            />
+          <View className="type-grid">
+            {CONTENT_TYPES.map(type => (
+              <View
+                key={type.id}
+                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
+                onClick={() => handleTypeChange(type.id)}
+              >
+                <Text className="type-icon">{type.icon}</Text>
+                <Text className="type-label">{type.label}</Text>
+                <Text className="type-desc">{type.desc}</Text>
+                <View className="type-price-row">
+                  <Coins size={10} color="#6366F1" />
+                  <Text className="type-price">¥{type.price}/个</Text>
+                </View>
+                {form.contentType === type.id && (
+                  <View className="type-check">
+                    <Check size={10} color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         </View>
 
