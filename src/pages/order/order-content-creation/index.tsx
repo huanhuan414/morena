@@ -358,15 +358,6 @@ export default function OrderContentCreation() {
         {/* 生成完成 */}
         {pageStatus === 'completed' && processingData?.generatedContent && (
           <View className="cc-content-section">
-            {/* 平台标签 */}
-            <View className="cc-platform-bar">
-              {canonicalizePlatforms(processingData.generatedContent.platforms || []).map((p: string) => (
-                <View key={p} className="cc-platform-tag" style={{ backgroundColor: getPlatformMeta(p)?.color || '#6366F1' }}>
-                  <Text className="cc-platform-name">{getPlatformLabel(p)}</Text>
-                </View>
-              ))}
-            </View>
-
             {/* 文案内容 */}
             {processingData.generatedContent.content && (
               <View className="cc-content-card">

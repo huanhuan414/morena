@@ -29,7 +29,7 @@ export interface PlatformMeta {
 }
 
 const ALIAS_TO_CANONICAL: Record<string, CanonicalPlatformKey> = {
-  wechat: 'wechat_channel',
+  wechat: 'wechat_mp',
   wechat_channel: 'wechat_channel',
   wechat_mp: 'wechat_mp',
   wechat_moments: 'wechat_moments',
