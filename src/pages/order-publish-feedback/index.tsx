@@ -348,7 +348,7 @@ export default function OrderPublishFeedback() {
 
     return (
       <View key={index} className="platform-card">
-        {/* 卡片头部：平台 + 状态 */}
+        {/* 卡片头部：平台名称 */}
         <View className="platform-card-header">
           <View className="platform-card-left">
             <View className="platform-dot" style={{ background: pc.text }} />
@@ -356,67 +356,69 @@ export default function OrderPublishFeedback() {
           </View>
         </View>
 
-        {/* 发布说明 */}
-        {result.message && (
-          <View className="platform-notice">
-            <Text className="platform-notice-text">{result.message}</Text>
-          </View>
-        )}
+        <View className="platform-card-body">
+          {/* 发布说明 */}
+          {result.message && (
+            <View className="platform-notice">
+              <Text className="platform-notice-text">{result.message}</Text>
+            </View>
+          )}
 
-        {/* 上传截图 */}
-        <View className="feedback-section">
-          <Text className="feedback-label">发布截图</Text>
-          <View className="feedback-image-list">
-            {fb.images && fb.images.length > 0 && fb.images.map((img: string, idx: number) => (
-              <View key={idx} className="feedback-image-wrapper">
-                <Image
-                  src={img}
-                  className="feedback-image"
-                  mode="aspectFill"
-                  onClick={() => Taro.previewImage({ urls: fb.images, current: img })}
-                />
-                <View
-                  className="feedback-image-delete"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setFeedback(prev => ({
-                      ...prev,
-                      [platform]: {
-                        ...prev[platform],
-                        images: prev[platform].images.filter((_: string, i: number) => i !== idx)
-                      }
-                    }))
-                  }}
-                >
-                  <X size={10} color="#fff" />
+          {/* 上传截图 */}
+          <View className="feedback-section">
+            <Text className="feedback-label">发布截图</Text>
+            <View className="feedback-image-list">
+              {fb.images && fb.images.length > 0 && fb.images.map((img: string, idx: number) => (
+                <View key={idx} className="feedback-image-wrapper">
+                  <Image
+                    src={img}
+                    className="feedback-image"
+                    mode="aspectFill"
+                    onClick={() => Taro.previewImage({ urls: fb.images, current: img })}
+                  />
+                  <View
+                    className="feedback-image-delete"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFeedback(prev => ({
+                        ...prev,
+                        [platform]: {
+                          ...prev[platform],
+                          images: prev[platform].images.filter((_: string, i: number) => i !== idx)
+                        }
+                      }))
+                    }}
+                  >
+                    <X size={10} color="#fff" />
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
 
-            {(!fb.images || fb.images.length < 9) && (
-              <View className="feedback-image-add" onClick={() => handleChooseImage(platform)}>
-                <ImagePlus size={20} color="#9CA3AF" />
-                <Text className="feedback-image-add-text">添加</Text>
-              </View>
+              {(!fb.images || fb.images.length < 9) && (
+                <View className="feedback-image-add" onClick={() => handleChooseImage(platform)}>
+                  <ImagePlus size={20} color="#9CA3AF" />
+                  <Text className="feedback-image-add-text">添加</Text>
+                </View>
+              )}
+            </View>
+            {(!fb.images || fb.images.length === 0) && (
+              <Text className="feedback-hint">点击上传发布截图，最多9张</Text>
             )}
           </View>
-          {(!fb.images || fb.images.length === 0) && (
-            <Text className="feedback-hint">点击上传发布截图，最多9张</Text>
-          )}
-        </View>
 
-        {/* 填写链接 */}
-        <View className="feedback-section">
-          <Text className="feedback-label">发布链接</Text>
-          <View className="feedback-link-input">
-            <Link size={14} color="#9CA3AF" />
-            <View className="feedback-link-field">
-              <Input
-                className="w-full bg-transparent"
-                placeholder="请输入发布链接"
-                value={fb.link}
-                onInput={(e) => handleLinkChange(platform, e.detail.value)}
-              />
+          {/* 填写链接 */}
+          <View className="feedback-section">
+            <Text className="feedback-label">发布链接</Text>
+            <View className="feedback-link-input">
+              <Link size={14} color="#9CA3AF" />
+              <View className="feedback-link-field">
+                <Input
+                  className="w-full bg-transparent"
+                  placeholder="请输入发布链接"
+                  value={fb.link}
+                  onInput={(e) => handleLinkChange(platform, e.detail.value)}
+                />
+              </View>
             </View>
           </View>
         </View>
