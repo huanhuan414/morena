@@ -54,7 +54,7 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       autoAudits: false,
       showShadowRootInWxmlPanel: true,
       scopeDataCheck: false,
-      uglifyFileName: true,
+      uglifyFileName: false,
       checkInvalidKey: true,
       checkSiteMap: true,
       uploadWithSourceMap: false,
@@ -74,9 +74,11 @@ const generateWeappProjectConfig = (outputRoot: string) => {
       useCompilerPlugins: false
     },
     compileType: 'miniprogram',
-    libVersion: '3.3.4',
+    libVersion: '3.7.7',
     packOptions: {
-      ignore: []
+      ignore: [
+        { type: 'folder', value: 'assets' }
+      ]
     },
     condition: {}
   };
