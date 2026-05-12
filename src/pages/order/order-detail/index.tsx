@@ -67,9 +67,16 @@ export default function OrderDetail() {
   const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
   const getAvatarStatusInfo = (status: string) => AVATAR_STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
 
-  const formatTime = (t: string) => {
-    if (!t) return '--'
+  // Safe string check — objects/dates converted to {} by convertKeysToCamel are not valid React children
+  const safeStr = (v: unknown): string => {
+    if (!v || typeof v !== 'string') return ''
+    return v
+  }
+
+  const formatTime = (t: string | object) => {
+    if (!t || typeof t !== 'string') return '--'
     const d = new Date(t)
+    if (Number.isNaN(d.getTime())) return '--'
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
@@ -228,10 +235,10 @@ export default function OrderDetail() {
                 <Text className="block od-req-value">{order.targetAudience}</Text>
               </View>
             ) : null}
-            {order.requirements ? (
+            {(safeStr(order.requirements)) ? (
               <View className="od-req-item">
                 <Text className="block od-req-label">详细要求</Text>
-                <Text className="block od-req-value">{order.requirements}</Text>
+                <Text className="block od-req-value">{safeStr(order.requirements)}</Text>
               </View>
             ) : null}
             {order.deadline ? (
