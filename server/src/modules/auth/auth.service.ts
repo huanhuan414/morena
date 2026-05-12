@@ -14,7 +14,7 @@ export class AuthService {
   /**
    * 发送验证码
    */
-  async sendVerificationCode(phone: string): Promise<{ success: boolean; message: string }> {
+  async sendVerificationCode(phone: string): Promise<{ success: boolean; message: string; code?: string }> {
     // 验证手机号格式
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       throw new BadRequestException('请输入正确的手机号')
@@ -43,6 +43,11 @@ export class AuthService {
     const result = await this.smsService.sendVerificationCode(phone, code)
     
     console.log(`[验证码] 手机号: ${phone}, 验证码: ${code}`)
+    
+    // 如果短信服务返回的是开发模式（未真正发送），将验证码返回给前端
+    if (result.success && result.isDev) {
+      return { ...result, code }
+    }
     
     return result
   }
@@ -85,7 +90,7 @@ export class AuthService {
     
     // 查找用户（使用手机号作为唯一标识）
     const result = await db.query('users', { phone })
-    const existingUser = (Array.isArray(result) ? result[0] : (result as any)?.data?.[0])
+    const existingUser = Array.isArray(result) ? result[0] : (result as any)?.data?.[0]
     
     if (existingUser) {
       // 已注册用户，直接登录
@@ -120,7 +125,7 @@ export class AuthService {
 
     // 获取新创建的用户
     const newUserResult = await db.query('users', { phone })
-    const newUser = (newUserResult as any)?.data?.[0]
+    const newUser = Array.isArray(newUserResult) ? newUserResult[0] : (newUserResult as any)?.data?.[0]
     
     if (!newUser) {
       throw new Error('创建用户失败：未返回用户数据')

@@ -13,7 +13,7 @@ export class AuthController {
     const result = await this.authService.sendVerificationCode(phone)
     return {
       code: result.success ? 200 : 400,
-      data: null,
+      data: result.code ? { code: result.code } : null,
       message: result.message,
     }
   }

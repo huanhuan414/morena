@@ -1,59 +1,44 @@
+import React, { useState } from 'react'
+import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
-import { useState, useEffect } from 'react'
-import { switchTab, showToast, getCurrentInstance } from '@tarojs/taro'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import * as Network from '@/network'
+import { Button } from '@/components/ui/button'
+import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { Sparkles, Phone, Shield, ChevronRight, Gift } from 'lucide-react-taro'
-import { getSafeArea } from '@/utils/safe-area'
 import './index.css'
 
-export default function LoginPage() {
-  const { setUserInfo, setToken } = useUserStore()
+const Login: React.FC = () => {
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
-  const [referralCode, setReferralCode] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [sendingCode, setSendingCode] = useState(false)
   const [countdown, setCountdown] = useState(0)
-  const [showReferralReward, setShowReferralReward] = useState(false)
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
-
-  // 获取状态栏高度
-  useEffect(() => {
-    const safeArea = getSafeArea()
-    setStatusBarHeight(safeArea.statusBarHeight)
-  }, [])
-
-  // 从页面参数中获取邀请码
-  useEffect(() => {
-    const instance = getCurrentInstance()
-    const params = (instance as any)?.router?.params
-    if (params?.referral_code) {
-      setReferralCode(params.referral_code)
-      setShowReferralReward(true)
-    }
-  }, [])
+  const [loading, setLoading] = useState(false)
+  const [codeLoading, setCodeLoading] = useState(false)
+  const { setUserInfo, setToken } = useUserStore(state => state)
 
   const sendCode = async () => {
     if (!phone || phone.length !== 11) {
-      showToast({ title: '请输入正确的手机号', icon: 'none' })
+      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
-
     if (countdown > 0) return
 
-    setSendingCode(true)
+    setCodeLoading(true)
     try {
       const res = await Network.request({
         url: '/api/auth/send-code',
         method: 'POST',
         data: { phone }
       })
-      
+      console.log('[登录] 发送验证码响应:', res.data)
+
       if (res.data?.code === 200) {
-        showToast({ title: '验证码已发送', icon: 'success' })
+        // 如果后端返回了验证码（开发模式），显示给用户
+        const devCode = res.data?.data?.code
+        if (devCode) {
+          Taro.showToast({ title: `验证码: ${devCode}`, icon: 'none', duration: 5000 })
+        } else {
+          Taro.showToast({ title: '验证码已发送', icon: 'success' })
+        }
         setCountdown(60)
         const timer = setInterval(() => {
           setCountdown(prev => {
@@ -65,33 +50,23 @@ export default function LoginPage() {
           })
         }, 1000)
       } else {
-        showToast({ title: res.data?.message || '发送失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '发送失败，请稍后重试', icon: 'none' })
       }
     } catch (error) {
-      console.error('发送验证码失败:', error)
-      showToast({ title: '验证码已发送', icon: 'success' })
-      setCountdown(60)
-      const timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+      console.error('[登录] 发送验证码失败:', error)
+      Taro.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
     } finally {
-      setSendingCode(false)
+      setCodeLoading(false)
     }
   }
 
   const handleLogin = async () => {
     if (!phone || phone.length !== 11) {
-      showToast({ title: '请输入正确的手机号', icon: 'none' })
+      Taro.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
-    if (!code || code.length !== 6) {
-      showToast({ title: '请输入6位验证码', icon: 'none' })
+    if (!code || code.length < 4) {
+      Taro.showToast({ title: '请输入验证码', icon: 'none' })
       return
     }
 
@@ -100,203 +75,119 @@ export default function LoginPage() {
       const res = await Network.request({
         url: '/api/auth/phone-login',
         method: 'POST',
-        data: { phone, code, referral_code: referralCode || undefined }
+        data: { phone, code }
       })
-      
-      if (res.data?.code === 200) {
-        const { user, token, isNewUser, referralReward } = res.data.data
-        
-        // 保存token和用户信息到本地存储
-        if (token) {
-          setToken(token)
+      console.log('[登录] 登录响应:', res.data)
+
+      if (res.data?.code === 200 && res.data?.data) {
+        const userData = res.data.data
+        if (userData.token) {
+          setToken(userData.token)
         }
-        setUserInfo(user)
-        
-        // 显示邀请奖励提示
-        if (isNewUser && referralReward) {
-          showToast({ 
-            title: `注册成功，邀请奖励+${referralReward}元`, 
-            icon: 'success',
-            duration: 2000
-          })
-        } else {
-          showToast({ 
-            title: isNewUser ? '注册成功' : '登录成功', 
-            icon: 'success' 
-          })
-        }
+        setUserInfo({
+          id: userData.userId || userData.id,
+          nickname: userData.nickname || phone,
+          avatar: userData.avatar || '',
+          phone: userData.phone || phone,
+        })
+        Taro.showToast({ title: '登录成功', icon: 'success' })
         setTimeout(() => {
-          switchTab({ url: '/pages/index/index' })
-        }, referralReward ? 1500 : 500)
+          Taro.switchTab({ url: '/pages/index/index' })
+        }, 1000)
       } else {
-        showToast({ title: res.data?.message || '登录失败', icon: 'none' })
+        Taro.showToast({ title: res.data?.message || '登录失败，请重试', icon: 'none' })
       }
     } catch (error) {
-      console.error('登录失败:', error)
-      showToast({ title: '登录失败，请重试', icon: 'none' })
+      console.error('[登录] 登录失败:', error)
+      Taro.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
     } finally {
       setLoading(false)
     }
   }
 
-  const skipLogin = () => {
-    // 如果已有登录用户，不覆盖
-    const currentUser = useUserStore.getState().userInfo
-    if (currentUser?.id && currentUser.id !== 'guest-user-id') {
-      switchTab({ url: '/pages/index/index' })
-      return
-    }
-    setUserInfo({
-      id: 'guest-user-id',
-      nickname: '游客',
-      avatar: '',
-      level: 1,
-      exp: 0,
-      credits: 0
-    })
-    switchTab({ url: '/pages/index/index' })
-  }
-
   return (
-    <View className="login-page" style={{ paddingTop: `${statusBarHeight}px` }}>
-      {/* 背景效果 */}
-      <View className="login-bg">
-        <View className="bg-gradient" />
-        <View className="bg-grid" />
-        <View className="bg-glow-1" />
-        <View className="bg-glow-2" />
-      </View>
-      
-      {/* 品牌区域 */}
-      <View className="brand-section">
-        <View className="brand-logo">
-          <View className="logo-inner">
-            <Sparkles size={56} color="#00f5ff" />
-          </View>
-          <View className="logo-ring" />
-          <View className="logo-pulse" />
-        </View>
-        <Text className="brand-name">莫瑞娜</Text>
-        <Text className="brand-slogan">AI原生人机共生协同平台</Text>
+    <View className="login-page">
+      {/* 顶部渐变区域 */}
+      <View className="login-header">
+        <View className="login-header-decor login-header-decor-1" />
+        <View className="login-header-decor login-header-decor-2" />
+        <Text className="login-app-name block">莫瑞娜</Text>
+        <Text className="login-app-slogan block">AI 分身 · 创作无限可能</Text>
       </View>
 
-      {/* 登录卡片 */}
+      {/* 表单区域 */}
       <View className="login-card">
-        <View className="card-header">
-          <Text className="card-title">欢迎回来</Text>
+        <Text className="login-card-title block">手机号登录</Text>
+        <Text className="login-card-desc block">验证即登录，未注册将自动创建账号</Text>
+
+        {/* 手机号输入 */}
+        <View className="login-field">
+          <Text className="login-field-label block">手机号</Text>
+          <View className="login-input-wrap">
+            <Input
+              type="number"
+              maxlength={11}
+              placeholder="请输入手机号"
+              value={phone}
+              onInput={(e: any) => setPhone(e.detail.value)}
+              className="login-input"
+            />
+          </View>
         </View>
 
-        <View className="form-area">
-          {/* 手机号输入 */}
-          <View className="input-group">
-            <View className="input-label">
-              <Phone size={20} color="rgba(0, 245, 255, 0.8)" />
-              <Text className="label-text">手机号</Text>
-            </View>
-            <View className="input-box">
+        {/* 验证码输入 */}
+        <View className="login-field">
+          <Text className="login-field-label block">验证码</Text>
+          <View className="login-code-row">
+            <View className="login-input-wrap login-code-input">
               <Input
-                className="input-control"
                 type="number"
-                maxlength={11}
-                placeholder="请输入手机号"
-                placeholderClass="input-placeholder"
-                value={phone}
-                onInput={e => setPhone(e.detail.value)}
-              />
-            </View>
-          </View>
-
-          {/* 验证码输入 */}
-          <View className="input-group">
-            <View className="input-label">
-              <Shield size={20} color="rgba(0, 245, 255, 0.8)" />
-              <Text className="label-text">验证码</Text>
-            </View>
-            <View className="input-row">
-              <View className="input-box flex-1">
-                <Input
-                  className="input-control"
-                  type="number"
-                  maxlength={6}
-                  placeholder="请输入验证码"
-                  placeholderClass="input-placeholder"
-                  value={code}
-                  onInput={e => setCode(e.detail.value)}
-                />
-              </View>
-              <View
-                className={`code-btn ${countdown > 0 || sendingCode ? 'disabled' : ''}`}
-                onClick={countdown > 0 || sendingCode ? undefined : sendCode}
-              >
-                <Text className="code-btn-text">
-                  {sendingCode ? '发送中' : countdown > 0 ? `${countdown}s` : '获取验证码'}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* 邀请码输入 */}
-          <View className="input-group">
-            <View className="input-label">
-              <Gift size={20} color="rgba(0, 245, 255, 0.8)" />
-              <Text className="label-text">邀请码（选填）</Text>
-              {showReferralReward && referralCode && (
-                <View className="referral-badge">
-                  <Text className="referral-badge-text">使用中</Text>
-                </View>
-              )}
-            </View>
-            <View className="input-box">
-              <Input
-                className="input-control"
-                type="text"
                 maxlength={6}
-                placeholder="请输入邀请码"
-                placeholderClass="input-placeholder"
-                value={referralCode}
-                onInput={e => {
-                  setReferralCode(e.detail.value.toUpperCase())
-                  setShowReferralReward(!!e.detail.value)
-                }}
+                placeholder="请输入验证码"
+                value={code}
+                onInput={(e: any) => setCode(e.detail.value)}
+                className="login-input"
               />
             </View>
-            {referralCode && (
-              <Text className="referral-hint">注册成功后将获得邀请奖励</Text>
-            )}
-          </View>
-
-          {/* 用户协议提示 */}
-          <View className="agreement-notice">
-            <Text className="agreement-text">登录即代表同意《用户协议》和《隐私政策》</Text>
-          </View>
-
-          {/* 登录按钮 */}
-          <Button
-            className="submit-btn"
-            onClick={handleLogin}
-            disabled={loading}
-          >
-            <View className="btn-bg" />
-            <View className="btn-content">
-              <Text className="btn-text">{loading ? '登录中...' : '登录 / 注册'}</Text>
-              {!loading && <ChevronRight size={20} color="#0a0a0f" />}
+            <View className="login-code-btn-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={countdown > 0 || codeLoading}
+                onClick={sendCode}
+                className="login-code-btn"
+              >
+                <Text className="login-code-btn-text">
+                  {codeLoading ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
+                </Text>
+              </Button>
             </View>
-          </Button>
+          </View>
         </View>
 
-        <View className="card-footer">
-          <Text className="skip-text" onClick={skipLogin}>
-            暂不登录，先逛逛
+        {/* 登录按钮 */}
+        <Button
+          variant="default"
+          size="lg"
+          disabled={loading}
+          onClick={handleLogin}
+          className="login-submit-btn"
+        >
+          <Text className="login-submit-btn-text">{loading ? '登录中...' : '登录'}</Text>
+        </Button>
+
+        {/* 协议 */}
+        <View className="login-agreement">
+          <Text className="login-agreement-text">
+            登录即表示同意
           </Text>
+          <Text className="login-agreement-link">《用户协议》</Text>
+          <Text className="login-agreement-text">和</Text>
+          <Text className="login-agreement-link">《隐私政策》</Text>
         </View>
-      </View>
-
-      {/* 底部装饰 */}
-      <View className="footer-decoration">
-        <View className="decoration-line" />
-        <Text className="decoration-text">Powered by AI</Text>
-        <View className="decoration-line" />
       </View>
     </View>
   )
 }
+
+export default Login
