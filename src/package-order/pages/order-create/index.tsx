@@ -281,8 +281,21 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
       console.log('创建订单响应:', res.data)
 
-      if (res.data.code === 200 && res.data.data?.id) {
-        const orderId = res.data.data.id
+      const rawPayload = res?.data
+      let payload = rawPayload
+
+      if (typeof rawPayload === 'string') {
+        try {
+          payload = JSON.parse(rawPayload)
+        } catch {
+          payload = null
+        }
+      }
+
+      const payloadObj = payload && typeof payload === 'object' ? payload : null
+
+      if (payloadObj?.code === 200 && payloadObj?.data?.id) {
+        const orderId = payloadObj.data.id
         
         console.log('[OrderCreate] 订单创建成功，订单ID:', orderId, '准备跳转')
         
@@ -295,8 +308,20 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           url: targetUrl
         })
       } else {
+        console.error('[OrderCreate] 创建订单失败: invalid response payload', {
+          statusCode: res?.statusCode,
+          dataType: typeof rawPayload,
+          rawPayload,
+          payload
+        })
+
+        const msg =
+          payloadObj?.msg ||
+          payloadObj?.message ||
+          (rawPayload == null || rawPayload === '' ? `创建订单失败（响应为空，statusCode=${res?.statusCode || 'unknown'}）` : '创建订单失败')
+
         Taro.showToast({ 
-          title: res.data.msg || '创建订单失败', 
+          title: msg,
           icon: 'none' 
         })
       }
