@@ -1,123 +1,105 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { ChevronDown, ChevronLeft, RefreshCw, Play, FileText, ImagePlus } from 'lucide-react-taro'
 import './index.css'
 
-// 内容状态映射 - 与订单状态对应
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: '待发布', color: '#F59E0B', bg: '#FEF3C7' },
-  processing: { label: '生成中', color: '#3B82F6', bg: '#DBEAFE' },
-  generating_text: { label: '文案生成中', color: '#3B82F6', bg: '#DBEAFE' },
-  generating_images: { label: '配图生成中', color: '#3B82F6', bg: '#DBEAFE' },
-  completed: { label: '待发布', color: '#F59E0B', bg: '#FEF3C7' },
-  published: { label: '待反馈', color: '#8B5CF6', bg: '#EDE9FE' },
-  pending_review: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
-  accepted: { label: '已完成', color: '#10B981', bg: '#D1FAE5' },
-  failed: { label: '生成失败', color: '#EF4444', bg: '#FEE2E2' },
+// 内容状态映射
+const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
+  completed:    { label: '待发布', color: '#F59E0B', bgColor: '#FEF3C7' },
+  published:    { label: '待反馈', color: '#3B82F6', bgColor: '#DBEAFE' },
+  reviewing:    { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
+  settled:      { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
+  done:         { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
+  processing:   { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
+  pending:      { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
+  failed:       { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
 }
 
-// 内容类型映射
-const CONTENT_TYPE_MAP: Record<string, { label: string; icon: string }> = {
-  image_text: { label: '文案+配图', icon: 'image' },
-  article: { label: '图文文章', icon: 'article' },
-  video_text: { label: '文案+视频', icon: 'video' },
+// 平台配置
+const PLATFORM_MAP: Record<string, { name: string; color: string }> = {
+  wechat:       { name: '朋友圈', color: '#07C160' },
+  wechat_mp:    { name: '公众号', color: '#07C160' },
+  wechat_channel: { name: '视频号', color: '#07C160' },
+  xiaohongshu:  { name: '小红书', color: '#FE2C55' },
+  douyin:       { name: '抖音', color: '#161823' },
+  weibo:        { name: '微博', color: '#FF8200' },
+  bilibili:     { name: 'B站', color: '#FB7299' },
+  kuaishou:     { name: '快手', color: '#FF4906' },
+  toutiao:      { name: '头条', color: '#E4393C' },
+  zhihu:        { name: '知乎', color: '#0066FF' },
 }
 
-// 平台名称映射
-const PLATFORM_MAP: Record<string, string> = {
-  wechat: '朋友圈', wechat_mp: '微信公众号', wechat_channel: '视频号',
-  xiaohongshu: '小红书', douyin: '抖音', tiktok: 'TikTok',
-  bilibili: 'B站', weibo: '微博', zhihu: '知乎',
-  toutiao: '今日头条', kuaishou: '快手',
-}
-
-// 状态 Tab
+// Tab 状态筛选
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
   { key: 'completed', label: '待发布' },
   { key: 'published', label: '待反馈' },
-  { key: 'pending_review', label: '待验收' },
-  { key: 'accepted', label: '已完成' },
+  { key: 'reviewing', label: '待验收' },
+  { key: 'settled', label: '已完成' },
   { key: 'failed', label: '生成失败' },
 ]
 
-// 安全 JSON 解析
-function safeParseJSON(val: any, fallback: any = []) {
-  if (!val) return fallback
+// 安全解析 JSON
+function safeParseJSON(val: any): any[] {
   if (Array.isArray(val)) return val
   if (typeof val === 'string') {
-    try { const p = JSON.parse(val); return Array.isArray(p) ? p : p } catch { return fallback }
-  }
-  return fallback
-}
-
-// 获取内容类型
-function getContentType(item: any): string {
-  const ct = item.contentType || item.content_type || ''
-  if (ct === 'article' || ct === 'image_text_article') return 'article'
-  if (ct === 'video_text' || ct === 'video') return 'video_text'
-  return 'image_text'
-}
-
-// 获取封面
-function getCoverImage(item: any): string {
-  const images = safeParseJSON(item.images, [])
-  if (Array.isArray(images) && images.length > 0) {
-    if (typeof images[0] === 'string') return images[0]
-    if (images[0]?.url) return images[0].url
-  }
-  return ''
-}
-
-// 获取平台列表
-function getPlatforms(item: any): string[] {
-  const p = item.platforms || item.platform
-  if (Array.isArray(p)) return p
-  if (typeof p === 'string') {
-    try { const parsed = JSON.parse(p); return Array.isArray(parsed) ? parsed : [p] } catch { return [p] }
+    try { const r = JSON.parse(val); return Array.isArray(r) ? r : [] }
+    catch { return [] }
   }
   return []
 }
 
-export default function GeneratedContent() {
-  const [activeTab, setActiveTab] = useState('all')
-  const [selectedAvatarId, setSelectedAvatarId] = useState('all')
-  const [showAvatarDropdown, setShowAvatarDropdown] = useState(false)
-  const [avatars, setAvatars] = useState<Array<{ id: string; name: string }>>([])
+// 内容类型图标和名称
+function getContentTypeInfo(type: string): { icon: any; name: string } {
+  switch (type) {
+    case 'article': return { icon: FileText, name: '图文文章' }
+    case 'video_text': return { icon: Play, name: '文案+视频' }
+    default: return { icon: ImagePlus, name: '文案+配图' }
+  }
+}
+
+export default function GeneratedContentPage() {
   const [contents, setContents] = useState<any[]>([])
+  const [avatars, setAvatars] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('all')
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null)
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
 
   useEffect(() => {
-    loadContents()
+    loadData()
   }, [])
 
-  const loadContents = async () => {
+  const loadData = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      const userId = Taro.getStorageSync('userInfo')?.data?.id
-      if (!userId || userId === 'guest-user-id') return
-
       const res = await Network.request({ url: '/api/user-stats/contents' })
-      console.log('[已生成内容] API响应:', res.data)
-      const data = res.data?.data || {}
+      console.log('[已生成内容] API响应:', res.data?.code, 'avatars:', res.data?.data?.avatars?.length, 'contents:', res.data?.data?.contents?.length)
+      if (res.data?.code === 200) {
+        const rawAvatars = res.data.data.avatars || []
+        const rawContents = res.data.data.contents || []
 
-      const rawAvatars = data.avatars || []
-      const avatarList = rawAvatars.map((a: any) => ({ id: a.id, name: a.name || '未命名分身' }))
-      setAvatars(avatarList)
+        const parsedAvatars = rawAvatars.map((a: any) => ({
+          id: a.id,
+          name: a.name || '未命名',
+          avatarUrl: a.avatar_url || a.avatarUrl || '',
+        }))
 
-      const rawContents = data.contents || []
-      const parsed = rawContents.map((c: any) => ({
-        ...c,
-        images: safeParseJSON(c.images, []),
-        platforms: getPlatforms(c),
-        contentType: getContentType(c),
-        coverImage: getCoverImage(c),
-        videoUrl: c.videoUrl || c.video_url || '',
-      }))
-      console.log('[已生成内容] 解析后:', parsed.length, '条')
-      setContents(parsed)
+        const parsedContents = rawContents.map((c: any) => ({
+          ...c,
+          images: safeParseJSON(c.images),
+          platforms: safeParseJSON(c.platforms),
+          tags: safeParseJSON(c.tags),
+          platform: c.platform || (safeParseJSON(c.platforms)[0]) || '',
+          contentType: c.content_type || c.contentType || 'image_text',
+        }))
+
+        setAvatars(parsedAvatars)
+        setContents(parsedContents)
+        console.log('[已生成内容] 解析后: avatars=', parsedAvatars.length, 'contents=', parsedContents.length)
+      }
     } catch (err) {
       console.error('[已生成内容] 加载失败:', err)
     } finally {
@@ -125,129 +107,77 @@ export default function GeneratedContent() {
     }
   }
 
-  // 筛选
-  const filtered = contents.filter((item) => {
-    if (activeTab !== 'all') {
-      if (activeTab === 'completed' && item.status !== 'completed' && item.status !== 'pending') return false
-      if (activeTab === 'published' && item.status !== 'published') return false
-      if (activeTab === 'pending_review' && item.status !== 'pending_review') return false
-      if (activeTab === 'accepted' && item.status !== 'accepted') return false
-      if (activeTab === 'failed' && item.status !== 'failed') return false
-    }
-    if (selectedAvatarId !== 'all' && item.avatarId !== selectedAvatarId && item.avatar_id !== selectedAvatarId) return false
-    return true
+  // 筛选（后端返回字段为 camelCase）
+  const filteredContents = contents.filter(c => {
+    const statusMatch = activeTab === 'all' || c.status === activeTab
+    const avatarMatch = !selectedAvatarId || c.avatarId === selectedAvatarId
+    return statusMatch && avatarMatch
   })
 
-  const selectedAvatarName = selectedAvatarId === 'all' ? '全部分身' : avatars.find(a => a.id === selectedAvatarId)?.name || '全部分身'
-
-  // 点击卡片跳转详情
-  const handleCardClick = (item: any) => {
-    const orderId = item.orderId || item.order_id
-    if (orderId) {
-      Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderId}` })
-    }
+  // 统计
+  const stats = {
+    total: contents.length,
+    pending: contents.filter(c => c.status === 'completed').length,
+    published: contents.filter(c => c.status === 'published').length,
+    reviewing: contents.filter(c => c.status === 'reviewing').length,
+    completed: contents.filter(c => ['settled', 'done'].includes(c.status)).length,
   }
 
-  const renderContentTypeIcon = (type: string) => {
-    if (type === 'article') return <FileText size={14} color="#8B5CF6" />
-    if (type === 'video_text') return <Play size={14} color="#8B5CF6" />
-    return <ImagePlus size={14} color="#8B5CF6" />
-  }
+  const getStatusInfo = (status: string) => CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
+  const getPlatformInfo = (key: string) => PLATFORM_MAP[key] || { name: key, color: '#64748B' }
 
-  const renderContentCard = (item: any, index: number) => {
-    const status = STATUS_MAP[item.status] || STATUS_MAP.pending
-    const contentType = CONTENT_TYPE_MAP[item.contentType] || CONTENT_TYPE_MAP.image_text
-    const platformNames = item.platforms.map((p: string) => PLATFORM_MAP[p] || p)
-    const avatarName = item.avatarName || item.avatar_name || ''
-    const coverUrl = item.coverImage
-    const isArticle = item.contentType === 'article'
-    const isVideo = item.contentType === 'video_text'
-    const imageCount = Array.isArray(item.images) ? item.images.length : 0
-    const contentText = item.content || ''
-    const contentPreview = contentText.length > 80 ? contentText.substring(0, 80) + '...' : contentText
-    const createdTime = item.createdAt || item.created_at || ''
-
-    return (
-      <View key={item.id || index} className="content-card" onClick={() => handleCardClick(item)}>
-        {/* 状态标签 + 类型标签 */}
-        <View className="card-header-row">
-          <View className="status-tag" style={{ color: status.color, backgroundColor: status.bg }}>
-            {status.label}
-          </View>
-          <View className="type-tag">
-            {renderContentTypeIcon(item.contentType)}
-            <Text className="type-tag-text">{contentType.label}</Text>
-          </View>
-        </View>
-
-        {/* 封面 + 信息 */}
-        <View className="card-body">
-          {/* 左侧封面 */}
-          {coverUrl ? (
-            <View className="card-cover">
-              <Image src={coverUrl} mode="aspectFill" className="cover-image" />
-              {isVideo && (
-                <View className="video-play-icon">
-                  <Play size={20} color="#fff" />
-                </View>
-              )}
-              {!isArticle && !isVideo && imageCount > 1 && (
-                <View className="image-count-badge">
-                  <Text className="image-count-text">{imageCount}张</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View className="card-cover-placeholder">
-              {isArticle ? <FileText size={24} color="#8B5CF6" /> :
-               isVideo ? <Play size={24} color="#8B5CF6" /> :
-               <ImagePlus size={24} color="#8B5CF6" />}
-            </View>
-          )}
-
-          {/* 右侧信息 */}
-          <View className="card-info">
-            <Text className="card-title">{item.orderTitle || item.title || '未命名内容'}</Text>
-            <Text className="card-preview">{contentPreview}</Text>
-            <View className="card-meta">
-              {platformNames.length > 0 && (
-                <View className="platform-tag">
-                  <Text className="platform-text">{platformNames[0]}</Text>
-                </View>
-              )}
-              {avatarName && (
-                <Text className="avatar-label">{avatarName}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* 底部时间 + 操作提示 */}
-        <View className="card-footer">
-          <Text className="card-time">{createdTime ? new Date(createdTime).toLocaleDateString('zh-CN') : ''}</Text>
-          <Text className="card-action-hint">查看详情 ›</Text>
-        </View>
-      </View>
-    )
-  }
+  // 选中分身名
+  const selectedAvatarName = selectedAvatarId
+    ? avatars.find(a => a.id === selectedAvatarId)?.name || '未知分身'
+    : '全部分身'
 
   return (
-    <View className="page-container">
-      {/* 顶部渐变头部 */}
+    <View className="generated-content-page">
+      {/* 顶部蓝色背景 */}
       <View className="page-header">
-        <View className="header-nav">
-          <View onClick={() => Taro.navigateBack()} className="back-btn">
-            <ChevronLeft size={24} color="#fff" />
-          </View>
-          <Text className="header-title">已生成内容</Text>
-          <View style={{ width: '32px' }} />
+        <View className="header-decoration">
+          <View className="decoration-circle circle-1" />
+          <View className="decoration-circle circle-2" />
         </View>
-        <Text className="header-subtitle">共 {filtered.length} 条内容</Text>
+
+        <View className="header-title-row">
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="header-title-area">
+            <Text className="header-title">已生成内容</Text>
+            <Text className="header-subtitle">AI 智能创作 · 一键发布</Text>
+          </View>
+        </View>
+
+        {/* 统计数据 */}
+        <View className="stats-row">
+          <View className="stat-item">
+            <Text className="stat-value">{stats.total}</Text>
+            <Text className="stat-label">总内容</Text>
+          </View>
+          <View className="stat-item">
+            <Text className="stat-value" style={{ color: '#F59E0B' }}>{stats.pending}</Text>
+            <Text className="stat-label">待发布</Text>
+          </View>
+          <View className="stat-item">
+            <Text className="stat-value" style={{ color: '#3B82F6' }}>{stats.published}</Text>
+            <Text className="stat-label">待反馈</Text>
+          </View>
+          <View className="stat-item">
+            <Text className="stat-value" style={{ color: '#8B5CF6' }}>{stats.reviewing}</Text>
+            <Text className="stat-label">待验收</Text>
+          </View>
+          <View className="stat-item">
+            <Text className="stat-value" style={{ color: '#10B981' }}>{stats.completed}</Text>
+            <Text className="stat-label">已完成</Text>
+          </View>
+        </View>
       </View>
 
-      {/* 状态筛选 Tab */}
-      <View className="tab-bar">
-        <ScrollView scrollX className="tab-scroll">
+      {/* 状态 Tab 筛选 */}
+      <View className="tab-filter">
+        <ScrollView className="tab-scroll" scrollX>
           {STATUS_TABS.map(tab => (
             <View
               key={tab.key}
@@ -260,49 +190,154 @@ export default function GeneratedContent() {
         </ScrollView>
       </View>
 
-      {/* 分身筛选下拉 */}
-      <View className="avatar-filter">
-        <View className="avatar-dropdown-trigger" onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}>
-          <Text className="avatar-filter-text">{selectedAvatarName}</Text>
-          <ChevronDown size={16} color="#64748B" className={showAvatarDropdown ? 'dropdown-icon-open' : ''} />
-        </View>
-        {showAvatarDropdown && (
-          <View className="avatar-dropdown-menu">
-            <View
-              className={`avatar-dropdown-item ${selectedAvatarId === 'all' ? 'selected' : ''}`}
-              onClick={() => { setSelectedAvatarId('all'); setShowAvatarDropdown(false) }}
-            >
-              <Text className="avatar-dropdown-text">全部分身</Text>
+      {/* 分身筛选（下拉） */}
+      {avatars.length > 0 && (
+        <View className="avatar-filter">
+          <View
+            className="avatar-selector"
+            onClick={() => setAvatarDropdownOpen(!avatarDropdownOpen)}
+          >
+            <Text className="avatar-selector-text">{selectedAvatarName}</Text>
+            <View className="avatar-selector-arrow" style={{ transform: avatarDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <Text className="arrow-icon">▼</Text>
             </View>
-            {avatars.map(a => (
-              <View
-                key={a.id}
-                className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'selected' : ''}`}
-                onClick={() => { setSelectedAvatarId(a.id); setShowAvatarDropdown(false) }}
-              >
-                <Text className="avatar-dropdown-text">{a.name}</Text>
-              </View>
-            ))}
           </View>
-        )}
-      </View>
+          {avatarDropdownOpen && (
+            <View className="avatar-dropdown">
+              <View
+                className={`avatar-dropdown-item ${!selectedAvatarId ? 'active' : ''}`}
+                onClick={() => { setSelectedAvatarId(null); setAvatarDropdownOpen(false) }}
+              >
+                <Text className="avatar-dropdown-text">全部分身</Text>
+              </View>
+              {avatars.map(a => (
+                <View
+                  key={a.id}
+                  className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'active' : ''}`}
+                  onClick={() => { setSelectedAvatarId(a.id); setAvatarDropdownOpen(false) }}
+                >
+                  <View className="dropdown-avatar-dot" style={{ backgroundColor: '#6366F1' }}>
+                    <Text style={{ fontSize: 10, color: '#fff' }}>{a.name.charAt(0)}</Text>
+                  </View>
+                  <Text className="avatar-dropdown-text">{a.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* 内容列表 */}
-      <ScrollView scrollY className="content-list">
+      <ScrollView className="content-list" scrollY>
         {loading ? (
-          <View className="empty-state">
-            <RefreshCw size={32} color="#8B5CF6" className="spin-icon" />
-            <Text className="empty-text">加载中...</Text>
+          <View className="loading-state">
+            <View className="loading-spinner" />
+            <Text className="loading-text">加载中...</Text>
           </View>
-        ) : filtered.length === 0 ? (
+        ) : filteredContents.length === 0 ? (
           <View className="empty-state">
-            <ImagePlus size={48} color="#CBD5E1" />
-            <Text className="empty-text">暂无内容</Text>
-            <Text className="empty-hint">生成的内容将在这里展示</Text>
+            <FileText size={64} color="#CBD5E1" />
+            <Text className="empty-title">暂无内容</Text>
+            <Text className="empty-desc">{activeTab === 'all' ? '还没有生成任何内容' : '该状态下暂无内容'}</Text>
           </View>
         ) : (
-          filtered.map((item, i) => renderContentCard(item, i))
+          filteredContents.map(content => {
+            const statusInfo = getStatusInfo(content.status)
+            const typeInfo = getContentTypeInfo(content.contentType)
+            const TypeIcon = typeInfo.icon
+            const platformKey = content.platform || (content.platforms?.[0]) || ''
+            const platformInfo = getPlatformInfo(platformKey)
+            const contentText = content.content || ''
+            const images = content.images || []
+            const videoUrl = content.video_url || content.videoUrl || ''
+            const avatarName = content.avatar_name || content.avatarName || '我的分身'
+
+            return (
+              <View key={content.id} className="content-card">
+                {/* 卡片头部：分身+平台+状态 */}
+                <View className="card-header">
+                  <View className="avatar-tag">
+                    <View className="avatar-dot">
+                      <Text style={{ fontSize: 10, color: '#fff' }}>{avatarName.charAt(0)}</Text>
+                    </View>
+                    <Text className="avatar-name">{avatarName}</Text>
+                  </View>
+                  <View className="header-right">
+                    {platformKey && (
+                      <View className="platform-badge" style={{ background: `${platformInfo.color}15`, borderColor: `${platformInfo.color}30` }}>
+                        <Text style={{ fontSize: 11, color: platformInfo.color }}>{platformInfo.name}</Text>
+                      </View>
+                    )}
+                    <View className="status-badge" style={{ backgroundColor: statusInfo.bgColor }}>
+                      <Text style={{ fontSize: 11, color: statusInfo.color }}>{statusInfo.label}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 内容类型标签 */}
+                <View className="type-tag">
+                  <TypeIcon size={12} color="#6366F1" />
+                  <Text style={{ fontSize: 11, color: '#6366F1', marginLeft: 4 }}>{typeInfo.name}</Text>
+                </View>
+
+                {/* 内容预览 */}
+                <Text className="content-preview">
+                  {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
+                </Text>
+
+                {/* 图片预览 */}
+                {images.length > 0 && (
+                  <View className="image-preview-row">
+                    {images.slice(0, 3).map((img: string, idx: number) => (
+                      <TaroImage
+                        key={idx}
+                        src={img}
+                        className="preview-image"
+                        mode="aspectFill"
+                        onClick={() => Taro.previewImage({ urls: images, current: img })}
+                      />
+                    ))}
+                    {images.length > 3 && (
+                      <View className="more-images">
+                        <Text style={{ fontSize: 12, color: '#64748B' }}>+{images.length - 3}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* 视频标识 */}
+                {videoUrl && (
+                  <View className="video-preview">
+                    <Play size={24} color="#fff" />
+                    <Text style={{ fontSize: 12, color: '#fff', marginLeft: 8 }}>视频内容</Text>
+                  </View>
+                )}
+
+                {/* 底部信息 */}
+                <View className="card-footer">
+                  <View className="footer-left">
+                    <Clock size={12} color="#94A3B8" />
+                    <Text className="footer-time">{content.createdAt ? new Date(content.createdAt).toLocaleDateString() : ''}</Text>
+                  </View>
+                  <View className="footer-actions">
+                    {(content.status === 'completed') && (
+                      <View className="action-btn publish" onClick={() => Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${content.id}` })}>
+                        <Text style={{ fontSize: 12, color: '#6366F1' }}>发布</Text>
+                      </View>
+                    )}
+                    <View className="action-btn preview" onClick={() => Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })}>
+                      <Eye size={12} color="#64748B" />
+                      <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 2 }}>查看</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )
+          })
         )}
+
+        {/* 底部占位 */}
+        <View className="bottom-placeholder" />
       </ScrollView>
     </View>
   )
