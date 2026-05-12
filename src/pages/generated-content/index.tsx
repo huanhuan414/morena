@@ -165,7 +165,7 @@ export default function GeneratedContentPage() {
 
   // 反馈
   const handleFeedback = (content: any) => {
-    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+    Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
   }
 
   // 获取卡片底部按钮配置
@@ -228,6 +228,7 @@ export default function GeneratedContentPage() {
             <Text className="header-title">已生成内容</Text>
             <Text className="header-subtitle">AI 智能创作 · 一键发布</Text>
           </View>
+          <View style={{ width: '64rpx' }} />
         </View>
       </View>
 
