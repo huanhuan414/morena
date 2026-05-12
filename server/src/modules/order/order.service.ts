@@ -46,6 +46,102 @@ export class OrderService {
   }
 
   // 订单状态流转映射
+  /**
+   * 根据接单方（分身）整体状态同步订单状态
+   * 核心同步逻辑：
+   * - 所有内容都 completed → 订单 submitted（等待发单方确认）
+   * - 所有内容都 published/feedback_submitted → 订单 awaiting_acceptance
+   * - 所有内容都 settled/done 且所有 dispatch completed → 订单 completed
+   * - 存在任何 processing/generating_images → 订单 in_progress
+   * - 存在 accepted dispatch 但无内容记录 → 订单 in_progress
+   */
+  async syncOrderStatusByContent(orderId: string): Promise<void> {
+    const db = getMySQLClient()
+    try {
+      // 获取该订单所有 dispatch 记录
+      const dispatches = await db.query(
+        'SELECT id, status FROM order_dispatch_requests WHERE order_id = ?',
+        [orderId]
+      )
+      // 获取该订单所有内容生成记录
+      const contents = await db.query(
+        'SELECT id, status FROM content_generation_requests WHERE order_id = ?',
+        [orderId]
+      )
+
+      const allDispatchStatuses = (dispatches || []).map((d: any) => d.status)
+      const allContentStatuses = (contents || []).map((c: any) => c.status)
+      const totalDispatches = allDispatchStatuses.length
+      const totalContents = allContentStatuses.length
+
+      if (totalDispatches === 0) return // 没有分派记录，不做处理
+
+      // 判断各状态集合
+      const hasPending = allDispatchStatuses.includes('pending')
+      const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
+      const allDispatchCompleted = allDispatchStatuses.every(s => ['completed', 'settled', 'done'].includes(s))
+
+      const hasProcessing = allContentStatuses.some(s => ['processing', 'generating_images', 'pending'].includes(s))
+      const hasCompleted = allContentStatuses.some(s => s === 'completed')
+      const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
+      const allContentPublished = totalContents > 0 && allContentStatuses.every(s => ['published', 'feedback_submitted', 'settled', 'done', 'completed'].includes(s))
+      const allContentFeedbackSubmitted = totalContents > 0 && allContentStatuses.every(s => ['feedback_submitted', 'settled', 'done'].includes(s))
+      const allContentSettled = totalContents > 0 && allContentStatuses.every(s => ['settled', 'done'].includes(s))
+
+      // 获取当前订单状态
+      const currentOrder = await this.getOrderById(orderId)
+      if (!currentOrder) return
+      const currentStatus = currentOrder.status
+
+      let newStatus: string | null = null
+
+      // 优先级从高到低判断
+      if (allContentSettled && allDispatchCompleted) {
+        // 所有内容已结算 + 所有 dispatch 完成 → 订单完成
+        newStatus = 'completed'
+      } else if (allContentFeedbackSubmitted) {
+        // 所有内容已提交反馈 → 订单待验收
+        newStatus = 'awaiting_acceptance'
+      } else if (allContentPublished) {
+        // 所有内容已发布 → 订单待验收
+        newStatus = 'awaiting_acceptance'
+      } else if (allContentCompleted) {
+        // 所有内容生成完成 → 订单已提交
+        newStatus = 'submitted'
+      } else if (hasProcessing) {
+        // 有内容正在生成 → 订单进行中
+        newStatus = 'in_progress'
+      } else if (hasAccepted && !hasPending) {
+        // 有分身已接单且没有待接的 → 订单进行中
+        newStatus = 'in_progress'
+      } else if (hasAccepted && hasPending) {
+        // 部分接单 → 订单进行中（等待更多分身）
+        newStatus = 'pending_acceptance'
+      }
+
+      if (newStatus && newStatus !== currentStatus) {
+        // 跳过状态转换校验，直接更新
+        const payload: Record<string, any> = {
+          status: newStatus,
+          updated_at: new Date()
+        }
+        if (newStatus === 'completed') {
+          payload.completed_at = new Date()
+        }
+        const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
+        const params = [...Object.values(payload), orderId]
+        await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
+        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}`)
+
+        if (newStatus === 'completed') {
+          await this.triggerSettlement(orderId)
+        }
+      }
+    } catch (error: any) {
+      console.error(`[OrderService] 同步订单状态失败: orderId=${orderId}, error=${error.message}`)
+    }
+  }
+
   private statusTransitions: Record<string, string[]> = {
     'pending_payment': ['open', 'cancelled'],
     'open': ['pending_dispatch', 'cancelled'],

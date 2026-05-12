@@ -3,6 +3,7 @@ import { Injectable, Inject, Logger, forwardRef } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
+import { OrderService } from '../order/order.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
 
 @Injectable()
@@ -13,7 +14,8 @@ export class OrderDispatchService {
   constructor(
     @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService,
     @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService,
-    @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenerationService: ContentGenerationService
+    @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenerationService: ContentGenerationService,
+    @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {

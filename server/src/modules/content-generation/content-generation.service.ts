@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Config, LLMClient, ImageGenerationClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
+import { OrderService } from '../order/order.service'
 
 @Injectable()
 export class ContentGenerationService {
@@ -169,6 +170,14 @@ export class ContentGenerationService {
       videos,
       platforms: [platform]
     })
+
+    // 5. 同步订单状态
+    try {
+      const orderService = new OrderService()
+      await orderService.syncOrderStatusByContent(input.orderId)
+    } catch (e: any) {
+      this.logger.warn(`同步订单状态失败: ${e.message}`)
+    }
   }
 
   /**
