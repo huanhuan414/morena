@@ -6,6 +6,21 @@ import { Network } from '@/network'
 import './index.css'
 
 // 内容状态映射
+// 后端状态 → 前端 tab key 映射
+const BACKEND_STATUS_TO_TAB: Record<string, string> = {
+  pending: 'completed',
+  processing: 'completed',
+  generating_images: 'completed',
+  completed: 'completed',          // 后端 completed = 生成完成 = 前端"待发布"
+  published: 'published',          // 后端 published = 前端"待反馈"
+  feedback_submitted: 'reviewing', // 后端 feedback_submitted = 前端"待验收"
+  reviewing: 'reviewing',
+  awaiting_acceptance: 'settled',
+  settled: 'settled',
+  done: 'settled',
+  failed: 'failed',
+}
+
 const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
   completed:    { label: '待发布', color: '#F59E0B', bgColor: '#FEF3C7' },
   published:    { label: '待反馈', color: '#3B82F6', bgColor: '#DBEAFE' },
@@ -14,6 +29,8 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   done:         { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
   processing:   { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
   pending:      { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
+  feedback_submitted: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
+  generating_images:  { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
   failed:       { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
 }
 
@@ -109,12 +126,16 @@ export default function GeneratedContentPage() {
 
   // 筛选
   const filteredContents = contents.filter(c => {
-    const statusMatch = activeTab === 'all' || c.status === activeTab
+    const tabKey = BACKEND_STATUS_TO_TAB[c.status] || c.status
+    const statusMatch = activeTab === 'all' || tabKey === activeTab
     const avatarMatch = !selectedAvatarId || c.avatarId === selectedAvatarId
     return statusMatch && avatarMatch
   })
 
-  const getStatusInfo = (status: string) => CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
+  const getStatusInfo = (status: string) => {
+    const tabKey = BACKEND_STATUS_TO_TAB[status] || status
+    return CONTENT_STATUS_MAP[tabKey] || CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
+  }
   const getPlatformInfo = (key: string) => PLATFORM_MAP[key] || { name: key, color: '#64748B' }
 
   const selectedAvatarName = selectedAvatarId
