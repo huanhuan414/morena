@@ -10,6 +10,7 @@
   background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
   padding: 80rpx 32rpx 48rpx;
   position: relative;
+  border-radius: 0 0 40rpx 40rpx;
 }
 
 .header-title {

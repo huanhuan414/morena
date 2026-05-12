@@ -236,15 +236,33 @@ export class UserStatsService {
       avatarList = sharedMemoryAvatars.get(userId) || []
     }
     
-    // 关联分身信息（queryWhere 返回的字段名已转为 camelCase）
+    // 关联分身信息 + 补全字段（queryWhere 返回的字段名已转为 camelCase）
     const contentsWithAvatar = contents.map((content: any) => {
       const aid = content.avatarId || content.avatar_id
       const avatar = avatarList.find((a: any) => a.id === aid)
+      // platforms: 优先取 platforms（数组），fallback 到 platform（字符串）
+      let platforms = content.platforms || content.platform
+      if (typeof platforms === 'string') {
+        try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
+      }
+      if (!Array.isArray(platforms)) {
+        platforms = platforms ? [String(platforms)] : []
+      }
+      // images: 解析 JSON 字符串
+      let images = content.images
+      if (typeof images === 'string') {
+        try { images = JSON.parse(images) } catch { images = [] }
+      }
+      if (!Array.isArray(images)) images = images ? [String(images)] : []
       return {
         ...content,
         avatar_name: avatar?.name || avatar?.userName || '未知分身',
         avatar_url: avatar?.avatarUrl || avatar?.avatar_url || '',
-        avatarId: aid
+        avatarId: aid,
+        content_type: content.contentType || content.content_type || 'image_text',
+        platforms,
+        images,
+        status: content.status
       }
     })
     

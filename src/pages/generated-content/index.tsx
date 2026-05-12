@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
-import { ChevronDown, RefreshCw, Play, FileText, ImagePlus } from 'lucide-react-taro'
+import { ChevronDown, ChevronLeft, RefreshCw, Play, FileText, ImagePlus } from 'lucide-react-taro'
 import './index.css'
 
 // 内容状态映射 - 与订单状态对应
@@ -235,7 +235,13 @@ export default function GeneratedContent() {
     <View className="page-container">
       {/* 顶部渐变头部 */}
       <View className="page-header">
-        <Text className="header-title">已生成内容</Text>
+        <View className="header-nav">
+          <View onClick={() => Taro.navigateBack()} className="back-btn">
+            <ChevronLeft size={24} color="#fff" />
+          </View>
+          <Text className="header-title">已生成内容</Text>
+          <View style={{ width: '32px' }} />
+        </View>
         <Text className="header-subtitle">共 {filtered.length} 条内容</Text>
       </View>
 
