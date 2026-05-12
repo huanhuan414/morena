@@ -3,9 +3,16 @@ import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, ImagePlus, Eye, CircleCheck, X, Send, Link } from 'lucide-react-taro'
+import { ArrowLeft, ImagePlus, Eye, X, Send, Link } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
+import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
+
+// 文章型平台判断（这些平台内容为 Markdown 格式，需要解析渲染）
+const ARTICLE_PLATFORMS = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu', 'wechat_official']
+function isArticlePlatform(platform: string): boolean {
+  return ARTICLE_PLATFORMS.includes(platform)
+}
 
 // 内容类型配置
 const CONTENT_TYPE_CONFIG: Record<string, { name: string; color: string }> = {
@@ -281,18 +288,25 @@ export default function OrderPublishFeedback() {
         )}
 
         {/* 内容文本 */}
-        {generatedContent.content && (
-          <View className="preview-text-box">
-            <Text className="preview-text">
-              {generatedContent.content.length > 200
-                ? generatedContent.content.substring(0, 200) + '...'
-                : generatedContent.content}
-            </Text>
-            {generatedContent.content.length > 200 && (
-              <Text className="preview-text-more">展开全文</Text>
-            )}
-          </View>
-        )}
+        {generatedContent.content && (() => {
+          const shouldRenderMarkdown = contentType === 'article' || isArticlePlatform(currentPlatform)
+          return shouldRenderMarkdown ? (
+            <View className="preview-markdown-box">
+              <MarkdownRenderer content={generatedContent.content} />
+            </View>
+          ) : (
+            <View className="preview-text-box">
+              <Text className="preview-text">
+                {generatedContent.content.length > 200
+                  ? generatedContent.content.substring(0, 200) + '...'
+                  : generatedContent.content}
+              </Text>
+              {generatedContent.content.length > 200 && (
+                <Text className="preview-text-more">展开全文</Text>
+              )}
+            </View>
+          )
+        })()}
 
         {/* 图片预览 */}
         {generatedContent.images && generatedContent.images.length > 0 && (
@@ -331,7 +345,6 @@ export default function OrderPublishFeedback() {
     const platformName = getPlatformLabel(platform)
     const pc = getPlatformColor(platform)
     const fb = feedback[platform] || { images: [], link: '' }
-    const isSuccess = result.status === 'success'
 
     return (
       <View key={index} className="platform-card">
@@ -340,16 +353,6 @@ export default function OrderPublishFeedback() {
           <View className="platform-card-left">
             <View className="platform-dot" style={{ background: pc.text }} />
             <Text className="platform-card-name">{platformName}</Text>
-          </View>
-          <View className={`platform-status ${isSuccess ? 'status-success' : 'status-pending'}`}>
-            {isSuccess ? (
-              <>
-                <CircleCheck size={12} color="#10B981" />
-                <Text className="platform-status-text" style={{ color: '#10B981' }}>已发布</Text>
-              </>
-            ) : (
-              <Text className="platform-status-text" style={{ color: '#D97706' }}>待发布</Text>
-            )}
           </View>
         </View>
 
