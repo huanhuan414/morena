@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
@@ -8,7 +8,7 @@ import {
   Zap, ChevronRight, CircleX, CircleCheck, Sparkles,
   Image as ImageIcon, Video, Target, Calendar
 } from 'lucide-react-taro'
-import { canonicalizePlatforms, getPlatformMeta, getPlatformLabel } from '@/constants/publish-platform'
+import { canonicalizePlatforms, getPlatformMeta, getPlatformLabel, PLATFORM_UI_ORDER } from '@/constants/publish-platform'
 import './index.css'
 
 // 待接订单数据接口（与后端 API 对齐）
@@ -166,8 +166,8 @@ export default function PendingOrderListPage() {
     return true
   })
 
-  // 提取所有出现的平台
-  const allPlatforms = Array.from(new Set(orders.flatMap(o => o.platforms)))
+  // 提取所有出现的平台，按发单页面的平台顺序排列
+  const allPlatforms = PLATFORM_UI_ORDER.filter(p => new Set(orders.flatMap(o => o.platforms)).has(p))
 
   // 获取内容类型信息
   const getContentTypeInfo = (type: string) => {
@@ -223,7 +223,7 @@ export default function PendingOrderListPage() {
       </View>
 
       {/* 平台筛选 */}
-      {allPlatforms.length > 1 && (
+      {allPlatforms.length > 0 && (
         <View className="po-filter">
           <ScrollView className="po-filter-scroll" scrollX>
             <View
@@ -275,9 +275,13 @@ export default function PendingOrderListPage() {
                 {/* 卡片头部：分身 + 平台 + 类型 */}
                 <View className="po-card-top">
                   <View className="po-avatar-chip">
-                    <View className="po-avatar-dot" style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
-                      <Text className="po-avatar-letter">{(order.avatarName || '分').charAt(0)}</Text>
-                    </View>
+                    {order.avatarUrl ? (
+                      <Image src={order.avatarUrl} className="po-avatar-img" mode="aspectFill" />
+                    ) : (
+                      <View className="po-avatar-dot" style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
+                        <Text className="po-avatar-letter">{(order.avatarName || '分').charAt(0)}</Text>
+                      </View>
+                    )}
                     <Text className="po-avatar-label">{order.avatarName}</Text>
                   </View>
                   <View className="po-card-badges">

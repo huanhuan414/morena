@@ -261,6 +261,12 @@
   justify-content: center;
 }
 
+.po-avatar-img {
+  width: 40rpx; height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255,255,255,0.5);
+}
+
 .po-avatar-letter {
   font-size: 22rpx;
   font-weight: 600;
