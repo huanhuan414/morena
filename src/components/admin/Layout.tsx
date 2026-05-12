@@ -14,15 +14,15 @@ interface LayoutProps {
 }
 
 const menuItems = [
-  { key: 'dashboard', label: '系统概览', icon: LayoutDashboard, path: '/pages/admin/dashboard/index' },
-  { key: 'users', label: '用户管理', icon: Users, path: '/pages/admin/users/index' },
-  { key: 'avatars', label: '分身管理', icon: Bot, path: '/pages/admin/avatars/index' },
-  { key: 'skills', label: '技能管理', icon: Wrench, path: '/pages/admin/skills/index' },
-  { key: 'orders', label: '订单管理', icon: ShoppingCart, path: '/pages/admin/orders/index' },
-  { key: 'content', label: '内容管理', icon: FileText, path: '/pages/admin/content/index' },
-  { key: 'finance', label: '财务管理', icon: Wallet, path: '/pages/admin/finance/index' },
-  { key: 'referral', label: '推广管理', icon: Share2, path: '/pages/admin/referral/index' },
-  { key: 'settings', label: '系统设置', icon: Settings, path: '/pages/admin/settings/index' },
+  { key: 'dashboard', label: '系统概览', icon: LayoutDashboard, path: '/package-admin/pages/dashboard/index' },
+  { key: 'users', label: '用户管理', icon: Users, path: '/package-admin/pages/users/index' },
+  { key: 'avatars', label: '分身管理', icon: Bot, path: '/package-admin/pages/avatars/index' },
+  { key: 'skills', label: '技能管理', icon: Wrench, path: '/package-admin/pages/skills/index' },
+  { key: 'orders', label: '订单管理', icon: ShoppingCart, path: '/package-admin/pages/orders/index' },
+  { key: 'content', label: '内容管理', icon: FileText, path: '/package-admin/pages/content/index' },
+  { key: 'finance', label: '财务管理', icon: Wallet, path: '/package-admin/pages/finance/index' },
+  { key: 'referral', label: '推广管理', icon: Share2, path: '/package-admin/pages/referral/index' },
+  { key: 'settings', label: '系统设置', icon: Settings, path: '/package-admin/pages/settings/index' },
 ]
 
 export default function AdminLayout({ children, title = '管理后台' }: LayoutProps) {
@@ -36,7 +36,7 @@ export default function AdminLayout({ children, title = '管理后台' }: Layout
     const info = Taro.getStorageSync('admin_info')
     
     if (!token) {
-      Taro.redirectTo({ url: '/pages/admin/login/index' })
+      Taro.redirectTo({ url: '/package-admin/pages/login/index' })
       return
     }
     
@@ -71,7 +71,7 @@ export default function AdminLayout({ children, title = '管理后台' }: Layout
         if (res.confirm) {
           Taro.removeStorageSync('admin_token')
           Taro.removeStorageSync('admin_info')
-          Taro.redirectTo({ url: '/pages/admin/login/index' })
+          Taro.redirectTo({ url: '/package-admin/pages/login/index' })
         }
       }
     })

@@ -68,14 +68,14 @@ interface PendingRequest {
 
 // 菜单项配置
 const menuItems = [
-  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/pages/avatar/avatar-manage/index' },
-  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/pages/earnings-wall/index' },
-  { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/pages/skills-square/index' },
-  { title: '我要推广', icon: Briefcase, desc: '一键发布，坐等收益', type: 'info', path: '/pages/order/order-list/index' },
-  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/pages/earning-center/index' },
-  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/pages/subscription/index' },
-  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/pages/profile/help/index' },
-  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/pages/profile/about/index' }
+  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
+  { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index' },
+  { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index' },
+  { title: '我要推广', icon: Briefcase, desc: '一键发布，坐等收益', type: 'info', path: '/package-order/pages/order-list/index' },
+  { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index' },
+  { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index' },
+  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
+  { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index' }
 ]
 
 const typeColorMap: Record<string, string> = {
@@ -165,7 +165,7 @@ export default function ProfilePage() {
   const handleViewRequest = (request: PendingRequest) => {
     console.log('handleViewRequest called, request.id:', request.id)
     navigateTo({
-      url: `/pages/pending-order/index?requestId=${request.id}`
+      url: `/package-order/pages/pending-order/index?requestId=${request.id}`
     }).then(() => {
       console.log('navigateTo success')
     }).catch((err) => {
@@ -247,7 +247,7 @@ export default function ProfilePage() {
 
           {/* 操作按钮 */}
           <View className="card-actions">
-            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/notifications/index' })}>
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
               <Bell size={28} color="#666" />
               {unreadCount > 0 && (
                 <View className="action-badge">
@@ -255,7 +255,7 @@ export default function ProfilePage() {
                 </View>
               )}
             </View>
-            <View className="action-btn-light" onClick={() => navigateTo({ url: '/pages/profile/settings/index' })}>
+            <View className="action-btn-light" onClick={() => navigateTo({ url: '/package-profile/pages/settings/index' })}>
               <Settings size={28} color="#666" />
             </View>
           </View>
@@ -263,19 +263,19 @@ export default function ProfilePage() {
 
         {/* 统计数据 */}
         <View className="header-stats">
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-manage/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-manage/index' })}>
             <Text className="h-stat-value">{stats.avatarCount}</Text>
             <Text className="h-stat-label">AI分身</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/avatar/avatar-manage/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-manage/index' })}>
             <Text className="h-stat-value">{stats.taskCount}</Text>
             <Text className="h-stat-label">商单</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/social/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/social/index' })}>
             <Text className="h-stat-value">{stats.postCount}</Text>
             <Text className="h-stat-label">动态</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/pages/friendship-management/index' })}>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/friendship-management/index' })}>
             <Text className="h-stat-value">{stats.friendCount}</Text>
             <Text className="h-stat-label">好友</Text>
           </View>

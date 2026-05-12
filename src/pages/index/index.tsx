@@ -15,9 +15,9 @@ const Index: React.FC = () => {
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
   const [stats, setStats] = useState([
     { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-    { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
-    { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
-    { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+    { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/package-order/pages/pending-order/index' },
+    { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/package-avatar/pages/generated-content/index' },
+    { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/package-profile/pages/earning-center/index' },
   ])
 
   const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
@@ -138,9 +138,9 @@ const Index: React.FC = () => {
         setMindClones(statsData.avatarCount || 0)
         setStats([
           { label: '我的分身', value: String(statsData.avatarCount || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-          { label: '待接订单', value: String(statsData.pendingOrders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/pages/pending-order/index' },
-          { label: '生成内容', value: String(statsData.generatedContents || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/pages/generated-content/index' },
-          { label: '累计收益', value: String(statsData.totalEarnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/pages/earning-center/index' },
+          { label: '待接订单', value: String(statsData.pendingOrders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/package-order/pages/pending-order/index' },
+          { label: '生成内容', value: String(statsData.generatedContents || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/package-avatar/pages/generated-content/index' },
+          { label: '累计收益', value: String(statsData.totalEarnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/package-profile/pages/earning-center/index' },
         ])
       }
     } catch (err) {
@@ -231,12 +231,12 @@ const Index: React.FC = () => {
 
   // 快捷功能
   const quickActions = [
-    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/pages/avatar/avatar-create/index' },
-    { label: '订单广场', icon: Grid2x2, color: '#F97316', bg: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)', path: '/pages/order/order-square/index' },
-    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/pages/order/order-create/index' },
-    { label: '技能中心', icon: Rocket, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/pages/skills-square/index' },
-    { label: '素材库', icon: Library, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/pages/avatar/avatar-manage/index' },
-    { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/pages/order/order-create/index' },
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index' },
+    { label: '订单广场', icon: Grid2x2, color: '#F97316', bg: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)', path: '/package-order/pages/order-square/index' },
+    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index' },
+    { label: '技能中心', icon: Rocket, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-skill/pages/skills-square/index' },
+    { label: '素材库', icon: Library, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-avatar/pages/avatar-manage/index' },
+    { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-order/pages/order-create/index' },
   ]
 
   // 从API获取实时动态
@@ -298,7 +298,7 @@ const Index: React.FC = () => {
         })
         if (res.data?.code === 200) {
           setShowOrderModal(false)
-          Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${orderModalData.id}` })
+          Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderModalData.id}` })
         } else {
           Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
         }
@@ -398,7 +398,7 @@ const Index: React.FC = () => {
             if (mindClones > 0) {
               enableAllTrust()
             } else {
-              goToPage('/pages/avatar/avatar-create/index')
+              goToPage('/package-avatar/pages/avatar-create/index')
             }
           }}
         >

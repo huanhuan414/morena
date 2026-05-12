@@ -80,7 +80,7 @@ export default function NewUserGuide({ visible, onClose }: NewUserGuideProps) {
         Taro.navigateTo({ url: '/order/order-create/index' })
         break
       case 4:
-        Taro.navigateTo({ url: '/pages/referral-center/index' })
+        Taro.navigateTo({ url: '/package-profile/pages/referral-center/index' })
         break
     }
   }
