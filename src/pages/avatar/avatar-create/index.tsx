@@ -465,7 +465,7 @@ export default function AvatarCreate() {
       if (res.data?.code === 200 || res.data?.code === 201) {
         Taro.showToast({ title: '创建成功', icon: 'success' })
         setTimeout(() => {
-          Taro.navigateBack()
+          Taro.redirectTo({ url: '/pages/avatar/avatar-manage/index?refresh=1' })
         }, 1500)
       } else {
         Taro.showToast({ 

@@ -71,13 +71,13 @@ export default function NewUserGuide({ visible, onClose }: NewUserGuideProps) {
     // 根据步骤跳转到对应页面
     switch (step.id) {
       case 1:
-        Taro.navigateTo({ url: '/avatar/avatar-create/index' })
+        Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })
         break
       case 2:
-        Taro.navigateTo({ url: '/avatar/avatar-settings/index?tab=hosting' })
+        Taro.navigateTo({ url: '/pages/avatar/avatar-settings/index?tab=hosting' })
         break
       case 3:
-        Taro.navigateTo({ url: '/order/order-create/index' })
+        Taro.navigateTo({ url: '/pages/order/order-create/index' })
         break
       case 4:
         Taro.navigateTo({ url: '/pages/referral-center/index' })

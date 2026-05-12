@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Network } from '@/network'
+import { unwrapList, unwrapObject } from '@/utils/api-response'
 
 export interface Notification {
   id: string
@@ -33,9 +34,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       console.log('[useNotifications] 获取通知:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        const list = res.data.data.list || []
+        const list = unwrapList(res.data.data)
+        const info = unwrapObject(res.data.data, { total: 0 })
         setNotifications(list)
-        setUnreadCount(res.data.data.total || list.filter((n: any) => !n.isRead).length)
+        setUnreadCount(info.total || list.filter((n: any) => !n.isRead).length)
         lastFetchTime.current = Date.now()
       }
     } catch (err) {
@@ -52,7 +54,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       console.log('[useNotifications] 未读数量:', res.data)
       
       if (res.data?.code === 200) {
-        const count = res.data.data?.count || 0
+        const count = unwrapObject(res.data?.data, { count: 0 }).count || 0
         setUnreadCount(count)
         
         // 如果有新的未读通知且距离上次获取超过 5 秒，弹窗显示
@@ -61,8 +63,9 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           const notifRes = await Network.request({
             url: '/api/notifications'
           })
-          if (notifRes.data?.data?.list?.length > 0) {
-            const unreadNotifications = notifRes.data.data.list.filter((n: any) => !n.isRead)
+          const latestList = unwrapList(notifRes.data?.data)
+          if (latestList.length > 0) {
+            const unreadNotifications = latestList.filter((n: any) => !n.isRead)
             if (unreadNotifications.length > 0) {
               const latest = unreadNotifications[0]
               setCurrentNotification(latest)

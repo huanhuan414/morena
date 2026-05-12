@@ -59,14 +59,24 @@ export default function AvatarRecommendPage() {
     loadRecommendations()
   })
 
+  const unwrapList = (payload: any): any[] => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.recommendations)) return payload.recommendations
+    if (Array.isArray(payload?.data)) return payload.data
+    return []
+  }
+
   const loadCurrentAvatar = async () => {
     try {
       const res = await Network.request({
         url: '/api/avatar'
       })
       console.log('获取分身列表:', res.data)
-      if (res.data?.data?.length > 0) {
-        setCurrentAvatarId(res.data.data[0].id)
+      const avatarList = unwrapList(res.data?.data)
+      if (avatarList.length > 0) {
+        setCurrentAvatarId(avatarList[0].id)
       }
     } catch (err) {
       console.error('获取分身失败:', err)
@@ -107,8 +117,7 @@ export default function AvatarRecommendPage() {
       console.log('推荐分身响应:', res)
 
       if (res.data?.code === 200) {
-        const data = res.data.data
-        const recommendations = Array.isArray(data) ? data : (data?.recommendations || data?.data || [])
+        const recommendations = unwrapList(res.data?.data)
         console.log('获取到推荐分身数量:', recommendations.length)
         setAvatars(recommendations)
 
@@ -257,7 +266,7 @@ export default function AvatarRecommendPage() {
       if (res.data?.code === 200 || res.data?.code === 0) {
         Taro.showToast({ title: '订单发布成功', icon: 'success' })
         setTimeout(() => {
-          Taro.switchTab({ url: '/pages/order/order-list/index' })
+          Taro.navigateTo({ url: '/pages/order/order-list/index' })
         }, 1500)
       } else {
         Taro.showToast({ title: res.data?.msg || '发布失败', icon: 'none' })

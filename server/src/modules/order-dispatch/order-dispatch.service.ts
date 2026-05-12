@@ -459,12 +459,9 @@ async getExecutionProgress(orderId: string) {
       status: 'accepted',
       updated_at: new Date()
     })
-    
-    // 更新订单状态为 in_progress
-    await db.updateWhere('orders', { id: orderId }, {
-      status: 'in_progress',
-      updated_at: new Date()
-    })
+
+    // 订单状态统一由 OrderService 聚合，避免 dispatch 侧写出第二套事实源
+    await this.orderService.syncOrderStatusByContent(orderId)
     
     // 为订单所有者创建通知（分身接受了订单）
     try {

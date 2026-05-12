@@ -20,6 +20,10 @@ interface Avatar {
   exp: number
   appearance_style?: string
   trust_enabled?: boolean  // 托管状态
+  is_hosted?: boolean
+  hosting_enabled?: boolean
+  isHosted?: boolean
+  trustEnabled?: boolean
   config?: {
     hosting_settings?: {
       auto_post?: boolean
@@ -85,6 +89,24 @@ export default function AvatarManagePage() {
     if (!personality) return '友好助手'
     return PERSONALITY_LABELS[personality.toLowerCase()] || personality
   }
+
+  const resolveHostingEnabled = (avatar: Avatar | Record<string, any>): boolean => {
+    return Boolean(
+      avatar.trust_enabled
+      ?? avatar.is_hosted
+      ?? avatar.hosting_enabled
+      ?? avatar.isHosted
+      ?? avatar.trustEnabled
+    )
+  }
+
+  const unwrapAvatarList = (payload: any): any[] => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    if (Array.isArray(payload?.data)) return payload.data
+    return []
+  }
   
   // 订阅权益状态
   const [canCreateAvatar, setCanCreateAvatar] = useState(true)
@@ -124,8 +146,11 @@ export default function AvatarManagePage() {
       
       // 如果没有用户ID，使用测试用户ID（仅用于开发）
       if (!userId) {
-        console.log('[loadSubscriptionInfo] 未找到用户ID，使用测试ID')
-        userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+        console.log('[loadSubscriptionInfo] 未找到用户ID，跳过订阅信息加载')
+        setUserSubscription(null)
+        setMaxAvatars(1)
+        setCanCreateAvatar(true)
+        return
       }
       
       // 获取订阅信息和分身数量（添加时间戳绕过缓存）
@@ -206,24 +231,12 @@ export default function AvatarManagePage() {
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
-        // 兼容多种响应格式：{ success: true, data: { list: [...] } }
-        const responseData = res.data?.data
-        let avatarList: any[] = []
-        if (responseData?.success && responseData?.data?.list) {
-          // 格式：{ success: true, data: { list: [...] } }
-          avatarList = responseData.data.list
-        } else if (Array.isArray(responseData)) {
-          // 格式：[...]
-          avatarList = responseData
-        } else if (responseData?.data?.list) {
-          // 格式：{ data: { list: [...] } }
-          avatarList = responseData.data.list
-        }
+        const avatarList = unwrapAvatarList(res.data?.data)
         console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: any) => ({
           ...avatar,
-          trust_enabled: Boolean(avatar.trust_enabled),
+          trust_enabled: resolveHostingEnabled(avatar),
           hosting_settings: avatar.config?.hosting_settings || {
             auto_post: true,
             auto_comment: true,
@@ -263,7 +276,7 @@ export default function AvatarManagePage() {
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
           avatar.id === avatarId 
-            ? { ...avatar, trust_enabled: enabled }
+            ? { ...avatar, trust_enabled: enabled, is_hosted: enabled, hosting_enabled: enabled }
             : avatar
         ))
         showToast({ 
@@ -419,7 +432,7 @@ export default function AvatarManagePage() {
           </Button>
         </View>
         <View className="header-right-wrap">
-          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/notification/index' })}>
+          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications/index' })}>
             <Bell size={22} color="#fff" />
             {unreadCount > 0 && (
               <View className="notification-badge-small">

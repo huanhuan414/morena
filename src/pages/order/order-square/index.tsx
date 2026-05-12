@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
+import { useUserStore } from '@/stores/user'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
   ArrowLeft, 
@@ -60,6 +61,7 @@ interface OrderItem {
 }
 
 export default function OrderSquarePage() {
+  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
   const [selectedPlatform, setSelectedPlatform] = useState('all')
   const [selectedType] = useState('all')
   const [selectedBudget, setSelectedBudget] = useState('all')
@@ -199,15 +201,43 @@ export default function OrderSquarePage() {
 
   const handleAcceptOrder = async (orderId: string) => {
     try {
+      let avatarIdToUse = currentAvatarId
+
+      if (!avatarIdToUse || avatarIdToUse === 'undefined') {
+        const avatarRes = await Network.request({ url: '/api/avatar' })
+        if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
+          avatarIdToUse = avatarRes.data.data[0].id || ''
+          if (!avatarIdToUse) {
+            showToast({ title: '分身数据异常', icon: 'none' })
+            return
+          }
+          setAvatarId(avatarIdToUse)
+        } else {
+          showToast({ title: '请先创建分身', icon: 'none' })
+          return
+        }
+      }
+
       const res = await Network.request({
-        url: `/api/order/${orderId}/accept`,
-        method: 'PUT'
+        url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
+        method: 'POST'
       })
       
       if (res.data?.code === 200) {
+        const result = res.data?.data || {}
+        const query = [
+          `orderId=${encodeURIComponent(result.orderId || orderId)}`,
+          `avatarId=${encodeURIComponent(result.avatarId || avatarIdToUse)}`,
+          result.requestId ? `requestId=${encodeURIComponent(result.requestId)}` : '',
+        ].filter(Boolean).join('&')
         showToast({ title: '接单成功', icon: 'success' })
-        fetchOrders()
+        navigateTo({
+          url: `/pages/order/order-processing/index?${query}`
+        })
+        return
       }
+
+      showToast({ title: res.data?.message || '接单失败', icon: 'none' })
     } catch (error) {
       console.error('接单失败:', error)
       showToast({ title: '接单失败', icon: 'none' })
@@ -215,7 +245,7 @@ export default function OrderSquarePage() {
   }
 
   const handleOrderClick = (order: OrderItem) => {
-    navigateTo({ url: `/pages/order/order-detail/index?id=${order.id}&source=square` })
+    navigateTo({ url: `/pages/order/order-detail/index?orderId=${order.id}&source=square` })
   }
 
   return (
