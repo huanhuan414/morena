@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Users, Coins } from 'lucide-react-taro'
+import { Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Users, Coins, Sparkles } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
   PLATFORM_UI_ORDER,
@@ -14,10 +14,9 @@ import {
 import './index.css'
 
 const CONTENT_TYPES = [
-  { id: 'text', label: '纯文案', icon: '📝', price: 5, prompt: '撰写吸引人的文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, prompt: '撰写图文笔记内容' },
-  { id: 'video', label: '短视频脚本', icon: '🎬', price: 20, prompt: '撰写短视频脚本' },
-  { id: 'live', label: '直播话术', icon: '📺', price: 25, prompt: '撰写直播带货话术' },
+  { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现' },
+  { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划' },
 ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
@@ -291,48 +290,73 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   return (
     <View className="order-create-page">
-      {/* 自定义导航栏 */}
-      <View className="custom-nav">
-        <View className="nav-left" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={22} color="#fff" />
+      {/* 顶部渐变头部 - 与首页风格统一 */}
+      <View className="page-header">
+        <View className="header-decoration">
+          <View className="deco-circle circle-1" />
+          <View className="deco-circle circle-2" />
+          <View className="deco-circle circle-3" />
         </View>
-        <Text className="nav-title">发布任务</Text>
-        <View
-          className="nav-right"
-          onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}
-        >
-          <FileText size={18} color="rgba(255,255,255,0.8)" />
+        <View className="header-content">
+          {/* 导航栏 */}
+          <View className="nav-bar">
+            <View className="back-btn" onClick={() => Taro.navigateBack()}>
+              <ChevronLeft size={22} color="#fff" />
+            </View>
+            <Text className="nav-title">发布任务</Text>
+            <View
+              className="nav-action"
+              onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}
+            >
+              <FileText size={18} color="rgba(255,255,255,0.8)" />
+            </View>
+          </View>
+          {/* 标题区 */}
+          <View className="header-info">
+            <View className="header-icon-wrap">
+              <Sparkles size={36} color="#fff" />
+            </View>
+            <View className="header-text-area">
+              <Text className="header-title">创建新任务</Text>
+              <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
+            </View>
+          </View>
         </View>
       </View>
 
       <ScrollView scrollY className="scroll-container">
-        {/* 头部卡片 - 渐变背景 */}
-        <View className="header-card">
-          <View className="header-bg">
-            <Text className="header-title">创建新任务</Text>
-            <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
-          </View>
-        </View>
-
-        {/* 任务标题 */}
+        {/* 内容类型 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">任务标题</Text>
+              <Text className="section-title">内容类型</Text>
             </View>
             <View className="required-tag">
               <Text className="required-text">必填</Text>
             </View>
           </View>
-          <View className="input-wrapper">
-            <Input
-              className="title-input"
-              placeholder="简洁明确的任务主题"
-              value={form.title}
-              onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
-              maxlength={50}
-            />
+          <View className="type-grid">
+            {CONTENT_TYPES.map(type => (
+              <View
+                key={type.id}
+                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
+                onClick={() => handleTypeChange(type.id)}
+              >
+                <Text className="type-icon">{type.icon}</Text>
+                <Text className="type-label">{type.label}</Text>
+                <Text className="type-desc">{type.desc}</Text>
+                <View className="type-price-row">
+                  <Coins size={10} color="#6366F1" />
+                  <Text className="type-price">¥{type.price}/个</Text>
+                </View>
+                {form.contentType === type.id && (
+                  <View className="type-check">
+                    <Check size={10} color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -354,7 +378,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 className={`platform-card ${form.platforms.includes(config.id) ? 'active' : ''}`}
                 onClick={() => handlePlatformToggle(config.id)}
               >
-                <View className="platform-icon-wrap" style={{ background: config.color + '15' }}>
+                <View className="platform-icon-wrap" style={{ background: config.bgColor }}>
                   <Text className="platform-emoji">{config.icon}</Text>
                 </View>
                 <Text className="platform-name">{config.name}</Text>
@@ -371,7 +395,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <View className="platform-requirements">
               <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
                 <Text className="req-title">平台要求（可选）</Text>
-                <ChevronRight size={14} color="#999" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
+                <ChevronRight size={14} color="#94A3B8" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
               </View>
               {showPlatformReq && (
                 <View className="req-content">
@@ -397,32 +421,25 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           )}
         </View>
 
-        {/* 内容类型 */}
+        {/* 任务标题 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
-              <View className="title-dot orange" />
-              <Text className="section-title">内容类型</Text>
+              <View className="title-dot" />
+              <Text className="section-title">任务标题</Text>
             </View>
-            <View className="required-tag orange">
+            <View className="required-tag">
               <Text className="required-text">必填</Text>
             </View>
           </View>
-          <View className="type-grid">
-            {CONTENT_TYPES.map(type => (
-              <View
-                key={type.id}
-                className={`type-card ${form.contentType === type.id ? 'active' : ''}`}
-                onClick={() => handleTypeChange(type.id)}
-              >
-                <Text className="type-icon">{type.icon}</Text>
-                <Text className="type-label">{type.label}</Text>
-                <View className="type-price-row">
-                  <Coins size={10} color="#ff7a30" />
-                  <Text className="type-price">¥{type.price}/个</Text>
-                </View>
-              </View>
-            ))}
+          <View className="input-wrapper">
+            <Input
+              className="title-input"
+              placeholder="简洁明确的任务主题"
+              value={form.title}
+              onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
+              maxlength={50}
+            />
           </View>
         </View>
 
@@ -437,7 +454,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               {aiLoading ? (
                 <Loader size={12} color="#fff" className="ai-loading" />
               ) : (
-                <Users size={12} color="#fff" />
+                <Sparkles size={12} color="#fff" />
               )}
               <Text className="ai-text">AI 帮写</Text>
             </View>
@@ -462,7 +479,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <View className="title-dot" />
               <Text className="section-title">分身设置</Text>
             </View>
-            <Users size={16} color="#667eea" />
+            <Users size={16} color="#6366F1" />
           </View>
           <View className="counter-row">
             <View className="counter-item">
@@ -507,7 +524,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         {/* 价格预览 */}
         <View className="price-card">
           <View className="price-header">
-            <Coins size={16} color="#ff7a30" />
+            <Coins size={16} color="#F59E0B" />
             <Text className="price-header-text">费用预估</Text>
           </View>
           <View className="price-row">

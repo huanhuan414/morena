@@ -69,13 +69,17 @@ export const PLATFORM_META_MAP: Record<CanonicalPlatformKey, PlatformMeta> = {
   },
   wechat_moments: {
     key: 'wechat_moments',
-    name: '朋友圈',
+    name: '微信朋友圈',
     icon: '💬',
     color: '#07C160',
     bgColor: '#E8FFF0',
     requiresBinding: false,
     description: '分享生活点滴，增强社交互动',
-    contentTips: ['朋友圈建议3-9张图', '文案要生活化、真实', '配图风格要统一', '可以适当添加表情']
+    contentTips: ['朋友圈建议3-9张图', '文案要生活化、真实', '配图风格要统一', '可以适当添加表情'],
+    requirements: [
+      { id: 'friends', label: '好友数量', placeholder: '如：500' },
+      { id: 'style', label: '风格要求', placeholder: '生活化/专业感' }
+    ]
   },
   wechat_channel: {
     key: 'wechat_channel',
@@ -175,10 +179,9 @@ export const PLATFORM_META_MAP: Record<CanonicalPlatformKey, PlatformMeta> = {
 export const PLATFORM_UI_ORDER: CanonicalPlatformKey[] = [
   'douyin',
   'xiaohongshu',
+  'wechat_moments',
   'wechat_mp',
   'wechat_channel',
-  'wechat_moments',
-  'weibo',
   'bilibili',
   'kuaishou',
   'zhihu',
