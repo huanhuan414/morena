@@ -301,15 +301,9 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <View className="deco-circle circle-2" />
         </View>
         <View className="header-content">
-          {/* 导航栏 */}
-          <View className="nav-bar">
-            <View className="back-btn" onClick={() => Taro.navigateBack()}>
-              <ChevronLeft size={22} color="#fff" />
-            </View>
-            <Text className="nav-title">发布任务</Text>
-            <View className="nav-action-placeholder" />
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <ChevronLeft size={22} color="#fff" />
           </View>
-          {/* 标题区 - 居中排列 */}
           <View className="header-center">
             <Text className="header-title">创建新任务</Text>
             <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
