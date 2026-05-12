@@ -18,9 +18,20 @@ const getUserId = async () => {
   }
 }
 
+// 异步获取 token
+const getToken = async () => {
+  try {
+    const res = await Taro.getStorage({ key: 'token' })
+    return res?.data || ''
+  } catch {
+    return ''
+  }
+}
+
 export const request = async (option) => {
   const userId = await getUserId()
-  console.log('[Network] 当前userId:', userId)
+  const token = await getToken()
+  console.log('[Network] 当前userId:', userId, 'token:', token ? '已设置' : '未设置')
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -41,6 +52,7 @@ export const request = async (option) => {
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
     ...(userId ? { 'x-user-id': userId } : {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(option.header || {}),
   }
 
@@ -67,6 +79,7 @@ export const request = async (option) => {
 
 export const uploadFile = async (option) => {
   const userId = await getUserId()
+  const token = await getToken()
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -83,6 +96,7 @@ export const uploadFile = async (option) => {
 
   const headers = {
     ...(userId ? { 'x-user-id': userId } : {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(option.header || {}),
   }
 
@@ -101,6 +115,7 @@ export const uploadFile = async (option) => {
 
 export const downloadFile = async (option) => {
   const userId = await getUserId()
+  const token = await getToken()
 
   const createUrl = (url) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -113,6 +128,7 @@ export const downloadFile = async (option) => {
 
   const headers = {
     ...(userId ? { 'x-user-id': userId } : {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(option.header || {}),
   }
 

@@ -7,7 +7,7 @@ start_service() {
     local port="${DEPLOY_RUN_PORT:-3000}"
     echo "Starting Static File Server on port ${port} for deploy..."
 
-    node ./main.js -p "${port}"
+    node ./src/main.js -p "${port}"
 }
 
 echo "Starting HTTP service for deploy..."

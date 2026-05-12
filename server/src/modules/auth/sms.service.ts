@@ -12,7 +12,13 @@ export class AuthSmsService {
   /**
    * 发送短信验证码
    */
-  async sendVerificationCode(phone: string, code: string): Promise<{ success: boolean; message: string }> {
+  async sendVerificationCode(phone: string, code: string): Promise<{ success: boolean; message: string; isDev?: boolean }> {
+    // 未配置阿里云密钥时，直接走开发模式
+    if (!this.accessKeyId || !this.accessKeySecret) {
+      console.log(`[开发模式] 阿里云短信未配置，验证码: ${code}`)
+      return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
+    }
+
     const params: Record<string, string> = {
       AccessKeyId: this.accessKeyId,
       Action: 'SendSms',
@@ -61,22 +67,22 @@ export class AuthSmsService {
       console.log('短信发送结果:', result)
 
       if (result.Code === 'OK') {
-        return { success: true, message: '验证码发送成功' }
+        return { success: true, message: '验证码发送成功', isDev: false }
       } else if (result.Code === 'isv.TEMPLATE_MISSING_PARAMETERS' || result.Code === 'isv.TEMPLATE_NOT_EXIST') {
         // 模板不存在，开发环境模拟发送成功
         console.log(`[开发模式] 模板未配置，模拟发送成功。验证码: ${code}`)
-        return { success: true, message: '验证码已发送（开发模式）' }
+        return { success: true, message: '验证码已发送（开发模式）', isDev: true }
       } else {
         console.error('短信发送失败:', result)
         // 开发环境：模拟发送成功
         console.log(`[开发模式] 验证码已发送到 ${phone}: ${code}`)
-        return { success: true, message: '验证码发送成功（开发模式）' }
+        return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
       }
     } catch (error) {
       console.error('短信发送异常:', error)
       // 开发环境：模拟发送成功
       console.log(`[开发模式] 验证码已发送到 ${phone}: ${code}`)
-      return { success: true, message: '验证码发送成功（开发模式）' }
+      return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
     }
   }
 

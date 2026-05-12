@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
 import { Network } from '@/network'
@@ -227,6 +227,13 @@ const Index: React.FC = () => {
     }
     initData()
   }, [])
+
+  // 页面重新显示时刷新数据（如从登录页返回）
+  useDidShow(() => {
+    loadUserFromStorage().then(() => {
+      Promise.all([fetchStats(), fetchActivities(), fetchOrderNotifications()])
+    })
+  })
 
   // 快捷功能
   const quickActions = [

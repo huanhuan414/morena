@@ -114,7 +114,7 @@ export default function ProfilePage() {
 
   useLoad(() => {
     if (!isLoggedIn) {
-      navigateTo({ url: '/pages/login/index' })
+      navigateTo({ url: '/pages/login/index?redirect=/pages/profile/index' })
     }
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)

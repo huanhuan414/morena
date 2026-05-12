@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { Network } from '@/network'
+import { useUserStore } from '@/stores/user'
 import './index.css'
 
 type CloneType = 'my' | 'square'
@@ -45,7 +46,7 @@ const MindChat: React.FC = () => {
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(true)
+  const { isLoggedIn: isLoggedIn } = useUserStore()
   const hasPageShownRef = useRef(false)
   const activeTabRef = useRef<CloneType>('my')
 
@@ -53,16 +54,12 @@ const MindChat: React.FC = () => {
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
-      // 检查用户登录状态
-      const storedUserInfo: any = Taro.getStorageSync('userInfo') || {}
-      const userId = storedUserInfo.id || ''
-      if (!userId || userId === 'guest-user-id') {
-        setIsLoggedIn(false)
+      // 使用全局 store 检查登录状态
+      if (!isLoggedIn) {
         setMyClones([])
         setLoading(false)
         return
       }
-      setIsLoggedIn(true)
 
       // Network 模块会自动从 storage 获取 userId 并添加 x-user-id header
       const res = await Network.request({
