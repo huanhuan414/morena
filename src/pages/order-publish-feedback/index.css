@@ -510,6 +510,13 @@
 
 .feedback-link-field {
   flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.feedback-link-field Input {
+  font-size: 26rpx;
+  line-height: 1.4;
 }
 
 /* 底部提交栏 */

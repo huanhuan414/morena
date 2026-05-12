@@ -506,7 +506,7 @@ export default function OrderPublishFeedback() {
               <Link size={14} color="#9CA3AF" />
               <View className="feedback-link-field">
                 <Input
-                  className="w-full bg-transparent"
+                  style={{ width: '100%', fontSize: '13px', lineHeight: '1.4', backgroundColor: 'transparent' }}
                   placeholder={isVerifyRequired(platform) ? '请输入发布链接（必填，用于验证）' : '请输入发布链接'}
                   value={fb.link}
                   onInput={(e) => handleLinkChange(platform, e.detail.value)}
