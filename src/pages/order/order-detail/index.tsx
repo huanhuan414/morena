@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { ArrowLeft, Wallet, Users, Target, ChevronRight, Bell, Loader, Calendar } from 'lucide-react-taro'
+import { ArrowLeft, Wallet, Users, Target, Calendar, ChevronRight, Eye, CircleCheck, Clock } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getPlatformMeta, canonicalizePlatforms } from '@/constants/publish-platform'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import './index.css'
 
 const STATUS_MAP = {
-  pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7' },
-  open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE' },
-  pending_dispatch: { label: '待分配', color: '#3B82F6', bg: '#DBEAFE' },
-  pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE' },
-  in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF' },
-  submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1' },
-  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
-  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7' },
-  cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2' },
-  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2' },
+  pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰', desc: '请尽快完成支付' },
+  open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢', desc: '等待分身接单' },
+  pending_dispatch: { label: '待分配', color: '#3B82F6', bg: '#DBEAFE', icon: '📋', desc: '正在分配分身' },
+  pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE', icon: '⏳', desc: '分身正在确认接单' },
+  in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF', icon: '🔄', desc: '分身正在创作内容' },
+  submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1', icon: '📝', desc: '分身已提交内容，请查看' },
+  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅', desc: '分身已提交反馈，请验收确认' },
+  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉', desc: '订单已完成' },
+  cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌', desc: '订单已取消' },
+  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️', desc: '订单执行失败' },
 }
 
 const AVATAR_STATUS_MAP = {
@@ -25,7 +27,7 @@ const AVATAR_STATUS_MAP = {
   in_progress: { label: '生成中', color: '#6366F1', bg: '#EEF2FF' },
   processing: { label: '生成中', color: '#6366F1', bg: '#EEF2FF' },
   generating_images: { label: '配图生成中', color: '#6366F1', bg: '#EEF2FF' },
-  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7' },
+  completed: { label: '内容已生成', color: '#22C55E', bg: '#DCFCE7' },
   published: { label: '已发布', color: '#14B8A6', bg: '#CCFBF1' },
   feedback_submitted: { label: '已提交反馈', color: '#F97316', bg: '#FFF7ED' },
   reviewing: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
@@ -35,9 +37,19 @@ const AVATAR_STATUS_MAP = {
   declined: { label: '已婉拒', color: '#9CA3AF', bg: '#F3F4F6' },
 }
 
+// 点击分身卡片时，哪些状态可以查看内容
+const CAN_VIEW_CONTENT = ['completed', 'generating_images', 'processing', 'published', 'feedback_submitted', 'reviewing', 'settled', 'done']
+// 哪些状态可以查看反馈
+const CAN_VIEW_FEEDBACK = ['published', 'feedback_submitted', 'reviewing', 'settled', 'done']
+
 export default function OrderDetail() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogType, setDialogType] = useState<'content' | 'feedback'>('content')
+  const [dialogAvatar, setDialogAvatar] = useState<any>(null)
+  const [dialogContent, setDialogContent] = useState<any>(null)
+  const [dialogLoading, setDialogLoading] = useState(false)
 
   useEffect(() => {
     const params = Taro.getCurrentInstance().router?.params || {}
@@ -64,10 +76,9 @@ export default function OrderDetail() {
     }
   }
 
-  const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
+  const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6', icon: '📋', desc: '' }
   const getAvatarStatusInfo = (status: string) => AVATAR_STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
 
-  // Safe string check — objects/dates converted to {} by convertKeysToCamel are not valid React children
   const safeStr = (v: unknown): string => {
     if (!v || typeof v !== 'string') return ''
     return v
@@ -77,7 +88,7 @@ export default function OrderDetail() {
     if (!t || typeof t !== 'string') return '--'
     const d = new Date(t)
     if (Number.isNaN(d.getTime())) return '--'
-    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
   const platformNames = () => {
@@ -86,29 +97,69 @@ export default function OrderDetail() {
     return arr.map(p => getPlatformMeta(p)?.name || p)
   }
 
-  const handleUrgeAcceptance = async () => {
-    if (!order) return
+  // 点击分身卡片 — 弹窗查看内容/反馈
+  const handleAvatarClick = async (avatar: any) => {
+    const status = avatar.status || avatar.contentStatus
+    if (!CAN_VIEW_CONTENT.includes(status) && !CAN_VIEW_FEEDBACK.includes(status)) {
+      Taro.showToast({ title: '该分身暂无内容可查看', icon: 'none' })
+      return
+    }
+
+    setDialogAvatar(avatar)
+    setDialogType(CAN_VIEW_FEEDBACK.includes(status) ? 'feedback' : 'content')
+    setDialogOpen(true)
+    setDialogLoading(true)
+    setDialogContent(null)
+
     try {
-      await Network.request({
-        url: '/api/notifications/urge-review',
-        method: 'POST',
-        data: { orderId: order.id, contentTitle: `订单「${order.title}」催验收提醒` }
-      })
-      Taro.showToast({ title: '催验收提醒已发送', icon: 'success' })
-    } catch {
-      Taro.showToast({ title: '发送失败', icon: 'none' })
+      // 通过 requestId 获取内容
+      const requestId = avatar.requestId || avatar.contentId
+      if (requestId) {
+        const res = await Network.request({ url: `/api/content-generation/content/${requestId}` })
+        if (res.data?.code === 200 && res.data?.data) {
+          setDialogContent(res.data.data)
+        }
+      }
+    } catch (err) {
+      console.error('[订单详情] 加载内容失败:', err)
+    } finally {
+      setDialogLoading(false)
     }
   }
 
-  const handleNavigateToContent = (avatarId: string) => {
-    Taro.navigateTo({ url: `/pages/generated-content/index?avatarId=${avatarId}` })
+  // 发单方确认验收
+  const handleAcceptWork = async () => {
+    if (!order) return
+    try {
+      await Network.request({
+        url: `/api/order/${order.id}/status`,
+        method: 'PUT',
+        data: { status: 'completed' }
+      })
+      Taro.showToast({ title: '验收成功', icon: 'success' })
+      loadOrder(order.id)
+    } catch {
+      Taro.showToast({ title: '验收失败', icon: 'none' })
+    }
+  }
+
+  // 查看发布反馈页面
+  const handleViewFeedback = () => {
+    if (!dialogAvatar || !dialogContent) return
+    const requestId = dialogAvatar.requestId || dialogAvatar.contentId
+    const orderId = order?.id
+    const avatarId = dialogAvatar.avatarId || dialogAvatar.avatar_id
+    Taro.navigateTo({
+      url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
+    })
+    setDialogOpen(false)
   }
 
   if (loading) {
     return (
       <View className="od-page">
         <View className="od-loading">
-          <Loader size={32} color="#6366F1" className="od-loading-icon" />
+          <Clock size={32} color="#6366F1" className="od-loading-icon" />
           <Text className="block od-loading-text">加载中...</Text>
         </View>
       </View>
@@ -129,6 +180,9 @@ export default function OrderDetail() {
   const stats = order.summary_stats || {}
   const avatarList = order.avatarStats || stats.avatarStats || []
 
+  // 判断是否可以验收 — 发单方在待验收状态下可以确认验收
+  const canAccept = order.status === 'awaiting_acceptance' || order.status === 'submitted'
+
   return (
     <View className="od-page">
       {/* Header */}
@@ -145,13 +199,13 @@ export default function OrderDetail() {
           </View>
           <View className="od-header-right" />
         </View>
-        {/* Status Banner */}
+        {/* Status Banner — 只显示一个状态 pill */}
         <View className="od-status-banner">
-          <View className="od-status-dot" style={{ background: statusInfo.color }} />
-          <Text className="od-status-label" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
+          <Text className="od-status-emoji">{statusInfo.icon}</Text>
           <View className="od-status-pill" style={{ background: statusInfo.bg }}>
             <Text className="od-status-pill-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
           </View>
+          {statusInfo.desc ? <Text className="od-status-desc">{statusInfo.desc}</Text> : null}
         </View>
       </View>
 
@@ -226,7 +280,7 @@ export default function OrderDetail() {
         </View>
 
         {/* Requirements */}
-        {(order.requirements || order.targetAudience) && (
+        {(safeStr(order.requirements) || order.targetAudience) && (
           <View className="od-card od-req-card">
             <Text className="block od-section-title">订单要求</Text>
             {order.targetAudience ? (
@@ -235,7 +289,7 @@ export default function OrderDetail() {
                 <Text className="block od-req-value">{order.targetAudience}</Text>
               </View>
             ) : null}
-            {(safeStr(order.requirements)) ? (
+            {safeStr(order.requirements) ? (
               <View className="od-req-item">
                 <Text className="block od-req-label">详细要求</Text>
                 <Text className="block od-req-value">{safeStr(order.requirements)}</Text>
@@ -250,14 +304,15 @@ export default function OrderDetail() {
           </View>
         )}
 
-        {/* Avatar List */}
+        {/* Avatar List — 点击弹窗查看内容/反馈 */}
         {avatarList.length > 0 && (
           <View className="od-card od-avatar-card">
             <Text className="block od-section-title">分身执行情况</Text>
             {avatarList.map((avatar: any, idx: number) => {
               const aStatus = getAvatarStatusInfo(avatar.status)
+              const canView = CAN_VIEW_CONTENT.includes(avatar.status) || CAN_VIEW_FEEDBACK.includes(avatar.status)
               return (
-                <View className="od-avatar-item" key={avatar.id || idx} onClick={() => handleNavigateToContent(avatar.avatarId)}>
+                <View className="od-avatar-item" key={avatar.id || idx} onClick={() => canView ? handleAvatarClick(avatar) : undefined}>
                   <View className="od-avatar-left">
                     {avatar.avatarUrl ? (
                       <View className="od-avatar-img-wrap">
@@ -277,10 +332,14 @@ export default function OrderDetail() {
                     </View>
                   </View>
                   <View className="od-avatar-right">
-                    <View className="od-avatar-status-pill" style={{ background: aStatus.bg }}>
-                      <Text className="od-avatar-status-pill-text" style={{ color: aStatus.color }}>{aStatus.label}</Text>
-                    </View>
-                    <ChevronRight size={16} color="#9CA3AF" />
+                    {canView ? (
+                      <View className="od-avatar-view-btn" style={{ background: aStatus.bg }}>
+                        <Eye size={14} color={aStatus.color} />
+                        <Text className="od-avatar-view-text" style={{ color: aStatus.color }}>查看</Text>
+                      </View>
+                    ) : (
+                      <ChevronRight size={16} color="#9CA3AF" />
+                    )}
                   </View>
                 </View>
               )
@@ -288,16 +347,97 @@ export default function OrderDetail() {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View className="od-actions">
-          {order.status === 'awaiting_acceptance' && (
-            <View className="od-action-btn od-action-primary" onClick={handleUrgeAcceptance}>
-              <Bell size={16} color="#fff" className="od-action-icon" />
-              <Text className="od-action-text" style={{ color: '#fff' }}>催促验收</Text>
+        {/* Bottom Actions — 发单方视角 */}
+        {canAccept && (
+          <View className="od-actions">
+            <View className="od-action-btn od-action-primary" onClick={handleAcceptWork}>
+              <CircleCheck size={16} color="#fff" />
+              <Text className="od-action-text" style={{ color: '#fff' }}>确认验收</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
+
+      {/* Content/Feedback Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="od-dialog-content">
+          <DialogHeader>
+            <DialogTitle className="od-dialog-title">
+              {dialogType === 'feedback' ? '发布反馈' : '生成内容'}
+            </DialogTitle>
+          </DialogHeader>
+          <View className="od-dialog-body">
+            {dialogLoading ? (
+              <View className="od-dialog-loading">
+                <Clock size={24} color="#6366F1" />
+                <Text className="block od-dialog-loading-text">加载中...</Text>
+              </View>
+            ) : dialogContent ? (
+              <View className="od-dialog-detail">
+                {/* Avatar info */}
+                <View className="od-dialog-avatar-row">
+                  {dialogAvatar?.avatarUrl ? (
+                    <TaroImage className="od-dialog-avatar-img" src={dialogAvatar.avatarUrl} mode="aspectFill" />
+                  ) : (
+                    <View className="od-dialog-avatar-fallback">
+                      <Text className="od-dialog-avatar-fallback-text">{(dialogAvatar?.avatarName || '?')[0]}</Text>
+                    </View>
+                  )}
+                  <Text className="block od-dialog-avatar-name">{dialogAvatar?.avatarName || '分身'}</Text>
+                  <View className="od-dialog-avatar-pill" style={{ background: getAvatarStatusInfo(dialogAvatar?.status).bg }}>
+                    <Text className="od-dialog-avatar-pill-text" style={{ color: getAvatarStatusInfo(dialogAvatar?.status).color }}>
+                      {getAvatarStatusInfo(dialogAvatar?.status).label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Content */}
+                {dialogContent.content && (
+                  <View className="od-dialog-section">
+                    <Text className="block od-dialog-label">文案内容</Text>
+                    <View className="od-dialog-text-box">
+                      <Text className="block od-dialog-text">{dialogContent.content}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Images */}
+                {dialogContent.images && Array.isArray(dialogContent.images) && dialogContent.images.length > 0 && (
+                  <View className="od-dialog-section">
+                    <Text className="block od-dialog-label">配图 ({dialogContent.images.length}张)</Text>
+                    <View className="od-dialog-images">
+                      {dialogContent.images.map((img: string, i: number) => (
+                        <TaroImage key={i} className="od-dialog-img" src={img} mode="aspectFill" onClick={() => Taro.previewImage({ urls: dialogContent.images, current: img })} />
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Feedback info */}
+                {dialogType === 'feedback' && (
+                  <View className="od-dialog-section">
+                    <Text className="block od-dialog-label">发布状态</Text>
+                    <Text className="block od-dialog-feedback-status">已提交发布反馈，等待发单方验收确认</Text>
+                  </View>
+                )}
+
+                {/* Action */}
+                {dialogType === 'feedback' && (
+                  <View className="od-dialog-actions">
+                    <Button className="od-dialog-btn" onClick={handleViewFeedback}>
+                      <Text>查看反馈详情</Text>
+                    </Button>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View className="od-dialog-empty">
+                <Text className="block od-dialog-empty-text">暂无内容</Text>
+              </View>
+            )}
+          </View>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }
