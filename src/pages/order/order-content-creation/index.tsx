@@ -43,9 +43,7 @@ export default function OrderContentCreation() {
   const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null)
   const [processingData, setProcessingData] = useState<ProcessingData | null>(null)
   const [pageStatus, setPageStatus] = useState<'loading' | 'generating' | 'completed' | 'failed'>('loading')
-  const [generationDetail, setGenerationDetail] = useState<'text' | 'images'>('text')
   const [errorMsg, setErrorMsg] = useState('')
-  const [partialContent, setPartialContent] = useState<GeneratedContent | null>(null)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 初始化
@@ -93,24 +91,9 @@ export default function OrderContentCreation() {
           setPageStatus('failed')
           setErrorMsg('内容生成失败')
           stopPolling()
-        } else if (data.status === 'generating_text') {
-          // 文案/文章生成中
+        } else if (data.status === 'generating_text' || data.status === 'generating_images' || data.status === 'queuing' || data.status === 'processing' || data.status === 'pending') {
+          // 所有生成中的状态统一处理
           setPageStatus('generating')
-          setGenerationDetail('text')
-          startPolling(id)
-        } else if (data.status === 'generating_images') {
-          // 配图生成中
-          setPageStatus('generating')
-          setGenerationDetail('images')
-          // 如果已有文案内容，提前展示
-          if (data.generatedContent?.content) {
-            setPartialContent(data.generatedContent)
-          }
-          startPolling(id)
-        } else if (data.status === 'queuing' || data.status === 'processing' || data.status === 'pending') {
-          // 排队中、处理中、等待中都视为生成中
-          setPageStatus('generating')
-          setGenerationDetail('text')
           startPolling(id)
         } else if (data.status === 'publishing' || data.status === 'published') {
           // 发布状态也显示为已完成
@@ -327,10 +310,6 @@ export default function OrderContentCreation() {
 
   // 渲染生成中状态
   const renderGenerating = () => {
-    const isGeneratingText = generationDetail === 'text'
-    const isGeneratingImages = generationDetail === 'images'
-    const hasPartialContent = partialContent?.content
-
     return (
       <View className="generating-section">
         <View className="generating-animation">
@@ -338,38 +317,8 @@ export default function OrderContentCreation() {
             <Loader size={48} color="#6366F1" className="spinning-icon" />
           </View>
         </View>
-        <Text className="generating-title">
-          {isGeneratingText ? 'AI 正在撰写文案' : 'AI 正在生成配图'}
-        </Text>
-        <Text className="generating-desc">
-          {isGeneratingText ? '根据订单要求创作内容，请稍候...' : '根据文案内容生成相关配图，请稍候...'}
-        </Text>
-        <View className="generating-steps">
-          <View className={`step-item ${isGeneratingText || isGeneratingImages ? 'active' : ''} ${isGeneratingImages ? 'done' : ''}`}>
-            <View className="step-dot" />
-            <Text className="step-text">分析订单需求</Text>
-          </View>
-          <View className={`step-item ${isGeneratingText || isGeneratingImages ? 'active' : ''} ${isGeneratingImages ? 'done' : ''}`}>
-            <View className="step-dot" />
-            <Text className="step-text">生成文案内容</Text>
-          </View>
-          <View className={`step-item ${isGeneratingImages ? 'active' : ''}`}>
-            <View className="step-dot" />
-            <Text className="step-text">生成配图</Text>
-          </View>
-        </View>
-        {/* 配图生成中时，提前展示已生成的文案 */}
-        {isGeneratingImages && hasPartialContent && (
-          <View className="partial-content-preview">
-            <View className="partial-content-header">
-              <FileText size={16} color="#8B5CF6" />
-              <Text className="partial-content-title">文案已生成，配图制作中...</Text>
-            </View>
-            <View className="partial-content-body">
-              <MarkdownRenderer content={partialContent?.content || ''} />
-            </View>
-          </View>
-        )}
+        <Text className="block generating-title">AI 正在生成内容</Text>
+        <Text className="block generating-desc">根据订单要求创作内容和配图，请稍候...</Text>
       </View>
     )
   }

@@ -1,90 +1,59 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import * as Network from '@/network'
-import { Calendar, Eye, ChevronDown, ArrowLeft, RefreshCw, Image as ImageIcon } from 'lucide-react-taro'
+import { ArrowLeft, RefreshCw, FileText } from 'lucide-react-taro'
+import { Network } from '@/network'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
-import './index.css'
 
-// 内容状态
-type ContentStatus = 'all' | 'processing' | 'completed' | 'failed'
-
-// 内容数据接口
-interface GeneratedContent {
+interface ContentItem {
   id: string
   orderId: string
-  orderTitle: string
-  content: string
-  images: string[]
-  platform: string
-  status: string
-  generationDetail?: string
   avatarId: string
   avatarName: string
-  contentType: string
+  platform: string
+  status: string
+  content: string
+  images: string[]
   createdAt: string
 }
 
-// 内容状态配置
-const CONTENT_STATUSES: { key: ContentStatus; name: string }[] = [
-  { key: 'all', name: '全部' },
-  { key: 'processing', name: '生成中' },
-  { key: 'completed', name: '已完成' },
-  { key: 'failed', name: '失败' },
+interface AvatarItem {
+  id: string
+  name: string
+}
+
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: '待处理', color: '#F59E0B', bg: '#FEF3C7' },
+  processing: { label: '生成中', color: '#3B82F6', bg: '#DBEAFE' },
+  completed: { label: '已完成', color: '#10B981', bg: '#D1FAE5' },
+  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2' },
+}
+
+const TAB_LIST = [
+  { key: 'all', label: '全部' },
+  { key: 'completed', label: '已完成' },
+  { key: 'processing', label: '生成中' },
+  { key: 'pending', label: '待处理' },
+  { key: 'failed', label: '失败' },
 ]
 
-// 状态样式
-const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  processing: { bg: 'rgba(59,130,246,0.1)', color: '#3B82F6', label: '生成中' },
-  generating_text: { bg: 'rgba(139,92,246,0.1)', color: '#8B5CF6', label: '文案生成中' },
-  generating_images: { bg: 'rgba(236,72,153,0.1)', color: '#EC4899', label: '配图生成中' },
-  completed: { bg: 'rgba(34,197,94,0.1)', color: '#22C55E', label: '已完成' },
-  failed: { bg: 'rgba(239,68,68,0.1)', color: '#EF4444', label: '生成失败' },
-  pending: { bg: 'rgba(156,163,175,0.1)', color: '#9CA3AF', label: '等待中' },
-}
-
-// 平台名称映射
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat: '微信朋友圈',
-  wechat_mp: '微信公众号',
-  wechat_channel: '微信视频号',
-  xiaohongshu: '小红书',
-  douyin: '抖音',
-  toutiao: '今日头条',
-  zhihu: '知乎',
-  general: '通用',
-}
-
-function safeParseJSON(str: any): any {
-  if (!str) return []
-  if (Array.isArray(str)) return str
-  if (typeof str === 'string') {
-    try { return JSON.parse(str) } catch { return [] }
+function parseJSONField(val: any): any {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try { return JSON.parse(val) } catch { return [] }
   }
   return []
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return ''
-  try {
-    const d = new Date(dateStr)
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-  } catch {
-    return dateStr
-  }
-}
-
 export default function GeneratedContentPage() {
-  const [contents, setContents] = useState<GeneratedContent[]>([])
-  const [avatars, setAvatars] = useState<{ id: string; name: string }[]>([])
+  const [contents, setContents] = useState<ContentItem[]>([])
+  const [avatars, setAvatars] = useState<AvatarItem[]>([])
+  const [activeTab, setActiveTab] = useState('all')
+  const [selectedAvatarId, setSelectedAvatarId] = useState('all')
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<ContentStatus>('all')
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('all')
-  const [showAvatarDropdown, setShowAvatarDropdown] = useState(false)
-
-  useEffect(() => {
-    loadContents()
-  }, [])
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const loadContents = async () => {
     setLoading(true)
@@ -92,28 +61,27 @@ export default function GeneratedContentPage() {
       const res = await Network.request({ url: '/api/user-stats/contents' })
       console.log('[已生成内容] API响应:', res.data)
       const data = res.data?.data || {}
-      const rawContents = data.contents || []
-      const rawAvatars = data.avatars || []
+      const rawAvatars: any[] = data.avatars || []
+      const rawContents: any[] = data.contents || []
 
-      setAvatars(rawAvatars.map((a: any) => ({ id: a.id, name: a.name })))
+      const avatarList: AvatarItem[] = rawAvatars.map((a: any) => ({
+        id: a.id,
+        name: a.name || '未命名',
+      }))
+      setAvatars(avatarList)
 
-      const parsed = rawContents.map((c: any) => ({
-        id: c.id || '',
+      const contentList: ContentItem[] = rawContents.map((c: any) => ({
+        id: c.id,
         orderId: c.orderId || c.order_id || '',
-        orderTitle: c.orderTitle || c.order_title || c.title || '未命名内容',
-        content: c.content || '',
-        images: safeParseJSON(c.images),
-        platform: c.platform || c.platforms || 'general',
-        status: c.status || 'pending',
-        generationDetail: c.generationDetail || c.generation_detail || '',
         avatarId: c.avatarId || c.avatar_id || '',
-        avatarName: c.avatarName || c.avatar_name || '',
-        contentType: c.contentType || c.content_type || 'image_text',
+        avatarName: c.avatarName || c.avatar_name || avatarList.find(a => a.id === (c.avatarId || c.avatar_id))?.name || '未知分身',
+        platform: c.platform || c.platforms || 'unknown',
+        status: c.status || 'pending',
+        content: c.content || '',
+        images: parseJSONField(c.images),
         createdAt: c.createdAt || c.created_at || '',
       }))
-
-      console.log('[已生成内容] 解析后:', parsed.length, '条')
-      setContents(parsed)
+      setContents(contentList)
     } catch (err) {
       console.error('[已生成内容] 加载失败:', err)
     } finally {
@@ -121,20 +89,13 @@ export default function GeneratedContentPage() {
     }
   }
 
-  // 筛选
+  useEffect(() => { loadContents() }, [])
+
   const filteredContents = contents.filter(c => {
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'processing') {
-        if (c.status !== 'processing' && c.status !== 'generating_text' && c.status !== 'generating_images' && c.status !== 'pending') return false
-      } else if (c.status !== statusFilter) {
-        return false
-      }
-    }
+    if (activeTab !== 'all' && c.status !== activeTab) return false
     if (selectedAvatarId !== 'all' && c.avatarId !== selectedAvatarId) return false
     return true
   })
-
-  const getStatusInfo = (status: string) => STATUS_STYLE[status] || STATUS_STYLE.pending
 
   const selectedAvatarName = selectedAvatarId === 'all'
     ? '全部分身'
@@ -144,167 +105,276 @@ export default function GeneratedContentPage() {
     Taro.previewImage({ urls, current: urls[index] })
   }
 
+  const toggleExpand = (id: string) => {
+    setExpandedId(prev => prev === id ? null : id)
+  }
+
   return (
-    <View className="generated-content-page">
+    <View style={{ minHeight: '100vh', backgroundColor: '#F5F5F5' }}>
       {/* 顶部导航 */}
-      <View className="page-header">
-        <View className="header-left" onClick={() => Taro.navigateBack()}>
+      <View style={{
+        background: 'linear-gradient(135deg, #8B5CF6, #6366F1)',
+        padding: '12px 16px',
+        paddingTop: '48px',
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+      >
+        <View onClick={() => Taro.navigateBack()} style={{ padding: '4px' }}>
           <ArrowLeft size={20} color="#fff" />
         </View>
-        <Text className="header-title">已生成内容</Text>
-        <View className="header-right" onClick={loadContents}>
+        <Text style={{ color: '#fff', fontSize: '17px', fontWeight: '600' }}>已生成内容</Text>
+        <View onClick={loadContents} style={{ padding: '4px' }}>
           <RefreshCw size={18} color="#fff" />
         </View>
       </View>
 
-      {/* 状态筛选 Tab */}
-      <View className="status-tabs">
-        {CONTENT_STATUSES.map(s => (
+      {/* 状态 Tab */}
+      <View style={{
+        display: 'flex',
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        padding: '0 4px',
+        borderBottom: '1px solid #E5E7EB',
+      }}
+      >
+        {TAB_LIST.map(tab => (
           <View
-            key={s.key}
-            className={`status-tab ${statusFilter === s.key ? 'active' : ''}`}
-            onClick={() => setStatusFilter(s.key)}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              flex: 1,
+              textAlign: 'center',
+              padding: '10px 0',
+              borderBottom: activeTab === tab.key ? '2px solid #8B5CF6' : '2px solid transparent',
+            }}
           >
-            <Text className="status-tab-text">{s.name}</Text>
+            <Text style={{
+              fontSize: '13px',
+              color: activeTab === tab.key ? '#8B5CF6' : '#6B7280',
+              fontWeight: activeTab === tab.key ? '600' : '400',
+              textAlign: 'center',
+            }}
+            >
+              {tab.label}
+            </Text>
           </View>
         ))}
       </View>
 
-      {/* 分身筛选 - 下拉选择器 */}
-      <View className="avatar-filter">
-        <View className="avatar-dropdown-trigger" onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}>
-          <Text className="avatar-dropdown-text">{selectedAvatarName}</Text>
-          <ChevronDown
-            size={16}
-            color="#6366F1"
-            style={{ transform: showAvatarDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-          />
+      {/* 分身筛选 - 下拉选择 */}
+      <View style={{
+        backgroundColor: '#fff',
+        padding: '8px 16px',
+        borderBottom: '1px solid #E5E7EB',
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
+      >
+        <Text style={{ fontSize: '13px', color: '#6B7280' }}>分身筛选：</Text>
+        <View
+          onClick={() => setAvatarDropdownOpen(!avatarDropdownOpen)}
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F3F4F6',
+            borderRadius: '8px',
+            padding: '6px 12px',
+            minWidth: '100px',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Text style={{ fontSize: '13px', color: '#374151' }}>{selectedAvatarName}</Text>
+          <Text style={{ fontSize: '10px', color: '#9CA3AF', marginLeft: '4px' }}>
+            {avatarDropdownOpen ? '▲' : '▼'}
+          </Text>
         </View>
-        {showAvatarDropdown && (
-          <View className="avatar-dropdown-menu">
-            <View
-              className={`avatar-dropdown-item ${selectedAvatarId === 'all' ? 'active' : ''}`}
-              onClick={() => { setSelectedAvatarId('all'); setShowAvatarDropdown(false) }}
-            >
-              <Text className="avatar-dropdown-item-text">全部分身</Text>
-            </View>
-            {avatars.map(a => (
-              <View
-                key={a.id}
-                className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'active' : ''}`}
-                onClick={() => { setSelectedAvatarId(a.id); setShowAvatarDropdown(false) }}
-              >
-                <Text className="avatar-dropdown-item-text">{a.name}</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
 
+      {/* 下拉菜单 */}
+      {avatarDropdownOpen && (
+        <View style={{
+          position: 'absolute',
+          right: '16px',
+          top: '130px',
+          backgroundColor: '#fff',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+          zIndex: 200,
+          minWidth: '140px',
+          overflow: 'hidden',
+        }}
+        >
+          <View
+            onClick={() => { setSelectedAvatarId('all'); setAvatarDropdownOpen(false) }}
+            style={{
+              padding: '10px 16px',
+              borderBottom: '1px solid #F3F4F6',
+              backgroundColor: selectedAvatarId === 'all' ? '#F3F0FF' : '#fff',
+            }}
+          >
+            <Text style={{
+              fontSize: '14px',
+              color: selectedAvatarId === 'all' ? '#8B5CF6' : '#374151',
+            }}
+            >
+              全部分身
+            </Text>
+          </View>
+          {avatars.map(avatar => (
+            <View
+              key={avatar.id}
+              onClick={() => { setSelectedAvatarId(avatar.id); setAvatarDropdownOpen(false) }}
+              style={{
+                padding: '10px 16px',
+                borderBottom: '1px solid #F3F4F6',
+                backgroundColor: selectedAvatarId === avatar.id ? '#F3F0FF' : '#fff',
+              }}
+            >
+              <Text style={{
+                fontSize: '14px',
+                color: selectedAvatarId === avatar.id ? '#8B5CF6' : '#374151',
+              }}
+              >
+                {avatar.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* 内容列表 */}
-      <ScrollView scrollY className="content-list">
+      <ScrollView scrollY style={{ height: 'calc(100vh - 180px)' }}>
         {loading ? (
-          <View className="loading-state">
-            <View className="spinning-icon" />
-            <Text className="loading-text">加载中...</Text>
+          <View style={{ padding: '60px 0', textAlign: 'center' }}>
+            <Text style={{ fontSize: '14px', color: '#9CA3AF' }}>加载中...</Text>
           </View>
         ) : filteredContents.length === 0 ? (
-          <View className="empty-state">
-            <ImageIcon size={48} color="#CBD5E1" />
-            <Text className="empty-title">暂无生成内容</Text>
-            <Text className="empty-desc">接单后内容会自动生成</Text>
+          <View style={{ padding: '60px 0', textAlign: 'center' }}>
+            <FileText size={48} color="#D1D5DB" />
+            <Text style={{ display: 'block', fontSize: '14px', color: '#9CA3AF', marginTop: '12px' }}>
+              暂无内容
+            </Text>
           </View>
         ) : (
-          filteredContents.map(item => {
-            const statusInfo = getStatusInfo(item.status)
-            const platformName = PLATFORM_NAMES[item.platform] || item.platform
-            const isArticle = item.content && item.content.length > 200
-
-            return (
-              <View key={item.id} className="content-card">
-                {/* 卡片头部 */}
-                <View className="card-header">
-                  <View className="card-header-left">
-                    {item.avatarName && (
-                      <View className="avatar-badge">
-                        <View className="avatar-dot" />
-                        <Text className="avatar-badge-text">{item.avatarName}</Text>
+          <View style={{ padding: '12px 16px' }}>
+            {filteredContents.map(item => {
+              const statusInfo = STATUS_MAP[item.status] || STATUS_MAP.pending
+              const isExpanded = expandedId === item.id
+              return (
+                <View
+                  key={item.id}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    marginBottom: '12px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* 卡片头部 */}
+                  <View
+                    onClick={() => toggleExpand(item.id)}
+                    style={{
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <View style={{ flex: 1, marginRight: '8px' }}>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '4px' }}>
+                        <View style={{
+                          backgroundColor: statusInfo.bg,
+                          borderRadius: '4px',
+                          padding: '2px 6px',
+                          marginRight: '8px',
+                        }}
+                        >
+                          <Text style={{ fontSize: '11px', color: statusInfo.color }}>{statusInfo.label}</Text>
+                        </View>
+                        <Text style={{ fontSize: '12px', color: '#9CA3AF' }}>{item.avatarName}</Text>
                       </View>
-                    )}
-                    <View className="platform-badge" style={{ backgroundColor: 'rgba(99,102,241,0.1)' }}>
-                      <Text className="platform-badge-text">{platformName}</Text>
+                      <Text style={{ fontSize: '13px', color: '#374151', lineHeight: '18px' }} numberOfLines={2}>
+                        {item.content ? item.content.substring(0, 80) + '...' : '暂无内容'}
+                      </Text>
                     </View>
-                  </View>
-                  <View className="status-badge" style={{ backgroundColor: statusInfo.bg }}>
-                    <Text className="status-badge-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
-                  </View>
-                </View>
-
-                {/* 订单标题 */}
-                <Text className="card-order-title">{item.orderTitle}</Text>
-
-                {/* 生成中状态提示 */}
-                {(item.status === 'processing' || item.status === 'generating_text' || item.status === 'generating_images') && (
-                  <View className="generating-hint">
-                    <View className="mini-spinner" />
-                    <Text className="generating-hint-text">
-                      {item.status === 'generating_text' ? '正在生成文案...' :
-                       item.status === 'generating_images' ? '正在生成配图...' :
-                       '正在生成内容...'}
+                    <Text style={{ fontSize: '12px', color: '#D1D5DB' }}>
+                      {isExpanded ? '收起' : '展开'}
                     </Text>
                   </View>
-                )}
 
-                {/* 内容预览 - 图文文章型 */}
-                {isArticle && item.status === 'completed' && (
-                  <View className="article-preview">
-                    <MarkdownRenderer content={item.content.substring(0, 500)} />
-                    {item.content.length > 500 && (
-                      <View
-                        className="read-more-btn"
-                        onClick={() => Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${item.id}` })}
+                  {/* 展开详情 */}
+                  {isExpanded && (
+                    <View style={{ padding: '0 14px 14px', borderTop: '1px solid #F3F4F6' }}>
+                      {/* 内容文本 */}
+                      {item.content && (
+                        <View style={{ marginTop: '10px' }}>
+                          <MarkdownRenderer content={item.content} />
+                        </View>
+                      )}
+
+                      {/* 图片列表 */}
+                      {item.images && item.images.length > 0 && (
+                        <View style={{ marginTop: '10px' }}>
+                          <Text style={{ display: 'block', fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                            配图（{item.images.length}张）
+                          </Text>
+                          <View style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                          }}
+                          >
+                            {item.images.map((img, idx) => (
+                              <Image
+                                key={idx}
+                                src={img}
+                                mode="aspectFill"
+                                onClick={() => handlePreviewImage(item.images, idx)}
+                                style={{ width: '100px', height: '100px', borderRadius: '8px' }}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* 底部操作 */}
+                      <View style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'flex-end',
+                        marginTop: '12px',
+                        paddingTop: '10px',
+                        borderTop: '1px solid #F3F4F6',
+                      }}
                       >
-                        <Text className="read-more-text">阅读全文</Text>
+                        {item.status === 'completed' && (
+                          <View
+                            onClick={() => Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${item.id}` })}
+                            style={{
+                              backgroundColor: '#8B5CF6',
+                              borderRadius: '8px',
+                              padding: '6px 14px',
+                            }}
+                          >
+                            <Text style={{ fontSize: '13px', color: '#fff' }}>查看发布指南</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
-                  </View>
-                )}
-
-                {/* 内容预览 - 短文案型 */}
-                {!isArticle && item.content && item.status === 'completed' && (
-                  <View className="short-text-preview">
-                    <Text className="short-text-content">{item.content}</Text>
-                  </View>
-                )}
-
-                {/* 图片预览 */}
-                {item.images.length > 0 && item.status === 'completed' && (
-                  <View className="images-grid">
-                    {item.images.map((img, idx) => (
-                      <View key={idx} className="image-item" onClick={() => handlePreviewImage(item.images, idx)}>
-                        <Image src={img} mode="aspectFill" className="image-thumb" />
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* 底部信息 */}
-                <View className="card-footer">
-                  <View className="footer-left">
-                    <Calendar size={12} color="#94A3B8" />
-                    <Text className="footer-date">{formatDate(item.createdAt)}</Text>
-                  </View>
-                  <View className="footer-right">
-                    <Eye size={14} color="#94A3B8" />
-                    <Text className="footer-views">已生成</Text>
-                  </View>
+                    </View>
+                  )}
                 </View>
-              </View>
-            )
-          })
+              )
+            })}
+          </View>
         )}
-
-        <View style={{ height: '40px' }} />
       </ScrollView>
     </View>
   )
