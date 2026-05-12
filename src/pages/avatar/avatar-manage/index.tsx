@@ -58,6 +58,8 @@ const TIME_SLOT_PRESETS = [
 
 export default function AvatarManagePage() {
   const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [onboardingAvatarId, setOnboardingAvatarId] = useState('')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTimeModal, setShowTimeModal] = useState(false)
   const [editingAvatarId, setEditingAvatarId] = useState<string | null>(null)
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
@@ -120,11 +122,14 @@ export default function AvatarManagePage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
-  useLoad(() => {
+  useLoad((options) => {
     // 初始化安全区域信息
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
+    setOnboardingAvatarId(String(options?.newAvatarId || ''))
+    setShowOnboarding(String(options?.onboarding || '') === '1')
   })
 
   useDidShow(async () => {
@@ -329,11 +334,52 @@ export default function AvatarManagePage() {
       navigateTo({ url: '/pages/subscription/index' })
       return
     }
-    navigateTo({ url: '/pages/avatar/avatar-create/index' })
+    const remainingAvatars = maxAvatars === -1 ? -1 : Math.max(maxAvatars - avatarCount, 0)
+    const planName = userSubscription?.plan?.name || userSubscription?.plan_name || ''
+    const query = [
+      `avatarCount=${encodeURIComponent(String(avatarCount))}`,
+      `maxAvatars=${encodeURIComponent(String(maxAvatars))}`,
+      `remainingAvatars=${encodeURIComponent(String(remainingAvatars))}`,
+      `planName=${encodeURIComponent(String(planName))}`,
+    ].join('&')
+
+    navigateTo({ url: `/pages/avatar/avatar-create/index?${query}` })
   }
 
   const goToSettings = (avatarId: string) => {
     navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatarId}` })
+  }
+
+  const closeOnboarding = () => {
+    setShowOnboarding(false)
+    setOnboardingAvatarId('')
+  }
+
+  const handleOnboardingAction = async (action: 'hosting' | 'voice' | 'friends' | 'mind-chat', avatar: Avatar) => {
+    if (action === 'hosting') {
+      if (!avatar.trust_enabled) {
+        await toggleHosting(avatar.id, true)
+      } else {
+        showToast({ title: '该分身已开启托管', icon: 'success' })
+      }
+      closeOnboarding()
+      return
+    }
+
+    if (action === 'voice') {
+      closeOnboarding()
+      navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatar.id}` })
+      return
+    }
+
+    if (action === 'friends') {
+      closeOnboarding()
+      navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })
+      return
+    }
+
+    closeOnboarding()
+    navigateTo({ url: '/pages/mind-chat/index' })
   }
 
   const deleteAvatar = async (avatarId: string) => {
@@ -461,6 +507,11 @@ export default function AvatarManagePage() {
                   <Text>，还可创建 <Text className="highlight">{maxAvatars - avatarCount}</Text> 个</Text>
                 )}
               </Text>
+              <Text className="subscription-info-text">
+                {canCreateAvatar
+                  ? '当前可继续创建新分身，建议先完成基础创建，后续配置可再补充。'
+                  : '当前配额已用完，需先升级订阅后才能继续创建新分身。'}
+              </Text>
               {!canCreateAvatar && (
                 <View 
                   className="subscription-upgrade-btn"
@@ -541,6 +592,50 @@ export default function AvatarManagePage() {
                     </View>
                   </View>
                 </View>
+
+                {showOnboarding && onboardingAvatarId === avatar.id && (
+                  <View className="onboarding-card">
+                    <View className="onboarding-header">
+                      <View>
+                        <Text className="onboarding-title">下一步建议</Text>
+                        <Text className="onboarding-desc">你的新分身已经创建完成，继续下面任务就能更快开始使用。</Text>
+                      </View>
+                      <View className="onboarding-close" onClick={closeOnboarding}>
+                        <X size={16} color="rgba(255,255,255,0.7)" />
+                      </View>
+                    </View>
+                    <View className="onboarding-actions">
+                      <View className="onboarding-action" onClick={() => { void handleOnboardingAction('hosting', avatar) }}>
+                        <View className="onboarding-icon">
+                          <Zap size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">开启托管</Text>
+                        <Text className="onboarding-action-desc">自动发帖、交友和互动</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('voice', avatar)}>
+                        <View className="onboarding-icon">
+                          <Settings size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">完善声音</Text>
+                        <Text className="onboarding-action-desc">补充预设音色或原声复刻</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('friends', avatar)}>
+                        <View className="onboarding-icon">
+                          <Users size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">去交朋友</Text>
+                        <Text className="onboarding-action-desc">先建立好友关系和互动入口</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('mind-chat', avatar)}>
+                        <View className="onboarding-icon">
+                          <Sparkles size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">去心聊</Text>
+                        <Text className="onboarding-action-desc">返回我的分身广场继续体验</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
 
                 {/* 托管开关 */}
                 <View className="hosting-section">

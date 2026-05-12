@@ -72,9 +72,9 @@
 
 | 任务ID | 任务 | owner | status | depends_on | deliverables |
 | --- | --- | --- | --- | --- | --- |
-| G-1 | 创建流程优化任务化 | 产品经理/主控Agent | pending | B-5 | 创建流程任务包 |
-| G-2 | 心聊与社交体验优化任务化 | 产品经理/主控Agent | pending | B-5 | 社交与心聊任务包 |
-| G-3 | 收益体系透明化任务化 | 产品经理/主控Agent | pending | F-5 | 收益体系任务包 |
+| G-1 | 创建流程优化任务化 | 产品经理/主控Agent | completed | B-5 | 创建流程任务包 |
+| G-2 | 心聊与社交体验优化任务化 | 产品经理/主控Agent | completed | B-5 | 社交与心聊任务包 |
+| G-3 | 收益体系透明化任务化 | 产品经理/主控Agent | completed | F-5 | 收益体系任务包 |
 
 ## 8. 回写模板
 
@@ -112,3 +112,4 @@
 | F-1/F-2 冻结 | `.trae/specs/clarify-avatar-product-logic/freeze-subscription-product-model.md` `.trae/specs/clarify-avatar-product-logic/freeze-payment-state-machine.md` | 订阅产品模型与支付状态机已冻结；已明确套餐/权益/支付订单/订阅激活的 canonical 口径，以及 `payment` 模块为唯一支付下单主链 | `F-3/F-4` 代码闭环尚未打通 | 继续执行 F-3 支付后端闭环 |
 | F-3 第一轮落地 | `server/src/modules/subscription/subscription.service.ts` | `pnpm validate` 通过；已补齐 `getSubscriptionPlans/getAvatarSubscription/canCreateAvatar/canReceiveOrders/createSubscription` 等服务契约，并把 `getUserSubscription` 返回结构收敛为前端可直接消费的 `subscription + plan + is_active` | 支付回调仍未完成核销与订阅激活；前端订阅页仍未切到 canonical 支付下单接口 | 继续执行 F-3/F-4，打通 payment notify 与订阅页下单闭环 |
 | F-3/F-4/F-5 收口 | `server/src/modules/payment/payment.controller.ts` `server/src/modules/subscription/subscription.service.ts` `src/pages/subscription/index.tsx` | `pnpm validate` 通过；`pnpm --filter server build` 通过；支付订单已按 canonical `created -> paying -> paid/closed/failed/refunded` 收口；微信回调已补验签/解密/幂等核销并委托订阅激活；订阅页已切到 `/api/payment/wechat/create` 并改为支付后回拉 `/api/subscription/user` 确认权益 | 真实微信回调联调仍依赖线上支付配置与通知地址可达性，当前未做外部联调 | 进入阶段 G，开始“我的分身”中长期产品能力执行化 |
+| G-1/G-2/G-3 任务包冻结 | `.trae/specs/clarify-avatar-product-logic/g1-create-flow-task-pack.md` `.trae/specs/clarify-avatar-product-logic/g2-social-chat-task-pack.md` `.trae/specs/clarify-avatar-product-logic/g3-earnings-transparency-task-pack.md` | 已完成 G 阶段三份可执行任务包：创建流程、心聊社交、收益透明化；每份均补齐 Premise/Constraints/Boundaries/Endgame、阻塞点、开发批次与验收清单；可直接进入下一轮代码实施 | 当前仅完成任务化交付，尚未进入 G 阶段具体代码批次 | 下一步按任务包顺序进入 G-1 最小创建模式与 onboarding 开发 |

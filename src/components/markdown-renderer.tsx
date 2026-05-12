@@ -1,60 +1,9 @@
 import { View, Text, Image } from '@tarojs/components'
-import { marked } from 'marked'
 import Taro from '@tarojs/taro'
 
 interface MarkdownRendererProps {
   content: string
 }
-
-// 自定义 renderer 输出 Taro 组件
-const renderer = new marked.Renderer()
-
-renderer.heading = function (data) {
-  const text = data.text || ''
-  const depth = data.depth || 1
-  return `<view class="md-heading md-heading-${depth}"><text>${text}</text></view>`
-}
-
-renderer.paragraph = function (data) {
-  const text = data.text || ''
-  return `<view class="md-paragraph"><text>${text}</text></view>`
-}
-
-renderer.strong = function (data) {
-  const text = data.text || ''
-  return `<text class="md-bold">${text}</text>`
-}
-
-renderer.em = function (data) {
-  const text = data.text || ''
-  return `<text class="md-italic">${text}</text>`
-}
-
-renderer.listitem = function (data) {
-  const text = data.text || ''
-  return `<view class="md-list-item"><text>${text}</text></view>`
-}
-
-renderer.list = function (data) {
-  const items = data.items || []
-  return `<view class="md-list">${items.map((item: any) => item.text || '').join('')}</view>`
-}
-
-renderer.code = function (data) {
-  const text = data.text || ''
-  return `<text class="md-code">${text}</text>`
-}
-
-renderer.codespan = function (data) {
-  const text = data.text || ''
-  return `<text class="md-code">${text}</text>`
-}
-
-renderer.br = function () {
-  return `<text>{'\n'}</text>`
-}
-
-marked.setOptions({ renderer })
 
 // 简易 Markdown 解析（不用 dangerouslySetInnerHTML）
 function parseMarkdownSimple(content: string) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useLoad } from '@tarojs/taro'
 import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
 import {
@@ -11,6 +11,7 @@ import {
   MicOff,
   Sparkles,
   Headphones,
+  Crown,
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -38,9 +39,16 @@ const ABILITIES = [
 ]
 
 // 步骤标签
-const STEP_LABELS = ['上传照片', '基础设置', '能力选择']
+const STEP_LABELS = ['上传照片', '基础创建', '可选增强']
+const AVATAR_CREATE_DRAFT_KEY = 'avatar_create_draft_v1'
 
 export default function AvatarCreate() {
+  const [quotaSummary, setQuotaSummary] = useState({
+    avatarCount: 0,
+    maxAvatars: 1,
+    remainingAvatars: 1,
+    planName: '',
+  })
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     photo: '',
@@ -64,9 +72,96 @@ export default function AvatarCreate() {
 
   // 提交状态
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [draftReady, setDraftReady] = useState(false)
 
   // 检测小程序环境（组件级别，供所有函数使用）
   const isMiniApp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP || Taro.getEnv() === Taro.ENV_TYPE.TT
+
+  useLoad((options) => {
+    const avatarCount = Number(options?.avatarCount ?? 0)
+    const maxAvatars = Number(options?.maxAvatars ?? 1)
+    const remainingAvatars = Number(
+      options?.remainingAvatars ?? (maxAvatars === -1 ? -1 : Math.max(maxAvatars - avatarCount, 0))
+    )
+
+    setQuotaSummary({
+      avatarCount,
+      maxAvatars,
+      remainingAvatars,
+      planName: String(options?.planName || ''),
+    })
+
+    const savedDraft = Taro.getStorageSync(AVATAR_CREATE_DRAFT_KEY)
+    if (
+      savedDraft
+      && typeof savedDraft === 'object'
+      && (
+        savedDraft?.formData?.photo
+        || savedDraft?.formData?.photoUrl
+        || savedDraft?.formData?.name
+        || savedDraft?.formData?.tags?.length
+        || savedDraft?.formData?.voice
+        || savedDraft?.formData?.voiceUrl
+        || savedDraft?.formData?.presetVoiceId
+      )
+    ) {
+      Taro.showModal({
+        title: '继续上次创建',
+        content: '检测到你有未完成的分身创建草稿，是否继续上次填写内容？',
+        confirmText: '继续创建',
+        cancelText: '重新开始',
+        success: (res) => {
+          if (res.confirm) {
+            setFormData(prev => ({
+              ...prev,
+              ...savedDraft.formData,
+              abilities: {
+                ...prev.abilities,
+                ...(savedDraft.formData?.abilities || {}),
+              },
+            }))
+            setCurrentStep(
+              Math.min(Math.max(Number(savedDraft.currentStep || 1), 1), STEP_LABELS.length)
+            )
+          } else {
+            Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
+          }
+          setDraftReady(true)
+        },
+        fail: () => {
+          setDraftReady(true)
+        }
+      })
+      return
+    }
+
+    setDraftReady(true)
+  })
+
+  useEffect(() => {
+    if (!draftReady || isSubmitting) return
+
+    const hasDraftContent = Boolean(
+      formData.photo
+      || formData.photoUrl
+      || formData.name.trim()
+      || formData.tags.length
+      || formData.voice
+      || formData.voiceUrl
+      || formData.presetVoiceId
+    )
+
+    if (!hasDraftContent) {
+      Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
+      return
+    }
+
+    Taro.setStorageSync(AVATAR_CREATE_DRAFT_KEY, {
+      currentStep,
+      formData,
+      updatedAt: Date.now(),
+    })
+  }, [draftReady, currentStep, formData, isSubmitting])
 
   // 初始化录音管理器
   useEffect(() => {
@@ -410,16 +505,142 @@ export default function AvatarCreate() {
       Taro.showToast({ title: '请输入分身昵称', icon: 'none' })
       return
     }
-    if (currentStep === 2 && !formData.voice) {
-      Taro.showToast({ title: '请选择音色', icon: 'none' })
-      return
-    }
-    if (currentStep < 3) {
+    if (currentStep === 1) {
       setCurrentStep(currentStep + 1)
     } else {
       handleSubmit()
     }
   }
+
+  const goToEnhancementStep = () => {
+    if (!formData.photo) {
+      Taro.showToast({ title: '请先上传照片', icon: 'none' })
+      return
+    }
+    if (!formData.name.trim()) {
+      Taro.showToast({ title: '请先填写分身昵称', icon: 'none' })
+      return
+    }
+    setCurrentStep(3)
+  }
+
+  const renderVoiceSection = () => (
+    <View className="form-section">
+      <Text className="section-title">
+        声音配置
+        <Text className="title-hint">（创建后增强项）</Text>
+      </Text>
+
+      <View 
+        className={`clone-card ${formData.voice === 'clone' ? 'selected' : ''}`}
+        onClick={() => updateFormData('voice', 'clone')}
+      >
+        <View className="voice-card-header">
+          <View className="voice-icon-bg clone">
+            <Mic size={32} color="#fff" />
+          </View>
+          <View className="voice-card-info">
+            <Text className="voice-card-title">原声复刻</Text>
+            <Text className="voice-card-desc">用您的声音训练专属音色</Text>
+          </View>
+          <View className={`voice-check-circle ${formData.voice === 'clone' ? 'active' : ''}`}>
+            {formData.voice === 'clone' && <View className="check-inner" />}
+          </View>
+        </View>
+
+        {formData.voice === 'clone' && (
+          <View className="clone-area">
+            {!isMiniApp ? (
+              <View className="clone-status">
+                <Mic size={18} color="#9CA3AF" />
+                <Text className="clone-text" style={{ color: '#9CA3AF' }}>
+                  请在微信/抖音小程序中录制声音
+                </Text>
+              </View>
+            ) : formData.voiceUrl ? (
+              <View className="recording-status">
+                <Headphones size={20} color="#8B5CF6" />
+                <Text className="clone-text">声音已录制</Text>
+              </View>
+            ) : isRecording ? (
+              <View className="recording-status">
+                <View className="recording-dot" />
+                <Text className="recording-time">{recordingTime}s</Text>
+              </View>
+            ) : (
+              <View className="clone-status">
+                <Sparkles size={18} color="#8B5CF6" />
+                <Text className="clone-text">录制30秒音频</Text>
+              </View>
+            )}
+
+            <View 
+              className="clone-upload"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggleRecord()
+              }}
+            >
+              {isRecording ? (
+                <>
+                  <MicOff size={18} color="#EF4444" />
+                  <Text className="clone-upload-text" style={{ color: '#EF4444' }}>停止</Text>
+                </>
+              ) : formData.voiceUrl ? (
+                <>
+                  <Mic size={18} color="#8B5CF6" />
+                  <Text className="clone-upload-text">重新录制</Text>
+                </>
+              ) : (
+                <>
+                  <Mic size={18} color="#8B5CF6" />
+                  <Text className="clone-upload-text">开始录制</Text>
+                </>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+
+      <View 
+        className={`clone-card ${formData.voice === 'preset' ? 'selected' : ''}`}
+        onClick={() => updateFormData('voice', 'preset')}
+      >
+        <View className="voice-card-header">
+          <View className="voice-icon-bg clone">
+            <Sparkles size={32} color="#fff" />
+          </View>
+          <View className="voice-card-info">
+            <Text className="voice-card-title">预设音色</Text>
+            <Text className="voice-card-desc">选择系统提供的音色</Text>
+          </View>
+          <View className={`voice-check-circle ${formData.voice === 'preset' ? 'active' : ''}`}>
+            {formData.voice === 'preset' && <View className="check-inner" />}
+          </View>
+        </View>
+      </View>
+
+      {formData.voice === 'preset' && (
+        <View className="voice-grid">
+          {PRESET_VOICES.map(voice => (
+            <View
+              key={voice.id}
+              className={`voice-card ${formData.presetVoiceId === voice.id ? 'selected' : ''}`}
+              onClick={() => {
+                updateFormData('presetVoiceId', voice.id)
+              }}
+            >
+              <View className={`voice-check-circle small ${formData.presetVoiceId === voice.id ? 'active' : ''}`}>
+                {formData.presetVoiceId === voice.id && <View className="check-inner" />}
+              </View>
+              <Text style={{ fontSize: '48rpx' }}>{voice.emoji}</Text>
+              <Text className="voice-grid-label">{voice.name}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  )
 
   // 提交创建
   const handleSubmit = async () => {
@@ -463,9 +684,19 @@ export default function AvatarCreate() {
       Taro.hideLoading()
       
       if (res.data?.code === 200 || res.data?.code === 201) {
+        const createdAvatarId = String(
+          res.data?.data?.id
+          || res.data?.data?.avatarId
+          || res.data?.data?.avatar_id
+          || ''
+        )
+        Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
         Taro.showToast({ title: '创建成功', icon: 'success' })
         setTimeout(() => {
-          Taro.redirectTo({ url: '/pages/avatar/avatar-manage/index?refresh=1' })
+          const onboardingQuery = createdAvatarId
+            ? `refresh=1&onboarding=1&newAvatarId=${encodeURIComponent(createdAvatarId)}`
+            : 'refresh=1'
+          Taro.redirectTo({ url: `/pages/avatar/avatar-manage/index?${onboardingQuery}` })
         }, 1500)
       } else {
         Taro.showToast({ 
@@ -560,124 +791,21 @@ export default function AvatarCreate() {
         </View>
       </View>
 
-      {/* 音色选择 */}
-      <View className="form-section">
-        <Text className="section-title">
-          声音选择
-          <Text className="title-hint">（必选）</Text>
+      <View className="post-create-card">
+        <Text className="post-create-title">声音配置已后置到创建后</Text>
+        <Text className="post-create-desc">
+          你现在只需完成照片和昵称即可创建分身。声音复刻、预设音色和能力增强都可以在下一步继续完善。
         </Text>
+      </View>
 
-        {/* 原声复刻 */}
-        <View 
-          className={`clone-card ${formData.voice === 'clone' ? 'selected' : ''}`}
-          onClick={() => updateFormData('voice', 'clone')}
-        >
-          <View className="voice-card-header">
-            <View className="voice-icon-bg clone">
-              <Mic size={32} color="#fff" />
-            </View>
-            <View className="voice-card-info">
-              <Text className="voice-card-title">原声复刻</Text>
-              <Text className="voice-card-desc">用您的声音训练专属音色</Text>
-            </View>
-            <View className={`voice-check-circle ${formData.voice === 'clone' ? 'active' : ''}`}>
-              {formData.voice === 'clone' && <View className="check-inner" />}
-            </View>
-          </View>
-
-          {formData.voice === 'clone' && (
-            <View className="clone-area">
-              {!isMiniApp ? (
-                <View className="clone-status">
-                  <Mic size={18} color="#9CA3AF" />
-                  <Text className="clone-text" style={{ color: '#9CA3AF' }}>
-                    请在微信/抖音小程序中录制声音
-                  </Text>
-                </View>
-              ) : formData.voiceUrl ? (
-                <View className="recording-status">
-                  <Headphones size={20} color="#8B5CF6" />
-                  <Text className="clone-text">声音已录制</Text>
-                </View>
-              ) : isRecording ? (
-                <View className="recording-status">
-                  <View className="recording-dot" />
-                  <Text className="recording-time">{recordingTime}s</Text>
-                </View>
-              ) : (
-                <View className="clone-status">
-                  <Sparkles size={18} color="#8B5CF6" />
-                  <Text className="clone-text">录制30秒音频</Text>
-                </View>
-              )}
-
-              <View 
-                className="clone-upload"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleToggleRecord()
-                }}
-              >
-                {isRecording ? (
-                  <>
-                    <MicOff size={18} color="#EF4444" />
-                    <Text className="clone-upload-text" style={{ color: '#EF4444' }}>停止</Text>
-                  </>
-                ) : formData.voiceUrl ? (
-                  <>
-                    <Mic size={18} color="#8B5CF6" />
-                    <Text className="clone-upload-text">重新录制</Text>
-                  </>
-                ) : (
-                  <>
-                    <Mic size={18} color="#8B5CF6" />
-                    <Text className="clone-upload-text">开始录制</Text>
-                  </>
-                )}
-              </View>
-            </View>
-          )}
+      <View className="optional-upgrade-card">
+        <Text className="optional-upgrade-title">已经满足创建条件</Text>
+        <Text className="optional-upgrade-desc">
+          当前只要上传照片并填写昵称就可以直接创建，声音和能力配置都可以在创建后继续完善。
+        </Text>
+        <View className="optional-upgrade-link" onClick={goToEnhancementStep}>
+          <Text className="optional-upgrade-link-text">继续完善可选配置</Text>
         </View>
-
-        {/* 预设音色 */}
-        <View 
-          className={`clone-card ${formData.voice === 'preset' ? 'selected' : ''}`}
-          onClick={() => updateFormData('voice', 'preset')}
-        >
-          <View className="voice-card-header">
-            <View className="voice-icon-bg clone">
-              <Sparkles size={32} color="#fff" />
-            </View>
-            <View className="voice-card-info">
-              <Text className="voice-card-title">预设音色</Text>
-              <Text className="voice-card-desc">选择系统提供的音色</Text>
-            </View>
-            <View className={`voice-check-circle ${formData.voice === 'preset' ? 'active' : ''}`}>
-              {formData.voice === 'preset' && <View className="check-inner" />}
-            </View>
-          </View>
-        </View>
-
-        {/* 预设音色网格 */}
-        {formData.voice === 'preset' && (
-          <View className="voice-grid">
-            {PRESET_VOICES.map(voice => (
-              <View
-                key={voice.id}
-                className={`voice-card ${formData.presetVoiceId === voice.id ? 'selected' : ''}`}
-                onClick={() => {
-                  updateFormData('presetVoiceId', voice.id)
-                }}
-              >
-                <View className={`voice-check-circle small ${formData.presetVoiceId === voice.id ? 'active' : ''}`}>
-                  {formData.presetVoiceId === voice.id && <View className="check-inner" />}
-                </View>
-                <Text style={{ fontSize: '48rpx' }}>{voice.emoji}</Text>
-                <Text className="voice-grid-label">{voice.name}</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
     </View>
   )
@@ -706,6 +834,8 @@ export default function AvatarCreate() {
         </View>
       </View>
 
+      {renderVoiceSection()}
+
       {/* 能力列表 */}
       <View className="form-section">
         <Text className="section-title">分身能力</Text>
@@ -732,6 +862,7 @@ export default function AvatarCreate() {
 
       <View className="tips-card">
         <Text className="tips-title">温馨提示</Text>
+        <Text className="tips-item">这里属于可选增强配置，不影响本次创建</Text>
         <Text className="tips-item">分身创建后可在设置中修改配置</Text>
         <Text className="tips-item">声音复刻预计需要 5-10 分钟</Text>
         <Text className="tips-item">能力将根据分身类型自动开启</Text>
@@ -792,6 +923,38 @@ export default function AvatarCreate() {
 
       {/* 内容区域 */}
       <View className="page-content">
+        <View className="quota-summary-card">
+          <View className="quota-summary-header">
+            <Crown size={18} color="#8B5CF6" />
+            <Text className="quota-summary-title">创建权益</Text>
+            {quotaSummary.planName ? (
+              <Text className="quota-summary-plan">{quotaSummary.planName}</Text>
+            ) : null}
+          </View>
+          <Text className="quota-summary-text">
+            已创建 <Text className="quota-summary-highlight">{quotaSummary.avatarCount}</Text> 个分身
+            {quotaSummary.maxAvatars === -1 ? (
+              <Text className="quota-summary-highlight">，当前套餐支持无限创建</Text>
+            ) : (
+              <Text>
+                ，本套餐最多 <Text className="quota-summary-highlight">{quotaSummary.maxAvatars}</Text> 个，
+                当前还可创建 <Text className="quota-summary-highlight">{Math.max(quotaSummary.remainingAvatars, 0)}</Text> 个
+              </Text>
+            )}
+          </Text>
+          {quotaSummary.maxAvatars !== -1 && quotaSummary.remainingAvatars <= 1 ? (
+            <View
+              className="quota-summary-tip"
+              onClick={() => Taro.navigateTo({ url: '/pages/subscription/index' })}
+            >
+              <Text className="quota-summary-tip-text">
+                {quotaSummary.remainingAvatars <= 0 ? '当前配额已用完，去升级订阅' : '当前剩余额度较少，可提前升级订阅'}
+              </Text>
+            </View>
+          ) : (
+            <Text className="quota-summary-subtext">先完成基础创建，声音和能力配置可后续逐步补充。</Text>
+          )}
+        </View>
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
@@ -804,7 +967,7 @@ export default function AvatarCreate() {
           onClick={handleNext}
         >
           <Text className="btn-text">
-            {currentStep < 3 ? '下一步' : isSubmitting ? '创建中...' : '创建分身'}
+            {currentStep === 1 ? '下一步' : isSubmitting ? '创建中...' : '创建分身'}
           </Text>
         </View>
       </View>
