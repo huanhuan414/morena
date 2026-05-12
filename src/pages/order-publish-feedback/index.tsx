@@ -3,7 +3,7 @@ import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, ImagePlus, Eye, X, Send, Link } from 'lucide-react-taro'
+import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
@@ -13,6 +13,9 @@ const ARTICLE_PLATFORMS = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu', 'w
 function isArticlePlatform(platform: string): boolean {
   return ARTICLE_PLATFORMS.includes(platform)
 }
+
+// 需要发布验证的平台
+const VERIFY_REQUIRED_PLATFORMS = ['douyin', 'kuaishou', 'xiaohongshu', 'wechat_mp', 'wechat_channel']
 
 // 内容类型配置
 const CONTENT_TYPE_CONFIG: Record<string, { name: string; color: string }> = {
@@ -67,6 +70,7 @@ export default function OrderPublishFeedback() {
   const [contentType, setContentType] = useState<string>('')
   const [currentPlatform, setCurrentPlatform] = useState<string>('')
   const [actualRequestId, setActualRequestId] = useState<string>('')
+  const [verifyResults, setVerifyResults] = useState<Record<string, { verified: boolean; message: string; title?: string; verifying?: boolean }>>({})
 
   useLoad(() => {
     console.log('[OrderPublishFeedback] 页面加载，params:', { requestId, orderId, contentId })
@@ -214,6 +218,89 @@ export default function OrderPublishFeedback() {
       ...prev,
       [platform]: { ...prev[platform], link: value }
     }))
+    // 清除该平台的验证结果（链接变了需要重新验证）
+    if (verifyResults[platform]) {
+      setVerifyResults(prev => {
+        const next = { ...prev }
+        delete next[platform]
+        return next
+      })
+    }
+  }
+
+  // 是否需要验证
+  const isVerifyRequired = (platform: string) => VERIFY_REQUIRED_PLATFORMS.includes(platform)
+
+  // 验证发布内容
+  const handleVerify = async (platform: string) => {
+    const fb = feedback[platform]
+    const postUrl = fb?.link
+    if (!postUrl) {
+      Taro.showToast({ title: '请先填写发布链接', icon: 'none' })
+      return
+    }
+
+    // 提取关键词：从生成的文案标题和内容中提取
+    const keywords: string[] = []
+    if (generatedContent?.title) keywords.push(generatedContent.title)
+    // 取内容前20字作为关键词
+    if (generatedContent?.content) {
+      const shortContent = generatedContent.content.replace(/[#*\n]/g, '').substring(0, 30).trim()
+      if (shortContent) keywords.push(shortContent)
+    }
+
+    setVerifyResults(prev => ({
+      ...prev,
+      [platform]: { verified: false, message: '验证中...', verifying: true }
+    }))
+
+    try {
+      const response = await Network.request({
+        url: '/api/tikhub/verify-post',
+        method: 'POST',
+        data: { platform, postUrl, keywords }
+      })
+
+      const data = response.data
+      if (data?.code === 200 && data?.data) {
+        setVerifyResults(prev => ({
+          ...prev,
+          [platform]: {
+            verified: data.data.verified,
+            message: data.data.message,
+            title: data.data.title,
+            verifying: false
+          }
+        }))
+      } else {
+        setVerifyResults(prev => ({
+          ...prev,
+          [platform]: {
+            verified: false,
+            message: data?.message || '验证失败，请重试',
+            verifying: false
+          }
+        }))
+      }
+    } catch (error) {
+      setVerifyResults(prev => ({
+        ...prev,
+        [platform]: {
+          verified: false,
+          message: '网络异常，请重试',
+          verifying: false
+        }
+      }))
+    }
+  }
+
+  // 检查是否所有需要验证的平台都已通过
+  const allVerified = () => {
+    const requiredPlatforms = publishPlatforms
+      .filter(p => isVerifyRequired(p.platform))
+      .map(p => p.platform)
+    if (requiredPlatforms.length === 0) return true
+    return requiredPlatforms.every(p => verifyResults[p]?.verified)
   }
 
   const handleSubmit = async () => {
@@ -230,6 +317,12 @@ export default function OrderPublishFeedback() {
 
     if (hasInvalid) {
       Taro.showToast({ title: '请填写截图或链接', icon: 'none' })
+      return
+    }
+
+    // 检查需要验证的平台是否都已通过验证
+    if (!allVerified()) {
+      Taro.showToast({ title: '请先完成发布验证', icon: 'none' })
       return
     }
 
@@ -414,13 +507,67 @@ export default function OrderPublishFeedback() {
               <View className="feedback-link-field">
                 <Input
                   className="w-full bg-transparent"
-                  placeholder="请输入发布链接"
+                  placeholder={isVerifyRequired(platform) ? '请输入发布链接（必填，用于验证）' : '请输入发布链接'}
                   value={fb.link}
                   onInput={(e) => handleLinkChange(platform, e.detail.value)}
                 />
               </View>
             </View>
           </View>
+
+          {/* 发布验证（仅需要验证的平台） */}
+          {isVerifyRequired(platform) && (
+            <View className="feedback-section verify-section">
+              <Text className="feedback-label">发布验证</Text>
+
+              {/* 验证按钮 */}
+              {!verifyResults[platform]?.verified && !verifyResults[platform]?.verifying && (
+                <View
+                  className={`verify-btn ${fb.link ? '' : 'disabled'}`}
+                  onClick={fb.link ? () => handleVerify(platform) : undefined}
+                >
+                  <ShieldCheck size={14} color={fb.link ? '#6366F1' : '#9CA3AF'} />
+                  <Text className="verify-btn-text" style={{ color: fb.link ? '#6366F1' : '#9CA3AF' }}>
+                    验证发布
+                  </Text>
+                </View>
+              )}
+
+              {/* 验证中 */}
+              {verifyResults[platform]?.verifying && (
+                <View className="verify-status verifying">
+                  <Loader size={14} color="#6366F1" />
+                  <Text className="verify-status-text verifying-text">正在验证...</Text>
+                </View>
+              )}
+
+              {/* 验证通过 */}
+              {verifyResults[platform]?.verified && !verifyResults[platform]?.verifying && (
+                <View className="verify-status verified">
+                  <ShieldCheck size={14} color="#10B981" />
+                  <Text className="verify-status-text verified-text">验证通过</Text>
+                  {verifyResults[platform].title && (
+                    <Text className="verify-detail">已识别: {verifyResults[platform].title}</Text>
+                  )}
+                </View>
+              )}
+
+              {/* 验证未通过 */}
+              {!verifyResults[platform]?.verified && !verifyResults[platform]?.verifying && verifyResults[platform]?.message && (
+                <View className="verify-status failed">
+                  <ShieldAlert size={14} color="#EF4444" />
+                  <Text className="verify-status-text failed-text">{verifyResults[platform].message}</Text>
+                  <View className="verify-retry" onClick={() => handleVerify(platform)}>
+                    <Text className="verify-retry-text">重新验证</Text>
+                  </View>
+                </View>
+              )}
+
+              {!verifyResults[platform] && (
+                <Text className="verify-hint">需要验证发布内容与订单要求是否匹配</Text>
+              )}
+            </View>
+          )}
         </View>
       </View>
     )
@@ -475,9 +622,12 @@ export default function OrderPublishFeedback() {
 
       {/* 底部提交按钮 */}
       <View className="feedback-bottom-bar">
+        {!allVerified() && publishPlatforms.some(p => isVerifyRequired(p.platform)) && (
+          <Text className="feedback-verify-hint">请先完成发布验证再提交</Text>
+        )}
         <View
-          className={`feedback-submit-btn ${submitting ? 'disabled' : ''}`}
-          onClick={submitting ? undefined : handleSubmit}
+          className={`feedback-submit-btn ${submitting ? 'disabled' : ''} ${!allVerified() ? 'disabled' : ''}`}
+          onClick={submitting || !allVerified() ? undefined : handleSubmit}
         >
           <Send size={16} color="#fff" />
           <Text className="feedback-submit-text">{submitting ? '提交中...' : '提交反馈'}</Text>

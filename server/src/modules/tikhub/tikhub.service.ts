@@ -215,4 +215,142 @@ export class TikHubService {
       }
     }
   }
+
+  /**
+   * 验证发布内容 — 通过分享链接解析并比对关键词
+   * 支持平台：抖音、快手、小红书、微信公众号
+   * @param platform 平台标识 (douyin/kuaishou/xiaohongshu/wechat_mp)
+   * @param postUrl 发布内容链接
+   * @param keywords 用于比对的关键词（从生成的文案标题/品牌名中提取）
+   */
+  async verifyPost(platform: string, postUrl: string, keywords: string[] = []) {
+    try {
+      console.log(`[TikHubService] 验证发布内容: platform=${platform}, url=${postUrl}, keywords=${keywords.join(',')}`)
+
+      if (!postUrl) {
+        return { success: false, message: '请输入发布链接' }
+      }
+
+      // 抖音 / 快手 / 小红书：使用 TikHub 混合解析接口
+      if (['douyin', 'kuaishou', 'xiaohongshu'].includes(platform)) {
+        return await this.verifyViaTikHub(platform, postUrl, keywords)
+      }
+
+      // 微信公众号：直接抓取文章内容
+      if (platform === 'wechat_mp' || platform === 'wechat_channel') {
+        return await this.verifyWechatArticle(postUrl, keywords)
+      }
+
+      // 其他平台暂不支持自动验证
+      return { success: false, message: '该平台暂不支持自动验证', data: null }
+    } catch (error: any) {
+      console.error('[TikHubService] 验证发布内容失败:', error)
+      return {
+        success: false,
+        message: error.response?.data?.detail || error.response?.data?.message || error.message || '验证失败',
+      }
+    }
+  }
+
+  /**
+   * 通过 TikHub 混合解析接口验证抖音/快手/小红书发布内容
+   */
+  private async verifyViaTikHub(platform: string, postUrl: string, keywords: string[]) {
+    try {
+      const response = await this.axios.get('/hybrid/video_data', {
+        params: { url: postUrl },
+      })
+
+      if (response.data?.code !== 200 || !response.data?.data) {
+        return {
+          success: false,
+          message: response.data?.message || '无法解析该链接，请确认链接是否正确',
+        }
+      }
+
+      const videoData = response.data.data
+      const title = videoData.title || videoData.desc || ''
+      const nickname = videoData.author?.nickname || videoData.author?.unique_id || ''
+      const awemeId = videoData.aweme_id || videoData.note_id || ''
+
+      // 关键词比对：只要有任意一个关键词出现在标题中即可
+      let keywordMatch = false
+      if (keywords.length > 0) {
+        keywordMatch = keywords.some(kw => title.toLowerCase().includes(kw.toLowerCase()))
+      } else {
+        // 没有关键词时，只要能解析到内容就算验证通过
+        keywordMatch = true
+      }
+
+      return {
+        success: true,
+        data: {
+          platform,
+          verified: keywordMatch,
+          title,
+          nickname,
+          awemeId,
+          keywordMatch,
+          message: keywordMatch ? '验证通过：发布内容与订单要求匹配' : '验证未通过：发布内容与订单要求不匹配，请确认是否发布了正确内容',
+        },
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || error.response?.data?.message || error.message
+      console.error('[TikHubService] TikHub 解析失败:', errorMsg)
+      return {
+        success: false,
+        message: `链接解析失败: ${errorMsg}`,
+      }
+    }
+  }
+
+  /**
+   * 验证微信公众号文章
+   */
+  private async verifyWechatArticle(postUrl: string, keywords: string[]) {
+    try {
+      // 微信公众号文章通过 mp.weixin.qq.com 链接直接获取
+      const response = await axios.get(postUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        timeout: 15000,
+      })
+
+      const html = response.data || ''
+      // 提取标题：微信文章标题在 <h1> 或 id="activity-name" 中
+      let title = ''
+      const titleMatch = html.match(/id="activity-name"[^>]*>([\s\S]*?)<\/h1>/) ||
+                         html.match(/<h1[^>]*class="rich_media_title"[^>]*>([\s\S]*?)<\/h1>/) ||
+                         html.match(/<title>([\s\S]*?)<\/title>/)
+      if (titleMatch) {
+        title = titleMatch[1].replace(/<[^>]+>/g, '').trim()
+      }
+
+      // 关键词比对
+      let keywordMatch = false
+      if (keywords.length > 0) {
+        keywordMatch = keywords.some(kw => title.toLowerCase().includes(kw.toLowerCase()))
+      } else {
+        keywordMatch = !!title
+      }
+
+      return {
+        success: true,
+        data: {
+          platform: 'wechat_mp',
+          verified: keywordMatch,
+          title,
+          keywordMatch,
+          message: keywordMatch ? '验证通过：发布内容与订单要求匹配' : '验证未通过：发布内容与订单要求不匹配',
+        },
+      }
+    } catch (error: any) {
+      console.error('[TikHubService] 微信文章验证失败:', error.message)
+      return {
+        success: false,
+        message: `微信文章验证失败: ${error.message}`,
+      }
+    }
+  }
 }

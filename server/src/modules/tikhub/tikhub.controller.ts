@@ -6,6 +6,32 @@ export class TikHubController {
   constructor(private readonly tikhubService: TikHubService) {}
 
   /**
+   * 验证发布内容
+   * @param platform 平台标识 (douyin/kuaishou/xiaohongshu/wechat_mp)
+   * @param postUrl 发布内容链接
+   * @param keywords 用于比对的关键词
+   */
+  @Post('verify-post')
+  async verifyPost(@Body() body: { platform: string; postUrl: string; keywords?: string[] }) {
+    const { platform, postUrl, keywords } = body
+
+    if (!platform) {
+      return { code: 400, message: '请指定平台', data: null }
+    }
+    if (!postUrl) {
+      return { code: 400, message: '请输入发布链接', data: null }
+    }
+
+    const result = await this.tikhubService.verifyPost(platform, postUrl, keywords || [])
+
+    return {
+      code: result.success ? 200 : 400,
+      message: result.message,
+      data: result.data || null,
+    }
+  }
+
+  /**
    * 根据抖音号获取用户信息
    */
   @Post('douyin/user-info')
