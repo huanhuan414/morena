@@ -127,10 +127,19 @@ export default function PendingOrderListPage() {
       console.log('[待接订单] 接单响应:', res.data)
       if (res.data?.code === 200) {
         Taro.showToast({ title: '接单成功', icon: 'success' })
-        // 跳转到内容生成页面
+        const result = res.data?.data || {}
+        const nextRequestId = result.requestId || ''
+        const nextAvatarId = result.avatarId || order.avatarId
+        const nextOrderId = result.orderId || order.orderId
+        const query = [
+          `orderId=${encodeURIComponent(nextOrderId)}`,
+          `avatarId=${encodeURIComponent(nextAvatarId)}`,
+          nextRequestId ? `requestId=${encodeURIComponent(nextRequestId)}` : '',
+        ].filter(Boolean).join('&')
+
         setTimeout(() => {
           Taro.navigateTo({
-            url: `/pages/order/order-content-creation/index?orderId=${order.orderId}&avatarId=${order.avatarId}`
+            url: `/pages/order/order-processing/index?${query}`
           })
         }, 500)
         // 从列表移除

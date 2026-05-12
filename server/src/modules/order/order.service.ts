@@ -47,10 +47,11 @@ export class OrderService {
 
   private normalizeContentStatus(status?: string): string {
     const value = String(status || '').trim().toLowerCase()
-    if (['generating_text', 'generating_images', 'pending'].includes(value)) return 'processing'
+    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
+    if (['completed', 'revision_requested'].includes(value)) return 'preview'
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'
-    return value || 'processing'
+    return value || 'generating'
   }
 
   // 订单状态流转映射
@@ -265,7 +266,9 @@ export class OrderService {
     const avatarStats = (avatarRows || []).map((row: any) => {
       const avatarId = row.avatarId || row.avatar_id
       const processing = latestProcessingMap.get(avatarId)
-      const normalizedStatus = this.normalizeDispatchStatus(processing?.status || row.status)
+      const normalizedStatus = processing
+        ? this.normalizeContentStatus(processing?.status)
+        : this.normalizeDispatchStatus(row.status)
 
       return {
         id: row.id,
@@ -283,11 +286,11 @@ export class OrderService {
 
     const summaryStats = {
       totalAvatars: avatarStats.length,
-      acceptedAvatars: avatarStats.filter((row: any) => this.isAcceptedDispatchStatus(row.status)).length,
+      acceptedAvatars: avatarStats.filter((row: any) => ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
       completedAvatars: avatarStats.filter((row: any) => row.status === 'completed').length,
       totalPosts: 0,
       totalPlatforms: 0,
-      totalPublished: avatarStats.filter((row: any) => ['published', 'feedback_submitted', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
+      totalPublished: avatarStats.filter((row: any) => ['published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
       totalManual: 0,
       totalViews: 0,
       totalLikes: 0,

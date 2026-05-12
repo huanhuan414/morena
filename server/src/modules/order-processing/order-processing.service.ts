@@ -50,6 +50,19 @@ export class OrderProcessingService {
     }, {})
   }
 
+  private normalizeWorkflowStatus(status?: string): string {
+    const value = String(status || '').trim().toLowerCase()
+    if (!value) return 'queuing'
+    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
+    if (['completed', 'revision_requested'].includes(value)) return 'preview'
+    if (value === 'feedback_submitted') return 'awaiting_acceptance'
+    if (['settled', 'done'].includes(value)) return 'completed'
+    if (['queuing', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed', 'failed', 'generating'].includes(value)) {
+      return value
+    }
+    return value
+  }
+
   private async getTableColumns(): Promise<Set<string>> {
     if (this.columnsCache) {
       return this.columnsCache
@@ -186,7 +199,8 @@ export class OrderProcessingService {
       user_id: record.userId || record.user_id,
       userId: record.userId || record.user_id,
       platform: this.canonicalizePlatform(record.platform),
-      status: record.status || 'completed',
+      rawStatus: record.status || 'completed',
+      status: this.normalizeWorkflowStatus(record.status || 'completed'),
       contentType: config.contentType || config.content_type || 'image',
       generatedContent: {
         title: config.title || '',

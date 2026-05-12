@@ -24,23 +24,20 @@ const STATUS_MAP = {
 const AVATAR_STATUS_MAP = {
   pending: { label: '待接单', color: '#9CA3AF', bg: '#F3F4F6' },
   accepted: { label: '已接单', color: '#6366F1', bg: '#EEF2FF' },
-  in_progress: { label: '生成中', color: '#6366F1', bg: '#EEF2FF' },
-  processing: { label: '生成中', color: '#6366F1', bg: '#EEF2FF' },
-  generating_images: { label: '配图生成中', color: '#6366F1', bg: '#EEF2FF' },
-  completed: { label: '内容已生成', color: '#22C55E', bg: '#DCFCE7' },
+  generating: { label: '生成中', color: '#6366F1', bg: '#EEF2FF' },
+  preview: { label: '待发布', color: '#22C55E', bg: '#DCFCE7' },
+  publishing: { label: '发布中', color: '#14B8A6', bg: '#CCFBF1' },
   published: { label: '已发布', color: '#14B8A6', bg: '#CCFBF1' },
-  feedback_submitted: { label: '已提交反馈', color: '#F97316', bg: '#FFF7ED' },
-  reviewing: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
-  settled: { label: '已结算', color: '#22C55E', bg: '#DCFCE7' },
-  done: { label: '已完成', color: '#22C55E', bg: '#DCFCE7' },
+  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
   failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2' },
   declined: { label: '已婉拒', color: '#9CA3AF', bg: '#F3F4F6' },
+  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7' },
 }
 
 // 点击分身卡片时，哪些状态可以查看内容
-const CAN_VIEW_CONTENT = ['completed', 'generating_images', 'processing', 'published', 'feedback_submitted', 'reviewing', 'settled', 'done']
+const CAN_VIEW_CONTENT = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'completed', 'generating']
 // 哪些状态可以查看反馈
-const CAN_VIEW_FEEDBACK = ['published', 'feedback_submitted', 'reviewing', 'settled', 'done']
+const CAN_VIEW_FEEDBACK = ['published', 'awaiting_acceptance', 'completed']
 
 export default function OrderDetail() {
   const [order, setOrder] = useState<any>(null)
@@ -145,7 +142,7 @@ export default function OrderDetail() {
     const orderId = order?.id
     const avatarId = dialogAvatar.avatarId || dialogAvatar.avatar_id
     Taro.navigateTo({
-      url: `/pages/order-publish-feedback/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
+      url: `/pages/order/order-processing/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
     })
     setDialogOpen(false)
   }

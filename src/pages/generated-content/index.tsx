@@ -9,39 +9,42 @@ import './index.css'
 // 内容状态映射
 // 后端状态 → 前端 tab key 映射
 const BACKEND_STATUS_TO_TAB: Record<string, string> = {
-  pending: 'completed',
-  processing: 'completed',
-  generating_images: 'completed',
-  completed: 'completed',          // 后端 completed = 生成完成 = 前端"待发布"
-  published: 'published',          // 后端 published = 前端"待反馈"
-  feedback_submitted: 'reviewing', // 后端 feedback_submitted = 前端"待验收"
-  reviewing: 'reviewing',
-  awaiting_acceptance: 'reviewing',
-  settled: 'settled',
-  done: 'settled',
+  queuing: 'generating',
+  pending: 'generating',
+  processing: 'generating',
+  generating: 'generating',
+  generating_text: 'generating',
+  generating_images: 'generating',
+  preview: 'preview',
+  completed: 'preview',
+  revision_requested: 'preview',
+  publishing: 'published',
+  published: 'published',
+  feedback_submitted: 'awaiting_acceptance',
+  reviewing: 'awaiting_acceptance',
+  awaiting_acceptance: 'awaiting_acceptance',
+  settled: 'completed',
+  done: 'completed',
   failed: 'failed',
 }
 
 const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
-  completed:    { label: '待发布', color: '#F59E0B', bgColor: '#FEF3C7' },
-  published:    { label: '待反馈', color: '#3B82F6', bgColor: '#DBEAFE' },
-  reviewing:    { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
-  settled:      { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
-  done:         { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
-  processing:   { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
-  pending:      { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
-  feedback_submitted: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
-  generating_images:  { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
-  failed:       { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
+  generating: { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
+  preview: { label: '待发布', color: '#F59E0B', bgColor: '#FEF3C7' },
+  published: { label: '待反馈', color: '#3B82F6', bgColor: '#DBEAFE' },
+  awaiting_acceptance: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
+  completed: { label: '已完成', color: '#10B981', bgColor: '#D1FAE5' },
+  failed: { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
 }
 
 // Tab 状态筛选
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
-  { key: 'completed', label: '待发布' },
+  { key: 'generating', label: '生成中' },
+  { key: 'preview', label: '待发布' },
   { key: 'published', label: '待反馈' },
-  { key: 'reviewing', label: '待验收' },
-  { key: 'settled', label: '已完成' },
+  { key: 'awaiting_acceptance', label: '待验收' },
+  { key: 'completed', label: '已完成' },
   { key: 'failed', label: '生成失败' },
 ]
 
@@ -141,12 +144,12 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
-    const tabKey = BACKEND_STATUS_TO_TAB[content.status] || content.status
-    if (tabKey === 'reviewing' || content.status === 'feedback_submitted') {
-      Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
-    } else {
-      Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
-    }
+    const query = [
+      `orderId=${encodeURIComponent(content.orderId || '')}`,
+      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
+      content.id ? `requestId=${encodeURIComponent(content.id)}` : '',
+    ].filter(Boolean).join('&')
+    Taro.navigateTo({ url: `/pages/order/order-processing/index?${query}` })
   }
 
   // 发布

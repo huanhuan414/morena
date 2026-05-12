@@ -80,17 +80,17 @@ export default function OrderContentCreation() {
       if (res.data?.code === 200 && res.data?.data) {
         const data = res.data.data as ProcessingData
         setProcessingData(data)
-        if (data.status === 'completed' && data.generatedContent) {
+        if (data.status === 'preview' && data.generatedContent) {
           setPageStatus('completed')
           stopPolling()
         } else if (data.status === 'failed') {
           setPageStatus('failed')
           setErrorMsg('内容生成失败')
           stopPolling()
-        } else if (['generating_text', 'generating_images', 'queuing', 'processing', 'pending'].includes(data.status)) {
+        } else if (['queuing', 'generating', 'publishing'].includes(data.status)) {
           setPageStatus('generating')
           startPolling(id)
-        } else if (['publishing', 'published', 'awaiting_acceptance'].includes(data.status)) {
+        } else if (['published', 'awaiting_acceptance', 'completed'].includes(data.status)) {
           setPageStatus('completed')
           stopPolling()
         }
@@ -166,14 +166,14 @@ export default function OrderContentCreation() {
         if (res.data?.code === 200 && res.data?.data) {
           const data = res.data.data as ProcessingData
           setProcessingData(data)
-          if (data.status === 'completed') {
+          if (data.status === 'preview') {
             setPageStatus('completed')
             stopPolling()
           } else if (data.status === 'failed') {
             setPageStatus('failed')
             setErrorMsg('内容生成失败')
             stopPolling()
-          } else if (['publishing', 'published', 'awaiting_acceptance'].includes(data.status)) {
+          } else if (['published', 'awaiting_acceptance', 'completed'].includes(data.status)) {
             setPageStatus('completed')
             stopPolling()
           }
@@ -252,9 +252,9 @@ export default function OrderContentCreation() {
   // 生成中的步骤状态
   const currentStatus = processingData?.status || ''
   const steps = [
-    { key: 'queuing', label: '排队等待', done: ['generating_text', 'generating_images', 'completed', 'publishing', 'published', 'awaiting_acceptance'].includes(currentStatus) },
-    { key: 'text', label: '文案生成中', done: ['generating_images', 'completed', 'publishing', 'published', 'awaiting_acceptance'].includes(currentStatus), active: currentStatus === 'generating_text' || currentStatus === 'processing' },
-    { key: 'images', label: '配图生成中', done: ['completed', 'publishing', 'published', 'awaiting_acceptance'].includes(currentStatus), active: currentStatus === 'generating_images' },
+    { key: 'queuing', label: '排队等待', done: ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus) },
+    { key: 'text', label: '内容生成中', done: ['preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus), active: currentStatus === 'generating' },
+    { key: 'images', label: '预览待确认', done: ['publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus), active: currentStatus === 'preview' },
   ]
 
   return (
