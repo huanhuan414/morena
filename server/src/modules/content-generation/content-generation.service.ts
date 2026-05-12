@@ -447,7 +447,6 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     } catch (err: any) {
       this.logger.warn(`更新最终状态失败: ${err.message}`)
     }
-    }
 
     this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
   }

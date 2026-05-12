@@ -114,6 +114,10 @@
 }
 
 .cc-order-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
   padding: 2rpx 12rpx;
   border-radius: 100rpx;
 }
@@ -129,17 +133,17 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6rpx;
+  gap: 4rpx;
   padding: 2rpx 12rpx;
   background: #EEF2FF;
   border-radius: 100rpx;
 }
 
 .cc-order-type-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #6366F1;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .cc-order-title {
