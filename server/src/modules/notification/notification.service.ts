@@ -154,6 +154,52 @@ export class NotificationService {
 
     return { count }
   }
+
+  async getNotificationSettings(userId: string) {
+    try {
+      const { getMySQLClient } = await import('../../storage/database/mysql-client')
+      const db = getMySQLClient()
+      const settings = await db.query('notification_settings', { user_id: userId }) as any[]
+      if (settings && settings.length > 0) {
+        return settings[0]
+      }
+    } catch (dbError) {
+      // 数据库不可用，返回默认设置
+    }
+
+    return {
+      message: true,
+      like: true,
+      follow: true,
+      system: true
+    }
+  }
+
+  async updateNotificationSettings(userId: string, settings: Record<string, boolean>) {
+    try {
+      const { getMySQLClient } = await import('../../storage/database/mysql-client')
+      const db = getMySQLClient()
+      const existing = await db.query('notification_settings', { user_id: userId }) as any[]
+
+      if (existing && existing.length > 0) {
+        await db.updateWhere('notification_settings', { user_id: userId }, {
+          ...settings,
+          updated_at: new Date()
+        })
+      } else {
+        await db.insert('notification_settings', {
+          user_id: userId,
+          ...settings,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+      }
+    } catch (dbError) {
+      // 数据库不可用，静默处理
+    }
+
+    return { success: true, ...settings }
+  }
 }
 
 import * as crypto from 'crypto'

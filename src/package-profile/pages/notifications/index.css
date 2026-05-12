@@ -1,279 +1,309 @@
-/* Notifications Page - High Level Design */
+/* 消息通知页面 - 统一紫蓝风格 */
 
 .notifications-page {
   min-height: 100vh;
-  background: var(--background);
+  background: var(--bg-page);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 头部渐变 */
+.noti-header {
+  background: linear-gradient(135deg, #7B3FE4 0%, #6366F1 50%, #4F46E5 100%);
   position: relative;
   overflow: hidden;
+  border-radius: 0 0 40rpx 40rpx;
+  padding-bottom: 24rpx;
 }
 
-.notifications-page::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(0, 245, 255, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(191, 0, 255, 0.06) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-  animation: bgBreath 20s ease-in-out infinite;
+.header-decor-1 {
+  position: absolute;
+  top: -40rpx;
+  right: -30rpx;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
 }
 
-@keyframes bgBreath {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+.header-decor-2 {
+  position: absolute;
+  bottom: -10rpx;
+  left: -40rpx;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-/* Header */
-.notifications-header {
-  background: linear-gradient(180deg, rgba(0, 245, 255, 0.08) 0%, transparent 100%);
-  padding: 0 32rpx 20rpx;
-  position: relative;
-  z-index: 10;
+/* 导航 */
+.header-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 88rpx;
+  padding: 16rpx 32rpx;
 }
 
-@keyframes headerSlideDown {
-  from { opacity: 0; transform: translateY(-100%); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.header-back {
+.back-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
-  padding: 8rpx;
+  justify-content: center;
 }
 
-.back-text {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--text-primary);
+.back-btn:active {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.header-title {
-  font-size: 40rpx;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.5rpx;
-  flex: 1;
-  text-align: center;
+.nav-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: #fff;
 }
 
-.header-action {
+.nav-action {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 8rpx;
+  gap: 6rpx;
+  padding: 10rpx 16rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999rpx;
 }
 
-.action-text {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: var(--text-primary);
+.nav-action:active {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-/* Scroll */
-.notifications-scroll {
+.nav-action-text {
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+/* 未读摘要 */
+.unread-summary {
+  display: flex;
+  justify-content: center;
+  padding: 8rpx 32rpx 0;
+}
+
+.unread-summary-text {
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* 滚动区 */
+.noti-scroll {
   flex: 1;
-  padding: 24rpx 32rpx 32rpx;
-  position: relative;
-  z-index: 1;
+  padding: 24rpx 32rpx;
 }
 
-/* Settings Section */
-.settings-section {
-  margin-bottom: 32rpx;
-  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  animation-delay: 0.1s;
+/* 区块卡片 */
+.section-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 28rpx;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 24rpx;
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20rpx); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.section-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--text-primary);
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   margin-bottom: 20rpx;
 }
 
-.setting-item {
+.section-dot {
+  width: 8rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(180deg, #7B3FE4, #6366F1);
+}
+
+.section-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+/* 设置列表 */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx;
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  border: 1.5rpx solid rgba(0, 245, 255, 0.12);
-  margin-bottom: 12rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-.setting-item:nth-child(2) { animation-delay: 0.05s; }
-.setting-item:nth-child(3) { animation-delay: 0.1s; }
-.setting-item:nth-child(4) { animation-delay: 0.15s; }
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(-10rpx); }
-  to { opacity: 1; transform: translateX(0); }
+  padding: 16rpx;
+  background: var(--bg-gray);
+  border-radius: var(--radius-base);
 }
 
 .setting-left {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
   flex: 1;
 }
 
-.setting-icon {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.setting-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.setting-title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.setting-desc {
-  font-size: 20rpx;
-  color: var(--text-tertiary);
-}
-
-/* Notifications Section */
-.notifications-section {
-  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  animation-delay: 0.2s;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 48rpx;
-  gap: 24rpx;
-}
-
-.empty-text {
-  font-size: 28rpx;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.notification-item {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 20rpx;
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  border: 1.5rpx solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 12rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
-  position: relative;
-  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.notification-item:nth-child(2) { animation-delay: 0.05s; }
-.notification-item:nth-child(3) { animation-delay: 0.1s; }
-.notification-item:nth-child(4) { animation-delay: 0.15s; }
-
-.notification-item:active {
-  transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.notification-item.unread {
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.05) 0%, rgba(0, 245, 255, 0.02) 100%);
-  border-color: rgba(0, 245, 255, 0.15);
-}
-
-.notification-item.read {
-  opacity: 0.7;
-}
-
-.notification-icon {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: var(--radius-md);
+.setting-icon-wrap {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.notification-content {
-  flex: 1;
+.setting-info {
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 2rpx;
 }
 
-.notification-title {
-  font-size: 24rpx;
-  font-weight: 700;
+.setting-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
+  display: block;
 }
 
-.notification-text {
-  font-size: 22rpx;
-  color: var(--text-secondary);
-  line-height: 1.5;
+.setting-desc {
+  font-size: var(--text-xs);
+  color: var(--text-quaternary);
+  display: block;
 }
 
-.notification-time {
-  font-size: 18rpx;
+/* 通知列表 */
+.noti-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.noti-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 16rpx;
+  background: var(--bg-gray);
+  border-radius: var(--radius-base);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.noti-item:active {
+  opacity: 0.85;
+}
+
+.noti-item.unread {
+  background: #F3E8FF;
+  border: 1rpx solid rgba(123, 63, 228, 0.15);
+}
+
+.noti-item.read {
+  opacity: 0.7;
+}
+
+.noti-icon-wrap {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2rpx;
+}
+
+.noti-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.noti-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6rpx;
+}
+
+.noti-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noti-time {
+  font-size: var(--text-xs);
+  color: var(--text-quaternary);
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+
+.noti-text {
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
+  line-height: 1.5;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .unread-dot {
-  width: 12rpx;
-  height: 12rpx;
-  background: #ff6b6b;
+  width: 14rpx;
+  height: 14rpx;
+  background: #7B3FE4;
   border-radius: 50%;
-  animation: pulse 2s infinite;
+  flex-shrink: 0;
+  margin-top: 14rpx;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.8; }
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 48rpx;
+  gap: 16rpx;
+}
+
+.empty-text {
+  font-size: var(--text-base);
+  color: var(--text-quaternary);
+  display: block;
+}
+
+/* 加载 */
+.loading-spinner {
+  width: 40rpx;
+  height: 40rpx;
+  border: 4rpx solid var(--primary-lighter);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .bottom-space {
   height: 48rpx;
-}
-
-[data-theme="dark"] .notifications-page {
-  /* 使用 CSS 变量自动适配 */
-}
-
-[data-theme="dark"] .setting-item {
-  border-color: rgba(0, 245, 255, 0.12);
-}
-
-[data-theme="dark"] .notification-item {
-  border-color: rgba(255, 255, 255, 0.05);
 }
