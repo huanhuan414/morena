@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 
