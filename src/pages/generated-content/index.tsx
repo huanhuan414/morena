@@ -114,15 +114,6 @@ export default function GeneratedContentPage() {
     return statusMatch && avatarMatch
   })
 
-  // 统计
-  const stats = {
-    total: contents.length,
-    pending: contents.filter(c => c.status === 'completed').length,
-    published: contents.filter(c => c.status === 'published').length,
-    reviewing: contents.filter(c => c.status === 'reviewing').length,
-    completed: contents.filter(c => ['settled', 'done'].includes(c.status)).length,
-  }
-
   const getStatusInfo = (status: string) => CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
   const getPlatformInfo = (key: string) => PLATFORM_MAP[key] || { name: key, color: '#64748B' }
 
@@ -150,29 +141,6 @@ export default function GeneratedContentPage() {
           </View>
         </View>
 
-        {/* 统计数据 */}
-        <View className="stats-row">
-          <View className="stat-item">
-            <Text className="stat-value">{stats.total}</Text>
-            <Text className="stat-label">总内容</Text>
-          </View>
-          <View className="stat-item">
-            <Text className="stat-value" style={{ color: '#F59E0B' }}>{stats.pending}</Text>
-            <Text className="stat-label">待发布</Text>
-          </View>
-          <View className="stat-item">
-            <Text className="stat-value" style={{ color: '#3B82F6' }}>{stats.published}</Text>
-            <Text className="stat-label">待反馈</Text>
-          </View>
-          <View className="stat-item">
-            <Text className="stat-value" style={{ color: '#8B5CF6' }}>{stats.reviewing}</Text>
-            <Text className="stat-label">待验收</Text>
-          </View>
-          <View className="stat-item">
-            <Text className="stat-value" style={{ color: '#10B981' }}>{stats.completed}</Text>
-            <Text className="stat-label">已完成</Text>
-          </View>
-        </View>
       </View>
 
       {/* 状态 Tab 筛选 */}
@@ -321,8 +289,13 @@ export default function GeneratedContentPage() {
                   </View>
                   <View className="footer-actions">
                     {(content.status === 'completed') && (
-                      <View className="action-btn publish" onClick={() => Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${content.id}` })}>
-                        <Text style={{ fontSize: 12, color: '#6366F1' }}>发布</Text>
+                      <View
+                        className="action-btn publish"
+                        onClick={() => {
+                          Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
+                        }}
+                      >
+                        <Text className="publish-btn-text">发布</Text>
                       </View>
                     )}
                     <View className="action-btn preview" onClick={() => Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })}>

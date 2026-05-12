@@ -87,6 +87,54 @@ export default function OrderPublishGuide() {
   // 解析 URL 参数
   useEffect(() => {
     const params = router.params
+
+    // 如果有 contentId，从后端拉取完整数据
+    if (params.contentId) {
+      const fetchContentById = async () => {
+        try {
+          const res = await Network.request({
+            url: `/api/content-generation/content/${params.contentId}`
+          })
+          const resData = res.data as any
+          console.log('[发布引导] 通过contentId获取数据:', resData?.code, resData?.data?.id)
+          if (resData?.code === 200 && resData?.data) {
+            const data = resData.data
+            if (data.content) setContent(data.content)
+            if (data.images && data.images.length > 0) setImages(data.images)
+            if (data.avatarId) setAvatarId(data.avatarId)
+            if (data.orderId) setOrderId(data.orderId)
+            if (data.platforms && data.platforms.length > 0) {
+              const validatedPlatforms = getValidatedPlatforms(data.platforms)
+              if (validatedPlatforms.length > 0) {
+                setPlatforms(validatedPlatforms)
+                setCurrentPlatform(validatedPlatforms[0])
+              }
+            } else if (data.platform) {
+              const validatedPlatforms = getValidatedPlatforms([data.platform])
+              if (validatedPlatforms.length > 0) {
+                setPlatforms(validatedPlatforms)
+                setCurrentPlatform(validatedPlatforms[0])
+              }
+            }
+            if (data.contentType) {
+              const typeMap: Record<string, string> = {
+                image_text: '图文',
+                article: '图文',
+                video_text: '视频',
+              }
+              setContentType(typeMap[data.contentType] || '图文')
+            }
+            setRequestId(params.contentId || '')
+          }
+        } catch (error) {
+          console.error('[发布引导] 获取内容失败:', error)
+        }
+      }
+      fetchContentById()
+      return
+    }
+
+    // 兼容旧逻辑：从 URL 参数直接取值
     const platformsFromQuery = params.platforms ? getValidatedPlatforms(params.platforms.split(',')) : []
     if (platformsFromQuery.length > 0) {
       setPlatforms(platformsFromQuery)

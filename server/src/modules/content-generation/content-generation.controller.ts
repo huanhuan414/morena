@@ -78,6 +78,65 @@ export class ContentGenerationController {
     }
   }
 
+  @Get('content/:contentId')
+  async getContentById(@Param('contentId') contentId: string) {
+    try {
+      const db = await getMySQLClient()
+      const results = await db.query(
+        'SELECT * FROM content_generation_requests WHERE id = ? LIMIT 1',
+        [contentId]
+      )
+
+      const rows = Array.isArray(results) ? results : []
+      if (rows.length === 0) {
+        return { code: 404, message: '内容不存在', data: null }
+      }
+
+      const record = rows[0]
+      // db.query() 已自动转为 camelCase
+      let images: string[] = []
+      try { images = record.images ? (Array.isArray(record.images) ? record.images : JSON.parse(record.images)) : [] } catch { images = [] }
+
+      // 解析 platforms：兼容数组、JSON字符串、单个字符串
+      let parsedPlatforms: string[] = []
+      try {
+        const p = record.platforms
+        if (Array.isArray(p) && p.length > 0) {
+          parsedPlatforms = p
+        } else if (typeof p === 'string' && p.trim()) {
+          const parsed = JSON.parse(p)
+          parsedPlatforms = Array.isArray(parsed) ? parsed : [String(parsed)]
+        }
+      } catch {
+        if (record.platforms) parsedPlatforms = [String(record.platforms)]
+      }
+      // fallback: 如果 platforms 解析为空，使用 platform 字段
+      if (parsedPlatforms.length === 0 && record.platform) {
+        parsedPlatforms = [record.platform]
+      }
+
+      return {
+        code: 200,
+        message: '获取成功',
+        data: {
+          id: record.id,
+          avatarId: record.avatarId,
+          orderId: record.orderId,
+          content: record.content || '',
+          images,
+          videoUrl: record.videoUrl || null,
+          platform: record.platform,
+          platforms: parsedPlatforms,
+          status: record.status,
+          contentType: record.contentType || 'image_text',
+          createdAt: record.createdAt,
+        }
+      }
+    } catch (error: any) {
+      return { code: 500, message: '获取失败', error: error.message }
+    }
+  }
+
   @Post('content/:contentId/status')
   async updateContentStatus(
     @Param('contentId') contentId: string,
