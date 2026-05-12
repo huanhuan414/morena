@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
+import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import './index.css'
 
 // 内容状态映射
@@ -15,7 +16,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   published: 'published',          // 后端 published = 前端"待反馈"
   feedback_submitted: 'reviewing', // 后端 feedback_submitted = 前端"待验收"
   reviewing: 'reviewing',
-  awaiting_acceptance: 'settled',
+  awaiting_acceptance: 'reviewing',
   settled: 'settled',
   done: 'settled',
   failed: 'failed',
@@ -32,20 +33,6 @@ const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor
   feedback_submitted: { label: '待验收', color: '#8B5CF6', bgColor: '#EDE9FE' },
   generating_images:  { label: '生成中', color: '#6366F1', bgColor: '#EEF2FF' },
   failed:       { label: '生成失败', color: '#EF4444', bgColor: '#FEE2E2' },
-}
-
-// 平台配置
-const PLATFORM_MAP: Record<string, { name: string; color: string }> = {
-  wechat:       { name: '朋友圈', color: '#07C160' },
-  wechat_mp:    { name: '公众号', color: '#07C160' },
-  wechat_channel: { name: '视频号', color: '#07C160' },
-  xiaohongshu:  { name: '小红书', color: '#FE2C55' },
-  douyin:       { name: '抖音', color: '#161823' },
-  weibo:        { name: '微博', color: '#FF8200' },
-  bilibili:     { name: 'B站', color: '#FB7299' },
-  kuaishou:     { name: '快手', color: '#FF4906' },
-  toutiao:      { name: '头条', color: '#E4393C' },
-  zhihu:        { name: '知乎', color: '#0066FF' },
 }
 
 // Tab 状态筛选
@@ -109,7 +96,7 @@ export default function GeneratedContentPage() {
           images: safeParseJSON(c.images),
           platforms: safeParseJSON(c.platforms),
           tags: safeParseJSON(c.tags),
-          platform: c.platform || (safeParseJSON(c.platforms)[0]) || '',
+          platform: canonicalizePlatform(c.platform || (safeParseJSON(c.platforms)[0]) || ''),
           contentType: c.content_type || c.contentType || 'image_text',
         }))
 
@@ -136,7 +123,13 @@ export default function GeneratedContentPage() {
     const tabKey = BACKEND_STATUS_TO_TAB[status] || status
     return CONTENT_STATUS_MAP[tabKey] || CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
   }
-  const getPlatformInfo = (key: string) => PLATFORM_MAP[key] || { name: key, color: '#64748B' }
+  const getPlatformInfo = (key: string) => {
+    const meta = getPlatformMeta(key)
+    return {
+      name: getPlatformLabel(key),
+      color: meta?.color || '#64748B'
+    }
+  }
 
   const selectedAvatarName = selectedAvatarId
     ? avatars.find(a => a.id === selectedAvatarId)?.name || '未知分身'

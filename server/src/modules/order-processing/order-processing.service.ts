@@ -1,12 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
+import { OrderService } from '../order/order.service'
 
 @Injectable()
 export class OrderProcessingService {
   private readonly logger = new Logger(OrderProcessingService.name)
   private columnsCache: Set<string> | null = null
+
+  constructor(
+    @Inject(forwardRef(() => OrderService))
+    private readonly orderService: OrderService
+  ) {}
+
   private readonly platformAliasMap: Record<string, string> = {
     wechat: 'wechat_channel',
     wechat_channel: 'wechat_channel',
@@ -318,6 +325,7 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+    await this.syncOrderStatus(normalized.orderId)
     return normalized
   }
 
@@ -363,6 +371,7 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+    await this.syncOrderStatus(normalized.orderId)
     return normalized
   }
 
@@ -384,6 +393,7 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+    await this.syncOrderStatus(normalized.orderId)
     return normalized
   }
 
@@ -397,55 +407,14 @@ export class OrderProcessingService {
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
 
-    await this.trySyncOrderStatus(normalized.orderId)
+    await this.syncOrderStatus(normalized.orderId)
     return normalized
   }
 
-  private async trySyncOrderStatus(orderId?: string): Promise<void> {
+  private async syncOrderStatus(orderId?: string): Promise<void> {
     if (!orderId) return
-    const db = getMySQLClient()
     try {
-      // 获取该订单下所有内容生成记录的状态
-      const rows = await db.query(
-        `SELECT status FROM content_generation_requests WHERE order_id = ?`,
-        [orderId]
-      )
-
-      if (!rows || rows.length === 0) return
-
-      const statuses = rows.map((r: any) => r.status)
-      // 按优先级判断订单应该处于什么状态
-      // 优先级：completed > awaiting_acceptance > submitted > in_progress
-      const allCompleted = statuses.every((s: string) => s === 'completed')
-      const allPublished = statuses.every((s: string) => s === 'published' || s === 'completed')
-      const allFeedbackSubmitted = statuses.every((s: string) => s === 'feedback_submitted' || s === 'published' || s === 'completed')
-      const allDone = statuses.every((s: string) => ['completed', 'published', 'feedback_submitted', 'settled', 'done', 'awaiting_acceptance'].includes(s))
-      const anyProcessing = statuses.some((s: string) => ['pending', 'processing', 'generating_images'].includes(s))
-
-      let newOrderStatus: string | null = null
-
-      if (allCompleted || (allDone && statuses.every((s: string) => ['completed', 'settled', 'done'].includes(s)))) {
-        // 所有内容生成完成 → 订单完成
-        newOrderStatus = 'completed'
-      } else if (allFeedbackSubmitted && !allCompleted) {
-        // 所有内容已提交反馈（待验收） → 订单待验收
-        newOrderStatus = 'awaiting_acceptance'
-      } else if (allPublished && !allFeedbackSubmitted) {
-        // 所有内容已发布（待反馈） → 订单已提交
-        newOrderStatus = 'submitted'
-      } else if (anyProcessing || (!allCompleted && !allPublished)) {
-        // 仍在处理中 → 订单进行中
-        newOrderStatus = 'in_progress'
-      }
-
-      if (newOrderStatus) {
-        this.logger.log(`[状态同步] 订单 ${orderId} 状态: ${newOrderStatus} (内容状态: ${statuses.join(',')})`)
-        await db.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', [
-          newOrderStatus,
-          new Date(),
-          orderId
-        ])
-      }
+      await this.orderService.syncOrderStatusByContent(orderId)
     } catch (error: any) {
       this.logger.warn(`同步订单状态失败: orderId=${orderId}, error=${error.message}`)
     }
@@ -464,6 +433,7 @@ export class OrderProcessingService {
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+    await this.syncOrderStatus(normalized.orderId)
 
     return normalized
   }
@@ -493,7 +463,7 @@ export class OrderProcessingService {
     
     const orderId = record.orderId || record.order_id
     if (orderId) {
-      await this.trySyncOrderStatus(orderId)
+      await this.syncOrderStatus(orderId)
     }
 
     return true

@@ -193,7 +193,7 @@ export default function AvatarRecommendPage() {
 
   const viewAvatar = (avatarId: string) => {
     navigateTo({
-      url: `/pages/avatar-profile/index?id=${avatarId}`
+      url: `/pages/avatar-profile/index?avatarId=${avatarId}`
     })
   }
 

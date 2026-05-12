@@ -6,6 +6,7 @@ import {
   ArrowLeft, Clock, Wallet, Users, FileText, Eye,
   Loader, CircleCheck
 } from 'lucide-react-taro'
+import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
 // 订单状态映射（发单方视角）
@@ -32,21 +33,13 @@ const STATUS_TABS = [
   { key: 'completed', label: '已完成', includes: ['completed'] },
 ]
 
-// 平台名称
-const PLATFORM_NAMES: Record<string, string> = {
-  wechat_mp: '微信公众号', wechat_channel: '视频号', douyin: '抖音',
-  xiaohongshu: '小红书', kuaishou: '快手', bilibili: 'B站',
-  toutiao: '头条', zhihu: '知乎', weibo: '微博',
-  wechat: '微信', wechat_moments: '朋友圈',
-}
-
 function getPlatformNames(platforms: any): string[] {
   if (!platforms) return []
   let arr: string[] = []
   if (typeof platforms === 'string') {
     try { arr = JSON.parse(platforms) } catch { arr = platforms.split(',').map((s: string) => s.trim()).filter(Boolean) }
   } else if (Array.isArray(platforms)) { arr = platforms }
-  return arr.map(p => PLATFORM_NAMES[p] || p)
+  return canonicalizePlatforms(arr).map((p) => getPlatformLabel(p))
 }
 
 function getStatusInfo(status: string) {

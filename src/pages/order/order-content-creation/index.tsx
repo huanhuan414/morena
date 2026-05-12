@@ -113,8 +113,8 @@ export default function OrderContentCreation() {
         ? rawPlatforms
         : (typeof rawPlatforms === 'string' && rawPlatforms ? rawPlatforms.split(',').map((s: string) => s.trim()) : [])
       const platforms = platformArr.length > 0
-        ? platformArr.map((p: string) => p === 'general' ? 'wechat' : p)
-        : ['wechat']
+        ? platformArr.map((p: string) => p === 'general' ? 'wechat_channel' : p)
+        : ['wechat_channel']
       const normalizedPlatforms = canonicalizePlatforms(platforms)
 
       const descText = order?.description || ''

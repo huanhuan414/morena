@@ -195,4 +195,29 @@ export class OrderProcessingController {
       }
     }
   }
+
+  /**
+   * 请求修改
+   * 支持 requestId / orderId
+   */
+  @Post('revision/:id')
+  async requestRevision(
+    @Param('id') id: string,
+    @Body('feedback') feedback: Record<string, any>
+  ) {
+    try {
+      const result = await this.processingService.requestRevision(id, feedback || {})
+      return {
+        code: 200,
+        data: result,
+        message: result ? '已发起修改' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '发起修改失败'
+      }
+    }
+  }
 }

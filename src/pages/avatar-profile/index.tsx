@@ -68,17 +68,16 @@ export default function AvatarProfilePage() {
   const getAvatarIdFromRoute = () => {
     const routerParams = router.params || {}
     const avatarIdFromRouter = routerParams.avatarId
-    const idFromRouter = routerParams.id
 
-    if (avatarIdFromRouter || idFromRouter) {
-      return avatarIdFromRouter || idFromRouter
+    if (avatarIdFromRouter) {
+      return avatarIdFromRouter
     }
 
     const pages = Taro.getCurrentPages()
     const currentPage = pages[pages.length - 1]
     const options = currentPage?.options || {}
 
-    return options.avatarId || options.id || ''
+    return options.avatarId || ''
   }
 
   useLoad(() => {
@@ -88,7 +87,7 @@ export default function AvatarProfilePage() {
     const avatarId = getAvatarIdFromRoute()
 
     if (!avatarId) {
-      console.warn('[avatar-profile] 未接收到 avatarId/id 参数')
+      console.warn('[avatar-profile] 未接收到 avatarId 参数')
       setLoading(false)
       return
     }

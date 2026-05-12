@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
+import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
-import * as crypto from 'crypto'
 
 @Injectable()
 export class OrderService {
@@ -45,6 +45,14 @@ export class OrderService {
     ].includes(this.normalizeDispatchStatus(status))
   }
 
+  private normalizeContentStatus(status?: string): string {
+    const value = String(status || '').trim().toLowerCase()
+    if (['generating_text', 'generating_images', 'pending'].includes(value)) return 'processing'
+    if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
+    if (['settled', 'done'].includes(value)) return 'completed'
+    return value || 'processing'
+  }
+
   // 订单状态流转映射
   /**
    * 根据接单方（分身）整体状态同步订单状态
@@ -70,7 +78,7 @@ export class OrderService {
       )
 
       const allDispatchStatuses = (dispatches || []).map((d: any) => d.status)
-      const allContentStatuses = (contents || []).map((c: any) => c.status)
+      const allContentStatuses = (contents || []).map((c: any) => this.normalizeContentStatus(c.status))
       const totalDispatches = allDispatchStatuses.length
       const totalContents = allContentStatuses.length
 
@@ -81,12 +89,11 @@ export class OrderService {
       const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
       const allDispatchCompleted = allDispatchStatuses.every(s => ['completed', 'settled', 'done'].includes(s))
 
-      const hasProcessing = allContentStatuses.some(s => ['processing', 'generating_images', 'pending'].includes(s))
-      const hasCompleted = allContentStatuses.some(s => s === 'completed')
+      const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
+      const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
       const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
-      const allContentPublished = totalContents > 0 && allContentStatuses.every(s => ['published', 'feedback_submitted', 'settled', 'done', 'completed'].includes(s))
-      const allContentFeedbackSubmitted = totalContents > 0 && allContentStatuses.every(s => ['feedback_submitted', 'settled', 'done'].includes(s))
-      const allContentSettled = totalContents > 0 && allContentStatuses.every(s => ['settled', 'done'].includes(s))
+      const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
+      const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
 
       // 获取当前订单状态
       const currentOrder = await this.getOrderById(orderId)
@@ -96,18 +103,20 @@ export class OrderService {
       let newStatus: string | null = null
 
       // 优先级从高到低判断
-      if (allContentSettled && allDispatchCompleted) {
+      if (allContentCompleted && allDispatchCompleted) {
         // 所有内容已结算 + 所有 dispatch 完成 → 订单完成
         newStatus = 'completed'
-      } else if (allContentFeedbackSubmitted) {
-        // 所有内容已提交反馈 → 订单待验收
+      } else if (hasRevisionRequested) {
+        newStatus = 'revision_requested'
+      } else if (allContentAwaitingAcceptance) {
+        // 所有内容已进入待验收 → 订单待验收
         newStatus = 'awaiting_acceptance'
-      } else if (allContentPublished) {
-        // 所有内容已发布 → 订单待验收
+      } else if (allContentSubmitted) {
+        // 所有内容已生成或已发布 → 订单已提交
         newStatus = 'awaiting_acceptance'
-      } else if (allContentCompleted) {
-        // 所有内容生成完成 → 订单已提交
-        newStatus = 'submitted'
+        if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
+          newStatus = 'submitted'
+        }
       } else if (hasProcessing) {
         // 有内容正在生成 → 订单进行中
         newStatus = 'in_progress'

@@ -487,8 +487,40 @@ async getExecutionProgress(orderId: string) {
     this.startContentGeneration(orderId, actualAvatarId, request).catch(err => {
       console.error('[acceptOrder] 启动内容生成失败:', err)
     })
+
+    const processingRecord = await this.waitForProcessingRecord(orderId, actualAvatarId)
     
-    return { success: true }
+    return {
+      success: true,
+      orderId,
+      avatarId: actualAvatarId,
+      dispatchId: request.id,
+      requestId: processingRecord?.id || processingRecord?.requestId || '',
+    }
+  }
+
+  private async waitForProcessingRecord(orderId: string, avatarId: string): Promise<any | null> {
+    const db = getMySQLClient()
+    const maxAttempts = 5
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const rows = await db.query(
+        `SELECT id, order_id, avatar_id
+         FROM content_generation_requests
+         WHERE order_id = ? AND avatar_id = ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [orderId, avatarId]
+      ) as any[]
+
+      if (rows?.[0]) {
+        return rows[0]
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    }
+
+    return null
   }
 
   /**

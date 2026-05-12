@@ -130,20 +130,12 @@ export default function OrderDetail() {
     }
   }
 
-  // 发单方确认验收
+  // 统一进入验收页
   const handleAcceptWork = async () => {
     if (!order) return
-    try {
-      await Network.request({
-        url: `/api/order/${order.id}/status`,
-        method: 'PUT',
-        data: { status: 'completed' }
-      })
-      Taro.showToast({ title: '验收成功', icon: 'success' })
-      loadOrder(order.id)
-    } catch {
-      Taro.showToast({ title: '验收失败', icon: 'none' })
-    }
+    Taro.navigateTo({
+      url: `/pages/order/order-acceptance/index?orderId=${order.id}`
+    })
   }
 
   // 查看发布反馈页面
@@ -184,7 +176,7 @@ export default function OrderDetail() {
   const avatarList = order.avatarStats || stats.avatarStats || []
 
   // 判断是否可以验收 — 发单方在待验收状态下可以确认验收
-  const canAccept = order.status === 'awaiting_acceptance' || order.status === 'submitted'
+  const canAccept = order.status === 'awaiting_acceptance'
 
   return (
     <View className="od-page">
@@ -354,7 +346,7 @@ export default function OrderDetail() {
           <View className="od-actions">
             <View className="od-action-btn od-action-primary" onClick={handleAcceptWork}>
               <CircleCheck size={16} color="#fff" />
-              <Text className="od-action-text" style={{ color: '#fff' }}>确认验收</Text>
+              <Text className="od-action-text" style={{ color: '#fff' }}>进入验收</Text>
             </View>
           </View>
         )}

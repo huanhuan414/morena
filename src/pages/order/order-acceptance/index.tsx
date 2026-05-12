@@ -133,9 +133,9 @@ export default function OrderAcceptance() {
         return
       }
       const res = await Network.request({
-        url: `/api/order-processing/feedback/${requestId}`,
+        url: `/api/order-processing/revision/${requestId}`,
         method: 'POST',
-        data: { rejectReason: rejectReason.trim(), status: 'rejected' }
+        data: { feedback: { rejectReason: rejectReason.trim(), status: 'revision_requested' } }
       })
 
       if (res.data?.code === 200) {
