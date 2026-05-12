@@ -51,7 +51,7 @@ const STATUS_LABELS: Record<string, string> = {
   publishing: '发布中',
   published: '已发布',
   awaiting_acceptance: '待验收',
-  feedback_submitted: '已提交'
+  completed: '已完成'
 }
 
 const STATUS_COLORS: Record<string, { bg: string, text: string }> = {
@@ -61,7 +61,7 @@ const STATUS_COLORS: Record<string, { bg: string, text: string }> = {
   publishing: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
   published: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' },
   awaiting_acceptance: { bg: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' },
-  feedback_submitted: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' }
+  completed: { bg: 'rgba(34, 197, 94, 0.2)', text: '#22c55e' }
 }
 
 const formatNumber = (num: number): string => {
@@ -138,6 +138,11 @@ export default function OrderStats() {
     if (days === 1) return '昨天'
     if (days < 7) return `${days}天前`
     return date.toLocaleDateString()
+  }
+
+  const getAvatarInitial = (name: string): string => {
+    const normalized = String(name || '').trim()
+    return normalized ? normalized.slice(0, 1).toUpperCase() : '?'
   }
 
   if (loading) {
@@ -263,11 +268,20 @@ export default function OrderStats() {
               <View key={avatar.avatarId} className="avatar-card">
                 {/* 头部 */}
                 <View className="avatar-header" onClick={() => toggleAvatarExpand(avatar.avatarId)}>
-                  <Image
-                    src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
-                    className="avatar-avatar"
-                    mode="aspectFill"
-                  />
+                  {avatar.avatarUrl ? (
+                    <Image
+                      src={avatar.avatarUrl}
+                      className="avatar-avatar"
+                      mode="aspectFill"
+                    />
+                  ) : (
+                    <View
+                      className="avatar-avatar flex items-center justify-center"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                    >
+                      <Text className="text-white text-base">{getAvatarInitial(avatar.avatarName)}</Text>
+                    </View>
+                  )}
                   <View className="avatar-info">
                     <View className="avatar-name-row">
                       <Text className="avatar-name">{avatar.avatarName}</Text>

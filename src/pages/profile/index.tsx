@@ -40,6 +40,15 @@ interface UserStats {
   level: number
 }
 
+const EMPTY_USER_STATS: UserStats = {
+  avatarCount: 0,
+  taskCount: 0,
+  postCount: 0,
+  friendCount: 0,
+  totalXp: 0,
+  level: 1
+}
+
 interface PendingRequest {
   id: string
   orders: {
@@ -99,12 +108,7 @@ const typeBgMap: Record<string, string> = {
 export default function ProfilePage() {
   const { userInfo, logout, isLoggedIn } = useUserStore()
   const [stats, setStats] = useState<UserStats>({
-    avatarCount: 0,
-    taskCount: 0,
-    postCount: 0,
-    friendCount: 0,
-    totalXp: 0,
-    level: 1
+    ...EMPTY_USER_STATS
   })
   const [showLevelDialog, setShowLevelDialog] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -128,11 +132,32 @@ export default function ProfilePage() {
     }
   })
 
+  const unwrapList = (payload: any): any[] => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    if (Array.isArray(payload?.data)) return payload.data
+    return []
+  }
+
+  const unwrapObject = (payload: any): Record<string, any> => {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+        return payload.data
+      }
+      return payload
+    }
+    return {}
+  }
+
   const fetchStats = async () => {
     try {
       const res = await Network.request({ url: '/api/user/stats' })
       if (res.data?.code === 200) {
-        setStats(res.data.data)
+        setStats({
+          ...EMPTY_USER_STATS,
+          ...unwrapObject(res.data.data)
+        })
       }
     } catch (error) {
       console.error('获取统计失败:', error)
@@ -142,9 +167,12 @@ export default function ProfilePage() {
   const fetchPendingRequests = async () => {
     try {
       const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
-      if (res.data?.code === 200 && res.data.data.length > 0) {
-        setPendingRequests(res.data.data)
+      const requests = unwrapList(res.data?.data)
+      if (res.data?.code === 200 && requests.length > 0) {
+        setPendingRequests(requests)
         setShowPendingDialog(true)
+      } else {
+        setPendingRequests([])
       }
     } catch (error) {
       console.error('获取待确认订单失败:', error)
@@ -155,7 +183,7 @@ export default function ProfilePage() {
     try {
       const res = await Network.request({ url: '/api/notifications/unread-count' })
       if (res.data?.code === 200) {
-        setUnreadCount(res.data.data.count || 0)
+        setUnreadCount(unwrapObject(res.data.data).count || 0)
       }
     } catch (error) {
       console.error('获取未读消息数失败:', error)

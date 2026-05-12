@@ -216,6 +216,11 @@ export default function OrderPublishGuide() {
     return { required: true, bound: !!account, account }
   }
 
+  const hasBlockingUnboundPlatforms = platforms.some((platform) => {
+    const bindingStatus = getPlatformBindingStatus(platform)
+    return bindingStatus.required && !bindingStatus.bound
+  })
+
   // 跳转到账号绑定页面
   const handleGoToBinding = (platform: string) => {
     Taro.navigateTo({
@@ -300,6 +305,11 @@ export default function OrderPublishGuide() {
   const handleCompletePublish = async () => {
     if (!requestId) {
       Taro.showToast({ title: '缺少订单ID', icon: 'none' })
+      return
+    }
+
+    if (hasBlockingUnboundPlatforms) {
+      Taro.showToast({ title: '存在未绑定平台，请先完成绑定', icon: 'none' })
       return
     }
 
@@ -648,10 +658,13 @@ export default function OrderPublishGuide() {
           <View className="fixed-bottom-bar">
             <View 
               className="complete-publish-btn"
-              onClick={handleCompletePublish}
+              style={{ opacity: hasBlockingUnboundPlatforms || publishing ? 0.6 : 1 }}
+              onClick={hasBlockingUnboundPlatforms || publishing ? undefined : handleCompletePublish}
             >
               {publishing ? (
                 <Text className="complete-publish-text">处理中...</Text>
+              ) : hasBlockingUnboundPlatforms ? (
+                <Text className="complete-publish-text">请先绑定所需平台</Text>
               ) : (
                 <Text className="complete-publish-text">完成发布</Text>
               )}
