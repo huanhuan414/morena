@@ -266,6 +266,10 @@ const Index: React.FC = () => {
   }, [activities.length])
 
   const goToPage = (path: string) => {
+    if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
+      Taro.switchTab({ url: path })
+      return
+    }
     Taro.navigateTo({ url: path })
   }
 
@@ -355,7 +359,7 @@ const Index: React.FC = () => {
             </View>
           </View>
           <View className="header-right">
-            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/pages/notification/index' })}>
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/notifications/index' })}>
               <Bell size={44} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View className="notification-badge">

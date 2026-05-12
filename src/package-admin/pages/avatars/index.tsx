@@ -84,12 +84,12 @@ export default function AvatarManagement() {
     })
   }
 
-  const handleViewDetail = (avatarId: string) => {
-    Taro.navigateTo({ url: `/package-admin/pages/avatars/detail?id=${avatarId}` })
+  const handleViewDetail = (_avatarId: string) => {
+    Taro.showToast({ title: '功能开发中', icon: 'none' })
   }
 
-  const handleViewChats = (avatarId: string) => {
-    Taro.navigateTo({ url: `/package-admin/pages/avatars/chats?avatar_id=${avatarId}` })
+  const handleViewChats = (_avatarId: string) => {
+    Taro.showToast({ title: '功能开发中', icon: 'none' })
   }
 
   const statusOptions = [

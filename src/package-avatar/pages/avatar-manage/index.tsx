@@ -419,7 +419,7 @@ export default function AvatarManagePage() {
           </Button>
         </View>
         <View className="header-right-wrap">
-          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/notification/index' })}>
+          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
             <Bell size={22} color="#fff" />
             {unreadCount > 0 && (
               <View className="notification-badge-small">

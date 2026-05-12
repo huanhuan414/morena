@@ -76,7 +76,7 @@ export default function UserManagement() {
   }
 
   const handleViewDetail = (userId: string) => {
-    Taro.navigateTo({ url: `/package-admin/pages/detail?id=${userId}` })
+    Taro.navigateTo({ url: `/package-admin/pages/detail/index?id=${userId}` })
   }
 
   const handlePageChange = (newPage: number) => {
