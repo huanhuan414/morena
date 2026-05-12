@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
@@ -38,6 +38,20 @@ export default function OrderCreate() {
   const [aiLoading, setAiLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
+  const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopAiPolling = () => {
+    if (aiPollTimerRef.current) {
+      clearInterval(aiPollTimerRef.current)
+      aiPollTimerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      stopAiPolling()
+    }
+  }, [])
 
   // 计算价格
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
@@ -50,6 +64,9 @@ export default function OrderCreate() {
 
   // AI帮写
   const handleAIGenerate = async () => {
+    if (aiLoading) {
+      return
+    }
     if (form.platforms.length === 0) {
       Taro.showToast({ title: '请先选择发布平台', icon: 'none' })
       return
@@ -120,17 +137,72 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
       console.log('[AI生成] 响应:', res.data)
 
-      if (res.data.code === 200 && res.data.data?.content) {
-        setForm(prev => ({ ...prev, description: res.data.data.content }))
+      const payload: any = res.data
+      const data = payload?.data
+      if (payload?.code === 200 && data?.content) {
+        setForm(prev => ({ ...prev, description: data.content }))
         Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
+      } else if (payload?.code === 200 && data?.requestId) {
+        stopAiPolling()
+        let attempts = 0
+        aiPollTimerRef.current = setInterval(async () => {
+          attempts += 1
+          if (attempts > 240) {
+            stopAiPolling()
+            setAiLoading(false)
+            Taro.showToast({ title: 'AI生成超时，请稍后重试', icon: 'none' })
+            return
+          }
+          try {
+            const statusRes = await Network.request({
+              url: `/api/ai/status/${data.requestId}`,
+              method: 'GET',
+            })
+            const statusPayload: any = statusRes.data
+            const task = statusPayload?.data
+            if (statusPayload?.code === 200 && task?.status === 'completed' && task?.content) {
+              stopAiPolling()
+              setForm(prev => ({ ...prev, description: task.content }))
+              setAiLoading(false)
+              Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
+              return
+            }
+            if (statusPayload?.code === 200 && task?.status === 'failed') {
+              stopAiPolling()
+              setAiLoading(false)
+              Taro.showToast({ title: task?.error || 'AI帮写失败，请手动输入', icon: 'none' })
+              return
+            }
+            if (statusPayload?.code === 404) {
+              stopAiPolling()
+              setAiLoading(false)
+              Taro.showToast({ title: 'AI任务不存在，请重试', icon: 'none' })
+            }
+          } catch {
+            return
+          }
+        }, 1000)
       } else {
-        Taro.showToast({ title: 'AI帮写失败，请手动输入', icon: 'none' })
+        const msg = payload?.message || payload?.msg || 'AI帮写失败，请手动输入'
+        Taro.showToast({ title: msg, icon: 'none' })
       }
     } catch (error) {
       console.error('[AI生成] 错误:', error)
-      Taro.showToast({ title: 'AI帮写失败，请手动输入', icon: 'none' })
-    } finally {
+      stopAiPolling()
       setAiLoading(false)
+      const err: any = error
+      const errMsg: string = err?.errMsg || err?.message || ''
+      const domainHint = /domain|域名|url not in domain list|request:fail/i.test(errMsg)
+      const modalContent = errMsg ? String(errMsg).slice(0, 900) : '请检查网络、登录状态与小程序合法域名配置'
+      Taro.showModal({
+        title: domainHint ? '网络域名未配置' : 'AI帮写失败',
+        content: modalContent,
+        showCancel: false,
+      })
+    } finally {
+      if (!aiPollTimerRef.current) {
+        setAiLoading(false)
+      }
     }
   }
 

@@ -1,14 +1,53 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { LLMClient, Config, Message } from 'coze-coding-dev-sdk'
 
+type AiTaskStatus = 'processing' | 'completed' | 'failed'
+
+type AiTask = {
+  status: AiTaskStatus
+  content?: string
+  error?: string
+  createdAt: number
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name)
   private readonly client: LLMClient
+  private readonly tasks = new Map<string, AiTask>()
 
   constructor() {
     const config = new Config()
     this.client = new LLMClient(config)
+  }
+
+  startGenerate(params: { prompt: string; platforms: string[]; contentType: string }) {
+    const requestId = `${Date.now()}_${Math.random().toString(16).slice(2)}`
+    this.tasks.set(requestId, { status: 'processing', createdAt: Date.now() })
+
+    this.generateContent(params)
+      .then((res) => {
+        this.tasks.set(requestId, { status: 'completed', content: res.content, createdAt: Date.now() })
+      })
+      .catch((err: any) => {
+        const msg = err?.message || '生成失败'
+        this.tasks.set(requestId, { status: 'failed', error: msg, createdAt: Date.now() })
+      })
+
+    return { requestId, status: 'processing' as const }
+  }
+
+  getTask(requestId: string) {
+    const task = this.tasks.get(requestId)
+    if (!task) {
+      return null
+    }
+    return {
+      requestId,
+      status: task.status,
+      content: task.content,
+      error: task.error,
+    }
   }
 
   async generateContent(params: {
@@ -16,62 +55,18 @@ export class AiService {
     platforms: string[]
     contentType: string
   }): Promise<{ content: string }> {
-    this.logger.log('开始生成内容，参数:', JSON.stringify(params))
-
     const { prompt, platforms, contentType } = params
+    this.logger.log(
+      `开始生成内容: promptLen=${prompt?.length || 0}, platforms=${platforms?.join(',') || ''}, contentType=${contentType || ''}`,
+    )
 
-    // 构建平台信息
-    const platformNames = platforms.map(p => {
-      const names: Record<string, string> = {
-        douyin: '抖音',
-        xiaohongshu: '小红书',
-        wechat_mp: '微信公众号',
-        wechat_moments: '微信朋友圈',
-        weibo: '微博',
-        bilibili: 'B站',
-        kuaishou: '快手'
-      }
-      return names[p] || p
-    }).join('、')
-
-    // 构建内容类型
-    const contentTypeNames: Record<string, string> = {
-      copywriting: '种草文案',
-      video_script: '短视频脚本',
-      poster_text: '海报文案',
-      product_desc: '产品描述',
-      review: '测评文案'
-    }
-    const contentTypeName = contentTypeNames[contentType] || contentType
-
-    // 构建系统提示词
-    const systemPrompt = `你是一位专业的社交媒体内容创作者，擅长撰写各平台的营销文案。请根据用户的需求生成高质量的内容。`
-
-    // 构建用户提示词
-    const userPrompt = `请为以下产品/主题创作内容：
-
-【产品/主题】
-${prompt}
-
-【目标平台】
-${platformNames}
-
-【内容类型】
-${contentTypeName}
-
-【要求】
-1. 内容要符合目标平台的风格和用户习惯
-2. 语言生动有趣，吸引用户注意力
-3. 突出产品亮点，但不要过于硬广
-4. 适合达人/博主发布
-5. 字数适中（${contentType === 'video_script' ? '60秒-120秒' : '200-500字'}）
-
-请直接输出内容，不要加标题或说明文字。`
+    const systemPrompt =
+      '你是一位资深内容策划与社交媒体运营专家，擅长为不同平台产出结构化、可执行、可落地的爆款内容任务描述。'
 
     try {
       const messages: Message[] = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: prompt }
       ]
 
       this.logger.log('调用豆包大模型生成内容...')
