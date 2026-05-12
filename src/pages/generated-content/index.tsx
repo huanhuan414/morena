@@ -208,7 +208,8 @@ export default function GeneratedContentPage() {
   }
 
   // 获取卡片底部按钮配置
-  const getCardActions = (status: string) => {
+  const getCardActions = (rawStatus: string) => {
+    const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     switch (status) {
       case 'completed':
         return [
