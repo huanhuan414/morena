@@ -13,10 +13,8 @@ import './index.css'
 
 interface UserStats {
   avatarCount: number
-  taskCount: number
-  postCount: number
-  friendCount: number
-  totalXp: number
+  totalEarnings: number
+  totalWithdraw: number
   level: number
 }
 
@@ -54,10 +52,8 @@ export default function ProfilePage() {
   const { userInfo, logout, isLoggedIn } = useUserStore()
   const [stats, setStats] = useState<UserStats>({
     avatarCount: 0,
-    taskCount: 0,
-    postCount: 0,
-    friendCount: 0,
-    totalXp: 0,
+    totalEarnings: 0,
+    totalWithdraw: 0,
     level: 1
   })
   const [statusBarHeight] = useState(getStatusBarHeight())
@@ -78,19 +74,20 @@ export default function ProfilePage() {
 
   const fetchStats = async () => {
     try {
-      const res = await Network.request({ url: '/api/user-stats/overview' })
-      console.log('[Profile] stats response:', res.data)
-      if (res.data?.code === 200) {
-        const data = res.data.data
-        setStats({
-          avatarCount: data.avatarCount || 0,
-          taskCount: data.pendingOrders || 0,
-          postCount: data.generatedContents || 0,
-          friendCount: 0,
-          totalXp: 0,
-          level: 1
-        })
-      }
+      const [statsRes, earningsRes] = await Promise.all([
+        Network.request({ url: '/api/user-stats/overview' }),
+        Network.request({ url: '/api/earnings/overview' })
+      ])
+      console.log('[Profile] stats response:', statsRes.data)
+      console.log('[Profile] earnings response:', earningsRes.data)
+      const data = statsRes.data?.code === 200 ? statsRes.data.data : {}
+      const earningsData = earningsRes.data?.code === 200 ? earningsRes.data.data : {}
+      setStats({
+        avatarCount: data.avatarCount || 0,
+        totalEarnings: earningsData.totalEarnings || 0,
+        totalWithdraw: 0,
+        level: 1
+      })
     } catch (error) {
       console.error('获取统计失败:', error)
     }
@@ -184,17 +181,13 @@ export default function ProfilePage() {
             <Text className="h-stat-value">{stats.avatarCount}</Text>
             <Text className="h-stat-label">AI分身</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-order/pages/order-list/index' })}>
-            <Text className="h-stat-value">{stats.taskCount}</Text>
-            <Text className="h-stat-label">商单</Text>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
+            <Text className="h-stat-value">¥{stats.totalEarnings.toFixed(2)}</Text>
+            <Text className="h-stat-label">累计收益</Text>
           </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/social/index' })}>
-            <Text className="h-stat-value">{stats.postCount}</Text>
-            <Text className="h-stat-label">动态</Text>
-          </View>
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-friends/index' })}>
-            <Text className="h-stat-value">{stats.friendCount}</Text>
-            <Text className="h-stat-label">好友</Text>
+          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-profile/pages/earning-center/index' })}>
+            <Text className="h-stat-value">¥{stats.totalWithdraw.toFixed(2)}</Text>
+            <Text className="h-stat-label">累计提现</Text>
           </View>
         </View>
       </View>

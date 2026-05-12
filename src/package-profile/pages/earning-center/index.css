@@ -29,14 +29,14 @@
 
 /* Header */
 .earning-header {
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.12) 0%, transparent 100%);
+  background: linear-gradient(135deg, #7B3FE4 0%, #6366F1 50%, #4F46E5 100%);
   padding: 24rpx 32rpx;
   position: relative;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  animation: headerSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 0 40rpx 40rpx;
 }
 
 @keyframes headerSlideDown {
@@ -66,10 +66,14 @@
 }
 
 .header-title {
-  font-size: 40rpx;
+  font-size: 36rpx;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #fff;
   letter-spacing: -0.5rpx;
+}
+
+.header-right {
+  width: 44rpx;
 }
 
 /* Overview Section */
