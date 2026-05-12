@@ -340,7 +340,7 @@ export default function OrderContentCreation() {
               ))}
             </View>
 
-            {/* 文案已生成但图片还在生成中 - 显示文案预览 */}
+            {/* 文案已生成 - 显示文案预览 */}
             {processingData?.generatedContent?.content && currentStatus === 'generating_images' && (
               <View className="cc-partial-preview">
                 <View className="cc-partial-header">
@@ -349,6 +349,30 @@ export default function OrderContentCreation() {
                 </View>
                 <View className="cc-partial-body">
                   <MarkdownRenderer content={processingData.generatedContent.content} />
+                </View>
+              </View>
+            )}
+
+            {/* 配图已部分生成 - 显示图片预览 */}
+            {processingData?.generatedContent?.images && processingData.generatedContent.images.length > 0 && currentStatus === 'generating_images' && (
+              <View className="cc-partial-preview">
+                <View className="cc-partial-header">
+                  <ImageIcon size={14} color="#8B5CF6" />
+                  <Text className="cc-partial-title">配图生成中 ({processingData.generatedContent.images.length}张已完成)</Text>
+                </View>
+                <View className="cc-images-grid">
+                  {processingData.generatedContent.images.map((img: string, idx: number) => (
+                    <View key={idx} className="cc-image-item">
+                      <TaroImage
+                        src={img}
+                        mode="aspectFill"
+                        className="cc-image-preview"
+                        onClick={() => {
+                          Taro.previewImage({ urls: processingData.generatedContent!.images, current: img })
+                        }}
+                      />
+                    </View>
+                  ))}
                 </View>
               </View>
             )}

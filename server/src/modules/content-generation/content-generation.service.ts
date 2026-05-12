@@ -113,7 +113,7 @@ export class ContentGenerationService {
         this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
-        this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+        await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
 
         // 2. 生成文章配图
         images = await this.generateArticleImages(platform, input, textContent, imageCount)
@@ -121,7 +121,7 @@ export class ContentGenerationService {
 
         // 3. 将图片URL替换文章中的占位符
         textContent = this.replaceImagePlaceholders(textContent, images)
-        this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+        await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
       } catch (err: any) {
         this.logger.warn(`图文文章生成失败: ${err.message}`)
       }
@@ -133,7 +133,7 @@ export class ContentGenerationService {
           this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
           textContent = await this.generateTextContent(platform, input)
           this.logger.log(`文案生成完成: ${textContent.length}字`)
-          this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
         } catch (err: any) {
           this.logger.warn(`文案生成失败: ${err.message}`)
         }
@@ -145,7 +145,7 @@ export class ContentGenerationService {
           this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
           images = await this.generateImages(platform, input, textContent)
           this.logger.log(`图片生成完成: ${images.length}张`)
-          this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
         } catch (err: any) {
           this.logger.warn(`图片生成失败: ${err.message}`)
         }
@@ -163,7 +163,7 @@ export class ContentGenerationService {
     }
 
     // 4. 更新为完成状态
-    this.updateStatus(requestId, input.orderId, 'completed', {
+    await this.updateStatus(requestId, input.orderId, 'completed', {
       content: textContent,
       images,
       videos,
@@ -369,14 +369,14 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
   }
 
-  private updatePartialContent(
+  private async updatePartialContent(
     requestId: string,
     orderId: string,
     content: string,
     images: string[],
     videos: string[],
     status: string = 'processing'
-  ): void {
+  ): Promise<void> {
     const cacheData = {
       requestId,
       order_id: orderId,
@@ -391,23 +391,27 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     setCache(requestId, cacheData)
     setCache(orderId, cacheData)
 
-    // 更新数据库
-    const db = getMySQLClient()
-    db.query(
-      'UPDATE content_generation_requests SET content = ?, images = ?, status = ? WHERE id = ?',
-      [content, images.length > 0 ? JSON.stringify(images) : null, status, requestId]
-    ).catch(err => this.logger.warn(`更新中间状态失败: ${err.message}`))
+    // 更新数据库（await 确保数据一致性）
+    try {
+      const db = getMySQLClient()
+      await db.query(
+        'UPDATE content_generation_requests SET content = ?, images = ?, status = ? WHERE id = ?',
+        [content, images.length > 0 ? JSON.stringify(images) : null, status, requestId]
+      )
+    } catch (err: any) {
+      this.logger.warn(`更新中间状态失败: ${err.message}`)
+    }
   }
 
   /**
    * 更新最终状态
    */
-  private updateStatus(
+  private async updateStatus(
     requestId: string,
     orderId: string,
     status: string,
     generatedContent: any
-  ): void {
+  ): Promise<void> {
     const cacheData = {
       requestId,
       order_id: orderId,
@@ -418,24 +422,31 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     setCache(requestId, cacheData)
     setCache(orderId, cacheData)
 
-    // 更新数据库
-    const db = getMySQLClient()
-    if (status === 'completed' && generatedContent) {
-      db.query(
-        'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
-        [
-          status,
-          generatedContent.content || '',
-          generatedContent.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
-          generatedContent.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : null,
-          requestId
-        ]
-      ).catch(err => this.logger.warn(`更新完成状态失败: ${err.message}`))
-    } else if (status === 'failed') {
-      db.query(
-        'UPDATE content_generation_requests SET status = ? WHERE id = ?',
-        [status, requestId]
-      ).catch(err => this.logger.warn(`更新失败状态失败: ${err.message}`))
+    // 更新数据库（await 确保数据一致性）
+    try {
+      const db = getMySQLClient()
+      if (status === 'completed' && generatedContent) {
+        await db.query(
+          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
+          [
+            status,
+            generatedContent.content || '',
+            generatedContent.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
+            generatedContent.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : null,
+            requestId
+          ]
+        )
+        this.logger.log(`完成状态已写入数据库: requestId=${requestId}`)
+      } else if (status === 'failed') {
+        await db.query(
+          'UPDATE content_generation_requests SET status = ? WHERE id = ?',
+          [status, requestId]
+        )
+        this.logger.log(`失败状态已写入数据库: requestId=${requestId}`)
+      }
+    } catch (err: any) {
+      this.logger.warn(`更新最终状态失败: ${err.message}`)
+    }
     }
 
     this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
