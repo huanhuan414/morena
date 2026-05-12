@@ -198,6 +198,19 @@ export class OrderDispatchController {
   }
 
   /**
+   * 分身婉拒订单
+   */
+  @Post('dispatch/:dispatchId/decline')
+  async declineOrder(@Param('dispatchId') dispatchId: string) {
+    await this.dispatchService.declineOrder(dispatchId)
+    return {
+      code: 200,
+      data: null,
+      message: '已婉拒'
+    }
+  }
+
+  /**
    * 更新执行步骤状态
    */
   @Put('execution/:executionId/status')

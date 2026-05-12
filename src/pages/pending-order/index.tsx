@@ -1,508 +1,361 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
-import { Clock, TrendingUp, Wallet, Users, Image, Video, FileText, ChevronRight, Info, Zap, ArrowLeft } from 'lucide-react-taro'
+import { Network } from '@/network'
+import {
+  ArrowLeft, Wallet, Users, FileText,
+  Zap, ChevronRight, CircleX, CircleCheck, Sparkles,
+  Image as ImageIcon, Video, Target, Calendar
+} from 'lucide-react-taro'
+import { canonicalizePlatforms, getPlatformMeta, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
-// 待接订单数据接口
+// 待接订单数据接口（与后端 API 对齐）
 interface PendingOrder {
-  id: string
+  dispatchId: string
+  orderId: string
+  avatarId: string
+  avatarName?: string
+  avatarUrl?: string
   title: string
   description: string
-  budget: number
+  contentType: string
   platforms: string[]
-  deadline: string
-  status: string
-  avatar_name?: string
-  avatar_url?: string
-  avatar_level?: number
-  target_audience?: string
-  hints?: string[]
-  countdown_seconds?: number
+  budget: number
+  orderStatus: string
+  dispatchStatus: string
+  quantityPerAvatar: number
+  expectedQuantity: number
+  orderCreatedAt: string
+  targetAudience?: string
+  sellingPoints?: string
 }
 
-// 平台配置
-const PLATFORMS = [
-  { key: 'xiaohongshu', name: '小红书', color: '#FF2442', icon: Image },
-  { key: 'douyin', name: '抖音', color: '#00F2EA', icon: Video },
-  { key: 'wechat_mp', name: '公众号', color: '#07C160', icon: FileText },
-  { key: 'weibo', name: '微博', color: '#FF8200', icon: Users },
-  { key: 'bilibili', name: 'B站', color: '#FB7299', icon: Video },
-  { key: 'kuaishou', name: '快手', color: '#FF4906', icon: Video },
-]
-
-// 平台提示配置
-const PLATFORM_HINTS: Record<string, string[]> = {
-  douyin: ['需开通团购功能'],
-  xiaohongshu: ['需认证专业号'],
-  wechat_mp: ['需开通流量主'],
-  weibo: ['需满1000粉丝'],
-  bilibili: ['需UP主身份'],
-  kuaishou: ['需开通小店'],
+// 内容类型配置
+const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any; color: string }> = {
+  image_text: { label: '图文', icon: FileText, color: '#6366F1' },
+  article: { label: '文章', icon: FileText, color: '#8B5CF6' },
+  image: { label: '图片', icon: ImageIcon, color: '#10B981' },
+  video: { label: '视频', icon: Video, color: '#F59E0B' },
+  text: { label: '文案', icon: FileText, color: '#3B82F6' },
 }
 
-// 模拟数据
-const MOCK_ORDERS: PendingOrder[] = [
-  {
-    id: '1',
-    title: '春季美妆护肤种草笔记',
-    description: '需要撰写关于春季护肤的产品种草笔记，要求突出产品功效和使用感受',
-    budget: 500,
-    platforms: ['xiaohongshu'],
-    deadline: '2024-03-15',
-    status: 'pending',
-    avatar_name: '小美',
-    avatar_level: 3,
-    target_audience: '18-25岁女性',
-    hints: ['需认证专业号'],
-    countdown_seconds: 3600 * 5 + 1234,
-  },
-  {
-    id: '2',
-    title: '科技产品测评视频脚本',
-    description: '为新款蓝牙耳机创作测评视频脚本，包含开箱、功能介绍、使用体验',
-    budget: 800,
-    platforms: ['douyin', 'bilibili'],
-    deadline: '2024-03-20',
-    status: 'pending',
-    avatar_name: '科技达人',
-    avatar_level: 5,
-    target_audience: '数码爱好者',
-    hints: ['需开通团购功能', '热门订单'],
-    countdown_seconds: 3600 * 2 + 4521,
-  },
-  {
-    id: '3',
-    title: '美食探店图文推荐',
-    description: '周末探店美食推荐，需要精美的图片和生动的文字描述',
-    budget: 350,
-    platforms: ['xiaohongshu', 'weibo'],
-    deadline: '2024-03-18',
-    status: 'pending',
-    avatar_name: '吃货小分队',
-    avatar_level: 2,
-    target_audience: '美食爱好者',
-    hints: ['需满1000粉丝'],
-    countdown_seconds: 3600 * 12 + 2345,
-  },
-  {
-    id: '4',
-    title: '职场成长干货文章',
-    description: '撰写职场晋升、沟通技巧相关的干货文章，适合职场人群阅读',
-    budget: 600,
-    platforms: ['wechat_mp'],
-    deadline: '2024-03-25',
-    status: 'pending',
-    avatar_name: '职场导师',
-    avatar_level: 4,
-    target_audience: '职场人士',
-    hints: ['需开通流量主'],
-    countdown_seconds: 3600 * 24 + 5678,
-  },
-  {
-    id: '5',
-    title: '健身打卡短视频',
-    description: '创作健身打卡类短视频，展示训练动作和计划，适合健身爱好者',
-    budget: 450,
-    platforms: ['douyin'],
-    deadline: '2024-03-16',
-    status: 'pending',
-    avatar_name: '健身教练',
-    avatar_level: 4,
-    target_audience: '健身人群',
-    hints: ['需开通团购功能', '紧急订单'],
-    countdown_seconds: 3600 + 890,
-  },
-  {
-    id: '6',
-    title: '旅行打卡攻略图文',
-    description: '分享热门旅游景点打卡攻略，包含拍照技巧和路线推荐',
-    budget: 700,
-    platforms: ['xiaohongshu', 'kuaishou'],
-    deadline: '2024-03-22',
-    status: 'pending',
-    avatar_name: '旅行家',
-    avatar_level: 5,
-    target_audience: '旅行爱好者',
-    hints: ['需开通小店'],
-    countdown_seconds: 3600 * 8 + 3456,
-  },
-]
-
-// 格式化倒计时
-const formatCountdown = (seconds: number): string => {
-  if (seconds <= 0) return '已截止'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-  if (hours > 0) {
-    return `${hours}小时${minutes}分`
+// 安全解析 JSON
+function safeParseJSON(val: any): string[] {
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try { const r = JSON.parse(val); return Array.isArray(r) ? r : [val] } catch { return [val] }
   }
-  return `${minutes}分${secs}秒`
+  return []
 }
 
 export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null)
-  const [avatars, setAvatars] = useState<any[]>([])
-  const [countdowns, setCountdowns] = useState<Record<string, number>>({})
+  const [accepting, setAccepting] = useState<string | null>(null)
 
   useEffect(() => {
     fetchOrders()
-    fetchAvatars()
   }, [])
-
-  // 倒计时更新
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdowns(prev => {
-        const newCountdowns = { ...prev }
-        Object.keys(newCountdowns).forEach(id => {
-          if (newCountdowns[id] > 0) {
-            newCountdowns[id] -= 1
-          }
-        })
-        return newCountdowns
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  // 初始化订单倒计时
-  useEffect(() => {
-    if (orders.length > 0) {
-      const initial: Record<string, number> = {}
-      orders.forEach(order => {
-        initial[order.id] = order.countdown_seconds || 3600
-      })
-      setCountdowns(initial)
-    }
-  }, [orders])
-
-  const fetchAvatars = async () => {
-    try {
-      const res = await Network.request({ url: '/api/avatar' })
-      if (res.data?.code === 200) {
-        setAvatars(res.data.data || [])
-      }
-    } catch (error) {
-      console.error('获取分身列表失败:', error)
-    }
-  }
 
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      // 优先获取用户订单（带分身信息）
-      const res = await Network.request({ url: '/api/user-stats/orders' })
-      if (res.data?.code === 200 && res.data.data?.orders?.length > 0) {
-        // 使用真实数据，转换为组件格式
-        const realOrders = res.data.data.orders.map((order: any) => ({
-          id: order.id,
-          title: order.title || '订单内容',
-          description: order.description || '',
-          budget: order.budget || 0,
-          platforms: JSON.parse(order.platforms || '[]'),
-          deadline: order.deadline || '',
-          status: order.status,
-          avatar_name: order.avatar_name || '我的分身',
-          avatar_url: order.avatar_url || '',
-          countdown_seconds: 3600
-        }))
+      console.log('[待接订单] 开始获取数据')
+      const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
+      console.log('[待接订单] API 响应:', res.data)
+      const data = res.data?.data
+      if (res.data?.code === 200 && Array.isArray(data)) {
+        // 获取分身信息以映射 avatarName
+        let avatarMap: Record<string, { name: string; avatarUrl?: string }> = {}
+        try {
+          const avatarRes = await Network.request({ url: '/api/avatar' })
+          const avatarList = avatarRes.data?.data || []
+          avatarList.forEach((a: any) => {
+            avatarMap[a.id] = { name: a.name || '分身', avatarUrl: a.avatar_url || a.avatarUrl }
+          })
+        } catch (e) {
+          console.error('[待接订单] 获取分身列表失败:', e)
+        }
+
+        const realOrders: PendingOrder[] = data.map((item: any) => {
+          const avatar = avatarMap[item.avatarId] || {}
+          return {
+            dispatchId: item.dispatchId,
+            orderId: item.orderId,
+            avatarId: item.avatarId,
+            avatarName: avatar.name || '分身',
+            avatarUrl: avatar.avatarUrl || '',
+            title: item.title || '订单内容',
+            description: item.description || '',
+            contentType: item.contentType || 'image_text',
+            platforms: canonicalizePlatforms(safeParseJSON(item.platforms)),
+            budget: parseFloat(item.budget) || 0,
+            orderStatus: item.orderStatus || '',
+            dispatchStatus: item.dispatchStatus || 'pending',
+            quantityPerAvatar: item.quantityPerAvatar || 1,
+            expectedQuantity: item.expectedQuantity || 1,
+            orderCreatedAt: item.orderCreatedAt || '',
+          }
+        })
+        console.log('[待接订单] 解析后数据:', realOrders.length, '条')
         setOrders(realOrders)
       } else {
-        setOrders(MOCK_ORDERS)
+        console.log('[待接订单] 无数据')
+        setOrders([])
       }
     } catch (error) {
-      console.error('获取待接订单失败:', error)
-      setOrders(MOCK_ORDERS)
+      console.error('[待接订单] 获取失败:', error)
+      setOrders([])
     } finally {
       setLoading(false)
     }
   }
 
-  // 筛选订单
-  const filteredOrders = orders.filter(order => {
-    const platformMatch = !selectedPlatform || order.platforms.includes(selectedPlatform)
-    const avatarMatch = !selectedAvatar || order.avatar_name === avatars.find(a => a.id === selectedAvatar)?.name
-    return platformMatch && avatarMatch
-  })
-
-  // 获取平台信息
-  const getPlatformInfo = (key: string) => {
-    return PLATFORMS.find(p => p.key === key) || { name: key, color: '#6366F1', icon: FileText }
+  // 接单
+  const handleAccept = async (order: PendingOrder) => {
+    if (accepting) return
+    setAccepting(order.dispatchId)
+    try {
+      console.log('[待接订单] 接单:', order.avatarId, order.orderId)
+      const res = await Network.request({
+        url: `/api/order-dispatch/avatar/${order.avatarId}/accept/${order.orderId}`,
+        method: 'POST',
+      })
+      console.log('[待接订单] 接单响应:', res.data)
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '接单成功', icon: 'success' })
+        // 跳转到内容生成页面
+        setTimeout(() => {
+          Taro.navigateTo({
+            url: `/pages/order/order-content-creation/index?orderId=${order.orderId}&avatarId=${order.avatarId}`
+          })
+        }, 500)
+        // 从列表移除
+        setOrders(prev => prev.filter(o => o.dispatchId !== order.dispatchId))
+      } else {
+        Taro.showToast({ title: res.data?.msg || '接单失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      console.error('[待接订单] 接单失败:', error)
+      Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
+    } finally {
+      setAccepting(null)
+    }
   }
 
-  // 获取订单提示
-  const getOrderHints = (order: PendingOrder): string[] => {
-    const hints: string[] = [...(order.hints || [])]
-    // 自动添加平台相关提示
-    order.platforms.forEach(p => {
-      const platformHints = PLATFORM_HINTS[p]
-      if (platformHints) {
-        platformHints.forEach(h => {
-          if (!hints.includes(h)) {
-            hints.push(h)
-          }
-        })
-      }
-    })
-    return hints
+  // 婉拒
+  const handleDecline = async (order: PendingOrder) => {
+    try {
+      await Network.request({
+        url: `/api/order-dispatch/dispatch/${order.dispatchId}/decline`,
+        method: 'POST',
+      })
+      Taro.showToast({ title: '已婉拒', icon: 'none' })
+      setOrders(prev => prev.filter(o => o.dispatchId !== order.dispatchId))
+    } catch (error) {
+      console.error('[待接订单] 婉拒失败:', error)
+    }
+  }
+
+  // 筛选订单
+  const filteredOrders = orders.filter(order => {
+    if (selectedPlatform && !order.platforms.includes(selectedPlatform)) return false
+    return true
+  })
+
+  // 提取所有出现的平台
+  const allPlatforms = Array.from(new Set(orders.flatMap(o => o.platforms)))
+
+  // 获取内容类型信息
+  const getContentTypeInfo = (type: string) => {
+    return CONTENT_TYPE_MAP[type] || CONTENT_TYPE_MAP.image_text
+  }
+
+  // 格式化时间
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
   return (
-    <View className="pending-order-page">
-      {/* 顶部背景 */}
-      <View className="page-header">
-        {/* 装饰圆形 */}
-        <View className="header-decoration">
-          <View className="decoration-circle circle-1" />
-          <View className="decoration-circle circle-2" />
+    <View className="po-page">
+      {/* 顶部渐变 */}
+      <View className="po-header">
+        <View className="po-header-deco">
+          <View className="po-circle po-c1" />
+          <View className="po-circle po-c2" />
+          <View className="po-circle po-c3" />
         </View>
-        
-        {/* 页面标题 */}
-        <View className="header-title-row">
-          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+        <View className="po-header-row">
+          <View className="po-back" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
           </View>
-          <View className="header-title-area">
-            <Text className="header-title">待接订单</Text>
-            <Text className="header-subtitle">智能匹配 · AI辅助 · 自动生成</Text>
+          <View className="po-header-center">
+            <Text className="po-header-title">待接订单</Text>
+            <Text className="po-header-sub">匹配分身 · AI 智能创作 · 自动发布</Text>
+          </View>
+          <View className="po-header-right" />
+        </View>
+        {/* 统计 */}
+        <View className="po-stat-bar">
+          <View className="po-stat-chip">
+            <Zap size={14} color="#FBBF24" />
+            <Text className="po-stat-num">{orders.length}</Text>
+            <Text className="po-stat-label">待接</Text>
+          </View>
+          <View className="po-stat-divider" />
+          <View className="po-stat-chip">
+            <Wallet size={14} color="#34D399" />
+            <Text className="po-stat-num">¥{orders.reduce((s, o) => s + o.budget, 0).toFixed(0)}</Text>
+            <Text className="po-stat-label">总预算</Text>
+          </View>
+          <View className="po-stat-divider" />
+          <View className="po-stat-chip">
+            <Users size={14} color="#A78BFA" />
+            <Text className="po-stat-num">{new Set(orders.map(o => o.avatarId)).size}</Text>
+            <Text className="po-stat-label">分身</Text>
           </View>
         </View>
-
       </View>
+
       {/* 平台筛选 */}
-      <View className="platform-filter">
-        <ScrollView className="platform-scroll" scrollX>
-          <View
-            className={`platform-tag ${selectedPlatform === null ? 'active' : ''}`}
-            onClick={() => setSelectedPlatform(null)}
-          >
-            <Text className="platform-tag-text">全部</Text>
-          </View>
-          {PLATFORMS.map((platform) => {
-            const IconComponent = platform.icon
-            return (
-              <View
-                key={platform.key}
-                className={`platform-tag ${selectedPlatform === platform.key ? 'active' : ''}`}
-                onClick={() => setSelectedPlatform(
-                  selectedPlatform === platform.key ? null : platform.key
-                )}
-                style={selectedPlatform === platform.key ? {
-                  background: `linear-gradient(135deg, ${platform.color}20, ${platform.color}10)`,
-                  borderColor: platform.color
-                } : {}}
-              >
-                <IconComponent size={14} color={selectedPlatform === platform.key ? platform.color : '#64748B'} />
-                <Text 
-                  className="platform-tag-text" 
-                  style={selectedPlatform === platform.key ? { color: platform.color } : {}}
-                >
-                {platform.name}
-              </Text>
-              </View>
-            )
-          })}
-        </ScrollView>
-      </View>
-
-      {/* 分身筛选 */}
-      {avatars.length > 0 && (
-        <View className="platform-filter">
-          <ScrollView className="platform-scroll" scrollX>
+      {allPlatforms.length > 1 && (
+        <View className="po-filter">
+          <ScrollView className="po-filter-scroll" scrollX>
             <View
-              className={`platform-tag ${selectedAvatar === null ? 'active' : ''}`}
-              onClick={() => setSelectedAvatar(null)}
+              className={`po-filter-tag ${!selectedPlatform ? 'active' : ''}`}
+              onClick={() => setSelectedPlatform(null)}
             >
-              <Users size={14} color={selectedAvatar === null ? '#6366F1' : '#64748B'} />
-              <Text className="platform-tag-text" style={selectedAvatar === null ? { color: '#6366F1' } : {}}>全部分身</Text>
+              <Text className="po-filter-text">全部</Text>
             </View>
-            {avatars.map((avatar) => (
-              <View
-                key={avatar.id}
-                className={`platform-tag ${selectedAvatar === avatar.id ? 'active' : ''}`}
-                onClick={() => setSelectedAvatar(selectedAvatar === avatar.id ? null : avatar.id)}
-                style={selectedAvatar === avatar.id ? { background: 'rgba(99, 102, 241, 0.1)', borderColor: '#6366F1' } : {}}
-              >
-                {avatar.avatar_url ? (
-                  <View style={{ width: 32, height: 32, borderRadius: 16, overflow: 'hidden' }}>
-                    <TaroImage src={avatar.avatar_url} className="w-full h-full" />
-                  </View>
-                ) : (
-                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#fff' }}>{avatar.name?.charAt(0) || '?'}</Text>
-                  </View>
-                )}
-                <Text className="platform-tag-text" style={selectedAvatar === avatar.id ? { color: '#6366F1' } : {}}>
-                  {avatar.name}
-                </Text>
-              </View>
-            ))}
+            {allPlatforms.map(pKey => {
+              const meta = getPlatformMeta(pKey)
+              return (
+                <View
+                  key={pKey}
+                  className={`po-filter-tag ${selectedPlatform === pKey ? 'active' : ''}`}
+                  onClick={() => setSelectedPlatform(selectedPlatform === pKey ? null : pKey)}
+                  style={selectedPlatform === pKey ? { background: `${meta?.color || '#6366F1'}18`, borderColor: meta?.color || '#6366F1' } : {}}
+                >
+                  <Text className="po-filter-text" style={selectedPlatform === pKey ? { color: meta?.color || '#6366F1' } : {}}>
+                    {getPlatformLabel(pKey)}
+                  </Text>
+                </View>
+              )
+            })}
           </ScrollView>
         </View>
       )}
 
       {/* 订单列表 */}
-      <ScrollView className="order-list" scrollY>
+      <ScrollView className="po-list" scrollY>
         {loading ? (
-          <View className="loading-state">
-            <View className="loading-spinner" />
-            <Text className="loading-text">加载中...</Text>
+          <View className="po-loading">
+            <View className="po-spinner" />
+            <Text className="po-loading-text">加载中...</Text>
           </View>
         ) : filteredOrders.length === 0 ? (
-          <View className="empty-state">
-            <Clock size={64} color="#CBD5E1" />
-            <Text className="empty-title">暂无待接订单</Text>
-            <Text className="empty-desc">稍后再来看看吧</Text>
+          <View className="po-empty">
+            <View className="po-empty-icon">
+              <CircleCheck size={48} color="#CBD5E1" />
+            </View>
+            <Text className="po-empty-title">暂无待接订单</Text>
+            <Text className="po-empty-desc">所有订单都已处理，稍后再来看看</Text>
           </View>
         ) : (
           filteredOrders.map((order) => {
-            const hints = getOrderHints(order)
-            const countdown = countdowns[order.id] || 0
-            const isUrgent = countdown < 3600 // 少于1小时
-
+            const ctInfo = getContentTypeInfo(order.contentType)
+            const isAccepting = accepting === order.dispatchId
             return (
-              <View key={order.id} className="order-card">
-                {/* 卡片头部 - 分身标签 + 平台标签 + 倒计时 */}
-                <View className="card-header">
-                  {/* 分身标签 */}
-                  {order.avatar_name && (
-                    <View className="avatar-tag">
-                      <View className="avatar-avatar">
-                        {order.avatar_url ? (
-                          <TaroImage src={order.avatar_url} className="avatar-img" />
-                        ) : (
-                          <Text className="avatar-initial">{order.avatar_name.charAt(0)}</Text>
-                        )}
-                      </View>
-                      <Text className="avatar-name">{order.avatar_name}</Text>
+              <View key={order.dispatchId} className="po-card">
+                {/* 卡片头部：分身 + 平台 + 类型 */}
+                <View className="po-card-top">
+                  <View className="po-avatar-chip">
+                    <View className="po-avatar-dot" style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
+                      <Text className="po-avatar-letter">{(order.avatarName || '分').charAt(0)}</Text>
                     </View>
-                  )}
-                  <View className="platform-tags">
-                    {order.platforms.map((platformKey) => {
-                      const platform = getPlatformInfo(platformKey)
-                      const IconComponent = platform.icon
+                    <Text className="po-avatar-label">{order.avatarName}</Text>
+                  </View>
+                  <View className="po-card-badges">
+                    {order.platforms.map(pKey => {
+                      const meta = getPlatformMeta(pKey)
                       return (
-                        <View
-                          key={platformKey}
-                          className="platform-badge"
-                          style={{
-                            background: `${platform.color}15`,
-                            borderColor: `${platform.color}30`
-                          }}
-                        >
-                          <IconComponent size={12} color={platform.color} />
-                          <Text className="platform-badge-text" style={{ color: platform.color }}>
-                            {platform.name}
+                        <View key={pKey} className="po-platform-pill" style={{ background: `${meta?.color || '#6366F1'}15` }}>
+                          <Text className="po-platform-pill-text" style={{ color: meta?.color || '#6366F1' }}>
+                            {getPlatformLabel(pKey)}
                           </Text>
                         </View>
                       )
                     })}
-                  </View>
-                  {/* 接单倒计时 */}
-                  <View className="countdown-badge">
-                    <Zap size={12} color={isUrgent ? '#EF4444' : '#6366F1'} />
-                    <Text className={`countdown-text ${isUrgent ? 'urgent' : ''}`}>
-                      {formatCountdown(countdown)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* 提示标签 */}
-                {hints.length > 0 && (
-                  <View className="hint-tags">
-                    {hints.map((hint, idx) => (
-                      <View 
-                        key={idx} 
-                        className={`hint-tag ${hint.includes('热门') || hint.includes('紧急') || hint.includes('高收益') ? 'hot' : hint.includes('需') ? 'warning' : 'info'}`}
-                      >
-                        <Info size={10} color="#6366F1" />
-                        <Text>{hint}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* 订单标题 */}
-                <Text className="order-title">{order.title}</Text>
-                <Text className="order-desc">{order.description}</Text>
-
-                {/* 目标受众 */}
-                {order.target_audience && (
-                  <View className="audience-tag">
-                    <Users size={12} color="#8B5CF6" />
-                    <Text className="audience-text">{order.target_audience}</Text>
-                  </View>
-                )}
-
-                {/* 数据统计 */}
-                <View className="stats-row">
-                  <View className="stat-item">
-                    <Wallet size={16} color="#F59E0B" />
-                    <View className="stat-content">
-                      <Text className="stat-label">预算</Text>
-                      <Text className="stat-value budget">¥{order.budget}</Text>
-                    </View>
-                  </View>
-                  <View className="stat-divider" />
-                  <View className="stat-item">
-                    <TrendingUp size={16} color="#10B981" />
-                    <View className="stat-content">
-                      <Text className="stat-label">预估收益</Text>
-                      <Text className="stat-value earnings">¥{Math.floor(order.budget * 0.8)}</Text>
-                    </View>
-                  </View>
-                  <View className="stat-divider" />
-                  <View className="stat-item">
-                    <Clock size={16} color="#6366F1" />
-                    <View className="stat-content">
-                      <Text className="stat-label">交付周期</Text>
-                      <Text className="stat-value">3天</Text>
+                    <View className="po-type-pill" style={{ background: `${ctInfo.color}15` }}>
+                      <Text className="po-type-pill-text" style={{ color: ctInfo.color }}>{ctInfo.label}</Text>
                     </View>
                   </View>
                 </View>
 
-                {/* 分身信息 */}
-                {order.avatar_name && (
-                  <View className="avatar-info">
-                    <View className="avatar-avatar">
-                      <Text className="avatar-initial">{order.avatar_name.charAt(0)}</Text>
-                    </View>
-                    <Text className="avatar-name">{order.avatar_name}</Text>
-                    <View className="avatar-level">
-                      <Text className="level-text">L{order.avatar_level}</Text>
-                    </View>
-                  </View>
+                {/* 标题 */}
+                <Text className="po-card-title">{order.title}</Text>
+
+                {/* 描述 */}
+                {order.description && (
+                  <Text className="po-card-desc" numberOfLines={3}>{order.description}</Text>
                 )}
+
+                {/* 信息栏 */}
+                <View className="po-card-info">
+                  <View className="po-info-item">
+                    <Wallet size={14} color="#F59E0B" />
+                    <Text className="po-info-text po-info-budget">¥{order.budget}</Text>
+                  </View>
+                  <View className="po-info-sep" />
+                  <View className="po-info-item">
+                    <Target size={14} color="#6366F1" />
+                    <Text className="po-info-text">{order.quantityPerAvatar}条/分身</Text>
+                  </View>
+                  <View className="po-info-sep" />
+                  <View className="po-info-item">
+                    <Calendar size={14} color="#94A3B8" />
+                    <Text className="po-info-text">{formatTime(order.orderCreatedAt)}</Text>
+                  </View>
+                </View>
 
                 {/* 操作按钮 */}
-                <View className="card-actions">
-                  <Button className="action-btn decline">
-                    <Text className="btn-text">婉拒</Text>
-                  </Button>
-                  <Button 
-                    className="action-btn accept"
-                    onClick={() => Taro.navigateTo({ url: '/pages/avatar/avatar-create/index' })}
-                    disabled={countdown <= 0}
+                <View className="po-card-actions">
+                  <Button
+                    className="po-btn po-btn-decline"
+                    onClick={() => handleDecline(order)}
                   >
-                    <Text className="btn-text">{countdown <= 0 ? '已截止' : '立即接单'}</Text>
-                    {countdown > 0 && <ChevronRight size={16} color="#fff" />}
+                    <CircleX size={16} color="#64748B" />
+                    <Text className="po-btn-label po-btn-label-default">婉拒</Text>
+                  </Button>
+                  <Button
+                    className="po-btn po-btn-accept"
+                    onClick={() => handleAccept(order)}
+                    disabled={isAccepting}
+                  >
+                    {isAccepting ? (
+                      <>
+                        <View className="po-btn-mini-spinner" />
+                        <Text className="po-btn-label po-btn-label-primary">接单中...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} color="#fff" />
+                        <Text className="po-btn-label po-btn-label-primary">立即接单</Text>
+                        <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
+                      </>
+                    )}
                   </Button>
                 </View>
               </View>
             )
           })
         )}
-        
-        {/* 底部占位 */}
-        <View className="bottom-placeholder" />
+        <View className="po-bottom-space" />
       </ScrollView>
     </View>
   )

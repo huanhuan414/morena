@@ -490,6 +490,33 @@ async getExecutionProgress(orderId: string) {
   }
 
   /**
+   * 分身婉拒订单
+   */
+  async declineOrder(dispatchId: string) {
+    const db = getMySQLClient()
+    
+    // 查找分派记录
+    const requests = await db.query(
+      'SELECT * FROM order_dispatch_requests WHERE id = ?',
+      [dispatchId]
+    ) as any[]
+    const request = requests?.[0]
+    
+    if (!request) {
+      throw new Error('分派记录不存在')
+    }
+    
+    // 更新状态为 declined
+    await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
+      status: 'declined',
+      updated_at: new Date()
+    })
+    
+    console.log(`[declineOrder] 已婉拒: dispatchId=${dispatchId}`)
+    return { success: true }
+  }
+
+  /**
    * 启动内容生成流程
    */
   private async startContentGeneration(orderId: string, avatarId: string, request: any) {
