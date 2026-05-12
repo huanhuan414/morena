@@ -3,6 +3,7 @@ import { View, Text, Image as TaroImage, ScrollView, Video as TaroVideo } from '
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, Loader, RefreshCw, Send, FileText, Image as ImageIcon, Video as VideoIcon, Wallet, Users, Sparkles } from 'lucide-react-taro'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import './index.css'
@@ -257,10 +258,12 @@ export default function OrderContentCreation() {
     { key: 'images', label: '预览待确认', done: ['publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus), active: currentStatus === 'preview' },
   ]
 
+  const statusBarHeight = getStatusBarHeight()
+
   return (
     <View className="cc-page">
       {/* 顶部渐变头部 */}
-      <View className="cc-header">
+      <View className="cc-header" style={{ paddingTop: statusBarHeight + 'px' }}>
         <View className="cc-header-deco">
           <View className="cc-header-circle circle-a" />
           <View className="cc-header-circle circle-b" />

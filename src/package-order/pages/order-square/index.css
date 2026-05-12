@@ -10,7 +10,7 @@
 
 /* 覆盖全局 page-header 的 padding-top */
 .order-square-page .page-header {
-  padding-top: 0 !important;
+  padding-top: 0;
 }
 
 /* 顶部背景 */

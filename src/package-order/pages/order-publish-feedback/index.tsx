@@ -3,6 +3,7 @@ import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
@@ -573,10 +574,12 @@ export default function OrderPublishFeedback() {
     )
   }
 
+  const statusBarHeight = getStatusBarHeight()
+
   return (
     <View className="feedback-page">
       {/* 顶部渐变头部 */}
-      <View className="feedback-header">
+      <View className="feedback-header" style={{ paddingTop: statusBarHeight + 'px' }}>
         <View className="feedback-header-deco">
           <View className="feedback-header-circle circle-a" />
           <View className="feedback-header-circle circle-b" />

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import {
   ArrowLeft, Wallet, Users, FileText,
   Zap, ChevronRight, CircleX, CircleCheck, Sparkles,
@@ -190,10 +191,12 @@ export default function PendingOrderListPage() {
     return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
+  const statusBarHeight = getStatusBarHeight()
+
   return (
     <View className="po-page">
       {/* 顶部渐变 */}
-      <View className="po-header">
+      <View className="po-header" style={{ paddingTop: statusBarHeight + 'px' }}>
         <View className="po-header-deco">
           <View className="po-circle po-c1" />
           <View className="po-circle po-c2" />

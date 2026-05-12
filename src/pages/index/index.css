@@ -33,8 +33,7 @@
   align-items: center;
   justify-content: space-between;
   height: 200rpx;
-  padding: 0 30rpx;
-  padding-top: 20rpx;
+  padding: 60rpx 30rpx 20rpx;
 }
 
 .header-left {

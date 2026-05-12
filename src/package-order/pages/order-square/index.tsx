@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
   ArrowLeft, 
@@ -218,10 +219,12 @@ export default function OrderSquarePage() {
     navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}&source=square` })
   }
 
+  const statusBarHeight = getStatusBarHeight()
+
   return (
     <View className="order-square-page">
       {/* 顶部背景 */}
-      <View className="page-header">
+      <View className="page-header" style={{ paddingTop: statusBarHeight + 'px' }}>
         {/* 装饰元素 */}
         <View className="header-decoration">
           <View className="deco-circle deco-circle-1" />

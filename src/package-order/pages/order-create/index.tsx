@@ -3,7 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Sparkles, Send, Check, ChevronRight, Loader, ChevronLeft, FileText } from 'lucide-react-taro'
+import { Sparkles, Send, Check, ChevronRight, Loader, ChevronLeft, FileText, Wand2, Users, Coins } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
   PLATFORM_UI_ORDER,
@@ -13,7 +13,6 @@ import {
 } from '@/constants/publish-platform'
 import './index.css'
 
-// 内容类型配置
 const CONTENT_TYPES = [
   { id: 'text', label: '纯文案', icon: '📝', price: 5, prompt: '撰写吸引人的文案' },
   { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, prompt: '撰写图文笔记内容' },
@@ -47,13 +46,8 @@ export default function OrderCreate() {
     }
   }
 
-  useEffect(() => {
-    return () => {
-      stopAiPolling()
-    }
-  }, [])
+  useEffect(() => { return () => { stopAiPolling() } }, [])
 
-  // 计算价格
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
   const contentPricePerUnit = selectedType?.price || 10
   const totalPrice = {
@@ -62,11 +56,8 @@ export default function OrderCreate() {
     get total() { return this.base + this.content }
   }
 
-  // AI帮写
   const handleAIGenerate = async () => {
-    if (aiLoading) {
-      return
-    }
+    if (aiLoading) return
     if (form.platforms.length === 0) {
       Taro.showToast({ title: '请先选择发布平台', icon: 'none' })
       return
@@ -78,12 +69,10 @@ export default function OrderCreate() {
 
     setAiLoading(true)
     try {
-      // 构建平台名称列表
       const platformNames = form.platforms.map((p) => PLATFORM_META_MAP[p as keyof typeof PLATFORM_META_MAP]?.name || p).join('、')
       const contentTypeName = selectedType?.label || '文案'
       const platformIds = form.platforms.join(',')
-      
-      // 构建提示词 - 生成爆款任务描述
+
       const prompt = `你是一位短视频/图文内容策划专家，擅长为达人博主打造各平台爆款内容。
 
 请根据以下【任务信息】生成一份【任务描述】，用于指导达人创作：
@@ -124,7 +113,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
 请生成专业、具体、可执行的任务描述，语言风格要符合达人博主的调性。`
 
-      // 调用AI接口
       const res = await Network.request({
         url: '/api/ai/generate',
         method: 'POST',
@@ -206,19 +194,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     }
   }
 
-  // 切换内容类型
   const handleTypeChange = (typeId: string) => {
     setForm(prev => ({ ...prev, contentType: typeId }))
   }
 
-  // 切换平台
   const handlePlatformToggle = (platformId: string) => {
     const canonicalId = canonicalizePlatform(platformId)
     setForm(prev => {
       const platforms = prev.platforms.includes(canonicalId)
         ? prev.platforms.filter(p => p !== canonicalId)
         : [...prev.platforms, canonicalId]
-      // 清空已选平台的要求
       const newReqs = { ...prev.optionalRequirements }
       if (!platforms.includes(canonicalId)) {
         Object.keys(newReqs).forEach(key => {
@@ -231,7 +216,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     })
   }
 
-  // 更新平台要求
   const handleRequirementChange = (platformId: string, reqId: string, value: string) => {
     setForm(prev => ({
       ...prev,
@@ -242,7 +226,6 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     }))
   }
 
-  // 提交订单并跳转分身推荐
   const handleSubmit = async () => {
     if (!form.title.trim()) {
       Taro.showToast({ title: '请输入任务标题', icon: 'none' })
@@ -254,9 +237,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
     }
 
     setIsSubmitting(true)
-
     try {
-      // 先创建订单，获取订单ID
       const orderData = {
         title: form.title,
         description: form.description,
@@ -267,11 +248,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         total_price: totalPrice.total,
       }
 
-      console.log('创建订单请求:', {
-        url: '/api/order',
-        method: 'POST',
-        data: orderData
-      })
+      console.log('创建订单请求:', { url: '/api/order', method: 'POST', data: orderData })
 
       const res = await Network.request({
         url: '/api/order',
@@ -283,60 +260,27 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
       const rawPayload = res?.data
       let payload = rawPayload
-
       if (typeof rawPayload === 'string') {
-        try {
-          payload = JSON.parse(rawPayload)
-        } catch {
-          payload = null
-        }
+        try { payload = JSON.parse(rawPayload) } catch { payload = null }
       }
-
       const payloadObj = payload && typeof payload === 'object' ? payload : null
 
       if (payloadObj?.code === 200 && payloadObj?.data?.id) {
         const orderId = payloadObj.data.id
-        
-        console.log('[OrderCreate] 订单创建成功，订单ID:', orderId, '准备跳转')
-        
-        // 只带订单ID跳转，智能匹配页面会根据ID获取详情
-        const targetUrl = `/package-order/pages/order-matching/index?orderId=${orderId}`
-        console.log('[OrderCreate] 跳转URL:', targetUrl)
-        
-        // 跳转到AI智能匹配分身页面
-        Taro.navigateTo({
-          url: targetUrl
-        })
+        console.log('[OrderCreate] 订单创建成功，订单ID:', orderId)
+        Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
       } else {
-        console.error('[OrderCreate] 创建订单失败: invalid response payload', {
-          statusCode: res?.statusCode,
-          dataType: typeof rawPayload,
-          rawPayload,
-          payload
-        })
-
-        const msg =
-          payloadObj?.msg ||
-          payloadObj?.message ||
-          (rawPayload == null || rawPayload === '' ? `创建订单失败（响应为空，statusCode=${res?.statusCode || 'unknown'}）` : '创建订单失败')
-
-        Taro.showToast({ 
-          title: msg,
-          icon: 'none' 
-        })
+        const msg = payloadObj?.msg || payloadObj?.message || '创建订单失败'
+        Taro.showToast({ title: msg, icon: 'none' })
       }
     } catch (err: any) {
       console.error('创建订单失败:', err)
-      Taro.showToast({ 
-        title: err?.message || '网络错误，请重试', 
-        icon: 'none' 
-      })
+      Taro.showToast({ title: err?.message || '网络错误，请重试', icon: 'none' })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // 获取选中平台的特殊要求
   const getSelectedPlatformReqs = () => {
     return canonicalizePlatforms(form.platforms).map(platformId => ({
       platformId,
@@ -347,32 +291,44 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   return (
     <View className="order-create-page">
-      {/* 顶部导航 */}
-      <View className="top-nav">
+      {/* 自定义导航栏 */}
+      <View className="custom-nav">
         <View className="nav-left" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={24} color="#333" />
+          <ChevronLeft size={22} color="#fff" />
         </View>
-        <Text className="nav-title">新建订单</Text>
-        <View 
-          className="nav-right" 
+        <Text className="nav-title">发布任务</Text>
+        <View
+          className="nav-right"
           onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}
         >
-          <FileText size={20} color="#1890ff" />
-          <Text className="nav-text">发单记录</Text>
+          <FileText size={18} color="rgba(255,255,255,0.8)" />
         </View>
       </View>
-      
+
       <ScrollView scrollY className="scroll-container">
+        {/* 头部卡片 - 渐变背景 */}
+        <View className="header-card">
+          <View className="header-bg">
+            <Text className="header-title">创建新任务</Text>
+            <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
+          </View>
+        </View>
+
         {/* 任务标题 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">任务标题</Text>
-            <Text className="section-tag">必填</Text>
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">任务标题</Text>
+            </View>
+            <View className="required-tag">
+              <Text className="required-text">必填</Text>
+            </View>
           </View>
           <View className="input-wrapper">
             <Input
               className="title-input"
-              placeholder="简洁明确的任务主题，如：新品发布推广"
+              placeholder="简洁明确的任务主题"
               value={form.title}
               onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
               maxlength={50}
@@ -380,11 +336,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 发布平台 - 放到前面 */}
+        {/* 发布平台 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">发布平台</Text>
-            <Text className="section-tag">必填</Text>
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">发布平台</Text>
+            </View>
+            <View className="required-tag">
+              <Text className="required-text">必填</Text>
+            </View>
           </View>
           <View className="platform-grid">
             {PLATFORM_OPTIONS.map((config) => (
@@ -393,25 +354,24 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                 className={`platform-card ${form.platforms.includes(config.id) ? 'active' : ''}`}
                 onClick={() => handlePlatformToggle(config.id)}
               >
-                <View className="platform-icon" style={{ background: config.color + '20' }}>
+                <View className="platform-icon-wrap" style={{ background: config.color + '15' }}>
                   <Text className="platform-emoji">{config.icon}</Text>
                 </View>
                 <Text className="platform-name">{config.name}</Text>
                 {form.platforms.includes(config.id) && (
                   <View className="platform-check">
-                    <Check size={12} color="#fff" />
+                    <Check size={10} color="#fff" />
                   </View>
                 )}
               </View>
             ))}
           </View>
-          
-          {/* 平台可选要求 */}
+
           {form.platforms.length > 0 && (
             <View className="platform-requirements">
               <View className="req-header" onClick={() => setShowPlatformReq(!showPlatformReq)}>
                 <Text className="req-title">平台要求（可选）</Text>
-                <ChevronRight size={16} color="#666" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
+                <ChevronRight size={14} color="#999" className={`req-arrow ${showPlatformReq ? 'open' : ''}`} />
               </View>
               {showPlatformReq && (
                 <View className="req-content">
@@ -437,11 +397,16 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           )}
         </View>
 
-        {/* 内容类型 - 放到前面 */}
+        {/* 内容类型 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">内容类型</Text>
-            <Text className="section-tag">必填</Text>
+            <View className="section-title-row">
+              <View className="title-dot orange" />
+              <Text className="section-title">内容类型</Text>
+            </View>
+            <View className="required-tag orange">
+              <Text className="required-text">必填</Text>
+            </View>
           </View>
           <View className="type-grid">
             {CONTENT_TYPES.map(type => (
@@ -452,7 +417,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               >
                 <Text className="type-icon">{type.icon}</Text>
                 <Text className="type-label">{type.label}</Text>
-                <Text className="type-price">¥{type.price}/个</Text>
+                <View className="type-price-row">
+                  <Coins size={10} color="#ff7a30" />
+                  <Text className="type-price">¥{type.price}/个</Text>
+                </View>
               </View>
             ))}
           </View>
@@ -461,14 +429,17 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         {/* 任务描述 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">任务描述</Text>
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">任务描述</Text>
+            </View>
             <View className="ai-button" onClick={handleAIGenerate}>
               {aiLoading ? (
-                <Loader size={14} color="#fff" className="ai-loading" />
+                <Loader size={12} color="#fff" className="ai-loading" />
               ) : (
-                <Sparkles size={14} color="#fff" />
+                <Wand2 size={12} color="#fff" />
               )}
-              <Text className="ai-text">AI帮写</Text>
+              <Text className="ai-text">AI 帮写</Text>
             </View>
           </View>
           <View className="textarea-wrapper">
@@ -484,10 +455,14 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <Text className="char-count">{form.description.length}/2000</Text>
         </View>
 
-        {/* 分身数量 */}
+        {/* 分身设置 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">分身设置</Text>
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">分身设置</Text>
+            </View>
+            <Users size={16} color="#667eea" />
           </View>
           <View className="counter-row">
             <View className="counter-item">
@@ -530,7 +505,11 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         </View>
 
         {/* 价格预览 */}
-        <View className="price-preview">
+        <View className="price-card">
+          <View className="price-header">
+            <Coins size={16} color="#ff7a30" />
+            <Text className="price-header-text">费用预估</Text>
+          </View>
           <View className="price-row">
             <Text className="price-label">基础费用</Text>
             <Text className="price-value">¥{totalPrice.base}</Text>
@@ -548,23 +527,30 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 提交按钮 */}
-        <View className="submit-section">
-          <View
-            className={`submit-button ${isSubmitting ? 'loading' : ''}`}
-            onClick={isSubmitting || aiLoading ? undefined : handleSubmit}
-          >
-            {isSubmitting ? (
-              <Loader size={20} color="#fff" className="btn-loading" />
-            ) : (
-              <>
-                <Send size={18} color="#fff" />
-                <Text className="submit-text">发布任务</Text>
-              </>
-            )}
-          </View>
-        </View>
+        {/* 底部间距 */}
+        <View style={{ height: '140px' }} />
       </ScrollView>
+
+      {/* 底部提交按钮 */}
+      <View className="submit-bar">
+        <View className="submit-info">
+          <Text className="submit-total-label">合计</Text>
+          <Text className="submit-total-value">¥{totalPrice.total}</Text>
+        </View>
+        <View
+          className={`submit-button ${isSubmitting ? 'loading' : ''}`}
+          onClick={isSubmitting || aiLoading ? undefined : handleSubmit}
+        >
+          {isSubmitting ? (
+            <Loader size={16} color="#fff" className="btn-loading" />
+          ) : (
+            <>
+              <Send size={14} color="#fff" />
+              <Text className="submit-text">发布任务</Text>
+            </>
+          )}
+        </View>
+      </View>
     </View>
   )
 }

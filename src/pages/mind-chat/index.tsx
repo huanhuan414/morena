@@ -10,7 +10,9 @@ import {
   Zap,
   Loader,
   Sparkles,
-  Users
+  Users,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -244,17 +246,16 @@ const MindChat: React.FC = () => {
     return num.toString()
   }
 
-  const openAvatarFriends = (avatarId: string) => {
-    Taro.navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatarId}` })
+  const openAvatarFriends = (_avatarId: string) => {
+    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
   const openFriendshipManagement = () => {
-    Taro.navigateTo({ url: '/pages/friendship-management/index' })
+    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
   const handleMyCloneVoice = (avatarId: string) => {
-    Taro.showToast({ title: '请先选择好友后再发起通话', icon: 'none' })
-    openAvatarFriends(avatarId)
+    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
   const handleSquareConnect = () => {
@@ -262,15 +263,7 @@ const MindChat: React.FC = () => {
       Taro.navigateTo({ url: '/pages/login/index' })
       return
     }
-
-    if (myClones.length === 0) {
-      setActiveTab('my')
-      Taro.showToast({ title: '请先创建自己的分身', icon: 'none' })
-      return
-    }
-
-    Taro.showToast({ title: '请先在好友管理中处理交友关系', icon: 'none' })
-    openFriendshipManagement()
+    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
   const handleSquareVoice = () => {
@@ -278,9 +271,25 @@ const MindChat: React.FC = () => {
       Taro.navigateTo({ url: '/pages/login/index' })
       return
     }
+    Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
+  }
 
-    Taro.showToast({ title: '请先建立好友关系后再发起通话', icon: 'none' })
-    openFriendshipManagement()
+  // 删除分身
+  const deleteAvatar = async (avatarId: string) => {
+    const res = await Taro.showModal({ title: '确认删除', content: '删除后无法恢复，确定要删除这个分身吗？' })
+    if (!res.confirm) return
+    try {
+      const result = await Network.request({
+        url: `/api/avatar/${avatarId}`,
+        method: 'DELETE'
+      })
+      console.log('deleteAvatar result:', result)
+      Taro.showToast({ title: '删除成功', icon: 'success' })
+      fetchMyClones()
+    } catch (err) {
+      console.error('deleteAvatar error:', err)
+      Taro.showToast({ title: '删除失败', icon: 'error' })
+    }
   }
 
   return (
@@ -425,6 +434,10 @@ const MindChat: React.FC = () => {
                     <View className="toolbar-btn" onClick={() => handleMyCloneVoice(clone.id)}>
                       <Phone size={15} />
                       <Text className="toolbar-label">通话</Text>
+                    </View>
+                    <View className="toolbar-btn toolbar-btn-danger" onClick={() => deleteAvatar(clone.id)}>
+                      <Trash2 size={15} />
+                      <Text className="toolbar-label">删除</Text>
                     </View>
                   </View>
                   <View className="hosting-control">

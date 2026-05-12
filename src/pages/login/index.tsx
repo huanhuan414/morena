@@ -5,11 +5,13 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { Gift } from 'lucide-react-taro'
 import './index.css'
 
 const Login: React.FC = () => {
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [codeLoading, setCodeLoading] = useState(false)
@@ -31,6 +33,7 @@ const Login: React.FC = () => {
 
     setCodeLoading(true)
     try {
+      console.log('[登录] 发送验证码请求:', { url: '/api/auth/send-code', method: 'POST', data: { phone } })
       const res = await Network.request({
         url: '/api/auth/send-code',
         method: 'POST',
@@ -41,7 +44,8 @@ const Login: React.FC = () => {
       if (res.data?.code === 200) {
         // 如果后端返回了验证码（开发模式），显示给用户
         const devCode = res.data?.data?.code
-        if (devCode) {
+        const isDev = res.data?.data?.isDev
+        if (devCode && isDev) {
           Taro.showToast({ title: `验证码: ${devCode}`, icon: 'none', duration: 5000 })
         } else {
           Taro.showToast({ title: '验证码已发送', icon: 'success' })
@@ -79,23 +83,30 @@ const Login: React.FC = () => {
 
     setLoading(true)
     try {
+      const loginData: Record<string, string> = { phone, code }
+      // 如果有邀请码，传给后端
+      if (referralCode.trim()) {
+        loginData.referral_code = referralCode.trim()
+      }
+
+      console.log('[登录] 登录请求:', { url: '/api/auth/phone-login', method: 'POST', data: loginData })
       const res = await Network.request({
         url: '/api/auth/phone-login',
         method: 'POST',
-        data: { phone, code }
+        data: loginData
       })
       console.log('[登录] 登录响应:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
-        const loginData = res.data.data
+        const data = res.data.data
         // 保存 token
-        if (loginData.token) {
-          setToken(loginData.token)
+        if (data.token) {
+          setToken(data.token)
         }
-        // 保存完整的用户信息（后端返回的 user 对象包含所有字段）
-        const user = loginData.user || {}
+        // 保存完整的用户信息
+        const user = data.user || {}
         setUserInfo({
-          id: user.id || loginData.userId,
+          id: user.id || data.userId,
           openid: user.openid,
           nickname: user.nickname || `用户${phone.slice(-4)}`,
           avatar: user.avatar || '',
@@ -105,14 +116,21 @@ const Login: React.FC = () => {
           level: user.level,
           exp: user.exp,
           credits: user.credits,
+          referral_code: user.referral_code,
           created_at: user.created_at,
           updated_at: user.updated_at,
         })
-        Taro.showToast({ title: loginData.isNewUser ? '注册成功' : '登录成功', icon: 'success' })
+
+        // 如果有邀请奖励，提示用户
+        if (data.referralReward && data.referralReward > 0) {
+          Taro.showToast({ title: `注册成功，获得邀请奖励 ${data.referralReward} 积分`, icon: 'none', duration: 3000 })
+        } else {
+          Taro.showToast({ title: data.isNewUser ? '注册成功' : '登录成功', icon: 'success' })
+        }
+
         setTimeout(() => {
           const redirect = getRedirectUrl()
           if (redirect) {
-            // 如果是 tabbar 页面用 switchTab，否则用 navigateTo
             const tabbarPages = ['/pages/index/index', '/pages/mind-chat/index', '/package-avatar/pages/generated-content/index', '/pages/profile/index']
             if (tabbarPages.some(p => redirect.startsWith(p))) {
               Taro.switchTab({ url: redirect.split('?')[0] })
@@ -191,6 +209,22 @@ const Login: React.FC = () => {
                 </Text>
               </Button>
             </View>
+          </View>
+        </View>
+
+        {/* 邀请码输入 */}
+        <View className="login-field">
+          <View className="login-referral-label-row">
+            <Gift size={14} color="#8B5CF6" />
+            <Text className="login-field-label block">邀请码（选填）</Text>
+          </View>
+          <View className="login-input-wrap">
+            <Input
+              placeholder="输入邀请码可获得额外积分奖励"
+              value={referralCode}
+              onInput={(e: any) => setReferralCode(e.detail.value.toUpperCase())}
+              className="login-input"
+            />
           </View>
         </View>
 

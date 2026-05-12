@@ -6,8 +6,8 @@ import * as crypto from 'crypto'
 export class AuthSmsService {
   private accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID || ''
   private accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET || ''
-  private signName = '贵州一枝梅信息科技'
-  private templateCode = 'SMS_262600614' // 阿里云短信模板编码
+  private signName = process.env.ALIYUN_SMS_SIGN_NAME || '贵州一枝梅信息科技'
+  private templateCode = process.env.ALIYUN_SMS_TEMPLATE_CODE || 'SMS_262600614'
 
   /**
    * 发送短信验证码
@@ -15,9 +15,11 @@ export class AuthSmsService {
   async sendVerificationCode(phone: string, code: string): Promise<{ success: boolean; message: string; isDev?: boolean }> {
     // 未配置阿里云密钥时，直接走开发模式
     if (!this.accessKeyId || !this.accessKeySecret) {
-      console.log(`[开发模式] 阿里云短信未配置，验证码: ${code}`)
+      console.log(`[SMS开发模式] 阿里云密钥未配置，验证码: ${code}，手机号: ${phone}`)
       return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
     }
+
+    console.log(`[SMS] 尝试发送验证码到 ${phone}，签名: ${this.signName}，模板: ${this.templateCode}`)
 
     const params: Record<string, string> = {
       AccessKeyId: this.accessKeyId,
@@ -64,26 +66,49 @@ export class AuthSmsService {
       })
 
       const result = await response.json() as any
-      console.log('短信发送结果:', result)
+      console.log('[SMS] 阿里云返回:', JSON.stringify(result))
 
       if (result.Code === 'OK') {
         return { success: true, message: '验证码发送成功', isDev: false }
-      } else if (result.Code === 'isv.TEMPLATE_MISSING_PARAMETERS' || result.Code === 'isv.TEMPLATE_NOT_EXIST') {
-        // 模板不存在，开发环境模拟发送成功
-        console.log(`[开发模式] 模板未配置，模拟发送成功。验证码: ${code}`)
-        return { success: true, message: '验证码已发送（开发模式）', isDev: true }
-      } else {
-        console.error('短信发送失败:', result)
-        // 开发环境：模拟发送成功
-        console.log(`[开发模式] 验证码已发送到 ${phone}: ${code}`)
-        return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
       }
+      
+      // 常见错误码处理
+      const errorMsg = this.getErrorMessage(result.Code, result.Message)
+      console.error(`[SMS] 发送失败: Code=${result.Code}, Message=${result.Message}`)
+      
+      // 开发环境降级：签名/模板问题时返回验证码
+      if (result.Code === 'isv.SIGN_NOT_EXIST' || result.Code === 'isv.TEMPLATE_NOT_EXIST' || 
+          result.Code === 'isv.SIGN_NAME_ILLEGAL' || result.Code === 'isv.TEMPLATE_MISSING_PARAMETERS') {
+        console.log(`[SMS降级] 短信配置问题，降级为开发模式。验证码: ${code}`)
+        return { success: true, message: `验证码已发送（开发模式：${errorMsg}）`, isDev: true }
+      }
+      
+      // 其他错误（如频率限制、手机号格式错误等）返回失败
+      return { success: false, message: errorMsg, isDev: false }
     } catch (error) {
-      console.error('短信发送异常:', error)
-      // 开发环境：模拟发送成功
-      console.log(`[开发模式] 验证码已发送到 ${phone}: ${code}`)
-      return { success: true, message: '验证码发送成功（开发模式）', isDev: true }
+      console.error('[SMS] 请求异常:', error)
+      // 网络错误降级为开发模式
+      console.log(`[SMS降级] 网络异常，降级为开发模式。验证码: ${code}`)
+      return { success: true, message: '验证码发送成功（开发模式：网络异常）', isDev: true }
     }
+  }
+
+  /**
+   * 获取友好的错误信息
+   */
+  private getErrorMessage(code: string, message: string): string {
+    const errorMap: Record<string, string> = {
+      'isv.BUSINESS_LIMIT_CONTROL': '短信发送频率限制，请稍后再试',
+      'isv.INVALID_PARAMETERS': '手机号格式错误',
+      'isv.MOBILE_NUMBER_ILLEGAL': '手机号格式错误',
+      'isv.AMOUNT_NOT_ENOUGH': '短信余额不足',
+      'isv.SIGN_NOT_EXIST': '短信签名不存在',
+      'isv.TEMPLATE_NOT_EXIST': '短信模板不存在',
+      'isv.SIGN_NAME_ILLEGAL': '短信签名不合法',
+      'isv.TEMPLATE_MISSING_PARAMETERS': '短信模板参数缺失',
+      'isp.RAM_PERMISSION_DENY': 'RAM权限不足',
+    }
+    return errorMap[code] || message || `短信发送失败(${code})`
   }
 
   /**
