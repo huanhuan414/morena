@@ -4,8 +4,8 @@ import { View, Text, ScrollView, Image } from '@tarojs/components'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import { 
-  Settings, ChevronRight, LogOut, Sparkles, Bell, Info, 
-  CircleQuestionMark, Briefcase, Wallet, Crown, Package, Trophy
+  Settings, ChevronRight, LogOut, Bell, Info, 
+  Briefcase, Wallet, Crown, Trophy
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '../../styles/variables.css'
@@ -20,15 +20,15 @@ interface UserStats {
   level: number
 }
 
-// 菜单项配置
+// 菜单项配置（我的分身、技能广场、帮助中心 暂时隐藏）
 const menuItems = [
-  { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
+  // { title: '我的分身', icon: Sparkles, desc: '管理AI分身', type: 'primary', path: '/package-avatar/pages/avatar-manage/index' },
   { title: '工资墙', icon: Trophy, desc: '收益排行榜', type: 'primary', path: '/package-profile/pages/earnings-wall/index' },
-  { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index' },
+  // { title: '技能广场', icon: Package, desc: '解锁更多能力', type: 'success', path: '/package-skill/pages/skills-square/index' },
   { title: '我要推广', icon: Briefcase, desc: '一键发布，坐等收益', type: 'info', path: '/package-order/pages/order-list/index' },
   { title: '收益中心', icon: Wallet, desc: '查看收益和提现', type: 'warning', path: '/package-profile/pages/earning-center/index' },
   { title: '订阅中心', icon: Crown, desc: '升级解锁更多功能', type: 'primary', path: '/package-avatar/pages/subscription/index' },
-  { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
+  // { title: '帮助中心', icon: CircleQuestionMark, desc: '常见问题解答', type: 'info', path: '/package-profile/pages/help/index' },
   { title: '关于我们', icon: Info, desc: '版本 v1.0.0', type: 'default', path: '/package-profile/pages/about/index' }
 ]
 
