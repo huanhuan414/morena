@@ -281,32 +281,32 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     }
     const style = styleMap[platform] || styleMap.wechat_mp
 
-    const images: string[] = []
-    for (let i = 0; i < imageCount; i++) {
-      try {
-        // 根据图片在文章中的上下文构建更精准的提示词
-        const context = imageContexts[i] || ''
-        const contextHint = context ? `context in article: ${context.substring(0, 100)}` : ''
+    // 构建所有图片的提示词
+    const prompts = imageContexts.map((context, i) => {
+      const contextHint = context ? `context in article: ${context.substring(0, 100)}` : ''
+      return i === 0
+        ? `Featured hero image for article about ${productKeywords}, ${style}, ${contextHint}, captivating and professional, main visual, 4K`
+        : `Supporting image ${i + 1} for article about ${productKeywords}, ${style}, ${contextHint}, relevant to the topic, 4K`
+    })
 
-        const prompt = i === 0
-          ? `Featured hero image for article about ${productKeywords}, ${style}, ${contextHint}, captivating and professional, main visual, 4K`
-          : `Supporting image ${i + 1} for article about ${productKeywords}, ${style}, ${contextHint}, relevant to the topic, 4K`
-
+    // 并行生成所有配图，大幅提升速度
+    this.logger.log(`开始并行生成${imageCount}张文章配图...`)
+    const results = await Promise.allSettled(
+      prompts.map((prompt, i) => {
         this.logger.log(`正在生成文章第${i + 1}张配图，提示词: ${prompt.substring(0, 80)}...`)
+        return this.imageClient.generate({ prompt, size: '2k' })
+      })
+    )
 
-        const response = await this.imageClient.generate({
-          prompt,
-          size: '2k',
-        })
-
-        if (response?.data?.[0]?.url) {
-          images.push(response.data[0].url)
-          this.logger.log(`文章第${i + 1}张配图生成成功`)
-        }
-      } catch (err: any) {
-        this.logger.warn(`文章第${i + 1}张配图生成失败: ${err.message}`)
+    const images: string[] = []
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value?.data?.[0]?.url) {
+        images.push(result.value.data[0].url)
+        this.logger.log(`文章第${i + 1}张配图生成成功`)
+      } else if (result.status === 'rejected') {
+        this.logger.warn(`文章第${i + 1}张配图生成失败: ${result.reason?.message || result.reason}`)
       }
-    }
+    })
 
     return images
   }
@@ -538,28 +538,27 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
    */
   private async generateImages(platform: string, input: any, textContent: string): Promise<string[]> {
     const quantity = input.contentQuantity || 3
-    const images: string[] = []
 
     // 根据平台和订单构建精准的图片提示词
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
-    for (let i = 0; i < imagePrompts.length; i++) {
-      try {
-        this.logger.log(`正在生成第${i + 1}张图片，提示词: ${imagePrompts[i].substring(0, 80)}...`)
+    // 并行生成所有图片，大幅提升速度
+    const results = await Promise.allSettled(
+      imagePrompts.map((prompt, i) => {
+        this.logger.log(`正在生成第${i + 1}张图片，提示词: ${prompt.substring(0, 80)}...`)
+        return this.imageClient.generate({ prompt, size: '2k' })
+      })
+    )
 
-        const response = await this.imageClient.generate({
-          prompt: imagePrompts[i],
-          size: '2k',
-        })
-
-        if (response?.data?.[0]?.url) {
-          images.push(response.data[0].url)
-          this.logger.log(`第${i + 1}张图片生成成功`)
-        }
-      } catch (err: any) {
-        this.logger.warn(`第${i + 1}张图片生成失败: ${err.message}`)
+    const images: string[] = []
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value?.data?.[0]?.url) {
+        images.push(result.value.data[0].url)
+        this.logger.log(`第${i + 1}张图片生成成功`)
+      } else if (result.status === 'rejected') {
+        this.logger.warn(`第${i + 1}张图片生成失败: ${result.reason?.message || result.reason}`)
       }
-    }
+    })
 
     return images
   }

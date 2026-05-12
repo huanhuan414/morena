@@ -114,15 +114,15 @@
 }
 
 .cc-order-badge {
-  padding: 6rpx 20rpx;
-  border-radius: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
 }
 
 .cc-order-badge-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #fff;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .cc-order-type {
@@ -130,9 +130,9 @@
   flex-direction: row;
   align-items: center;
   gap: 6rpx;
-  padding: 6rpx 16rpx;
+  padding: 2rpx 12rpx;
   background: #EEF2FF;
-  border-radius: 16rpx;
+  border-radius: 100rpx;
 }
 
 .cc-order-type-text {
@@ -358,15 +358,15 @@
 }
 
 .cc-platform-tag {
-  padding: 8rpx 20rpx;
-  border-radius: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 100rpx;
 }
 
 .cc-platform-name {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #fff;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 /* 内容卡片 */
