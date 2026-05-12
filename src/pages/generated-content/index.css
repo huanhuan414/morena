@@ -113,7 +113,7 @@
   font-weight: 600;
 }
 
-/* 分身筛选下拉 */
+/* 分身筛选下拉 — 整体性解决遮挡问题 */
 .avatar-filter {
   padding: 20rpx 32rpx 0;
   position: relative;
@@ -129,6 +129,8 @@
   border-radius: 16rpx;
   padding: 18rpx 24rpx;
   border: 2rpx solid #E2E8F0;
+  position: relative;
+  z-index: 210;
 }
 
 .avatar-selector-text {
@@ -146,16 +148,36 @@
   color: #94A3B8;
 }
 
+/* 下拉弹层 — fixed 定位，脱离文档流，永远不会被其他元素遮挡 */
 .avatar-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+}
+
+.avatar-dropdown-mask {
   position: absolute;
-  top: 80rpx;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.avatar-dropdown-list {
+  position: absolute;
+  top: 0;
   left: 32rpx;
   right: 32rpx;
   background: #fff;
   border-radius: 16rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
-  z-index: 999;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  margin-top: 200rpx;
+  max-height: 600rpx;
 }
 
 .avatar-dropdown-item {
@@ -243,15 +265,34 @@
   gap: 12rpx;
 }
 
+/* 平台标签 & 状态标签 — 紧凑行高，无多余 padding-top */
 .platform-badge {
-  padding: 4rpx 16rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4rpx 14rpx;
   border-radius: 8rpx;
   border: 1rpx solid;
+  line-height: 1;
+}
+
+.platform-badge-text {
+  font-size: 20rpx;
+  line-height: 1.4;
 }
 
 .status-badge {
-  padding: 4rpx 16rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4rpx 14rpx;
   border-radius: 8rpx;
+  line-height: 1;
+}
+
+.status-badge-text {
+  font-size: 20rpx;
+  line-height: 1.4;
 }
 
 /* 内容类型标签 */
@@ -260,6 +301,13 @@
   flex-direction: row;
   align-items: center;
   margin-bottom: 12rpx;
+}
+
+.type-tag-text {
+  font-size: 22rpx;
+  color: #6366F1;
+  margin-left: 4rpx;
+  line-height: 1;
 }
 
 /* 内容预览 */
@@ -337,26 +385,44 @@
   gap: 16rpx;
 }
 
+/* 统一按钮风格：图标+文字，三种类型 primary/default/danger */
 .action-btn {
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 4rpx;
   padding: 8rpx 20rpx;
   border-radius: 20rpx;
 }
 
-.action-btn.publish {
+.action-btn.primary {
   background: #6366F1;
 }
 
-.publish-btn-text {
-  font-size: 24rpx;
-  color: #fff;
-  font-weight: 500;
+.action-btn.default {
+  background: #F1F5F9;
 }
 
-.action-btn.preview {
-  background: #F8FAFC;
+.action-btn.danger {
+  background: #FEF2F2;
+}
+
+.action-btn-text {
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.action-btn-text.primary {
+  color: #fff;
+}
+
+.action-btn-text.default {
+  color: #64748B;
+}
+
+.action-btn-text.danger {
+  color: #EF4444;
 }
 
 /* 加载态 */

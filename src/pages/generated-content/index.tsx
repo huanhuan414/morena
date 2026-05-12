@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye } from 'lucide-react-taro'
+import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import './index.css'
 
@@ -107,7 +107,7 @@ export default function GeneratedContentPage() {
     }
   }
 
-  // 筛选（后端返回字段为 camelCase）
+  // 筛选
   const filteredContents = contents.filter(c => {
     const statusMatch = activeTab === 'all' || c.status === activeTab
     const avatarMatch = !selectedAvatarId || c.avatarId === selectedAvatarId
@@ -117,10 +117,100 @@ export default function GeneratedContentPage() {
   const getStatusInfo = (status: string) => CONTENT_STATUS_MAP[status] || { label: status, color: '#64748B', bgColor: '#F1F5F9' }
   const getPlatformInfo = (key: string) => PLATFORM_MAP[key] || { name: key, color: '#64748B' }
 
-  // 选中分身名
   const selectedAvatarName = selectedAvatarId
     ? avatars.find(a => a.id === selectedAvatarId)?.name || '未知分身'
     : '全部分身'
+
+  // 查看内容详情
+  const handleView = (content: any) => {
+    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+  }
+
+  // 发布
+  const handlePublish = (content: any) => {
+    Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
+  }
+
+  // 重新生成
+  const handleRegenerate = (content: any) => {
+    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+  }
+
+  // 删除
+  const handleDelete = (content: any) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '删除后无法恢复，确定要删除这条内容吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await Network.request({
+              url: `/api/content-generation/content/${content.id}`,
+              method: 'DELETE',
+            })
+            Taro.showToast({ title: '已删除', icon: 'success' })
+            loadData()
+          } catch {
+            Taro.showToast({ title: '删除失败', icon: 'error' })
+          }
+        }
+      },
+    })
+  }
+
+  // 催验收
+  const handleUrgeReview = (_content: any) => {
+    Taro.showToast({ title: '已发送催验收提醒', icon: 'success' })
+  }
+
+  // 反馈
+  const handleFeedback = (content: any) => {
+    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+  }
+
+  // 获取卡片底部按钮配置
+  const getCardActions = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return [
+          { key: 'publish', label: '发布', icon: Send, type: 'primary' },
+          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+        ]
+      case 'published':
+        return [
+          { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
+          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+        ]
+      case 'reviewing':
+        return [
+          { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
+          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+        ]
+      case 'settled':
+      case 'done':
+        return [
+          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+        ]
+      case 'failed':
+        return [
+          { key: 'delete', label: '删除', icon: Trash2, type: 'danger' },
+          { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
+        ]
+      default:
+        return []
+    }
+  }
+
+  const handleAction = (actionKey: string, content: any) => {
+    switch (actionKey) {
+      case 'publish': handlePublish(content); break
+      case 'view': handleView(content); break
+      case 'feedback': handleFeedback(content); break
+      case 'urge': handleUrgeReview(content); break
+      case 'delete': handleDelete(content); break
+      case 'regenerate': handleRegenerate(content); break
+    }
+  }
 
   return (
     <View className="generated-content-page">
@@ -130,7 +220,6 @@ export default function GeneratedContentPage() {
           <View className="decoration-circle circle-1" />
           <View className="decoration-circle circle-2" />
         </View>
-
         <View className="header-title-row">
           <View className="back-btn" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
@@ -140,7 +229,6 @@ export default function GeneratedContentPage() {
             <Text className="header-subtitle">AI 智能创作 · 一键发布</Text>
           </View>
         </View>
-
       </View>
 
       {/* 状态 Tab 筛选 */}
@@ -172,24 +260,27 @@ export default function GeneratedContentPage() {
           </View>
           {avatarDropdownOpen && (
             <View className="avatar-dropdown">
-              <View
-                className={`avatar-dropdown-item ${!selectedAvatarId ? 'active' : ''}`}
-                onClick={() => { setSelectedAvatarId(null); setAvatarDropdownOpen(false) }}
-              >
-                <Text className="avatar-dropdown-text">全部分身</Text>
-              </View>
-              {avatars.map(a => (
+              <View className="avatar-dropdown-mask" onClick={() => setAvatarDropdownOpen(false)} />
+              <View className="avatar-dropdown-list">
                 <View
-                  key={a.id}
-                  className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'active' : ''}`}
-                  onClick={() => { setSelectedAvatarId(a.id); setAvatarDropdownOpen(false) }}
+                  className={`avatar-dropdown-item ${!selectedAvatarId ? 'active' : ''}`}
+                  onClick={() => { setSelectedAvatarId(null); setAvatarDropdownOpen(false) }}
                 >
-                  <View className="dropdown-avatar-dot" style={{ backgroundColor: '#6366F1' }}>
-                    <Text style={{ fontSize: 10, color: '#fff' }}>{a.name.charAt(0)}</Text>
-                  </View>
-                  <Text className="avatar-dropdown-text">{a.name}</Text>
+                  <Text className="avatar-dropdown-text">全部分身</Text>
                 </View>
-              ))}
+                {avatars.map(a => (
+                  <View
+                    key={a.id}
+                    className={`avatar-dropdown-item ${selectedAvatarId === a.id ? 'active' : ''}`}
+                    onClick={() => { setSelectedAvatarId(a.id); setAvatarDropdownOpen(false) }}
+                  >
+                    <View className="dropdown-avatar-dot" style={{ backgroundColor: '#6366F1' }}>
+                      <Text style={{ fontSize: 10, color: '#fff' }}>{a.name.charAt(0)}</Text>
+                    </View>
+                    <Text className="avatar-dropdown-text">{a.name}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           )}
         </View>
@@ -219,6 +310,7 @@ export default function GeneratedContentPage() {
             const images = content.images || []
             const videoUrl = content.video_url || content.videoUrl || ''
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
+            const actions = getCardActions(content.status)
 
             return (
               <View key={content.id} className="content-card">
@@ -233,11 +325,11 @@ export default function GeneratedContentPage() {
                   <View className="header-right">
                     {platformKey && (
                       <View className="platform-badge" style={{ background: `${platformInfo.color}15`, borderColor: `${platformInfo.color}30` }}>
-                        <Text style={{ fontSize: 11, color: platformInfo.color }}>{platformInfo.name}</Text>
+                        <Text className="platform-badge-text" style={{ color: platformInfo.color }}>{platformInfo.name}</Text>
                       </View>
                     )}
                     <View className="status-badge" style={{ backgroundColor: statusInfo.bgColor }}>
-                      <Text style={{ fontSize: 11, color: statusInfo.color }}>{statusInfo.label}</Text>
+                      <Text className="status-badge-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
                     </View>
                   </View>
                 </View>
@@ -245,7 +337,7 @@ export default function GeneratedContentPage() {
                 {/* 内容类型标签 */}
                 <View className="type-tag">
                   <TypeIcon size={12} color="#6366F1" />
-                  <Text style={{ fontSize: 11, color: '#6366F1', marginLeft: 4 }}>{typeInfo.name}</Text>
+                  <Text className="type-tag-text">{typeInfo.name}</Text>
                 </View>
 
                 {/* 内容预览 */}
@@ -281,27 +373,26 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 底部信息 */}
+                {/* 底部信息+操作按钮 */}
                 <View className="card-footer">
                   <View className="footer-left">
                     <Clock size={12} color="#94A3B8" />
                     <Text className="footer-time">{content.createdAt ? new Date(content.createdAt).toLocaleDateString() : ''}</Text>
                   </View>
                   <View className="footer-actions">
-                    {(content.status === 'completed') && (
-                      <View
-                        className="action-btn publish"
-                        onClick={() => {
-                          Taro.navigateTo({ url: `/pages/order/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
-                        }}
-                      >
-                        <Text className="publish-btn-text">发布</Text>
-                      </View>
-                    )}
-                    <View className="action-btn preview" onClick={() => Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })}>
-                      <Eye size={12} color="#64748B" />
-                      <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 2 }}>查看</Text>
-                    </View>
+                    {actions.map(action => {
+                      const ActionIcon = action.icon
+                      return (
+                        <View
+                          key={action.key}
+                          className={`action-btn ${action.type}`}
+                          onClick={() => handleAction(action.key, content)}
+                        >
+                          <ActionIcon size={12} color={action.type === 'primary' ? '#fff' : action.type === 'danger' ? '#EF4444' : '#64748B'} />
+                          <Text className={`action-btn-text ${action.type}`}>{action.label}</Text>
+                        </View>
+                      )
+                    })}
                   </View>
                 </View>
               </View>
