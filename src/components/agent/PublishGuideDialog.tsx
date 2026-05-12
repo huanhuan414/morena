@@ -8,45 +8,17 @@ import { View, Text } from '@tarojs/components'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { canonicalizePlatform, getPlatformAppConfig, getPlatformLabel } from '@/constants/publish-platform'
 import { Copy, Check, ExternalLink, Share2 } from 'lucide-react-taro'
 
-// 平台配置信息
-export const PLATFORM_CONFIGS = {
-  xiaohongshu: {
-    name: '小红书',
-    icon: '📕',
-    scheme: 'xhsdiscover://',
-    downloadUrl: 'https://www.xiaohongshu.com/download',
-    tips: '打开小红书APP，点击底部"+"号发布'
-  },
-  douyin: {
-    name: '抖音',
-    icon: '🎵',
-    scheme: 'snssdk1128://',
-    downloadUrl: 'https://www.douyin.com/download',
-    tips: '打开抖音APP，点击底部"+"号发布'
-  },
-  bilibili: {
-    name: 'B站',
-    icon: '📺',
-    scheme: 'bilibili://',
-    downloadUrl: 'https://www.bilibili.com/download',
-    tips: '打开B站APP，点击"发布"创作内容'
-  },
-  weibo: {
-    name: '微博',
-    icon: '🐦',
-    scheme: 'sinaweibo://',
-    downloadUrl: 'https://weibo.com/download',
-    tips: '打开微博APP，点击"+"发布'
-  },
-  wechat_video: {
-    name: '视频号',
-    icon: '🎬',
-    scheme: '', // 视频号没有公开的 scheme
-    downloadUrl: '',
-    tips: '打开微信 → 发现 → 视频号 → 点击相机图标发布'
-  }
+const PLATFORM_ICONS: Record<string, string> = {
+  xiaohongshu: '📕',
+  douyin: '🎵',
+  bilibili: '📺',
+  weibo: '🐦',
+  wechat_channel: '🎬',
+  wechat_video: '🎬',
+  wechat_mp: '📧'
 }
 
 export interface PublishContent {
@@ -60,15 +32,17 @@ export interface PublishContent {
 interface PublishGuideDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  platform: keyof typeof PLATFORM_CONFIGS
+  platform: string
   content: PublishContent
 }
 
 export function PublishGuideDialog({ open, onOpenChange, platform, content }: PublishGuideDialogProps) {
   const [copied, setCopied] = useState(false)
   const [tryingOpen, setTryingOpen] = useState(false)
-  
-  const platformConfig = PLATFORM_CONFIGS[platform]
+  const normalizedPlatform = canonicalizePlatform(platform)
+  const platformConfig = getPlatformAppConfig(normalizedPlatform)
+  const platformName = getPlatformLabel(normalizedPlatform)
+  const platformIcon = PLATFORM_ICONS[normalizedPlatform] || '📱'
   const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
   const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
   
@@ -110,7 +84,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
   
   // 尝试打开 APP（仅 H5 环境）
   const handleOpenApp = async () => {
-    if (!isH5 || !platformConfig.scheme) {
+    if (!isH5 || !platformConfig?.scheme) {
       Taro.showToast({
         title: '请在小程序中复制内容',
         icon: 'none'
@@ -137,7 +111,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
           // 可能唤起失败，显示提示
           Taro.showModal({
             title: '打开失败',
-            content: `未能自动打开${platformConfig.name}，请手动打开APP粘贴内容`,
+            content: `未能自动打开${platformName}，请手动打开APP粘贴内容`,
             showCancel: false
           })
         }
@@ -179,8 +153,8 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Text className="text-2xl">{platformConfig.icon}</Text>
-            <Text>发布到{platformConfig.name}</Text>
+            <Text className="text-2xl">{platformIcon}</Text>
+            <Text>发布到{platformName}</Text>
           </DialogTitle>
         </DialogHeader>
         
@@ -188,7 +162,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
           {/* 说明文字 */}
           <View className="bg-blue-50 rounded-lg p-4 mb-4">
             <Text className="text-blue-700 text-sm">
-              {platformConfig.tips}
+              {platformConfig?.tips || '请复制内容后打开对应平台完成发布'}
             </Text>
           </View>
           
@@ -204,7 +178,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
               <View className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs flex-shrink-0">
                 <Text className="text-white text-xs">2</Text>
               </View>
-              <Text className="text-sm text-gray-700">打开{platformConfig.name}APP</Text>
+              <Text className="text-sm text-gray-700">打开{platformName}APP</Text>
             </View>
             <View className="flex items-start gap-3">
               <View className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs flex-shrink-0">
@@ -261,7 +235,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
           </Button>
           
           {/* H5 环境显示打开APP按钮 */}
-          {isH5 && platformConfig.scheme ? (
+          {isH5 && platformConfig?.scheme ? (
             <Button
               variant="outline"
               className="w-full"
@@ -269,7 +243,7 @@ export function PublishGuideDialog({ open, onOpenChange, platform, content }: Pu
               disabled={tryingOpen}
             >
               <ExternalLink size={16} color="#1890ff" />
-              <Text>{tryingOpen ? '正在打开...' : `打开${platformConfig.name}APP`}</Text>
+              <Text>{tryingOpen ? '正在打开...' : `打开${platformName}APP`}</Text>
             </Button>
           ) : null}
           

@@ -4,12 +4,12 @@ import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader } from 'lucide-react-taro'
-import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
+import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
 
 // 文章型平台判断（这些平台内容为 Markdown 格式，需要解析渲染）
-const ARTICLE_PLATFORMS = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu', 'wechat_official']
+const ARTICLE_PLATFORMS = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu']
 function isArticlePlatform(platform: string): boolean {
   return ARTICLE_PLATFORMS.includes(platform)
 }
@@ -24,20 +24,6 @@ const CONTENT_TYPE_CONFIG: Record<string, { name: string; color: string }> = {
   article: { name: '文章', color: '#10B981' },
   image_text: { name: '图文', color: '#F59E0B' },
   video_text: { name: '短视频', color: '#EF4444' },
-}
-
-// 平台配色
-const PLATFORM_COLORS: Record<string, { bg: string; text: string }> = {
-  xiaohongshu: { bg: '#FFF0F0', text: '#FE2C55' },
-  douyin: { bg: '#F0FCFC', text: '#161823' },
-  wechat_mp: { bg: '#F0FFF4', text: '#07C160' },
-  wechat_moments: { bg: '#F0FFF4', text: '#07C160' },
-  wechat_channel: { bg: '#F0FFF4', text: '#07C160' },
-  weibo: { bg: '#FFF7F0', text: '#FF8200' },
-  bilibili: { bg: '#FFF0F6', text: '#FB7299' },
-  zhihu: { bg: '#F0F4FF', text: '#0066FF' },
-  kuaishou: { bg: '#FFF5F0', text: '#FF4906' },
-  toutiao: { bg: '#FFF0F0', text: '#E4393C' },
 }
 
 interface GeneratedContent {
@@ -349,7 +335,10 @@ export default function OrderPublishFeedback() {
   }
 
   // 获取平台配色
-  const getPlatformColor = (platform: string) => PLATFORM_COLORS[platform] || { bg: '#F3F4F6', text: '#374151' }
+  const getPlatformColor = (platform: string) => {
+    const meta = getPlatformMeta(platform)
+    return meta ? { bg: meta.bgColor, text: meta.color } : { bg: '#F3F4F6', text: '#374151' }
+  }
 
   // 获取内容类型配置
   const getContentTypeConfig = (type: string) => CONTENT_TYPE_CONFIG[type] || { name: type, color: '#6B7280' }

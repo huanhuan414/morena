@@ -1,22 +1,18 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
-import { OrderService } from '../order/order.service'
 
 @Injectable()
 export class OrderProcessingService {
   private readonly logger = new Logger(OrderProcessingService.name)
   private columnsCache: Set<string> | null = null
-
-  constructor(
-    @Inject(forwardRef(() => OrderService))
-    private readonly orderService: OrderService
-  ) {}
   private readonly platformAliasMap: Record<string, string> = {
     wechat: 'wechat_channel',
     wechat_channel: 'wechat_channel',
+    wechat_video: 'wechat_channel',
     wechat_mp: 'wechat_mp',
+    wechat_official: 'wechat_mp',
     wechat_moments: 'wechat_moments',
     douyin: 'douyin',
     xiaohongshu: 'xiaohongshu',
@@ -32,6 +28,19 @@ export class OrderProcessingService {
   private canonicalizePlatform(platform?: string): string {
     const key = String(platform || '').trim().toLowerCase()
     return this.platformAliasMap[key] || key
+  }
+
+  private normalizePlatformStatusMap(input: any): Record<string, any> {
+    const parsed = this.parseJsonObject<Record<string, any>>(input, {})
+    return Object.entries(parsed).reduce<Record<string, any>>((acc, [platform, status]) => {
+      const canonicalPlatform = this.canonicalizePlatform(platform)
+      if (!canonicalPlatform) return acc
+      acc[canonicalPlatform] = {
+        ...(acc[canonicalPlatform] || {}),
+        ...(typeof status === 'object' && status ? status : { status })
+      }
+      return acc
+    }, {})
   }
 
   private async getTableColumns(): Promise<Set<string>> {
@@ -152,9 +161,13 @@ export class OrderProcessingService {
   private normalizeRecord(record: any): any {
     const images = this.parseJsonArray(record.images)
     const videos = this.parseJsonArray(record.videoUrl || record.video_url)
-    const publishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
+    const rawPublishStatus = this.parseJsonObject<Record<string, any>>(record.publishStatus || record.publish_status, { platforms: [] })
     const publishFeedback = this.mergeFeedback({}, this.parseJsonObject(record.publishFeedback || record.publish_feedback, {}))
     const config = this.parseJsonObject<Record<string, any>>(record.config, {})
+    const configPlatforms = this.normalizePlatforms(config.platforms)
+    const fallbackPlatforms = record.platform ? [this.canonicalizePlatform(record.platform)] : []
+    const normalizedPlatforms = configPlatforms.length > 0 ? configPlatforms : fallbackPlatforms
+    const platformStatus = this.normalizePlatformStatusMap(rawPublishStatus.platformStatus)
 
     return {
       id: record.id,
@@ -173,14 +186,13 @@ export class OrderProcessingService {
         content: record.content || '',
         images,
         videos,
-        platform: record.platform,
-        platforms: this.normalizePlatforms(config.platforms).length > 0
-          ? this.normalizePlatforms(config.platforms)
-          : (record.platform ? [record.platform] : [])
+        platform: this.canonicalizePlatform(record.platform),
+        platforms: normalizedPlatforms
       },
       publishStatus: {
-        ...publishStatus,
-        platforms: this.normalizePlatforms(publishStatus.platforms || [])
+        ...rawPublishStatus,
+        platforms: this.normalizePlatforms(rawPublishStatus.platforms || normalizedPlatforms),
+        platformStatus
       },
       publishFeedback,
       created_at: record.createdAt || record.created_at,
@@ -326,10 +338,7 @@ export class OrderProcessingService {
         ? configPlatforms
         : (current.platform ? [current.platform] : [])
     const dedupPlatforms = Array.from(new Set(resolvedPlatforms))
-    const previousPlatformStatus = this.parseJsonObject<Record<string, any>>(
-      existingStatus.platformStatus,
-      {}
-    )
+    const previousPlatformStatus = this.normalizePlatformStatusMap(existingStatus.platformStatus)
     const nextPlatformStatus = dedupPlatforms.reduce<Record<string, any>>((acc, platform) => {
       acc[platform] = {
         status: 'success',
@@ -405,11 +414,8 @@ export class OrderProcessingService {
       if (!rows || rows.length === 0) return
 
       const statuses = rows.map((r: any) => r.status)
-      const totalCount = statuses.length
-
       // 按优先级判断订单应该处于什么状态
       // 优先级：completed > awaiting_acceptance > submitted > in_progress
-      const hasFailed = statuses.some((s: string) => s === 'failed')
       const allCompleted = statuses.every((s: string) => s === 'completed')
       const allPublished = statuses.every((s: string) => s === 'published' || s === 'completed')
       const allFeedbackSubmitted = statuses.every((s: string) => s === 'feedback_submitted' || s === 'published' || s === 'completed')
