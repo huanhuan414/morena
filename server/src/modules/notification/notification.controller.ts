@@ -62,6 +62,39 @@ export class NotificationController {
     }
   }
 
+  @Post('urge-review')
+  async urgeReview(
+    @Headers('x-user-id') userId: string,
+    @Body() body: { orderId: string; contentTitle?: string }
+  ) {
+    try {
+      const { getMySQLClient } = await import('../../storage/database/mysql-client')
+      const db = getMySQLClient()
+
+      // 查找订单发布者
+      const orders = await db.query('orders', { id: body.orderId })
+      const order = Array.isArray(orders) ? orders[0] : orders?.[0]
+      if (!order) {
+        return { code: 404, data: null, message: '订单不存在' }
+      }
+
+      const publisherId = order.userId || order.user_id
+      const title = body.contentTitle || order.title || '内容'
+
+      await this.notificationService.createNotification({
+        user_id: publisherId,
+        type: 'urge_review',
+        title: '催验收提醒',
+        content: `分身已完成内容"${title}"的发布，请尽快验收`,
+        metadata: { orderId: body.orderId, triggeredBy: userId }
+      })
+
+      return { code: 200, data: null, message: '催验收提醒已发送' }
+    } catch (error) {
+      return { code: 500, data: null, message: '发送失败：' + (error as Error).message }
+    }
+  }
+
   @Put('read-all')
   async markAllAsRead(@Headers('x-user-id') userId: string) {
     await this.notificationService.markAllAsRead(userId)

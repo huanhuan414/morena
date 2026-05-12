@@ -144,7 +144,12 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
-    Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+    const tabKey = BACKEND_STATUS_TO_TAB[content.status] || content.status
+    if (tabKey === 'reviewing' || content.status === 'feedback_submitted') {
+      Taro.navigateTo({ url: `/pages/order-publish-feedback/index?requestId=${encodeURIComponent(content.id)}&orderId=${encodeURIComponent(content.orderId || '')}` })
+    } else {
+      Taro.navigateTo({ url: `/pages/order/order-content-creation/index?orderId=${content.orderId}` })
+    }
   }
 
   // 发布
@@ -180,8 +185,21 @@ export default function GeneratedContentPage() {
   }
 
   // 催验收
-  const handleUrgeReview = (_content: any) => {
-    Taro.showToast({ title: '已发送催验收提醒', icon: 'success' })
+  const handleUrgeReview = async (content: any) => {
+    try {
+      const res = await Network.request({
+        url: '/api/notifications/urge-review',
+        method: 'POST',
+        data: { orderId: content.orderId, contentTitle: content.content?.substring(0, 20) || '' }
+      })
+      if (res?.data?.code === 200) {
+        Taro.showToast({ title: '催验收提醒已发送', icon: 'success' })
+      } else {
+        Taro.showToast({ title: res?.data?.message || '发送失败', icon: 'none' })
+      }
+    } catch {
+      Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
+    }
   }
 
   // 反馈
