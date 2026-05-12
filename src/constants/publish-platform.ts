@@ -28,10 +28,18 @@ export interface PlatformMeta {
   requirements?: PlatformRequirement[]
 }
 
+export interface PlatformAppConfig {
+  scheme: string
+  downloadUrl: string
+  tips: string
+}
+
 const ALIAS_TO_CANONICAL: Record<string, CanonicalPlatformKey> = {
-  wechat: 'wechat_mp',
+  wechat: 'wechat_channel',
   wechat_channel: 'wechat_channel',
+  wechat_video: 'wechat_channel',
   wechat_mp: 'wechat_mp',
+  wechat_official: 'wechat_mp',
   wechat_moments: 'wechat_moments',
   douyin: 'douyin',
   xiaohongshu: 'xiaohongshu',
@@ -177,6 +185,39 @@ export const PLATFORM_UI_ORDER: CanonicalPlatformKey[] = [
   'toutiao'
 ]
 
+export const PLATFORM_APP_CONFIG_MAP: Partial<Record<CanonicalPlatformKey, PlatformAppConfig>> = {
+  xiaohongshu: {
+    scheme: 'xhsdiscover://',
+    downloadUrl: 'https://www.xiaohongshu.com/download',
+    tips: '打开小红书APP，点击底部"+"号发布'
+  },
+  douyin: {
+    scheme: 'snssdk1128://',
+    downloadUrl: 'https://www.douyin.com/download',
+    tips: '打开抖音APP，点击底部"+"号发布'
+  },
+  bilibili: {
+    scheme: 'bilibili://',
+    downloadUrl: 'https://www.bilibili.com/download',
+    tips: '打开B站APP，点击"发布"创作内容'
+  },
+  weibo: {
+    scheme: 'sinaweibo://',
+    downloadUrl: 'https://weibo.com/download',
+    tips: '打开微博APP，点击"+"发布'
+  },
+  wechat_channel: {
+    scheme: '',
+    downloadUrl: '',
+    tips: '打开微信 → 发现 → 视频号 → 点击相机图标发布'
+  },
+  wechat_mp: {
+    scheme: '',
+    downloadUrl: 'https://mp.weixin.qq.com',
+    tips: '打开微信公众平台后台，粘贴内容并完成发布'
+  }
+}
+
 export const canonicalizePlatform = (platform?: string): string => {
   const key = String(platform || '').trim().toLowerCase()
   return ALIAS_TO_CANONICAL[key] || key
@@ -193,8 +234,12 @@ export const getPlatformMeta = (platform?: string): PlatformMeta | undefined => 
   return PLATFORM_META_MAP[canonical]
 }
 
+export const getPlatformAppConfig = (platform?: string): PlatformAppConfig | undefined => {
+  const canonical = canonicalizePlatform(platform) as CanonicalPlatformKey
+  return PLATFORM_APP_CONFIG_MAP[canonical]
+}
+
 export const getPlatformLabel = (platform?: string): string => {
   const meta = getPlatformMeta(platform)
   return meta?.name || String(platform || '未知平台')
 }
-

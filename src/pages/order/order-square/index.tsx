@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
+import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
   ArrowLeft, 
   TrendingUp, DollarSign, Users,
@@ -13,12 +14,7 @@ import './index.css'
 // 平台配置
 const PLATFORMS = [
   { key: 'all', label: '全部' },
-  { key: 'xiaohongshu', label: '小红书' },
-  { key: 'douyin', label: '抖音' },
-  { key: 'wechat_mp', label: '公众号' },
-  { key: 'weibo', label: '微博' },
-  { key: 'bilibili', label: 'B站' },
-  { key: 'kuaishou', label: '快手' },
+  ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
 ]
 
 // 订单类型
@@ -37,16 +33,6 @@ const BUDGET_RANGES = [
   { key: '500-1000', label: '500-1000' },
   { key: '1000+', label: '1000+' },
 ]
-
-// 平台图标映射
-const PLATFORM_CONFIG: Record<string, { color: string; icon: string }> = {
-  xiaohongshu: { color: '#FF2442', icon: '📕' },
-  douyin: { color: '#000000', icon: '🎵' },
-  wechat_mp: { color: '#07C160', icon: '💬' },
-  weibo: { color: '#E6162D', icon: '🌐' },
-  bilibili: { color: '#FB7299', icon: '📺' },
-  kuaishou: { color: '#FF4906', icon: '📱' },
-}
 
 const formatCreatedAt = (value?: string) => {
   if (!value) return '刚刚'
@@ -104,7 +90,7 @@ export default function OrderSquarePage() {
           title: item.title || '未命名订单',
           description: item.description || '',
           budget: Number(item.budget || 0),
-          platform: Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : 'all',
+          platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : ''),
           contentType: item.contentType || 'content',
           estimatedEarning: Number(item.budget || 0),
           deliveryDays: 3,
@@ -314,7 +300,7 @@ export default function OrderSquarePage() {
         ) : (
           <View className="order-list">
             {orders.map(order => {
-              const platformConfig = PLATFORM_CONFIG[order.platform] || { color: '#7B3FE4', icon: '📋' }
+              const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
               
               return (
                 <View 
@@ -327,7 +313,7 @@ export default function OrderSquarePage() {
                     <View className="platform-badge" style={{ background: `${platformConfig.color}15` }}>
                       <Text className="platform-icon">{platformConfig.icon}</Text>
                       <Text className="platform-name" style={{ color: platformConfig.color }}>
-                        {PLATFORMS.find(p => p.key === order.platform)?.label || order.platform}
+                        {getPlatformLabel(order.platform)}
                       </Text>
                     </View>
                     <Text className="publish-time">{order.createdAt}</Text>

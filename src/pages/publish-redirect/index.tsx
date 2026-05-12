@@ -7,53 +7,22 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { canonicalizePlatform, getPlatformAppConfig, getPlatformLabel, type CanonicalPlatformKey } from '@/constants/publish-platform'
 import { Copy, Check, Download, ArrowLeft } from 'lucide-react-taro'
 import './index.css'
 
-// 平台配置
-const PLATFORM_CONFIGS = {
-  xiaohongshu: {
-    name: '小红书',
-    icon: '📕',
-    scheme: 'xhsdiscover://',
-    downloadUrl: 'https://www.xiaohongshu.com/download',
-    tips: '打开小红书APP，点击底部"+"号发布'
-  },
-  douyin: {
-    name: '抖音',
-    icon: '🎵',
-    scheme: 'snssdk1128://',
-    downloadUrl: 'https://www.douyin.com/download',
-    tips: '打开抖音APP，点击底部"+"号发布'
-  },
-  bilibili: {
-    name: 'B站',
-    icon: '📺',
-    scheme: 'bilibili://',
-    downloadUrl: 'https://www.bilibili.com/download',
-    tips: '打开B站APP，点击"发布"创作内容'
-  },
-  weibo: {
-    name: '微博',
-    icon: '🐦',
-    scheme: 'sinaweibo://',
-    downloadUrl: 'https://weibo.com/download',
-    tips: '打开微博APP，点击"+"发布'
-  },
-  wechat_video: {
-    name: '视频号',
-    icon: '🎬',
-    scheme: '',
-    downloadUrl: '',
-    tips: '打开微信 → 发现 → 视频号 → 点击相机图标发布'
-  }
+const PLATFORM_ICONS: Partial<Record<CanonicalPlatformKey, string>> = {
+  xiaohongshu: '📕',
+  douyin: '🎵',
+  bilibili: '📺',
+  weibo: '🐦',
+  wechat_channel: '🎬',
+  wechat_mp: '📧'
 }
-
-type PlatformKey = keyof typeof PLATFORM_CONFIGS
 
 export default function PublishRedirectPage() {
   const router = useRouter()
-  const [platform, setPlatform] = useState<PlatformKey>('xiaohongshu')
+  const [platform, setPlatform] = useState<CanonicalPlatformKey>('xiaohongshu')
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
   const [copied, setCopied] = useState(false)
@@ -78,7 +47,8 @@ export default function PublishRedirectPage() {
     // 从URL参数获取数据
     const params = router.params
     if (params.platform) {
-      setPlatform(params.platform as PlatformKey)
+      const normalized = canonicalizePlatform(params.platform) as CanonicalPlatformKey
+      setPlatform(normalized || 'xiaohongshu')
     }
     if (params.content) {
       try {
@@ -100,9 +70,9 @@ export default function PublishRedirectPage() {
 
   // 尝试打开APP
   const tryOpenApp = () => {
-    const config = PLATFORM_CONFIGS[platform]
+    const config = getPlatformAppConfig(platform)
     
-    if (!config.scheme) {
+    if (!config?.scheme) {
       // 视频号等没有scheme的平台
       setOpenFailed(true)
       Taro.showToast({
@@ -177,8 +147,8 @@ export default function PublishRedirectPage() {
 
   // 下载APP
   const handleDownload = () => {
-    const config = PLATFORM_CONFIGS[platform]
-    if (config.downloadUrl) {
+    const config = getPlatformAppConfig(platform)
+    if (config?.downloadUrl) {
       if (Taro.getEnv() === Taro.ENV_TYPE.WEB) {
         window.location.href = config.downloadUrl
       } else {
@@ -190,7 +160,9 @@ export default function PublishRedirectPage() {
     }
   }
 
-  const platformConfig = PLATFORM_CONFIGS[platform]
+  const platformConfig = getPlatformAppConfig(platform)
+  const platformName = getPlatformLabel(platform)
+  const platformIcon = PLATFORM_ICONS[platform] || '📱'
 
   return (
     <View className="publish-redirect-page">
@@ -205,8 +177,8 @@ export default function PublishRedirectPage() {
 
       {/* 平台信息 */}
       <View className="platform-card">
-        <Text className="platform-icon">{platformConfig.icon}</Text>
-        <Text className="platform-name">{platformConfig.name}</Text>
+        <Text className="platform-icon">{platformIcon}</Text>
+        <Text className="platform-name">{platformName}</Text>
       </View>
 
       {/* 内容预览 */}
@@ -226,13 +198,13 @@ export default function PublishRedirectPage() {
       <View className="action-section">
         {!openFailed ? (
           <Button className="primary-btn" onClick={tryOpenApp}>
-            <Text className="btn-text">打开{platformConfig.name}APP</Text>
+            <Text className="btn-text">打开{platformName}APP</Text>
           </Button>
         ) : (
           <>
             <View className="tips-card">
               <Text className="tips-title">💡 操作提示</Text>
-              <Text className="tips-text">{platformConfig.tips}</Text>
+              <Text className="tips-text">{platformConfig?.tips || '请手动打开对应平台并完成发布'}</Text>
             </View>
             
             <Button className="copy-btn" onClick={handleCopy}>
@@ -240,10 +212,10 @@ export default function PublishRedirectPage() {
               <Text className="btn-text">{copied ? '已复制' : '复制内容'}</Text>
             </Button>
             
-            {platformConfig.downloadUrl && (
+            {platformConfig?.downloadUrl && (
               <Button className="download-btn" onClick={handleDownload}>
                 <Download size={20} color="#00f5ff" />
-                <Text className="btn-text">下载{platformConfig.name}APP</Text>
+                <Text className="btn-text">下载{platformName}APP</Text>
               </Button>
             )}
           </>
