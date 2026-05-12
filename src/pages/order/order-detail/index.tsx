@@ -9,16 +9,16 @@ import { Button } from '@/components/ui/button'
 import './index.css'
 
 const STATUS_MAP = {
-  pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰', desc: '请尽快完成支付' },
-  open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢', desc: '等待分身接单' },
-  pending_dispatch: { label: '待分配', color: '#3B82F6', bg: '#DBEAFE', icon: '📋', desc: '正在分配分身' },
-  pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE', icon: '⏳', desc: '分身正在确认接单' },
-  in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF', icon: '🔄', desc: '分身正在创作内容' },
-  submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1', icon: '📝', desc: '分身已提交内容，请查看' },
-  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅', desc: '分身已提交反馈，请验收确认' },
-  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉', desc: '订单已完成' },
-  cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌', desc: '订单已取消' },
-  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️', desc: '订单执行失败' },
+  pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰' },
+  open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢' },
+  pending_dispatch: { label: '待分配', color: '#3B82F6', bg: '#DBEAFE', icon: '📋' },
+  pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE', icon: '⏳' },
+  in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF', icon: '🔄' },
+  submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1', icon: '📝' },
+  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅' },
+  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉' },
+  cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌' },
+  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️' },
 }
 
 const AVATAR_STATUS_MAP = {
@@ -76,7 +76,7 @@ export default function OrderDetail() {
     }
   }
 
-  const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6', icon: '📋', desc: '' }
+  const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6', icon: '📋' }
   const getAvatarStatusInfo = (status: string) => AVATAR_STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
 
   const safeStr = (v: unknown): string => {
@@ -112,13 +112,16 @@ export default function OrderDetail() {
     setDialogContent(null)
 
     try {
-      // 通过 requestId 获取内容
-      const requestId = avatar.requestId || avatar.contentId
-      if (requestId) {
-        const res = await Network.request({ url: `/api/content-generation/content/${requestId}` })
-        if (res.data?.code === 200 && res.data?.data) {
-          setDialogContent(res.data.data)
-        }
+      // 通过 orderId + avatarId 查询内容
+      const res = await Network.request({
+        url: `/api/content-generation/history/avatar/${avatar.avatarId}?orderId=${order.id}`
+      })
+      console.log('[订单详情] 查询分身内容:', res.data)
+      const rawData = res.data?.data
+      if (rawData) {
+        // API 可能返回单条对象或数组
+        const contentItem = Array.isArray(rawData) ? rawData[0] : rawData
+        setDialogContent(contentItem)
       }
     } catch (err) {
       console.error('[订单详情] 加载内容失败:', err)
@@ -205,7 +208,6 @@ export default function OrderDetail() {
           <View className="od-status-pill" style={{ background: statusInfo.bg }}>
             <Text className="od-status-pill-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
           </View>
-          {statusInfo.desc ? <Text className="od-status-desc">{statusInfo.desc}</Text> : null}
         </View>
       </View>
 

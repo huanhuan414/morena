@@ -394,12 +394,6 @@
 }
 
 /* Status Desc */
-.od-status-desc {
-  font-size: 22rpx;
-  color: rgba(255,255,255,0.8);
-  margin-left: 12rpx;
-}
-
 /* Avatar View Button */
 .od-avatar-view-btn {
   display: flex;

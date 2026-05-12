@@ -155,13 +155,17 @@ export class ContentGenerationController {
   }
 
   @Get('history/avatar/:avatarId')
-  async getHistory(@Param('avatarId') avatarId: string) {
+  async getHistory(@Param('avatarId') avatarId: string, @Query('orderId') orderId?: string) {
     try {
       const pool = await getMySQLClient()
-      const [rows]: any = await pool.query(
-        'SELECT * FROM content_generation_requests WHERE avatar_id = ? ORDER BY created_at DESC LIMIT 50',
-        [avatarId]
-      )
+      let sql = 'SELECT * FROM content_generation_requests WHERE avatar_id = ?'
+      const params: string[] = [avatarId]
+      if (orderId) {
+        sql += ' AND order_id = ?'
+        params.push(orderId)
+      }
+      sql += ' ORDER BY created_at DESC LIMIT 50'
+      const [rows]: any = await pool.query(sql, params)
       return {
         code: 200,
         message: '获取成功',
