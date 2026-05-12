@@ -6,14 +6,23 @@ import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// 加载 .env 文件
-const envPath = path.resolve(__dirname, '../../.env');
-const result = dotenv.config({ path: envPath });
-
-if (result.error) {
-  console.warn('[main.ts] Warning: Failed to load .env file:', result.error.message);
-} else {
-  console.log('[main.ts] Successfully loaded .env file from:', envPath);
+// 加载 .env 文件 — 优先从 cwd（PM2 设定）查找，再从 __dirname 向上查找
+const envPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../.env'),
+]
+let envLoaded = false
+for (const envPath of envPaths) {
+  const result = dotenv.config({ path: envPath })
+  if (!result.error) {
+    console.log('[main.ts] Successfully loaded .env file from:', envPath);
+    envLoaded = true
+    break
+  }
+}
+if (!envLoaded) {
+  console.warn('[main.ts] Warning: Failed to load .env file from any path');
 }
 
 function parsePort(): number {
