@@ -1,1 +1,295 @@
-/* 已生成内容页面 - 仅保留 Tailwind 和 inline style 无法覆盖的样式 */
+/* 已生成内容页面 */
+.gc-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #F5F3FF 0%, #FFFFFF 30%);
+}
+
+/* 状态筛选 Tab */
+.gc-status-tabs {
+  display: flex;
+  flex-direction: row;
+  padding: 12px 16px 0;
+  gap: 8px;
+}
+
+.gc-status-tab {
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+}
+
+.gc-status-tab-active {
+  background: #8B5CF6;
+  border-color: #8B5CF6;
+}
+
+.gc-status-tab-text {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.gc-status-tab-text-active {
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+/* 分身筛选下拉 */
+.gc-avatar-filter {
+  position: relative;
+  padding: 10px 16px;
+  z-index: 10;
+}
+
+.gc-avatar-filter-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+.gc-avatar-filter-text {
+  font-size: 13px;
+  color: #374151;
+}
+
+.gc-avatar-dropdown {
+  position: absolute;
+  top: 42px;
+  left: 16px;
+  right: 16px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 20;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.gc-avatar-dropdown-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.gc-avatar-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.gc-avatar-dropdown-item-active {
+  background: #F5F3FF;
+}
+
+.gc-avatar-dropdown-text {
+  font-size: 14px;
+  color: #374151;
+}
+
+/* 内容列表滚动区 */
+.gc-content-scroll {
+  flex: 1;
+  height: calc(100vh - 120px);
+  padding: 0 16px 80px;
+}
+
+/* 加载和空状态 */
+.gc-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 80px;
+  gap: 12px;
+}
+
+.gc-loading-text {
+  font-size: 14px;
+  color: #9CA3AF;
+}
+
+.gc-spin {
+  animation: gc-spin-anim 1s linear infinite;
+}
+
+@keyframes gc-spin-anim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.gc-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 80px;
+}
+
+.gc-empty-text {
+  font-size: 14px;
+  color: #9CA3AF;
+}
+
+/* 卡片列表 */
+.gc-card-list {
+  padding-top: 8px;
+}
+
+.gc-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid #F3F4F6;
+}
+
+/* 卡片头部 */
+.gc-card-header {
+  padding: 14px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.gc-card-main {
+  flex: 1;
+  margin-right: 8px;
+}
+
+.gc-card-top-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.gc-status-badge {
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-right: 8px;
+}
+
+.gc-status-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.gc-avatar-name {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.gc-card-preview {
+  font-size: 13px;
+  color: #374151;
+  line-height: 20px;
+  display: block;
+}
+
+/* 配图缩略图 */
+.gc-card-thumbs {
+  display: flex;
+  flex-direction: row;
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.gc-thumb-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+}
+
+.gc-thumb-more {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gc-thumb-more-text {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.gc-expand-btn {
+  font-size: 12px;
+  color: #D1D5DB;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* 展开详情 */
+.gc-card-detail {
+  border-top: 1px solid #F3F4F6;
+  padding: 14px;
+}
+
+.gc-detail-content {
+  margin-bottom: 12px;
+}
+
+.gc-detail-images {
+  margin-bottom: 12px;
+}
+
+.gc-detail-images-title {
+  font-size: 13px;
+  color: #6B7280;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.gc-detail-images-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gc-detail-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+}
+
+/* 操作按钮 */
+.gc-detail-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #F3F4F6;
+}
+
+.gc-action-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.gc-action-primary {
+  background: #8B5CF6;
+}
+
+.gc-action-text {
+  font-size: 13px;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.gc-action-secondary {
+  background: #F3F4F6;
+}
+
+.gc-action-text-secondary {
+  font-size: 13px;
+  color: #6B7280;
+}
