@@ -9,7 +9,8 @@ import {
   Clock,
   Zap,
   Loader,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react-taro'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -243,6 +244,45 @@ const MindChat: React.FC = () => {
     return num.toString()
   }
 
+  const openAvatarFriends = (avatarId: string) => {
+    Taro.navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatarId}` })
+  }
+
+  const openFriendshipManagement = () => {
+    Taro.navigateTo({ url: '/pages/friendship-management/index' })
+  }
+
+  const handleMyCloneVoice = (avatarId: string) => {
+    Taro.showToast({ title: '请先选择好友后再发起通话', icon: 'none' })
+    openAvatarFriends(avatarId)
+  }
+
+  const handleSquareConnect = () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index' })
+      return
+    }
+
+    if (myClones.length === 0) {
+      setActiveTab('my')
+      Taro.showToast({ title: '请先创建自己的分身', icon: 'none' })
+      return
+    }
+
+    Taro.showToast({ title: '请先在好友管理中处理交友关系', icon: 'none' })
+    openFriendshipManagement()
+  }
+
+  const handleSquareVoice = () => {
+    if (!isLoggedIn) {
+      Taro.navigateTo({ url: '/pages/login/index' })
+      return
+    }
+
+    Taro.showToast({ title: '请先建立好友关系后再发起通话', icon: 'none' })
+    openFriendshipManagement()
+  }
+
   return (
     <View className="mind-chat-page">
       {/* 顶部渐变背景 - 一体化设计 */}
@@ -378,7 +418,11 @@ const MindChat: React.FC = () => {
                 {/* 操作栏 */}
                 <View className="clone-toolbar">
                   <View className="toolbar-actions">
-                    <View className="toolbar-btn" onClick={() => Taro.showToast({ title: '通话功能开发中', icon: 'none' })}>
+                    <View className="toolbar-btn" onClick={() => openAvatarFriends(clone.id)}>
+                      <Users size={15} />
+                      <Text className="toolbar-label">好友</Text>
+                    </View>
+                    <View className="toolbar-btn" onClick={() => handleMyCloneVoice(clone.id)}>
                       <Phone size={15} />
                       <Text className="toolbar-label">通话</Text>
                     </View>
@@ -437,13 +481,13 @@ const MindChat: React.FC = () => {
                 {/* 操作栏 */}
                 <View className="clone-toolbar">
                   <View className="toolbar-actions">
-                    <View className="toolbar-btn" onClick={() => Taro.showToast({ title: '通话功能开发中', icon: 'none' })}>
+                    <View className="toolbar-btn" onClick={handleSquareVoice}>
                       <Phone size={15} />
                       <Text className="toolbar-label">通话</Text>
                     </View>
                   </View>
-                  <View className={cn('follow-action-btn', clone.isFollowing && 'following')}>
-                    <Text className="follow-action-text">{clone.isFollowing ? '已关注' : '+ 关注'}</Text>
+                  <View className="follow-action-btn" onClick={handleSquareConnect}>
+                    <Text className="follow-action-text">去交友</Text>
                   </View>
                 </View>
               </View>

@@ -20,6 +20,10 @@ interface Avatar {
   exp: number
   appearance_style?: string
   trust_enabled?: boolean  // 托管状态
+  is_hosted?: boolean
+  hosting_enabled?: boolean
+  isHosted?: boolean
+  trustEnabled?: boolean
   config?: {
     hosting_settings?: {
       auto_post?: boolean
@@ -54,6 +58,8 @@ const TIME_SLOT_PRESETS = [
 
 export default function AvatarManagePage() {
   const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [onboardingAvatarId, setOnboardingAvatarId] = useState('')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTimeModal, setShowTimeModal] = useState(false)
   const [editingAvatarId, setEditingAvatarId] = useState<string | null>(null)
   const [selectedPreset, setSelectedPreset] = useState<string>('all')
@@ -85,6 +91,24 @@ export default function AvatarManagePage() {
     if (!personality) return '友好助手'
     return PERSONALITY_LABELS[personality.toLowerCase()] || personality
   }
+
+  const resolveHostingEnabled = (avatar: Avatar | Record<string, any>): boolean => {
+    return Boolean(
+      avatar.trust_enabled
+      ?? avatar.is_hosted
+      ?? avatar.hosting_enabled
+      ?? avatar.isHosted
+      ?? avatar.trustEnabled
+    )
+  }
+
+  const unwrapAvatarList = (payload: any): any[] => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.list)) return payload.list
+    if (Array.isArray(payload?.data?.list)) return payload.data.list
+    if (Array.isArray(payload?.data)) return payload.data
+    return []
+  }
   
   // 订阅权益状态
   const [canCreateAvatar, setCanCreateAvatar] = useState(true)
@@ -98,11 +122,14 @@ export default function AvatarManagePage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
-  useLoad(() => {
+  useLoad((options) => {
     // 初始化安全区域信息
     const safeArea = getSafeArea()
     setStatusBarHeight(safeArea.statusBarHeight)
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
+
+    setOnboardingAvatarId(String(options?.newAvatarId || ''))
+    setShowOnboarding(String(options?.onboarding || '') === '1')
   })
 
   useDidShow(async () => {
@@ -124,8 +151,11 @@ export default function AvatarManagePage() {
       
       // 如果没有用户ID，使用测试用户ID（仅用于开发）
       if (!userId) {
-        console.log('[loadSubscriptionInfo] 未找到用户ID，使用测试ID')
-        userId = 'd9bd8329-e302-4ddf-a7ec-d156610b9691'
+        console.log('[loadSubscriptionInfo] 未找到用户ID，跳过订阅信息加载')
+        setUserSubscription(null)
+        setMaxAvatars(1)
+        setCanCreateAvatar(true)
+        return
       }
       
       // 获取订阅信息和分身数量（添加时间戳绕过缓存）
@@ -206,24 +236,12 @@ export default function AvatarManagePage() {
       })
       console.log('[fetchAvatars] 响应 code:', res.data?.code, 'data:', JSON.stringify(res.data?.data)?.slice(0, 200))
       if (res.data?.code === 200) {
-        // 兼容多种响应格式：{ success: true, data: { list: [...] } }
-        const responseData = res.data?.data
-        let avatarList: any[] = []
-        if (responseData?.success && responseData?.data?.list) {
-          // 格式：{ success: true, data: { list: [...] } }
-          avatarList = responseData.data.list
-        } else if (Array.isArray(responseData)) {
-          // 格式：[...]
-          avatarList = responseData
-        } else if (responseData?.data?.list) {
-          // 格式：{ data: { list: [...] } }
-          avatarList = responseData.data.list
-        }
+        const avatarList = unwrapAvatarList(res.data?.data)
         console.log('[fetchAvatars] 获取到分身数量:', avatarList.length)
         // 展开托管设置到顶层，便于前端使用
         setAvatars(avatarList.map((avatar: any) => ({
           ...avatar,
-          trust_enabled: Boolean(avatar.trust_enabled),
+          trust_enabled: resolveHostingEnabled(avatar),
           hosting_settings: avatar.config?.hosting_settings || {
             auto_post: true,
             auto_comment: true,
@@ -263,7 +281,7 @@ export default function AvatarManagePage() {
       if (res.data?.code === 200) {
         setAvatars(prev => prev.map(avatar => 
           avatar.id === avatarId 
-            ? { ...avatar, trust_enabled: enabled }
+            ? { ...avatar, trust_enabled: enabled, is_hosted: enabled, hosting_enabled: enabled }
             : avatar
         ))
         showToast({ 
@@ -313,14 +331,55 @@ export default function AvatarManagePage() {
         icon: 'none',
         duration: 3000
       })
-      navigateTo({ url: '/package-avatar/pages/subscription/index' })
+      navigateTo({ url: '/pages/subscription/index' })
       return
     }
-    navigateTo({ url: '/package-avatar/pages/avatar-create/index' })
+    const remainingAvatars = maxAvatars === -1 ? -1 : Math.max(maxAvatars - avatarCount, 0)
+    const planName = userSubscription?.plan?.name || userSubscription?.plan_name || ''
+    const query = [
+      `avatarCount=${encodeURIComponent(String(avatarCount))}`,
+      `maxAvatars=${encodeURIComponent(String(maxAvatars))}`,
+      `remainingAvatars=${encodeURIComponent(String(remainingAvatars))}`,
+      `planName=${encodeURIComponent(String(planName))}`,
+    ].join('&')
+
+    navigateTo({ url: `/pages/avatar/avatar-create/index?${query}` })
   }
 
   const goToSettings = (avatarId: string) => {
-    navigateTo({ url: `/package-avatar/pages/avatar-settings/index?avatarId=${avatarId}` })
+    navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatarId}` })
+  }
+
+  const closeOnboarding = () => {
+    setShowOnboarding(false)
+    setOnboardingAvatarId('')
+  }
+
+  const handleOnboardingAction = async (action: 'hosting' | 'voice' | 'friends' | 'mind-chat', avatar: Avatar) => {
+    if (action === 'hosting') {
+      if (!avatar.trust_enabled) {
+        await toggleHosting(avatar.id, true)
+      } else {
+        showToast({ title: '该分身已开启托管', icon: 'success' })
+      }
+      closeOnboarding()
+      return
+    }
+
+    if (action === 'voice') {
+      closeOnboarding()
+      navigateTo({ url: `/pages/avatar/avatar-settings/index?avatarId=${avatar.id}` })
+      return
+    }
+
+    if (action === 'friends') {
+      closeOnboarding()
+      navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })
+      return
+    }
+
+    closeOnboarding()
+    navigateTo({ url: '/pages/mind-chat/index' })
   }
 
   const deleteAvatar = async (avatarId: string) => {
@@ -419,7 +478,7 @@ export default function AvatarManagePage() {
           </Button>
         </View>
         <View className="header-right-wrap">
-          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/package-profile/pages/notifications/index' })}>
+          <View className="notification-icon-btn" onClick={() => navigateTo({ url: '/pages/profile/notifications/index' })}>
             <Bell size={22} color="#fff" />
             {unreadCount > 0 && (
               <View className="notification-badge-small">
@@ -448,10 +507,15 @@ export default function AvatarManagePage() {
                   <Text>，还可创建 <Text className="highlight">{maxAvatars - avatarCount}</Text> 个</Text>
                 )}
               </Text>
+              <Text className="subscription-info-text">
+                {canCreateAvatar
+                  ? '当前可继续创建新分身，建议先完成基础创建，后续配置可再补充。'
+                  : '当前配额已用完，需先升级订阅后才能继续创建新分身。'}
+              </Text>
               {!canCreateAvatar && (
                 <View 
                   className="subscription-upgrade-btn"
-                  onClick={() => navigateTo({ url: '/package-avatar/pages/subscription/index' })}
+                  onClick={() => navigateTo({ url: '/pages/subscription/index' })}
                 >
                   <Text className="subscription-upgrade-text">升级订阅以创建更多</Text>
                   <ChevronRight size={16} color="#fbbf24" />
@@ -528,6 +592,50 @@ export default function AvatarManagePage() {
                     </View>
                   </View>
                 </View>
+
+                {showOnboarding && onboardingAvatarId === avatar.id && (
+                  <View className="onboarding-card">
+                    <View className="onboarding-header">
+                      <View>
+                        <Text className="onboarding-title">下一步建议</Text>
+                        <Text className="onboarding-desc">你的新分身已经创建完成，继续下面任务就能更快开始使用。</Text>
+                      </View>
+                      <View className="onboarding-close" onClick={closeOnboarding}>
+                        <X size={16} color="rgba(255,255,255,0.7)" />
+                      </View>
+                    </View>
+                    <View className="onboarding-actions">
+                      <View className="onboarding-action" onClick={() => { void handleOnboardingAction('hosting', avatar) }}>
+                        <View className="onboarding-icon">
+                          <Zap size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">开启托管</Text>
+                        <Text className="onboarding-action-desc">自动发帖、交友和互动</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('voice', avatar)}>
+                        <View className="onboarding-icon">
+                          <Settings size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">完善声音</Text>
+                        <Text className="onboarding-action-desc">补充预设音色或原声复刻</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('friends', avatar)}>
+                        <View className="onboarding-icon">
+                          <Users size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">去交朋友</Text>
+                        <Text className="onboarding-action-desc">先建立好友关系和互动入口</Text>
+                      </View>
+                      <View className="onboarding-action" onClick={() => handleOnboardingAction('mind-chat', avatar)}>
+                        <View className="onboarding-icon">
+                          <Sparkles size={18} color="#06b6d4" />
+                        </View>
+                        <Text className="onboarding-action-title">去心聊</Text>
+                        <Text className="onboarding-action-desc">返回我的分身广场继续体验</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
 
                 {/* 托管开关 */}
                 <View className="hosting-section">
@@ -676,7 +784,7 @@ export default function AvatarManagePage() {
                         <View className="quick-entries">
                           <View
                             className="quick-entry-btn"
-                            onClick={() => navigateTo({ url: `/package-avatar/pages/avatar-friends/index?avatarId=${avatar.id}` })}
+                            onClick={() => navigateTo({ url: `/pages/avatar/avatar-friends/index?avatarId=${avatar.id}` })}
                           >
                             <View className="quick-entry-icon">
                               <Users size={24} color="#06b6d4" />

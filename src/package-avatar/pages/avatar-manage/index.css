@@ -454,6 +454,88 @@
   box-shadow: 0 2rpx 6rpx rgba(239, 68, 68, 0.2);
 }
 
+.onboarding-card {
+  margin-top: 24rpx;
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border: 1.5rpx solid rgba(6, 182, 212, 0.18);
+}
+
+.onboarding-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.onboarding-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+}
+
+.onboarding-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.onboarding-close {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.onboarding-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.onboarding-action {
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: var(--radius-md);
+  padding: 20rpx;
+  min-height: 152rpx;
+}
+
+.onboarding-icon {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 16rpx;
+  background: rgba(6, 182, 212, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+}
+
+.onboarding-action-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #0F172A;
+  display: block;
+}
+
+.onboarding-action-desc {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #64748B;
+  display: block;
+}
+
 /* Hosting Section */
 .hosting-section {
   padding-top: 24rpx;
@@ -929,10 +1011,6 @@
   font-size: 28rpx;
   font-weight: 700;
   color: #ffffff;
-}
-
-[data-theme="dark"] .avatar-manage-page {
-  /* 使用 CSS 变量自动适配 */
 }
 
 [data-theme="dark"] .avatar-card {
