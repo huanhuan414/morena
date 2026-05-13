@@ -30,6 +30,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
+import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
 
 type CloneType = 'my' | 'square'
@@ -125,6 +126,8 @@ interface Avatar {
   tags?: string[]
   abilities?: string[]
   avatarSkills?: AvatarSkill[]
+  contentStyles?: string[]
+  nicheTags?: string[]
 }
 
 const MindChat: React.FC = () => {
@@ -219,7 +222,9 @@ const MindChat: React.FC = () => {
             todayEarnings: Number(item.todayEarnings || 0),
             tags,
             abilities,
-            avatarSkills: skillsResults[idx] || []
+            avatarSkills: skillsResults[idx] || [],
+            contentStyles: Array.isArray(item.contentStyles) ? item.contentStyles : (typeof item.contentStyles === 'string' ? JSON.parse(item.contentStyles || '[]') : []),
+            nicheTags: Array.isArray(item.nicheTags) ? item.nicheTags : (typeof item.nicheTags === 'string' ? JSON.parse(item.nicheTags || '[]') : [])
           }
         })
         console.log('处理后的分身列表:', avatars)
@@ -646,6 +651,42 @@ const MindChat: React.FC = () => {
                           )}
                         </View>
                       </View>
+
+                      {/* 内容风格 + 专业领域 */}
+                      {(clone.contentStyles?.length > 0 || clone.nicheTags?.length > 0) && (
+                        <View className="tags-section">
+                          {clone.contentStyles?.length > 0 && (
+                            <View className="tags-row">
+                              <Text className="tags-label">风格</Text>
+                              <View className="tags-list">
+                                {clone.contentStyles.slice(0, 3).map((style) => {
+                                  const styleInfo = CONTENT_STYLES.find(s => s.key === style)
+                                  return (
+                                    <View className="avatar-style-tag" key={style} style={{ background: 'rgba(168,85,247,0.1)' }}>
+                                      <Text className="avatar-style-tag-text" style={{ color: '#a855f7' }}>{styleInfo?.label || style}</Text>
+                                    </View>
+                                  )
+                                })}
+                              </View>
+                            </View>
+                          )}
+                          {clone.nicheTags?.length > 0 && (
+                            <View className="tags-row">
+                              <Text className="tags-label">领域</Text>
+                              <View className="tags-list">
+                                {clone.nicheTags.slice(0, 3).map((niche) => {
+                                  const nicheInfo = NICHE_TAGS.find(n => n.key === niche)
+                                  return (
+                                    <View className="avatar-niche-tag" key={niche} style={{ background: 'rgba(249,115,22,0.1)' }}>
+                                      <Text className="avatar-niche-tag-text" style={{ color: '#f97316' }}>{nicheInfo?.label || niche}</Text>
+                                    </View>
+                                  )
+                                })}
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      )}
 
                       {/* 等级进度条 */}
                       <View className="level-progress-section">

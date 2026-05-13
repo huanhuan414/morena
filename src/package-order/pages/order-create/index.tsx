@@ -11,6 +11,7 @@ import {
   canonicalizePlatform,
   canonicalizePlatforms
 } from '@/constants/publish-platform'
+import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
 
 const CONTENT_TYPES = [
@@ -29,6 +30,8 @@ export default function OrderCreate() {
     description: '',
     contentType: 'text',
     platforms: [] as string[],
+    preferredStyle: '',      // 偏好内容风格
+    preferredNiche: '',      // 偏好行业领域
     optionalRequirements: {} as Record<string, string>,
     avatarCount: 1,
     quantityPerAvatar: 1,
@@ -246,6 +249,8 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         description: form.description,
         content_type: form.contentType,
         platforms: canonicalizePlatforms(form.platforms),
+        preferred_style: form.preferredStyle,
+        preferred_niche: form.preferredNiche,
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
@@ -425,6 +430,64 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                     <Check size={10} color="#fff" />
                   </View>
                 )}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 内容风格偏好 - 匹配分身 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">风格偏好</Text>
+            </View>
+            <Text className="section-hint">精准匹配擅长此风格的分身</Text>
+          </View>
+          <View className="style-opts">
+            <View
+              className={`style-opt ${form.preferredStyle === '' ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, preferredStyle: '' }))}
+            >
+              <Text className={`style-opt-text ${form.preferredStyle === '' ? 'active' : ''}`}>不限</Text>
+            </View>
+            {CONTENT_STYLES.map(style => (
+              <View
+                key={style.key}
+                className={`style-opt ${form.preferredStyle === style.key ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, preferredStyle: style.key }))}
+              >
+                <View className="style-opt-dot" style={{ background: style.color }} />
+                <Text className={`style-opt-text ${form.preferredStyle === style.key ? 'active' : ''}`}>{style.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 行业领域偏好 */}
+        <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot accent" />
+              <Text className="section-title">领域偏好</Text>
+            </View>
+            <Text className="section-hint">匹配该领域的专业分身</Text>
+          </View>
+          <View className="niche-opts">
+            <View
+              className={`niche-opt ${form.preferredNiche === '' ? 'active' : ''}`}
+              onClick={() => setForm(prev => ({ ...prev, preferredNiche: '' }))}
+            >
+              <Text className={`niche-opt-text ${form.preferredNiche === '' ? 'active' : ''}`}>不限</Text>
+            </View>
+            {NICHE_TAGS.map(niche => (
+              <View
+                key={niche.key}
+                className={`niche-opt ${form.preferredNiche === niche.key ? 'active' : ''}`}
+                onClick={() => setForm(prev => ({ ...prev, preferredNiche: niche.key }))}
+              >
+                <Text className="niche-opt-icon">{niche.icon}</Text>
+                <Text className={`niche-opt-text ${form.preferredNiche === niche.key ? 'active' : ''}`}>{niche.name}</Text>
               </View>
             ))}
           </View>

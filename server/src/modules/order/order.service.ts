@@ -201,7 +201,9 @@ export class OrderService {
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
       is_paid: 0,
       target_audience: orderData.targetAudience || orderData.target_audience || '',
-      priority: priorityValue
+      priority: priorityValue,
+      preferred_styles: JSON.stringify(orderData.preferredStyles || orderData.preferred_styles || []),
+      industry_tags: JSON.stringify(orderData.industryTags || orderData.industry_tags || []),
     }
 
     const fields = Object.keys(insertData).join(', ')

@@ -35,6 +35,17 @@ interface PendingOrder {
   deadline?: string
   priority?: string
   requirements?: string
+  matchScore?: number
+  matchDetails?: {
+    skillMatch: number
+    styleMatch: number
+    nicheMatch: number
+    matchedSkills?: string[]
+    matchedStyles?: string[]
+    matchedNiches?: string[]
+  }
+  preferredStyles?: string[]
+  industryTags?: string[]
 }
 
 // 内容类型配置
@@ -467,6 +478,56 @@ export default function PendingOrderListPage() {
                     >
                       {timeLeft === '已过期' ? '已过截止时间' : `剩余 ${timeLeft}`}
                     </Text>
+                  </View>
+                )}
+
+                {/* 匹配度展示 */}
+                {order.matchScore != null && order.matchScore > 0 && (
+                  <View className="po-match-row">
+                    <View className="po-match-score"
+                      style={{
+                        background: order.matchScore >= 80 ? '#F0FDF4' : order.matchScore >= 50 ? '#FFFBEB' : '#F8FAFC'
+                      }}
+                    >
+                      <Text className="po-match-score-num"
+                        style={{
+                          color: order.matchScore >= 80 ? '#10B981' : order.matchScore >= 50 ? '#F59E0B' : '#64748B'
+                        }}
+                      >{order.matchScore}%</Text>
+                      <Text className="po-match-score-label">匹配度</Text>
+                    </View>
+                    <View className="po-match-details">
+                      {(order.matchDetails?.matchedSkills || []).length > 0 && (
+                        <View className="po-match-detail-row">
+                          <Text className="po-match-detail-label">技能匹配</Text>
+                          <View className="po-match-tags">
+                            {(order.matchDetails?.matchedSkills || []).map((s, i) => (
+                              <Text key={i} className="po-match-tag po-match-tag-skill">{s}</Text>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                      {(order.matchDetails?.matchedStyles || []).length > 0 && (
+                        <View className="po-match-detail-row">
+                          <Text className="po-match-detail-label">风格匹配</Text>
+                          <View className="po-match-tags">
+                            {(order.matchDetails?.matchedStyles || []).map((s, i) => (
+                              <Text key={i} className="po-match-tag po-match-tag-style">{s}</Text>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                      {(order.matchDetails?.matchedNiches || []).length > 0 && (
+                        <View className="po-match-detail-row">
+                          <Text className="po-match-detail-label">领域匹配</Text>
+                          <View className="po-match-tags">
+                            {(order.matchDetails?.matchedNiches || []).map((s, i) => (
+                              <Text key={i} className="po-match-tag po-match-tag-niche">{s}</Text>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 )}
 

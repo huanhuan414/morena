@@ -123,33 +123,150 @@ export class OrderDispatchService {
   async getUserPendingRequests(userId: string) {
     const db = getMySQLClient()
     // 查询分派给当前用户分身的待接订单，关联订单表获取完整信息
-    return await db.query(
+    const requests = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               o.title, o.description, o.content_type, o.platforms, o.budget,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
               o.created_at as order_created_at, o.target_audience, o.deadline,
-              o.priority, o.requirements
+              o.priority, o.requirements,
+              o.preferred_styles, o.industry_tags,
+              a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
        LEFT JOIN orders o ON r.order_id = o.id
+       LEFT JOIN avatars a ON r.avatar_id = a.id
        WHERE r.user_id = ? AND r.status = 'pending'
-       ORDER BY r.created_at DESC`, [userId]) as any
+       ORDER BY r.created_at DESC`, [userId]) as any[]
+
+    // 计算每个请求的匹配度
+    return requests.map(req => {
+      const { score, details } = this.calculateMatchScore(req, req)
+      return {
+        ...req,
+        matchScore: score,
+        matchDetails: details,
+      }
+    })
   }
 
   /**
-   * 获取推荐分身列表（只推荐开启托管的分身）
+   * 计算分身与订单的匹配度（三维匹配：技能 + 风格 + 领域）
+   * 返回 0-100 的匹配分数
+   */
+  private calculateMatchScore(avatar: any, order: any): { score: number; details: { skillScore: number; styleScore: number; nicheScore: number } } {
+    const details = { skillScore: 0, styleScore: 0, nicheScore: 0 }
+
+    // 解析分身的 content_styles 和 niche_tags
+    const avatarStyles: string[] = this.safeParseJson(avatar.content_styles || avatar.contentStyles, [])
+    const avatarNiches: string[] = this.safeParseJson(avatar.niche_tags || avatar.nicheTags, [])
+    const avatarSkills: string[] = this.safeParseJson(avatar.skills, [])
+
+    // 解析订单的 preferred_styles 和 industry_tags
+    const orderStyles: string[] = this.safeParseJson(order.preferred_styles || order.preferredStyles, [])
+    const orderNiches: string[] = this.safeParseJson(order.industry_tags || order.industryTags, [])
+    
+    // 订单的 content_type 和 platforms 也作为技能匹配依据
+    const orderContentType = (order.content_type || order.contentType || '').toLowerCase()
+    const orderPlatforms: string[] = this.safeParseJson(order.platforms, [])
+
+    // 维度一：技能匹配（权重40%）
+    // 根据订单内容类型和平台推断需要的技能
+    const requiredSkills: string[] = []
+    if (orderContentType.includes('text') || orderContentType.includes('文案')) requiredSkills.push('content_writing')
+    if (orderContentType.includes('image') || orderContentType.includes('图文')) requiredSkills.push('image_generation')
+    if (orderContentType.includes('video') || orderContentType.includes('视频')) requiredSkills.push('video_generation')
+    if (orderPlatforms.some(p => p.includes('douyin') || p.includes('tiktok'))) requiredSkills.push('video_generation', 'content_writing')
+    if (orderPlatforms.some(p => p.includes('xiaohongshu') || p.includes('redbook'))) requiredSkills.push('image_generation', 'content_writing')
+    if (orderPlatforms.some(p => p.includes('wechat') || p.includes('朋友圈'))) requiredSkills.push('content_writing')
+
+    if (requiredSkills.length > 0) {
+      const matchedSkills = requiredSkills.filter(s => avatarSkills.includes(s))
+      details.skillScore = Math.round((matchedSkills.length / requiredSkills.length) * 40)
+    } else {
+      // 没有明确技能要求时，有技能的分身基础分更高
+      details.skillScore = avatarSkills.length > 0 ? 20 : 10
+    }
+
+    // 维度二：风格匹配（权重30%）
+    if (orderStyles.length > 0 && avatarStyles.length > 0) {
+      const matchedStyles = orderStyles.filter(s => avatarStyles.includes(s))
+      details.styleScore = Math.round((matchedStyles.length / orderStyles.length) * 30)
+    } else if (orderStyles.length > 0) {
+      // 订单有风格要求但分身没设风格，给一半分
+      details.styleScore = 15
+    } else {
+      // 订单无风格要求，不扣分
+      details.styleScore = 30
+    }
+
+    // 维度三：领域匹配（权重30%）
+    if (orderNiches.length > 0 && avatarNiches.length > 0) {
+      const matchedNiches = orderNiches.filter(n => avatarNiches.includes(n))
+      details.nicheScore = Math.round((matchedNiches.length / orderNiches.length) * 30)
+    } else if (orderNiches.length > 0) {
+      // 订单有领域要求但分身没设领域，给一半分
+      details.nicheScore = 15
+    } else {
+      // 订单无领域要求，不扣分
+      details.nicheScore = 30
+    }
+
+    const score = Math.min(100, details.skillScore + details.styleScore + details.nicheScore)
+    return { score, details }
+  }
+
+  private safeParseJson<T>(value: any, fallback: T): T {
+    if (value === null || value === undefined) return fallback
+    if (Array.isArray(value)) return value as T
+    if (typeof value === 'object') return value as T
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as T
+      } catch {
+        return fallback
+      }
+    }
+    return fallback
+  }
+
+  /**
+   * 获取推荐分身列表（三维匹配：技能+风格+领域，按匹配度排序）
    */
   async getRecommendedAvatars(orderId: string, limit: number = 0) {
     const db = getMySQLClient()
     const hostedWhereClause = await this.buildHostedWhereClause()
 
-    // 查询开启托管的分身（兼容 is_hosted / trust_enabled 双字段）
+    // 查询开启托管的分身
     let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = ? ORDER BY updated_at DESC`
     if (limit > 0) {
-      sql += ` LIMIT ${parseInt(String(limit))}`
+      sql += ` LIMIT ${parseInt(String(limit)) * 3}`  // 取3倍数量用于匹配筛选
     }
     
     const result = await db.query(sql, ['active'])
     const avatars = Array.isArray(result) ? result : (result?.data || [])
+
+    // 如果有订单ID，尝试获取订单信息进行匹配排序
+    if (orderId) {
+      try {
+        const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
+        const order = orders?.[0]
+        
+        if (order) {
+          // 计算每个分身的匹配分数
+          const scoredAvatars = avatars.map(avatar => {
+            const { score, details } = this.calculateMatchScore(avatar, order)
+            return { ...avatar, matchScore: score, matchDetails: details }
+          })
+
+          // 按匹配分数降序排序
+          scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
+          
+          // 返回指定数量
+          return limit > 0 ? scoredAvatars.slice(0, limit) : scoredAvatars
+        }
+      } catch (err) {
+        this.logger.warn('匹配排序失败，使用默认排序:', err)
+      }
+    }
     
     return avatars
   }
@@ -282,8 +399,15 @@ async getExecutionProgress(orderId: string) {
       ['active']
     ) as any[]
     
-    // 只取订单需要的数量
-    const avatars = allAvatars.slice(0, requiredCount)
+    // 三维匹配排序：技能 + 风格 + 领域
+    const scoredAvatars = allAvatars.map(avatar => {
+      const { score, details } = this.calculateMatchScore(avatar, order)
+      return { ...avatar, matchScore: score, matchDetails: details }
+    })
+    scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
+    
+    // 只取订单需要的数量（优先匹配度最高的）
+    const avatars = scoredAvatars.slice(0, requiredCount)
     
     if (avatars.length === 0) {
       return { count: 0, avatarIds: [], smsSentCount: 0 }

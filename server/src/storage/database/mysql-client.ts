@@ -540,7 +540,7 @@ export function usersTable() {
 }
 
 export function avatarsTable() {
-  return new MysqlClient('avatars', ['profile', 'settings', 'styles', 'voiceSettings', 'personalityConfig']);
+  return new MysqlClient('avatars', ['profile', 'settings', 'styles', 'voiceSettings', 'personalityConfig', 'contentStyles', 'nicheTags']);
 }
 
 export function avatarSkillsTable() {
@@ -572,7 +572,7 @@ export function followsTable() {
 }
 
 export function ordersTable() {
-  return new MysqlClient('orders', ['orderDetails', 'metadata']);
+  return new MysqlClient('orders', ['orderDetails', 'metadata', 'preferredStyles', 'industryTags']);
 }
 
 export function orderResultsTable() {

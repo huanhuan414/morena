@@ -21,8 +21,10 @@ import {
   CircleDollarSign,
   Zap,
   ArrowRight,
+  Target,
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
 
 // 分身技能列表（来自技能广场）
@@ -37,12 +39,6 @@ const AVATAR_SKILLS = [
   { key: 'data_analysis', name: '数据分析', desc: '深度分析/趋势洞察', icon: Zap, color: '#F59E0B', earning: '5-20元/次' },
 ]
 
-// 人设标签
-const PERSONA_TAGS = [
-  '知识渊博', '幽默风趣', '温柔体贴', '严谨认真',
-  '活泼开朗', '成熟稳重', '善解人意', '逻辑清晰'
-]
-
 // 创建分身的好处
 const BENEFITS = [
   { icon: Coins, title: '自动接单赚钱', desc: '开启托管后分身24h替你接单', color: '#F59E0B' },
@@ -51,8 +47,8 @@ const BENEFITS = [
   { icon: CircleDollarSign, title: '随时提现', desc: '收益实时到账，秒提现', color: '#10B981' },
 ]
 
-const STEP_LABELS = ['形象设定', '技能选择']
-const AVATAR_CREATE_DRAFT_KEY = 'avatar_create_draft_v2'
+const STEP_LABELS = ['形象设定', '风格定位', '技能选择']
+const AVATAR_CREATE_DRAFT_KEY = 'avatar_create_draft_v3'
 
 export default function AvatarCreate() {
   const statusBarHeight = getStatusBarHeight()
@@ -67,7 +63,8 @@ export default function AvatarCreate() {
     photo: '',
     photoUrl: '',
     name: '',
-    tags: [] as string[],
+    contentStyles: [] as string[],   // 内容风格 (替代原personality tags)
+    niches: [] as string[],           // 专业领域
     skills: [] as string[],
   })
 
@@ -97,7 +94,8 @@ export default function AvatarCreate() {
         savedDraft?.formData?.photo
         || savedDraft?.formData?.photoUrl
         || savedDraft?.formData?.name
-        || savedDraft?.formData?.tags?.length
+        || savedDraft?.formData?.contentStyles?.length
+        || savedDraft?.formData?.niches?.length
         || savedDraft?.formData?.skills?.length
       )
     ) {
@@ -137,7 +135,8 @@ export default function AvatarCreate() {
       formData.photo
       || formData.photoUrl
       || formData.name.trim()
-      || formData.tags.length
+      || formData.contentStyles.length
+      || formData.niches.length
       || formData.skills.length
     )
 
@@ -255,14 +254,25 @@ export default function AvatarCreate() {
     }
   }
 
-  // 切换标签选择
-  const toggleTag = (tag: string) => {
-    if (formData.tags.includes(tag)) {
-      updateFormData('tags', formData.tags.filter(t => t !== tag))
-    } else if (formData.tags.length < 3) {
-      updateFormData('tags', [...formData.tags, tag])
+  // 切换内容风格选择
+  const toggleStyle = (key: string) => {
+    if (formData.contentStyles.includes(key)) {
+      updateFormData('contentStyles', formData.contentStyles.filter(s => s !== key))
+    } else if (formData.contentStyles.length < 2) {
+      updateFormData('contentStyles', [...formData.contentStyles, key])
     } else {
-      Taro.showToast({ title: '最多选择3个标签', icon: 'none' })
+      Taro.showToast({ title: '最多选择2个内容风格', icon: 'none' })
+    }
+  }
+
+  // 切换专业领域选择
+  const toggleNiche = (key: string) => {
+    if (formData.niches.includes(key)) {
+      updateFormData('niches', formData.niches.filter(n => n !== key))
+    } else if (formData.niches.length < 3) {
+      updateFormData('niches', [...formData.niches, key])
+    } else {
+      Taro.showToast({ title: '最多选择3个专业领域', icon: 'none' })
     }
   }
 
@@ -307,13 +317,25 @@ export default function AvatarCreate() {
     Taro.showLoading({ title: '创建中...' })
 
     try {
+      // 将内容风格+专业领域组装到 personality 对象中，与后端兼容
+      const personality = {
+        tags: formData.contentStyles.map(key => CONTENT_STYLES.find(s => s.key === key)?.name || key),
+        niches: formData.niches.map(key => NICHE_TAGS.find(n => n.key === key)?.name || key),
+        contentStyles: formData.contentStyles,
+        nicheKeys: formData.niches,
+      }
+
       const submitData = {
         name: formData.name,
         photo: formData.photoUrl || formData.photo,
         avatar_url: formData.photoUrl || formData.photo,
-        tags: formData.tags,
-        skills: formData.skills,
-        abilities: { chat: true, reading: true, analysis: false },
+        tags: personality.tags,
+        personality,
+        skills: formData.skills.reduce((acc, key) => {
+          acc[key] = true
+          return acc
+        }, {} as Record<string, boolean>),
+        abilities: { chat: true, reading: true, analysis: true },
       }
 
       console.log('提交创建分身:', submitData)
@@ -363,6 +385,23 @@ export default function AvatarCreate() {
     if (formData.skills.length === 0) return '0'
     const avgEarning = 3
     return `${formData.skills.length * avgEarning}-${formData.skills.length * avgEarning * 3}`
+  }
+
+  // 获取风格+领域匹配的商单提示
+  const getMatchHint = () => {
+    const styles = formData.contentStyles
+    const niches = formData.niches
+    if (styles.length === 0 && niches.length === 0) return '选择后可查看适合你的商单类型'
+    const parts: string[] = []
+    if (styles.length > 0) {
+      const styleNames = styles.map(k => CONTENT_STYLES.find(s => s.key === k)?.name).filter(Boolean)
+      parts.push(`${styleNames.join('/')}风格`)
+    }
+    if (niches.length > 0) {
+      const nicheNames = niches.map(k => NICHE_TAGS.find(n => n.key === k)?.name).filter(Boolean)
+      parts.push(`${nicheNames.join('/')}领域`)
+    }
+    return `适合接 ${parts.join(' + ')} 的商单`
   }
 
   // 渲染步骤1 - 形象设定
@@ -435,33 +474,98 @@ export default function AvatarCreate() {
         </View>
         <Text className="input-sub-hint">好名字让分身更有辨识度，更容易被用户关注</Text>
       </View>
+    </View>
+  )
 
-      {/* 人设标签 */}
-      <View className="form-section">
-        <Text className="section-title">
-          人设标签
-          <Text className="title-hint">（选填，最多3个）</Text>
-        </Text>
-        <View className="tags-grid">
-          {PERSONA_TAGS.map(tag => (
-            <View
-              key={tag}
-              className={`persona-tag ${formData.tags.includes(tag) ? 'selected' : ''}`}
-              onClick={() => toggleTag(tag)}
-            >
-              <Text className={`tag-text ${formData.tags.includes(tag) ? 'selected' : ''}`}>
-                {tag}
-              </Text>
-            </View>
-          ))}
+  // 渲染步骤2 - 风格定位（内容风格 + 专业领域）
+  const renderStep2 = () => (
+    <View className="step-content">
+      {/* 匹配提示卡 */}
+      <View className="match-tip-card">
+        <Target size={20} color="#8B5CF6" />
+        <View className="match-tip-info">
+          <Text className="match-tip-title">定位越准，接单越快</Text>
+          <Text className="match-tip-desc">{getMatchHint()}</Text>
         </View>
-        <Text className="input-sub-hint">标签影响分身风格和接单匹配度</Text>
+      </View>
+
+      {/* 内容风格 */}
+      <View className="form-section">
+        <View className="section-header">
+          <Text className="section-title-inline">内容风格</Text>
+          <Text className="section-subtitle">决定你接什么类型的商单（最多2个）</Text>
+        </View>
+        <View className="style-list">
+          {CONTENT_STYLES.map(style => {
+            const isSelected = formData.contentStyles.includes(style.key)
+            return (
+              <View
+                key={style.key}
+                className={`style-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggleStyle(style.key)}
+              >
+                <View className="style-card-header">
+                  <View className="style-dot" style={{ background: style.color }} />
+                  <Text className="style-name">{style.name}</Text>
+                  <View className={`style-check ${isSelected ? 'checked' : ''}`}>
+                    {isSelected && <Check size={14} color="#fff" />}
+                  </View>
+                </View>
+                <Text className="style-desc">{style.desc}</Text>
+                <View className="style-match-info">
+                  {style.matchPlatforms.map(p => {
+                    const platformNames: Record<string, string> = {
+                      xiaohongshu: '小红书',
+                      douyin: '抖音',
+                      wechat_mp: '公众号',
+                      wechat_moments: '朋友圈',
+                    }
+                    return (
+                      <View key={p} className="style-platform-tag" style={{ background: `${style.color}12`, borderColor: `${style.color}30` }}>
+                        <Text className="style-platform-text" style={{ color: style.color }}>{platformNames[p] || p}</Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      </View>
+
+      {/* 专业领域 */}
+      <View className="form-section">
+        <View className="section-header">
+          <Text className="section-title-inline">专业领域</Text>
+          <Text className="section-subtitle">商单会优先匹配你擅长的领域（最多3个）</Text>
+        </View>
+        <View className="niche-grid">
+          {NICHE_TAGS.map(niche => {
+            const isSelected = formData.niches.includes(niche.key)
+            return (
+              <View
+                key={niche.key}
+                className={`niche-item ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggleNiche(niche.key)}
+              >
+                <Text className="niche-icon">{niche.icon}</Text>
+                <Text className={`niche-name ${isSelected ? 'selected' : ''}`}>{niche.name}</Text>
+              </View>
+            )
+          })}
+        </View>
+        <Text className="input-sub-hint">
+          {formData.niches.length > 0
+            ? `已选领域：${formData.niches.map(k => NICHE_TAGS.find(n => n.key === k)?.name).join('、')}，对应商单将优先派给你`
+            : '选择领域后，相关商单会优先匹配给你'
+        }
+        </Text>
       </View>
     </View>
   )
 
-  // 渲染步骤2 - 技能选择
-  const renderStep2 = () => (
+  // 渲染步骤3 - 技能选择
+  const renderStep3 = () => (
     <View className="step-content">
       {/* 技能收益提示 */}
       <View className="earning-tip-card">
@@ -546,22 +650,31 @@ export default function AvatarCreate() {
           )}
           <View className="preview-avatar-info">
             <Text className="preview-name">{formData.name || '我的AI分身'}</Text>
-            <View className="preview-skills-row">
-              {formData.skills.length > 0 ? (
-                formData.skills.slice(0, 3).map(key => {
-                  const s = AVATAR_SKILLS.find(sk => sk.key === key)
-                  return s ? (
-                    <View key={key} className="preview-skill-tag" style={{ background: `${s.color}15`, borderColor: `${s.color}30` }}>
-                      <Text className="preview-skill-text" style={{ color: s.color }}>{s.name}</Text>
-                    </View>
-                  ) : null
-                })
-              ) : (
-                <Text className="preview-no-skill">暂未选择技能</Text>
-              )}
-              {formData.skills.length > 3 && (
-                <Text className="preview-more-skill">+{formData.skills.length - 3}</Text>
-              )}
+            <View className="preview-tags-row">
+              {formData.contentStyles.slice(0, 2).map(key => {
+                const s = CONTENT_STYLES.find(st => st.key === key)
+                return s ? (
+                  <View key={key} className="preview-skill-tag" style={{ background: `${s.color}15`, borderColor: `${s.color}30` }}>
+                    <Text className="preview-skill-text" style={{ color: s.color }}>{s.name}</Text>
+                  </View>
+                ) : null
+              })}
+              {formData.niches.slice(0, 2).map(key => {
+                const n = NICHE_TAGS.find(ni => ni.key === key)
+                return n ? (
+                  <View key={key} className="preview-skill-tag" style={{ background: `${n.color}15`, borderColor: `${n.color}30` }}>
+                    <Text className="preview-skill-text" style={{ color: n.color }}>{n.icon} {n.name}</Text>
+                  </View>
+                ) : null
+              })}
+              {formData.skills.slice(0, 2).map(key => {
+                const s = AVATAR_SKILLS.find(sk => sk.key === key)
+                return s ? (
+                  <View key={key} className="preview-skill-tag" style={{ background: `${s.color}15`, borderColor: `${s.color}30` }}>
+                    <Text className="preview-skill-text" style={{ color: s.color }}>{s.name}</Text>
+                  </View>
+                ) : null
+              })}
             </View>
           </View>
         </View>
@@ -612,13 +725,13 @@ export default function AvatarCreate() {
         {/* 价值主张 */}
         <View className="value-prop">
           <Text className="value-prop-title">0成本创建，让AI替你赚钱</Text>
-          <Text className="value-prop-desc">只需2步，创建专属分身开启自动接单</Text>
+          <Text className="value-prop-desc">只需3步，创建专属分身开启自动接单</Text>
         </View>
 
         {/* 步骤指示器 */}
         <View className="step-indicator">
-          {STEP_LABELS.map((label, index) => (
-            <View key={label} style={{ display: 'flex', alignItems: 'center' }}>
+          {STEP_LABELS.map((_, index) => (
+            <View key={index} style={{ display: 'flex', alignItems: 'center' }}>
               <View
                 className={`step-item ${index + 1 === currentStep ? 'active' : ''} ${index + 1 < currentStep ? 'completed' : ''}`}
               >
@@ -668,6 +781,7 @@ export default function AvatarCreate() {
 
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
       </ScrollView>
 
       {/* 底部按钮 */}
@@ -678,12 +792,14 @@ export default function AvatarCreate() {
         >
           <Text className="btn-text">
             {currentStep === 1
-              ? '下一步 · 选择技能'
-              : isSubmitting
-                ? '创建中...'
-                : formData.skills.length > 0
-                  ? `创建分身 · 预估¥${getEstimatedEarning()}/天`
-                  : '创建分身'}
+              ? '下一步 · 风格定位'
+              : currentStep === 2
+                ? '下一步 · 选择技能'
+                : isSubmitting
+                  ? '创建中...'
+                  : formData.skills.length > 0
+                    ? `创建分身 · 预估¥${getEstimatedEarning()}/天`
+                    : '创建分身'}
           </Text>
         </View>
         {currentStep === 1 && (
