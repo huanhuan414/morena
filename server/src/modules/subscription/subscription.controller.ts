@@ -40,8 +40,29 @@ export class SubscriptionController {
   }
 
   /**
+   * 权益校验接口 - 供其他模块调用
+   * type: check_avatars(分身数量), check_orders(接单权限), check_skills(技能次数), check_feature(功能开关)
+   */
+  @Get('check')
+  async checkPermission(
+    @Query('userId') userId: string,
+    @Query('type') type: string,
+    @Query('currentCount') currentCount?: string,
+  ) {
+    if (!userId || !type) {
+      return { code: 400, data: null, message: '缺少参数' }
+    }
+
+    try {
+      const result = await this.subscriptionService.checkPermission(userId, type, currentCount ? Number(currentCount) : 0)
+      return { code: 200, data: result, message: '校验成功' }
+    } catch (error: any) {
+      return { code: 500, data: null, message: error.message || '校验失败' }
+    }
+  }
+
+  /**
    * 创建支付订单（微信支付）
-   * planId: 传 plan_id 字段（如 plan_basic），后端按 plan_id 查询
    */
   @Post('order')
   async createOrder(
@@ -56,7 +77,6 @@ export class SubscriptionController {
     }
 
     try {
-      // 1. 查询套餐信息（按 plan_id 查询，如 plan_basic）
       const plan = await this.subscriptionService.getPlanByPlanId(planId)
       if (!plan) {
         return { code: 404, data: null, message: '套餐不存在' }
@@ -66,7 +86,6 @@ export class SubscriptionController {
         return { code: 400, data: null, message: '免费计划无需支付' }
       }
 
-      // 2. 创建支付订单
       const orderResult = await this.wechatPayService.createOrder({
         planId: plan.id,
         userId,

@@ -2,12 +2,16 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, navigateBack, showToast, getSystemInfoSync } from '@tarojs/taro'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import * as Network from '@/network'
-import { Crown, ArrowLeft, Star, Zap, Shield, Users, Check, Sparkles } from 'lucide-react-taro'
+import { Network } from '@/network'
+import {
+  ArrowLeft, Crown, Users, Zap, Sparkles, Check, X,
+  Shield, TrendingUp, Palette, Bot, ChartBar, Headphones,
+  Rocket, Star, Flame, Gift
+} from 'lucide-react-taro'
 import './index.css'
 
 interface SubscriptionPlan {
-  id: string          // 即 plan_id，如 plan_free, plan_basic
+  id: string
   name: string
   description: string
   price: number
@@ -29,28 +33,40 @@ interface UserSubscription {
   canReceiveOrders: boolean
 }
 
+// 权益对比项定义
+const COMPARISON_ITEMS = [
+  { key: 'maxAvatars', label: 'AI分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '无限' },
+  { key: 'canReceiveOrders', label: '接单赚钱', icon: Zap, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'skillUsesPerDay', label: '技能使用次数/天', icon: Sparkles, freeVal: '3次', basicVal: '10次', proVal: '50次', enterpriseVal: '无限' },
+  { key: 'skillCategories', label: '技能类目', icon: Bot, freeVal: '生活类', basicVal: '生活+创作', proVal: '4大类目', enterpriseVal: '全类目' },
+  { key: 'contentStyles', label: '内容风格', icon: Palette, freeVal: '1种', basicVal: '3种', proVal: '6种', enterpriseVal: '8种+' },
+  { key: 'customPersonality', label: '自定义分身性格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
+  { key: 'batchPublish', label: '批量发布', icon: Rocket, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'analytics', label: '数据分析', icon: ChartBar, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'prioritySupport', label: '优先客服', icon: Headphones, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '普通', basicVal: '优先', proVal: '高级', enterpriseVal: '最高' },
+  { key: 'storageLimit', label: '存储空间', icon: Shield, freeVal: '100MB', basicVal: '1GB', proVal: '10GB', enterpriseVal: '100GB' },
+  { key: 'exclusiveSkills', label: '专属技能', icon: Gift, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
+]
+
 export default function SubscriptionPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
 
   useLoad(() => {
-    // 获取状态栏高度
     const systemInfo = getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
-    
     fetchPlans()
     fetchUserSubscription()
   })
 
   const fetchPlans = async () => {
     try {
-      const res = await Network.request({
-        url: '/api/subscription/plans'
-      })
+      const res = await Network.request({ url: '/api/subscription/plans' })
       if (res.data?.code === 200) {
         setPlans(res.data.data || [])
       }
@@ -67,10 +83,7 @@ export default function SubscriptionPage() {
       const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
       if (!userId) return
 
-      const res = await Network.request({
-        url: `/api/subscription/status?userId=${userId}`
-      })
-      console.log('[订阅] 用户订阅状态:', res.data)
+      const res = await Network.request({ url: `/api/subscription/status?userId=${userId}` })
       if (res.data?.code === 200 && res.data.data) {
         setUserSubscription(res.data.data)
       }
@@ -89,7 +102,6 @@ export default function SubscriptionPage() {
     setSelectedPlan(plan)
 
     try {
-      // 获取用户信息
       const userStr = Taro.getStorageSync('userInfo')
       const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
       if (!userId) {
@@ -97,9 +109,7 @@ export default function SubscriptionPage() {
         return
       }
 
-      // 获取用户 openid
       const { code } = await Taro.login()
-
       const openidRes = await Network.request({
         url: '/api/auth/wechat/get-openid',
         method: 'POST',
@@ -112,35 +122,14 @@ export default function SubscriptionPage() {
         return
       }
 
-      // 创建支付订单（planId 用 id 字段，如 plan_basic）
       const res = await Network.request({
         url: '/api/subscription/order',
         method: 'POST',
-        data: {
-          planId: plan.id,
-          userId,
-          openid
-        }
+        data: { planId: plan.id, userId, openid }
       })
-
-      console.log('[订阅] 订单创建响应:', res.data)
 
       if (res.data?.code === 200) {
         const payParams = res.data.data
-
-        console.log('[订阅] 支付参数:', JSON.stringify({
-          appId: payParams.appId,
-          timeStamp: payParams.timeStamp,
-          nonceStr: payParams.nonceStr,
-          packageValue: payParams.packageValue,
-          signType: payParams.signType,
-          paySignLength: payParams.paySign?.length,
-          prepayId: payParams.prepayId,
-        }))
-
-        // 真实支付：调用微信支付
-        // 注意：timeStamp 必须是字符串，package 格式为 prepay_id=xxx
-        // 微信小程序 wx.requestPayment 只需要5个参数，不能传 appId
         const requestPayParams = {
           timeStamp: String(payParams.timeStamp),
           nonceStr: String(payParams.nonceStr),
@@ -149,25 +138,15 @@ export default function SubscriptionPage() {
           paySign: String(payParams.paySign),
         }
 
-        console.log('[订阅] requestPayment 参数:', JSON.stringify({
-          timeStamp: requestPayParams.timeStamp,
-          nonceStr: requestPayParams.nonceStr,
-          package: requestPayParams.package?.substring(0, 30) + '...',
-          signType: requestPayParams.signType,
-          paySignLength: requestPayParams.paySign?.length,
-        }))
-
         try {
           await Taro.requestPayment(requestPayParams)
-          console.log('[订阅] 支付成功')
           showToast({ title: '支付成功！', icon: 'success' })
           await fetchUserSubscription()
         } catch (payErr: any) {
-          console.error('[订阅] 支付失败详情:', JSON.stringify(payErr))
           if (payErr?.errMsg?.includes('cancel')) {
             showToast({ title: '支付已取消', icon: 'none' })
           } else {
-            showToast({ title: `支付失败: ${payErr?.errMsg || '请重试'}`, icon: 'none', duration: 3000 })
+            showToast({ title: `支付失败，请重试`, icon: 'none', duration: 3000 })
           }
         }
       } else {
@@ -182,220 +161,301 @@ export default function SubscriptionPage() {
     }
   }
 
-  const renderFeatures = (plan: SubscriptionPlan) => {
-    const maxAvatars = plan.maxAvatars >= 999 ? '无限' : plan.maxAvatars
+  const getPlanById = (id: string) => plans.find(p => p.id === id)
 
-    return (
-      <View className="sub-features">
-        <View className="sub-feature-item">
-          <Users size={18} color="#00f5ff" />
-          <Text className="sub-feature-text">
-            最多 {maxAvatars} 个分身
-          </Text>
-        </View>
-        {plan.canReceiveOrders ? (
-          <View className="sub-feature-item">
-            <Zap size={18} color="#ffd700" />
-            <Text className="sub-feature-text">可接单赚钱</Text>
-          </View>
-        ) : (
-          <View className="sub-feature-item">
-            <Shield size={18} color="#64748b" />
-            <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>暂不支持接单</Text>
-          </View>
-        )}
-        {plan.price > 0 && (
-          <View className="sub-feature-item">
-            <Check size={18} color="#00ff88" />
-            <Text className="sub-feature-text">优先客服支持</Text>
-          </View>
-        )}
-      </View>
-    )
+  const getFeatureVal = (planId: string, item: typeof COMPARISON_ITEMS[0]) => {
+    const plan = getPlanById(planId)
+    if (!plan) return null
+    const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
+
+    switch (item.key) {
+      case 'maxAvatars':
+        return features.max_avatars >= 999 ? '无限' : `${features.max_avatars}个`
+      case 'canReceiveOrders':
+        return features.can_receive_orders
+      case 'skillUsesPerDay':
+        return features.skill_uses_per_day >= 999 ? '无限' : `${features.skill_uses_per_day}次`
+      case 'skillCategories':
+        return features.skill_categories?.length >= 5 ? '全类目' :
+               features.skill_categories?.length >= 4 ? '4大类目' :
+               features.skill_categories?.length >= 2 ? '生活+创作' : '生活类'
+      case 'contentStyles':
+        return features.content_styles?.length >= 8 ? '8种+' :
+               `${features.content_styles?.length || 0}种`
+      case 'customPersonality':
+        return features.custom_personality
+      case 'batchPublish':
+        return features.batch_publish
+      case 'analytics':
+        return features.analytics
+      case 'prioritySupport':
+        return features.priority_support
+      case 'orderPriority':
+        const p = features.order_priority
+        return p >= 3 ? '最高' : p >= 2 ? '高级' : p >= 1 ? '优先' : '普通'
+      case 'storageLimit':
+        return features.storage_limit
+      case 'exclusiveSkills':
+        return features.exclusive_skills
+      default:
+        return null
+    }
   }
 
-  const getPlanCardClass = (index: number) => {
-    if (index === 3) return 'sub-card sub-card-vip'
-    if (index === 2) return 'sub-card sub-card-premium'
-    if (index === 1) return 'sub-card sub-card-basic'
-    return 'sub-card sub-card-free'
+  const renderVal = (val: any) => {
+    if (val === true) return <Check size={16} color="#10B981" />
+    if (val === false) return <X size={16} color="#94a3b8" />
+    return <Text className="sub-compare-val-text">{val}</Text>
   }
 
-  const getPlanBadge = (index: number) => {
-    if (index === 3) return '尊享'
-    if (index === 2) return '推荐'
-    if (index === 1) return ''
-    return '免费'
+  const getCurrentPlanName = () => {
+    if (!userSubscription || userSubscription.status !== 'active') return ''
+    return userSubscription.plan?.name || ''
   }
 
-  const getPlanIcon = (index: number) => {
-    if (index === 3) return <Crown size={20} color="#ffd700" />
-    if (index === 2) return <Sparkles size={20} color="#00ff88" />
-    if (index === 1) return <Star size={20} color="#00f5ff" />
-    return <Check size={20} color="#64748b" />
+  const isCurrentPlan = (planId: string) => {
+    return userSubscription?.plan?.id === planId && userSubscription?.status === 'active'
   }
+
+  const getPlanTheme = (planId: string) => {
+    switch (planId) {
+      case 'plan_pro': return 'pro'
+      case 'plan_enterprise': return 'enterprise'
+      case 'plan_basic': return 'basic'
+      default: return 'free'
+    }
+  }
+
+  const currentPlanName = getCurrentPlanName()
 
   return (
     <View className="sub-page">
-      {/* 动态背景光点 */}
-      <View className="sub-bg-glow" />
-
-      {/* 顶部导航 - 适配状态栏 */}
-      <View className="sub-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="sub-header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={24} color="#a855f7" />
+      {/* 紫蓝渐变自定义导航 */}
+      <View className="sub-nav" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="sub-nav-inner">
+          <View className="sub-nav-back" onClick={() => navigateBack()}>
+            <ArrowLeft size={22} color="#fff" />
+          </View>
+          <Text className="sub-nav-title">会员订阅</Text>
+          <View className="sub-nav-placeholder" />
         </View>
-        <Text className="sub-header-title gradient-text">订阅中心</Text>
-        <View className="sub-header-right" />
       </View>
 
       <ScrollView className="sub-scroll" scrollY>
-        <View className="sub-scroll-inner">
-        {/* 当前订阅状态 */}
-        {!loading && userSubscription && userSubscription.plan && (
-          <View className="sub-current">
-            <View className="sub-current-header">
-              {userSubscription.status === 'active' ? (
+        <View className="sub-content">
+
+          {/* 会员状态卡 */}
+          <View className="sub-status-card">
+            <View className="sub-status-bg" />
+            <View className="sub-status-body">
+              {currentPlanName ? (
                 <>
-                  <Crown size={28} color="#ffd700" />
-                  <Text className="sub-current-title">当前订阅</Text>
-                  <Sparkles size={20} color="#ffd700" />
+                  <View className="sub-status-badge">
+                    <Crown size={18} color="#FFD700" />
+                    <Text className="sub-status-badge-text">{currentPlanName}会员</Text>
+                  </View>
+                  <Text className="sub-status-desc">
+                    {userSubscription?.status === 'active'
+                      ? `有效期至 ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
+                      : '订阅已过期'}
+                  </Text>
                 </>
               ) : (
                 <>
-                  <Crown size={28} color="#ff6b6b" />
-                  <Text className="sub-current-title" style={{ color: '#ff6b6b' }}>
-                    {userSubscription.status === 'expired' ? '订阅已过期' : '订阅已取消'}
-                  </Text>
+                  <View className="sub-status-badge sub-status-badge-free">
+                    <Users size={18} color="#a78bfa" />
+                    <Text className="sub-status-badge-text-free">免费用户</Text>
+                  </View>
+                  <Text className="sub-status-desc">升级会员，解锁AI分身全部能力</Text>
                 </>
               )}
             </View>
-            <View className="sub-current-info">
-              <Text className="sub-current-plan">{userSubscription.plan.name}</Text>
-              <Text className="sub-current-date">
-                {userSubscription.status === 'active'
-                  ? `到期时间: ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
-                  : `到期时间: ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
-                }
-              </Text>
-            </View>
-            <View className="sub-current-features">
-              {renderFeatures(userSubscription.plan)}
-            </View>
           </View>
-        )}
 
-        {!loading && !userSubscription && (
-          <View className="sub-current" style={{ border: '2rpx solid rgba(255, 255, 255, 0.1)' }}>
-            <View className="sub-current-header">
-              <Crown size={28} color="#ffffff" />
-              <Text className="sub-current-title" style={{ color: '#ffffff' }}>暂无订阅</Text>
-            </View>
-            <View className="sub-current-info">
-              <Text className="sub-current-plan" style={{ color: '#ffffff' }}>免费用户</Text>
-              <Text className="sub-current-date" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                您可以创建 1 个分身，最多添加 10 个好友
-              </Text>
-            </View>
-            <View className="sub-current-features">
-              <View className="sub-features">
-                <View className="sub-feature-item">
-                  <Users size={18} color="#64748b" />
-                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>最多 1 个分身</Text>
+          {/* 核心权益展示 - 横向4宫格 */}
+          <View className="sub-benefits-section">
+            <Text className="sub-section-label">会员能帮你做什么</Text>
+            <View className="sub-benefits-grid">
+              <View className="sub-benefit-item">
+                <View className="sub-benefit-icon sub-benefit-icon-purple">
+                  <Bot size={22} color="#a855f7" />
                 </View>
-                <View className="sub-feature-item">
-                  <Shield size={18} color="#64748b" />
-                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>暂不支持接单</Text>
+                <Text className="sub-benefit-title">创建AI分身</Text>
+                <Text className="sub-benefit-desc">7x24小时自动创作</Text>
+              </View>
+              <View className="sub-benefit-item">
+                <View className="sub-benefit-icon sub-benefit-icon-green">
+                  <Zap size={22} color="#10b981" />
                 </View>
+                <Text className="sub-benefit-title">接单赚钱</Text>
+                <Text className="sub-benefit-desc">被动收入持续增长</Text>
+              </View>
+              <View className="sub-benefit-item">
+                <View className="sub-benefit-icon sub-benefit-icon-blue">
+                  <Sparkles size={22} color="#3b82f6" />
+                </View>
+                <Text className="sub-benefit-title">AI技能驱动</Text>
+                <Text className="sub-benefit-desc">内容创作一键搞定</Text>
+              </View>
+              <View className="sub-benefit-item">
+                <View className="sub-benefit-icon sub-benefit-icon-orange">
+                  <TrendingUp size={22} color="#f97316" />
+                </View>
+                <Text className="sub-benefit-title">数据驱动增长</Text>
+                <Text className="sub-benefit-desc">精准优化内容策略</Text>
               </View>
             </View>
           </View>
-        )}
 
-        {/* 订阅计划列表 */}
-        <View className="sub-plans">
-          <Text className="sub-section-title">
-            <Sparkles size={20} color="#00f5ff" />
-            选择订阅计划
-            <Sparkles size={20} color="#00f5ff" />
-          </Text>
-
-          {loading ? (
-            <View className="sub-loading">
-              <Text className="sub-loading-text">加载中...</Text>
-            </View>
-          ) : (
-            <View className="sub-plans-list">
-              {plans.map((plan, index) => {
-                const isCurrentPlan = userSubscription?.plan?.id === plan.id
+          {/* 套餐卡片 */}
+          <View className="sub-plans-section">
+            <Text className="sub-section-label">选择适合你的套餐</Text>
+            <View className="sub-plans-scroll">
+              {plans.map((plan) => {
+                const theme = getPlanTheme(plan.id)
+                const isPro = theme === 'pro'
+                const isEnterprise = theme === 'enterprise'
+                const current = isCurrentPlan(plan.id)
                 const isPurchasing = purchasing && selectedPlan?.id === plan.id
 
                 return (
-                  <View
-                    key={plan.id}
-                    className={getPlanCardClass(index)}
-                    style={{ '--card-index': index } as any}
-                  >
-                    {getPlanBadge(index) && (
-                      <View className={`sub-badge ${index === 3 ? 'sub-badge-vip' : index === 2 ? 'sub-badge-premium' : ''}`}>
-                        <Text className="sub-badge-text">{getPlanBadge(index)}</Text>
+                  <View key={plan.id} className={`sub-plan-card sub-plan-${theme}`}>
+                    {/* 推荐标签 */}
+                    {isPro && (
+                      <View className="sub-plan-recommend">
+                        <Flame size={12} color="#fff" />
+                        <Text className="sub-plan-recommend-text">最受欢迎</Text>
+                      </View>
+                    )}
+                    {isEnterprise && (
+                      <View className="sub-plan-recommend sub-plan-recommend-gold">
+                        <Crown size={12} color="#fff" />
+                        <Text className="sub-plan-recommend-text">顶级配置</Text>
                       </View>
                     )}
 
-                    <View className="sub-card-header">
-                      <View className="sub-card-name-row">
-                        {getPlanIcon(index)}
-                        <Text className="sub-card-name">{plan.name}</Text>
-                      </View>
-                      <View className="sub-card-price">
-                        <Text className="sub-card-amount">
-                          {plan.price > 0 ? `¥${plan.price}` : '免费'}
+                    <View className="sub-plan-header">
+                      <Text className={`sub-plan-name sub-plan-name-${theme}`}>{plan.name}</Text>
+                      <View className="sub-plan-price-row">
+                        <Text className="sub-plan-currency">¥</Text>
+                        <Text className={`sub-plan-price sub-plan-price-${theme}`}>
+                          {plan.price > 0 ? plan.price : '免费'}
                         </Text>
-                        <Text className="sub-card-period">/{plan.durationDays}天</Text>
+                        {plan.price > 0 && <Text className="sub-plan-period">/月</Text>}
                       </View>
                     </View>
 
-                    <Text className="sub-card-description">{plan.description}</Text>
+                    <Text className="sub-plan-desc">{plan.description}</Text>
 
-                    {renderFeatures(plan)}
+                    {/* 核心权益摘要 */}
+                    <View className="sub-plan-highlights">
+                      {theme === 'free' && (
+                        <>
+                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
+                        </>
+                      )}
+                      {theme === 'basic' && (
+                        <>
+                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
+                        </>
+                      )}
+                      {theme === 'pro' && (
+                        <>
+                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">批量发布+数据分析</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
+                        </>
+                      )}
+                      {theme === 'enterprise' && (
+                        <>
+                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能+专属技能</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">最高订单优先级</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">专属客户经理</Text></View>
+                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
+                        </>
+                      )}
+                    </View>
 
                     <Button
-                      className={`sub-card-button ${isCurrentPlan ? 'sub-card-button-disabled' : ''}`}
+                      className={`sub-plan-btn sub-plan-btn-${theme} ${current ? 'sub-plan-btn-current' : ''}`}
                       onClick={() => handlePurchase(plan)}
-                      disabled={isPurchasing || isCurrentPlan}
+                      disabled={isPurchasing || current}
                     >
-                      <Text>
-                        {isPurchasing ? (
-                          '购买中...'
-                        ) : isCurrentPlan ? (
-                          '当前订阅'
-                        ) : plan.price === 0 ? (
-                          '免费使用'
-                        ) : (
-                          '立即订阅'
-                        )}
+                      <Text className={`sub-plan-btn-text ${current ? 'sub-plan-btn-text-current' : ''}`}>
+                        {isPurchasing ? '购买中...' : current ? '当前套餐' : plan.price === 0 ? '免费使用' : '立即订阅'}
                       </Text>
                     </Button>
                   </View>
                 )
               })}
             </View>
-          )}
-        </View>
+          </View>
 
-        {/* 订阅须知 */}
-        <View className="sub-notice">
-          <Text className="sub-notice-title">订阅须知</Text>
-          <Text className="sub-notice-item">✨ 订阅后立即生效，到期自动续费</Text>
-          <Text className="sub-notice-item">✨ 订阅期间可随时取消，不退还已支付费用</Text>
-          <Text className="sub-notice-item">✨ 升级订阅时，剩余天数按比例折算</Text>
-          <Text className="sub-notice-item">✨ 好友数量限制根据订阅等级不同而不同</Text>
-          <Text className="sub-notice-item">✨ 订阅等级越高，好友数量越多</Text>
-          <Text className="sub-notice-item">✨ 付费分身优先获得订单分配</Text>
-          <Text className="sub-notice-item">✨ 订阅等级越高，订单优先级越高</Text>
-        </View>
+          {/* 权益对比表格 */}
+          <View className="sub-compare-section">
+            <Text className="sub-section-label">权益对比</Text>
+            <View className="sub-compare-table">
+              {COMPARISON_ITEMS.map((item) => {
+                const IconComp = item.icon
+                return (
+                  <View key={item.key} className="sub-compare-row">
+                    <View className="sub-compare-label">
+                      <IconComp size={14} color="#a855f7" />
+                      <Text className="sub-compare-label-text">{item.label}</Text>
+                    </View>
+                    <View className="sub-compare-values">
+                      {['plan_free', 'plan_basic', 'plan_pro', 'plan_enterprise'].map(pid => (
+                        <View key={pid} className="sub-compare-cell">
+                          {renderVal(getFeatureVal(pid, item))}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+            {/* 列头 */}
+            <View className="sub-compare-header">
+              <View className="sub-compare-header-label" />
+              <View className="sub-compare-header-values">
+                <Text className="sub-compare-header-cell">免费</Text>
+                <Text className="sub-compare-header-cell">基础</Text>
+                <Text className="sub-compare-header-cell sub-compare-header-cell-pro">专业</Text>
+                <Text className="sub-compare-header-cell">企业</Text>
+              </View>
+            </View>
+          </View>
 
-        <View className="sub-bottom-space" />
+          {/* 订阅须知 */}
+          <View className="sub-notice-section">
+            <Text className="sub-section-label">常见问题</Text>
+            <View className="sub-faq-list">
+              <View className="sub-faq-item">
+                <Text className="sub-faq-q">订阅后多久生效？</Text>
+                <Text className="sub-faq-a">支付成功后立即生效，所有权益即刻可用。</Text>
+              </View>
+              <View className="sub-faq-item">
+                <Text className="sub-faq-q">可以随时取消吗？</Text>
+                <Text className="sub-faq-a">可以随时取消，当前订阅期内权益不受影响，到期后不再续费。</Text>
+              </View>
+              <View className="sub-faq-item">
+                <Text className="sub-faq-q">升级套餐会怎样？</Text>
+                <Text className="sub-faq-a">升级后立即享受新套餐权益，剩余天数按比例折算差价。</Text>
+              </View>
+              <View className="sub-faq-item">
+                <Text className="sub-faq-q">接单收入怎么提现？</Text>
+                <Text className="sub-faq-a">专业版及以上支持接单赚钱，收益可在「收益中心」随时提现。</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="sub-bottom-space" />
         </View>
       </ScrollView>
     </View>

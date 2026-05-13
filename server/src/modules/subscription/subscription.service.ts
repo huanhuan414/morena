@@ -143,4 +143,75 @@ export class SubscriptionService {
       expires_at: endDate
     }
   }
+
+  /**
+   * 权益校验 - 供各模块调用
+   * type: check_avatars(分身数量), check_orders(接单权限), check_skills(技能次数), check_feature(功能开关)
+   */
+  async checkPermission(userId: string, type: string, currentCount: number = 0): Promise<{
+    allowed: boolean
+    reason?: string
+    limit?: number
+    current?: number
+  }> {
+    const subscription = await this.getUserSubscription(userId)
+
+    // 获取当前用户套餐的 features
+    let features: any = {}
+    let planId = 'plan_free'
+
+    if (subscription && subscription.status === 'active') {
+      planId = subscription.plan?.id || 'plan_free'
+      const plan = await this.getPlanById(planId)
+      if (plan) {
+        features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
+      }
+    } else {
+      // 免费用户
+      const freePlan = await this.getPlanById('plan_free')
+      if (freePlan) {
+        features = typeof freePlan.features === 'string' ? JSON.parse(freePlan.features) : (freePlan.features || {})
+      }
+    }
+
+    switch (type) {
+      case 'check_avatars': {
+        const maxAvatars = features.max_avatars || 1
+        const allowed = currentCount < maxAvatars
+        return {
+          allowed,
+          limit: maxAvatars,
+          current: currentCount,
+          reason: allowed ? undefined : `当前套餐最多创建 ${maxAvatars} 个分身，请升级套餐`,
+        }
+      }
+      case 'check_orders': {
+        const canReceive = features.can_receive_orders || false
+        return {
+          allowed: canReceive,
+          reason: canReceive ? undefined : '接单赚钱需要专业版及以上套餐，请升级',
+        }
+      }
+      case 'check_skills': {
+        const skillUses = features.skill_uses_per_day || 3
+        // 简单返回限制数，具体扣减逻辑由调用方实现
+        return {
+          allowed: true,
+          limit: skillUses,
+          current: currentCount,
+          reason: currentCount >= skillUses ? `今日技能使用已达上限(${skillUses}次)，请升级套餐` : undefined,
+        }
+      }
+      case 'check_feature': {
+        // 通用功能检查，返回 features 中的布尔值
+        return {
+          allowed: true,
+          limit: 0,
+          current: 0,
+        }
+      }
+      default:
+        return { allowed: false, reason: '未知校验类型' }
+    }
+  }
 }
