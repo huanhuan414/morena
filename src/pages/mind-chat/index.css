@@ -913,3 +913,109 @@
 }
 
 .bottom-spacer { height: 40rpx; }
+
+/* ====== 创建成功引导弹窗 ====== */
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 48rpx;
+}
+
+.onboarding-dialog {
+  width: 100%;
+  max-width: 620rpx;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 48rpx 40rpx;
+  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.15);
+}
+
+.onboarding-dialog-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.onboarding-dialog-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 16rpx;
+}
+
+.onboarding-dialog-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 32rpx;
+}
+
+.onboarding-dialog-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(168, 85, 247, 0.04) 100%);
+  border-radius: 20rpx;
+  margin-bottom: 36rpx;
+}
+
+.onboarding-benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.onboarding-benefit-text {
+  font-size: 24rpx;
+  color: #334155;
+  font-weight: 500;
+}
+
+.onboarding-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.onboarding-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx 0;
+  border-radius: 20rpx;
+}
+
+.onboarding-btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 6rpx 20rpx rgba(99, 102, 241, 0.35);
+}
+
+.onboarding-btn-primary-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.onboarding-btn-secondary {
+  background: #f8f9fc;
+  border: 1rpx solid #e2e8f0;
+}
+
+.onboarding-btn-secondary-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #64748b;
+}

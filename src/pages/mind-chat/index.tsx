@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { AVATAR_SKILL_MAP, CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import {
   Search,
   Plus,
@@ -16,74 +17,20 @@ import {
   Crown,
   Flame,
   Star,
-  Palette,
-  Music,
   Rocket,
   Award,
   ChevronsRight,
   Bot,
-  Eye,
-  Film
+  Eye
 } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
-import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
 
 type CloneType = 'my' | 'square'
-
-// 技能广场技能 → 图标/颜色映射（真正的技能：看手相/衣品改造/图片生成/视频生成等）
-const SKILL_VISUAL_MAP: Record<string, { color: string; bg: string }> = {
-  // 内容创作类
-  '短剧剧本生成': { color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
-  '分镜脚本生成': { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
-  '字幕生成': { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  '多集短剧生成': { color: '#2563eb', bg: 'rgba(37,99,235,0.12)' },
-  '自动发帖助手': { color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
-  // 视频制作类
-  '视频配音生成': { color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
-  '短剧视频编辑': { color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
-  '视频生成': { color: '#e11d48', bg: 'rgba(225,29,72,0.12)' },
-  // 音频处理类
-  '分身声音创建': { color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  '语音合成': { color: '#ea580c', bg: 'rgba(234,88,12,0.12)' },
-  // 图片生成类
-  '图片生成': { color: '#14b8a6', bg: 'rgba(20,184,166,0.12)' },
-  'AI绘画': { color: '#0d9488', bg: 'rgba(13,148,136,0.12)' },
-  // 音乐推荐类
-  '背景音乐推荐': { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  // 生活娱乐类
-  '看手相': { color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
-  '衣品改造': { color: '#d946ef', bg: 'rgba(217,70,239,0.12)' },
-  '塔罗牌占卜': { color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
-  '星座运势': { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
-  '起名改名': { color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
-  '风水咨询': { color: '#059669', bg: 'rgba(5,150,105,0.12)' },
-}
-
-// 技能分类 → 图标映射
-const SKILL_CATEGORY_MAP: Record<string, { icon: any; color: string; label: string }> = {
-  'content': { icon: Sparkles, color: '#6366f1', label: '内容' },
-  'video': { icon: Film, color: '#ec4899', label: '视频' },
-  'audio': { icon: Music, color: '#f97316', label: '音频' },
-  'image': { icon: Palette, color: '#14b8a6', label: '图片' },
-  'music': { icon: Music, color: '#f59e0b', label: '音乐' },
-  'life': { icon: Star, color: '#a855f7', label: '生活' },
-}
-
-// 根据技能名自动匹配分类
-function getSkillCategory(skillName: string): string {
-  if (/短剧|剧本|分镜|字幕|发帖|文案/.test(skillName)) return 'content'
-  if (/视频|配音|剪辑/.test(skillName)) return 'video'
-  if (/声音|语音|配音/.test(skillName)) return 'audio'
-  if (/图片|绘画|画像/.test(skillName)) return 'image'
-  if (/音乐|BGM/.test(skillName)) return 'music'
-  if (/手相|衣品|塔罗|星座|起名|风水|占卜/.test(skillName)) return 'life'
-  return 'content'
-}
 
 // 分身等级计算
 function getAvatarLevel(totalPosts: number, totalEarnings: number): { level: number; title: string; color: string; nextTitle: string; progress: number } {
@@ -128,6 +75,7 @@ interface Avatar {
   avatarSkills?: AvatarSkill[]
   contentStyles?: string[]
   nicheTags?: string[]
+  parsedSkills?: string[]
 }
 
 const MindChat: React.FC = () => {
@@ -136,6 +84,8 @@ const MindChat: React.FC = () => {
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
+  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false)
+  const [newAvatarId, setNewAvatarId] = useState('')
   const { isLoggedIn } = useUserStore()
   const hasPageShownRef = useRef(false)
   const activeTabRef = useRef<CloneType>('my')
@@ -224,7 +174,16 @@ const MindChat: React.FC = () => {
             abilities,
             avatarSkills: skillsResults[idx] || [],
             contentStyles: Array.isArray(item.contentStyles) ? item.contentStyles : (typeof item.contentStyles === 'string' ? JSON.parse(item.contentStyles || '[]') : []),
-            nicheTags: Array.isArray(item.nicheTags) ? item.nicheTags : (typeof item.nicheTags === 'string' ? JSON.parse(item.nicheTags || '[]') : [])
+            nicheTags: Array.isArray(item.nicheTags) ? item.nicheTags : (typeof item.nicheTags === 'string' ? JSON.parse(item.nicheTags || '[]') : []),
+            parsedSkills: (() => {
+              try {
+                const s = typeof item.skills === 'string' ? JSON.parse(item.skills) : item.skills
+                if (s && typeof s === 'object') {
+                  return Object.keys(s).filter(k => s[k] === true)
+                }
+                return []
+              } catch { return [] }
+            })()
           }
         })
         console.log('处理后的分身列表:', avatars)
@@ -308,6 +267,18 @@ const MindChat: React.FC = () => {
       void loadCurrentTabData()
     }
     hasPageShownRef.current = true
+
+    // 检测是否从创建分身页面跳转过来（引导开启托管）
+    const instance = Taro.getCurrentInstance()
+    const onboarding = instance?.router?.params?.onboarding
+    const avatarId = instance?.router?.params?.newAvatarId
+    if (onboarding === '1' && avatarId) {
+      setNewAvatarId(avatarId)
+      // 延迟显示引导弹窗，等数据加载完
+      setTimeout(() => {
+        setShowOnboardingDialog(true)
+      }, 2000)
+    }
   })
 
   useEffect(() => {
@@ -600,10 +571,10 @@ const MindChat: React.FC = () => {
                         <View className="skills-header">
                           <Sparkles size={13} color="#8b5cf6" />
                           <Text className="skills-title">技能</Text>
-                          {(!clone.avatarSkills || clone.avatarSkills.length === 0) && (
+                          {clone.parsedSkills.length === 0 && (
                             <View 
                               className="add-skill-btn"
-                              onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skill-create/index?avatarId=${clone.id}` })}
+                              onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                             >
                               <Plus size={11} color="#8b5cf6" />
                               <Text className="add-skill-text">添加技能</Text>
@@ -611,42 +582,37 @@ const MindChat: React.FC = () => {
                           )}
                         </View>
                         <View className="skills-tags">
-                          {clone.avatarSkills && clone.avatarSkills.length > 0 ? (
-                            clone.avatarSkills.slice(0, 4).map((skill) => {
-                              const visual = SKILL_VISUAL_MAP[skill.skillName] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
-                              const catKey = getSkillCategory(skill.skillName)
-                              const catInfo = SKILL_CATEGORY_MAP[catKey] || SKILL_CATEGORY_MAP['content']
-                              const CatIcon = catInfo.icon
-                              return (
-                                <View className="skill-tag" key={skill.id} style={{ background: visual.bg }}>
-                                  <CatIcon size={10} color={visual.color} />
-                                  <Text className="skill-tag-text" style={{ color: visual.color }}>{skill.skillName}</Text>
-                                </View>
-                              )
-                            })
-                          ) : (
+                          {clone.parsedSkills.length > 0 ? (
                             <>
-                              {/* 无技能时展示性格标签+引导添加技能 */}
-                              {(clone.tags || []).slice(0, 3).map((tag) => {
-                                const visual = SKILL_VISUAL_MAP[tag] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' }
+                              {clone.parsedSkills.slice(0, 4).map((skillKey) => {
+                                const skillInfo = AVATAR_SKILL_MAP[skillKey] || { label: skillKey, color: '#6366f1', icon: 'Sparkles' }
                                 return (
-                                  <View className="skill-tag personality-tag" key={tag} style={{ background: visual.bg }}>
-                                    <Text className="skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                                  <View className="skill-tag" key={skillKey} style={{ background: `${skillInfo.color}18` }}>
+                                    <Sparkles size={10} color={skillInfo.color} />
+                                    <Text className="skill-tag-text" style={{ color: skillInfo.color }}>{skillInfo.label}</Text>
                                   </View>
                                 )
                               })}
+                              {clone.parsedSkills.length > 4 && (
+                                <View className="skill-tag more-tag">
+                                  <Text className="skill-tag-text" style={{ color: '#94a3b8' }}>+{clone.parsedSkills.length - 4}</Text>
+                                </View>
+                              )}
                               <View 
                                 className="skill-tag add-skill-tag"
-                                onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skill-create/index?avatarId=${clone.id}` })}
+                                onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                               >
                                 <Plus size={10} color="#8b5cf6" />
-                                <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
+                                <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加</Text>
                               </View>
                             </>
-                          )}
-                          {(clone.avatarSkills || []).length > 4 && (
-                            <View className="skill-tag more-tag">
-                              <Text className="skill-tag-text" style={{ color: '#94a3b8' }}>+{clone.avatarSkills.length - 4}</Text>
+                          ) : (
+                            <View 
+                              className="skill-tag add-skill-tag"
+                              onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
+                            >
+                              <Plus size={10} color="#8b5cf6" />
+                              <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
                             </View>
                           )}
                         </View>
@@ -784,23 +750,29 @@ const MindChat: React.FC = () => {
                       
                       {/* 技能标签 */}
                       <View className="square-card-tags">
-                        {(clone.tags || []).slice(0, 2).map((tag) => {
-                          const visual = SKILL_VISUAL_MAP[tag] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' }
+                        {(clone.parsedSkills || []).slice(0, 2).map((skillKey) => {
+                          const skillInfo = AVATAR_SKILL_MAP[skillKey] || { label: skillKey, color: '#6366f1' }
                           return (
-                            <View className="square-skill-tag" key={tag} style={{ background: visual.bg }}>
-                              <Text className="square-skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                            <View className="square-skill-tag" key={skillKey} style={{ background: `${skillInfo.color}18` }}>
+                              <Text className="square-skill-tag-text" style={{ color: skillInfo.color }}>{skillInfo.label}</Text>
                             </View>
                           )
+                        })}
+                        {(clone.contentStyles || []).slice(0, 1).map((style) => {
+                          const styleInfo = CONTENT_STYLES.find(s => s.value === style)
+                          return styleInfo ? (
+                            <View className="square-skill-tag" key={style} style={{ background: `${styleInfo.color}18` }}>
+                              <Text className="square-skill-tag-text" style={{ color: styleInfo.color }}>{styleInfo.label}</Text>
+                            </View>
+                          ) : null
                         })}
                       </View>
 
                       {/* 能力图标 */}
                       <View className="square-card-abilities">
-                        {(clone.avatarSkills || []).slice(0, 3).map((skill) => {
-                          const catKey = getSkillCategory(skill.skillName)
-                          const catInfo = SKILL_CATEGORY_MAP[catKey] || SKILL_CATEGORY_MAP['content']
-                          const CatIcon = catInfo.icon
-                          return <CatIcon key={skill.id} size={14} color={catInfo.color} />
+                        {(clone.parsedSkills || []).slice(0, 3).map((skillKey) => {
+                          const skillInfo = AVATAR_SKILL_MAP[skillKey]
+                          return skillInfo ? <Sparkles key={skillKey} size={14} color={skillInfo.color} /> : null
                         })}
                       </View>
                     </View>
@@ -825,6 +797,65 @@ const MindChat: React.FC = () => {
         
         <View className="bottom-spacer" />
       </ScrollView>
+
+      {/* 创建成功引导弹窗 */}
+      {showOnboardingDialog && (
+        <View className="onboarding-overlay" onClick={() => setShowOnboardingDialog(false)}>
+          <View className="onboarding-dialog" onClick={(e) => e.stopPropagation()}>
+            <View className="onboarding-dialog-header">
+              <Coins size={28} color="#f59e0b" />
+              <Text className="onboarding-dialog-title">分身创建成功！</Text>
+            </View>
+            <Text className="onboarding-dialog-desc">
+              开启托管后，你的AI分身将24小时自动接单赚钱，即使你睡觉也在为你创造收益
+            </Text>
+            <View className="onboarding-dialog-benefits">
+              <View className="onboarding-benefit-item">
+                <Sparkles size={16} color="#8b5cf6" />
+                <Text className="onboarding-benefit-text">自动接单，无需手动操作</Text>
+              </View>
+              <View className="onboarding-benefit-item">
+                <Coins size={16} color="#f59e0b" />
+                <Text className="onboarding-benefit-text">24小时不间断赚钱</Text>
+              </View>
+              <View className="onboarding-benefit-item">
+                <Crown size={16} color="#3b82f6" />
+                <Text className="onboarding-benefit-text">接单越多能力越强</Text>
+              </View>
+            </View>
+            <View className="onboarding-dialog-actions">
+              <View
+                className="onboarding-btn onboarding-btn-primary"
+                onClick={async () => {
+                  // 开启托管
+                  if (newAvatarId) {
+                    try {
+                      await Network.request({
+                        url: `/api/avatar/${newAvatarId}/hosting`,
+                        method: 'POST',
+                        data: { enabled: true },
+                      })
+                      Taro.showToast({ title: '托管已开启，开始赚钱！', icon: 'success' })
+                      void loadMyClones()
+                    } catch {
+                      Taro.showToast({ title: '开启失败，请稍后重试', icon: 'none' })
+                    }
+                  }
+                  setShowOnboardingDialog(false)
+                }}
+              >
+                <Text className="onboarding-btn-primary-text">立即开启托管</Text>
+              </View>
+              <View
+                className="onboarding-btn onboarding-btn-secondary"
+                onClick={() => setShowOnboardingDialog(false)}
+              >
+                <Text className="onboarding-btn-secondary-text">稍后再说</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

@@ -360,10 +360,11 @@ export default function AvatarCreate() {
         Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
         Taro.showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
-          const onboardingQuery = createdAvatarId
-            ? `refresh=1&onboarding=1&newAvatarId=${encodeURIComponent(createdAvatarId)}`
-            : 'refresh=1'
-          Taro.redirectTo({ url: `/pages/avatar/avatar-manage/index?${onboardingQuery}` })
+          // 创建成功后跳转到分身页面，带上引导参数
+          const query = createdAvatarId
+            ? `onboarding=1&newAvatarId=${encodeURIComponent(createdAvatarId)}`
+            : 'onboarding=1'
+          Taro.switchTab({ url: `/pages/mind-chat/index?${query}` })
         }, 1500)
       } else {
         Taro.showToast({

@@ -250,6 +250,21 @@ export function calculateMatchScore(params: {
 }
 
 /**
+ * 分身技能定义（与 avatar-create 页面同步）
+ * skills JSON 字段格式: { content_writing: true, video_gen: true, ... }
+ */
+export const AVATAR_SKILL_MAP: Record<string, { label: string; icon: string; color: string }> = {
+  content_writing: { label: '内容创作', icon: 'PenTool', color: '#8B5CF6' },
+  video_gen: { label: '视频生成', icon: 'Film', color: '#EC4899' },
+  image_gen: { label: '图片生成', icon: 'Camera', color: '#06B6D4' },
+  audio_gen: { label: '音频生成', icon: 'Music', color: '#F59E0B' },
+  palm_reading: { label: '看手相', icon: 'Hand', color: '#10B981' },
+  style_makeover: { label: '衣品改造', icon: 'Sparkles', color: '#F43F5E' },
+  music_rec: { label: '音乐推荐', icon: 'Music', color: '#6366F1' },
+  data_analysis: { label: '数据分析', icon: 'TrendingUp', color: '#14B8A6' },
+}
+
+/**
  * 获取匹配度等级文案
  */
 export function getMatchLevel(score: number): { label: string; color: string; desc: string } {
