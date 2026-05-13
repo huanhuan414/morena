@@ -16,8 +16,8 @@ export class ReferralService {
     
     const user = await db.queryOne('users', { id: userId }) as any
     
-    if (user?.referral_code) {
-      return user.referral_code
+    if (user?.referral_code || user?.referralCode) {
+      return user.referral_code || user.referralCode
     }
     
     const code = this.generateUniqueCode()

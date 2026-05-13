@@ -89,7 +89,7 @@ export class UserStatsService {
       }
       
       // 4. 统计累计收益
-      const userResult = await db.queryOne('users', { id: userId }) as any
+      userResult = await db.queryOne('users', { id: userId }) as any
       totalEarnings = userResult?.total_earnings || 0
       
       if (avatarIds.length > 0) {
@@ -106,20 +106,22 @@ export class UserStatsService {
         } catch (e) {}
       }
       
-      // 5. 获取用户邀请码和邀请人数（自动创建邀请码）
+      // 5. 获取用户邀请码和邀请人数（与 ReferralService 逻辑一致：查 users.referral_code，没有则生成并写入）
       try {
         const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}'`) as any[]
         invitedCount = referralResult?.length || 0
-        const codeResult = await db.queryWhere('referral_codes', `user_id = '${userId}'`) as any[]
-        if (codeResult?.length > 0) {
-          referralCode = codeResult[0].code || ''
+
+        if (userResult?.referralCode) {
+          referralCode = userResult.referralCode
         } else {
-          // 自动生成邀请码
-          referralCode = Math.random().toString(36).substring(2, 8).toUpperCase()
-          await db.insert('referral_codes', {
-            user_id: userId,
-            code: referralCode,
-            created_at: new Date(),
+          // 自动生成邀请码并写入 users 表（与 ReferralService.generateReferralCode 一致）
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+          referralCode = ''
+          for (let i = 0; i < 6; i++) {
+            referralCode += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+          await db.updateWhere('users', { id: userId }, {
+            referral_code: referralCode,
             updated_at: new Date()
           })
         }
