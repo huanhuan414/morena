@@ -360,10 +360,15 @@ export default function AvatarCreate() {
         Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
         // 用 Storage 传递引导标记（switchTab 不支持 query 参数）
         if (createdAvatarId) {
+          console.log('[avatar-create] Setting onboarding storage, avatarId =', createdAvatarId)
           Taro.setStorageSync('onboarding_new_avatar_id', createdAvatarId)
+          console.log('[avatar-create] Storage set, verifying:', Taro.getStorageSync('onboarding_new_avatar_id'))
+        } else {
+          console.log('[avatar-create] WARNING: createdAvatarId is empty!')
         }
         Taro.showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
+          console.log('[avatar-create] Switching to mind-chat tab...')
           Taro.switchTab({ url: '/pages/mind-chat/index' })
         }, 1500)
       } else {

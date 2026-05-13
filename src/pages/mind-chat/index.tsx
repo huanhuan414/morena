@@ -274,10 +274,10 @@ const MindChat: React.FC = () => {
     if (newAvatarIdFromStorage) {
       Taro.removeStorageSync('onboarding_new_avatar_id')
       setNewAvatarId(newAvatarIdFromStorage)
-      // 延迟显示引导弹窗，等数据加载完
+      // 延迟显示引导弹窗，等页面和数据加载完成
       setTimeout(() => {
         setShowOnboardingDialog(true)
-      }, 1500)
+      }, 800)
     }
   })
 
@@ -831,9 +831,9 @@ const MindChat: React.FC = () => {
                   if (newAvatarId) {
                     try {
                       await Network.request({
-                        url: `/api/avatar/${newAvatarId}/hosting`,
-                        method: 'POST',
-                        data: { enabled: true },
+                        url: `/api/avatar/${newAvatarId}/trust`,
+                        method: 'PUT',
+                        data: { trust_enabled: true },
                       })
                       Taro.showToast({ title: '托管已开启，开始赚钱！', icon: 'success' })
                       void loadMyClones()
