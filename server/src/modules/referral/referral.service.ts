@@ -98,10 +98,14 @@ export class ReferralService {
   async getReferralStats(userId: string) {
     const db = getMySQLClient()
     
+    // 获取或生成邀请码
+    const referralCode = await this.generateReferralCode(userId)
+    
     const referrals = await db.query('referrals', { referrer_id: userId }) as any
     const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
     
     return {
+      referralCode,
       totalInvites: referrals?.length || 0,
       pendingInvites: (referrals?.length || 0) - completedCount,
       completedInvites: completedCount
