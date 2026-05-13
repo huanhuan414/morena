@@ -7,6 +7,7 @@ import {
   ArrowLeft, Sparkles, Check, Star, Trophy, TrendingUp,
   Users, Loader, Crown, ThumbsUp, Send
 } from 'lucide-react-taro'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 interface Avatar {
@@ -37,6 +38,7 @@ interface OrderInfo {
 export default function OrderMatchingPage() {
   const router = useRouter()
   const orderId = router.params.orderId || ''
+  const statusBarHeight = getStatusBarHeight()
   
   const [order, setOrder] = useState<OrderInfo | null>(null)
   const [recommendations, setRecommendations] = useState<Avatar[]>([])
@@ -215,8 +217,20 @@ export default function OrderMatchingPage() {
   if (loading) {
     return (
       <View className="matching-page">
+        <View className="matching-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+          <View className="matching-header-bg" />
+          <View className="matching-header-content">
+            <View className="matching-back-btn" onClick={() => Taro.navigateBack()}>
+              <ArrowLeft size={20} color="#fff" />
+            </View>
+            <View className="matching-header-center">
+              <Text className="block matching-header-title">智能匹配</Text>
+            </View>
+            <View className="matching-header-right" />
+          </View>
+        </View>
         <View className="loading-container">
-          <Loader size={48} color="#06b6d4" className="animate-spin" />
+          <Loader size={48} color="#8B5CF6" className="animate-spin" />
           <Text className="block loading-text">正在加载...</Text>
         </View>
       </View>
@@ -225,17 +239,24 @@ export default function OrderMatchingPage() {
 
   return (
     <View className="matching-page">
-      {/* 头部 */}
-      <View className="page-header">
-        <View className="header-top">
-          <View className="back-btn" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={22} color="#1e293b" />
+      {/* 顶部紫蓝渐变头部 */}
+      <View className="matching-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+        <View className="matching-header-bg" />
+        {/* 装饰圆 */}
+        <View className="matching-deco-circle matching-deco-1" />
+        <View className="matching-deco-circle matching-deco-2" />
+        <View className="matching-header-content">
+          <View className="matching-back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
           </View>
-          <Text className="page-title">智能匹配</Text>
-          <View className="header-right" />
+          <View className="matching-header-center">
+            <Text className="block matching-header-title">智能匹配</Text>
+            <Text className="block matching-header-sub">AI为你精准推荐最合适的分身</Text>
+          </View>
+          <View className="matching-header-right" />
         </View>
-        
-        {/* 订单信息 */}
+
+        {/* 订单信息卡片 - 嵌入头部 */}
         {order && (
           <View className="order-info-card">
             <View className="order-info-header">
@@ -251,7 +272,7 @@ export default function OrderMatchingPage() {
                 </View>
               )}
               <View className="tag">
-                <Users size={12} color="#64748b" />
+                <Users size={12} color="#8B5CF6" />
                 <Text className="tag-text">需要 {order.avatarCount || 1} 个分身</Text>
               </View>
             </View>
@@ -295,7 +316,7 @@ export default function OrderMatchingPage() {
         {/* 空状态 */}
         {recommendations.length === 0 && !loading && (
           <View className="empty-state">
-            <Sparkles size={64} color="rgba(6, 182, 212, 0.3)" />
+            <Sparkles size={64} color="rgba(139, 92, 246, 0.3)" />
             <Text className="block empty-title">暂无推荐分身</Text>
             <Text className="block empty-desc">暂无可用分身，请先创建分身</Text>
             <Button 
@@ -342,7 +363,7 @@ export default function OrderMatchingPage() {
                     />
                   ) : (
                     <View className="avatar-placeholder">
-                      <Sparkles size={28} color="#06b6d4" />
+                      <Sparkles size={28} color="#8B5CF6" />
                     </View>
                   )}
                   {avatar.level >= 5 && (
@@ -387,7 +408,7 @@ export default function OrderMatchingPage() {
                 </View>
                 <View className="stat-divider" />
                 <View className="stat-item">
-                  <Trophy size={14} color="#06b6d4" />
+                  <Trophy size={14} color="#8B5CF6" />
                   <Text className="stat-value">{avatar.completedTasks || 0}</Text>
                   <Text className="stat-label">已完成</Text>
                 </View>
