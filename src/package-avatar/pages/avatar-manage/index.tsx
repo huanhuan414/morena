@@ -461,7 +461,7 @@ export default function AvatarManagePage() {
   return (
     <View className="avatar-manage-page">
       {/* 顶部导航 */}
-      <View className="manage-header" style={{ paddingTop: `${statusBarHeight + 15}px` }}>
+      <View className="manage-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 15) }}>
         <View className="header-left-wrap">
           <View className="back-btn" onClick={() => navigateBack()}>
             <ArrowLeft size={24} color="#fff" />

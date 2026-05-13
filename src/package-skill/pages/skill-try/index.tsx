@@ -100,7 +100,7 @@ export default function SkillTryPage() {
   return (
     <View className="skill-try-page">
       {/* 自定义导航头部 */}
-      <View className="skill-try-header" style={{ paddingTop: `${statusBarHeight + 10}px` }}>
+      <View className="skill-try-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 10) }}>
         <View className="skill-try-nav">
           <View className="skill-try-back" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
@@ -120,7 +120,7 @@ export default function SkillTryPage() {
           <Text className="block try-input-hint">试试以下示例，或自由输入你想体验的内容</Text>
           <View className="try-input-wrapper">
             <Input
-              style={{ width: '100%', fontSize: '14px', backgroundColor: 'transparent' }}
+              style={{ width: '100%', fontSize: '28rpx', backgroundColor: 'transparent' }}
               placeholder={config.placeholder}
               value={input}
               onInput={(e) => setInput(e.detail.value)}

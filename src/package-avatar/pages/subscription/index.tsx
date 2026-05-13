@@ -240,7 +240,7 @@ export default function SubscriptionPage() {
   return (
     <View className="sub-page">
       {/* 紫蓝渐变头部 - 与首页一致 */}
-      <View className="sub-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+      <View className="sub-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight) }}>
         <View className="sub-header-bg" />
         <View className="sub-header-content">
           <View className="sub-nav-row">
