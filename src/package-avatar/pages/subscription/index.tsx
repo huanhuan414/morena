@@ -174,38 +174,39 @@ export default function SubscriptionPage() {
   const getFeatureVal = (planId: string, item: typeof COMPARISON_ITEMS[0]) => {
     const plan = getPlanById(planId)
     if (!plan) return null
+    // 后端 convertKeysToCamel 会将 features JSON 内部的 key 转为 camelCase
     const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
 
     switch (item.key) {
       case 'maxAvatars':
-        return features.max_avatars >= 999 ? '无限' : `${features.max_avatars}个`
+        return features.maxAvatars >= 999 ? '无限' : `${features.maxAvatars}个`
       case 'canReceiveOrders':
-        return features.can_receive_orders
+        return features.canReceiveOrders
       case 'skillUsesPerDay':
-        return features.skill_uses_per_day >= 999 ? '无限' : `${features.skill_uses_per_day}次`
+        return features.skillUsesPerDay >= 999 ? '无限' : `${features.skillUsesPerDay}次`
       case 'skillCategories':
-        return features.skill_categories?.length >= 5 ? '全类目' :
-               features.skill_categories?.length >= 4 ? '4大类目' :
-               features.skill_categories?.length >= 2 ? '生活+创作' : '生活类'
+        return features.skillCategories?.length >= 5 ? '全类目' :
+               features.skillCategories?.length >= 4 ? '4大类目' :
+               features.skillCategories?.length >= 2 ? '生活+创作' : '生活类'
       case 'contentStyles':
-        return features.content_styles?.length >= 8 ? '8种+' :
-               `${features.content_styles?.length || 0}种`
+        return features.contentStyles?.length >= 8 ? '8种+' :
+               `${features.contentStyles?.length || 0}种`
       case 'customPersonality':
-        return features.custom_personality
+        return features.customPersonality
       case 'batchPublish':
-        return features.batch_publish
+        return features.batchPublish
       case 'analytics':
         return features.analytics
       case 'prioritySupport':
-        return features.priority_support
+        return features.prioritySupport
       case 'orderPriority': {
-        const p = features.order_priority
+        const p = features.orderPriority
         return p >= 3 ? '最高' : p >= 2 ? '高级' : p >= 1 ? '优先' : '普通'
       }
       case 'storageLimit':
-        return features.storage_limit
+        return features.storageLimit
       case 'exclusiveSkills':
-        return features.exclusive_skills
+        return features.exclusiveSkills
       default:
         return null
     }

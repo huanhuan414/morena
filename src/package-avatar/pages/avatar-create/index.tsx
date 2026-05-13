@@ -309,6 +309,30 @@ export default function AvatarCreate() {
       return
     }
 
+    // 后端权益校验 — 检查分身数量限制
+    try {
+      const userStr = Taro.getStorageSync('userInfo')
+      const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
+      const checkRes = await Network.request({
+        url: `/api/subscription/check?userId=${userId}&type=check_avatars&currentCount=0`,
+      })
+      if (checkRes.data?.code === 200 && !checkRes.data?.data?.allowed) {
+        Taro.showModal({
+          title: '配额不足',
+          content: '当前套餐分身数量已达上限，升级会员可创建更多分身',
+          confirmText: '去升级',
+          success: (res) => {
+            if (res.confirm) {
+              Taro.navigateTo({ url: '/package-avatar/pages/subscription/index' })
+            }
+          },
+        })
+        return
+      }
+    } catch (e) {
+      console.warn('[avatar-create] 权益校验失败，继续创建:', e)
+    }
+
     setIsSubmitting(true)
     Taro.showLoading({ title: '创建中...' })
 
