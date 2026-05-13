@@ -128,23 +128,49 @@ export default function SubscriptionPage() {
       if (res.data?.code === 200) {
         const payParams = res.data.data
 
-        // 真实支付：调用微信支付
-        await Taro.requestPayment({
+        console.log('[订阅] 支付参数:', JSON.stringify({
+          appId: payParams.appId,
           timeStamp: payParams.timeStamp,
           nonceStr: payParams.nonceStr,
-          package: payParams.packageValue,
+          packageValue: payParams.packageValue,
           signType: payParams.signType,
-          paySign: payParams.paySign,
+          paySignLength: payParams.paySign?.length,
+          prepayId: payParams.prepayId,
+        }))
+
+        // 真实支付：调用微信支付
+        // 注意：timeStamp 必须是字符串，package 格式为 prepay_id=xxx
+        const requestPayParams = {
+          appId: payParams.appId,
+          timeStamp: String(payParams.timeStamp),
+          nonceStr: String(payParams.nonceStr),
+          package: payParams.packageValue || `prepay_id=${payParams.prepayId}`,
+          signType: payParams.signType || 'RSA',
+          paySign: String(payParams.paySign),
+        }
+
+        console.log('[订阅] requestPayment 参数:', JSON.stringify({
+          appId: requestPayParams.appId,
+          timeStamp: requestPayParams.timeStamp,
+          nonceStr: requestPayParams.nonceStr,
+          package: requestPayParams.package?.substring(0, 30) + '...',
+          signType: requestPayParams.signType,
+          paySignLength: requestPayParams.paySign?.length,
+        }))
+
+        Taro.requestPayment({
+          ...requestPayParams,
           success: async () => {
+            console.log('[订阅] 支付成功')
             showToast({ title: '支付成功！', icon: 'success' })
             await fetchUserSubscription()
           },
           fail: (err) => {
-            console.error('支付失败:', err)
+            console.error('[订阅] 支付失败详情:', JSON.stringify(err))
             if (err.errMsg?.includes('cancel')) {
               showToast({ title: '支付已取消', icon: 'none' })
             } else {
-              showToast({ title: '支付失败，请重试', icon: 'none' })
+              showToast({ title: `支付失败: ${err.errMsg || '请重试'}`, icon: 'none', duration: 3000 })
             }
           }
         })
