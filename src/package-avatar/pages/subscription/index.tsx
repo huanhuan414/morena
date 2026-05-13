@@ -50,6 +50,14 @@ const COMPARISON_ITEMS = [
   { key: 'exclusiveSkills', label: '专属技能', icon: Gift, freeVal: false, basicVal: false, proVal: false, enterpriseVal: true },
 ]
 
+// 套餐列定义
+const PLAN_COLUMNS = [
+  { id: 'plan_free', name: '免费', theme: 'free' },
+  { id: 'plan_basic', name: '基础', theme: 'basic' },
+  { id: 'plan_pro', name: '专业', theme: 'pro' },
+  { id: 'plan_enterprise', name: '企业', theme: 'enterprise' },
+]
+
 export default function SubscriptionPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null)
@@ -190,9 +198,10 @@ export default function SubscriptionPage() {
         return features.analytics
       case 'prioritySupport':
         return features.priority_support
-      case 'orderPriority':
+      case 'orderPriority': {
         const p = features.order_priority
         return p >= 3 ? '最高' : p >= 2 ? '高级' : p >= 1 ? '优先' : '普通'
+      }
       case 'storageLimit':
         return features.storage_limit
       case 'exclusiveSkills':
@@ -203,8 +212,8 @@ export default function SubscriptionPage() {
   }
 
   const renderVal = (val: any, isPro?: boolean) => {
-    if (val === true) return <Check size={16} color={isPro ? '#10B981' : '#8B5CF6'} />
-    if (val === false) return <X size={14} color="#cbd5e1" />
+    if (val === true) return <Check size={14} color={isPro ? '#10B981' : '#8B5CF6'} />
+    if (val === false) return <X size={12} color="#cbd5e1" />
     return <Text className={`sub-compare-val-text ${isPro ? 'sub-compare-val-pro' : ''}`}>{val}</Text>
   }
 
@@ -282,7 +291,7 @@ export default function SubscriptionPage() {
       <ScrollView className="sub-scroll" scrollY>
         <View className="sub-content">
 
-          {/* 会员能帮你做什么 - 与首页统计卡片风格一致 */}
+          {/* 会员能帮你做什么 */}
           <View className="sub-section">
             <View className="sub-section-header">
               <View className="sub-title-dot" />
@@ -291,7 +300,7 @@ export default function SubscriptionPage() {
             <View className="sub-benefits-grid">
               <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-purple">
-                  <Bot size={22} color="#8B5CF6" />
+                  <Bot size={20} color="#8B5CF6" />
                 </View>
                 <Text className="sub-benefit-num">7×24h</Text>
                 <Text className="sub-benefit-title">AI分身自动创作</Text>
@@ -299,7 +308,7 @@ export default function SubscriptionPage() {
               </View>
               <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-green">
-                  <CircleDollarSign size={22} color="#10B981" />
+                  <CircleDollarSign size={20} color="#10B981" />
                 </View>
                 <Text className="sub-benefit-num">被动收入</Text>
                 <Text className="sub-benefit-title">接单赚钱</Text>
@@ -307,7 +316,7 @@ export default function SubscriptionPage() {
               </View>
               <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-blue">
-                  <Sparkles size={22} color="#6366F1" />
+                  <Sparkles size={20} color="#6366F1" />
                 </View>
                 <Text className="sub-benefit-num">50+技能</Text>
                 <Text className="sub-benefit-title">AI技能驱动</Text>
@@ -315,7 +324,7 @@ export default function SubscriptionPage() {
               </View>
               <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-orange">
-                  <TrendingUp size={22} color="#F97316" />
+                  <TrendingUp size={20} color="#F97316" />
                 </View>
                 <Text className="sub-benefit-num">数据增长</Text>
                 <Text className="sub-benefit-title">数据驱动增长</Text>
@@ -324,7 +333,7 @@ export default function SubscriptionPage() {
             </View>
           </View>
 
-          {/* 套餐选择 - 与首页卡片风格一致 */}
+          {/* 套餐选择 */}
           <View className="sub-section">
             <View className="sub-section-header">
               <View className="sub-title-dot" />
@@ -343,13 +352,13 @@ export default function SubscriptionPage() {
                     {/* 推荐标签 */}
                     {isPro && (
                       <View className="sub-plan-tag">
-                        <Flame size={11} color="#fff" />
+                        <Flame size={10} color="#fff" />
                         <Text className="sub-plan-tag-text">最受欢迎</Text>
                       </View>
                     )}
                     {isEnterprise && (
                       <View className="sub-plan-tag sub-plan-tag-gold">
-                        <Crown size={11} color="#fff" />
+                        <Crown size={10} color="#fff" />
                         <Text className="sub-plan-tag-text">顶级配置</Text>
                       </View>
                     )}
@@ -357,10 +366,10 @@ export default function SubscriptionPage() {
                     <View className="sub-plan-top">
                       <View className="sub-plan-left">
                         <View className={`sub-plan-icon sub-plan-icon-${theme}`}>
-                          {theme === 'free' && <Users size={20} color="#94a3b8" />}
-                          {theme === 'basic' && <Zap size={20} color="#3b82f6" />}
-                          {theme === 'pro' && <Crown size={20} color="#10b981" />}
-                          {theme === 'enterprise' && <BadgeCheck size={20} color="#f59e0b" />}
+                          {theme === 'free' && <Users size={18} color="#94a3b8" />}
+                          {theme === 'basic' && <Zap size={18} color="#3b82f6" />}
+                          {theme === 'pro' && <Crown size={18} color="#10b981" />}
+                          {theme === 'enterprise' && <BadgeCheck size={18} color="#f59e0b" />}
                         </View>
                         <View className="sub-plan-info">
                           <Text className={`sub-plan-name sub-plan-name-${theme}`}>{plan.name}</Text>
@@ -376,36 +385,36 @@ export default function SubscriptionPage() {
                       </View>
                     </View>
 
-                    {/* 权益摘要 - 横向排列 */}
+                    {/* 权益摘要 */}
                     <View className="sub-plan-highlights">
                       {theme === 'free' && (
                         <>
-                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
                         </>
                       )}
                       {theme === 'basic' && (
                         <>
-                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
                         </>
                       )}
                       {theme === 'pro' && (
                         <>
-                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">批量发布+数据分析</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">批量发布+分析</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
                         </>
                       )}
                       {theme === 'enterprise' && (
                         <>
-                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能+专属技能</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">最高订单优先级</Text></View>
-                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">全类目+专属技能</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">最高优先级</Text></View>
+                          <View className="sub-highlight"><Check size={12} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
                         </>
                       )}
                     </View>
@@ -418,7 +427,7 @@ export default function SubscriptionPage() {
                       <Text className={`sub-plan-btn-label ${current ? 'sub-plan-btn-label-current' : ''}`}>
                         {isPurchasing ? '购买中...' : current ? '当前套餐' : plan.price === 0 ? '免费使用' : '立即订阅'}
                       </Text>
-                      {!current && plan.price > 0 && <ChevronRight size={16} color="#fff" />}
+                      {!current && plan.price > 0 && <ChevronRight size={14} color="#fff" />}
                     </Button>
                   </View>
                 )
@@ -426,42 +435,51 @@ export default function SubscriptionPage() {
             </View>
           </View>
 
-          {/* 权益对比表格 */}
+          {/* 权益对比表格 - 横向滚动，标签列固定 */}
           <View className="sub-section">
             <View className="sub-section-header">
               <View className="sub-title-dot" />
               <Text className="sub-section-title">权益对比</Text>
             </View>
-            <View className="sub-compare-table">
-              {/* 表头 */}
-              <View className="sub-compare-head">
-                <View className="sub-compare-head-label">权益</View>
-                <View className="sub-compare-head-values">
-                  <Text className="sub-compare-head-cell">免费</Text>
-                  <Text className="sub-compare-head-cell">基础</Text>
-                  <Text className="sub-compare-head-cell sub-compare-head-cell-pro">专业</Text>
-                  <Text className="sub-compare-head-cell">企业</Text>
+            <View className="sub-compare-wrapper">
+              {/* 左侧固定标签列 */}
+              <View className="sub-compare-labels">
+                <View className="sub-compare-labels-head">
+                  <Text className="sub-compare-labels-head-text">权益</Text>
                 </View>
-              </View>
-              {/* 数据行 */}
-              {COMPARISON_ITEMS.map((item, idx) => {
-                const IconComp = item.icon
-                return (
-                  <View key={item.key} className={`sub-compare-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
-                    <View className="sub-compare-label">
-                      <IconComp size={14} color="#8B5CF6" />
+                {COMPARISON_ITEMS.map((item, idx) => {
+                  const IconComp = item.icon
+                  return (
+                    <View key={item.key} className={`sub-compare-label-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
+                      <IconComp size={12} color="#8B5CF6" />
                       <Text className="sub-compare-label-text">{item.label}</Text>
                     </View>
-                    <View className="sub-compare-values">
-                      {['plan_free', 'plan_basic', 'plan_pro', 'plan_enterprise'].map(pid => (
-                        <View key={pid} className="sub-compare-cell">
-                          {renderVal(getFeatureVal(pid, item), pid === 'plan_pro')}
+                  )
+                })}
+              </View>
+              {/* 右侧滚动区域 */}
+              <ScrollView className="sub-compare-scroll" scrollX>
+                <View className="sub-compare-body">
+                  {/* 表头 */}
+                  <View className="sub-compare-body-head">
+                    {PLAN_COLUMNS.map(col => (
+                      <View key={col.id} className={`sub-compare-body-head-cell ${col.theme === 'pro' ? 'sub-compare-head-pro' : ''}`}>
+                        <Text className={`sub-compare-body-head-text ${col.theme === 'pro' ? 'sub-compare-head-text-pro' : ''}`}>{col.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {/* 数据行 */}
+                  {COMPARISON_ITEMS.map((item, idx) => (
+                    <View key={item.key} className={`sub-compare-body-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
+                      {PLAN_COLUMNS.map(col => (
+                        <View key={col.id} className="sub-compare-body-cell">
+                          {renderVal(getFeatureVal(col.id, item), col.theme === 'pro')}
                         </View>
                       ))}
                     </View>
-                  </View>
-                )
-              })}
+                  ))}
+                </View>
+              </ScrollView>
             </View>
           </View>
 

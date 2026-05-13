@@ -1,4 +1,4 @@
-/* Subscription Page - 与首页风格统一 */
+/* Subscription Page - 移动端优先，与首页风格统一 */
 
 .sub-page {
   min-height: 100vh;
@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 12px;
 }
 .sub-nav-back {
   width: 32px;
@@ -50,53 +50,57 @@
 
 /* ===== 会员状态卡 ===== */
 .sub-status-card {
-  margin: 0 16px 16px;
+  margin: 0 12px 12px;
   background: rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
 }
 .sub-status-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px;
+  padding: 12px 14px;
 }
 .sub-status-left {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .sub-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   background: rgba(255, 215, 0, 0.2);
   border: 1px solid rgba(255, 215, 0, 0.35);
   border-radius: 20px;
-  padding: 3px 10px;
-  margin-bottom: 6px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
 }
 .sub-status-badge-free {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);
 }
 .sub-status-badge-text {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #FFD700;
 }
 .sub-status-badge-text-free {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.75);
 }
 .sub-status-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sub-status-icon-wrap {
   flex-shrink: 0;
-  margin-left: 12px;
+  margin-left: 8px;
 }
 
 /* ===== 滚动区 ===== */
@@ -104,169 +108,156 @@
   flex: 1;
 }
 .sub-content {
-  padding: 16px;
+  padding: 12px;
 }
 
-/* ===== 通用区块 - 与首页 section 一致 ===== */
+/* ===== 通用区块 ===== */
 .sub-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .sub-section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 .sub-title-dot {
-  width: 4px;
-  height: 16px;
+  width: 3px;
+  height: 14px;
   background: linear-gradient(180deg, #8B5CF6, #6366F1);
   border-radius: 2px;
   flex-shrink: 0;
 }
 .sub-section-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #1E293B;
 }
 
-/* ===== 核心权益展示 - 与首页 stat-item 一致 ===== */
+/* ===== 核心权益展示 - 2x2宫格 ===== */
 .sub-benefits-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 .sub-benefit-card {
   background: #FFFFFF;
-  border-radius: 16px;
-  padding: 16px 14px;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  padding: 12px 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 .sub-benefit-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 2px;
 }
-.sub-benefit-icon-purple {
-  background: #F3F0FF;
-}
-.sub-benefit-icon-green {
-  background: #ECFDF5;
-}
-.sub-benefit-icon-blue {
-  background: #EEF2FF;
-}
-.sub-benefit-icon-orange {
-  background: #FFF7ED;
-}
+.sub-benefit-icon-purple { background: #F3F0FF; }
+.sub-benefit-icon-green { background: #ECFDF5; }
+.sub-benefit-icon-blue { background: #EEF2FF; }
+.sub-benefit-icon-orange { background: #FFF7ED; }
+
 .sub-benefit-num {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #8B5CF6;
-  margin-bottom: 1px;
 }
 .sub-benefit-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #1E293B;
 }
 .sub-benefit-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: #64748B;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
-/* ===== 套餐卡片 - 与首页 guide-section 一致 ===== */
+/* ===== 套餐卡片 ===== */
 .sub-plans-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .sub-plan-card {
   background: #FFFFFF;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   position: relative;
   overflow: hidden;
 }
-/* 专业版推荐高亮 */
 .sub-plan-card-recommend {
-  border: 2px solid #10B981;
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.12);
+  border: 1.5px solid #10B981;
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.12);
 }
 
 /* 推荐标签 */
 .sub-plan-tag {
   position: absolute;
   top: 0;
-  right: 16px;
+  right: 12px;
   background: linear-gradient(135deg, #10b981, #059669);
-  border-radius: 0 0 8px 8px;
-  padding: 2px 10px;
+  border-radius: 0 0 6px 6px;
+  padding: 1px 8px;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 .sub-plan-tag-gold {
   background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 .sub-plan-tag-text {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: #fff;
 }
 
-/* 卡片顶部 */
+/* 卡片顶部 - 垂直布局适配小屏 */
 .sub-plan-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  gap: 6px;
 }
 .sub-plan-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .sub-plan-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.sub-plan-icon-free {
-  background: #F1F5F9;
-}
-.sub-plan-icon-basic {
-  background: #EFF6FF;
-}
-.sub-plan-icon-pro {
-  background: #ECFDF5;
-}
-.sub-plan-icon-enterprise {
-  background: #FFFBEB;
-}
+.sub-plan-icon-free { background: #F1F5F9; }
+.sub-plan-icon-basic { background: #EFF6FF; }
+.sub-plan-icon-pro { background: #ECFDF5; }
+.sub-plan-icon-enterprise { background: #FFFBEB; }
+
 .sub-plan-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .sub-plan-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   display: block;
 }
@@ -276,27 +267,30 @@
 .sub-plan-name-enterprise { color: #D97706; }
 
 .sub-plan-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: #94A3B8;
-  line-height: 1.4;
+  line-height: 1.3;
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 价格 */
 .sub-plan-price-wrap {
   display: flex;
   align-items: baseline;
-  gap: 1px;
+  gap: 0;
   flex-shrink: 0;
 }
 .sub-plan-currency {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #94A3B8;
 }
 .sub-plan-price {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
 }
 .sub-plan-price-free { color: #94A3B8; }
@@ -304,7 +298,7 @@
 .sub-plan-price-pro { color: #059669; }
 .sub-plan-price-enterprise { color: #D97706; }
 .sub-plan-period {
-  font-size: 11px;
+  font-size: 10px;
   color: #94A3B8;
 }
 
@@ -312,131 +306,153 @@
 .sub-plan-highlights {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-bottom: 14px;
-  padding: 10px 0;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+  padding: 8px 0;
   border-top: 1px solid #F1F5F9;
 }
 .sub-highlight {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .sub-highlight-text {
-  font-size: 12px;
+  font-size: 11px;
   color: #475569;
+  white-space: nowrap;
 }
 
 /* 订阅按钮 */
 .sub-plan-btn {
   width: 100%;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   border: none;
+  height: 36px;
 }
-.sub-plan-btn-free {
-  background: #F1F5F9;
-}
+.sub-plan-btn-free { background: #F1F5F9; }
 .sub-plan-btn-basic {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 .sub-plan-btn-pro {
   background: linear-gradient(135deg, #10b981, #059669);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 .sub-plan-btn-enterprise {
   background: linear-gradient(135deg, #f59e0b, #d97706);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 .sub-plan-btn-current {
   background: #F8FAFC !important;
   box-shadow: none !important;
 }
 .sub-plan-btn-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #fff;
 }
-.sub-plan-btn-current .sub-plan-btn-label {
-  color: #94A3B8;
-}
-.sub-plan-btn-label-current {
-  color: #94A3B8;
-}
+.sub-plan-btn-current .sub-plan-btn-label { color: #94A3B8; }
+.sub-plan-btn-label-current { color: #94A3B8; }
 
-/* ===== 权益对比表格 ===== */
-.sub-compare-table {
+/* ===== 权益对比表格 - 移动端优化：左侧固定 + 右侧滚动 ===== */
+.sub-compare-wrapper {
+  display: flex;
   background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
-.sub-compare-head {
+
+/* 左侧固定标签列 */
+.sub-compare-labels {
+  flex-shrink: 0;
+  width: 72px;
+  z-index: 2;
+  background: #FFFFFF;
+  border-right: 1px solid #F1F5F9;
+}
+.sub-compare-labels-head {
+  height: 32px;
   display: flex;
   align-items: center;
-  padding: 12px;
+  justify-content: center;
   background: linear-gradient(135deg, #8B5CF6, #6366F1);
-  border-radius: 16px 16px 0 0;
 }
-.sub-compare-head-label {
-  flex: 0 0 88px;
-  font-size: 11px;
+.sub-compare-labels-head-text {
+  font-size: 10px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.9);
 }
-.sub-compare-head-values {
-  flex: 1;
+.sub-compare-label-row {
+  height: 36px;
   display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border-bottom: 1px solid #F1F5F9;
 }
-.sub-compare-head-cell {
+.sub-compare-label-row:last-child { border-bottom: none; }
+.sub-compare-label-text {
+  font-size: 10px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 右侧滚动区 */
+.sub-compare-scroll {
   flex: 1;
-  text-align: center;
-  font-size: 11px;
+  min-width: 0;
+}
+.sub-compare-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+}
+.sub-compare-body-head {
+  display: flex;
+  height: 32px;
+}
+.sub-compare-body-head-cell {
+  flex: 1;
+  min-width: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+}
+.sub-compare-head-pro {
+  background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
+}
+.sub-compare-body-head-text {
+  font-size: 10px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.8);
 }
-.sub-compare-head-cell-pro {
-  color: #FFD700;
+.sub-compare-head-text-pro {
+  color: #FFD700 !important;
 }
-.sub-compare-row {
+
+.sub-compare-body-row {
   display: flex;
-  align-items: center;
-  padding: 10px 12px;
+  height: 36px;
   border-bottom: 1px solid #F1F5F9;
 }
-.sub-compare-row:last-child {
-  border-bottom: none;
-}
-.sub-compare-row-even {
-  background: #FAFBFD;
-}
-.sub-compare-label {
-  flex: 0 0 88px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.sub-compare-label-text {
-  font-size: 11px;
-  color: #475569;
-  white-space: nowrap;
-}
-.sub-compare-values {
+.sub-compare-body-row:last-child { border-bottom: none; }
+.sub-compare-body-cell {
   flex: 1;
-  display: flex;
-}
-.sub-compare-cell {
-  flex: 1;
+  min-width: 65px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .sub-compare-val-text {
-  font-size: 11px;
+  font-size: 10px;
   color: #334155;
   text-align: center;
 }
@@ -445,30 +461,37 @@
   font-weight: 600;
 }
 
+/* 交替行背景 */
+.sub-compare-row-even {
+  background: #FAFBFD;
+}
+
 /* ===== FAQ ===== */
 .sub-faq-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .sub-faq-item {
   background: #FFFFFF;
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 .sub-faq-q {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #1E293B;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  display: block;
 }
 .sub-faq-a {
-  font-size: 12px;
+  font-size: 11px;
   color: #64748B;
-  line-height: 1.6;
+  line-height: 1.5;
+  display: block;
 }
 
 .sub-bottom-space {
-  height: 48px;
+  height: 40px;
 }
