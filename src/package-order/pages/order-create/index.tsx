@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Send, Check, ChevronRight, Loader, ChevronLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
-  Target, TrendingUp, Lightbulb
+  Target, TrendingUp, Lightbulb, ClipboardList
 } from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
@@ -317,6 +317,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <View className="header-center">
             <Text className="header-title">发布任务</Text>
             <Text className="header-desc">AI分身帮你创作，省时省力出爆款</Text>
+          </View>
+          <View className="records-btn" onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}>
+            <ClipboardList size={16} color="#fff" />
+            <Text className="records-btn-text">订单</Text>
           </View>
         </View>
       </View>

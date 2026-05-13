@@ -65,6 +65,26 @@
   justify-content: center;
 }
 
+.records-btn {
+  position: absolute;
+  top: 20rpx;
+  right: 24rpx;
+  height: 56rpx;
+  padding: 0 20rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+}
+
+.records-btn-text {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
 .header-center {
   display: flex;
   flex-direction: column;
