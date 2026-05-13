@@ -139,7 +139,7 @@ export class ActivitiesService {
     try {
       const db = getMySQLClient()
       const earnings = await db.query(
-        `SELECT id, amount, source, order_id, created_at FROM earnings WHERE user_id = ? ORDER BY created_at DESC LIMIT 5`,
+        `SELECT id, amount, type, order_title, avatar_name, description, created_at FROM earnings WHERE user_id = ? ORDER BY created_at DESC LIMIT 5`,
         [userId]
       )
       for (const earning of earnings) {
@@ -147,7 +147,7 @@ export class ActivitiesService {
           id: `earning-${earning.id}`,
           type: 'earning',
           title: '收益到账',
-          description: `${earning.source || '订单收益'}`,
+          description: `${earning.orderTitle || earning.description || earning.type || '订单收益'}`,
           timestamp: earning.createdAt,
           amount: earning.amount ? `+¥${Number(earning.amount).toFixed(2)}` : undefined,
         })
