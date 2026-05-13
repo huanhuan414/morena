@@ -12,7 +12,7 @@
 /* ========== 头部 - 与首页完全一致 ========== */
 .skills-header {
   position: relative;
-  padding-bottom: 28px;
+  padding-bottom: 56rpx;
   overflow: hidden;
 }
 
@@ -107,7 +107,7 @@
 
 /* ========== 新手攻略卡 - 与首页guide-section完全一致 ========== */
 .skills-guide-card {
-  margin: -12px 24rpx 0;
+  margin: -24rpx 24rpx 0;
   position: relative;
   z-index: 2;
   background: #FFFFFF;
@@ -530,7 +530,7 @@
   padding: 14rpx 32rpx;
   border-radius: 24rpx;
   background: #F3E8FF;
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  border: 2rpx solid rgba(139, 92, 246, 0.15);
 }
 
 .skill-btn-added-text {
