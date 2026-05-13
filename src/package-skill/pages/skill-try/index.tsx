@@ -3,8 +3,8 @@ import { View, Text, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { getStatusBarHeight } from '@/utils/safe-area'
 import { checkSkillPermission } from '@/utils/permission'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const CATEGORY_CONFIG: Record<string, { label: string; placeholder: string; examples: string[] }> = {
@@ -48,15 +48,13 @@ export default function SkillTryPage() {
   const [result, setResult] = useState('')
   const [hasResult, setHasResult] = useState(false)
 
-  const [skillUseCount, setSkillUseCount] = useState(0)
-
   const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.life
 
   const handleTry = async () => {
     if (loading) return
 
-    // 调用后端权益校验 — 检查技能使用次数
-    const allowed = await checkSkillPermission(skillUseCount)
+    // 权益校验（传入当前已使用次数，默认0）
+    const allowed = await checkSkillPermission(0)
     if (!allowed) return
 
     setLoading(true)
@@ -76,7 +74,6 @@ export default function SkillTryPage() {
       if (res.data?.code === 200 && data?.content) {
         setResult(data.content)
         setHasResult(true)
-        setSkillUseCount(prev => prev + 1)
       } else {
         Taro.showToast({ title: res.data?.msg || '体验失败', icon: 'none' })
       }
@@ -174,7 +171,7 @@ export default function SkillTryPage() {
               <Text className="block try-result-tip">结果由AI生成，仅供参考</Text>
               <View className="try-result-again" onClick={handleAgain}>
                 <RefreshCw size={14} color="#8B5CF6" className="mr-1" />
-                <Text className="try-result-again" onClick={handleAgain}>再试一次</Text>
+                <Text className="try-result-again-text">再试一次</Text>
               </View>
             </View>
           </View>
