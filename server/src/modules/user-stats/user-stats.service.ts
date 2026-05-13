@@ -106,14 +106,22 @@ export class UserStatsService {
         } catch (e) {}
       }
       
-      // 5. 获取用户邀请码和邀请人数
-      referralCode = userResult?.referral_code || ''
+      // 5. 获取用户邀请码和邀请人数（自动创建邀请码）
       try {
         const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}'`) as any[]
         invitedCount = referralResult?.length || 0
-        if (!referralCode) {
-          const codeResult = await db.queryWhere('referral_codes', `user_id = '${userId}'`) as any[]
-          referralCode = codeResult?.[0]?.code || ''
+        const codeResult = await db.queryWhere('referral_codes', `user_id = '${userId}'`) as any[]
+        if (codeResult?.length > 0) {
+          referralCode = codeResult[0].code || ''
+        } else {
+          // 自动生成邀请码
+          referralCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+          await db.insert('referral_codes', {
+            user_id: userId,
+            code: referralCode,
+            created_at: new Date(),
+            updated_at: new Date()
+          })
         }
       } catch (e) {}
       
