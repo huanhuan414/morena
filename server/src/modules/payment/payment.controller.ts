@@ -254,4 +254,43 @@ export class PaymentController {
       return { code: 500, msg: '同步失败', data: null };
     }
   }
+
+  /**
+   * 手动上报发货信息（用于补单或调试）
+   * POST /api/payment/shipping/upload
+   */
+  @Post('shipping/upload')
+  @HttpCode(HttpStatus.OK)
+  async uploadShipping(@Body() body: { outTradeNo: string }) {
+    const { outTradeNo } = body;
+    if (!outTradeNo) {
+      return { code: 400, msg: '缺少outTradeNo参数', data: null };
+    }
+
+    try {
+      const db = await getMySQLClient();
+      const orders = await db.query(
+        `SELECT * FROM payment_orders WHERE out_trade_no = ? AND status = 'paid'`,
+        [outTradeNo],
+      );
+
+      if (!orders || orders.length === 0) {
+        return { code: 404, msg: '未找到已支付订单', data: null };
+      }
+
+      const order = orders[0];
+      const transactionId = order.transactionId || order.transaction_id;
+      if (!transactionId) {
+        return { code: 400, msg: '订单缺少微信支付单号', data: null };
+      }
+
+      // 调用 WechatPayService 的发货上报方法
+      await this.wechatPayService['uploadShippingInfo'](transactionId, order);
+
+      return { code: 200, msg: '发货信息上报已触发', data: { outTradeNo, transactionId } };
+    } catch (error) {
+      this.logger.error(`上报发货信息失败: ${error.message}`);
+      return { code: 500, msg: '上报失败', data: null };
+    }
+  }
 }

@@ -358,10 +358,93 @@ export class WechatPayService {
 
       await this.activateSubscription(order);
 
+      // 上报微信发货信息管理（微信强制要求，不接入会导致jsapi has no permission）
+      await this.uploadShippingInfo(transactionId, order);
+
       return { code: 'SUCCESS', message: '成功' };
     } catch (error) {
       this.logger.error(`处理支付回调失败: ${error.message}`, error.stack);
       return { code: 'FAIL', message: error.message };
+    }
+  }
+
+  /**
+   * 上报微信发货信息管理
+   * 微信从2024年开始强制要求小程序接入发货管理，否则支付API被封禁（jsapi has no permission）
+   * 文档: https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/industry/mini-order/shipping.html
+   */
+  private async uploadShippingInfo(transactionId: string, order: any) {
+    try {
+      // 获取小程序access_token
+      const accessToken = await this.getMiniProgramAccessToken();
+      if (!accessToken) {
+        this.logger.warn('获取access_token失败，跳过发货信息上报');
+        return;
+      }
+
+      // 虚拟商品直接发货（订阅类属于虚拟商品）
+      const shippingData = {
+        order_key: {
+          order_number_type: 2, // 使用微信支付单号
+          transaction_id: transactionId,
+        },
+        delivery_mode: 1, // 统一发货
+        shipping_list: [
+          {
+            item_desc: 'Morena AI 订阅服务', // 商品描述
+          },
+        ],
+        upload_time: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+        payer: {
+          openid: order.openid || order.openId,
+        },
+      };
+
+      const axios = require('axios');
+      const response = await axios.post(
+        `https://api.weixin.qq.com/wxa/sec/order/upload_shipping_info?access_token=${accessToken}`,
+        shippingData,
+        { timeout: 10000 },
+      );
+
+      if (response.data?.errcode === 0) {
+        this.logger.log(`✅ 发货信息上报成功: transactionId=${transactionId}`);
+      } else {
+        this.logger.warn(`⚠️ 发货信息上报失败: errcode=${response.data?.errcode}, errmsg=${response.data?.errmsg}`);
+      }
+    } catch (error) {
+      this.logger.warn(`发货信息上报异常(不影响支付): ${error.message}`);
+    }
+  }
+
+  /**
+   * 获取小程序access_token
+   */
+  private async getMiniProgramAccessToken(): Promise<string | null> {
+    try {
+      const appId = process.env.WX_APP_ID || this.appId;
+      const appSecret = process.env.WX_APP_SECRET;
+
+      if (!appId || !appSecret) {
+        this.logger.warn('缺少WX_APP_ID或WX_APP_SECRET配置');
+        return null;
+      }
+
+      const axios = require('axios');
+      const response = await axios.get(
+        `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`,
+        { timeout: 10000 },
+      );
+
+      if (response.data?.access_token) {
+        return response.data.access_token;
+      }
+
+      this.logger.warn(`获取access_token失败: ${JSON.stringify(response.data)}`);
+      return null;
+    } catch (error) {
+      this.logger.warn(`获取access_token异常: ${error.message}`);
+      return null;
     }
   }
 
