@@ -8,6 +8,7 @@ import { Sparkles, Plus, Settings, TrendingUp, Clock, Zap, Users, ChevronRight, 
 import { getSafeArea } from '@/utils/safe-area'
 import * as Taro from '@tarojs/taro'
 import { useUserStore } from '@/stores/user'
+import { checkAvatarPermission } from '@/utils/permission'
 import { useNotifications } from '@/hooks/useNotifications'
 import './index.css'
 
@@ -323,17 +324,11 @@ export default function AvatarManagePage() {
     }
   }
 
-  const createNewAvatar = () => {
-    // 检查是否可以创建分身
-    if (!canCreateAvatar) {
-      showToast({ 
-        title: `当前订阅最多支持 ${maxAvatars} 个分身，请升级订阅`,
-        icon: 'none',
-        duration: 3000
-      })
-      navigateTo({ url: '/package-avatar/pages/subscription/index' })
-      return
-    }
+  const createNewAvatar = async () => {
+    // 调用后端权益校验
+    const allowed = await checkAvatarPermission(avatarCount)
+    if (!allowed) return
+
     const remainingAvatars = maxAvatars === -1 ? -1 : Math.max(maxAvatars - avatarCount, 0)
     const planName = userSubscription?.plan?.name || userSubscription?.plan_name || ''
     const query = [

@@ -10,6 +10,7 @@ import {
   Clock, Star, Zap,
   Flame, TrendingUp, DollarSign, Users
 } from 'lucide-react-taro'
+import { checkOrderPermission } from '@/utils/permission'
 import './index.css'
 
 const PLATFORMS = [
@@ -220,6 +221,10 @@ export default function OrderSquarePage() {
       showToast({ title: '创建分身即可接单赚钱', icon: 'none' })
       return
     }
+    // 调用后端权益校验 — 检查是否有接单权限
+    const allowed = await checkOrderPermission()
+    if (!allowed) return
+
     // 获取用户的活跃分身列表
     try {
       const userRes = await Network.request({ url: '/api/auth/me' })

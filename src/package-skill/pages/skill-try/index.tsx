@@ -4,6 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { ArrowLeft, Sparkles, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
+import { checkSkillPermission } from '@/utils/permission'
 import './index.css'
 
 const CATEGORY_CONFIG: Record<string, { label: string; placeholder: string; examples: string[] }> = {
@@ -47,10 +48,17 @@ export default function SkillTryPage() {
   const [result, setResult] = useState('')
   const [hasResult, setHasResult] = useState(false)
 
+  const [skillUseCount, setSkillUseCount] = useState(0)
+
   const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.life
 
   const handleTry = async () => {
     if (loading) return
+
+    // 调用后端权益校验 — 检查技能使用次数
+    const allowed = await checkSkillPermission(skillUseCount)
+    if (!allowed) return
+
     setLoading(true)
     setResult('')
     setHasResult(false)
@@ -68,6 +76,7 @@ export default function SkillTryPage() {
       if (res.data?.code === 200 && data?.content) {
         setResult(data.content)
         setHasResult(true)
+        setSkillUseCount(prev => prev + 1)
       } else {
         Taro.showToast({ title: res.data?.msg || '体验失败', icon: 'none' })
       }
