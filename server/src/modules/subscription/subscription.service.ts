@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import * as crypto from 'crypto'
 
 @Injectable()
 export class SubscriptionService {
@@ -10,76 +11,115 @@ export class SubscriptionService {
     return plans
   }
 
-  async getPlanById(planId: string) {
+  /**
+   * 按 planId 查询（如 plan_basic, plan_pro）
+   * 旧表 id 字段存储的就是 plan_xxx，所以直接按 id 查
+   */
+  async getPlanByPlanId(planId: string) {
     const db = getMySQLClient()
     const plans = await db.query('SELECT * FROM subscription_plans WHERE id = ?', [planId])
     return plans?.[0] || null
   }
 
+  /**
+   * 按 id 查询（主键，同 getPlanByPlanId）
+   */
+  async getPlanById(id: string) {
+    const db = getMySQLClient()
+    const plans = await db.query('SELECT * FROM subscription_plans WHERE id = ?', [id])
+    return plans?.[0] || null
+  }
+
+  /**
+   * 获取用户订阅状态
+   */
   async getUserSubscription(userId: string) {
     const db = getMySQLClient()
-    const subscriptions = await db.query('user_subscriptions', {
-      user_id: userId
-    }) as any[]
-    
+    const subscriptions = await db.query(
+      'SELECT us.id, us.status, us.start_date, us.end_date, us.plan_id, ' +
+      'sp.name as plan_name, sp.price as plan_price, sp.duration_days, sp.max_avatars, sp.can_receive_orders ' +
+      'FROM user_subscriptions us ' +
+      'LEFT JOIN subscription_plans sp ON us.plan_id = sp.id ' +
+      'WHERE us.user_id = ? ORDER BY us.created_at DESC LIMIT 1',
+      [userId]
+    )
+
     if (!subscriptions || subscriptions.length === 0) {
       return null
     }
-    
-    return subscriptions[0]
+
+    const sub = subscriptions[0]
+    // 组装 plan 对象供前端使用（注意 getMySQLClient 自动转 camelCase）
+    return {
+      id: sub.id,
+      status: sub.status,
+      startDate: sub.startDate || sub.start_date,
+      endDate: sub.endDate || sub.end_date,
+      maxAvatars: sub.maxAvatars || sub.max_avatars,
+      canReceiveOrders: sub.canReceiveOrders || sub.can_receive_orders,
+      plan: {
+        id: sub.planId || sub.plan_id,
+        name: sub.planName || sub.plan_name,
+        price: sub.planPrice || sub.plan_price,
+        durationDays: sub.durationDays || sub.duration_days,
+        maxAvatars: sub.maxAvatars || sub.max_avatars,
+        canReceiveOrders: sub.canReceiveOrders || sub.can_receive_orders,
+      }
+    }
   }
 
-  async subscribe(userId: string, planId: string, paymentInfo?: {
-    payment_id?: string
-    payment_method?: string
-  }) {
+  /**
+   * 激活订阅（支付成功后调用）
+   */
+  async activateSubscription(userId: string, planId: string, paymentOrderId: string) {
     const db = getMySQLClient()
-    
-    const plans = await db.query('subscription_plans', {
-      id: planId
-    }) as any[]
-    
-    const plan = plans?.[0]
+
+    // 查找 plan（planId 即 subscription_plans.id，如 plan_basic）
+    const plan = await this.getPlanById(planId)
     if (!plan) {
       throw new Error('订阅计划不存在')
     }
-    
+
+    // getMySQLClient 自动转 camelCase
+    const durationDays = Number(plan.durationDays || plan.duration_days || 30)
+    const maxAvatars = Number(plan.maxAvatars || plan.max_avatars || 1)
+    const canReceiveOrders = Number(plan.canReceiveOrders || plan.can_receive_orders || 0)
+
+    // 检查是否已有活跃订阅
+    const existing = await db.query(
+      'SELECT * FROM user_subscriptions WHERE user_id = ? AND status = ? LIMIT 1',
+      [userId, 'active']
+    )
+
     const startDate = new Date()
     const endDate = new Date()
-    endDate.setDate(endDate.getDate() + plan.duration_days)
-    
+    endDate.setDate(endDate.getDate() + durationDays)
+
+    if (existing && existing.length > 0) {
+      // 更新现有订阅
+      await db.query(
+        'UPDATE user_subscriptions SET plan_id = ?, status = ?, start_date = ?, end_date = ?, max_avatars = ?, can_receive_orders = ?, updated_at = NOW() WHERE id = ?',
+        [plan.id, 'active', startDate, endDate, maxAvatars, canReceiveOrders, existing[0].id]
+      )
+      return { id: existing[0].id, planId: plan.id, endDate }
+    }
+
+    // 新建订阅
     const id = crypto.randomUUID()
-    await db.insert('user_subscriptions', {
-      id,
-      user_id: userId,
-      plan_id: planId,
-      status: 'active',
-      start_date: startDate,
-      end_date: endDate,
-      payment_id: paymentInfo?.payment_id || null,
-      payment_method: paymentInfo?.payment_method || null,
-      auto_renew: true,
-      created_at: new Date(),
-      updated_at: new Date()
-    })
-    
-    await db.updateWhere('users', { id: userId }, {
-      subscription_tier: plan.tier,
-      subscription_expires_at: endDate
-    })
-    
-    return { id, plan_id: planId, end_date: endDate }
+    await db.query(
+      'INSERT INTO user_subscriptions (id, user_id, plan_id, status, start_date, end_date, max_avatars, can_receive_orders, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+      [id, userId, plan.id, 'active', startDate, endDate, maxAvatars, canReceiveOrders]
+    )
+
+    return { id, planId: plan.id, endDate }
   }
 
   async cancelSubscription(userId: string) {
     const db = getMySQLClient()
-    
-    await db.updateWhere('user_subscriptions', { user_id: userId }, {
-      status: 'cancelled',
-      auto_renew: false,
-      updated_at: new Date()
-    })
-    
+    await db.query(
+      'UPDATE user_subscriptions SET status = ?, updated_at = NOW() WHERE user_id = ? AND status = ?',
+      ['cancelled', userId, 'active']
+    )
     return { success: true }
   }
 
@@ -89,20 +129,18 @@ export class SubscriptionService {
     expires_at?: Date
   }> {
     const subscription = await this.getUserSubscription(userId)
-    
+
     if (!subscription) {
       return { is_active: false }
     }
-    
+
     const now = new Date()
     const endDate = new Date(subscription.end_date)
-    
+
     return {
       is_active: subscription.status === 'active' && endDate > now,
-      plan: subscription.plan_id,
+      plan: subscription.plan?.plan_id,
       expires_at: endDate
     }
   }
 }
-
-import * as crypto from 'crypto'

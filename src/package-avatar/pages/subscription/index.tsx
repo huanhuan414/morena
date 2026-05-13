@@ -7,23 +7,26 @@ import { Crown, ArrowLeft, Star, Zap, Shield, Users, Check, Sparkles } from 'luc
 import './index.css'
 
 interface SubscriptionPlan {
-  id: string
-  plan_id: string
+  id: string          // 即 plan_id，如 plan_free, plan_basic
   name: string
   description: string
   price: number
-  duration_days: number
-  max_avatars: number
-  can_receive_orders: boolean
-  sort_order: number
+  durationDays: number
+  maxAvatars: number
+  canReceiveOrders: boolean
+  orderPriority: number
+  features: any
+  isActive: number
 }
 
 interface UserSubscription {
   id: string
   status: 'active' | 'expired' | 'cancelled'
   plan?: SubscriptionPlan
-  start_date: string
-  end_date: string
+  startDate: string
+  endDate: string
+  maxAvatars: number
+  canReceiveOrders: boolean
 }
 
 export default function SubscriptionPage() {
@@ -60,9 +63,14 @@ export default function SubscriptionPage() {
 
   const fetchUserSubscription = async () => {
     try {
+      const userStr = Taro.getStorageSync('userInfo')
+      const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
+      if (!userId) return
+
       const res = await Network.request({
-        url: '/api/subscription/user'
+        url: `/api/subscription/status?userId=${userId}`
       })
+      console.log('[订阅] 用户订阅状态:', res.data)
       if (res.data?.code === 200 && res.data.data) {
         setUserSubscription(res.data.data)
       }
@@ -104,12 +112,12 @@ export default function SubscriptionPage() {
         return
       }
 
-      // 创建支付订单（planId 用 plan_planId 字段，如 plan_basic）
+      // 创建支付订单（planId 用 id 字段，如 plan_basic）
       const res = await Network.request({
         url: '/api/subscription/order',
         method: 'POST',
         data: {
-          planId: plan.plan_id,
+          planId: plan.id,
           userId,
           openid
         }
@@ -153,7 +161,7 @@ export default function SubscriptionPage() {
   }
 
   const renderFeatures = (plan: SubscriptionPlan) => {
-    const maxAvatars = plan.max_avatars >= 999 ? '无限' : plan.max_avatars
+    const maxAvatars = plan.maxAvatars >= 999 ? '无限' : plan.maxAvatars
 
     return (
       <View className="sub-features">
@@ -163,7 +171,7 @@ export default function SubscriptionPage() {
             最多 {maxAvatars} 个分身
           </Text>
         </View>
-        {plan.can_receive_orders ? (
+        {plan.canReceiveOrders ? (
           <View className="sub-feature-item">
             <Zap size={18} color="#ffd700" />
             <Text className="sub-feature-text">可接单赚钱</Text>
@@ -244,8 +252,8 @@ export default function SubscriptionPage() {
               <Text className="sub-current-plan">{userSubscription.plan.name}</Text>
               <Text className="sub-current-date">
                 {userSubscription.status === 'active'
-                  ? `到期时间: ${new Date(userSubscription.end_date).toLocaleDateString('zh-CN')}`
-                  : `到期时间: ${new Date(userSubscription.end_date).toLocaleDateString('zh-CN')}`
+                  ? `到期时间: ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
+                  : `到期时间: ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
                 }
               </Text>
             </View>
@@ -297,7 +305,7 @@ export default function SubscriptionPage() {
           ) : (
             <View className="sub-plans-list">
               {plans.map((plan, index) => {
-                const isCurrentPlan = userSubscription?.plan?.plan_id === plan.plan_id
+                const isCurrentPlan = userSubscription?.plan?.id === plan.id
                 const isPurchasing = purchasing && selectedPlan?.id === plan.id
 
                 return (
@@ -321,7 +329,7 @@ export default function SubscriptionPage() {
                         <Text className="sub-card-amount">
                           {plan.price > 0 ? `¥${plan.price}` : '免费'}
                         </Text>
-                        <Text className="sub-card-period">/{plan.duration_days}天</Text>
+                        <Text className="sub-card-period">/{plan.durationDays}天</Text>
                       </View>
                     </View>
 

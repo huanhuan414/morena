@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Headers, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 
@@ -24,9 +24,10 @@ export class SubscriptionController {
 
   /**
    * 获取当前用户的订阅状态
+   * 前端通过 query 参数传递 userId
    */
   @Get('status')
-  async getStatus(@Headers('x-user-id') userId: string) {
+  async getStatus(@Query('userId') userId: string) {
     if (!userId) {
       return { code: 401, data: null, message: '未登录' }
     }
@@ -40,6 +41,7 @@ export class SubscriptionController {
 
   /**
    * 创建支付订单（微信支付）
+   * planId: 传 plan_id 字段（如 plan_basic），后端按 plan_id 查询
    */
   @Post('order')
   async createOrder(
@@ -47,13 +49,15 @@ export class SubscriptionController {
     @Body('userId') userId: string,
     @Body('openid') openid: string,
   ) {
+    console.log('[Subscription] 创建订单请求:', { planId, userId, openid })
+
     if (!planId || !userId || !openid) {
       return { code: 400, data: null, message: '缺少必要参数' }
     }
 
     try {
-      // 1. 查询套餐信息
-      const plan = await this.subscriptionService.getPlanById(planId)
+      // 1. 查询套餐信息（按 plan_id 查询，如 plan_basic）
+      const plan = await this.subscriptionService.getPlanByPlanId(planId)
       if (!plan) {
         return { code: 404, data: null, message: '套餐不存在' }
       }
