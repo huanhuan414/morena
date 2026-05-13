@@ -104,38 +104,41 @@ export default function ReferralCenterPage() {
 
   return (
     <View className="referral-page">
-      {/* 赛博朋克头部 */}
+      {/* 紫蓝渐变头部 */}
       <View className="referral-header" style={{ paddingTop: `${statusBarHeight + 10}px` }}>
         <View className="header-deco header-deco-1" />
         <View className="header-deco header-deco-2" />
-        <View className="header-deco header-deco-3" />
-        <View className="back-btn" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={22} color="#00ff88" />
+        <View className="header-nav">
+          <View className="back-btn" onClick={() => Taro.navigateBack()}>
+            <ChevronLeft size={22} color="#fff" />
+          </View>
+          <Text className="nav-title">推广中心</Text>
+          <View className="nav-placeholder" />
         </View>
-        <Text className="header-title">推广中心</Text>
-        <View className="header-placeholder" />
+        <View className="header-info">
+          <Text className="header-title">邀请好友，一起赚收益</Text>
+          <Text className="header-desc">每成功邀请一位好友注册并创建分身，双方各获30分钟免费托管时长</Text>
+        </View>
       </View>
 
       {/* 邀请码卡片 */}
       <View className="code-section">
         <View className="code-card">
-          <View className="code-card-glow" />
-          <View className="code-card-content">
+          <View className="code-card-inner">
             <View className="code-top">
-              <Zap size={20} color="#00ff88" />
+              <Zap size={18} color="#6366F1" />
               <Text className="code-label">我的专属邀请码</Text>
             </View>
             <View className="code-display">
               <Text className="code-text">{stats.referralCode || '加载中...'}</Text>
-              <View className="code-scan-line" />
             </View>
             <View className="code-actions">
               <Button className="copy-btn" onClick={handleCopyCode}>
-                <Copy size={16} color="#00ff88" />
+                <Copy size={16} color="#6366F1" />
                 <Text className="action-text">复制邀请码</Text>
               </Button>
               <Button className="share-btn" onClick={handleShare}>
-                <Share2 size={16} color="#bf00ff" />
+                <Share2 size={16} color="#fff" />
                 <Text className="share-text">分享给好友</Text>
               </Button>
             </View>
@@ -147,60 +150,67 @@ export default function ReferralCenterPage() {
       <View className="stats-section">
         <View className="stats-card">
           <View className="stat-item">
-            <Users size={20} color="#bf00ff" />
-            <Text className="stat-value stat-value-neon">{formatNum(stats.totalInvited)}</Text>
+            <View className="stat-icon-wrap stat-icon-purple">
+              <Users size={18} color="#6366F1" />
+            </View>
+            <Text className="stat-value">{formatNum(stats.totalInvited)}</Text>
             <Text className="stat-label">邀请好友</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
-            <TrendingUp size={20} color="#00ff88" />
-            <Text className="stat-value stat-value-green">¥{formatNum(stats.totalReward)}</Text>
+            <View className="stat-icon-wrap stat-icon-amber">
+              <TrendingUp size={18} color="#F59E0B" />
+            </View>
+            <Text className="stat-value stat-value-amber">¥{formatNum(stats.totalReward)}</Text>
             <Text className="stat-label">累计奖励</Text>
           </View>
           <View className="stat-divider" />
           <View className="stat-item">
-            <Zap size={20} color="#bf00ff" />
-            <Text className="stat-value stat-value-neon">{formatNum(stats.activeInvited)}</Text>
+            <View className="stat-icon-wrap stat-icon-green">
+              <Zap size={18} color="#10B981" />
+            </View>
+            <Text className="stat-value stat-value-green">{formatNum(stats.activeInvited)}</Text>
             <Text className="stat-label">活跃好友</Text>
           </View>
         </View>
       </View>
 
-      {/* 奖励规则说明 */}
-      <View className="rules-section">
+      {/* 邀请步骤 */}
+      <View className="steps-section">
         <View className="section-header-row">
           <View className="section-dot" />
-          <Text className="section-title">邀请奖励规则</Text>
+          <Text className="section-title">邀请步骤</Text>
         </View>
-        <View className="rules-card">
-          <View className="rule-item">
-            <View className="rule-step">
+        <View className="steps-card">
+          <View className="step-item">
+            <View className="step-num-wrap">
               <Text className="step-num">1</Text>
             </View>
-            <View className="rule-content">
-              <Text className="rule-title-text">分享邀请码</Text>
-              <Text className="rule-desc">将你的专属邀请码分享给好友</Text>
+            <View className="step-content">
+              <Text className="step-title">分享邀请码</Text>
+              <Text className="step-desc">将你的专属邀请码分享给好友</Text>
             </View>
+            <CircleCheck size={20} color="#6366F1" />
           </View>
-          <View className="rule-connector" />
-          <View className="rule-item">
-            <View className="rule-step">
+          <View className="step-item">
+            <View className="step-num-wrap">
               <Text className="step-num">2</Text>
             </View>
-            <View className="rule-content">
-              <Text className="rule-title-text">好友注册并创建分身</Text>
-              <Text className="rule-desc">新用户使用你的邀请码注册成功</Text>
+            <View className="step-content">
+              <Text className="step-title">好友注册并创建分身</Text>
+              <Text className="step-desc">新用户使用你的邀请码注册成功</Text>
             </View>
+            <CircleCheck size={20} color="#6366F1" />
           </View>
-          <View className="rule-connector" />
-          <View className="rule-item">
-            <View className="rule-step">
+          <View className="step-item">
+            <View className="step-num-wrap">
               <Text className="step-num">3</Text>
             </View>
-            <View className="rule-content">
-              <Text className="rule-title-text">双方各获30分钟托管时长</Text>
-              <Text className="rule-desc">邀请越多，收益越多</Text>
+            <View className="step-content">
+              <Text className="step-title">双方各获30分钟托管时长</Text>
+              <Text className="step-desc">邀请越多，收益越多</Text>
             </View>
+            <CircleCheck size={20} color="#10B981" />
           </View>
         </View>
       </View>
@@ -215,12 +225,11 @@ export default function ReferralCenterPage() {
         <ScrollView className="records-scroll" scrollY>
           {loading ? (
             <View className="loading-state">
-              <View className="loading-pulse" />
               <Text className="loading-text">加载中...</Text>
             </View>
           ) : records.length === 0 ? (
             <View className="empty-state">
-              <Users size={40} color="#475569" />
+              <Users size={40} color="#94A3B8" />
               <Text className="empty-text">还没有邀请好友</Text>
               <Text className="empty-hint">分享邀请码给好友，双方都能获得奖励</Text>
             </View>
@@ -247,7 +256,7 @@ export default function ReferralCenterPage() {
                     <View className="user-info">
                       <Text className="user-name">{record.invitee?.nickname || '新用户'}</Text>
                       <View className="user-time">
-                        <Clock size={12} color="#64748B" />
+                        <Clock size={12} color="#94A3B8" />
                         <Text className="invite-time">{record.created_at}</Text>
                       </View>
                     </View>
@@ -256,13 +265,8 @@ export default function ReferralCenterPage() {
                     <Text className={`reward-amount ${record.status === 'rewarded' ? 'completed' : 'pending'}`}>
                       +¥{formatNum(record.reward_amount || 0)}
                     </Text>
-                    <View className="reward-status-wrap">
-                      {record.status === 'rewarded' ? (
-                        <CircleCheck size={12} color="#00ff88" />
-                      ) : (
-                        <Clock size={12} color="#bf00ff" />
-                      )}
-                      <Text className={`reward-status ${record.status}`}>
+                    <View className={`status-tag ${record.status}`}>
+                      <Text className="status-text">
                         {record.status === 'rewarded' ? '已发放' : record.status === 'active' ? '已活跃' : '待激活'}
                       </Text>
                     </View>
