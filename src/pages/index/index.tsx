@@ -305,7 +305,7 @@ const Index: React.FC = () => {
           </View>
           <View className="header-right">
             <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/notifications/index' })}>
-              <Bell size={44} color="#FFFFFF" />
+              <Bell size={32} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View className="notification-badge">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -313,7 +313,7 @@ const Index: React.FC = () => {
               )}
             </View>
             <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
-              <Settings size={44} color="#FFFFFF" />
+              <Settings size={32} color="#FFFFFF" />
             </View>
           </View>
         </View>
