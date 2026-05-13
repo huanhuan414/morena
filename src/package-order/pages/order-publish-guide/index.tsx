@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import {
   PLATFORM_META_MAP,
   canonicalizePlatform,
@@ -12,7 +13,7 @@ import {
 } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { 
-  ChevronLeft, Copy, Check, 
+  ArrowLeft, Copy, Check, 
   FileText, Image as ImageIcon, Video,
   Send, Save, ChevronRight,
   MessageSquare, CircleAlert, LayoutPanelLeft
@@ -410,9 +411,26 @@ export default function OrderPublishGuide() {
     saveNext(0)
   }
 
+  const statusBarHeight = getStatusBarHeight()
+
   if (loading) {
     return (
       <View className="publish-guide-page">
+        <View className="guide-header" style={{ paddingTop: statusBarHeight + 'px' }}>
+          <View className="guide-header-deco">
+            <View className="guide-header-circle circle-a" />
+            <View className="guide-header-circle circle-b" />
+          </View>
+          <View className="guide-header-bar">
+            <View className="guide-back-btn" onClick={handleBack}>
+              <ArrowLeft size={20} color="#fff" />
+            </View>
+            <View className="guide-header-center">
+              <Text className="guide-header-title">发布引导</Text>
+            </View>
+            <View className="guide-header-placeholder" />
+          </View>
+        </View>
         <View className="loading-container">
           <View className="loading-spinner" />
           <Text className="loading-text">加载中...</Text>
@@ -423,13 +441,22 @@ export default function OrderPublishGuide() {
 
   return (
     <View className="publish-guide-page">
-      {/* 顶部导航 */}
-      <View className="guide-header">
-        <View className="header-back" onClick={handleBack}>
-          <ChevronLeft size={24} color="#1e293b" />
+      {/* 顶部自定义导航 */}
+      <View className="guide-header" style={{ paddingTop: statusBarHeight + 'px' }}>
+        <View className="guide-header-deco">
+          <View className="guide-header-circle circle-a" />
+          <View className="guide-header-circle circle-b" />
         </View>
-        <Text className="header-title">发布引导</Text>
-        <View className="header-right" />
+        <View className="guide-header-bar">
+          <View className="guide-back-btn" onClick={handleBack}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="guide-header-center">
+            <Text className="guide-header-title">发布引导</Text>
+          </View>
+          <View className="guide-header-placeholder" />
+        </View>
+        <Text className="guide-header-desc">按步骤发布内容到目标平台</Text>
       </View>
 
       <ScrollView className="guide-scroll" scrollY>

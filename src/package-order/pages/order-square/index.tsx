@@ -1,4 +1,4 @@
-import { useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
+import Taro, { useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -157,13 +157,12 @@ export default function OrderSquarePage() {
   const fetchOrders = async () => {
     try {
       const res = await Network.request({
-        url: '/api/order/open',
-        data: { page: 1, pageSize: 50 }
+        url: '/api/order/open?page=1&pageSize=50'
       })
 
       if (res.data?.code === 200) {
         const data = res.data?.data
-        const items = Array.isArray(data) ? data : (data?.items || [])
+        const items = Array.isArray(data) ? data : (data?.items || data?.list || [])
 
         if (items.length > 0) {
           const mapped = items.map((item: any) => ({
@@ -171,13 +170,13 @@ export default function OrderSquarePage() {
             title: item.title || '未命名订单',
             description: item.description || '',
             budget: Number(item.budget || 0),
-            platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : ''),
-            contentType: item.contentType || 'content',
+            platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : (item.platform || '')),
+            contentType: item.contentType || item.content_type || 'content',
             estimatedEarning: Number(item.budget || 0),
-            deliveryDays: 3,
-            requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : [],
-            publisher: { nickname: '发布方', avatar: '', rating: 5 },
-            createdAt: formatCreatedAt(item.createdAt)
+            deliveryDays: item.deliveryDays || item.delivery_days || 3,
+            requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : (Array.isArray(item.requiredSkills) ? item.requiredSkills : []),
+            publisher: { nickname: item.publisherName || item.publisher_nickname || '发布方', avatar: item.publisherAvatar || '', rating: item.publisherRating || 5 },
+            createdAt: formatCreatedAt(item.createdAt || item.created_at)
           })) as OrderItem[]
 
           const filtered = selectedPlatform === 'all'
@@ -221,14 +220,50 @@ export default function OrderSquarePage() {
       showToast({ title: '创建分身即可接单赚钱', icon: 'none' })
       return
     }
+    // 获取用户的活跃分身列表
+    try {
+      const userRes = await Network.request({ url: '/api/auth/me' })
+      const userId = userRes.data?.data?.id
+      if (!userId) {
+        showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      const avatarRes = await Network.request({ url: `/api/avatars?userId=${userId}&status=active` })
+      const avatars = avatarRes.data?.data || []
+      if (!Array.isArray(avatars) || avatars.length === 0) {
+        showToast({ title: '请先创建分身', icon: 'none' })
+        return
+      }
+      // 如果只有一个分身，直接接单
+      if (avatars.length === 1) {
+        doAcceptOrder(avatars[0].id, orderId)
+        return
+      }
+      // 多个分身时弹出选择
+      const avatarNames = avatars.map((a: any) => a.name || a.nickname || '未命名分身')
+      Taro.showActionSheet({
+        itemList: avatarNames,
+        success: (res) => {
+          doAcceptOrder(avatars[res.tapIndex].id, orderId)
+        }
+      })
+    } catch (error) {
+      console.error('接单失败:', error)
+      showToast({ title: '接单失败', icon: 'none' })
+    }
+  }
+
+  const doAcceptOrder = async (avatarId: string, orderId: string) => {
     try {
       const res = await Network.request({
-        url: `/api/order/${orderId}/accept`,
-        method: 'PUT'
+        url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}`,
+        method: 'POST'
       })
       if (res.data?.code === 200) {
         showToast({ title: '接单成功', icon: 'success' })
         fetchOrders()
+      } else {
+        showToast({ title: res.data?.message || '接单失败', icon: 'none' })
       }
     } catch (error) {
       console.error('接单失败:', error)

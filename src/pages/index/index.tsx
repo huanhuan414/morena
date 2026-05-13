@@ -13,7 +13,6 @@ const Index: React.FC = () => {
   const [userName, setUserName] = useState('用户')
   const [mindClones, setMindClones] = useState(0)
   const [userAvatar, setUserAvatar] = useState('')
-  const [workHours, setWorkHours] = useState(0)
   const [allHostingEnabled, setAllHostingEnabled] = useState(false)
   const [referralCode, setReferralCode] = useState('')
   const [invitedCount, setInvitedCount] = useState(0)
@@ -115,7 +114,6 @@ const Index: React.FC = () => {
         setMindClones(d.avatarCount || 0)
         setUserName(d.nickname || '用户')
         setUserAvatar(d.avatarUrl || '')
-        setWorkHours(d.totalWorkHours || 0)
         setAllHostingEnabled(d.allHostingEnabled || false)
         setReferralCode(d.referralCode || '')
         setInvitedCount(d.invitedCount || 0)
@@ -379,15 +377,12 @@ const Index: React.FC = () => {
             </View>
           )}
           <View className="stats-row">
-            <View className="stat-item" onClick={() => goToPage('/pages/mind-chat/index')}>
+            <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/avatar-manage/index')}>
               <View className="stat-icon-small" style={{ background: '#EEF2FF' }}>
                 <Users size={28} color="#6366F1" />
               </View>
               <Text className="stat-value-small" style={{ color: '#6366F1' }}>{mindClones}</Text>
               <Text className="stat-label-small">我的分身</Text>
-              <Text className="stat-hint" style={{ color: '#6366F1' }}>
-                {mindClones === 0 ? '立即创建' : workHours > 0 ? `已工作${workHours}h` : '管理分身'}
-              </Text>
             </View>
             <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
               <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>

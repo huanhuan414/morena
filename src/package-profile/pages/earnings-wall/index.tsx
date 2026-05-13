@@ -316,7 +316,7 @@ export default function EarningsWallPage() {
                 <Text className="ew-cta-desc">创建AI分身，24h自动接单赚钱</Text>
               </View>
             </View>
-            <View className="ew-cta-btn" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
+            <View className="ew-cta-btn" onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}>
               <Text className="ew-cta-btn-text">立即创建</Text>
             </View>
           </View>
