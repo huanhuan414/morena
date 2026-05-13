@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send, Gift, Zap } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Wallet, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -10,30 +10,26 @@ import './index.css'
 
 const Index: React.FC = () => {
   const [userName, setUserName] = useState('用户')
-  const [mindClones, setMindClones] = useState(0) // 分身数量
-  const [userAvatar, setUserAvatar] = useState('') // 用户真实头像
-  const [workHours, setWorkHours] = useState(0) // 分身工作时长
-  const [allHostingEnabled, setAllHostingEnabled] = useState(false) // 是否所有分身都已托管
-  const [referralCode, setReferralCode] = useState('') // 邀请码
-  const [invitedCount, setInvitedCount] = useState(0) // 邀请人数
+  const [mindClones, setMindClones] = useState(0)
+  const [userAvatar, setUserAvatar] = useState('')
+  const [workHours, setWorkHours] = useState(0)
+  const [allHostingEnabled, setAllHostingEnabled] = useState(false)
+  const [referralCode, setReferralCode] = useState('')
+  const [invitedCount, setInvitedCount] = useState(0)
+  const [totalEarnings, setTotalEarnings] = useState(0)
+  const [pendingOrders, setPendingOrders] = useState(0)
+  const [generatedContents, setGeneratedContents] = useState(0)
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
-  const [stats, setStats] = useState([
-    { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-    { label: '待接订单', value: '0', unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/package-order/pages/pending-order/index' },
-    { label: '生成内容', value: '0', unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/package-avatar/pages/generated-content/index' },
-    { label: '累计收益', value: '0', unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/package-profile/pages/earning-center/index' },
-  ])
 
-  const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
-  const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
+  const [showOrderModal, setShowOrderModal] = useState(false)
+  const [orderModalData, setOrderModalData] = useState<any>(null)
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
-  // 通知 hook
   const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
-    pollInterval: 10000 // 10 秒轮询
+    pollInterval: 10000
   })
 
-  // 获取待接订单通知（从分派记录中获取，只显示状态为 pending 的订单）
+  // 获取待接订单通知
   const fetchOrderNotifications = async () => {
     try {
       const res = await Network.request({
@@ -42,7 +38,6 @@ const Index: React.FC = () => {
       console.log('[首页] 获取待接订单:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        // 转换分派请求数据为通知格式，按 orderId 去重（同一订单可能有多个分身）
         const seen = new Set<string>()
         const orders = (res.data.data || []).filter((item: any) => {
           const oid = item.orderId
@@ -50,7 +45,6 @@ const Index: React.FC = () => {
           seen.add(oid)
           return true
         }).map((item: any) => {
-          // 处理平台信息
           let platforms = item.platforms
           if (typeof platforms === 'string') {
             try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
@@ -71,7 +65,6 @@ const Index: React.FC = () => {
           }
         })
         
-        // 如果有待接订单且弹窗未打开，自动显示第一个
         if (orders.length > 0 && !showOrderModal && !orderModalData) {
           setOrderModalData(orders[0])
           setShowOrderModal(true)
@@ -82,32 +75,20 @@ const Index: React.FC = () => {
     }
   }
 
-  // 将英文平台名转换为中文
   const getPlatformName = (platform: string): string => {
     const nameMap: Record<string, string> = {
-      'wechat': '微信',
-      'wechat_mp': '公众号',
-      'xiaohongshu': '小红书',
-      'douyin': '抖音',
-      'kuaishou': '快手',
-      'bilibili': 'B站',
-      'weibo': '微博',
-      'zhihu': '知乎',
+      'wechat': '微信', 'wechat_mp': '公众号', 'xiaohongshu': '小红书',
+      'douyin': '抖音', 'kuaishou': '快手', 'bilibili': 'B站',
+      'weibo': '微博', 'zhihu': '知乎',
     }
     return nameMap[platform] || platform
   }
 
-  // 根据平台返回颜色
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
-      '微信': '#07C160',
-      '公众号': '#07C160',
-      '小红书': '#FF2442',
-      '抖音': '#00F2EA',
-      '微博': '#FF8200',
-      '快手': '#FF4906',
-      'B站': '#FB7299',
-      '知乎': '#0084FF',
+      '微信': '#07C160', '公众号': '#07C160', '小红书': '#FF2442',
+      '抖音': '#00F2EA', '微博': '#FF8200', '快手': '#FF4906',
+      'B站': '#FB7299', '知乎': '#0084FF',
     }
     return colors[platform] || '#6366F1'
   }
@@ -115,42 +96,28 @@ const Index: React.FC = () => {
   // 获取统计数据
   const fetchStats = async () => {
     try {
-      // 调试：检查storage中的userInfo
-      const storageInfo: any = await Taro.getStorageInfo()
-      console.log('storage keys:', storageInfo.keys || [])
       const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
-      console.log('userInfo:', storedUserInfo?.data)
-      
-      // 检查是否已登录
       if (!storedUserInfo?.data?.id) {
         console.log('用户未登录，静默跳转到登录页')
         Taro.navigateTo({ url: '/pages/login/index' })
         return
       }
-      const userId = storedUserInfo.data.id
-      console.log('用户ID:', userId)
       
-      // 从用户统计接口获取所有分身的汇总数据（Network模块会自动添加userId）
-      const res = await Network.request({ 
-        url: '/api/user-stats/overview'
-      })
+      const res = await Network.request({ url: '/api/user-stats/overview' })
       console.log('统计数据:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        const statsData = res.data.data
-        setMindClones(statsData.avatarCount || 0)
-        setUserName(statsData.nickname || '用户')
-        setUserAvatar(statsData.avatarUrl || '')
-        setWorkHours(statsData.totalWorkHours || 0)
-        setAllHostingEnabled(statsData.allHostingEnabled || false)
-        setReferralCode(statsData.referralCode || '')
-        setInvitedCount(statsData.invitedCount || 0)
-        setStats([
-          { label: '我的分身', value: String(statsData.avatarCount || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
-          { label: '待接订单', value: String(statsData.pendingOrders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/package-order/pages/pending-order/index' },
-          { label: '生成内容', value: String(statsData.generatedContents || 0), unit: '篇', color: '#10B981', bg: '#ECFDF5', trend: '', path: '/package-avatar/pages/generated-content/index' },
-          { label: '累计收益', value: String(statsData.totalEarnings || 0), unit: '元', color: '#EC4899', bg: '#FDF2F8', trend: '', path: '/package-profile/pages/earning-center/index' },
-        ])
+        const d = res.data.data
+        setMindClones(d.avatarCount || 0)
+        setUserName(d.nickname || '用户')
+        setUserAvatar(d.avatarUrl || '')
+        setWorkHours(d.totalWorkHours || 0)
+        setAllHostingEnabled(d.allHostingEnabled || false)
+        setReferralCode(d.referralCode || '')
+        setInvitedCount(d.invitedCount || 0)
+        setTotalEarnings(Number(d.totalEarnings || 0))
+        setPendingOrders(d.pendingOrders || 0)
+        setGeneratedContents(d.generatedContents || 0)
       }
     } catch (err) {
       console.error('获取统计数据失败:', err)
@@ -160,37 +127,23 @@ const Index: React.FC = () => {
   // 实时动态
   const [activities, setActivities] = useState<any[]>([])
 
-  // 获取实时动态
   const fetchActivities = async () => {
     try {
       const res = await Network.request({ url: '/api/activities/recent' })
-      console.log('实时动态:', res.data)
       if (res.data?.code === 200 && res.data?.data) {
-        // 将API数据转换为组件期望的格式
-        const mappedActivities = res.data.data.map((item: any, index: number) => {
-          // 根据type映射图标
+        const mappedActivities = res.data.data.map((item: any) => {
           let ActivityIcon = Coins
-          let activityAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=user' + index
-          if (item.type === 'chat') {
-            ActivityIcon = Users
-          } else if (item.type === 'content') {
-            ActivityIcon = FileText
-          } else if (item.type === 'order') {
-            ActivityIcon = ShoppingBag
-          } else if (item.type === 'earning') {
-            ActivityIcon = Coins
-          }
-          
-          // 计算相对时间
-          const timeAgo = getTimeAgo(item.timestamp)
+          if (item.type === 'chat') ActivityIcon = Users
+          else if (item.type === 'content') ActivityIcon = FileText
+          else if (item.type === 'order') ActivityIcon = ShoppingBag
+          else if (item.type === 'earning') ActivityIcon = Coins
           
           return {
             name: item.title,
-            action: item.type === 'earning' ? '收益到账' : item.type === 'chat' ? '对话' : item.type === 'content' ? '内容' : '订单',
+            action: item.type === 'earning' ? '收益到账' : item.type === 'chat' ? '对话完成' : item.type === 'content' ? '内容生成' : '订单完成',
             desc: item.description,
             icon: ActivityIcon,
-            avatar: activityAvatar,
-            time: timeAgo,
+            time: getTimeAgo(item.timestamp),
             amount: item.type === 'earning' ? '+¥' + (Math.random() * 100 + 50).toFixed(2) : null,
             type: item.type === 'earning' ? 'coin' : item.type === 'order' ? 'order' : 'chat'
           }
@@ -202,59 +155,48 @@ const Index: React.FC = () => {
     }
   }
   
-  // 计算相对时间
   const getTimeAgo = (timestamp: string): string => {
-    const now = new Date()
-    const date = new Date(timestamp)
-    const diffMs = now.getTime() - date.getTime()
+    const diffMs = Date.now() - new Date(timestamp).getTime()
     const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 60) return diffMins <= 1 ? '刚刚' : diffMins + '分钟前'
     const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-    
-    if (diffMins < 60) return diffMins + '分钟前'
     if (diffHours < 24) return diffHours + '小时前'
-    return diffDays + '天前'
+    return Math.floor(diffMs / 86400000) + '天前'
   }
 
   useEffect(() => {
-    // 初始化加载数据 - 不阻塞页面渲染
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchActivities()
       fetchOrderNotifications()
-    }).catch(err => {
-      console.error('初始化数据加载失败:', err)
-    })
+    }).catch(err => console.error('初始化数据加载失败:', err))
   }, [])
 
-  // 页面重新显示时刷新数据（如从登录页返回）
   useDidShow(() => {
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchActivities()
       fetchOrderNotifications()
-    }).catch(err => {
-      console.error('刷新数据失败:', err)
-    })
+    }).catch(err => console.error('刷新数据失败:', err))
   })
 
-  // 快捷功能
-  const quickActions = [
-    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index' },
-    { label: '订单广场', icon: Grid2x2, color: '#F97316', bg: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)', path: '/package-order/pages/order-square/index' },
-    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index' },
-    { label: '技能中心', icon: Rocket, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-skill/pages/skills-square/index' },
-    { label: '素材库', icon: Library, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-avatar/pages/avatar-manage/index' },
-    { label: '自动分发', icon: Share2, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-order/pages/order-create/index' },
+  // 根据用户状态决定快捷功能 - 核心转化路径
+  const quickActions = mindClones === 0 ? [
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: '0元开始', tagColor: '#6366F1' },
+    { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: '高薪急单', tagColor: '#F59E0B' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
+    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
+    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: '每邀5元', tagColor: '#EC4899' },
+    { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
+  ] : [
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
+    { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: pendingOrders > 0 ? pendingOrders + '单待接' : '去接单', tagColor: '#F59E0B' },
+    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
+    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: '每邀5元', tagColor: '#EC4899' },
+    { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
   ]
 
-  // 从API获取实时动态
-
-  // 订单通知数据 - 已改为从API获取
-
-
-
-  // 根据时间生成问候语
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 6) return '夜深了'
@@ -266,6 +208,14 @@ const Index: React.FC = () => {
     return '夜深了'
   }
 
+  // 获取价值主张文案 - 根据用户状态动态调整
+  const getValueProp = () => {
+    if (mindClones === 0) return '创建AI分身，开始自动赚钱'
+    if (!allHostingEnabled) return '开启托管，让分身24h替你接单'
+    if (pendingOrders > 0) return `${pendingOrders}个新订单等你来接`
+    return '分身正在努力为你赚钱中'
+  }
+
   const goToPage = (path: string) => {
     if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
       Taro.switchTab({ url: path })
@@ -274,11 +224,9 @@ const Index: React.FC = () => {
     Taro.navigateTo({ url: path })
   }
 
-  // 处理订单弹窗 - 先接受订单再跳转到内容生成页面
   const handleOrderAccept = async () => {
     if (orderModalData?.id) {
       try {
-        // 获取当前分身ID，如果没有则查询用户的第一个分身
         let avatarIdToUse = currentAvatarId
         if (!avatarIdToUse || avatarIdToUse === 'undefined') {
           const avatarRes = await Network.request({ url: '/api/avatar' })
@@ -289,14 +237,11 @@ const Index: React.FC = () => {
               return
             }
             setAvatarId(avatarIdToUse)
-            console.log('[接单] 自动选择分身:', avatarIdToUse)
           } else {
             Taro.showToast({ title: '请先创建分身', icon: 'none' })
             return
           }
         }
-
-        // 先调用接受订单接口
         const res = await Network.request({
           url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderModalData.id}`,
           method: 'POST'
@@ -314,11 +259,8 @@ const Index: React.FC = () => {
     }
   }
 
-  const handleOrderDismiss = () => {
-    setShowOrderModal(false)
-  }
+  const handleOrderDismiss = () => { setShowOrderModal(false) }
 
-  // 一键开启所有分身托管
   const enableAllTrust = async () => {
     try {
       const res = await Network.request({
@@ -328,7 +270,7 @@ const Index: React.FC = () => {
       })
       if (res.data?.code === 200) {
         Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
-        fetchStats() // 刷新统计数据
+        fetchStats()
       } else {
         Taro.showToast({ title: res.data?.msg || '开启失败', icon: 'none' })
       }
@@ -352,10 +294,8 @@ const Index: React.FC = () => {
             <View className="header-info">
               <Text className="nickname">{getGreeting()}，{userName}</Text>
               <View className="subtitle-wrapper">
-                <View className="subtitle-dot" />
-                <Text className="subtitle">
-                  {mindClones > 0 ? `分身已工作 ${workHours}h` : '快创建你的第一个分身'}
-                </Text>
+                <Sparkles size={22} color="rgba(255,255,255,0.9)" />
+                <Text className="subtitle">{getValueProp()}</Text>
               </View>
             </View>
           </View>
@@ -368,7 +308,7 @@ const Index: React.FC = () => {
                 </View>
               )}
             </View>
-            <View className="icon-btn">
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
               <Settings size={44} color="#FFFFFF" />
             </View>
           </View>
@@ -377,26 +317,108 @@ const Index: React.FC = () => {
 
       {/* 主内容区 */}
       <ScrollView scrollY className="content" enhanced showScrollbar={false}>
-        {/* 统计卡片区 - 4个一行 */}
-        <View className="stats-section">
-          <View className="stats-row">
-            {stats.map((stat, idx) => (
-              <View key={stat.label} className="stat-item" style={{ animationDelay: `${idx * 0.1}s` }} onClick={() => goToPage(stat.path)}>
-                <View className="stat-icon-small" style={{ background: stat.bg }}>
-                  {stat.label === '我的分身' && <Users size={28} color={stat.color} />}
-                  {stat.label === '待接订单' && <ShoppingBag size={28} color={stat.color} />}
-                  {stat.label === '生成内容' && <FileText size={28} color={stat.color} />}
-                  {stat.label === '累计收益' && <Coins size={28} color={stat.color} />}
-                </View>
-                <Text className="stat-value-small" style={{ color: stat.color }}>{stat.value}{stat.unit}</Text>
-                <Text className="stat-label-small">{stat.label}</Text>
-                <Text className="stat-trend-small" style={{ color: stat.color }}>{stat.trend}</Text>
+
+        {/* 新用户引导：赚钱攻略（仅无分身时显示） */}
+        {mindClones === 0 && (
+          <View className="guide-section">
+            <View className="guide-header">
+              <View className="guide-header-left">
+                <Target size={28} color="#6366F1" />
+                <Text className="guide-title">3步开始赚钱</Text>
               </View>
-            ))}
+              <View className="guide-badge">新手必看</View>
+            </View>
+            <View className="guide-steps">
+              <View className="guide-step" onClick={() => goToPage('/package-avatar/pages/avatar-create/index')}>
+                <View className="step-number">1</View>
+                <View className="step-content">
+                  <Text className="step-title">创建AI分身</Text>
+                  <Text className="step-desc">打造你的数字分身，0成本起步</Text>
+                </View>
+                <ArrowRight size={28} color="#94A3B8" />
+              </View>
+              <View className="step-connector" />
+              <View className="guide-step" onClick={enableAllTrust}>
+                <View className="step-number">2</View>
+                <View className="step-content">
+                  <Text className="step-title">开启自动托管</Text>
+                  <Text className="step-desc">AI自动接单，24h不间断赚钱</Text>
+                </View>
+                <ArrowRight size={28} color="#94A3B8" />
+              </View>
+              <View className="step-connector" />
+              <View className="guide-step">
+                <View className="step-number step-number-done">3</View>
+                <View className="step-content">
+                  <Text className="step-title">坐享收益</Text>
+                  <Text className="step-desc">内容发布后自动结算，随时提现</Text>
+                </View>
+                <CircleDollarSign size={32} color="#10B981" />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* 核心数据区 - 根据用户状态展示不同重点 */}
+        <View className="stats-section">
+          {/* 有收益时突出显示 */}
+          {totalEarnings > 0 && (
+            <View className="earning-highlight" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+              <View className="earning-highlight-left">
+                <TrendingUp size={32} color="#10B981" />
+                <Text className="earning-highlight-label">累计收益</Text>
+              </View>
+              <View className="earning-highlight-right">
+                <Text className="earning-highlight-value">¥{totalEarnings.toFixed(2)}</Text>
+                <ChevronRight size={28} color="#10B981" />
+              </View>
+            </View>
+          )}
+          <View className="stats-row">
+            <View className="stat-item" onClick={() => goToPage('/pages/mind-chat/index')}>
+              <View className="stat-icon-small" style={{ background: '#EEF2FF' }}>
+                <Users size={28} color="#6366F1" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#6366F1' }}>{mindClones}</Text>
+              <Text className="stat-label-small">我的分身</Text>
+              <Text className="stat-hint" style={{ color: '#6366F1' }}>
+                {mindClones === 0 ? '立即创建' : workHours > 0 ? `已工作${workHours}h` : '管理分身'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
+              <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
+                <ShoppingBag size={28} color="#F59E0B" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#F59E0B' }}>{pendingOrders}</Text>
+              <Text className="stat-label-small">待接订单</Text>
+              <Text className="stat-hint" style={{ color: pendingOrders > 0 ? '#F59E0B' : '#94A3B8' }}>
+                {pendingOrders > 0 ? '去接单赚钱' : '暂无待接'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/generated-content/index')}>
+              <View className="stat-icon-small" style={{ background: '#ECFDF5' }}>
+                <FileText size={28} color="#10B981" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#10B981' }}>{generatedContents}</Text>
+              <Text className="stat-label-small">生成内容</Text>
+              <Text className="stat-hint" style={{ color: generatedContents > 0 ? '#10B981' : '#94A3B8' }}>
+                {generatedContents > 0 ? '去发布' : '暂无内容'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+              <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
+                <Coins size={28} color="#EC4899" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(0) : '0'}</Text>
+              <Text className="stat-label-small">累计收益</Text>
+              <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
+                {totalEarnings > 0 ? '去提现' : '开始赚取'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* 推广Banner - 三段逻辑：无分身→创建，有分身未托管→开启托管，已托管→邀请好友 */}
+        {/* 推广Banner - 根据用户阶段精准引导 */}
         <View
           className="banner"
           onClick={() => {
@@ -412,33 +434,38 @@ const Index: React.FC = () => {
           <View className="banner-bg" />
           <View className="banner-content">
             {mindClones === 0 ? (
-              // 无分身 - 创建第一个分身
               <>
-                <Text className="banner-title">创建你的第一个分身</Text>
-                <Text className="banner-desc">AI智能分身，自动接单赚收益</Text>
+                <View className="banner-tag">
+                  <Sparkles size={20} color="#FBBF24" />
+                  <Text className="banner-tag-text">0成本创业</Text>
+                </View>
+                <Text className="banner-title">创建AI分身 开始自动赚钱</Text>
+                <Text className="banner-desc">AI帮你接单+生成内容+自动发布，你只管收钱</Text>
                 <View className="banner-btn create">
                   <Plus size={28} color="#6366F1" />
-                  <Text className="banner-btn-text create">立即创建</Text>
+                  <Text className="banner-btn-text create">免费创建，立即赚钱</Text>
                 </View>
               </>
             ) : !allHostingEnabled ? (
-              // 有分身但未全部托管 - 开启托管
               <>
-                <Text className="banner-title">分身托管收益翻倍</Text>
-                <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
+                <View className="banner-tag">
+                  <Zap size={20} color="#FBBF24" />
+                  <Text className="banner-tag-text">收益翻倍</Text>
+                </View>
+                <Text className="banner-title">开启托管 让分身24h赚钱</Text>
+                <Text className="banner-desc">自动抢单+自动生成+自动发布，不错过任何收益</Text>
                 <View className="banner-btn">
-                  <Text className="banner-btn-text">立即开启</Text>
+                  <Text className="banner-btn-text">一键开启</Text>
                   <ChevronRight size={24} color="#6366F1" />
                 </View>
               </>
             ) : (
-              // 已托管 - 邀请好友注册
               <>
                 <View className="banner-referral-header">
-                  <Gift size={32} color="#F59E0B" />
-                  <Text className="banner-title-referral">邀请好友 赚取奖励</Text>
+                  <Gift size={32} color="#FBBF24" />
+                  <Text className="banner-title-referral">邀请好友 双方各赚5元</Text>
                 </View>
-                <Text className="banner-desc-referral">每邀请1位好友注册，双方各得 5 元奖励！已邀请 {invitedCount} 人</Text>
+                <Text className="banner-desc-referral">每邀请1位好友注册，双方各得5元奖励！已邀请 {invitedCount} 人</Text>
                 <View className="banner-referral-bottom">
                   <View className="referral-code-tag">
                     <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
@@ -464,38 +491,38 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 快捷功能 */}
+        {/* 快捷功能 - 每项附带利益点 */}
         <View className="section">
           <View className="section-header">
-            <Text className="section-title">快捷功能</Text>
+            <Text className="section-title">赚钱工具</Text>
             <View className="section-more">
               <Text className="section-more-text">全部功能</Text>
               <ChevronRight size={24} color="#9CA3AF" />
             </View>
           </View>
           <View className="quick-grid">
-            {quickActions.map((action, idx) => (
+            {quickActions.map((action) => (
               <View 
                 key={action.label} 
                 className="quick-item" 
                 onClick={() => goToPage(action.path)}
-                style={{ animationDelay: `${idx * 0.05}s` }}
               >
                 <View className="quick-icon" style={{ background: action.bg }}>
                   <action.icon size={40} color={action.color} />
                 </View>
                 <Text className="quick-label">{action.label}</Text>
+                <Text className="quick-tag" style={{ color: action.tagColor, background: action.tagColor + '15' }}>{action.tag}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* 实时动态 */}
+        {/* 实时动态 - 社交证明，激发行动 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">实时动态</Text>
+              <Text className="section-title">实时收益</Text>
             </View>
             <View className="live-indicator">
               <View className="live-dot" />
@@ -503,30 +530,36 @@ const Index: React.FC = () => {
             </View>
           </View>
           
-          {/* 横向滑动容器 */}
           <ScrollView scrollX className="activity-scroll-container" enhanced showScrollbar={false}>
             <View className="activity-scroll-track">
-              {activities.map((item, index) => (
+              {activities.length > 0 ? activities.map((item, index) => (
                 <View key={`${item.name}-${index}`} className="activity-card">
                   <View className="activity-card-header">
-                    <Image className="activity-avatar" src={item.avatar} />
+                    <View className="activity-icon-wrapper" style={{ background: item.type === 'coin' ? '#ECFDF5' : item.type === 'order' ? '#EEF2FF' : '#F5F3FF' }}>
+                      <item.icon size={28} color={item.type === 'coin' ? '#10B981' : item.type === 'order' ? '#6366F1' : '#8B5CF6'} />
+                    </View>
                     <View className="activity-time-badge">{item.time}</View>
-                  </View>
-                  <View className="activity-icon-wrapper" style={{ background: item.type === 'coin' ? '#ECFDF5' : item.type === 'order' ? '#EEF2FF' : '#F5F3FF' }}>
-                    <item.icon size={28} color={item.type === 'coin' ? '#10B981' : item.type === 'order' ? '#6366F1' : '#8B5CF6'} />
                   </View>
                   <View className="activity-card-content">
                     <Text className="activity-name">{item.name}</Text>
                     <Text className="activity-action">{item.action}</Text>
-                    <Text className="activity-desc">{item.desc}</Text>
                     {item.amount && (
                       <Text className="activity-amount" style={{ color: item.type === 'coin' ? '#10B981' : '#6366F1' }}>
                         {item.amount}
                       </Text>
                     )}
+                    {!item.amount && item.desc && (
+                      <Text className="activity-desc">{item.desc}</Text>
+                    )}
                   </View>
                 </View>
-              ))}
+              )) : (
+                <View className="activity-empty">
+                  <Eye size={40} color="#CBD5E1" />
+                  <Text className="activity-empty-text">其他用户正在赚钱中...</Text>
+                  <Text className="activity-empty-hint">创建分身即可开始</Text>
+                </View>
+              )}
             </View>
           </ScrollView>
         </View>
@@ -586,14 +619,12 @@ const Index: React.FC = () => {
                 <Text className="notification-modal-close-text">×</Text>
               </View>
             </View>
-            
             <View className="notification-modal-content">
               <Text className="notification-modal-text">{currentNotification.content}</Text>
               <Text className="notification-modal-time">
                 {new Date(currentNotification.createdAt).toLocaleString()}
               </Text>
             </View>
-            
             <View className="notification-modal-footer">
               <View className="notification-modal-btn" onClick={closeModal}>
                 <Text className="notification-modal-btn-text">我知道了</Text>
