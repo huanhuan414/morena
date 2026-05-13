@@ -139,8 +139,25 @@ export class OrderDispatchService {
        ORDER BY r.created_at DESC`, [userId])
     const requests = requestRows || []
 
+    // 批量获取所有相关分身的技能（从 avatar_skills 表）
+    const avatarIds = [...new Set(requests.map((r: any) => r.avatar_id).filter(Boolean))]
+    const skillsMap = new Map<string, string[]>()
+    if (avatarIds.length > 0) {
+      const skillRows = await db.query(
+        `SELECT s.avatar_id, s.skill_id FROM avatar_skills s WHERE s.avatar_id IN (?)`,
+        [avatarIds]
+      )
+      for (const sr of (skillRows || [])) {
+        const aid = sr.avatar_id
+        if (!skillsMap.has(aid)) skillsMap.set(aid, [])
+        skillsMap.get(aid)!.push(sr.skill_id)
+      }
+    }
+
     // 计算每个请求的匹配度
     return requests.map(req => {
+      // 注入 avatar_skills 表的技能数据
+      req._skillsFromTable = skillsMap.get(req.avatar_id) || []
       const { score, details } = this.calculateMatchScore(req, req)
       return {
         ...req,
@@ -160,7 +177,10 @@ export class OrderDispatchService {
     // 解析分身的 content_styles 和 niche_tags
     const avatarStyles: string[] = this.safeParseJson(avatar.content_styles || avatar.contentStyles, [])
     const avatarNiches: string[] = this.safeParseJson(avatar.niche_tags || avatar.nicheTags, [])
-    const avatarSkills: string[] = this.safeParseJson(avatar.skills, [])
+    // 优先使用 avatar_skills 表的技能数据，fallback 到 avatars.skills 字段
+    const avatarSkills: string[] = (avatar._skillsFromTable && avatar._skillsFromTable.length > 0)
+      ? avatar._skillsFromTable
+      : this.safeParseJson(avatar.skills, [])
 
     // 解析订单的 preferred_styles 和 industry_tags
     const orderStyles: string[] = this.safeParseJson(order.preferred_styles || order.preferredStyles, [])
@@ -220,13 +240,16 @@ export class OrderDispatchService {
     if (value === null || value === undefined) return fallback
     if (Array.isArray(value)) return value as T
     if (typeof value === 'object') {
-      // 如果期望数组但得到的是对象，返回 fallback
+      // 如果期望数组但得到的是对象（如 {}），返回 fallback
       if (Array.isArray(fallback) && !Array.isArray(value)) return fallback
       return value as T
     }
     if (typeof value === 'string') {
       try {
-        return JSON.parse(value) as T
+        const parsed = JSON.parse(value)
+        // 解析后再次校验：期望数组但解析结果不是数组（如 JSON.parse("{}") → {}），返回 fallback
+        if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback
+        return parsed as T
       } catch {
         return fallback
       }
@@ -403,10 +426,29 @@ async getExecutionProgress(orderId: string) {
       WHERE a.is_hosted = 1 AND a.status = 'active'`)
     
     const allAvatars = allAvatarRows || []
+
+    // 从 avatar_skills 表获取分身技能（不依赖 avatars.skills 字段，该字段可能为空对象{}）
+    const avatarIdsList = allAvatars.map(a => a.id || a.avatarId)
+    const avatarSkillsMap: Record<string, string[]> = {}
+    if (avatarIdsList.length > 0) {
+      const skillRows = await db.query(
+        `SELECT as2.avatar_id, as2.skill_id FROM avatar_skills as2 WHERE as2.avatar_id IN (?)`,
+        [avatarIdsList]
+      ) as any[]
+      for (const sr of skillRows) {
+        const aid = sr.avatarId || sr.avatar_id
+        if (!avatarSkillsMap[aid]) avatarSkillsMap[aid] = []
+        avatarSkillsMap[aid].push(sr.skillId || sr.skill_id)
+      }
+    }
     
     // 三维匹配排序：技能 + 风格 + 领域
     const scoredAvatars = allAvatars.map(avatar => {
-      const { score, details } = this.calculateMatchScore(avatar, order)
+      // 优先使用 avatar_skills 表的技能，fallback 到 avatars.skills 字段
+      const aid = avatar.id || avatar.avatarId
+      const skillsFromTable = avatarSkillsMap[aid] || []
+      const avatarWithSkills = { ...avatar, _skillsFromTable: skillsFromTable }
+      const { score, details } = this.calculateMatchScore(avatarWithSkills, order)
       return { ...avatar, matchScore: score, matchDetails: details }
     })
     scoredAvatars.sort((a, b) => b.matchScore - a.matchScore)
