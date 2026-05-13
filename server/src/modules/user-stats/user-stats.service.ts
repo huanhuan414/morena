@@ -147,17 +147,21 @@ export class UserStatsService {
       totalEarnings = cachedStats.totalEarnings || 0
     }
     
+    const allHostingEnabled = avatarCount > 0 && avatarList.every((a: any) => a.isHosted === 1 || a.hostingEnabled === 1)
+
     return {
       avatarCount,
       pendingOrders,
       generatedContents,
       totalEarnings,
+      allHostingEnabled,
       avatars: avatarList.map((a: any) => ({
         id: a.id,
         name: a.name,
         avatarUrl: a.avatar_url || '',
         hostingEnabled: a.hosting_enabled || 0,
         isHosted: a.is_hosted || 0,
+        
         serviceHours: a.service_hours || '24h',
         totalOrders: a.total_orders || 0,
         completedOrders: a.completed_orders || 0,
