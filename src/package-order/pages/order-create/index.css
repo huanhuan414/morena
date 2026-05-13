@@ -13,7 +13,6 @@
   z-index: 10;
 }
 
-/* 装饰圆圈 */
 .header-decoration {
   position: absolute;
   top: 0;
@@ -66,7 +65,6 @@
   justify-content: center;
 }
 
-/* 头部标题区 - 水平垂直居中 */
 .header-center {
   display: flex;
   flex-direction: column;
@@ -95,6 +93,141 @@
   height: calc(100vh - 260rpx);
 }
 
+/* ========== 3步价值引导 ========== */
+.value-guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28rpx 32rpx 20rpx;
+  gap: 0;
+}
+
+.guide-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.guide-step-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.25);
+}
+
+.guide-step-text {
+  font-size: 22rpx;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.guide-arrow {
+  width: 48rpx;
+  height: 2rpx;
+  background: linear-gradient(90deg, #C7D2FE, #8B5CF6);
+  margin: 0 16rpx;
+  position: relative;
+  top: -14rpx;
+}
+
+/* ========== 你将获得 - 动态产出预览 ========== */
+.outcome-preview {
+  background: #FFFFFF;
+  margin: 12rpx 24rpx 0;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.outcome-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.outcome-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.outcome-header-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.outcome-trust {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  background: #ECFDF5;
+  padding: 6rpx 14rpx;
+  border-radius: 20rpx;
+}
+
+.outcome-trust-text {
+  font-size: 20rpx;
+  color: #10B981;
+  font-weight: 600;
+}
+
+.outcome-items {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
+  border-radius: 20rpx;
+  padding: 24rpx 16rpx;
+}
+
+.outcome-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.outcome-num {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #6366F1;
+  line-height: 1.2;
+}
+
+.outcome-unit {
+  font-size: 22rpx;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+.outcome-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #E2E8F0;
+}
+
+.outcome-bonus {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 16rpx;
+  background: #FFFBEB;
+  padding: 12rpx 16rpx;
+  border-radius: 12rpx;
+}
+
+.outcome-bonus-text {
+  font-size: 22rpx;
+  color: #B45309;
+  font-weight: 500;
+}
+
 /* ========== 通用卡片区块 ========== */
 .section {
   background: #FFFFFF;
@@ -108,7 +241,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .section-title-row {
@@ -140,6 +273,28 @@
   font-size: 20rpx;
   color: #fff;
   font-weight: 600;
+}
+
+.section-hint {
+  font-size: 22rpx;
+  color: #94A3B8;
+}
+
+.title-dot.accent {
+  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+}
+
+/* ========== 字段提示 ========== */
+.field-hint {
+  display: block;
+  font-size: 22rpx;
+  color: #94A3B8;
+  margin-top: 12rpx;
+  line-height: 1.5;
+}
+
+.field-hint.mb-4 {
+  margin-bottom: 16rpx;
 }
 
 /* ========== 内容类型 ========== */
@@ -379,11 +534,29 @@
   word-break: break-all;
 }
 
+.desc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.ai-hint {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.ai-hint-text {
+  font-size: 20rpx;
+  color: #8B5CF6;
+  font-weight: 500;
+}
+
 .char-count {
-  text-align: right;
   font-size: 22rpx;
   color: #CBD5E1;
-  margin-top: 8rpx;
+  flex-shrink: 0;
 }
 
 .ai-button {
@@ -449,15 +622,6 @@
 .style-opt-text.active {
   color: #7C3AED;
   font-weight: 600;
-}
-
-.section-hint {
-  font-size: 22rpx;
-  color: #94A3B8;
-}
-
-.title-dot.accent {
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
 }
 
 /* ========== 领域偏好 ========== */
@@ -553,6 +717,15 @@
   text-align: center;
 }
 
+.counter-hint {
+  display: block;
+  text-align: center;
+  font-size: 20rpx;
+  color: #8B5CF6;
+  margin-top: 8rpx;
+  font-weight: 500;
+}
+
 /* ========== 价格卡片 ========== */
 .price-card {
   background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
@@ -614,6 +787,27 @@
   color: #F59E0B;
 }
 
+.price-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.price-value-item {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.price-value-text {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 /* ========== 底部提交栏 ========== */
 .submit-bar {
   position: fixed;
@@ -645,6 +839,12 @@
   font-size: 36rpx;
   font-weight: 700;
   color: #6366F1;
+}
+
+.submit-output-hint {
+  font-size: 20rpx;
+  color: #94A3B8;
+  margin-left: 4rpx;
 }
 
 .submit-button {

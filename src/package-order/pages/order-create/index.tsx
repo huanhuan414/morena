@@ -3,7 +3,11 @@ import Taro from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Check, ChevronRight, Loader, ChevronLeft, Users, Coins, Sparkles } from 'lucide-react-taro'
+import {
+  Send, Check, ChevronRight, Loader, ChevronLeft,
+  Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
+  Target, TrendingUp, Lightbulb
+} from 'lucide-react-taro'
 import { Network } from '@/network'
 import {
   PLATFORM_UI_ORDER,
@@ -15,9 +19,9 @@ import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
 import './index.css'
 
 const CONTENT_TYPES = [
-  { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现' },
-  { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划' },
+  { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作', output: '篇原创文案' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现', output: '篇图文笔记' },
+  { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划', output: '条短视频脚本' },
 ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
@@ -30,8 +34,8 @@ export default function OrderCreate() {
     description: '',
     contentType: 'text',
     platforms: [] as string[],
-    preferredStyle: '',      // 偏好内容风格
-    preferredNiche: '',      // 偏好行业领域
+    preferredStyle: '',
+    preferredNiche: '',
     optionalRequirements: {} as Record<string, string>,
     avatarCount: 1,
     quantityPerAvatar: 1,
@@ -57,6 +61,7 @@ export default function OrderCreate() {
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
   }
+  const totalOutput = form.quantityPerAvatar * form.avatarCount
 
   const handleAIGenerate = async () => {
     if (aiLoading) return
@@ -299,7 +304,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
   return (
     <View className="order-create-page">
-      {/* 顶部渐变头部 - 与首页风格统一 */}
+      {/* 顶部渐变头部 */}
       <View className="page-header">
         <View className="header-decoration">
           <View className="deco-circle circle-1" />
@@ -310,13 +315,73 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <ChevronLeft size={22} color="#fff" />
           </View>
           <View className="header-center">
-            <Text className="header-title">创建新任务</Text>
-            <Text className="header-desc">描述你的需求，AI 帮你匹配最合适的分身</Text>
+            <Text className="header-title">发布任务</Text>
+            <Text className="header-desc">AI分身帮你创作，省时省力出爆款</Text>
           </View>
         </View>
       </View>
 
       <ScrollView scrollY className="scroll-container">
+        {/* 核心价值引导 - 3步出结果 */}
+        <View className="value-guide">
+          <View className="guide-step">
+            <View className="guide-step-icon" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)' }}>
+              <Target size={14} color="#fff" />
+            </View>
+            <Text className="guide-step-text">描述需求</Text>
+          </View>
+          <View className="guide-arrow" />
+          <View className="guide-step">
+            <View className="guide-step-icon" style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+              <Zap size={14} color="#fff" />
+            </View>
+            <Text className="guide-step-text">AI匹配分身</Text>
+          </View>
+          <View className="guide-arrow" />
+          <View className="guide-step">
+            <View className="guide-step-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+              <TrendingUp size={14} color="#fff" />
+            </View>
+            <Text className="guide-step-text">收获内容</Text>
+          </View>
+        </View>
+
+        {/* 你将获得 - 动态产出预览 */}
+        <View className="outcome-preview">
+          <View className="outcome-header">
+            <View className="outcome-header-left">
+              <Sparkles size={16} color="#8B5CF6" />
+              <Text className="outcome-header-text">你将获得</Text>
+            </View>
+            <View className="outcome-trust">
+              <ShieldCheck size={12} color="#10B981" />
+              <Text className="outcome-trust-text">不满意可退款</Text>
+            </View>
+          </View>
+          <View className="outcome-items">
+            <View className="outcome-item">
+              <Text className="outcome-num">{totalOutput}</Text>
+              <Text className="outcome-unit">{selectedType?.output || '篇文案'}</Text>
+            </View>
+            <View className="outcome-divider" />
+            <View className="outcome-item">
+              <Text className="outcome-num">{form.platforms.length || '-'}</Text>
+              <Text className="outcome-unit">平台分发</Text>
+            </View>
+            <View className="outcome-divider" />
+            <View className="outcome-item">
+              <Text className="outcome-num">24h</Text>
+              <Text className="outcome-unit">内交付</Text>
+            </View>
+          </View>
+          {form.avatarCount > 1 && (
+            <View className="outcome-bonus">
+              <Lightbulb size={12} color="#F59E0B" />
+              <Text className="outcome-bonus-text">{form.avatarCount}个分身同时创作，风格多样化，覆盖更广</Text>
+            </View>
+          )}
+        </View>
+
         {/* 任务标题 */}
         <View className="section">
           <View className="section-header">
@@ -331,12 +396,13 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           <View className="input-wrapper">
             <Input
               className="title-input"
-              placeholder="简洁明确的任务主题"
+              placeholder="例：小红书美妆种草笔记推广"
               value={form.title}
               onInput={e => setForm(prev => ({ ...prev, title: e.detail.value }))}
               maxlength={50}
             />
           </View>
+          <Text className="field-hint">好的标题能帮AI更精准地匹配擅长该领域的分身</Text>
         </View>
 
         {/* 发布平台 */}
@@ -350,6 +416,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               <Text className="required-text">必填</Text>
             </View>
           </View>
+          <Text className="field-hint mb-4">选择几个平台，分身就会按各平台调性分别创作</Text>
           <View className="platform-grid">
             {PLATFORM_OPTIONS.map((config) => (
               <View
@@ -435,7 +502,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
         </View>
 
-        {/* 内容风格偏好 - 匹配分身 */}
+        {/* 内容风格偏好 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
@@ -506,7 +573,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               ) : (
                 <Sparkles size={12} color="#fff" />
               )}
-              <Text className="ai-text">AI 帮写</Text>
+              <Text className="ai-text">{aiLoading ? 'AI生成中...' : 'AI帮写'}</Text>
             </View>
           </View>
           <View className="textarea-wrapper">
@@ -519,18 +586,25 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
               maxlength={2000}
             />
           </View>
-          <Text className="char-count">{form.description.length}/2000</Text>
+          <View className="desc-footer">
+            <View className="ai-hint">
+              <Lightbulb size={12} color="#8B5CF6" />
+              <Text className="ai-hint-text">不知道怎么写？点击AI帮写，一键生成专业任务描述</Text>
+            </View>
+            <Text className="char-count">{form.description.length}/2000</Text>
+          </View>
         </View>
 
-        {/* 分身设置 */}
+        {/* 分身设置 - 增加价值说明 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
               <View className="title-dot" />
-              <Text className="section-title">分身设置</Text>
+              <Text className="section-title">分身数量</Text>
             </View>
             <Users size={16} color="#6366F1" />
           </View>
+          <Text className="field-hint mb-4">更多分身 = 更多风格 = 更大曝光，内容绝不撞车</Text>
           <View className="counter-row">
             <View className="counter-item">
               <Text className="counter-label">使用分身数</Text>
@@ -549,9 +623,10 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text>+</Text>
                 </View>
               </View>
+              <Text className="counter-hint">{form.avatarCount}个分身各显特色</Text>
             </View>
             <View className="counter-item">
-              <Text className="counter-label">每个分身产出</Text>
+              <Text className="counter-label">每分身产出</Text>
               <View className="counter-control">
                 <View
                   className="counter-btn minus"
@@ -567,11 +642,12 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   <Text>+</Text>
                 </View>
               </View>
+              <Text className="counter-hint">共{totalOutput}{selectedType?.output || '篇'}</Text>
             </View>
           </View>
         </View>
 
-        {/* 价格预览 */}
+        {/* 价格预览 - 重新设计 */}
         <View className="price-card">
           <View className="price-header">
             <Coins size={16} color="#F59E0B" />
@@ -592,6 +668,20 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             <Text className="price-label">预计总价</Text>
             <Text className="price-value">¥{totalPrice.total}</Text>
           </View>
+          <View className="price-value-row">
+            <View className="price-value-item">
+              <Clock size={12} color="rgba(255,255,255,0.5)" />
+              <Text className="price-value-text">24h内交付</Text>
+            </View>
+            <View className="price-value-item">
+              <ShieldCheck size={12} color="rgba(255,255,255,0.5)" />
+              <Text className="price-value-text">不满意退款</Text>
+            </View>
+            <View className="price-value-item">
+              <Zap size={12} color="rgba(255,255,255,0.5)" />
+              <Text className="price-value-text">AI智能匹配</Text>
+            </View>
+          </View>
         </View>
 
         {/* 底部间距 */}
@@ -603,6 +693,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         <View className="submit-info">
           <Text className="submit-total-label">合计</Text>
           <Text className="submit-total-value">¥{totalPrice.total}</Text>
+          <Text className="submit-output-hint">共{totalOutput}篇</Text>
         </View>
         <View
           className={`submit-button ${isSubmitting ? 'loading' : ''}`}
