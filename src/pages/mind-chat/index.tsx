@@ -291,7 +291,7 @@ const MindChat: React.FC = () => {
   return (
     <View className="mind-chat-page">
       {/* 顶部渐变背景 - 一体化设计 */}
-      <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 15}px` }}>
+      <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 25}px` }}>
         {/* 装饰元素 */}
         <View className="header-decoration">
           <View className="decoration-circle circle-1" />
