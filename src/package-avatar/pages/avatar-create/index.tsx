@@ -15,7 +15,6 @@ import {
   Film,
   Mic,
   Camera as CameraIcon,
-  Music,
   Hand,
   Eye,
   CircleDollarSign,
@@ -29,14 +28,11 @@ import './index.css'
 
 // 分身技能列表（来自技能广场）
 const AVATAR_SKILLS = [
-  { key: 'content_writing', name: '内容创作', desc: '文案撰写/短剧剧本', icon: PenTool, color: '#8B5CF6', earning: '2-5元/条' },
-  { key: 'video_gen', name: '视频生成', desc: '短视频/分镜脚本', icon: Film, color: '#3B82F6', earning: '3-8元/条' },
-  { key: 'image_gen', name: '图片生成', desc: 'AI绘画/海报设计', icon: CameraIcon, color: '#EC4899', earning: '2-6元/张' },
-  { key: 'audio_gen', name: '音频生成', desc: '配音/语音合成', icon: Mic, color: '#F59E0B', earning: '3-8元/条' },
-  { key: 'palm_reading', name: '看手相', desc: '手相面相解读', icon: Hand, color: '#8B5CF6', earning: '5-15元/次' },
-  { key: 'outfit_advice', name: '衣品改造', desc: '穿搭建议/风格推荐', icon: Eye, color: '#EC4899', earning: '3-10元/次' },
-  { key: 'music_rec', name: '音乐推荐', desc: 'BGM推荐/歌单定制', icon: Music, color: '#10B981', earning: '1-3元/次' },
-  { key: 'data_analysis', name: '数据分析', desc: '深度分析/趋势洞察', icon: Zap, color: '#F59E0B', earning: '5-20元/次' },
+  { key: 'content_writing', name: '图文爆款生成', desc: '小红书/抖音爆款图文', icon: PenTool, color: '#8B5CF6', earning: '2-5元/条' },
+  { key: 'image_gen', name: '图片生成', desc: 'AI绘画/海报设计', icon: CameraIcon, color: '#06B6D4', earning: '2-6元/张' },
+  { key: 'video_gen', name: '视频生成', desc: '短视频/分镜脚本', icon: Film, color: '#EC4899', earning: '3-8元/条' },
+  { key: 'palm_reading', name: '看手相', desc: '手相面相趣味解读', icon: Hand, color: '#10B981', earning: '5-15元/次' },
+  { key: 'fashion_advice', name: '衣品改造', desc: '穿搭建议/风格推荐', icon: Eye, color: '#F43F5E', earning: '3-10元/次' },
 ]
 
 // 创建分身的好处
