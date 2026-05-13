@@ -261,7 +261,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         total_price: totalPrice.total,
       }
 
-      console.log('创建订单请求:', { url: '/api/order', method: 'POST', data: orderData })
+      console.log('创建发单记录请求:', { url: '/api/order', method: 'POST', data: orderData })
 
       const res = await Network.request({
         url: '/api/order',
