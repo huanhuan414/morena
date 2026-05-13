@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
@@ -10,7 +10,6 @@ import './index.css'
 
 const Index: React.FC = () => {
   const [userName] = useState('用户')
-  const [translateX, setTranslateX] = useState(0)
   const [mindClones, setMindClones] = useState(0) // 分身数量
   const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
@@ -23,7 +22,6 @@ const Index: React.FC = () => {
 
   const [showOrderModal, setShowOrderModal] = useState(false) // 订单弹窗
   const [orderModalData, setOrderModalData] = useState<any>(null) // 订单数据
-  const scrollRef = useRef(0)
   const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
 
   // 通知 hook
@@ -244,27 +242,7 @@ const Index: React.FC = () => {
 
   // 订单通知数据 - 已改为从API获取
 
-  // 复制活动数据用于无缝滚动
-  const allActivities = [...activities, ...activities]
 
-  // 自动滚动效果 - 从右到左
-  useEffect(() => {
-    const cardWidth = 280 // 每个卡片宽度 + 间距
-    const totalWidth = activities.length * cardWidth
-    
-    const timer = setInterval(() => {
-      scrollRef.current -= 1
-      setTranslateX(scrollRef.current)
-      
-      // 当滚动到一半时，重置位置实现无缝循环
-      if (Math.abs(scrollRef.current) >= totalWidth) {
-        scrollRef.current = 0
-        setTranslateX(0)
-      }
-    }, 30)
-
-    return () => clearInterval(timer)
-  }, [activities.length])
 
   const goToPage = (path: string) => {
     if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
@@ -464,7 +442,7 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 实时动态 - 从右到左自动滚动轮播 */}
+        {/* 实时动态 */}
         <View className="section">
           <View className="section-header">
             <View className="section-title-row">
@@ -477,19 +455,10 @@ const Index: React.FC = () => {
             </View>
           </View>
           
-          {/* 自动滚动容器 */}
-          <View className="activity-carousel-container">
-            {/* 左渐变遮罩 */}
-            <View className="carousel-gradient carousel-gradient-left" />
-            {/* 右渐变遮罩 */}
-            <View className="carousel-gradient carousel-gradient-right" />
-            
-            {/* 滚动内容 - 从右到左滚动 */}
-            <View 
-              className="activity-carousel-track"
-              style={{ transform: `translateX(${translateX}rpx)` }}
-            >
-              {allActivities.map((item, index) => (
+          {/* 横向滑动容器 */}
+          <ScrollView scrollX className="activity-scroll-container" enhanced showScrollbar={false}>
+            <View className="activity-scroll-track">
+              {activities.map((item, index) => (
                 <View key={`${item.name}-${index}`} className="activity-card">
                   <View className="activity-card-header">
                     <Image className="activity-avatar" src={item.avatar} />
@@ -511,7 +480,7 @@ const Index: React.FC = () => {
                 </View>
               ))}
             </View>
-          </View>
+          </ScrollView>
         </View>
 
         {/* 底部留白 */}

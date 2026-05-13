@@ -429,45 +429,20 @@
   color: #EF4444;
 }
 
-/* 自动滚动轮播容器 */
-.activity-carousel-container {
-  position: relative;
+/* 横向滑动容器 */
+.activity-scroll-container {
   width: 100%;
-  height: 320rpx;
-  overflow: hidden;
+  white-space: nowrap;
   border-radius: 24rpx;
   background: #FFFFFF;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
-/* 左右渐变遮罩 */
-.carousel-gradient {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 60rpx;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.carousel-gradient-left {
-  left: 0;
-  background: linear-gradient(to right, #FFFFFF, transparent);
-}
-
-.carousel-gradient-right {
-  right: 0;
-  background: linear-gradient(to left, #FFFFFF, transparent);
-}
-
-/* 滚动轨道 */
-.activity-carousel-track {
-  display: flex;
+.activity-scroll-track {
+  display: inline-flex;
   align-items: center;
   gap: 20rpx;
-  padding: 20rpx 20rpx;
-  height: 100%;
-  will-change: transform;
+  padding: 20rpx;
 }
 
 /* 动态卡片 */
