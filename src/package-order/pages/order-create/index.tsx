@@ -320,7 +320,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           </View>
           <View className="records-btn" onClick={() => Taro.navigateTo({ url: '/package-order/pages/order-list/index' })}>
             <ClipboardList size={16} color="#fff" />
-            <Text className="records-btn-text">订单</Text>
+            <Text className="records-btn-text">发单记录</Text>
           </View>
         </View>
       </View>
