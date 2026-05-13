@@ -31,7 +31,7 @@ export class OrderDispatchService {
     }
 
     const db = getMySQLClient()
-    const rows = await db.query(`
+    const colRows = await db.query(`
       SELECT COLUMN_NAME
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
@@ -39,7 +39,7 @@ export class OrderDispatchService {
     `)
 
     this.avatarColumnsCache = new Set(
-      (rows || [])
+      (colRows || [])
         .map((row: any) => String(row.columnName || row.COLUMN_NAME || row.column_name || '').toLowerCase())
         .filter(Boolean)
     )
@@ -124,7 +124,7 @@ export class OrderDispatchService {
     const db = getMySQLClient()
     // 查询分派给当前用户分身的待接订单，关联订单表获取完整信息
     // 关键修复：用 INNER JOIN 确保只返回分身仍然存在的记录（LEFT JOIN 会导致已删分身仍显示）
-    const requests = await db.query(
+    const requestRows = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               o.title, o.description, o.content_type, o.platforms, o.budget,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
@@ -136,7 +136,8 @@ export class OrderDispatchService {
        INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
        INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'open', 'created', 'assigned', 'in_progress')
        WHERE r.user_id = ? AND r.status = 'pending'
-       ORDER BY r.created_at DESC`, [userId]) as any[]
+       ORDER BY r.created_at DESC`, [userId])
+    const requests = requestRows || []
 
     // 计算每个请求的匹配度
     return requests.map(req => {
@@ -218,7 +219,11 @@ export class OrderDispatchService {
   private safeParseJson<T>(value: any, fallback: T): T {
     if (value === null || value === undefined) return fallback
     if (Array.isArray(value)) return value as T
-    if (typeof value === 'object') return value as T
+    if (typeof value === 'object') {
+      // 如果期望数组但得到的是对象，返回 fallback
+      if (Array.isArray(fallback) && !Array.isArray(value)) return fallback
+      return value as T
+    }
     if (typeof value === 'string') {
       try {
         return JSON.parse(value) as T
@@ -242,14 +247,14 @@ export class OrderDispatchService {
       sql += ` LIMIT ${parseInt(String(limit)) * 3}`  // 取3倍数量用于匹配筛选
     }
     
-    const result = await db.query(sql)
-    const avatars = Array.isArray(result) ? result : (result?.data || [])
+    const resultRows = await db.query(sql)
+    const avatars = resultRows || []
 
     // 如果有订单ID，尝试获取订单信息进行匹配排序
     if (orderId) {
       try {
-        const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
-        const order = orders?.[0]
+        const orderRows2 = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+        const order = orderRows2?.[0]
         
         if (order) {
           // 计算每个分身的匹配分数
@@ -379,8 +384,8 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     
     // 查询订单信息
-    const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
-    const order = orders[0]
+    const orderRows = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    const order = orderRows?.[0]
     
     if (!order) {
       return { count: 0, avatarIds: [], smsSentCount: 0 }
@@ -391,12 +396,13 @@ async getExecutionProgress(orderId: string) {
     
     // 查询所有开启托管的活跃分身，并关联用户表获取手机号
     // 关键修复：确保 a.status = 'active' 过滤已删除/训练中分身
-    const hostedWhereClause = await this.buildHostedWhereClause('a')
-    const allAvatars = await db.query(`
+    const allAvatarRows = await db.query(`
       SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
-      WHERE ${hostedWhereClause} AND a.status = 'active'`) as any[]
+      WHERE a.is_hosted = 1 AND a.status = 'active'`)
+    
+    const allAvatars = allAvatarRows || []
     
     // 三维匹配排序：技能 + 风格 + 领域
     const scoredAvatars = allAvatars.map(avatar => {
@@ -499,35 +505,35 @@ async getExecutionProgress(orderId: string) {
 
     // 尝试从 order_dispatch_requests 查找 pending 的分派记录
     if (!avatarId || avatarId === 'undefined') {
-      const requests = await db.query(`
+      const acceptRows1 = await db.query(`
         SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r 
         LEFT JOIN orders o ON r.order_id = o.id 
         WHERE r.order_id = ? AND r.status = 'pending' 
         LIMIT 1`, 
         [orderId]
-      ) as any[]
-      request = requests?.[0]
+      )
+      request = acceptRows1?.[0]
     } else {
-      const requests = await db.query(`
+      const acceptRows2 = await db.query(`
         SELECT r.*, o.title as order_title, o.user_id as owner_user_id, o.description, o.platforms, o.budget, o.expected_quantity, o.quantity_per_avatar, o.target_audience
         FROM order_dispatch_requests r 
         LEFT JOIN orders o ON r.order_id = o.id 
         WHERE r.avatar_id = ? AND r.order_id = ? AND r.status = 'pending'`, 
         [avatarId, orderId]
-      ) as any[]
-      request = requests?.[0]
+      )
+      request = acceptRows2?.[0]
     }
 
     // 如果没有分派记录，尝试直接从 orders 表查找可接单的订单，自动创建分派记录
     if (!request) {
       console.log(`[acceptOrder] 无分派记录，尝试直接从 orders 查找: orderId=${orderId}, avatarId=${avatarId}`)
-      const orders = await db.query(`
+      const acceptOrderRows = await db.query(`
         SELECT id, title, user_id as owner_user_id, description, platforms, budget, expected_quantity, quantity_per_avatar, target_audience, status
         FROM orders WHERE id = ?`, 
         [orderId]
-      ) as any[]
-      const order = orders?.[0]
+      )
+      const order = acceptOrderRows?.[0]
       
       if (!order) {
         throw new Error('订单不存在')
@@ -580,7 +586,8 @@ async getExecutionProgress(orderId: string) {
 
     // 验证分身仍然存在且活跃（防止已删除分身接单）
     if (actualAvatarId) {
-      const avatarCheck = await db.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId]) as any[]
+      const avatarCheckRows = await db.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId])
+      const avatarCheck = avatarCheckRows || []
       if (avatarCheck.length === 0 || avatarCheck[0].status !== 'active') {
         throw new Error('分身不存在或已失效，无法接单')
       }
@@ -636,17 +643,17 @@ async getExecutionProgress(orderId: string) {
     const maxAttempts = 5
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const rows = await db.query(
+      const waitRows = await db.query(
         `SELECT id, order_id, avatar_id
          FROM content_generation_requests
          WHERE order_id = ? AND avatar_id = ?
          ORDER BY created_at DESC
          LIMIT 1`,
         [orderId, avatarId]
-      ) as any[]
+      )
 
-      if (rows?.[0]) {
-        return rows[0]
+      if (waitRows?.[0]) {
+        return waitRows[0]
       }
 
       await new Promise((resolve) => setTimeout(resolve, 150))
@@ -662,11 +669,11 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     
     // 查找分派记录
-    const requests = await db.query(
+    const declineRows = await db.query(
       'SELECT * FROM order_dispatch_requests WHERE id = ?',
       [dispatchId]
-    ) as any[]
-    const request = requests?.[0]
+    )
+    const request = declineRows?.[0]
     
     if (!request) {
       throw new Error('分派记录不存在')
@@ -706,7 +713,7 @@ async getExecutionProgress(orderId: string) {
 
       if (avatarId) {
         try {
-          const [avatarRows] = await db.query(
+          const avatarRows = await db.query(
             'SELECT name, personality, content_styles, niche_tags FROM avatars WHERE id = ? AND status = \'active\'',
             [avatarId]
           ) as [any[], any]
@@ -719,7 +726,7 @@ async getExecutionProgress(orderId: string) {
           }
 
           // 获取分身技能
-          const [skillRows] = await db.query(
+          const skillRows = await db.query(
             'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
             [avatarId]
           ) as [any[], any]
@@ -771,8 +778,8 @@ async getExecutionProgress(orderId: string) {
    */
   private async getOrderById(orderId: string): Promise<any | null> {
     const db = getMySQLClient()
-    const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
-    return orders?.[0] || null
+    const orderRows3 = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    return orderRows3?.[0] || null
   }
 
   /**
@@ -797,18 +804,18 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     
     // 先确认分身仍然存在
-    const avatarCheck = await db.query('SELECT id FROM avatars WHERE id = ? AND status = \'active\'', [avatarId]) as any[]
-    if (avatarCheck.length === 0) return []
+    const avatarCheckRows2 = await db.query('SELECT id FROM avatars WHERE id = ? AND status = \'active\'', [avatarId])
+    if (!avatarCheckRows2 || avatarCheckRows2.length === 0) return []
     
-    const results = await db.query(`
+    const acceptedRows = await db.query(`
       SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at
       FROM order_dispatch_requests r
       INNER JOIN orders o ON r.order_id = o.id
       WHERE r.avatar_id = ? AND r.status = 'accepted'
       ORDER BY r.updated_at DESC
-    `, [avatarId]) as any[]
+    `, [avatarId])
     
-    return results
+    return acceptedRows || []
   }
 
   /**
@@ -817,16 +824,16 @@ async getExecutionProgress(orderId: string) {
   async getUserAcceptedOrders(userId: string) {
     const db = getMySQLClient()
     
-    const results = await db.query(`
+    const userAcceptedRows = await db.query(`
       SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at, a.name as avatar_name
       FROM order_dispatch_requests r
       INNER JOIN orders o ON r.order_id = o.id
       INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
       WHERE r.user_id = ? AND r.status = 'accepted'
       ORDER BY r.updated_at DESC
-    `, [userId]) as any[]
+    `, [userId])
     
-    return results
+    return userAcceptedRows || []
   }
 
   /**
@@ -835,13 +842,13 @@ async getExecutionProgress(orderId: string) {
   async hasAcceptedRequest(orderId: string): Promise<boolean> {
     const db = getMySQLClient()
     
-    const requests = await db.query(`
+    const countRows = await db.query(`
       SELECT COUNT(*) as count 
       FROM order_dispatch_requests 
       WHERE order_id = ? AND status = 'accepted'
-    `, [orderId]) as any[]
+    `, [orderId])
     
-    return requests[0]?.count > 0
+    return (countRows?.[0]?.count || 0) > 0
   }
 
   /**
@@ -850,14 +857,14 @@ async getExecutionProgress(orderId: string) {
   async getOrderAcceptors(orderId: string) {
     const db = getMySQLClient()
     
-    const results = await db.query(`
+    const acceptorRows = await db.query(`
       SELECT a.*, r.id as dispatch_request_id
       FROM order_dispatch_requests r
       INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
       WHERE r.order_id = ? AND r.status = 'accepted'
-    `, [orderId]) as any[]
+    `, [orderId])
     
-    return results
+    return acceptorRows || []
   }
 
   /**
@@ -867,8 +874,8 @@ async getExecutionProgress(orderId: string) {
     const db = getMySQLClient()
     
     // 查询订单信息
-    const orders = await db.query('SELECT * FROM orders WHERE id = ?', [orderId]) as any[]
-    const order = orders[0]
+    const notifyOrderRows = await db.query('SELECT * FROM orders WHERE id = ?', [orderId])
+    const order = notifyOrderRows?.[0]
     
     if (!order) {
       throw new Error('订单不存在')
@@ -880,12 +887,12 @@ async getExecutionProgress(orderId: string) {
     // 为每个分身创建通知并发送短信
     for (const avatarId of avatarIds) {
       // 查询分身信息，并关联用户表获取手机号
-      const avatars = await db.query(`
+      const notifyAvatarRows = await db.query(`
         SELECT a.*, u.phone AS user_phone 
         FROM avatars a 
         LEFT JOIN users u ON a.user_id = u.id 
-        WHERE a.id = ? AND a.status = 'active'`, [avatarId]) as any[]
-      const avatar = avatars[0]
+        WHERE a.id = ? AND a.status = 'active'`, [avatarId])
+      const avatar = notifyAvatarRows?.[0]
       
       if (!avatar) continue
       
