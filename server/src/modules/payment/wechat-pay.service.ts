@@ -155,33 +155,44 @@ export class WechatPayService {
         },
       });
 
-      this.logger.log(`微信统一下单成功: ${JSON.stringify(result)}`);
+      // wechatpay-node-v3 SDK 成功时直接返回支付参数在 result 顶层：
+      // { status: 200, appId, timeStamp, nonceStr, package, signType, paySign }
+      // 失败时: { status: 400/500, errRaw: {...} }
+      this.logger.log(`微信统一下单响应: status=${result.status}, appId=${result.appId ? '有' : '无'}, paySign=${result.paySign ? '有' : '无'}`);
 
-      // SDK返回格式: { status: 200, data: { prepay_id: '...' } } 或 { prepay_id: '...' }
-      const prepayId = result.prepay_id || result.data?.prepay_id;
-      if (!prepayId) {
-        // 如果data本身就是签名后的支付参数(包含appId/paySign等)，说明SDK已经自动处理了
-        if (result.data?.appId && result.data?.paySign) {
-          this.logger.log('SDK已自动生成支付参数，直接返回');
-          return {
-            orderId,
-            outTradeNo,
-            prepayId: result.data.package?.replace('prepay_id=', '') || '',
-            ...result.data,
-          };
-        }
-        throw new Error(`微信下单失败: 未获取到prepay_id, result=${JSON.stringify(result)}`);
+      // 成功：SDK已自动签名，直接返回完整支付参数
+      if (result.status === 200 && result.appId && result.paySign && result.package) {
+        this.logger.log('微信统一下单成功，SDK已自动生成支付参数');
+        const packageStr = result.package as string; // 格式: "prepay_id=wx..."
+        const extractedPrepayId = packageStr.replace('prepay_id=', '');
+        return {
+          orderId,
+          outTradeNo,
+          prepayId: extractedPrepayId,
+          appId: result.appId,
+          timeStamp: result.timeStamp,
+          nonceStr: result.nonceStr,
+          packageValue: packageStr,
+          signType: result.signType,
+          paySign: result.paySign,
+        };
       }
 
-      // 3. 生成小程序支付参数
-      const payParams = this.generateMiniProgramPayParams(prepayId);
+      // 只返回 prepay_id 的情况（较老版本SDK）
+      const prepayId = result.prepay_id || result.data?.prepay_id;
+      if (prepayId) {
+        const payParams = this.generateMiniProgramPayParams(prepayId);
+        return {
+          orderId,
+          outTradeNo,
+          prepayId,
+          ...payParams,
+        };
+      }
 
-      return {
-        orderId,
-        outTradeNo,
-        prepayId,
-        ...payParams,
-      };
+      // 都不匹配，抛出详细错误
+      this.logger.error(`未识别的SDK响应格式: status=${result.status}, keys=${Object.keys(result).join(',')}, body=${JSON.stringify(result).substring(0, 500)}`);
+      throw new Error(`微信下单响应格式异常，无法提取支付参数`);
     } catch (error) {
       this.logger.error(`微信统一下单失败: ${error.message}`, error.stack);
       const db2 = getMySQLClient();
