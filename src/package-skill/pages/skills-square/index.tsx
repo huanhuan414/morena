@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, CircleCheck, Plus, Coins, Users, Star } from 'lucide-react-taro'
+import { ArrowLeft, CircleCheckBig, Plus, Sparkles, TrendingUp, Zap, Star, Users, Coins, ChevronRight } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
@@ -23,6 +23,31 @@ interface AvatarSkill {
   skillName: string
   category: string
   icon: string
+}
+
+const SKILL_ICON_MAP: Record<string, { bg: string; color: string; Icon: typeof Sparkles }> = {
+  content: { bg: 'linear-gradient(135deg, #8B5CF6, #7C3AED)', color: '#fff', Icon: Sparkles },
+  image: { bg: 'linear-gradient(135deg, #06B6D4, #0891B2)', color: '#fff', Icon: Zap },
+  video: { bg: 'linear-gradient(135deg, #EC4899, #DB2777)', color: '#fff', Icon: TrendingUp },
+  life: { bg: 'linear-gradient(135deg, #F97316, #EA580C)', color: '#fff', Icon: Coins },
+  audio: { bg: 'linear-gradient(135deg, #10B981, #059669)', color: '#fff', Icon: Star },
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  content: '内容创作',
+  video: '视频制作',
+  image: '图片生成',
+  audio: '音频处理',
+  music: '音乐推荐',
+  life: '生活服务',
+}
+
+const EARNING_MAP: Record<string, string> = {
+  content: '¥3-15/单',
+  image: '¥2-10/单',
+  video: '¥5-30/单',
+  life: '¥2-8/单',
+  audio: '¥3-12/单',
 }
 
 export default function SkillsSquare() {
@@ -100,30 +125,6 @@ export default function SkillsSquare() {
     }
   }
 
-  const getCategoryLabel = (category: string) => {
-    const map: Record<string, string> = {
-      content: '内容创作',
-      video: '视频制作',
-      image: '图片生成',
-      audio: '音频处理',
-      music: '音乐推荐',
-      life: '生活服务',
-    }
-    return map[category] || '其他'
-  }
-
-  const getCategoryColor = (category: string) => {
-    const map: Record<string, string> = {
-      content: '#8B5CF6',
-      video: '#EC4899',
-      image: '#06B6D4',
-      audio: '#F97316',
-      music: '#10B981',
-      life: '#EF4444',
-    }
-    return map[category] || '#6B7280'
-  }
-
   const formatCount = (n: number) => {
     if (n >= 10000) return (n / 10000).toFixed(1) + '万'
     if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
@@ -132,147 +133,212 @@ export default function SkillsSquare() {
 
   const isAdded = (skillId: string) => avatarSkills.includes(skillId)
 
+  const getIconConfig = (category: string) => SKILL_ICON_MAP[category] || SKILL_ICON_MAP.content
+
   return (
     <View className="skills-page">
-      {/* 顶部紫蓝渐变头部 */}
-      <View className="skills-header" style={{ paddingTop: `${statusBarHeight + 15}px` }}>
+      {/* 顶部紫蓝渐变头部 - 与首页完全一致 */}
+      <View className="skills-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
         <View className="skills-header-bg" />
+        {/* 装饰圆 */}
+        <View className="skills-deco-circle skills-deco-1" />
+        <View className="skills-deco-circle skills-deco-2" />
         <View className="skills-header-content">
-          <View className="skills-header-left" onClick={() => Taro.navigateBack()}>
+          <View className="skills-back-btn" onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="skills-header-center">
-            <Text className="skills-header-title block">技能广场</Text>
-            <Text className="skills-header-sub block">为分身选择技能，开启自动接单</Text>
+            <Text className="block skills-header-title">技能广场</Text>
+            <Text className="block skills-header-sub">为分身装配技能，自动接单赚钱</Text>
           </View>
           <View className="skills-header-right" />
         </View>
       </View>
 
       <ScrollView scrollY className="skills-body">
-        {/* 价值引导卡 */}
-        <View className="skills-value-card">
-          <View className="skills-value-items">
-            <View className="skills-value-item">
-              <View className="skills-value-icon-wrap skills-value-icon-1">
-                <Coins size={18} color="#8B5CF6" />
-              </View>
-              <Text className="block skills-value-text">添加技能</Text>
-              <Text className="block skills-value-desc">接单赚钱</Text>
+        {/* 价值引导 - 与首页新手攻略同风格 */}
+        <View className="skills-guide-card">
+          <View className="skills-guide-header">
+            <View className="skills-guide-header-left">
+              <View className="skills-title-dot" />
+              <Text className="block skills-guide-title">为什么要添加技能</Text>
             </View>
-            <View className="skills-value-divider" />
-            <View className="skills-value-item">
-              <View className="skills-value-icon-wrap skills-value-icon-2">
-                <Star size={18} color="#6366F1" />
-              </View>
-              <Text className="block skills-value-text">技能越多</Text>
-              <Text className="block skills-value-desc">订单越多</Text>
+            <View className="skills-guide-badge">
+              <Text className="block skills-guide-badge-text">收益攻略</Text>
             </View>
-            <View className="skills-value-divider" />
-            <View className="skills-value-item">
-              <View className="skills-value-icon-wrap skills-value-icon-3">
-                <Users size={18} color="#4F46E5" />
+          </View>
+          <View className="skills-guide-steps">
+            <View className="skills-guide-step">
+              <View className="skills-step-num">
+                <Text className="block skills-step-num-text">1</Text>
               </View>
-              <Text className="block skills-value-text">精准匹配</Text>
-              <Text className="block skills-value-desc">高效交付</Text>
+              <View className="skills-step-content">
+                <Text className="block skills-step-title">添加技能</Text>
+                <Text className="block skills-step-desc">每个技能代表一种接单能力</Text>
+              </View>
+            </View>
+            <View className="skills-step-connector" />
+            <View className="skills-guide-step">
+              <View className="skills-step-num skills-step-num-2">
+                <Text className="block skills-step-num-text">2</Text>
+              </View>
+              <View className="skills-step-content">
+                <Text className="block skills-step-title">开启托管</Text>
+                <Text className="block skills-step-desc">分身24h自动接单，无需操作</Text>
+              </View>
+            </View>
+            <View className="skills-step-connector" />
+            <View className="skills-guide-step">
+              <View className="skills-step-num skills-step-num-3">
+                <Text className="block skills-step-num-text">3</Text>
+              </View>
+              <View className="skills-step-content">
+                <Text className="block skills-step-title">持续收益</Text>
+                <Text className="block skills-step-desc">技能越多，接单越多，收入越高</Text>
+              </View>
             </View>
           </View>
         </View>
 
+        {/* 已选状态条 - 与首页收益高亮条同风格 */}
         {avatarId && avatarSkills.length > 0 && (
           <View className="skills-status-bar">
-            <Text className="block skills-status-text">
-              已选择 {avatarSkills.length} 项技能，继续添加可接更多类型的订单
-            </Text>
+            <View className="skills-status-left">
+              <CircleCheckBig size={16} color="#10B981" />
+              <Text className="block skills-status-label">已选择</Text>
+              <Text className="block skills-status-count">{avatarSkills.length}</Text>
+              <Text className="block skills-status-label">项技能</Text>
+            </View>
+            <View className="skills-status-right">
+              <Text className="block skills-status-hint">可接更多类型订单</Text>
+              <ChevronRight size={14} color="#10B981" />
+            </View>
           </View>
         )}
 
-        {/* 技能列表 */}
-        <View className="skills-list">
+        {/* 技能列表区块 - 与首页section同风格 */}
+        <View className="skills-section">
+          <View className="skills-section-header">
+            <View className="skills-section-title-row">
+              <View className="skills-title-dot" />
+              <Text className="block skills-section-title">全部技能</Text>
+              <View className="skills-count-badge">
+                <Text className="block skills-count-text">{skills.length}</Text>
+              </View>
+            </View>
+          </View>
+
           {loading ? (
             <View className="skills-loading">
+              <View className="skills-loading-spinner" />
               <Text className="block skills-loading-text">加载中...</Text>
             </View>
           ) : (
-            skills.map(skill => {
-              const added = isAdded(skill.id)
-              const catColor = getCategoryColor(skill.category)
-              return (
-                <View className="skill-card" key={skill.id}>
-                  <View className="skill-card-main">
-                    {/* 左侧图标+分类 */}
-                    <View className="skill-card-left">
-                      <View className="skill-icon-wrap" style={{ background: `${catColor}15` }}>
-                        <Text className="skill-icon-text">{skill.icon}</Text>
-                      </View>
-                      <View className="skill-card-info">
-                        <View className="skill-card-name-row">
-                          <Text className="block skill-card-name">{skill.name}</Text>
-                          <View className="skill-category-tag" style={{ background: `${catColor}18`, borderColor: `${catColor}30` }}>
-                            <Text className="block skill-category-text" style={{ color: catColor }}>
-                              {getCategoryLabel(skill.category)}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text className="block skill-card-desc">{skill.description}</Text>
-                        <View className="skill-card-meta">
-                          <View className="skill-meta-item">
-                            <Star size={11} color="#FBBF24" />
-                            <Text className="block skill-meta-text">{Number(skill.rating).toFixed(1)}</Text>
-                          </View>
-                          <View className="skill-meta-item">
-                            <Users size={11} color="#9CA3AF" />
-                            <Text className="block skill-meta-text">{formatCount(Number(skill.usageCount))}人使用</Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
+            <View className="skills-grid">
+              {skills.map(skill => {
+                const added = isAdded(skill.id)
+                const iconConfig = getIconConfig(skill.category)
+                const IconComp = iconConfig.Icon
+                const catLabel = CATEGORY_LABELS[skill.category] || '其他'
+                const earnLabel = EARNING_MAP[skill.category] || '¥2-10/单'
+                return (
+                  <View className="skill-card" key={skill.id}>
+                    {/* 卡片顶部渐变装饰 */}
+                    <View className="skill-card-top-accent" style={{ background: iconConfig.bg }} />
 
-                    {/* 右侧操作按钮 */}
-                    {avatarId && (
-                      <View className="skill-card-action">
-                        {added ? (
-                          <View
-                            className="skill-btn skill-btn-added"
-                            onClick={() => handleRemoveSkill(skill.id)}
-                          >
-                            <CircleCheck size={14} color="#8B5CF6" />
-                            <Text className="block skill-btn-text-added">已添加</Text>
+                    <View className="skill-card-body">
+                      {/* 图标+名称 */}
+                      <View className="skill-card-header">
+                        <View className="skill-icon-wrap" style={{ background: iconConfig.bg }}>
+                          <IconComp size={22} color="#fff" />
+                        </View>
+                        <View className="skill-card-title-area">
+                          <Text className="block skill-card-name">{skill.name}</Text>
+                          <View className="skill-card-tags">
+                            <View className="skill-tag skill-tag-cat">
+                              <Text className="block skill-tag-text">{catLabel}</Text>
+                            </View>
+                            <View className="skill-tag skill-tag-earn">
+                              <Coins size={10} color="#F59E0B" />
+                              <Text className="block skill-tag-text-earn">{earnLabel}</Text>
+                            </View>
                           </View>
-                        ) : (
-                          <View
-                            className="skill-btn skill-btn-add"
-                            onClick={() => handleAddSkill(skill.id)}
-                          >
-                            {addingSkill === skill.id ? (
-                              <Text className="block skill-btn-text">添加中...</Text>
-                            ) : (
-                              <>
-                                <Plus size={14} color="#fff" />
-                                <Text className="block skill-btn-text">添加</Text>
-                              </>
-                            )}
-                          </View>
-                        )}
+                        </View>
                       </View>
-                    )}
+
+                      {/* 描述 */}
+                      <Text className="block skill-card-desc">{skill.description}</Text>
+
+                      {/* 数据行 */}
+                      <View className="skill-card-stats">
+                        <View className="skill-stat">
+                          <Star size={12} color="#FBBF24" />
+                          <Text className="block skill-stat-val">{Number(skill.rating).toFixed(1)}</Text>
+                        </View>
+                        <View className="skill-stat-divider" />
+                        <View className="skill-stat">
+                          <Users size={12} color="#94A3B8" />
+                          <Text className="block skill-stat-val">{formatCount(Number(skill.usageCount))}人使用</Text>
+                        </View>
+                      </View>
+
+                      {/* 操作按钮 */}
+                      {avatarId && (
+                        <View className="skill-card-action">
+                          {added ? (
+                            <View
+                              className="skill-btn-added"
+                              onClick={() => handleRemoveSkill(skill.id)}
+                            >
+                              <CircleCheckBig size={16} color="#8B5CF6" />
+                              <Text className="block skill-btn-added-text">已添加</Text>
+                            </View>
+                          ) : (
+                            <View
+                              className="skill-btn-add"
+                              onClick={() => handleAddSkill(skill.id)}
+                            >
+                              {addingSkill === skill.id ? (
+                                <Text className="block skill-btn-add-text">添加中...</Text>
+                              ) : (
+                                <>
+                                  <Plus size={16} color="#fff" />
+                                  <Text className="block skill-btn-add-text">添加技能</Text>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              )
-            })
+                )
+              })}
+            </View>
           )}
         </View>
 
-        {/* 底部提示 */}
+        {/* 底部收益提示 - 与首页Banner同风格 */}
         {avatarId && avatarSkills.length > 0 && (
-          <View className="skills-bottom-tip">
-            <Text className="block skills-bottom-text">
-              已选 {avatarSkills.length} 项技能 · 开启托管后分身将自动接单
-            </Text>
+          <View className="skills-bottom-banner">
+            <View className="skills-bottom-banner-bg" />
+            <View className="skills-deco-circle skills-deco-3" />
+            <View className="skills-deco-circle skills-deco-4" />
+            <View className="skills-bottom-content">
+              <View className="skills-bottom-tag">
+                <Text className="block skills-bottom-tag-text">赚钱秘籍</Text>
+              </View>
+              <Text className="block skills-bottom-title">已选{avatarSkills.length}项技能</Text>
+              <Text className="block skills-bottom-desc">开启托管后，分身将24h自动接单赚钱</Text>
+              <View className="skills-bottom-btn" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
+                <Text className="block skills-bottom-btn-text">去开启托管</Text>
+                <ChevronRight size={14} color="#6366F1" />
+              </View>
+            </View>
           </View>
         )}
 
-        <View style={{ height: '40px' }} />
+        <View style={{ height: '60px' }} />
       </ScrollView>
     </View>
   )
