@@ -7,14 +7,26 @@ import {
   Search,
   Plus,
   Phone,
-  Clock,
   Zap,
   Loader,
   Sparkles,
   Users,
-  Trash2
+  Trash2,
+  Coins,
+  Crown,
+  Flame,
+  Star,
+  Brain,
+  Palette,
+  Music,
+  MessageCircleHeart,
+  Rocket,
+  TrendingUp,
+  Award,
+  ChevronsRight,
+  Bot,
+  Eye
 } from 'lucide-react-taro'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
@@ -23,6 +35,38 @@ import { useUserStore } from '@/stores/user'
 import './index.css'
 
 type CloneType = 'my' | 'square'
+
+// 技能标签 → 图标/颜色映射
+const SKILL_VISUAL_MAP: Record<string, { icon: string; color: string; bg: string }> = {
+  '幽默风趣': { icon: 'smile', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  '温柔体贴': { icon: 'heart', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  '活泼开朗': { icon: 'sun', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  '知识渊博': { icon: 'brain', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  '善解人意': { icon: 'ear', color: '#14b8a6', bg: 'rgba(20,184,166,0.12)' },
+  '犀利毒舌': { icon: 'flame', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  '文艺清新': { icon: 'palette', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  '理性冷静': { icon: 'shield', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+}
+
+// 能力 → 图标映射
+const ABILITY_ICON_MAP: Record<string, { icon: any; color: string; label: string }> = {
+  'chat': { icon: MessageCircleHeart, color: '#6366f1', label: '聊天' },
+  'reading': { icon: Brain, color: '#8b5cf6', label: '阅读' },
+  'analysis': { icon: TrendingUp, color: '#14b8a6', label: '分析' },
+  'writing': { icon: Sparkles, color: '#f59e0b', label: '写作' },
+  'creative': { icon: Palette, color: '#ec4899', label: '创意' },
+  'voice': { icon: Music, color: '#f97316', label: '语音' },
+}
+
+// 分身等级计算
+function getAvatarLevel(totalPosts: number, totalEarnings: number): { level: number; title: string; color: string; nextTitle: string; progress: number } {
+  const score = totalPosts * 2 + Number(totalEarnings || 0) * 10
+  if (score >= 1000) return { level: 5, title: '传奇分身', color: '#f59e0b', nextTitle: '已满级', progress: 100 }
+  if (score >= 500) return { level: 4, title: '精英分身', color: '#8b5cf6', nextTitle: '传奇分身', progress: Math.min(100, (score - 500) / 500 * 100) }
+  if (score >= 200) return { level: 3, title: '资深分身', color: '#3b82f6', nextTitle: '精英分身', progress: Math.min(100, (score - 200) / 300 * 100) }
+  if (score >= 50) return { level: 2, title: '进阶分身', color: '#14b8a6', nextTitle: '资深分身', progress: Math.min(100, (score - 50) / 150 * 100) }
+  return { level: 1, title: '新手分身', color: '#94a3b8', nextTitle: '进阶分身', progress: Math.min(100, score / 50 * 100) }
+}
 
 interface Avatar {
   id: string
@@ -41,6 +85,10 @@ interface Avatar {
   personality?: string
   skills?: string
   created_at?: string
+  totalEarnings?: number
+  todayEarnings?: number
+  tags?: string[]
+  abilities?: string[]
 }
 
 const MindChat: React.FC = () => {
@@ -49,22 +97,32 @@ const MindChat: React.FC = () => {
   const [myClones, setMyClones] = useState<Avatar[]>([])
   const [squareClones, setSquareClones] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(true)
-  const { isLoggedIn: isLoggedIn } = useUserStore()
+  const { isLoggedIn } = useUserStore()
   const hasPageShownRef = useRef(false)
   const activeTabRef = useRef<CloneType>('my')
 
-  // 加载我的分身列表
+  const parsePersonality = (personality: any) => {
+    try {
+      const p = typeof personality === 'string' ? JSON.parse(personality) : personality
+      const tags = p?.tags || []
+      const abilities = Object.entries(p?.abilities || {})
+        .filter(([_, v]) => v)
+        .map(([k]) => k)
+      return { tags, abilities }
+    } catch {
+      return { tags: [], abilities: [] }
+    }
+  }
+
   const loadMyClones = useCallback(async () => {
     try {
       setLoading(true)
-      // 使用全局 store 检查登录状态
       if (!isLoggedIn) {
         setMyClones([])
         setLoading(false)
         return
       }
 
-      // Network 模块会自动从 storage 获取 userId 并添加 x-user-id header
       const res = await Network.request({
         url: '/api/avatar',
         method: 'GET',
@@ -75,14 +133,9 @@ const MindChat: React.FC = () => {
         const rawData = res.data.data
         const data = Array.isArray(rawData) ? rawData : []
         const avatars = data.map((item: any) => {
-          // 解析 personality JSON 字符串，提取标签
+          const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
-          try {
-            const p = typeof item.personality === 'string' ? JSON.parse(item.personality) : item.personality
-            if (p?.tags?.length) {
-              roleLabel = p.tags.slice(0, 3).join('·')
-            }
-          } catch {}
+          if (tags.length) roleLabel = tags.slice(0, 3).join('·')
           
           return {
             id: item.id || '',
@@ -98,13 +151,16 @@ const MindChat: React.FC = () => {
             voice_id: item.voiceId || item.voice_id,
             personality: item.personality,
             skills: item.skills,
-            created_at: item.createdAt || item.created_at
+            created_at: item.createdAt || item.created_at,
+            totalEarnings: Number(item.totalEarnings || 0),
+            todayEarnings: Number(item.todayEarnings || 0),
+            tags,
+            abilities
           }
         })
         console.log('处理后的分身列表:', avatars)
         setMyClones(avatars)
       } else {
-        console.log('API返回数据为空')
         setMyClones([])
       }
     } catch (error) {
@@ -113,9 +169,8 @@ const MindChat: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isLoggedIn])
 
-  // 加载分身广场
   const loadSquareClones = useCallback(async () => {
     try {
       setLoading(true)
@@ -125,28 +180,19 @@ const MindChat: React.FC = () => {
       })
       console.log('加载分身广场:', res.data)
       
-      // 兼容多种返回结构
       if (res.data?.code === 200) {
         const listData = res.data?.data?.data?.list || res.data?.data?.list || []
         const avatars = listData.slice(0, 6).map((item: any) => {
-          // 解析 personality JSON 字符串
-          let tags = ['AI助手']
+          const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
-          try {
-            const p = typeof item.personality === 'string' ? JSON.parse(item.personality) : item.personality
-            if (p?.tags?.length) {
-              tags = p.tags
-              roleLabel = p.tags.slice(0, 3).join('·')
-            }
-          } catch {}
+          if (tags.length) roleLabel = tags.slice(0, 3).join('·')
           
           return {
             id: item.id || '',
             name: item.name || '未命名分身',
             role: roleLabel,
-            gender: '未知',
-            age: '未知',
             tags,
+            abilities,
             posts: item.posts || 0,
             followers: item.followers || 0,
             image: item.avatarUrl || item.avatar_url || item.photo || '',
@@ -154,13 +200,13 @@ const MindChat: React.FC = () => {
             isFollowing: false,
             status: '在线' as const,
             task: '待命中',
-            hosting: false
+            hosting: false,
+            totalEarnings: 0,
+            todayEarnings: 0
           }
         })
-        console.log('处理后的广场分身列表:', avatars)
         setSquareClones(avatars)
       } else {
-        console.log('广场数据为空')
         setSquareClones([])
       }
     } catch (error) {
@@ -176,7 +222,6 @@ const MindChat: React.FC = () => {
       await loadMyClones()
       return
     }
-
     await loadSquareClones()
   }, [loadMyClones, loadSquareClones])
 
@@ -184,7 +229,6 @@ const MindChat: React.FC = () => {
     activeTabRef.current = activeTab
   }, [activeTab])
 
-  // 首次挂载就加载数据（H5 端 useDidShow 可能不触发）
   useEffect(() => {
     hasPageShownRef.current = true
     void loadCurrentTabData()
@@ -192,17 +236,13 @@ const MindChat: React.FC = () => {
 
   useDidShow(() => {
     if (hasPageShownRef.current) {
-      // 非首次显示时重新加载（从其他页面返回）
       void loadCurrentTabData()
     }
     hasPageShownRef.current = true
   })
 
   useEffect(() => {
-    if (!hasPageShownRef.current) {
-      return
-    }
-
+    if (!hasPageShownRef.current) return
     void loadCurrentTabData()
   }, [activeTab, loadCurrentTabData])
 
@@ -210,10 +250,8 @@ const MindChat: React.FC = () => {
     clone.name.toLowerCase().includes(searchValue.toLowerCase())
   )
 
-  // 切换托管状态
   const handleToggleHosting = async (id: string, checked: boolean) => {
     const previous = myClones
-    // 乐观更新，避免用户感知“点击无反应”
     setMyClones(prev =>
       prev.map(clone =>
         clone.id === id
@@ -232,18 +270,14 @@ const MindChat: React.FC = () => {
         throw new Error(res.data?.msg || '更新失败')
       }
       console.log('更新托管状态成功:', id, checked)
+      if (checked) {
+        Taro.showToast({ title: '托管已开启，分身将自动接单赚钱', icon: 'none', duration: 2000 })
+      }
     } catch (error) {
       setMyClones(previous)
       console.error('更新托管状态失败:', error)
       Taro.showToast({ title: '更新失败', icon: 'none' })
     }
-  }
-
-  const formatFollowers = (num: number) => {
-    if (num >= 10000) {
-      return (num / 10000).toFixed(1) + 'w'
-    }
-    return num.toString()
   }
 
   const openAvatarFriends = (_avatarId: string) => {
@@ -270,7 +304,6 @@ const MindChat: React.FC = () => {
     Taro.showModal({ title: '提示', content: '功能开发中，敬请期待', showCancel: false, confirmText: '知道了' })
   }
 
-  // 删除分身
   const deleteAvatar = async (avatarId: string) => {
     const res = await Taro.showModal({ title: '确认删除', content: '删除后无法恢复，确定要删除这个分身吗？' })
     if (!res.confirm) return
@@ -288,17 +321,22 @@ const MindChat: React.FC = () => {
     }
   }
 
+  // 总收益统计
+  const totalEarningsAll = myClones.reduce((sum, c) => sum + (c.totalEarnings || 0), 0)
+  const todayEarningsAll = myClones.reduce((sum, c) => sum + (c.todayEarnings || 0), 0)
+  const hostingCount = myClones.filter(c => c.hosting).length
+  const hasAnyClone = myClones.length > 0
+
   return (
     <View className="mind-chat-page">
-      {/* 顶部渐变背景 - 一体化设计 */}
+      {/* 顶部渐变背景 */}
       <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 25}px` }}>
-        {/* 装饰元素 */}
         <View className="header-decoration">
           <View className="decoration-circle circle-1" />
           <View className="decoration-circle circle-2" />
         </View>
         
-        {/* Tab切换 - 无图标 */}
+        {/* Tab切换 */}
         <View className="header-tabs">
           <View
             className={cn('header-tab', activeTab === 'my' && 'active')}
@@ -342,165 +380,313 @@ const MindChat: React.FC = () => {
       </View>
 
       {/* 内容区域 */}
-      <ScrollView
-        className="content-scroll"
-        scrollY
-      >
+      <ScrollView className="content-scroll" scrollY>
         {loading ? (
           <View className="loading-state">
             <Loader size={32} className="animate-spin" />
             <Text className="loading-text">加载中...</Text>
           </View>
-        ) : filteredClones.length === 0 ? (
-          <View className="empty-state">
-            <View className="empty-icon-wrap">
-              <Sparkles size={56} color="rgba(6, 182, 212, 0.6)" />
-            </View>
-            <Text className="empty-title">
-              {searchValue
-                ? '没有匹配结果'
-                : activeTab === 'my'
-                  ? (isLoggedIn ? '还没有分身' : '请先登录')
-                  : '暂无内容'}
-            </Text>
-            <Text className="empty-desc">
-              {searchValue
-                ? '换个关键词试试'
-                : activeTab === 'my'
-                  ? (isLoggedIn
-                    ? '创建你的第一个AI分身\n开启智能社交新体验'
-                    : '登录后可管理你的分身与托管能力')
-                  : '稍后再来看看吧'}
-            </Text>
-            {!isLoggedIn && activeTab === 'my' && !searchValue && (
-              <View
-                className="login-redirect-btn"
-                onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
-              >
-                <Text className="login-redirect-text">去登录</Text>
+        ) : activeTab === 'my' ? (
+          /* ====== 我的分身 Tab ====== */
+          <View className="my-tab-content">
+            {/* 收益概览条 - 有分身时显示 */}
+            {hasAnyClone && (
+              <View className="earnings-overview">
+                <View className="earnings-overview-left">
+                  <Coins size={18} color="#f59e0b" />
+                  <View className="earnings-overview-info">
+                    <Text className="earnings-overview-label">今日收益</Text>
+                    <Text className="earnings-overview-value">¥{todayEarningsAll.toFixed(2)}</Text>
+                  </View>
+                </View>
+                <View className="earnings-overview-right">
+                  <View className="earnings-overview-stat">
+                    <Text className="earnings-overview-stat-value">¥{totalEarningsAll.toFixed(2)}</Text>
+                    <Text className="earnings-overview-stat-label">累计</Text>
+                  </View>
+                  <View className="earnings-overview-divider" />
+                  <View className="earnings-overview-stat">
+                    <Text className="earnings-overview-stat-value">{hostingCount}/{myClones.length}</Text>
+                    <Text className="earnings-overview-stat-label">托管中</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 空状态 - 新手引导 */}
+            {filteredClones.length === 0 ? (
+              <View className="empty-state">
+                <View className="empty-icon-wrap">
+                  <Sparkles size={56} color="rgba(99, 102, 241, 0.8)" />
+                </View>
+                <Text className="empty-title">
+                  {searchValue ? '没有匹配结果' : isLoggedIn ? '创建你的第一个AI分身' : '请先登录'}
+                </Text>
+                {!searchValue && isLoggedIn && (
+                  <View className="onboarding-guide">
+                    <Text className="onboarding-guide-title">AI分身能为你做什么？</Text>
+                    
+                    <View className="guide-step">
+                      <View className="guide-step-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
+                        <Bot size={20} color="#6366f1" />
+                      </View>
+                      <View className="guide-step-content">
+                        <Text className="guide-step-title">替你接单赚钱</Text>
+                        <Text className="guide-step-desc">开启托管后，分身自动帮你接单创作内容</Text>
+                      </View>
+                    </View>
+
+                    <View className="guide-step">
+                      <View className="guide-step-icon" style={{ background: 'rgba(245,158,11,0.1)' }}>
+                        <Coins size={20} color="#f59e0b" />
+                      </View>
+                      <View className="guide-step-content">
+                        <Text className="guide-step-title">24小时不间断</Text>
+                        <Text className="guide-step-desc">睡觉也在赚钱，真正的睡后收入</Text>
+                      </View>
+                    </View>
+
+                    <View className="guide-step">
+                      <View className="guide-step-icon" style={{ background: 'rgba(236,72,153,0.1)' }}>
+                        <Crown size={20} color="#ec4899" />
+                      </View>
+                      <View className="guide-step-content">
+                        <Text className="guide-step-title">越用越强</Text>
+                        <Text className="guide-step-desc">分身等级提升，接单能力越强，收益越高</Text>
+                      </View>
+                    </View>
+
+                    <View className="guide-step">
+                      <View className="guide-step-icon" style={{ background: 'rgba(20,184,166,0.1)' }}>
+                        <Flame size={20} color="#14b8a6" />
+                      </View>
+                      <View className="guide-step-content">
+                        <Text className="guide-step-title">多种技能随你选</Text>
+                        <Text className="guide-step-desc">幽默/温柔/毒舌/文艺，打造独特个性分身</Text>
+                      </View>
+                    </View>
+
+                    <View
+                      className="guide-create-btn"
+                      onClick={() => Taro.navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}
+                    >
+                      <Rocket size={16} color="#ffffff" />
+                      <Text className="guide-create-btn-text">0元创建 · 立即开始赚钱</Text>
+                    </View>
+                  </View>
+                )}
+                {!isLoggedIn && activeTab === 'my' && !searchValue && (
+                  <View
+                    className="login-redirect-btn"
+                    onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}
+                  >
+                    <Text className="login-redirect-text">去登录</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              /* 分身卡片列表 */
+              <View className="my-clones-list">
+                {filteredClones.map((clone, index) => {
+                  const levelInfo = getAvatarLevel(clone.posts, clone.totalEarnings || 0)
+                  return (
+                    <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
+                      {/* 封面 */}
+                      <View className="clone-cover">
+                        <Image className="cover-image" src={clone.image} mode="aspectFill" />
+                        <View className="cover-gradient" />
+                        
+                        {/* 等级标签 */}
+                        <View className="level-badge" style={{ background: levelInfo.color }}>
+                          <Crown size={11} color="#ffffff" />
+                          <Text className="level-badge-text">Lv.{levelInfo.level} {levelInfo.title}</Text>
+                        </View>
+
+                        {/* 托管状态 */}
+                        <View className={cn('status-badge', clone.hosting ? 'hosting' : 'offline')}>
+                          <View className={cn('status-dot', clone.hosting ? 'hosting' : 'offline')} />
+                          <Text className="status-label">{clone.hosting ? '托管中' : '未托管'}</Text>
+                        </View>
+
+                        {/* 收益指示 */}
+                        <View className="earning-indicator">
+                          <Coins size={11} color="#fbbf24" />
+                          <Text className="earning-indicator-text">今日 ¥{(clone.todayEarnings || 0).toFixed(2)}</Text>
+                        </View>
+
+                        {/* 底部信息 */}
+                        <View className="cover-footer">
+                          <View className="clone-profile">
+                            <Image className="profile-avatar" src={clone.image} />
+                            <View className="profile-info">
+                              <Text className="profile-name">{clone.name}</Text>
+                              <Text className="profile-total-earn">累计 ¥{(clone.totalEarnings || 0).toFixed(2)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* 技能标签区 */}
+                      <View className="skills-section">
+                        <View className="skills-header">
+                          <Sparkles size={13} color="#8b5cf6" />
+                          <Text className="skills-title">技能</Text>
+                        </View>
+                        <View className="skills-tags">
+                          {(clone.tags || []).slice(0, 4).map((tag) => {
+                            const visual = SKILL_VISUAL_MAP[tag] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
+                            return (
+                              <View className="skill-tag" key={tag} style={{ background: visual.bg }}>
+                                <Text className="skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                              </View>
+                            )
+                          })}
+                          {(clone.abilities || []).map((ability) => {
+                            const abilityInfo = ABILITY_ICON_MAP[ability]
+                            if (!abilityInfo) return null
+                            const AbilityIcon = abilityInfo.icon
+                            return (
+                              <View className="ability-tag" key={ability}>
+                                <AbilityIcon size={11} color={abilityInfo.color} />
+                                <Text className="ability-tag-text" style={{ color: abilityInfo.color }}>{abilityInfo.label}</Text>
+                              </View>
+                            )
+                          })}
+                        </View>
+                      </View>
+
+                      {/* 等级进度条 */}
+                      <View className="level-progress-section">
+                        <View className="level-progress-header">
+                          <Text className="level-progress-current" style={{ color: levelInfo.color }}>{levelInfo.title}</Text>
+                          <Text className="level-progress-next">
+                            {levelInfo.nextTitle !== '已满级' ? `下一级: ${levelInfo.nextTitle}` : '已满级'}
+                          </Text>
+                        </View>
+                        <View className="level-progress-bar">
+                          <View className="level-progress-fill" style={{ width: `${levelInfo.progress}%`, background: levelInfo.color }} />
+                        </View>
+                        <View className="level-progress-stats">
+                          <Text className="level-progress-stat">{clone.posts}篇内容</Text>
+                          <Text className="level-progress-stat">{levelInfo.progress.toFixed(0)}%</Text>
+                        </View>
+                      </View>
+
+                      {/* 操作栏 - 重设计 */}
+                      <View className="clone-toolbar">
+                        <View className="toolbar-actions">
+                          <View className="toolbar-btn toolbar-btn-primary" onClick={() => Taro.navigateTo({ url: `/package-avatar/pages/generated-content/index?avatarId=${clone.id}` })}>
+                            <Eye size={14} color="#6366f1" />
+                            <Text className="toolbar-label-primary">作品</Text>
+                          </View>
+                          <View className="toolbar-btn" onClick={() => openAvatarFriends(clone.id)}>
+                            <Users size={14} />
+                            <Text className="toolbar-label">好友</Text>
+                          </View>
+                          <View className="toolbar-btn" onClick={() => handleMyCloneVoice(clone.id)}>
+                            <Phone size={14} />
+                            <Text className="toolbar-label">通话</Text>
+                          </View>
+                          <View className="toolbar-btn toolbar-btn-danger" onClick={() => deleteAvatar(clone.id)}>
+                            <Trash2 size={14} />
+                            <Text className="toolbar-label-danger">删除</Text>
+                          </View>
+                        </View>
+                        <View className={cn('hosting-control', clone.hosting && 'hosting-active')}>
+                          <Zap size={12} color={clone.hosting ? '#f59e0b' : '#8b5cf6'} />
+                          <Text className={cn('hosting-label', clone.hosting && 'hosting-label-active')}>
+                            {clone.hosting ? '托管赚钱中' : '开启托管'}
+                          </Text>
+                          <Switch
+                            checked={clone.hosting || false}
+                            onCheckedChange={(checked) => handleToggleHosting(clone.id, checked)}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  )
+                })}
               </View>
             )}
           </View>
-        ) : activeTab === 'my' ? (
-          <View className="my-clones-list">
-            {(filteredClones as Avatar[]).map((clone, index) => (
-              <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
-                {/* 封面 */}
-                <View className="clone-cover">
-                  <Image className="cover-image" src={clone.image} mode="aspectFill" />
-                  <View className="cover-gradient" />
-                  
-                  {/* 状态标签 */}
-                  <View className={cn('status-badge', clone.status)}>
-                    <View className={cn('status-dot', clone.status)} />
-                    <Text className="status-label">{clone.status}</Text>
-                  </View>
-
-                  {/* 任务指示 */}
-                  <View className="task-indicator">
-                    <Clock size={11} />
-                    <Text className="task-label">{clone.task}</Text>
-                  </View>
-
-                  {/* 底部信息 */}
-                  <View className="cover-footer">
-                    <View className="clone-profile">
-                      <Image className="profile-avatar" src={clone.image} />
-                      <View className="profile-info">
-                        <Text className="profile-name">{clone.name}</Text>
-                        <View className="profile-tags">
-                          <Badge variant="outline" className="role-tag">{clone.role}</Badge>
-                        </View>
-                      </View>
-                    </View>
-                    <View className="income-display">
-                      <Text className="income-label">今日收益</Text>
-                      <Text className="income-amount">{clone.income}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* 操作栏 */}
-                <View className="clone-toolbar">
-                  <View className="toolbar-actions">
-                    <View className="toolbar-btn" onClick={() => openAvatarFriends(clone.id)}>
-                      <Users size={15} />
-                      <Text className="toolbar-label">好友</Text>
-                    </View>
-                    <View className="toolbar-btn" onClick={() => handleMyCloneVoice(clone.id)}>
-                      <Phone size={15} />
-                      <Text className="toolbar-label">通话</Text>
-                    </View>
-                    <View className="toolbar-btn toolbar-btn-danger" onClick={() => deleteAvatar(clone.id)}>
-                      <Trash2 size={15} />
-                      <Text className="toolbar-label">删除</Text>
-                    </View>
-                  </View>
-                  <View className="hosting-control">
-                    <Zap size={12} className="hosting-icon" />
-                    <Text className="hosting-label">自动托管</Text>
-                    <Switch
-                      checked={clone.hosting || false}
-                      onCheckedChange={(checked) => handleToggleHosting(clone.id, checked)}
-                    />
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
         ) : (
-          <View className="my-clones-list">
-            {(filteredClones as Avatar[]).map((clone, index) => (
-              <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
-                {/* 封面 */}
-                <View className="clone-cover">
-                  <Image className="cover-image" src={clone.image} mode="aspectFill" />
-                  <View className="cover-gradient" />
-                  
-                  {/* 状态标签 */}
-                  <View className={cn('status-badge', clone.status)}>
-                    <View className={cn('status-dot', clone.status)} />
-                    <Text className="status-label">{clone.status}</Text>
-                  </View>
-
-                  {/* 任务指示 */}
-                  <View className="task-indicator">
-                    <Clock size={11} />
-                    <Text className="task-label">{clone.task}</Text>
-                  </View>
-
-                  {/* 底部信息 */}
-                  <View className="cover-footer">
-                    <View className="clone-profile">
-                      <Image className="profile-avatar" src={clone.image} />
-                      <View className="profile-info">
-                        <Text className="profile-name">{clone.name}</Text>
-                        <View className="profile-tags">
-                          <Badge variant="outline" className="role-tag">{clone.role}</Badge>
-                        </View>
-                      </View>
-                    </View>
-                    <View className="income-display">
-                      <Text className="income-label">{formatFollowers(clone.followers || 0)}</Text>
-                      <Text className="income-amount">粉丝</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* 操作栏 */}
-                <View className="clone-toolbar">
-                  <View className="toolbar-actions">
-                    <View className="toolbar-btn" onClick={handleSquareVoice}>
-                      <Phone size={15} />
-                      <Text className="toolbar-label">通话</Text>
-                    </View>
-                  </View>
-                  <View className="follow-action-btn" onClick={handleSquareConnect}>
-                    <Text className="follow-action-text">去交友</Text>
-                  </View>
+          /* ====== 分身广场 Tab ====== */
+          <View className="square-tab-content">
+            {/* 广场头部引导 */}
+            <View className="square-hero">
+              <View className="square-hero-left">
+                <Star size={18} color="#f59e0b" />
+                <View className="square-hero-info">
+                  <Text className="square-hero-title">发现有趣的AI分身</Text>
+                  <Text className="square-hero-desc">关注、交友、一起玩耍</Text>
                 </View>
               </View>
-            ))}
+              {hasAnyClone && (
+                <View className="square-hero-badge">
+                  <Award size={14} color="#8b5cf6" />
+                  <Text className="square-hero-badge-text">已有{myClones.length}个分身</Text>
+                </View>
+              )}
+            </View>
+
+            {squareClones.length === 0 ? (
+              <View className="empty-state">
+                <View className="empty-icon-wrap">
+                  <Users size={56} color="rgba(99, 102, 241, 0.6)" />
+                </View>
+                <Text className="empty-title">暂无内容</Text>
+                <Text className="empty-desc">稍后再来看看吧</Text>
+              </View>
+            ) : (
+              <View className="square-cards-grid">
+                {squareClones.map((clone) => (
+                  <View key={clone.id} className="square-card">
+                    {/* 头像区 */}
+                    <View className="square-card-top">
+                      <View className="square-avatar-wrapper">
+                        <Image className="square-avatar" src={clone.image} mode="aspectFill" />
+                        <View className="avatar-online-dot" />
+                      </View>
+                      <Text className="square-card-name">{clone.name}</Text>
+                      
+                      {/* 技能标签 */}
+                      <View className="square-card-tags">
+                        {(clone.tags || []).slice(0, 2).map((tag) => {
+                          const visual = SKILL_VISUAL_MAP[tag] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
+                          return (
+                            <View className="square-skill-tag" key={tag} style={{ background: visual.bg }}>
+                              <Text className="square-skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                            </View>
+                          )
+                        })}
+                      </View>
+
+                      {/* 能力图标 */}
+                      <View className="square-card-abilities">
+                        {(clone.abilities || []).slice(0, 3).map((ability) => {
+                          const abilityInfo = ABILITY_ICON_MAP[ability]
+                          if (!abilityInfo) return null
+                          const AbilityIcon = abilityInfo.icon
+                          return <AbilityIcon key={ability} size={14} color={abilityInfo.color} />
+                        })}
+                      </View>
+                    </View>
+
+                    {/* 操作 */}
+                    <View className="square-card-actions">
+                      <View className="square-action-btn square-voice-btn" onClick={handleSquareVoice}>
+                        <Phone size={13} color="#6366f1" />
+                        <Text className="square-action-text">通话</Text>
+                      </View>
+                      <View className="square-action-btn square-follow-btn" onClick={handleSquareConnect}>
+                        <ChevronsRight size={13} color="#ffffff" />
+                        <Text className="square-action-text-white">交友</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
         
