@@ -157,17 +157,29 @@ export class WechatPayService {
 
       this.logger.log(`微信统一下单成功: ${JSON.stringify(result)}`);
 
-      if (!result.prepay_id) {
-        throw new Error(`微信下单失败: ${JSON.stringify(result)}`);
+      // SDK返回格式: { status: 200, data: { prepay_id: '...' } } 或 { prepay_id: '...' }
+      const prepayId = result.prepay_id || result.data?.prepay_id;
+      if (!prepayId) {
+        // 如果data本身就是签名后的支付参数(包含appId/paySign等)，说明SDK已经自动处理了
+        if (result.data?.appId && result.data?.paySign) {
+          this.logger.log('SDK已自动生成支付参数，直接返回');
+          return {
+            orderId,
+            outTradeNo,
+            prepayId: result.data.package?.replace('prepay_id=', '') || '',
+            ...result.data,
+          };
+        }
+        throw new Error(`微信下单失败: 未获取到prepay_id, result=${JSON.stringify(result)}`);
       }
 
       // 3. 生成小程序支付参数
-      const payParams = this.generateMiniProgramPayParams(result.prepay_id);
+      const payParams = this.generateMiniProgramPayParams(prepayId);
 
       return {
         orderId,
         outTradeNo,
-        prepayId: result.prepay_id,
+        prepayId,
         ...payParams,
       };
     } catch (error) {
