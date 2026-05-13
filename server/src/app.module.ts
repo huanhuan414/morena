@@ -37,6 +37,7 @@ import { ActivitiesModule } from './modules/activities/activities.module';
 import { UserStatsModule } from './modules/user-stats/user-stats.module';
 import { AiModule } from './modules/ai/ai.module';
 import { SkillModule } from './modules/skill/skill.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -74,7 +75,8 @@ import { SkillModule } from './modules/skill/skill.module';
     ActivitiesModule,
     UserStatsModule,
     AiModule,
-    SkillModule
+    SkillModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService],

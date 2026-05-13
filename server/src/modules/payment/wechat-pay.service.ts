@@ -1,416 +1,421 @@
-import { Injectable } from '@nestjs/common'
-const WxPay = require('wechatpay-node-v3')
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { Injectable, Logger } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import { getMySQLClient } from '../../storage/database/mysql-client';
 
-/**
- * 微信支付配置
- * 需要在 .env 文件中配置以下参数：
- * WECHAT_PAY_MCHID: 商户号
- * WECHAT_PAY_SERIAL_NO: 证书序列号
- * WECHAT_PAY_PRIVATE_KEY_PATH: 商户私钥文件路径
- * WECHAT_PAY_PUBLIC_KEY_PATH: 微信平台公钥文件路径（可选，用于验证签名）
- * WECHAT_PAY_APIV3_KEY: APIv3密钥
- * WECHAT_PAY_APPID: 小程序AppID
- */
+// wechatpay-node-v3 ESM/CJS 兼容
+let Pay: any;
+try {
+  const mod = require('wechatpay-node-v3');
+  Pay = mod.default || mod;
+} catch (e) {
+  Pay = null;
+}
+
 @Injectable()
 export class WechatPayService {
-  private pay: any = null
-  private mchid: string
-  private appid: string
-  private isAvailable: boolean = false
+  private readonly logger = new Logger(WechatPayService.name);
+  private pay: any;
+  private appId: string;
+  private mchId: string;
+  private apiV3Key: string;
+  private serialNo: string;
+  private notifyUrl: string;
 
   constructor() {
-    this.mchid = process.env.WECHAT_PAY_MCHID || '1290305501'
-    this.appid = process.env.WECHAT_PAY_APPID || ''
+    this.appId = process.env.WECHAT_PAY_APPID || '';
+    this.mchId = process.env.WECHAT_PAY_MCHID || '';
+    this.apiV3Key = process.env.WECHAT_PAY_APIV3_KEY || '';
+    this.serialNo = process.env.WECHAT_PAY_SERIAL_NO || '';
+    this.notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
+    this.initPay();
+  }
 
-    // 支持两种配置方式：文件路径 或 直接证书内容
-    const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH
-    const publicKeyPath = process.env.WECHAT_PAY_PUBLIC_KEY_PATH
-    const privateKeyContent = process.env.WECHAT_PAY_PRIVATE_KEY
-    const publicKeyContent = process.env.WECHAT_PAY_PUBLIC_KEY
-
-    console.log('[WechatPayService] 开始初始化微信支付服务', {
-      hasPrivateKeyPath: !!privateKeyPath,
-      hasPublicKeyPath: !!publicKeyPath,
-      hasPrivateKeyContent: !!privateKeyContent,
-      hasPublicKeyContent: !!publicKeyContent
-    })
-
-    // 如果两种方式都没有配置，返回警告
-    if (!privateKeyPath && !privateKeyContent) {
-      console.warn('[WechatPayService] 未配置商户私钥（文件路径或证书内容），支付功能将不可用')
-      console.warn('[WechatPayService] 请在 .env 文件中配置 WECHAT_PAY_PRIVATE_KEY_PATH 或 WECHAT_PAY_PRIVATE_KEY')
-      this.pay = null
-      this.isAvailable = false
-      return
-    }
-
+  private initPay() {
     try {
-      // 获取私钥和公钥（优先使用直接配置的证书内容）
-      const privateKey = privateKeyContent || this.getPrivateKeyFromFile(privateKeyPath)
-      const publicKey = publicKeyContent || this.getPublicKeyFromFile(publicKeyPath)
+      const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH;
+      const publicKeyPath = process.env.WECHAT_PAY_PUBLIC_KEY_PATH;
 
-      console.log('[WechatPayService] 成功获取证书', {
-        hasPrivateKey: !!privateKey,
-        hasPublicKey: !!publicKey
-      })
+      let privateKey: Buffer;
+      let publicKey: Buffer;
 
-      // 初始化微信支付
-      this.pay = new WxPay({
-        appid: this.appid,
-        mchid: this.mchid,
-        publicKey: publicKey ? Buffer.from(publicKey) : undefined,
-        privateKey: Buffer.from(privateKey),
-        serial_no: process.env.WECHAT_PAY_SERIAL_NO || '',
-        key: process.env.WECHAT_PAY_APIV3_KEY || ''
-      })
+      if (privateKeyPath && fs.existsSync(path.resolve(privateKeyPath))) {
+        privateKey = fs.readFileSync(path.resolve(privateKeyPath));
+        this.logger.log('从文件加载商户私钥成功');
+      } else {
+        this.logger.error('商户私钥文件不存在，请检查 WECHAT_PAY_PRIVATE_KEY_PATH 配置');
+        return;
+      }
 
-      this.isAvailable = true
-      console.log('[WechatPayService] 微信支付服务初始化完成', {
-        mchid: this.mchid,
-        appid: this.appid,
-        isAvailable: true
-      })
-    } catch (error: any) {
-      console.error('[WechatPayService] 微信支付服务初始化失败:', error.message)
-      console.error('[WechatPayService] 错误详情:', error)
-      this.pay = null
-      this.isAvailable = false
-    }
-  }
+      if (publicKeyPath && fs.existsSync(path.resolve(publicKeyPath))) {
+        publicKey = fs.readFileSync(path.resolve(publicKeyPath));
+        this.logger.log('从文件加载商户证书成功');
+      } else {
+        this.logger.error('商户证书文件不存在，请检查 WECHAT_PAY_PUBLIC_KEY_PATH 配置');
+        return;
+      }
 
-  /**
-   * 检查支付服务是否可用
-   */
-  isServiceAvailable(): boolean {
-    return this.isAvailable && this.pay !== null
-  }
+      // 自动从证书中提取序列号（优先于环境变量配置）
+      let serialNo = this.serialNo;
+      if (!serialNo) {
+        try {
+          const x509 = new (crypto as any).X509Certificate(publicKey);
+          serialNo = x509.serialNumber.toUpperCase().replace(/:/g, '');
+          this.logger.log(`从证书自动提取序列号: ${serialNo}`);
+        } catch (e) {
+          this.logger.warn('无法从证书提取序列号，使用环境变量配置');
+        }
+      }
 
-  /**
-   * 获取配置状态信息
-   */
-  getConfigStatus(): {
-    isAvailable: boolean
-    mchid: string
-    appid: string
-    missingConfigs: string[]
-    instructions: string
-  } {
-    const missingConfigs: string[] = []
+      this.pay = new Pay({
+        appid: this.appId,
+        mchid: this.mchId,
+        serial_no: serialNo,
+        publicKey: publicKey,
+        privateKey: privateKey,
+        key: this.apiV3Key,
+      });
 
-    if (!process.env.WECHAT_PAY_PRIVATE_KEY && !process.env.WECHAT_PAY_PRIVATE_KEY_PATH) {
-      missingConfigs.push('商户私钥（WECHAT_PAY_PRIVATE_KEY）')
-    }
-
-    if (!process.env.WECHAT_PAY_APIV3_KEY) {
-      missingConfigs.push('APIv3密钥（WECHAT_PAY_APIV3_KEY）')
-    }
-
-    if (!process.env.WECHAT_PAY_MCHID) {
-      missingConfigs.push('商户号（WECHAT_PAY_MCHID）')
-    }
-
-    if (!process.env.WECHAT_PAY_APPID) {
-      missingConfigs.push('小程序AppID（WECHAT_PAY_APPID）')
-    }
-
-    return {
-      isAvailable: this.isServiceAvailable(),
-      mchid: this.mchid,
-      appid: this.appid,
-      missingConfigs,
-      instructions: missingConfigs.length > 0
-        ? `请在 .env 文件中配置以下项：${missingConfigs.join('、')}。详细说明请查看 docs/WECHAT_PAY_CONFIG.md`
-        : '配置完整，服务正常运行'
-    }
-  }
-
-  /**
-   * 从文件读取商户私钥
-   * @param filePath 证书文件路径
-   */
-  private getPrivateKeyFromFile(filePath?: string): string {
-    if (!filePath) {
-      console.warn('[WechatPayService] 未配置商户私钥文件路径')
-      return ''
-    }
-
-    try {
-      return readFileSync(filePath, 'utf-8')
+      this.logger.log(`微信支付初始化成功 - AppID: ${this.appId}, MchID: ${this.mchId}, SerialNo: ${serialNo}`);
     } catch (error) {
-      console.error('[WechatPayService] 读取商户私钥失败:', error)
-      throw new Error(`读取商户私钥失败: ${filePath}`)
+      this.logger.error(`微信支付初始化失败: ${error.message}`, error.stack);
     }
   }
 
   /**
-   * 从文件读取微信平台公钥（用于验证签名）
-   * @param filePath 证书文件路径
+   * 供 SubscriptionController 调用的统一入口
    */
-  private getPublicKeyFromFile(filePath?: string): string {
-    if (!filePath) {
-      console.warn('[WechatPayService] 未配置平台公钥文件路径')
-      return ''
-    }
-
-    try {
-      return readFileSync(filePath, 'utf-8')
-    } catch (error) {
-      console.warn('[WechatPayService] 读取平台公钥失败，签名验证可能受影响:', error)
-      return ''
-    }
+  async createOrder(params: {
+    planId: string;
+    userId: string;
+    openid: string;
+    amount: number;
+    description: string;
+  }) {
+    return this.createMiniProgramOrder({
+      ...params,
+      orderType: 'subscription',
+    });
   }
 
   /**
-   * 创建小程序支付订单
-   * @param description 商品描述
-   * @param outTradeNo 商户订单号
-   * @param totalAmount 订单总金额（单位：分）
-   * @param openid 用户openid
-   * @param notifyUrl 支付结果通知地址
+   * 创建小程序支付订单（JSAPI）
    */
-  async createOrder(
-    description: string,
-    outTradeNo: string,
-    totalAmount: number,
-    openid: string,
-    notifyUrl?: string
-  ): Promise<any> {
+  async createMiniProgramOrder(params: {
+    userId: string;
+    openid: string;
+    planId: string;
+    description: string;
+    amount: number;
+    orderType: string;
+  }) {
     if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
+      throw new Error('微信支付未初始化');
     }
 
+    const { userId, openid, planId, description, amount, orderType } = params;
+    const outTradeNo = `MRL${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // 1. 创建本地支付订单
+    const orderId = crypto.randomUUID();
+    const db = getMySQLClient();
+    await db.query(
+      `INSERT INTO payment_orders (id, out_trade_no, plan_id, user_id, openid, order_type, amount, currency, payment_method, status, metadata, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'CNY', 'wechat', 'pending', ?, NOW(), NOW())`,
+      [
+        orderId,
+        outTradeNo,
+        planId,
+        userId,
+        openid,
+        orderType,
+        amount,
+        JSON.stringify({ planId, description }),
+      ],
+    );
+
+    this.logger.log(`创建本地支付订单: ${orderId}, outTradeNo: ${outTradeNo}, 金额: ${amount}元`);
+
+    // 2. 调用微信统一下单API
+    const amountInFen = Math.round(amount * 100);
     try {
-      const params = {
-        appid: this.appid,
-        mchid: this.mchid,
+      const result: any = await this.pay.transactions_jsapi({
+        appid: this.appId,
+        mchid: this.mchId,
         description,
         out_trade_no: outTradeNo,
-        notify_url: notifyUrl || process.env.WECHAT_PAY_NOTIFY_URL || '',
+        notify_url: this.notifyUrl,
         amount: {
-          total: totalAmount,
-          currency: 'CNY'
+          total: amountInFen,
+          currency: 'CNY',
         },
         payer: {
-          openid
-        }
-      }
-
-      console.log('[WechatPayService] 创建小程序订单参数:', params)
-
-      // 调用微信支付统一下单API（JSAPI支付/小程序支付）
-      const result = await this.pay.transactions_jsapi(params)
-
-      console.log('[WechatPayService] 创建小程序订单响应:', result)
-
-      return result
-    } catch (error: any) {
-      console.error('[WechatPayService] 创建小程序订单失败:', error)
-      throw new Error(error.message || '创建订单失败')
-    }
-  }
-
-  /**
-   * 创建H5支付订单
-   * @param description 商品描述
-   * @param outTradeNo 商户订单号
-   * @param totalAmount 订单总金额（单位：分）
-   * @param notifyUrl 支付结果通知地址
-   */
-  async createH5Order(
-    description: string,
-    outTradeNo: string,
-    totalAmount: number,
-    notifyUrl?: string
-  ): Promise<any> {
-    if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
-    }
-
-    try {
-      const params = {
-        appid: this.appid,
-        mchid: this.mchid,
-        description,
-        out_trade_no: outTradeNo,
-        notify_url: notifyUrl || process.env.WECHAT_PAY_NOTIFY_URL || '',
-        amount: {
-          total: totalAmount,
-          currency: 'CNY'
+          openid,
         },
-        scene_info: {
-          payer_client_ip: '127.0.0.1', // 实际应该获取客户端真实IP
-          h5_info: {
-            type: 'Wap',
-            app_name: '分身营销助手',
-            app_url: process.env.FRONTEND_URL || 'https://yourdomain.com'
-          }
-        }
+      });
+
+      this.logger.log(`微信统一下单成功: ${JSON.stringify(result)}`);
+
+      if (!result.prepay_id) {
+        throw new Error(`微信下单失败: ${JSON.stringify(result)}`);
       }
 
-      console.log('[WechatPayService] 创建H5订单参数:', params)
+      // 3. 生成小程序支付参数
+      const payParams = this.generateMiniProgramPayParams(result.prepay_id);
 
-      // 调用微信支付统一下单API（H5支付）
-      const result = await this.pay.transactions_h5(params)
-
-      console.log('[WechatPayService] 创建H5订单响应:', result)
-
-      return result
-    } catch (error: any) {
-      console.error('[WechatPayService] 创建H5订单失败:', error)
-      throw new Error(error.message || '创建H5订单失败')
+      return {
+        orderId,
+        outTradeNo,
+        prepayId: result.prepay_id,
+        ...payParams,
+      };
+    } catch (error) {
+      this.logger.error(`微信统一下单失败: ${error.message}`, error.stack);
+      const db2 = getMySQLClient();
+      await db2.query(
+        `UPDATE payment_orders SET status = 'failed', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.error', ?) WHERE id = ?`,
+        [error.message, orderId],
+      );
+      throw error;
     }
   }
 
   /**
-   * 查询订单
-   * @param outTradeNo 商户订单号
+   * 生成小程序调起支付所需的参数（含签名）
    */
-  async queryOrder(outTradeNo: string): Promise<any> {
-    if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
-    }
+  private generateMiniProgramPayParams(prepayId: string) {
+    const timeStamp = Math.floor(Date.now() / 1000).toString();
+    const nonceStr = crypto.randomUUID().replace(/-/g, '');
+    const packageStr = `prepay_id=${prepayId}`;
+
+    // 微信支付V3签名规则：appId\ntimeStamp\nnonceStr\npackage\n
+    const signStr = `${this.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
+
+    const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH;
+    const privateKey = fs.readFileSync(path.resolve(privateKeyPath));
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(signStr);
+    const paySign = sign.sign(privateKey, 'base64');
+
+    this.logger.log(`生成支付参数 - timeStamp: ${timeStamp}, nonceStr: ${nonceStr}, prepay_id: ${prepayId}`);
+
+    return {
+      timeStamp,
+      nonceStr,
+      packageValue: packageStr,
+      signType: 'RSA',
+      paySign,
+    };
+  }
+
+  /**
+   * 验证并处理支付回调通知
+   */
+  async handlePaymentNotify(body: any, headers: any) {
+    this.logger.log(`收到支付回调通知`);
 
     try {
-      console.log('[WechatPayService] 查询订单:', outTradeNo)
+      const resource = body?.resource;
+      if (!resource) {
+        this.logger.error('回调通知缺少resource字段');
+        return { code: 'FAIL', message: '通知格式错误' };
+      }
 
-      // 调用查询订单API
-      const result = await this.pay.query({ out_trade_no: outTradeNo })
+      const decryptedData = this.decryptResource(resource);
+      this.logger.log(`解密后的回调数据: ${JSON.stringify(decryptedData)}`);
 
-      console.log('[WechatPayService] 查询订单结果:', result)
+      if (!decryptedData) {
+        this.logger.error('回调数据解密失败');
+        return { code: 'FAIL', message: '解密失败' };
+      }
 
-      return result
-    } catch (error: any) {
-      console.error('[WechatPayService] 查询订单失败:', error)
-      throw new Error(error.message || '查询订单失败')
+      const outTradeNo = decryptedData.out_trade_no;
+      const transactionId = decryptedData.transaction_id;
+      const tradeState = decryptedData.trade_state;
+      const payAmount = decryptedData.amount;
+
+      if (tradeState !== 'SUCCESS') {
+        this.logger.warn(`交易状态非成功: ${tradeState}, outTradeNo: ${outTradeNo}`);
+        return { code: 'SUCCESS', message: '已接收' };
+      }
+
+      const db = getMySQLClient();
+      const orders = await db.query(
+        `SELECT * FROM payment_orders WHERE out_trade_no = ?`,
+        [outTradeNo],
+      );
+
+      if (!orders || orders.length === 0) {
+        this.logger.error(`未找到订单: outTradeNo=${outTradeNo}`);
+        return { code: 'FAIL', message: '订单不存在' };
+      }
+
+      const order = orders[0];
+
+      if (order.status === 'paid') {
+        this.logger.log(`订单已处理过: ${outTradeNo}`);
+        return { code: 'SUCCESS', message: '已处理' };
+      }
+
+      await db.query(
+        `UPDATE payment_orders SET status = 'paid', transaction_id = ?, paid_at = NOW(), metadata = JSON_SET(COALESCE(metadata, '{}'), '$.wechatTransactionId', ?, '$.paidAmount', ?) WHERE out_trade_no = ?`,
+        [transactionId, transactionId, payAmount?.total ? payAmount.total / 100 : order.amount, outTradeNo],
+      );
+
+      this.logger.log(`订单支付成功: outTradeNo=${outTradeNo}, transactionId=${transactionId}`);
+
+      await this.activateSubscription(order);
+
+      return { code: 'SUCCESS', message: '成功' };
+    } catch (error) {
+      this.logger.error(`处理支付回调失败: ${error.message}`, error.stack);
+      return { code: 'FAIL', message: error.message };
     }
   }
 
   /**
-   * 关闭订单
-   * @param outTradeNo 商户订单号
+   * 解密V3回调通知中的resource字段
    */
-  async closeOrder(outTradeNo: string): Promise<any> {
-    if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
-    }
-
+  private decryptResource(resource: any): any {
     try {
-      console.log('[WechatPayService] 关闭订单:', outTradeNo)
-
-      // 调用关闭订单API
-      const result = await this.pay.close({ out_trade_no: outTradeNo })
-
-      console.log('[WechatPayService] 关闭订单结果:', result)
-
-      return result
-    } catch (error: any) {
-      console.error('[WechatPayService] 关闭订单失败:', error)
-      throw new Error(error.message || '关闭订单失败')
-    }
-  }
-
-  /**
-   * 验证支付结果通知签名
-   * @param signature 签名
-   * @param timestamp 时间戳
-   * @param nonce 随机字符串
-   * @param body 通知体
-   */
-  async verifyNotify(
-    signature: string,
-    timestamp: string,
-    nonce: string,
-    body: any
-  ): Promise<boolean> {
-    if (!this.pay) {
-      console.warn('[WechatPayService] 支付服务未初始化，无法验证签名')
-      return false
-    }
-
-    try {
-      const isValid = await this.pay.verifySign({
-        timestamp,
+      const { nonce, associated_data, ciphertext } = resource;
+      const result: string = this.pay.decipher_gcm(
+        ciphertext,
+        this.apiV3Key,
         nonce,
-        body,
-        serial: process.env.WECHAT_PAY_SERIAL_NO || '',
-        signature,
-        apiSecret: process.env.WECHAT_PAY_APIV3_KEY
-      })
-      console.log('[WechatPayService] 验证签名结果:', isValid)
-      return isValid
-    } catch (error: any) {
-      console.error('[WechatPayService] 验证签名失败:', error)
-      return false
+        associated_data,
+      );
+      return JSON.parse(result);
+    } catch (error) {
+      this.logger.error(`解密resource失败: ${error.message}`);
+      return null;
     }
   }
 
   /**
-   * 解密支付结果通知
-   * @param associatedData 关联数据
-   * @param nonce 随机字符串
-   * @param ciphertext 密文
+   * 激活用户订阅
    */
-  async decryptNotify(
-    associatedData: string,
-    nonce: string,
-    ciphertext: string
-  ): Promise<any> {
-    if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
+  private async activateSubscription(order: any) {
+    const db = getMySQLClient();
+    const metadata = typeof order.metadata === 'string' ? JSON.parse(order.metadata) : (order.metadata || {});
+    const planId = metadata.planId || order.planId;
+
+    this.logger.log(`激活订阅: userId=${order.userId}, planId=${planId}`);
+
+    const plans = await db.query(
+      `SELECT * FROM subscription_plans WHERE id = ?`,
+      [planId],
+    );
+
+    if (!plans || plans.length === 0) {
+      this.logger.error(`订阅计划不存在: ${planId}`);
+      return;
     }
 
-    try {
-      const result = this.pay.decipher_gcm(associatedData, nonce, ciphertext)
-      console.log('[WechatPayService] 解密通知结果:', result)
-      return typeof result === 'string' ? JSON.parse(result) : result
-    } catch (error: any) {
-      console.error('[WechatPayService] 解密通知失败:', error)
-      throw new Error(error.message || '解密通知失败')
+    const plan = plans[0];
+    const durationDays = plan.durationDays || plan.duration_days || 30;
+    const now = new Date();
+    const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    const maxAvatars = plan.maxAvatars || plan.max_avatars || 1;
+    const canReceiveOrders = plan.canReceiveOrders || plan.can_receive_orders || 0;
+
+    const existing = await db.query(
+      `SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY end_date DESC LIMIT 1`,
+      [order.userId],
+    );
+
+    if (existing && existing.length > 0) {
+      const currentEnd = new Date(existing[0].endDate || existing[0].end_date);
+      const newEndDate = currentEnd > now
+        ? new Date(currentEnd.getTime() + durationDays * 24 * 60 * 60 * 1000)
+        : endDate;
+
+      await db.query(
+        `UPDATE user_subscriptions SET plan_id = ?, end_date = ?, max_avatars = ?, can_receive_orders = ?, updated_at = NOW() WHERE id = ?`,
+        [planId, newEndDate, maxAvatars, canReceiveOrders, existing[0].id],
+      );
+      this.logger.log(`续订成功: userId=${order.userId}, 新到期日=${newEndDate}`);
+    } else {
+      await db.query(
+        `INSERT INTO user_subscriptions (id, user_id, plan_id, status, start_date, end_date, max_avatars, can_receive_orders, created_at, updated_at)
+         VALUES (?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          crypto.randomUUID(),
+          order.userId,
+          planId,
+          now,
+          endDate,
+          maxAvatars,
+          canReceiveOrders,
+        ],
+      );
+      this.logger.log(`新订阅激活: userId=${order.userId}, planId=${planId}, 到期日=${endDate}`);
     }
   }
 
   /**
-   * 申请退款
-   * @param outTradeNo 商户订单号
-   * @param outRefundNo 退款订单号
-   * @param totalAmount 订单总金额
-   * @param refundAmount 退款金额
+   * 查询订单支付状态
    */
-  async refund(
-    outTradeNo: string,
-    outRefundNo: string,
-    totalAmount: number,
-    refundAmount: number
-  ): Promise<any> {
-    if (!this.pay) {
-      throw new Error('微信支付服务未初始化，请检查配置')
-    }
+  async queryOrderStatus(orderId: string) {
+    const db = getMySQLClient();
+    const orders = await db.query(
+      `SELECT * FROM payment_orders WHERE id = ?`,
+      [orderId],
+    );
+    return orders?.[0] || null;
+  }
 
+  /**
+   * 获取用户的支付订单列表
+   */
+  async getUserOrders(userId: string) {
+    const db = getMySQLClient();
+    return await db.query(
+      `SELECT * FROM payment_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`,
+      [userId],
+    );
+  }
+
+  /**
+   * 主动查询微信订单状态（用于补单）
+   */
+  async queryWechatOrderStatus(outTradeNo: string) {
+    if (!this.pay) {
+      throw new Error('微信支付未初始化');
+    }
     try {
-      const params = {
+      const result: any = await this.pay.query({
         out_trade_no: outTradeNo,
-        out_refund_no: outRefundNo,
-        notify_url: process.env.WECHAT_PAY_REFUND_NOTIFY_URL || '',
-        amount: {
-          refund: refundAmount,
-          total: totalAmount,
-          currency: 'CNY'
-        }
-      }
+      });
+      this.logger.log(`微信订单查询结果: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`微信订单查询失败: ${error.message}`);
+      throw error;
+    }
+  }
 
-      console.log('[WechatPayService] 申请退款参数:', params)
+  /**
+   * 关闭超时未支付订单
+   */
+  async closeOrder(outTradeNo: string) {
+    if (!this.pay) {
+      throw new Error('微信支付未初始化');
+    }
+    try {
+      const result: any = await this.pay.close(outTradeNo);
+      this.logger.log(`关闭订单结果: ${JSON.stringify(result)}`);
 
-      // 调用退款API
-      const result = await this.pay.refunds(params)
-
-      console.log('[WechatPayService] 申请退款结果:', result)
-
-      return result
-    } catch (error: any) {
-      console.error('[WechatPayService] 申请退款失败:', error)
-      throw new Error(error.message || '申请退款失败')
+      const db = getMySQLClient();
+      await db.query(
+        `UPDATE payment_orders SET status = 'closed', updated_at = NOW() WHERE out_trade_no = ? AND status = 'pending'`,
+        [outTradeNo],
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(`关闭订单失败: ${error.message}`);
+      throw error;
     }
   }
 }

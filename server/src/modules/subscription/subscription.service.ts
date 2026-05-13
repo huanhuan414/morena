@@ -6,7 +6,14 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 export class SubscriptionService {
   async getPlans() {
     const db = getMySQLClient()
-    return await db.query('subscription_plans', {}) as any[]
+    const plans = await db.query('SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY price ASC')
+    return plans
+  }
+
+  async getPlanById(planId: string) {
+    const db = getMySQLClient()
+    const plans = await db.query('SELECT * FROM subscription_plans WHERE id = ?', [planId])
+    return plans?.[0] || null
   }
 
   async getUserSubscription(userId: string) {

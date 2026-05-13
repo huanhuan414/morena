@@ -8,20 +8,14 @@ import './index.css'
 
 interface SubscriptionPlan {
   id: string
+  plan_id: string
   name: string
   description: string
   price: number
   duration_days: number
   max_avatars: number
   can_receive_orders: boolean
-  order_priority: number
-  features: {
-    max_friends: number
-    avatar_storage_limit: string
-    priority_support?: boolean
-    advanced_analytics?: boolean
-    personal_manager?: boolean
-  }
+  sort_order: number
 }
 
 interface UserSubscription {
@@ -87,6 +81,14 @@ export default function SubscriptionPage() {
     setSelectedPlan(plan)
 
     try {
+      // 获取用户信息
+      const userStr = Taro.getStorageSync('userInfo')
+      const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
+      if (!userId) {
+        showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+
       // 获取用户 openid
       const { code } = await Taro.login()
 
@@ -102,13 +104,13 @@ export default function SubscriptionPage() {
         return
       }
 
-      // 创建支付订单
+      // 创建支付订单（planId 用 plan_planId 字段，如 plan_basic）
       const res = await Network.request({
         url: '/api/subscription/order',
         method: 'POST',
         data: {
-          planId: plan.id,
-          paymentMethod: 'wechat',
+          planId: plan.plan_id,
+          userId,
           openid
         }
       })
@@ -117,37 +119,27 @@ export default function SubscriptionPage() {
 
       if (res.data?.code === 200) {
         const payParams = res.data.data
-        const message = res.data.message
 
-        // 检查是否为模拟支付
-        if (message && message.includes('模拟支付')) {
-          // 模拟支付模式下，订阅已自动激活，直接刷新
-          console.log('[订阅] 使用模拟支付模式，订阅已激活')
-          showToast({ title: message, icon: 'success' })
-          await fetchUserSubscription()
-        } else if (payParams.isMock) {
-          // 模拟支付模式下直接调用支付成功回调
-          console.log('[订阅] 使用模拟支付模式')
-          showToast({ title: '支付成功（模拟）', icon: 'success' })
-          await fetchUserSubscription()
-        } else {
-          // 真实支付：调用微信支付
-          await Taro.requestPayment({
-            timeStamp: payParams.timeStamp,
-            nonceStr: payParams.nonceStr,
-            package: payParams.package,
-            signType: payParams.signType,
-            paySign: payParams.paySign,
-            success: async () => {
-              showToast({ title: '支付成功！', icon: 'success' })
-              await fetchUserSubscription()
-            },
-            fail: (err) => {
-              console.error('支付失败:', err)
+        // 真实支付：调用微信支付
+        await Taro.requestPayment({
+          timeStamp: payParams.timeStamp,
+          nonceStr: payParams.nonceStr,
+          package: payParams.packageValue,
+          signType: payParams.signType,
+          paySign: payParams.paySign,
+          success: async () => {
+            showToast({ title: '支付成功！', icon: 'success' })
+            await fetchUserSubscription()
+          },
+          fail: (err) => {
+            console.error('支付失败:', err)
+            if (err.errMsg?.includes('cancel')) {
               showToast({ title: '支付已取消', icon: 'none' })
+            } else {
+              showToast({ title: '支付失败，请重试', icon: 'none' })
             }
-          })
-        }
+          }
+        })
       } else {
         showToast({ title: res.data?.message || '创建订单失败', icon: 'none' })
       }
@@ -160,51 +152,32 @@ export default function SubscriptionPage() {
     }
   }
 
-  const renderFeatures = (features: SubscriptionPlan['features'], plan: SubscriptionPlan) => {
-    const maxAvatars = plan.max_avatars === -1 ? '无限' : plan.max_avatars
-    const maxFriends = features.max_friends === -1 ? '无限' : features.max_friends
+  const renderFeatures = (plan: SubscriptionPlan) => {
+    const maxAvatars = plan.max_avatars >= 999 ? '无限' : plan.max_avatars
 
     return (
       <View className="sub-features">
         <View className="sub-feature-item">
           <Users size={18} color="#00f5ff" />
           <Text className="sub-feature-text">
-            最多 {maxAvatars === -1 ? '无限' : maxAvatars} 个分身
-          </Text>
-        </View>
-        <View className="sub-feature-item">
-          <Check size={18} color="#00ff88" />
-          <Text className="sub-feature-text">
-            最多 {maxFriends === -1 ? '无限' : maxFriends} 个好友
+            最多 {maxAvatars} 个分身
           </Text>
         </View>
         {plan.can_receive_orders ? (
           <View className="sub-feature-item">
             <Zap size={18} color="#ffd700" />
-            <Text className="sub-feature-text">🎮 打工赚钱·接单优先级 +{plan.order_priority}</Text>
+            <Text className="sub-feature-text">可接单赚钱</Text>
           </View>
         ) : (
           <View className="sub-feature-item">
             <Shield size={18} color="#64748b" />
-            <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>💼 暂不支持打工赚钱</Text>
+            <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>暂不支持接单</Text>
           </View>
         )}
-        {features.priority_support && (
+        {plan.price > 0 && (
           <View className="sub-feature-item">
-            <Shield size={18} color="#ff6b9d" />
+            <Check size={18} color="#00ff88" />
             <Text className="sub-feature-text">优先客服支持</Text>
-          </View>
-        )}
-        {features.advanced_analytics && (
-          <View className="sub-feature-item">
-            <Zap size={18} color="#00f5ff" />
-            <Text className="sub-feature-text">高级数据分析</Text>
-          </View>
-        )}
-        {features.personal_manager && (
-          <View className="sub-feature-item">
-            <Crown size={18} color="#ffd700" />
-            <Text className="sub-feature-text">专属客户经理</Text>
           </View>
         )}
       </View>
@@ -277,7 +250,7 @@ export default function SubscriptionPage() {
               </Text>
             </View>
             <View className="sub-current-features">
-              {renderFeatures(userSubscription.plan.features, userSubscription.plan)}
+              {renderFeatures(userSubscription.plan)}
             </View>
           </View>
         )}
@@ -301,12 +274,8 @@ export default function SubscriptionPage() {
                   <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>最多 1 个分身</Text>
                 </View>
                 <View className="sub-feature-item">
-                  <Check size={18} color="#64748b" />
-                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>最多 10 个好友</Text>
-                </View>
-                <View className="sub-feature-item">
                   <Shield size={18} color="#64748b" />
-                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>💼 暂不支持打工赚钱</Text>
+                  <Text className="sub-feature-text" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>暂不支持接单</Text>
                 </View>
               </View>
             </View>
@@ -328,7 +297,7 @@ export default function SubscriptionPage() {
           ) : (
             <View className="sub-plans-list">
               {plans.map((plan, index) => {
-                const isCurrentPlan = userSubscription?.plan?.id === plan.id
+                const isCurrentPlan = userSubscription?.plan?.plan_id === plan.plan_id
                 const isPurchasing = purchasing && selectedPlan?.id === plan.id
 
                 return (
@@ -358,7 +327,7 @@ export default function SubscriptionPage() {
 
                     <Text className="sub-card-description">{plan.description}</Text>
 
-                    {renderFeatures(plan.features, plan)}
+                    {renderFeatures(plan)}
 
                     <Button
                       className={`sub-card-button ${isCurrentPlan ? 'sub-card-button-disabled' : ''}`}

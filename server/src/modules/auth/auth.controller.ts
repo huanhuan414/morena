@@ -48,6 +48,30 @@ export class AuthController {
     }
   }
 
+  /**
+   * 通过 code 获取 openid（供支付使用）
+   */
+  @Post('wechat/get-openid')
+  async getOpenid(@Body('code') code: string) {
+    if (!code) {
+      return { code: 400, data: null, message: '缺少code参数' }
+    }
+    try {
+      const result = await this.authService.wechatLogin(code)
+      return {
+        code: 200,
+        data: { openid: result.user.openid || result.user.id },
+        message: '获取成功',
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取openid失败',
+      }
+    }
+  }
+
   @Get('me')
   async getCurrentUser(@Headers() headers: Record<string, string | string[] | undefined>) {
     const authorization = (headers.authorization || headers.Authorization) as string | undefined
