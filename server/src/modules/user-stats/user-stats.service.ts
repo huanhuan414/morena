@@ -18,6 +18,10 @@ export class UserStatsService {
     let pendingOrders = 0
     let generatedContents = 0
     let totalEarnings = 0
+    let referralCode = ''
+    let invitedCount = 0
+    let totalWorkHours = 0
+    let userResult: any = null
     
     // 跨服务数据同步：从全局共享缓存同步 AvatarService 的数据
     const syncFromSharedCache = () => {
@@ -102,6 +106,32 @@ export class UserStatsService {
         } catch (e) {}
       }
       
+      // 5. 获取用户邀请码和邀请人数
+      referralCode = userResult?.referral_code || ''
+      try {
+        const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}'`) as any[]
+        invitedCount = referralResult?.length || 0
+        if (!referralCode) {
+          const codeResult = await db.queryWhere('referral_codes', `user_id = '${userId}'`) as any[]
+          referralCode = codeResult?.[0]?.code || ''
+        }
+      } catch (e) {}
+      
+      // 6. 统计分身总工作时长（基于 content_generation 的记录数 × 平均30分钟）
+      if (avatarIds.length > 0) {
+        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
+        try {
+          const contentResult = await db.queryWhere(
+            'content_generation',
+            `avatar_id IN (${avatarIdList})`
+          ) as any[]
+          const completedCount = (Array.isArray(contentResult) ? contentResult : []).filter(
+            (c: any) => c.status === 'completed' || c.status === 'approved'
+          ).length
+          totalWorkHours = Math.round(completedCount * 0.5 * 10) / 10 // 每个任务约30分钟
+        } catch (e) {}
+      }
+      
       // 存入内存缓存
       sharedMemoryAvatars.set(userId, avatarList)
       sharedMemoryStats.set(userId, { pendingOrders, generatedContents, totalEarnings })
@@ -125,8 +155,21 @@ export class UserStatsService {
       avatars: avatarList.map((a: any) => ({
         id: a.id,
         name: a.name,
-        avatarUrl: a.avatar_url || ''
-      }))
+        avatarUrl: a.avatar_url || '',
+        hostingEnabled: a.hosting_enabled || 0,
+        isHosted: a.is_hosted || 0,
+        serviceHours: a.service_hours || '24h',
+        totalOrders: a.total_orders || 0,
+        completedOrders: a.completed_orders || 0,
+        totalEarnings: a.total_earnings || 0,
+        todayEarnings: a.today_earnings || 0,
+        status: a.status || 'active'
+      })),
+      nickname: userResult?.nickname || '',
+      avatar: userResult?.avatar || '',
+      referralCode,
+      invitedCount,
+      totalWorkHours
     }
   }
   

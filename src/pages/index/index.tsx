@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, Library, Share2, ChevronRight, Send, Gift, Zap } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -9,9 +9,13 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const Index: React.FC = () => {
-  const [userName] = useState('用户')
+  const [userName, setUserName] = useState('用户')
   const [mindClones, setMindClones] = useState(0) // 分身数量
-  const [avatar] = useState('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
+  const [userAvatar, setUserAvatar] = useState('') // 用户真实头像
+  const [workHours, setWorkHours] = useState(0) // 分身工作时长
+  const [allHostingEnabled, setAllHostingEnabled] = useState(false) // 是否所有分身都已托管
+  const [referralCode, setReferralCode] = useState('') // 邀请码
+  const [invitedCount, setInvitedCount] = useState(0) // 邀请人数
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
   const [stats, setStats] = useState([
     { label: '我的分身', value: '0', unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
@@ -135,6 +139,12 @@ const Index: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         const statsData = res.data.data
         setMindClones(statsData.avatarCount || 0)
+        setUserName(statsData.nickname || '用户')
+        setUserAvatar(statsData.avatarUrl || '')
+        setWorkHours(statsData.totalWorkHours || 0)
+        setAllHostingEnabled(statsData.allHostingEnabled || false)
+        setReferralCode(statsData.referralCode || '')
+        setInvitedCount(statsData.invitedCount || 0)
         setStats([
           { label: '我的分身', value: String(statsData.avatarCount || 0), unit: '个', color: '#6366F1', bg: '#EEF2FF', trend: '', path: '/pages/mind-chat/index' },
           { label: '待接订单', value: String(statsData.pendingOrders || 0), unit: '单', color: '#F59E0B', bg: '#FFFBEB', trend: '', path: '/package-order/pages/pending-order/index' },
@@ -244,6 +254,18 @@ const Index: React.FC = () => {
 
 
 
+  // 根据时间生成问候语
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 6) return '夜深了'
+    if (hour < 9) return '早上好'
+    if (hour < 12) return '上午好'
+    if (hour < 14) return '中午好'
+    if (hour < 18) return '下午好'
+    if (hour < 22) return '晚上好'
+    return '夜深了'
+  }
+
   const goToPage = (path: string) => {
     if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
       Taro.switchTab({ url: path })
@@ -324,15 +346,15 @@ const Index: React.FC = () => {
         <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 25}px` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
-              <Image className="avatar" src={avatar} />
+              <Image className="avatar" src={userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'} />
               <View className="online-dot" />
             </View>
             <View className="header-info">
-              <Text className="nickname">早安，{userName}</Text>
+              <Text className="nickname">{getGreeting()}，{userName}</Text>
               <View className="subtitle-wrapper">
                 <View className="subtitle-dot" />
                 <Text className="subtitle">
-                  {mindClones > 0 ? '分身已工作 4.5 小时' : '快创建你的第一个分身'}
+                  {mindClones > 0 ? `分身已工作 ${workHours}h` : '快创建你的第一个分身'}
                 </Text>
               </View>
             </View>
@@ -374,21 +396,33 @@ const Index: React.FC = () => {
           </View>
         </View>
 
-        {/* 推广Banner - 根据是否有分身显示不同内容 */}
+        {/* 推广Banner - 三段逻辑：无分身→创建，有分身未托管→开启托管，已托管→邀请好友 */}
         <View
           className="banner"
           onClick={() => {
-            if (mindClones > 0) {
+            if (mindClones === 0) {
+              goToPage('/package-avatar/pages/avatar-create/index')
+            } else if (!allHostingEnabled) {
               enableAllTrust()
             } else {
-              goToPage('/package-avatar/pages/avatar-create/index')
+              goToPage('/package-profile/pages/referral-center/index')
             }
           }}
         >
           <View className="banner-bg" />
           <View className="banner-content">
-            {mindClones > 0 ? (
-              // 有分身 - 显示托管收益翻倍
+            {mindClones === 0 ? (
+              // 无分身 - 创建第一个分身
+              <>
+                <Text className="banner-title">创建你的第一个分身</Text>
+                <Text className="banner-desc">AI智能分身，自动接单赚收益</Text>
+                <View className="banner-btn create">
+                  <Plus size={28} color="#6366F1" />
+                  <Text className="banner-btn-text create">立即创建</Text>
+                </View>
+              </>
+            ) : !allHostingEnabled ? (
+              // 有分身但未全部托管 - 开启托管
               <>
                 <Text className="banner-title">分身托管收益翻倍</Text>
                 <Text className="banner-desc">开启 AI 自动抢单，不错过任何业务</Text>
@@ -398,13 +432,21 @@ const Index: React.FC = () => {
                 </View>
               </>
             ) : (
-              // 无分身 - 显示创建分身
+              // 已托管 - 邀请好友注册
               <>
-                <Text className="banner-title">创建你的第一个分身</Text>
-                <Text className="banner-desc">AI智能分身，自动接单赚收益</Text>
-                <View className="banner-btn create">
-                  <Plus size={28} color="#6366F1" />
-                  <Text className="banner-btn-text create">立即创建</Text>
+                <View className="banner-referral-header">
+                  <Gift size={32} color="#F59E0B" />
+                  <Text className="banner-title-referral">邀请好友 赚取奖励</Text>
+                </View>
+                <Text className="banner-desc-referral">每邀请1位好友注册，双方各得 5 元奖励！已邀请 {invitedCount} 人</Text>
+                <View className="banner-referral-bottom">
+                  <View className="referral-code-tag">
+                    <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
+                  </View>
+                  <View className="banner-btn-referral">
+                    <Text className="banner-btn-text-referral">立即邀请</Text>
+                    <ChevronRight size={20} color="#FFFFFF" />
+                  </View>
                 </View>
               </>
             )}
@@ -412,7 +454,13 @@ const Index: React.FC = () => {
           <View className="banner-decoration">
             <View className="deco-circle circle-1" />
             <View className="deco-circle circle-2" />
-            <Rocket size={100} color="rgba(255,255,255,0.15)" />
+            {mindClones === 0 ? (
+              <Rocket size={100} color="rgba(255,255,255,0.15)" />
+            ) : !allHostingEnabled ? (
+              <Zap size={100} color="rgba(255,255,255,0.15)" />
+            ) : (
+              <Gift size={100} color="rgba(255,255,255,0.15)" />
+            )}
           </View>
         </View>
 
