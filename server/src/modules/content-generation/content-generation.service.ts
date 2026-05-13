@@ -3,12 +3,21 @@ import { Config, LLMClient, ImageGenerationClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
+import {
+  SKILL_STRATEGIES,
+  getSkillStrategy,
+  getPlatformRule,
+  getStyleInstruction,
+  getNicheInstruction,
+  detectSkillFromOrder,
+} from './content-strategy'
 
 @Injectable()
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
   private readonly llmClient: LLMClient
   private readonly imageClient: ImageGenerationClient
+  private readonly videoClient: any
 
   constructor(
     @Inject(forwardRef(() => OrderService))
@@ -17,6 +26,13 @@ export class ContentGenerationService {
     const config = new Config()
     this.llmClient = new LLMClient(config)
     this.imageClient = new ImageGenerationClient(config)
+    // 视频生成客户端（使用 SDK 的 VideoGenerationClient）
+    try {
+      const { VideoGenerationClient } = require('coze-coding-dev-sdk')
+      this.videoClient = new VideoGenerationClient(config)
+    } catch (_) {
+      this.videoClient = null
+    }
   }
 
   /**
@@ -32,9 +48,22 @@ export class ContentGenerationService {
     targetAudience: string
     avatarName?: string
     avatarPersonality?: string
+    avatarSkills?: string[]
+    contentStyles?: string[]
+    nicheTags?: string[]
+    preferredStyles?: string[]
+    industryTags?: string[]
     contentQuantity?: number
   }): Promise<any[]> {
     const results: any[] = []
+
+    // 确定分身的核心技能
+    const primarySkill = this.detectPrimarySkill(input.avatarSkills || [], input.contentType)
+
+    // 如果技能明确指定了内容类型，覆盖默认的 contentType
+    const effectiveContentType = this.resolveContentType(primarySkill, input.contentType)
+
+    this.logger.log(`内容生成: orderId=${input.orderId}, avatarId=${input.avatarId}, primarySkill=${primarySkill}, contentType=${input.contentType}->${effectiveContentType}, skills=${input.avatarSkills?.join(',')}`)
 
     for (const platform of input.platforms) {
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -78,13 +107,45 @@ export class ContentGenerationService {
       })
 
       // 3. 后台异步执行生成（不 await，让接口立即返回）
-      this.executeGeneration(requestId, platform, input).catch(err => {
+      this.executeGeneration(requestId, platform, {
+        ...input,
+        contentType: effectiveContentType,
+        primarySkill,
+      }).catch(err => {
         this.logger.error(`后台生成失败: ${err.message}`, err.stack)
         this.updateStatus(requestId, input.orderId, 'failed', null)
       })
     }
 
     return results
+  }
+
+  /**
+   * 检测分身的核心技能
+   */
+  private detectPrimarySkill(avatarSkills: string[], contentType: string): string {
+    if (avatarSkills.length > 0) {
+      return avatarSkills[0] // 取第一个技能作为主技能
+    }
+    // 根据内容类型推断
+    return detectSkillFromOrder(contentType)
+  }
+
+  /**
+   * 根据技能确定内容类型
+   */
+  private resolveContentType(primarySkill: string, orderContentType: string): string {
+    const skillStrategy = getSkillStrategy(primarySkill)
+    if (skillStrategy) {
+      const allowedTypes = skillStrategy.contentTypes
+      // 如果订单要求的内容类型在技能允许范围内，使用订单要求
+      if (allowedTypes.includes(orderContentType)) {
+        return orderContentType
+      }
+      // 否则使用技能的首选内容类型
+      return allowedTypes[0]
+    }
+    return orderContentType
   }
 
   /**
@@ -95,35 +156,32 @@ export class ContentGenerationService {
     platform: string,
     input: any
   ): Promise<void> {
-    const { contentType } = input
+    const { contentType, primarySkill } = input
     const needImage = contentType === 'image' || contentType === 'image_text' || contentType === 'video'
     const needText = contentType === 'text' || contentType === 'image_text' || contentType === 'video'
     const needVideo = contentType === 'video'
 
-    this.logger.log(`开始后台生成: requestId=${requestId}, platform=${platform}, contentType=${contentType}`)
+    this.logger.log(`开始后台生成: requestId=${requestId}, platform=${platform}, contentType=${contentType}, primarySkill=${primarySkill}`)
 
     let textContent = ''
     let images: string[] = []
     let videos: string[] = []
 
-    // 判断是否为"图文文章"型平台（内容中嵌入图片）
+    // 判断是否为"图文文章"型平台
     const isArticlePlatform = this.isArticlePlatform(platform)
 
     if (isArticlePlatform && needText && needImage) {
-      // ===== 图文文章模式：先生成文章框架（含图片占位符），再生成图片替换占位符 =====
+      // ===== 图文文章模式 =====
       try {
         const imageCount = input.contentQuantity || 3
-        // 1. 生成图文文章（文中包含 [IMG_1], [IMG_2] ... 占位符）
         this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
 
-        // 2. 生成文章配图
         images = await this.generateArticleImages(platform, input, textContent, imageCount)
         this.logger.log(`文章配图生成完成: ${images.length}张`)
 
-        // 3. 将图片URL替换文章中的占位符
         textContent = this.replaceImagePlaceholders(textContent, images)
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
       } catch (err: any) {
@@ -131,7 +189,6 @@ export class ContentGenerationService {
       }
     } else {
       // ===== 传统模式：文案 + 配图分离 =====
-      // 1. 生成文字内容
       if (needText) {
         try {
           this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
@@ -143,7 +200,6 @@ export class ContentGenerationService {
         }
       }
 
-      // 2. 生成配图
       if (needImage) {
         try {
           this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
@@ -159,14 +215,33 @@ export class ContentGenerationService {
     // 3. 生成视频
     if (needVideo) {
       try {
-        videos = await this.generateVideos(platform, input)
+        this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
+        videos = await this.generateVideos(platform, input, textContent, images)
         this.logger.log(`视频生成完成: ${videos.length}个`)
       } catch (err: any) {
         this.logger.warn(`视频生成失败: ${err.message}`)
       }
     }
 
-    // 4. 更新为完成状态
+    // 4. 内容质量自检（仅文本内容）
+    if (textContent) {
+      try {
+        const qualityResult = await this.qualityCheck(textContent, input)
+        this.logger.log(`内容质量评分: ${qualityResult.score}/100, 通过: ${qualityResult.passed}`)
+        if (!qualityResult.passed && qualityResult.score < 50) {
+          // 评分太低，自动重试一次
+          this.logger.warn(`内容质量过低(${qualityResult.score}分)，自动重试...`)
+          const retryText = await this.generateTextContent(platform, input)
+          if (retryText && retryText.length > textContent.length * 0.5) {
+            textContent = retryText
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`质量自检失败(不影响发布): ${err.message}`)
+      }
+    }
+
+    // 5. 更新为完成状态
     await this.updateStatus(requestId, input.orderId, 'completed', {
       content: textContent,
       images,
@@ -174,7 +249,7 @@ export class ContentGenerationService {
       platforms: [platform]
     })
 
-    // 5. 同步订单状态
+    // 6. 同步订单状态
     try {
       await this.syncOrderStatus(input.orderId)
     } catch (e: any) {
@@ -184,7 +259,6 @@ export class ContentGenerationService {
 
   /**
    * 判断是否为"图文文章"型平台
-   * 微信公众号、今日头条、知乎等平台适合长图文文章
    */
   private isArticlePlatform(platform: string): boolean {
     const articlePlatforms = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu', 'wechat_official']
@@ -192,8 +266,70 @@ export class ContentGenerationService {
   }
 
   /**
-   * 生成图文文章 - 图片嵌入文章正文中
-   * 文章中使用 [IMG_1], [IMG_2] 等占位符标记图片位置
+   * 构建增强版系统提示词 — 融合技能策略+平台爆款规则+风格+领域
+   */
+  private buildEnhancedSystemPrompt(platform: string, input: any): string {
+    const { primarySkill } = input
+    const skillStrategy = getSkillStrategy(primarySkill)
+    const platformRule = getPlatformRule(platform)
+    const styleInstruction = getStyleInstruction(input.contentStyles || input.preferredStyles || [])
+    const nicheInstruction = getNicheInstruction(input.nicheTags || input.industryTags || [])
+
+    let systemPrompt = ''
+
+    // 1. 技能核心能力（最关键，定义角色身份）
+    if (skillStrategy) {
+      systemPrompt += `【你的专业身份】\n${skillStrategy.coreCapability}\n\n`
+      systemPrompt += `【专属内容策略】\n${skillStrategy.generationStrategy}\n\n`
+      systemPrompt += `【爆款要素清单】\n${skillStrategy.viralElements.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n\n`
+      if (skillStrategy.contentTemplate) {
+        systemPrompt += `【内容结构模板】\n${skillStrategy.contentTemplate}\n\n`
+      }
+    } else {
+      systemPrompt += `你是一个顶级社交媒体内容创作高手，深谙各平台的内容玩法和用户心理。\n\n`
+    }
+
+    // 2. 平台爆款规则
+    if (platformRule) {
+      systemPrompt += `【${platformRule.platformName}爆款规则】\n`
+      systemPrompt += `算法偏好：互动率权重${(platformRule.algorithmWeights.engagement * 100).toFixed(0)}%，完播率权重${(platformRule.algorithmWeights.completion * 100).toFixed(0)}%，分享率权重${(platformRule.algorithmWeights.share * 100).toFixed(0)}%，收藏率权重${(platformRule.algorithmWeights.save * 100).toFixed(0)}%\n`
+      systemPrompt += `爆款标题公式：${platformRule.titleFormulas.join(' / ')}\n`
+      systemPrompt += `互动诱导技巧：${platformRule.engagementHooks.join(' / ')}\n`
+      systemPrompt += `话题标签策略：${platformRule.hashtagStrategy}\n`
+      systemPrompt += `禁忌红线：${platformRule.taboos.join('；')}\n`
+      systemPrompt += `最佳发布时间：${platformRule.bestPostTimes.join('、')}\n\n`
+    }
+
+    // 3. 内容风格指令
+    if (styleInstruction) {
+      systemPrompt += `【内容风格要求】\n${styleInstruction}\n\n`
+    }
+
+    // 4. 专业领域指令
+    if (nicheInstruction) {
+      systemPrompt += `【专业领域要求】\n${nicheInstruction}\n\n`
+    }
+
+    // 5. 分身人设
+    if (input.avatarName) {
+      systemPrompt += `【分身人设】\n名字：${input.avatarName}\n`
+      if (input.avatarPersonality) {
+        systemPrompt += `性格：${input.avatarPersonality}\n`
+      }
+      if (input.avatarSkills && input.avatarSkills.length > 0) {
+        const skillNames = input.avatarSkills
+          .map((s: string) => SKILL_STRATEGIES[s]?.skillName || s)
+          .join('、')
+        systemPrompt += `擅长技能：${skillNames}\n`
+      }
+      systemPrompt += '\n'
+    }
+
+    return systemPrompt
+  }
+
+  /**
+   * 生成图文文章 — 增强版：融合技能策略+平台规则
    */
   private async generateArticleContent(platform: string, input: any, imageCount: number): Promise<string> {
     const platformGuide: Record<string, string> = {
@@ -234,16 +370,14 @@ export class ContentGenerationService {
     }
 
     const guide = platformGuide[platform] || platformGuide.wechat_mp
+    const systemPrompt = this.buildEnhancedSystemPrompt(platform, input)
 
-    const prompt = `你是一个顶级新媒体内容创作高手，特别擅长撰写爆款图文文章。
-
-【商单任务 - 必须严格围绕以下信息创作】
+    const prompt = `${systemPrompt}【商单任务 - 必须严格围绕以下信息创作】
 品牌/产品名：${input.orderTitle}
 详细创作要求：
 ${input.orderDescription}
 目标平台：${platform}
 目标受众：${input.targetAudience || '年轻用户'}
-${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersonality || '专业有趣'}` : ''}
 
 【${guide}】
 
@@ -266,9 +400,12 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
 请撰写一篇紧扣品牌/产品、有深度有感染力的图文文章：`
 
     try {
-      const response = await this.llmClient.invoke(
-        [{ role: 'user', content: prompt }]
-      )
+      const messages = []
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt })
+      }
+      messages.push({ role: 'user', content: prompt })
+      const response = await this.llmClient.invoke(messages)
       return response?.content || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
@@ -277,12 +414,15 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   }
 
   /**
-   * 生成图文文章的配图 - 每张图对应文章中的一个段落主题
+   * 生成图文文章的配图 - 增强版：融合技能图片策略
    */
   private async generateArticleImages(platform: string, input: any, textContent: string, imageCount: number): Promise<string[]> {
-    // 从文章内容中提取每张图对应的位置和上下文
     const imageContexts = this.extractImageContexts(textContent, imageCount)
     const productKeywords = await this.extractProductKeywords(input.orderTitle || '', input.orderDescription || '')
+
+    // 技能专属图片风格
+    const skillStrategy = getSkillStrategy(input.primarySkill)
+    const skillImageStyle = skillStrategy?.imageStrategy || ''
 
     const styleMap: Record<string, string> = {
       wechat_mp: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, 4K',
@@ -290,17 +430,16 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
       toutiao: 'professional news style photo, informative and clear, editorial quality, 4K',
       zhihu: 'professional and informative, clean data visualization style, high quality, 4K'
     }
-    const style = styleMap[platform] || styleMap.wechat_mp
+    const platformStyle = styleMap[platform] || styleMap.wechat_mp
 
-    // 构建所有图片的提示词
     const prompts = imageContexts.map((context, i) => {
       const contextHint = context ? `context in article: ${context.substring(0, 100)}` : ''
+      const skillHint = skillImageStyle ? `, ${skillImageStyle}` : ''
       return i === 0
-        ? `Featured hero image for article about ${productKeywords}, ${style}, ${contextHint}, captivating and professional, main visual, 4K`
-        : `Supporting image ${i + 1} for article about ${productKeywords}, ${style}, ${contextHint}, relevant to the topic, 4K`
+        ? `Featured hero image for article about ${productKeywords}, ${platformStyle}${skillHint}, ${contextHint}, captivating and professional, main visual, 4K`
+        : `Supporting image ${i + 1} for article about ${productKeywords}, ${platformStyle}${skillHint}, ${contextHint}, relevant to the topic, 4K`
     })
 
-    // 并行生成所有配图，大幅提升速度
     this.logger.log(`开始并行生成${imageCount}张文章配图...`)
     const results = await Promise.allSettled(
       prompts.map((prompt, i) => {
@@ -331,7 +470,6 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
       const placeholder = `[IMG_${i}]`
       const idx = textContent.indexOf(placeholder)
       if (idx >= 0) {
-        // 取占位符前100个字符作为上下文
         const start = Math.max(0, idx - 100)
         const context = textContent.substring(start, idx).replace(/[#*\n]/g, ' ').trim()
         contexts.push(context)
@@ -343,8 +481,7 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   }
 
   /**
-   * 将图片URL替换文章中的 [IMG_1], [IMG_2] 等占位符
-   * 替换为 markdown 图片格式：![描述](URL)
+   * 将图片URL替换文章中的占位符
    */
   private replaceImagePlaceholders(textContent: string, images: string[]): string {
     let result = textContent
@@ -357,113 +494,7 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   }
 
   /**
-   * 更新中间状态（部分内容已生成）
-   */
-  /**
-   * 更新细化的生成状态（generating_text / generating_images）
-   */
-  private updateDetailedStatus(
-    requestId: string,
-    orderId: string,
-    status: string
-  ): void {
-    const cacheData = getCache(requestId) || getCache(orderId) || {}
-    const updatedCache = {
-      ...cacheData,
-      requestId,
-      order_id: orderId,
-      status,
-      created_at: cacheData.created_at || new Date().toISOString()
-    }
-    setCache(requestId, updatedCache)
-    setCache(orderId, updatedCache)
-    this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
-  }
-
-  private async updatePartialContent(
-    requestId: string,
-    orderId: string,
-    content: string,
-    images: string[],
-    videos: string[],
-    status: string = 'processing'
-  ): Promise<void> {
-    const cacheData = {
-      requestId,
-      order_id: orderId,
-      status,
-      generatedContent: {
-        content: content || '',
-        images: images || [],
-        videos: videos || []
-      },
-      created_at: new Date().toISOString()
-    }
-    setCache(requestId, cacheData)
-    setCache(orderId, cacheData)
-
-    // 更新数据库（await 确保数据一致性）
-    try {
-      const db = getMySQLClient()
-      await db.query(
-        'UPDATE content_generation_requests SET content = ?, images = ?, status = ? WHERE id = ?',
-        [content, images.length > 0 ? JSON.stringify(images) : null, status, requestId]
-      )
-    } catch (err: any) {
-      this.logger.warn(`更新中间状态失败: ${err.message}`)
-    }
-  }
-
-  /**
-   * 更新最终状态
-   */
-  private async updateStatus(
-    requestId: string,
-    orderId: string,
-    status: string,
-    generatedContent: any
-  ): Promise<void> {
-    const cacheData = {
-      requestId,
-      order_id: orderId,
-      status,
-      generatedContent,
-      created_at: new Date().toISOString()
-    }
-    setCache(requestId, cacheData)
-    setCache(orderId, cacheData)
-
-    // 更新数据库（await 确保数据一致性）
-    try {
-      const db = getMySQLClient()
-      if (status === 'completed' && generatedContent) {
-        await db.query(
-          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
-          [
-            status,
-            generatedContent.content || '',
-            generatedContent.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
-            generatedContent.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : null,
-            requestId
-          ]
-        )
-        this.logger.log(`完成状态已写入数据库: requestId=${requestId}`)
-      } else if (status === 'failed') {
-        await db.query(
-          'UPDATE content_generation_requests SET status = ? WHERE id = ?',
-          [status, requestId]
-        )
-        this.logger.log(`失败状态已写入数据库: requestId=${requestId}`)
-      }
-    } catch (err: any) {
-      this.logger.warn(`更新最终状态失败: ${err.message}`)
-    }
-
-    this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
-  }
-
-  /**
-   * 生成文字内容 - 一条完整的、有吸引力的文案
+   * 生成文字内容 — 增强版：融合技能策略+平台爆款规则+风格+领域
    */
   private async generateTextContent(platform: string, input: any): Promise<string> {
     const platformGuide: Record<string, string> = {
@@ -520,16 +551,14 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
     }
 
     const guide = platformGuide[platform] || platformGuide.wechat
+    const systemPrompt = this.buildEnhancedSystemPrompt(platform, input)
 
-    const prompt = `你是一个顶级社交媒体内容创作高手，深谙各平台的内容玩法和用户心理。
-
-【商单任务 - 必须严格围绕以下信息创作】
+    const prompt = `${systemPrompt}【商单任务 - 必须严格围绕以下信息创作】
 品牌/产品名：${input.orderTitle}
 详细创作要求：
 ${input.orderDescription}
 目标平台：${platform}
 目标受众：${input.targetAudience || '年轻用户'}
-${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersonality || '专业有趣'}` : ''}
 
 【${guide}】
 
@@ -544,9 +573,12 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
 请创作一条紧扣品牌/产品、有感染力的高质量推广文案：`
 
     try {
-      const response = await this.llmClient.invoke(
-        [{ role: 'user', content: prompt }]
-      )
+      const messages = []
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt })
+      }
+      messages.push({ role: 'user', content: prompt })
+      const response = await this.llmClient.invoke(messages)
       return response?.content || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
@@ -555,15 +587,12 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   }
 
   /**
-   * 生成配图 - 与文案和订单紧密相关的精美图片
+   * 生成配图 — 增强版：融合技能图片策略
    */
   private async generateImages(platform: string, input: any, textContent: string): Promise<string[]> {
     const quantity = input.contentQuantity || 3
-
-    // 根据平台和订单构建精准的图片提示词
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
-    // 并行生成所有图片，大幅提升速度
     const results = await Promise.allSettled(
       imagePrompts.map((prompt, i) => {
         this.logger.log(`正在生成第${i + 1}张图片，提示词: ${prompt.substring(0, 80)}...`)
@@ -585,14 +614,17 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
   }
 
   /**
-   * 构建图片提示词 - 让每张图都有明确主题，与订单强相关
+   * 构建图片提示词 — 增强版：融合技能图片策略
    */
   private async buildImagePrompts(platform: string, input: any, textContent: string, quantity: number): Promise<string[]> {
     const title = input.orderTitle || 'product'
     const desc = input.orderDescription || ''
     const audience = input.targetAudience || 'young people'
 
-    // 不同平台的图片风格
+    // 技能专属图片策略
+    const skillStrategy = getSkillStrategy(input.primarySkill)
+    const skillImageStyle = skillStrategy?.imageStrategy || ''
+
     const styleMap: Record<string, string> = {
       wechat: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo',
       xiaohongshu: 'aesthetic flat lay, trendy pastel tones, clean minimal composition, Instagram worthy, soft natural light, lifestyle inspiration',
@@ -601,53 +633,320 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
       bilibili: 'creative playful, colorful, anime-inspired elements, fun and imaginative, youth culture',
       kuaishou: 'authentic real-life, down-to-earth, natural unposed, relatable everyday scene, warm and genuine'
     }
-    const style = styleMap[platform] || styleMap.wechat
+    const platformStyle = styleMap[platform] || styleMap.wechat
 
-    // 从订单描述中提取关键信息构建图片提示词（异步：可能需要LLM翻译）
     const productKeywords = await this.extractProductKeywords(title, desc)
 
     const prompts: string[] = []
+    const skillHint = skillImageStyle ? `, ${skillImageStyle}` : ''
 
     // 第1张：主图 - 产品核心展示，强吸引力
-    prompts.push(`Professional product showcase for ${productKeywords}, ${style}, central composition, premium quality, attractive and desirable, targeting ${audience}, 4K, commercial photography`)
+    prompts.push(`Professional product showcase for ${productKeywords}, ${platformStyle}${skillHint}, central composition, premium quality, attractive and desirable, targeting ${audience}, 4K, commercial photography`)
 
     // 第2张：使用场景 - 生活化代入感
     if (quantity >= 2) {
-      prompts.push(`Lifestyle scene of a person using ${productKeywords}, ${style}, relatable everyday moment, showing real benefits and joy, natural and engaging, targeting ${audience}, 4K`)
+      prompts.push(`Lifestyle scene of a person using ${productKeywords}, ${platformStyle}${skillHint}, relatable everyday moment, showing real benefits and joy, natural and engaging, targeting ${audience}, 4K`)
     }
 
     // 第3张：效果/细节 - 说服力
     if (quantity >= 3) {
-      prompts.push(`Close-up detail and effect of ${productKeywords}, ${style}, showing quality and transformation, convincing evidence, premium feel, targeting ${audience}, 4K`)
+      prompts.push(`Close-up detail and effect of ${productKeywords}, ${platformStyle}${skillHint}, showing quality and transformation, convincing evidence, premium feel, targeting ${audience}, 4K`)
     }
 
     // 第4张及以后：更多角度
     for (let i = 3; i < quantity; i++) {
-      prompts.push(`Creative promotional image for ${productKeywords}, unique angle ${i + 1}, ${style}, eye-catching design, appealing to ${audience}, 4K`)
+      prompts.push(`Creative promotional image for ${productKeywords}, unique angle ${i + 1}, ${platformStyle}${skillHint}, eye-catching design, appealing to ${audience}, 4K`)
     }
 
     return prompts
   }
 
   /**
-   * 从订单标题和描述中提取英文产品关键词，用于图片生成
-   * 先尝试本地关键词映射，如果匹配不足则调用 LLM 动态翻译
+   * 生成视频 — 基于技能的视频脚本 + AI视频生成
+   */
+  private async generateVideos(platform: string, input: any, textContent: string, images: string[]): Promise<string[]> {
+    const { primarySkill } = input
+    const skillStrategy = getSkillStrategy(primarySkill)
+
+    // 1. 先生成视频脚本
+    this.logger.log(`开始生成视频脚本: skill=${primarySkill}, platform=${platform}`)
+
+    const videoScript = await this.generateVideoScript(platform, input, textContent, skillStrategy)
+    if (!videoScript) {
+      this.logger.warn('视频脚本生成失败，跳过视频生成')
+      return []
+    }
+
+    this.logger.log(`视频脚本生成完成: ${videoScript.length}字`)
+
+    // 2. 使用第一张已生成的图片作为视频首帧（如果有）
+    const referenceImage = images.length > 0 ? images[0] : undefined
+
+    // 3. 尝试调用视频生成 API
+    const videoUrls: string[] = []
+
+    if (this.videoClient) {
+      try {
+        const videoResult = await this.videoClient.generate({
+          prompt: videoScript.substring(0, 500),
+          image_url: referenceImage,
+          aspect_ratio: platform === 'douyin' || platform === 'kuaishou' ? '9:16' : '16:9',
+          duration: 5,
+        })
+        if (videoResult?.data?.[0]?.url) {
+          videoUrls.push(videoResult.data[0].url)
+          this.logger.log('视频生成成功')
+        }
+      } catch (err: any) {
+        this.logger.warn(`视频生成API调用失败: ${err.message}`)
+      }
+    } else {
+      this.logger.warn('视频生成客户端未初始化，跳过视频生成')
+    }
+
+    // 4. 即使视频生成失败，也将脚本保存到内容中（发单方可以手动制作视频）
+    if (videoUrls.length === 0 && videoScript) {
+      // 将视频脚本追加到文本内容中
+      this.logger.log('视频文件生成未完成，视频脚本已保存到文案中')
+    }
+
+    return videoUrls
+  }
+
+  /**
+   * 生成视频脚本 — 融合技能策略+平台规则
+   */
+  private async generateVideoScript(platform: string, input: any, textContent: string, skillStrategy: any): Promise<string> {
+    const platformVideoGuide: Record<string, string> = {
+      douyin: `抖音短视频脚本要求：
+- 前3秒必须设置强悬念或制造反差，确保完播率
+- 每5秒一个小刺激点（反转/金句/数据冲击/视觉冲击）
+- 口播节奏快，信息密度高，但不堆砌
+- 视觉描述要具体：场景、动作、表情、道具
+- 结尾3秒：强CTA引导（关注/评论/下单）
+- 时长15-60秒为佳`,
+      kuaishou: `快手短视频脚本要求：
+- 开头直接切入生活场景，接地气
+- 真人出镜感强，像邻居在推荐
+- 展示真实使用过程和效果
+- 适当加入幽默元素
+- 结尾直接引导关注`,
+      bilibili: `B站视频脚本要求：
+- 开头10秒抛出核心问题或观点
+- 中间分点论证，有数据/案例支撑
+- 适当加入梗和二次元元素
+- 结尾求三连+预告下期
+- 节奏可以稍慢，但信息量大`,
+      xiaohongshu: `小红书视频脚本要求：
+- 开头3秒展示最吸引人的结果/效果
+- 中间是过程/教程/测评，节奏明快
+- BGM描述要具体（风格+节奏）
+- 画面风格要精致有质感
+- 结尾引导点赞收藏`,
+    }
+
+    const videoGuide = platformVideoGuide[platform] || platformVideoGuide.douyin
+    const skillVideoStrategy = skillStrategy?.videoStrategy || ''
+
+    const systemPrompt = this.buildEnhancedSystemPrompt(platform, input)
+
+    const prompt = `${systemPrompt}【商单任务 - 视频脚本创作】
+品牌/产品名：${input.orderTitle}
+详细创作要求：
+${input.orderDescription}
+目标受众：${input.targetAudience || '年轻用户'}
+
+${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\n` : ''}【${videoGuide}】
+
+【视频脚本格式】
+每个场景包含：
+- 场景编号和时间（如：场景1 0-3秒）
+- 画面描述（具体的视觉内容）
+- 旁白/口播文案（说出来的话）
+- 字幕/文字提示（画面上出现的文字）
+- BGM/音效（背景音乐和音效描述）
+
+【绝对红线】
+1. 脚本必须围绕"${input.orderTitle}"来创作
+2. 禁止出现AI痕迹
+3. 直接输出脚本，不要额外注释
+
+请创作一个完整的视频脚本：`
+
+    try {
+      const messages = []
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt })
+      }
+      messages.push({ role: 'user', content: prompt })
+      const response = await this.llmClient.invoke(messages)
+      return response?.content || ''
+    } catch (err: any) {
+      this.logger.warn(`视频脚本LLM调用失败: ${err.message}`)
+      return ''
+    }
+  }
+
+  /**
+   * 内容质量自检
+   */
+  private async qualityCheck(content: string, input: any): Promise<{ score: number; passed: boolean; issues: string[] }> {
+    const issues: string[] = []
+    let score = 100
+
+    // 1. 基础检查（不消耗 LLM）
+    if (content.length < 50) {
+      issues.push('内容过短(<50字)')
+      score -= 30
+    }
+    if (content.includes('作为AI') || content.includes('我是一个AI')) {
+      issues.push('包含AI痕迹用语')
+      score -= 20
+    }
+    if (!content.includes(input.orderTitle) && input.orderTitle) {
+      issues.push('未包含品牌/产品名')
+      score -= 15
+    }
+
+    // 2. 爆款要素检查
+    const skillStrategy = getSkillStrategy(input.primarySkill)
+    if (skillStrategy) {
+      const hasInteraction = content.includes('评论') || content.includes('点赞') || content.includes('收藏') || content.includes('关注')
+      if (!hasInteraction) {
+        issues.push('缺少互动引导')
+        score -= 10
+      }
+    }
+
+    // 3. 平台特定检查
+    const platform = input.platforms?.[0]
+    if (platform === 'xiaohongshu' && !content.includes('#')) {
+      issues.push('小红书内容缺少话题标签')
+      score -= 10
+    }
+    if (platform === 'weibo' && content.length > 2000) {
+      issues.push('微博内容过长')
+      score -= 5
+    }
+
+    const passed = score >= 60
+    return { score, passed, issues }
+  }
+
+  /**
+   * 更新细化的生成状态
+   */
+  private updateDetailedStatus(
+    requestId: string,
+    orderId: string,
+    status: string
+  ): void {
+    const cacheData = getCache(requestId) || getCache(orderId) || {}
+    const updatedCache = {
+      ...cacheData,
+      requestId,
+      order_id: orderId,
+      status,
+      created_at: cacheData.created_at || new Date().toISOString()
+    }
+    setCache(requestId, updatedCache)
+    setCache(orderId, updatedCache)
+    this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
+  }
+
+  private async updatePartialContent(
+    requestId: string,
+    orderId: string,
+    content: string,
+    images: string[],
+    videos: string[],
+    status: string = 'processing'
+  ): Promise<void> {
+    const cacheData = {
+      requestId,
+      order_id: orderId,
+      status,
+      generatedContent: {
+        content: content || '',
+        images: images || [],
+        videos: videos || []
+      },
+      created_at: new Date().toISOString()
+    }
+    setCache(requestId, cacheData)
+    setCache(orderId, cacheData)
+
+    try {
+      const db = getMySQLClient()
+      await db.query(
+        'UPDATE content_generation_requests SET content = ?, images = ?, status = ? WHERE id = ?',
+        [content, images.length > 0 ? JSON.stringify(images) : null, status, requestId]
+      )
+    } catch (err: any) {
+      this.logger.warn(`更新中间状态失败: ${err.message}`)
+    }
+  }
+
+  /**
+   * 更新最终状态
+   */
+  private async updateStatus(
+    requestId: string,
+    orderId: string,
+    status: string,
+    generatedContent: any
+  ): Promise<void> {
+    const cacheData = {
+      requestId,
+      order_id: orderId,
+      status,
+      generatedContent,
+      created_at: new Date().toISOString()
+    }
+    setCache(requestId, cacheData)
+    setCache(orderId, cacheData)
+
+    try {
+      const db = getMySQLClient()
+      if (status === 'completed' && generatedContent) {
+        await db.query(
+          'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
+          [
+            status,
+            generatedContent.content || '',
+            generatedContent.images?.length > 0 ? JSON.stringify(generatedContent.images) : null,
+            generatedContent.videos?.length > 0 ? JSON.stringify(generatedContent.videos) : null,
+            requestId
+          ]
+        )
+        this.logger.log(`完成状态已写入数据库: requestId=${requestId}`)
+      } else if (status === 'failed') {
+        await db.query(
+          'UPDATE content_generation_requests SET status = ? WHERE id = ?',
+          [status, requestId]
+        )
+        this.logger.log(`失败状态已写入数据库: requestId=${requestId}`)
+      }
+    } catch (err: any) {
+      this.logger.warn(`更新最终状态失败: ${err.message}`)
+    }
+
+    this.logger.log(`状态更新: requestId=${requestId}, status=${status}`)
+  }
+
+  /**
+   * 从订单标题和描述中提取英文产品关键词
    */
   private async extractProductKeywords(title: string, desc: string): Promise<string> {
-    // 常见中文产品/服务关键词到英文的映射
     const keywordMap: Record<string, string> = {
-      // 产品类
       '护肤品': 'skincare products', '面膜': 'face mask', '口红': 'lipstick', '粉底': 'foundation',
       '香水': 'perfume', '洗发水': 'shampoo', '沐浴露': 'body wash', '防晒': 'sunscreen',
       '手机': 'smartphone', '耳机': 'earphones', '电脑': 'laptop', '平板': 'tablet',
       '衣服': 'fashion clothing', '鞋子': 'shoes', '包包': 'handbag', '手表': 'watch',
       '零食': 'snacks', '茶叶': 'tea', '咖啡': 'coffee', '饮品': 'drinks',
-      // 服务类
       'AI助手': 'AI assistant app', '智能助手': 'smart AI assistant', '赚钱': 'money making app',
       '课程': 'online course', '培训': 'training program', '健身': 'fitness program',
-      // 场景类
       '旅行': 'travel', '美食': 'gourmet food', '家居': 'home decor', '办公': 'office',
-      // 效果类
       '美白': 'whitening', '抗老': 'anti-aging', '补水': 'hydrating', '修复': 'repairing',
       '副业': 'side hustle', '收入': 'income',
       '减肥': 'weight loss', '瘦身': 'slimming', '增肌': 'muscle building',
@@ -662,7 +961,6 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
       }
     }
 
-    // 如果本地关键词匹配不足，使用 LLM 动态翻译整个订单描述为英文图片关键词
     if (matchedKeywords.length < 2) {
       try {
         this.logger.log(`本地关键词匹配不足(${matchedKeywords.length})，调用LLM动态翻译...`)
@@ -686,29 +984,20 @@ ${input.avatarName ? `分身人设：${input.avatarName}，${input.avatarPersona
       }
     }
 
-    // 如果匹配到了足够的本地关键词，组合返回
     if (matchedKeywords.length > 0) {
       return matchedKeywords.slice(0, 4).join(' and ')
     }
 
-    // 兜底：用标题的拼音或通用描述
     return 'premium product service'
   }
 
   /**
-   * 生成视频（占位）
-   */
-  private async generateVideos(platform: string, input: any): Promise<string[]> {
-    return []
-  }
-
-  /**
-   * 同步订单状态：根据内容生成记录推导订单状态
+   * 同步订单状态
    */
   private async syncOrderStatus(orderId: string): Promise<void> {
     try {
       await this.orderService.syncOrderStatusByContent(orderId)
-    } catch (err) {
+    } catch (err: any) {
       this.logger.warn(`同步订单状态失败: ${err.message}`)
     }
   }

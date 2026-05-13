@@ -687,6 +687,7 @@ async getExecutionProgress(orderId: string) {
    */
   private async startContentGeneration(orderId: string, avatarId: string, request: any) {
     try {
+      const db = getMySQLClient()
       const order = await this.getOrderById(orderId)
       if (!order) {
         console.warn(`[startContentGeneration] 订单不存在: ${orderId}`)
@@ -696,6 +697,50 @@ async getExecutionProgress(orderId: string) {
       const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
       const normalizedPlatforms = platforms.map((p: string) => p === 'general' ? 'wechat' : p)
 
+      // 获取分身完整信息（技能、风格、领域、人设）
+      let avatarName: string | undefined
+      let avatarPersonality: string | undefined
+      let avatarSkills: string[] = []
+      let contentStyles: string[] = []
+      let nicheTags: string[] = []
+
+      if (avatarId) {
+        try {
+          const [avatarRows] = await db.query(
+            'SELECT name, personality, content_styles, niche_tags FROM avatars WHERE id = ? AND status = \'active\'',
+            [avatarId]
+          ) as [any[], any]
+          const avatar = avatarRows?.[0]
+          if (avatar) {
+            avatarName = avatar.name
+            avatarPersonality = avatar.personality
+            contentStyles = typeof avatar.contentStyles === 'string' ? JSON.parse(avatar.contentStyles) : (avatar.contentStyles || [])
+            nicheTags = typeof avatar.nicheTags === 'string' ? JSON.parse(avatar.nicheTags) : (avatar.nicheTags || [])
+          }
+
+          // 获取分身技能
+          const [skillRows] = await db.query(
+            'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
+            [avatarId]
+          ) as [any[], any]
+          avatarSkills = skillRows?.map((s: any) => s.skillId || s.skill_id) || []
+        } catch (err: any) {
+          console.warn('[startContentGeneration] 获取分身信息失败:', err.message)
+        }
+      }
+
+      // 解析订单的风格和领域偏好
+      let preferredStyles: string[] = []
+      let industryTags: string[] = []
+      try {
+        preferredStyles = order.preferred_styles 
+          ? (typeof order.preferred_styles === 'string' ? JSON.parse(order.preferred_styles) : order.preferred_styles)
+          : []
+        industryTags = order.industry_tags
+          ? (typeof order.industry_tags === 'string' ? JSON.parse(order.industry_tags) : order.industry_tags)
+          : []
+      } catch (_) {}
+
       // 调用内容生成服务
       await this.contentGenerationService.generateContent({
         orderId,
@@ -703,12 +748,19 @@ async getExecutionProgress(orderId: string) {
         orderTitle: request.order_title || order.title || '内容生成',
         orderDescription: request.description || order.description || '',
         platforms: normalizedPlatforms,
-        contentType: 'image_text',
+        contentType: order.content_type || 'image_text',
         targetAudience: request.target_audience || order.target_audience || '年轻用户',
-        contentQuantity: request.quantity_per_avatar || request.expected_quantity || order.quantity_per_avatar || order.expected_quantity || 3
+        contentQuantity: request.quantity_per_avatar || request.expected_quantity || order.quantity_per_avatar || order.expected_quantity || 3,
+        avatarName,
+        avatarPersonality,
+        avatarSkills,
+        contentStyles,
+        nicheTags,
+        preferredStyles,
+        industryTags,
       })
 
-      console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}`)
+      console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)
     } catch (err) {
       console.error('[startContentGeneration] 生成失败:', err)
     }
