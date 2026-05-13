@@ -1,38 +1,20 @@
 import { useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
-  ArrowLeft, 
-  TrendingUp, DollarSign, Users,
-  Clock, Star, Zap, ChevronRight
+  ArrowLeft,
+  Clock, Star, Zap,
+  Flame, TrendingUp, DollarSign, Users
 } from 'lucide-react-taro'
 import './index.css'
 
-// 平台配置
 const PLATFORMS = [
   { key: 'all', label: '全部' },
   ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
-]
-
-// 订单类型
-const ORDER_TYPES = [
-  { key: 'all', label: '全部' },
-  { key: 'content', label: '内容创作' },
-  { key: 'marketing', label: '营销推广' },
-  { key: 'video', label: '视频制作' },
-]
-
-// 预算区间
-const BUDGET_RANGES = [
-  { key: 'all', label: '全部预算' },
-  { key: '0-100', label: '100以下' },
-  { key: '100-500', label: '100-500' },
-  { key: '500-1000', label: '500-1000' },
-  { key: '1000+', label: '1000+' },
 ]
 
 const formatCreatedAt = (value?: string) => {
@@ -41,6 +23,106 @@ const formatCreatedAt = (value?: string) => {
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString()
 }
+
+// 精心设计的示例数据 — 刺激用户接单欲望
+const DEMO_ORDERS = [
+  {
+    id: 'demo_1',
+    title: '小红书美妆种草笔记撰写',
+    description: '需要3篇原创种草笔记，要求真实感强、配图精美，符合小红书调性。提供产品资料包。',
+    budget: 420,
+    platform: 'xiaohongshu',
+    contentType: 'content',
+    estimatedEarning: 420,
+    deliveryDays: 2,
+    requirements: ['原创撰写', '3篇起', '配图3张/篇'],
+    publisher: { nickname: '花西子品牌方', avatar: '', rating: 4.9 },
+    createdAt: '30分钟前',
+    urgency: 'urgent' as const,
+    acceptCount: 3,
+    matchScore: 95
+  },
+  {
+    id: 'demo_2',
+    title: '抖音短视频脚本创作',
+    description: '为新品30秒短视频创作脚本，需突出产品卖点和使用场景，节奏感强。',
+    budget: 680,
+    platform: 'douyin',
+    contentType: 'video',
+    estimatedEarning: 680,
+    deliveryDays: 3,
+    requirements: ['脚本撰写', '分镜设计', '配音稿'],
+    publisher: { nickname: '科技新品局', avatar: '', rating: 4.8 },
+    createdAt: '1小时前',
+    urgency: 'urgent' as const,
+    acceptCount: 5,
+    matchScore: 88
+  },
+  {
+    id: 'demo_3',
+    title: '微信公众号品牌推广软文',
+    description: '撰写品牌推广软文，要求文笔流畅、传播力强，阅读量目标10w+。',
+    budget: 560,
+    platform: 'wechat_mp',
+    contentType: 'marketing',
+    estimatedEarning: 560,
+    deliveryDays: 2,
+    requirements: ['原创撰写', 'SEO优化', '配图设计'],
+    publisher: { nickname: '新消费品牌', avatar: '', rating: 4.7 },
+    createdAt: '2小时前',
+    urgency: 'normal' as const,
+    acceptCount: 2,
+    matchScore: 82
+  },
+  {
+    id: 'demo_4',
+    title: 'B站数码产品深度测评',
+    description: '数码产品深度测评内容，包含图文和视频脚本，需要专业性和可读性。',
+    budget: 1200,
+    platform: 'bilibili',
+    contentType: 'content',
+    estimatedEarning: 1200,
+    deliveryDays: 5,
+    requirements: ['深度测评', '对比分析', '实拍素材'],
+    publisher: { nickname: '数码研究所', avatar: '', rating: 4.95 },
+    createdAt: '3小时前',
+    urgency: 'hot' as const,
+    acceptCount: 8,
+    matchScore: 91
+  },
+  {
+    id: 'demo_5',
+    title: '快手美食探店视频脚本',
+    description: '探店短视频脚本创作，需要创意拍摄方案和剪辑建议，吸引本地流量。',
+    budget: 380,
+    platform: 'kuaishou',
+    contentType: 'video',
+    estimatedEarning: 380,
+    deliveryDays: 2,
+    requirements: ['脚本撰写', '拍摄方案', '剪辑建议'],
+    publisher: { nickname: '城市美食家', avatar: '', rating: 4.6 },
+    createdAt: '5小时前',
+    urgency: 'normal' as const,
+    acceptCount: 1,
+    matchScore: 76
+  },
+  {
+    id: 'demo_6',
+    title: '小红书旅行攻略图文',
+    description: '撰写热门旅行目的地攻略，包含行程规划、美食推荐、拍照打卡点。',
+    budget: 350,
+    platform: 'xiaohongshu',
+    contentType: 'content',
+    estimatedEarning: 350,
+    deliveryDays: 3,
+    requirements: ['原创撰写', '配图9张+', '行程规划'],
+    publisher: { nickname: '旅行研究所', avatar: '', rating: 4.8 },
+    createdAt: '8小时前',
+    urgency: 'normal' as const,
+    acceptCount: 4,
+    matchScore: 79
+  },
+]
 
 interface OrderItem {
   id: string
@@ -58,153 +140,92 @@ interface OrderItem {
     rating: number
   }
   createdAt: string
+  urgency?: 'urgent' | 'hot' | 'normal'
+  acceptCount?: number
+  matchScore?: number
 }
 
 export default function OrderSquarePage() {
   const [selectedPlatform, setSelectedPlatform] = useState('all')
-  const [selectedType] = useState('all')
-  const [selectedBudget, setSelectedBudget] = useState('all')
   const [orders, setOrders] = useState<OrderItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [showFilter, setShowFilter] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
 
   useDidShow(() => {
     fetchOrders()
   })
 
   const fetchOrders = async () => {
-    setLoading(true)
     try {
       const res = await Network.request({
         url: '/api/order/open',
-        data: {
-          page: 1,
-          pageSize: 50
-        }
+        data: { page: 1, pageSize: 50 }
       })
-      
+
       if (res.data?.code === 200) {
         const data = res.data?.data
         const items = Array.isArray(data) ? data : (data?.items || [])
-        const mapped = items.map((item: any) => ({
-          id: item.id,
-          title: item.title || '未命名订单',
-          description: item.description || '',
-          budget: Number(item.budget || 0),
-          platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : ''),
-          contentType: item.contentType || 'content',
-          estimatedEarning: Number(item.budget || 0),
-          deliveryDays: 3,
-          requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : [],
-          publisher: { nickname: '发布方', avatar: '', rating: 5 },
-          createdAt: formatCreatedAt(item.createdAt)
-        })) as OrderItem[]
 
-        const filteredByPlatform = selectedPlatform === 'all'
-          ? mapped
-          : mapped.filter((item) => item.platform === selectedPlatform)
+        if (items.length > 0) {
+          const mapped = items.map((item: any) => ({
+            id: item.id,
+            title: item.title || '未命名订单',
+            description: item.description || '',
+            budget: Number(item.budget || 0),
+            platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : ''),
+            contentType: item.contentType || 'content',
+            estimatedEarning: Number(item.budget || 0),
+            deliveryDays: 3,
+            requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : [],
+            publisher: { nickname: '发布方', avatar: '', rating: 5 },
+            createdAt: formatCreatedAt(item.createdAt)
+          })) as OrderItem[]
 
-        const filtered = selectedBudget === 'all'
-          ? filteredByPlatform
-          : filteredByPlatform.filter((item) => {
-            if (selectedBudget === '0-100') return item.budget <= 100
-            if (selectedBudget === '100-500') return item.budget > 100 && item.budget <= 500
-            if (selectedBudget === '500-1000') return item.budget > 500 && item.budget <= 1000
-            if (selectedBudget === '1000+') return item.budget > 1000
-            return true
-          })
+          const filtered = selectedPlatform === 'all'
+            ? mapped
+            : mapped.filter((item) => item.platform === selectedPlatform)
 
-        setOrders(filtered)
+          setOrders(filtered)
+          setIsDemo(false)
+        } else {
+          // 无真实数据 → 展示示例数据刺激用户
+          setOrders(getDemoOrdersForPlatform(selectedPlatform))
+          setIsDemo(true)
+        }
       } else {
-        // 模拟数据
-        setOrders(getMockOrders())
+        setOrders(getDemoOrdersForPlatform(selectedPlatform))
+        setIsDemo(true)
       }
     } catch (error) {
       console.error('获取订单失败:', error)
-      setOrders(getMockOrders())
-    } finally {
-      setLoading(false)
+      setOrders(getDemoOrdersForPlatform(selectedPlatform))
+      setIsDemo(true)
     }
   }
 
-  // 模拟数据
-  const getMockOrders = (): OrderItem[] => {
-    return [
-      {
-        id: '1',
-        title: '美妆产品种草笔记撰写',
-        description: '需要撰写小红书种草笔记，要求原创度高，符合平台风格',
-        budget: 280,
-        platform: 'xiaohongshu',
-        contentType: 'content',
-        estimatedEarning: 280,
-        deliveryDays: 2,
-        requirements: ['原创', '配图', '热门关键词'],
-        publisher: { nickname: '美妆达人小雅', avatar: '', rating: 4.8 },
-        createdAt: '2小时前'
-      },
-      {
-        id: '2',
-        title: '新品上市短视频脚本',
-        description: '为新品创作30秒短视频脚本，需要突出产品卖点',
-        budget: 500,
-        platform: 'douyin',
-        contentType: 'video',
-        estimatedEarning: 500,
-        deliveryDays: 3,
-        requirements: ['脚本', '分镜', '配音稿'],
-        publisher: { nickname: '创意工坊', avatar: '', rating: 4.9 },
-        createdAt: '5小时前'
-      },
-      {
-        id: '3',
-        title: '品牌推广软文代写',
-        description: '撰写品牌推广软文，要求文笔流畅，传播力强',
-        budget: 380,
-        platform: 'wechat_mp',
-        contentType: 'marketing',
-        estimatedEarning: 380,
-        deliveryDays: 2,
-        requirements: ['原创', 'SEO优化', '配图'],
-        publisher: { nickname: '营销精英', avatar: '', rating: 4.7 },
-        createdAt: '1天前'
-      },
-      {
-        id: '4',
-        title: '数码产品测评内容',
-        description: '数码产品深度测评内容，包含图文和视频素材',
-        budget: 800,
-        platform: 'bilibili',
-        contentType: 'content',
-        estimatedEarning: 800,
-        deliveryDays: 5,
-        requirements: ['深度测评', '对比分析', '实拍素材'],
-        publisher: { nickname: '科技大咖', avatar: '', rating: 4.95 },
-        createdAt: '1天前'
-      },
-      {
-        id: '5',
-        title: '美食探店视频脚本',
-        description: '探店短视频脚本，需要有创意，吸引眼球',
-        budget: 350,
-        platform: 'kuaishou',
-        contentType: 'video',
-        estimatedEarning: 350,
-        deliveryDays: 2,
-        requirements: ['脚本', '拍摄指导', '剪辑建议'],
-        publisher: { nickname: '美食探索家', avatar: '', rating: 4.6 },
-        createdAt: '2天前'
-      },
-    ]
+  const getDemoOrdersForPlatform = (platform: string) => {
+    if (platform === 'all') return DEMO_ORDERS
+    return DEMO_ORDERS.filter(o => o.platform === platform)
+  }
+
+  const handlePlatformChange = (key: string) => {
+    setSelectedPlatform(key)
+    if (isDemo) {
+      setOrders(getDemoOrdersForPlatform(key))
+    } else {
+      fetchOrders()
+    }
   }
 
   const handleAcceptOrder = async (orderId: string) => {
+    if (orderId.startsWith('demo_')) {
+      showToast({ title: '创建分身即可接单赚钱', icon: 'none' })
+      return
+    }
     try {
       const res = await Network.request({
         url: `/api/order/${orderId}/accept`,
         method: 'PUT'
       })
-      
       if (res.data?.code === 200) {
         showToast({ title: '接单成功', icon: 'success' })
         fetchOrders()
@@ -216,42 +237,74 @@ export default function OrderSquarePage() {
   }
 
   const handleOrderClick = (order: OrderItem) => {
+    if (order.id.startsWith('demo_')) {
+      showToast({ title: '创建分身即可查看详情', icon: 'none' })
+      return
+    }
     navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}&source=square` })
   }
 
   const statusBarHeight = getStatusBarHeight()
 
+  const getUrgencyTag = (order: OrderItem) => {
+    if (order.urgency === 'urgent') return { text: '急单', color: '#EF4444', bg: '#FEF2F2' }
+    if (order.urgency === 'hot') return { text: '热门', color: '#F59E0B', bg: '#FFFBEB' }
+    return null
+  }
+
+  const getMatchColor = (score?: number) => {
+    if (!score) return '#999'
+    if (score >= 80) return '#10B981'
+    if (score >= 60) return '#F59E0B'
+    return '#999'
+  }
+
   return (
     <View className="order-square-page">
       {/* 顶部背景 */}
       <View className="page-header" style={{ paddingTop: statusBarHeight + 'px' }}>
-        {/* 装饰元素 */}
         <View className="header-decoration">
           <View className="deco-circle deco-circle-1" />
           <View className="deco-circle deco-circle-2" />
         </View>
-        
-        {/* 标题栏 */}
+
         <View className="header-top">
           <View className="back-btn" onClick={() => navigateBack()}>
             <ArrowLeft size={22} color="#fff" />
           </View>
-          <Text className="header-title">订单广场</Text>
+          <View className="header-center">
+            <Text className="header-title block">订单广场</Text>
+            <Text className="header-sub block">接单赚钱，AI替你创作</Text>
+          </View>
           <View className="header-right" />
         </View>
-        
+
+        {/* 统计概览 */}
+        <View className="header-stats">
+          <View className="header-stat">
+            <Text className="header-stat-value block">{DEMO_ORDERS.length}+</Text>
+            <Text className="header-stat-label block">在线订单</Text>
+          </View>
+          <View className="header-stat-divider" />
+          <View className="header-stat">
+            <Text className="header-stat-value block">¥{DEMO_ORDERS.reduce((s, o) => s + o.budget, 0)}+</Text>
+            <Text className="header-stat-label block">总预算金额</Text>
+          </View>
+          <View className="header-stat-divider" />
+          <View className="header-stat">
+            <Text className="header-stat-value block">¥120~1200</Text>
+            <Text className="header-stat-label block">单笔收益</Text>
+          </View>
+        </View>
+
         {/* 平台筛选 */}
-        <ScrollView 
-          className="platform-scroll" 
-          scrollX 
-          scrollWithAnimation
-        >
+        <ScrollView className="platform-scroll" scrollX scrollWithAnimation>
           <View className="platform-tags">
             {PLATFORMS.map(p => (
-              <View 
+              <View
                 key={p.key}
                 className={`platform-tag ${selectedPlatform === p.key ? 'active' : ''}`}
-                onClick={() => setSelectedPlatform(p.key)}
+                onClick={() => handlePlatformChange(p.key)}
               >
                 <Text className="platform-tag-text">{p.label}</Text>
               </View>
@@ -260,139 +313,150 @@ export default function OrderSquarePage() {
         </ScrollView>
       </View>
 
-      {/* 筛选区域 */}
-      <View className="filter-bar">
-        <View 
-          className={`filter-item ${showFilter ? 'active' : ''}`}
-          onClick={() => setShowFilter(!showFilter)}
-        >
-          <Text className="filter-text">
-            {selectedType === 'all' ? '类型' : ORDER_TYPES.find(t => t.key === selectedType)?.label}
-          </Text>
-          <ChevronRight size={14} color={showFilter ? '#7B3FE4' : '#999'} className={showFilter ? 'rotate-90' : ''} />
+      {/* 示例数据提示 */}
+      {isDemo && (
+        <View className="demo-hint">
+          <View className="demo-hint-badge">
+            <Flame size={14} color="#7B3FE4" />
+            <Text className="demo-hint-text">以下为热门示例订单，创建分身即可接单赚钱</Text>
+          </View>
         </View>
-        <View className="filter-divider" />
-        <View 
-          className="filter-item"
-          onClick={() => setSelectedBudget(selectedBudget === 'all' ? '500-1000' : 'all')}
-        >
-          <Text className="filter-text">
-            {selectedBudget === 'all' ? '预算' : BUDGET_RANGES.find(b => b.key === selectedBudget)?.label}
-          </Text>
-          <ChevronRight size={14} color="#999" />
-        </View>
-        <View className="filter-divider" />
-        <View className="filter-item">
-          <Text className="filter-text">智能排序</Text>
-          <ChevronRight size={14} color="#999" />
-        </View>
-      </View>
+      )}
 
       {/* 订单列表 */}
-      <ScrollView 
+      <ScrollView
         className="order-scroll"
         scrollY
         refresherEnabled
         onRefresherRefresh={fetchOrders}
       >
-        {loading && orders.length === 0 ? (
-          <View className="loading-state">
-            <View className="loading-spinner" />
-            <Text className="loading-text">加载中...</Text>
-          </View>
-        ) : (
-          <View className="order-list">
-            {orders.map(order => {
-              const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
-              
-              return (
-                <View 
-                  key={order.id}
-                  className="order-card"
-                  onClick={() => handleOrderClick(order)}
-                >
-                  {/* 卡片头部 */}
-                  <View className="card-header">
+        <View className="order-list">
+          {orders.map(order => {
+            const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
+            const urgencyTag = getUrgencyTag(order)
+
+            return (
+              <View
+                key={order.id}
+                className="order-card"
+                onClick={() => handleOrderClick(order)}
+              >
+                {/* 卡片顶部条 */}
+                {urgencyTag && (
+                  <View className="card-top-strip" style={{ background: urgencyTag.color }} />
+                )}
+
+                {/* 卡片头部 */}
+                <View className="card-header">
+                  <View className="card-header-left">
                     <View className="platform-badge" style={{ background: `${platformConfig.color}15` }}>
                       <Text className="platform-icon">{platformConfig.icon}</Text>
                       <Text className="platform-name" style={{ color: platformConfig.color }}>
                         {getPlatformLabel(order.platform)}
                       </Text>
                     </View>
-                    <Text className="publish-time">{order.createdAt}</Text>
+                    {urgencyTag && (
+                      <View className="urgency-badge" style={{ background: urgencyTag.bg }}>
+                        <Text className="urgency-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
+                      </View>
+                    )}
                   </View>
+                  <Text className="publish-time">{order.createdAt}</Text>
+                </View>
 
-                  {/* 订单标题 */}
+                {/* 订单标题 */}
+                <View className="order-title-row">
                   <Text className="order-title">{order.title}</Text>
+                  {order.matchScore && order.matchScore >= 80 && (
+                    <View className="match-badge" style={{ background: `${getMatchColor(order.matchScore)}15` }}>
+                      <TrendingUp size={12} color={getMatchColor(order.matchScore)} />
+                      <Text className="match-text" style={{ color: getMatchColor(order.matchScore) }}>
+                        {order.matchScore}%匹配
+                      </Text>
+                    </View>
+                  )}
+                </View>
 
-                  {/* 订单描述 */}
-                  <Text className="order-desc">{order.description}</Text>
+                {/* 订单描述 */}
+                <Text className="order-desc">{order.description}</Text>
 
-                  {/* 需求标签 */}
-                  <View className="requirement-tags">
-                    {order.requirements.slice(0, 3).map((req, idx) => (
-                      <View key={idx} className="req-tag">
-                        <Text className="req-tag-text">{req}</Text>
-                      </View>
-                    ))}
+                {/* 需求标签 */}
+                <View className="requirement-tags">
+                  {order.requirements.slice(0, 3).map((req, idx) => (
+                    <View key={idx} className="req-tag">
+                      <Text className="req-tag-text">{req}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* 数据统计 */}
+                <View className="stats-row">
+                  <View className="stat-item">
+                    <DollarSign size={14} color="#F59E0B" />
+                    <Text className="stat-value earn">¥{order.budget}</Text>
+                    <Text className="stat-label">单笔收益</Text>
                   </View>
-
-                  {/* 数据统计 */}
-                  <View className="stats-row">
-                    <View className="stat-item">
-                      <DollarSign size={14} color="#F59E0B" />
-                      <Text className="stat-value">¥{order.budget}</Text>
-                      <Text className="stat-label">预算</Text>
-                    </View>
-                    <View className="stat-divider" />
-                    <View className="stat-item">
-                      <TrendingUp size={14} color="#10B981" />
-                      <Text className="stat-value">¥{order.estimatedEarning}</Text>
-                      <Text className="stat-label">预估收益</Text>
-                    </View>
-                    <View className="stat-divider" />
-                    <View className="stat-item">
-                      <Clock size={14} color="#6366F1" />
-                      <Text className="stat-value">{order.deliveryDays}天</Text>
-                      <Text className="stat-label">交付周期</Text>
-                    </View>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <Clock size={14} color="#6366F1" />
+                    <Text className="stat-value">{order.deliveryDays}天</Text>
+                    <Text className="stat-label">交付周期</Text>
                   </View>
-
-                  {/* 卡片底部 */}
-                  <View className="card-footer">
-                    <View className="publisher-info">
-                      <View className="publisher-avatar">
-                        {order.publisher.avatar ? (
-                          <Image src={order.publisher.avatar} className="avatar-img" />
-                        ) : (
-                          <Users size={16} color="#999" />
-                        )}
-                      </View>
-                      <Text className="publisher-name">{order.publisher.nickname}</Text>
-                      <View className="rating">
-                        <Star size={12} color="#F59E0B" />
-                        <Text className="rating-text">{order.publisher.rating}</Text>
-                      </View>
-                    </View>
-                    <Button 
-                      size="sm"
-                      className="accept-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAcceptOrder(order.id)
-                      }}
-                    >
-                      <Zap size={14} color="#fff" />
-                      <Text className="accept-btn-text">接单</Text>
-                    </Button>
+                  <View className="stat-divider" />
+                  <View className="stat-item">
+                    <Users size={14} color="#10B981" />
+                    <Text className="stat-value">{order.acceptCount || 0}人</Text>
+                    <Text className="stat-label">已接单</Text>
                   </View>
                 </View>
-              )
-            })}
+
+                {/* 卡片底部 */}
+                <View className="card-footer">
+                  <View className="publisher-info">
+                    <View className="publisher-avatar">
+                      <Users size={16} color="#999" />
+                    </View>
+                    <Text className="publisher-name">{order.publisher.nickname}</Text>
+                    <View className="rating">
+                      <Star size={12} color="#F59E0B" />
+                      <Text className="rating-text">{order.publisher.rating}</Text>
+                    </View>
+                  </View>
+                  <Button
+                    size="sm"
+                    className="accept-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleAcceptOrder(order.id)
+                    }}
+                  >
+                    <Zap size={14} color="#fff" />
+                    <Text className="accept-btn-text">接单</Text>
+                  </Button>
+                </View>
+              </View>
+            )
+          })}
+        </View>
+
+        {/* 底部CTA */}
+        {isDemo && (
+          <View className="bottom-cta">
+            <View className="cta-card">
+              <View className="cta-content">
+                <Text className="cta-title block">创建分身，立即接单赚钱</Text>
+                <Text className="cta-desc block">AI自动匹配订单，24h替你创作，轻松赚收益</Text>
+              </View>
+              <Button
+                className="cta-btn"
+                onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-create/index' })}
+              >
+                <Text className="cta-btn-text">免费创建</Text>
+              </Button>
+            </View>
           </View>
         )}
-        
-        {/* 底部安全区 */}
+
         <View className="safe-bottom" />
       </ScrollView>
     </View>
