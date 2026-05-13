@@ -16,16 +16,14 @@ import {
   Crown,
   Flame,
   Star,
-  Brain,
   Palette,
   Music,
-  MessageCircleHeart,
   Rocket,
-  TrendingUp,
   Award,
   ChevronsRight,
   Bot,
-  Eye
+  Eye,
+  Film
 } from 'lucide-react-taro'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -36,26 +34,54 @@ import './index.css'
 
 type CloneType = 'my' | 'square'
 
-// 技能标签 → 图标/颜色映射
-const SKILL_VISUAL_MAP: Record<string, { icon: string; color: string; bg: string }> = {
-  '幽默风趣': { icon: 'smile', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  '温柔体贴': { icon: 'heart', color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
-  '活泼开朗': { icon: 'sun', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  '知识渊博': { icon: 'brain', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
-  '善解人意': { icon: 'ear', color: '#14b8a6', bg: 'rgba(20,184,166,0.12)' },
-  '犀利毒舌': { icon: 'flame', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  '文艺清新': { icon: 'palette', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
-  '理性冷静': { icon: 'shield', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+// 技能广场技能 → 图标/颜色映射（真正的技能：看手相/衣品改造/图片生成/视频生成等）
+const SKILL_VISUAL_MAP: Record<string, { color: string; bg: string }> = {
+  // 内容创作类
+  '短剧剧本生成': { color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  '分镜脚本生成': { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  '字幕生成': { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  '多集短剧生成': { color: '#2563eb', bg: 'rgba(37,99,235,0.12)' },
+  '自动发帖助手': { color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+  // 视频制作类
+  '视频配音生成': { color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  '短剧视频编辑': { color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
+  '视频生成': { color: '#e11d48', bg: 'rgba(225,29,72,0.12)' },
+  // 音频处理类
+  '分身声音创建': { color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  '语音合成': { color: '#ea580c', bg: 'rgba(234,88,12,0.12)' },
+  // 图片生成类
+  '图片生成': { color: '#14b8a6', bg: 'rgba(20,184,166,0.12)' },
+  'AI绘画': { color: '#0d9488', bg: 'rgba(13,148,136,0.12)' },
+  // 音乐推荐类
+  '背景音乐推荐': { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  // 生活娱乐类
+  '看手相': { color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  '衣品改造': { color: '#d946ef', bg: 'rgba(217,70,239,0.12)' },
+  '塔罗牌占卜': { color: '#7c3aed', bg: 'rgba(124,58,237,0.12)' },
+  '星座运势': { color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  '起名改名': { color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  '风水咨询': { color: '#059669', bg: 'rgba(5,150,105,0.12)' },
 }
 
-// 能力 → 图标映射
-const ABILITY_ICON_MAP: Record<string, { icon: any; color: string; label: string }> = {
-  'chat': { icon: MessageCircleHeart, color: '#6366f1', label: '聊天' },
-  'reading': { icon: Brain, color: '#8b5cf6', label: '阅读' },
-  'analysis': { icon: TrendingUp, color: '#14b8a6', label: '分析' },
-  'writing': { icon: Sparkles, color: '#f59e0b', label: '写作' },
-  'creative': { icon: Palette, color: '#ec4899', label: '创意' },
-  'voice': { icon: Music, color: '#f97316', label: '语音' },
+// 技能分类 → 图标映射
+const SKILL_CATEGORY_MAP: Record<string, { icon: any; color: string; label: string }> = {
+  'content': { icon: Sparkles, color: '#6366f1', label: '内容' },
+  'video': { icon: Film, color: '#ec4899', label: '视频' },
+  'audio': { icon: Music, color: '#f97316', label: '音频' },
+  'image': { icon: Palette, color: '#14b8a6', label: '图片' },
+  'music': { icon: Music, color: '#f59e0b', label: '音乐' },
+  'life': { icon: Star, color: '#a855f7', label: '生活' },
+}
+
+// 根据技能名自动匹配分类
+function getSkillCategory(skillName: string): string {
+  if (/短剧|剧本|分镜|字幕|发帖|文案/.test(skillName)) return 'content'
+  if (/视频|配音|剪辑/.test(skillName)) return 'video'
+  if (/声音|语音|配音/.test(skillName)) return 'audio'
+  if (/图片|绘画|画像/.test(skillName)) return 'image'
+  if (/音乐|BGM/.test(skillName)) return 'music'
+  if (/手相|衣品|塔罗|星座|起名|风水|占卜/.test(skillName)) return 'life'
+  return 'content'
 }
 
 // 分身等级计算
@@ -66,6 +92,15 @@ function getAvatarLevel(totalPosts: number, totalEarnings: number): { level: num
   if (score >= 200) return { level: 3, title: '资深分身', color: '#3b82f6', nextTitle: '精英分身', progress: Math.min(100, (score - 200) / 300 * 100) }
   if (score >= 50) return { level: 2, title: '进阶分身', color: '#14b8a6', nextTitle: '资深分身', progress: Math.min(100, (score - 50) / 150 * 100) }
   return { level: 1, title: '新手分身', color: '#94a3b8', nextTitle: '进阶分身', progress: Math.min(100, score / 50 * 100) }
+}
+
+interface AvatarSkill {
+  id: number
+  skillName: string
+  skillDescription?: string
+  skillType?: string
+  skillLevel?: number
+  usageCount?: number
 }
 
 interface Avatar {
@@ -89,6 +124,7 @@ interface Avatar {
   todayEarnings?: number
   tags?: string[]
   abilities?: string[]
+  avatarSkills?: AvatarSkill[]
 }
 
 const MindChat: React.FC = () => {
@@ -100,6 +136,29 @@ const MindChat: React.FC = () => {
   const { isLoggedIn } = useUserStore()
   const hasPageShownRef = useRef(false)
   const activeTabRef = useRef<CloneType>('my')
+
+  const loadAvatarSkills = async (avatarId: string): Promise<AvatarSkill[]> => {
+    try {
+      const res = await Network.request({
+        url: `/api/avatar/${avatarId}/skills`,
+        method: 'GET',
+      })
+      if (res.data?.code === 200 && res.data?.data?.data) {
+        const rawSkills = res.data.data.data
+        return (Array.isArray(rawSkills) ? rawSkills : []).map((s: any) => ({
+          id: s.id,
+          skillName: s.skillName || s.skill_name || '',
+          skillDescription: s.skillDescription || s.skill_description || '',
+          skillType: s.skillType || s.skill_type || '',
+          skillLevel: Number(s.skillLevel || s.skill_level || 1),
+          usageCount: Number(s.usageCount || s.usage_count || 0),
+        }))
+      }
+      return []
+    } catch {
+      return []
+    }
+  }
 
   const parsePersonality = (personality: any) => {
     try {
@@ -132,7 +191,11 @@ const MindChat: React.FC = () => {
       if (res.data?.code === 200 && res.data?.data) {
         const rawData = res.data.data
         const data = Array.isArray(rawData) ? rawData : []
-        const avatars = data.map((item: any) => {
+        // 并行加载所有分身的技能
+        const skillsPromises = data.map((item: any) => loadAvatarSkills(item.id))
+        const skillsResults = await Promise.all(skillsPromises)
+
+        const avatars = data.map((item: any, idx: number) => {
           const { tags, abilities } = parsePersonality(item.personality)
           let roleLabel = '通用助手'
           if (tags.length) roleLabel = tags.slice(0, 3).join('·')
@@ -155,7 +218,8 @@ const MindChat: React.FC = () => {
             totalEarnings: Number(item.totalEarnings || 0),
             todayEarnings: Number(item.todayEarnings || 0),
             tags,
-            abilities
+            abilities,
+            avatarSkills: skillsResults[idx] || []
           }
         })
         console.log('处理后的分身列表:', avatars)
@@ -461,8 +525,8 @@ const MindChat: React.FC = () => {
                         <Flame size={20} color="#14b8a6" />
                       </View>
                       <View className="guide-step-content">
-                        <Text className="guide-step-title">多种技能随你选</Text>
-                        <Text className="guide-step-desc">幽默/温柔/毒舌/文艺，打造独特个性分身</Text>
+                        <Text className="guide-step-title">丰富技能随你选</Text>
+                        <Text className="guide-step-desc">看手相/衣品改造/图片生成/视频生成，打造全能分身</Text>
                       </View>
                     </View>
 
@@ -526,32 +590,60 @@ const MindChat: React.FC = () => {
                         </View>
                       </View>
 
-                      {/* 技能标签区 */}
+                      {/* 技能展示区 */}
                       <View className="skills-section">
                         <View className="skills-header">
                           <Sparkles size={13} color="#8b5cf6" />
                           <Text className="skills-title">技能</Text>
+                          {(!clone.avatarSkills || clone.avatarSkills.length === 0) && (
+                            <View 
+                              className="add-skill-btn"
+                              onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skill-create/index?avatarId=${clone.id}` })}
+                            >
+                              <Plus size={11} color="#8b5cf6" />
+                              <Text className="add-skill-text">添加技能</Text>
+                            </View>
+                          )}
                         </View>
                         <View className="skills-tags">
-                          {(clone.tags || []).slice(0, 4).map((tag) => {
-                            const visual = SKILL_VISUAL_MAP[tag] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
-                            return (
-                              <View className="skill-tag" key={tag} style={{ background: visual.bg }}>
-                                <Text className="skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                          {clone.avatarSkills && clone.avatarSkills.length > 0 ? (
+                            clone.avatarSkills.slice(0, 4).map((skill) => {
+                              const visual = SKILL_VISUAL_MAP[skill.skillName] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
+                              const catKey = getSkillCategory(skill.skillName)
+                              const catInfo = SKILL_CATEGORY_MAP[catKey] || SKILL_CATEGORY_MAP['content']
+                              const CatIcon = catInfo.icon
+                              return (
+                                <View className="skill-tag" key={skill.id} style={{ background: visual.bg }}>
+                                  <CatIcon size={10} color={visual.color} />
+                                  <Text className="skill-tag-text" style={{ color: visual.color }}>{skill.skillName}</Text>
+                                </View>
+                              )
+                            })
+                          ) : (
+                            <>
+                              {/* 无技能时展示性格标签+引导添加技能 */}
+                              {(clone.tags || []).slice(0, 3).map((tag) => {
+                                const visual = SKILL_VISUAL_MAP[tag] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' }
+                                return (
+                                  <View className="skill-tag personality-tag" key={tag} style={{ background: visual.bg }}>
+                                    <Text className="skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
+                                  </View>
+                                )
+                              })}
+                              <View 
+                                className="skill-tag add-skill-tag"
+                                onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skill-create/index?avatarId=${clone.id}` })}
+                              >
+                                <Plus size={10} color="#8b5cf6" />
+                                <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
                               </View>
-                            )
-                          })}
-                          {(clone.abilities || []).map((ability) => {
-                            const abilityInfo = ABILITY_ICON_MAP[ability]
-                            if (!abilityInfo) return null
-                            const AbilityIcon = abilityInfo.icon
-                            return (
-                              <View className="ability-tag" key={ability}>
-                                <AbilityIcon size={11} color={abilityInfo.color} />
-                                <Text className="ability-tag-text" style={{ color: abilityInfo.color }}>{abilityInfo.label}</Text>
-                              </View>
-                            )
-                          })}
+                            </>
+                          )}
+                          {(clone.avatarSkills || []).length > 4 && (
+                            <View className="skill-tag more-tag">
+                              <Text className="skill-tag-text" style={{ color: '#94a3b8' }}>+{clone.avatarSkills.length - 4}</Text>
+                            </View>
+                          )}
                         </View>
                       </View>
 
@@ -652,7 +744,7 @@ const MindChat: React.FC = () => {
                       {/* 技能标签 */}
                       <View className="square-card-tags">
                         {(clone.tags || []).slice(0, 2).map((tag) => {
-                          const visual = SKILL_VISUAL_MAP[tag] || { color: '#6366f1', bg: 'rgba(99,102,241,0.1)' }
+                          const visual = SKILL_VISUAL_MAP[tag] || { color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' }
                           return (
                             <View className="square-skill-tag" key={tag} style={{ background: visual.bg }}>
                               <Text className="square-skill-tag-text" style={{ color: visual.color }}>{tag}</Text>
@@ -663,11 +755,11 @@ const MindChat: React.FC = () => {
 
                       {/* 能力图标 */}
                       <View className="square-card-abilities">
-                        {(clone.abilities || []).slice(0, 3).map((ability) => {
-                          const abilityInfo = ABILITY_ICON_MAP[ability]
-                          if (!abilityInfo) return null
-                          const AbilityIcon = abilityInfo.icon
-                          return <AbilityIcon key={ability} size={14} color={abilityInfo.color} />
+                        {(clone.avatarSkills || []).slice(0, 3).map((skill) => {
+                          const catKey = getSkillCategory(skill.skillName)
+                          const catInfo = SKILL_CATEGORY_MAP[catKey] || SKILL_CATEGORY_MAP['content']
+                          const CatIcon = catInfo.icon
+                          return <CatIcon key={skill.id} size={14} color={catInfo.color} />
                         })}
                       </View>
                     </View>

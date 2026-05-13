@@ -396,6 +396,9 @@
 }
 
 .skill-tag {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
   padding: 6rpx 14rpx;
   border-radius: 10rpx;
 }
@@ -405,17 +408,33 @@
   font-weight: 500;
 }
 
-.ability-tag {
+.personality-tag {
+  opacity: 0.7;
+}
+
+.add-skill-tag {
+  border: 1rpx dashed #8b5cf6;
+  background: rgba(139, 92, 246, 0.06) !important;
+  cursor: pointer;
+}
+
+.more-tag {
+  background: rgba(148, 163, 184, 0.08) !important;
+}
+
+.add-skill-btn {
   display: flex;
   align-items: center;
   gap: 4rpx;
-  padding: 6rpx 12rpx;
-  border-radius: 10rpx;
-  background: rgba(99, 102, 241, 0.06);
+  margin-left: auto;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  background: rgba(139, 92, 246, 0.08);
 }
 
-.ability-tag-text {
+.add-skill-text {
   font-size: 20rpx;
+  color: #8b5cf6;
   font-weight: 500;
 }
 
