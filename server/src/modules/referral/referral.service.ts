@@ -75,11 +75,23 @@ export class ReferralService {
       updated_at: new Date()
     })
     
-    // 给邀请人发放奖励
+    // 邀请人奖励：3元现金
+    const INVITER_REWARD = 3
+    const INVITEE_REWARD = 2
+    
     await this.earningService.createEarning(inviter.id, {
       type: 'referral_bonus',
-      amount: 10,
-      description: '邀请奖励'
+      amount: INVITER_REWARD,
+      source: 'invite_friend',
+      description: '邀请好友奖励'
+    })
+    
+    // 给被邀请人发放奖励：2元现金
+    await this.earningService.createEarning(inviteeId, {
+      type: 'referral_bonus',
+      amount: INVITEE_REWARD,
+      source: 'be_invited',
+      description: '受邀注册奖励'
     })
     
     // 更新邀请人的邀请计数
@@ -89,7 +101,11 @@ export class ReferralService {
       updated_at: new Date()
     })
     
-    return { success: true }
+    return { 
+      success: true,
+      inviterReward: INVITER_REWARD,
+      inviteeReward: INVITEE_REWARD
+    }
   }
 
   /**
@@ -108,7 +124,10 @@ export class ReferralService {
       referralCode,
       totalInvites: referrals?.length || 0,
       pendingInvites: (referrals?.length || 0) - completedCount,
-      completedInvites: completedCount
+      completedInvites: completedCount,
+      inviterReward: 3,
+      inviteeReward: 2,
+      totalEarned: completedCount * 3
     }
   }
 

@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Wallet, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
+import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -189,14 +190,14 @@ const Index: React.FC = () => {
     { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: '高薪急单', tagColor: '#F59E0B' },
     { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
-    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: '每邀5元', tagColor: '#EC4899' },
+    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
     { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
   ] : [
     { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
     { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: pendingOrders > 0 ? pendingOrders + '单待接' : '去接单', tagColor: '#F59E0B' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
     { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
-    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: '每邀5元', tagColor: '#EC4899' },
+    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
     { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
   ]
 
@@ -466,9 +467,9 @@ const Index: React.FC = () => {
               <>
                 <View className="banner-referral-header">
                   <Gift size={32} color="#FBBF24" />
-                  <Text className="banner-title-referral">邀请好友 双方各赚5元</Text>
+                  <Text className="banner-title-referral">{BANNER_TITLE}</Text>
                 </View>
-                <Text className="banner-desc-referral">每邀请1位好友注册，双方各得5元奖励！已邀请 {invitedCount} 人</Text>
+                <Text className="banner-desc-referral">{BANNER_DESC(invitedCount)}</Text>
                 <View className="banner-referral-bottom">
                   <View className="referral-code-tag">
                     <Text className="referral-code-text">邀请码：{referralCode || '加载中...'}</Text>
