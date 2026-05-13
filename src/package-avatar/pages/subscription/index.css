@@ -1,19 +1,32 @@
-/* Subscription Page - Premium Membership Design */
+/* Subscription Page - 与首页风格统一 */
 
 .sub-page {
   min-height: 100vh;
-  background: #0f0a1a;
-  position: relative;
-  overflow: hidden;
+  background: #F8FAFC;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ===== 自定义导航 ===== */
-.sub-nav {
-  background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #6d28d9 100%);
+/* ===== 紫蓝渐变头部 - 与首页一致 ===== */
+.sub-header {
   position: relative;
+  flex-shrink: 0;
   z-index: 100;
 }
-.sub-nav-inner {
+.sub-header-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  border-radius: 0 0 40rpx 40rpx;
+}
+.sub-header-content {
+  position: relative;
+  z-index: 1;
+}
+.sub-nav-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,336 +48,381 @@
   width: 32px;
 }
 
+/* ===== 会员状态卡 ===== */
+.sub-status-card {
+  margin: 0 16px 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+}
+.sub-status-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+}
+.sub-status-left {
+  flex: 1;
+  min-width: 0;
+}
+.sub-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-bottom: 6px;
+}
+.sub-status-badge-free {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.sub-status-badge-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFD700;
+}
+.sub-status-badge-text-free {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+.sub-status-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.sub-status-icon-wrap {
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
 /* ===== 滚动区 ===== */
 .sub-scroll {
   flex: 1;
-  position: relative;
-  z-index: 1;
 }
 .sub-content {
   padding: 16px;
 }
 
-/* ===== 会员状态卡 ===== */
-.sub-status-card {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-.sub-status-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #6d28d9 100%);
-  opacity: 0.9;
-}
-.sub-status-bg::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 60%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
-  animation: statusShine 6s ease-in-out infinite;
-}
-@keyframes statusShine {
-  0%, 100% { transform: translateX(0) scale(1); opacity: 0.5; }
-  50% { transform: translateX(-20%) scale(1.1); opacity: 1; }
-}
-.sub-status-body {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-}
-.sub-status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,215,0,0.2);
-  border: 1px solid rgba(255,215,0,0.4);
-  border-radius: 20px;
-  padding: 4px 12px;
-  align-self: flex-start;
-  margin-bottom: 8px;
-}
-.sub-status-badge-free {
-  background: rgba(167,139,250,0.2);
-  border-color: rgba(167,139,250,0.4);
-}
-.sub-status-badge-text {
-  font-size: 13px;
-  font-weight: 700;
-  color: #FFD700;
-}
-.sub-status-badge-text-free {
-  font-size: 13px;
-  font-weight: 700;
-  color: #a78bfa;
-}
-.sub-status-desc {
-  font-size: 13px;
-  color: rgba(255,255,255,0.8);
-  margin-top: 4px;
-}
-
-/* ===== 板块标签 ===== */
-.sub-section-label {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin-bottom: 12px;
-}
-
-/* ===== 核心权益展示 ===== */
-.sub-benefits-section {
+/* ===== 通用区块 - 与首页 section 一致 ===== */
+.sub-section {
   margin-bottom: 24px;
 }
+.sub-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sub-title-dot {
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(180deg, #8B5CF6, #6366F1);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sub-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+/* ===== 核心权益展示 - 与首页 stat-item 一致 ===== */
 .sub-benefits-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.sub-benefit-item {
-  background: rgba(139,92,246,0.08);
-  border: 1px solid rgba(139,92,246,0.15);
-  border-radius: 12px;
-  padding: 14px 12px;
+.sub-benefit-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px 14px;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .sub-benefit-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.sub-benefit-icon-purple {
+  background: #F3F0FF;
+}
+.sub-benefit-icon-green {
+  background: #ECFDF5;
+}
+.sub-benefit-icon-blue {
+  background: #EEF2FF;
+}
+.sub-benefit-icon-orange {
+  background: #FFF7ED;
+}
+.sub-benefit-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8B5CF6;
+  margin-bottom: 1px;
+}
+.sub-benefit-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E293B;
+}
+.sub-benefit-desc {
+  font-size: 11px;
+  color: #64748B;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ===== 套餐卡片 - 与首页 guide-section 一致 ===== */
+.sub-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sub-plan-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+/* 专业版推荐高亮 */
+.sub-plan-card-recommend {
+  border: 2px solid #10B981;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.12);
+}
+
+/* 推荐标签 */
+.sub-plan-tag {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 0 0 8px 8px;
+  padding: 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.sub-plan-tag-gold {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.sub-plan-tag-text {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 卡片顶部 */
+.sub-plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sub-plan-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.sub-plan-icon {
   width: 40px;
   height: 40px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
-.sub-benefit-icon-purple { background: rgba(168,85,247,0.15); }
-.sub-benefit-icon-green { background: rgba(16,185,129,0.15); }
-.sub-benefit-icon-blue { background: rgba(59,130,246,0.15); }
-.sub-benefit-icon-orange { background: rgba(249,115,22,0.15); }
-.sub-benefit-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #e2e8f0;
+.sub-plan-icon-free {
+  background: #F1F5F9;
 }
-.sub-benefit-desc {
-  font-size: 11px;
-  color: #94a3b8;
+.sub-plan-icon-basic {
+  background: #EFF6FF;
 }
-
-/* ===== 套餐卡片 ===== */
-.sub-plans-section {
-  margin-bottom: 24px;
+.sub-plan-icon-pro {
+  background: #ECFDF5;
 }
-.sub-plans-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.sub-plan-icon-enterprise {
+  background: #FFFBEB;
 }
-.sub-plan-card {
-  position: relative;
-  border-radius: 16px;
-  padding: 18px 16px;
-  overflow: hidden;
-}
-/* 免费版 */
-.sub-plan-free {
-  background: rgba(71,85,105,0.12);
-  border: 1px solid rgba(148,163,184,0.15);
-}
-/* 基础版 */
-.sub-plan-basic {
-  background: rgba(59,130,246,0.08);
-  border: 1px solid rgba(59,130,246,0.2);
-}
-/* 专业版 - 高亮推荐 */
-.sub-plan-pro {
-  background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.08) 100%);
-  border: 2px solid rgba(16,185,129,0.4);
-  box-shadow: 0 4px 24px rgba(16,185,129,0.15);
-}
-/* 企业版 */
-.sub-plan-enterprise {
-  background: linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(234,88,12,0.06) 100%);
-  border: 1px solid rgba(245,158,11,0.3);
-  box-shadow: 0 4px 24px rgba(245,158,11,0.1);
-}
-
-/* 推荐标签 */
-.sub-plan-recommend {
-  position: absolute;
-  top: 0;
-  right: 16px;
-  background: linear-gradient(135deg, #10b981, #06b6d4);
-  border-radius: 0 0 8px 8px;
-  padding: 3px 10px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.sub-plan-recommend-gold {
-  background: linear-gradient(135deg, #f59e0b, #ea580c);
-}
-.sub-plan-recommend-text {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* 卡片头部 */
-.sub-plan-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
+.sub-plan-info {
+  flex: 1;
+  min-width: 0;
 }
 .sub-plan-name {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
+  display: block;
 }
-.sub-plan-name-free { color: #94a3b8; }
-.sub-plan-name-basic { color: #60a5fa; }
-.sub-plan-name-pro { color: #34d399; }
-.sub-plan-name-enterprise { color: #fbbf24; }
+.sub-plan-name-free { color: #64748B; }
+.sub-plan-name-basic { color: #2563EB; }
+.sub-plan-name-pro { color: #059669; }
+.sub-plan-name-enterprise { color: #D97706; }
 
-.sub-plan-price-row {
+.sub-plan-desc {
+  font-size: 11px;
+  color: #94A3B8;
+  line-height: 1.4;
+  display: block;
+  margin-top: 2px;
+}
+
+/* 价格 */
+.sub-plan-price-wrap {
   display: flex;
   align-items: baseline;
   gap: 1px;
+  flex-shrink: 0;
 }
 .sub-plan-currency {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: #cbd5e1;
+  color: #94A3B8;
 }
 .sub-plan-price {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
 }
-.sub-plan-price-free { color: #94a3b8; }
-.sub-plan-price-basic { color: #60a5fa; }
-.sub-plan-price-pro { color: #34d399; }
-.sub-plan-price-enterprise { color: #fbbf24; }
+.sub-plan-price-free { color: #94A3B8; }
+.sub-plan-price-basic { color: #2563EB; }
+.sub-plan-price-pro { color: #059669; }
+.sub-plan-price-enterprise { color: #D97706; }
 .sub-plan-period {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.sub-plan-desc {
-  font-size: 12px;
-  color: #94a3b8;
-  line-height: 1.5;
-  margin-bottom: 12px;
+  font-size: 11px;
+  color: #94A3B8;
 }
 
 /* 权益摘要 */
 .sub-plan-highlights {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   margin-bottom: 14px;
+  padding: 10px 0;
+  border-top: 1px solid #F1F5F9;
 }
 .sub-highlight {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 .sub-highlight-text {
   font-size: 12px;
-  color: #cbd5e1;
+  color: #475569;
 }
 
 /* 订阅按钮 */
 .sub-plan-btn {
   width: 100%;
   border-radius: 10px;
-  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: none;
 }
 .sub-plan-btn-free {
-  background: rgba(148,163,184,0.15);
+  background: #F1F5F9;
 }
 .sub-plan-btn-basic {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 .sub-plan-btn-pro {
   background: linear-gradient(135deg, #10b981, #059669);
-  box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 .sub-plan-btn-enterprise {
   background: linear-gradient(135deg, #f59e0b, #d97706);
-  box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
 }
 .sub-plan-btn-current {
-  background: rgba(255,255,255,0.08) !important;
+  background: #F8FAFC !important;
   box-shadow: none !important;
 }
-.sub-plan-btn-text {
+.sub-plan-btn-label {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
 }
-.sub-plan-btn-text-current {
-  color: #64748b;
+.sub-plan-btn-current .sub-plan-btn-label {
+  color: #94A3B8;
+}
+.sub-plan-btn-label-current {
+  color: #94A3B8;
 }
 
-/* ===== 权益对比 ===== */
-.sub-compare-section {
-  margin-bottom: 24px;
-}
+/* ===== 权益对比表格 ===== */
 .sub-compare-table {
-  background: rgba(30,20,50,0.6);
-  border-radius: 12px;
-  border: 1px solid rgba(139,92,246,0.15);
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
-.sub-compare-header {
+.sub-compare-head {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  margin-top: 8px;
+  padding: 12px;
+  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  border-radius: 16px 16px 0 0;
 }
-.sub-compare-header-label {
-  flex: 0 0 90px;
+.sub-compare-head-label {
+  flex: 0 0 88px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
 }
-.sub-compare-header-values {
+.sub-compare-head-values {
   flex: 1;
   display: flex;
 }
-.sub-compare-header-cell {
+.sub-compare-head-cell {
   flex: 1;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.8);
 }
-.sub-compare-header-cell-pro {
-  color: #34d399;
+.sub-compare-head-cell-pro {
+  color: #FFD700;
 }
 .sub-compare-row {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(139,92,246,0.08);
+  border-bottom: 1px solid #F1F5F9;
 }
 .sub-compare-row:last-child {
   border-bottom: none;
 }
+.sub-compare-row-even {
+  background: #FAFBFD;
+}
 .sub-compare-label {
-  flex: 0 0 90px;
+  flex: 0 0 88px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .sub-compare-label-text {
   font-size: 11px;
-  color: #cbd5e1;
+  color: #475569;
   white-space: nowrap;
 }
 .sub-compare-values {
@@ -379,34 +437,35 @@
 }
 .sub-compare-val-text {
   font-size: 11px;
-  color: #e2e8f0;
+  color: #334155;
   text-align: center;
+}
+.sub-compare-val-pro {
+  color: #059669;
+  font-weight: 600;
 }
 
 /* ===== FAQ ===== */
-.sub-notice-section {
-  margin-bottom: 24px;
-}
 .sub-faq-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .sub-faq-item {
-  background: rgba(30,20,50,0.5);
-  border: 1px solid rgba(139,92,246,0.1);
+  background: #FFFFFF;
   border-radius: 12px;
   padding: 14px 16px;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 .sub-faq-q {
   font-size: 14px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #1E293B;
   margin-bottom: 6px;
 }
 .sub-faq-a {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748B;
   line-height: 1.6;
 }
 

@@ -6,7 +6,8 @@ import { Network } from '@/network'
 import {
   ArrowLeft, Crown, Users, Zap, Sparkles, Check, X,
   Shield, TrendingUp, Palette, Bot, ChartBar, Headphones,
-  Rocket, Star, Flame, Gift
+  Star, Flame, Gift, ChevronRight, CircleDollarSign,
+  Layers, BadgeCheck
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -33,15 +34,15 @@ interface UserSubscription {
   canReceiveOrders: boolean
 }
 
-// 权益对比项定义
+// 权益对比项
 const COMPARISON_ITEMS = [
   { key: 'maxAvatars', label: 'AI分身数量', icon: Users, freeVal: '1个', basicVal: '3个', proVal: '10个', enterpriseVal: '无限' },
-  { key: 'canReceiveOrders', label: '接单赚钱', icon: Zap, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
-  { key: 'skillUsesPerDay', label: '技能使用次数/天', icon: Sparkles, freeVal: '3次', basicVal: '10次', proVal: '50次', enterpriseVal: '无限' },
+  { key: 'canReceiveOrders', label: '接单赚钱', icon: CircleDollarSign, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'skillUsesPerDay', label: '技能使用/天', icon: Sparkles, freeVal: '3次', basicVal: '10次', proVal: '50次', enterpriseVal: '无限' },
   { key: 'skillCategories', label: '技能类目', icon: Bot, freeVal: '生活类', basicVal: '生活+创作', proVal: '4大类目', enterpriseVal: '全类目' },
   { key: 'contentStyles', label: '内容风格', icon: Palette, freeVal: '1种', basicVal: '3种', proVal: '6种', enterpriseVal: '8种+' },
-  { key: 'customPersonality', label: '自定义分身性格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
-  { key: 'batchPublish', label: '批量发布', icon: Rocket, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
+  { key: 'customPersonality', label: '自定义性格', icon: Star, freeVal: false, basicVal: true, proVal: true, enterpriseVal: true },
+  { key: 'batchPublish', label: '批量发布', icon: Layers, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
   { key: 'analytics', label: '数据分析', icon: ChartBar, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
   { key: 'prioritySupport', label: '优先客服', icon: Headphones, freeVal: false, basicVal: false, proVal: true, enterpriseVal: true },
   { key: 'orderPriority', label: '订单优先级', icon: TrendingUp, freeVal: '普通', basicVal: '优先', proVal: '高级', enterpriseVal: '最高' },
@@ -82,7 +83,6 @@ export default function SubscriptionPage() {
       const userStr = Taro.getStorageSync('userInfo')
       const userId = userStr ? (typeof userStr === 'string' ? JSON.parse(userStr).id : userStr.id) : ''
       if (!userId) return
-
       const res = await Network.request({ url: `/api/subscription/status?userId=${userId}` })
       if (res.data?.code === 200 && res.data.data) {
         setUserSubscription(res.data.data)
@@ -146,7 +146,7 @@ export default function SubscriptionPage() {
           if (payErr?.errMsg?.includes('cancel')) {
             showToast({ title: '支付已取消', icon: 'none' })
           } else {
-            showToast({ title: `支付失败，请重试`, icon: 'none', duration: 3000 })
+            showToast({ title: '支付失败，请重试', icon: 'none', duration: 3000 })
           }
         }
       } else {
@@ -202,10 +202,10 @@ export default function SubscriptionPage() {
     }
   }
 
-  const renderVal = (val: any) => {
-    if (val === true) return <Check size={16} color="#10B981" />
-    if (val === false) return <X size={16} color="#94a3b8" />
-    return <Text className="sub-compare-val-text">{val}</Text>
+  const renderVal = (val: any, isPro?: boolean) => {
+    if (val === true) return <Check size={16} color={isPro ? '#10B981' : '#8B5CF6'} />
+    if (val === false) return <X size={14} color="#cbd5e1" />
+    return <Text className={`sub-compare-val-text ${isPro ? 'sub-compare-val-pro' : ''}`}>{val}</Text>
   }
 
   const getCurrentPlanName = () => {
@@ -230,87 +230,107 @@ export default function SubscriptionPage() {
 
   return (
     <View className="sub-page">
-      {/* 紫蓝渐变自定义导航 */}
-      <View className="sub-nav" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="sub-nav-inner">
-          <View className="sub-nav-back" onClick={() => navigateBack()}>
-            <ArrowLeft size={22} color="#fff" />
+      {/* 紫蓝渐变头部 - 与首页一致 */}
+      <View className="sub-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+        <View className="sub-header-bg" />
+        <View className="sub-header-content">
+          <View className="sub-nav-row">
+            <View className="sub-nav-back" onClick={() => navigateBack()}>
+              <ArrowLeft size={22} color="#fff" />
+            </View>
+            <Text className="sub-nav-title">会员订阅</Text>
+            <View className="sub-nav-placeholder" />
           </View>
-          <Text className="sub-nav-title">会员订阅</Text>
-          <View className="sub-nav-placeholder" />
+
+          {/* 会员状态卡 - 嵌入头部 */}
+          <View className="sub-status-card">
+            {currentPlanName ? (
+              <View className="sub-status-inner">
+                <View className="sub-status-left">
+                  <View className="sub-status-badge">
+                    <Crown size={16} color="#FFD700" />
+                    <Text className="sub-status-badge-text">{currentPlanName}会员</Text>
+                  </View>
+                  <Text className="sub-status-desc">
+                    {userSubscription?.status === 'active'
+                      ? `有效期至 ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
+                      : '订阅已过期，请续费'}
+                  </Text>
+                </View>
+                <View className="sub-status-icon-wrap">
+                  <Crown size={36} color="rgba(255,255,255,0.25)" />
+                </View>
+              </View>
+            ) : (
+              <View className="sub-status-inner">
+                <View className="sub-status-left">
+                  <View className="sub-status-badge sub-status-badge-free">
+                    <Users size={16} color="rgba(255,255,255,0.7)" />
+                    <Text className="sub-status-badge-text-free">免费用户</Text>
+                  </View>
+                  <Text className="sub-status-desc">升级会员，解锁AI分身全部能力</Text>
+                </View>
+                <View className="sub-status-icon-wrap">
+                  <Zap size={36} color="rgba(255,255,255,0.2)" />
+                </View>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
       <ScrollView className="sub-scroll" scrollY>
         <View className="sub-content">
 
-          {/* 会员状态卡 */}
-          <View className="sub-status-card">
-            <View className="sub-status-bg" />
-            <View className="sub-status-body">
-              {currentPlanName ? (
-                <>
-                  <View className="sub-status-badge">
-                    <Crown size={18} color="#FFD700" />
-                    <Text className="sub-status-badge-text">{currentPlanName}会员</Text>
-                  </View>
-                  <Text className="sub-status-desc">
-                    {userSubscription?.status === 'active'
-                      ? `有效期至 ${new Date(userSubscription.endDate).toLocaleDateString('zh-CN')}`
-                      : '订阅已过期'}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <View className="sub-status-badge sub-status-badge-free">
-                    <Users size={18} color="#a78bfa" />
-                    <Text className="sub-status-badge-text-free">免费用户</Text>
-                  </View>
-                  <Text className="sub-status-desc">升级会员，解锁AI分身全部能力</Text>
-                </>
-              )}
+          {/* 会员能帮你做什么 - 与首页统计卡片风格一致 */}
+          <View className="sub-section">
+            <View className="sub-section-header">
+              <View className="sub-title-dot" />
+              <Text className="sub-section-title">会员能帮你做什么</Text>
             </View>
-          </View>
-
-          {/* 核心权益展示 - 横向4宫格 */}
-          <View className="sub-benefits-section">
-            <Text className="sub-section-label">会员能帮你做什么</Text>
             <View className="sub-benefits-grid">
-              <View className="sub-benefit-item">
+              <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-purple">
-                  <Bot size={22} color="#a855f7" />
+                  <Bot size={22} color="#8B5CF6" />
                 </View>
-                <Text className="sub-benefit-title">创建AI分身</Text>
-                <Text className="sub-benefit-desc">7x24小时自动创作</Text>
+                <Text className="sub-benefit-num">7×24h</Text>
+                <Text className="sub-benefit-title">AI分身自动创作</Text>
+                <Text className="sub-benefit-desc">多个分身同时运营，内容永不断更</Text>
               </View>
-              <View className="sub-benefit-item">
+              <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-green">
-                  <Zap size={22} color="#10b981" />
+                  <CircleDollarSign size={22} color="#10B981" />
                 </View>
+                <Text className="sub-benefit-num">被动收入</Text>
                 <Text className="sub-benefit-title">接单赚钱</Text>
-                <Text className="sub-benefit-desc">被动收入持续增长</Text>
+                <Text className="sub-benefit-desc">专业版起支持，AI自动接单交付</Text>
               </View>
-              <View className="sub-benefit-item">
+              <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-blue">
-                  <Sparkles size={22} color="#3b82f6" />
+                  <Sparkles size={22} color="#6366F1" />
                 </View>
+                <Text className="sub-benefit-num">50+技能</Text>
                 <Text className="sub-benefit-title">AI技能驱动</Text>
-                <Text className="sub-benefit-desc">内容创作一键搞定</Text>
+                <Text className="sub-benefit-desc">看手相、塔罗牌、写文案一键搞定</Text>
               </View>
-              <View className="sub-benefit-item">
+              <View className="sub-benefit-card">
                 <View className="sub-benefit-icon sub-benefit-icon-orange">
-                  <TrendingUp size={22} color="#f97316" />
+                  <TrendingUp size={22} color="#F97316" />
                 </View>
+                <Text className="sub-benefit-num">数据增长</Text>
                 <Text className="sub-benefit-title">数据驱动增长</Text>
-                <Text className="sub-benefit-desc">精准优化内容策略</Text>
+                <Text className="sub-benefit-desc">数据分析+批量发布，精准涨粉</Text>
               </View>
             </View>
           </View>
 
-          {/* 套餐卡片 */}
-          <View className="sub-plans-section">
-            <Text className="sub-section-label">选择适合你的套餐</Text>
-            <View className="sub-plans-scroll">
+          {/* 套餐选择 - 与首页卡片风格一致 */}
+          <View className="sub-section">
+            <View className="sub-section-header">
+              <View className="sub-title-dot" />
+              <Text className="sub-section-title">选择适合你的套餐</Text>
+            </View>
+            <View className="sub-plans-list">
               {plans.map((plan) => {
                 const theme = getPlanTheme(plan.id)
                 const isPro = theme === 'pro'
@@ -319,24 +339,35 @@ export default function SubscriptionPage() {
                 const isPurchasing = purchasing && selectedPlan?.id === plan.id
 
                 return (
-                  <View key={plan.id} className={`sub-plan-card sub-plan-${theme}`}>
+                  <View key={plan.id} className={`sub-plan-card sub-plan-${theme} ${isPro ? 'sub-plan-card-recommend' : ''}`}>
                     {/* 推荐标签 */}
                     {isPro && (
-                      <View className="sub-plan-recommend">
-                        <Flame size={12} color="#fff" />
-                        <Text className="sub-plan-recommend-text">最受欢迎</Text>
+                      <View className="sub-plan-tag">
+                        <Flame size={11} color="#fff" />
+                        <Text className="sub-plan-tag-text">最受欢迎</Text>
                       </View>
                     )}
                     {isEnterprise && (
-                      <View className="sub-plan-recommend sub-plan-recommend-gold">
-                        <Crown size={12} color="#fff" />
-                        <Text className="sub-plan-recommend-text">顶级配置</Text>
+                      <View className="sub-plan-tag sub-plan-tag-gold">
+                        <Crown size={11} color="#fff" />
+                        <Text className="sub-plan-tag-text">顶级配置</Text>
                       </View>
                     )}
 
-                    <View className="sub-plan-header">
-                      <Text className={`sub-plan-name sub-plan-name-${theme}`}>{plan.name}</Text>
-                      <View className="sub-plan-price-row">
+                    <View className="sub-plan-top">
+                      <View className="sub-plan-left">
+                        <View className={`sub-plan-icon sub-plan-icon-${theme}`}>
+                          {theme === 'free' && <Users size={20} color="#94a3b8" />}
+                          {theme === 'basic' && <Zap size={20} color="#3b82f6" />}
+                          {theme === 'pro' && <Crown size={20} color="#10b981" />}
+                          {theme === 'enterprise' && <BadgeCheck size={20} color="#f59e0b" />}
+                        </View>
+                        <View className="sub-plan-info">
+                          <Text className={`sub-plan-name sub-plan-name-${theme}`}>{plan.name}</Text>
+                          <Text className="sub-plan-desc">{plan.description}</Text>
+                        </View>
+                      </View>
+                      <View className="sub-plan-price-wrap">
                         <Text className="sub-plan-currency">¥</Text>
                         <Text className={`sub-plan-price sub-plan-price-${theme}`}>
                           {plan.price > 0 ? plan.price : '免费'}
@@ -345,39 +376,36 @@ export default function SubscriptionPage() {
                       </View>
                     </View>
 
-                    <Text className="sub-plan-desc">{plan.description}</Text>
-
-                    {/* 核心权益摘要 */}
+                    {/* 权益摘要 - 横向排列 */}
                     <View className="sub-plan-highlights">
                       {theme === 'free' && (
                         <>
-                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">1个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">3次技能/天</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#94a3b8" /><Text className="sub-highlight-text">100MB存储</Text></View>
                         </>
                       )}
                       {theme === 'basic' && (
                         <>
-                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">3个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">自定义性格</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#3b82f6" /><Text className="sub-highlight-text">1GB存储</Text></View>
                         </>
                       )}
                       {theme === 'pro' && (
                         <>
-                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">批量发布+数据分析</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">10个AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">接单赚钱</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">批量发布+数据分析</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#10b981" /><Text className="sub-highlight-text">10GB存储</Text></View>
                         </>
                       )}
                       {theme === 'enterprise' && (
                         <>
-                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能+专属技能</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">最高订单优先级</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">专属客户经理</Text></View>
-                          <View className="sub-highlight"><Check size={14} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">无限AI分身</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">全类目技能+专属技能</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">最高订单优先级</Text></View>
+                          <View className="sub-highlight"><Check size={13} color="#f59e0b" /><Text className="sub-highlight-text">100GB存储</Text></View>
                         </>
                       )}
                     </View>
@@ -387,9 +415,10 @@ export default function SubscriptionPage() {
                       onClick={() => handlePurchase(plan)}
                       disabled={isPurchasing || current}
                     >
-                      <Text className={`sub-plan-btn-text ${current ? 'sub-plan-btn-text-current' : ''}`}>
+                      <Text className={`sub-plan-btn-label ${current ? 'sub-plan-btn-label-current' : ''}`}>
                         {isPurchasing ? '购买中...' : current ? '当前套餐' : plan.price === 0 ? '免费使用' : '立即订阅'}
                       </Text>
+                      {!current && plan.price > 0 && <ChevronRight size={16} color="#fff" />}
                     </Button>
                   </View>
                 )
@@ -398,21 +427,35 @@ export default function SubscriptionPage() {
           </View>
 
           {/* 权益对比表格 */}
-          <View className="sub-compare-section">
-            <Text className="sub-section-label">权益对比</Text>
+          <View className="sub-section">
+            <View className="sub-section-header">
+              <View className="sub-title-dot" />
+              <Text className="sub-section-title">权益对比</Text>
+            </View>
             <View className="sub-compare-table">
-              {COMPARISON_ITEMS.map((item) => {
+              {/* 表头 */}
+              <View className="sub-compare-head">
+                <View className="sub-compare-head-label">权益</View>
+                <View className="sub-compare-head-values">
+                  <Text className="sub-compare-head-cell">免费</Text>
+                  <Text className="sub-compare-head-cell">基础</Text>
+                  <Text className="sub-compare-head-cell sub-compare-head-cell-pro">专业</Text>
+                  <Text className="sub-compare-head-cell">企业</Text>
+                </View>
+              </View>
+              {/* 数据行 */}
+              {COMPARISON_ITEMS.map((item, idx) => {
                 const IconComp = item.icon
                 return (
-                  <View key={item.key} className="sub-compare-row">
+                  <View key={item.key} className={`sub-compare-row ${idx % 2 === 0 ? 'sub-compare-row-even' : ''}`}>
                     <View className="sub-compare-label">
-                      <IconComp size={14} color="#a855f7" />
+                      <IconComp size={14} color="#8B5CF6" />
                       <Text className="sub-compare-label-text">{item.label}</Text>
                     </View>
                     <View className="sub-compare-values">
                       {['plan_free', 'plan_basic', 'plan_pro', 'plan_enterprise'].map(pid => (
                         <View key={pid} className="sub-compare-cell">
-                          {renderVal(getFeatureVal(pid, item))}
+                          {renderVal(getFeatureVal(pid, item), pid === 'plan_pro')}
                         </View>
                       ))}
                     </View>
@@ -420,21 +463,14 @@ export default function SubscriptionPage() {
                 )
               })}
             </View>
-            {/* 列头 */}
-            <View className="sub-compare-header">
-              <View className="sub-compare-header-label" />
-              <View className="sub-compare-header-values">
-                <Text className="sub-compare-header-cell">免费</Text>
-                <Text className="sub-compare-header-cell">基础</Text>
-                <Text className="sub-compare-header-cell sub-compare-header-cell-pro">专业</Text>
-                <Text className="sub-compare-header-cell">企业</Text>
-              </View>
-            </View>
           </View>
 
-          {/* 订阅须知 */}
-          <View className="sub-notice-section">
-            <Text className="sub-section-label">常见问题</Text>
+          {/* FAQ */}
+          <View className="sub-section">
+            <View className="sub-section-header">
+              <View className="sub-title-dot" />
+              <Text className="sub-section-title">常见问题</Text>
+            </View>
             <View className="sub-faq-list">
               <View className="sub-faq-item">
                 <Text className="sub-faq-q">订阅后多久生效？</Text>
