@@ -37,14 +37,19 @@ export const request = async (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-    
-    // 在小程序环境中使用相对路径（由 Vite proxy 转发）
+    // PROJECT_DOMAIN is globally injected by Taro config
+    // eslint-disable-next-line no-restricted-properties
+    const domain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
+    // 小程序必须拼完整URL，H5由Vite proxy转发
     // eslint-disable-next-line no-restricted-properties
     const env = Taro.getEnv()
-    if (env === 'WEAPP' || env === 'RN' || !USER_DOMAIN) {
+    if (env === 'WEAPP' || env === 'TT') {
+      return `${domain}${url}`
+    }
+    if (!domain) {
       return url
     }
-    return `${USER_DOMAIN}${url}`
+    return `${domain}${url}`
   }
 
   const headers = {
@@ -85,13 +90,18 @@ export const uploadFile = async (option) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url
     }
-    // 在小程序环境中使用相对路径（由 Vite proxy 转发）
+    // PROJECT_DOMAIN is globally injected by Taro config
+    // eslint-disable-next-line no-restricted-properties
+    const domain = typeof PROJECT_DOMAIN !== 'undefined' ? PROJECT_DOMAIN : ''
     // eslint-disable-next-line no-restricted-properties
     const env = Taro.getEnv()
-    if (env === 'WEAPP' || env === 'RN' || !USER_DOMAIN) {
+    if (env === 'WEAPP' || env === 'TT') {
+      return `${domain}${url}`
+    }
+    if (!domain) {
       return url
     }
-    return `${USER_DOMAIN}${url}`
+    return `${domain}${url}`
   }
 
   const headers = {
