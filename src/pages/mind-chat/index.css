@@ -53,8 +53,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 48rpx;
+  justify-content: center;
+  gap: 80rpx;
   padding: 56rpx 0 20rpx;
   z-index: 10;
 }
