@@ -55,7 +55,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 48rpx;
-  padding: 24rpx 0 8rpx;
+  padding: 40rpx 0 16rpx;
   z-index: 10;
 }
 
