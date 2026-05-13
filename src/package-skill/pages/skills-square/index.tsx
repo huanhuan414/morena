@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, CircleCheckBig, Plus, Sparkles, TrendingUp, Zap, Star, Users, Coins, ChevronRight } from 'lucide-react-taro'
@@ -74,7 +74,9 @@ export default function SkillsSquare() {
     try {
       setLoading(true)
       const res = await Network.request({ url: '/api/skills' })
+      console.log('[SkillsSquare] /api/skills response:', JSON.stringify(res?.data)?.substring(0, 300))
       const allSkills = res?.data?.data || []
+      console.log('[SkillsSquare] allSkills count:', allSkills.length)
       setSkills(allSkills)
 
       if (avatarId) {
@@ -155,7 +157,7 @@ export default function SkillsSquare() {
         </View>
       </View>
 
-      <ScrollView scrollY className="skills-body">
+      <View className="skills-body">
         {/* 价值引导 - 与首页新手攻略同风格 */}
         <View className="skills-guide-card">
           <View className="skills-guide-header">
@@ -339,7 +341,7 @@ export default function SkillsSquare() {
         )}
 
         <View style={{ height: '60px' }} />
-      </ScrollView>
+      </View>
     </View>
   )
 }
