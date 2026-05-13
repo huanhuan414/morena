@@ -218,12 +218,12 @@ export class AvatarService {
       const db = getMySQLClient()
       
       if (hasValidUserId) {
-        // 有效用户：只查询该用户自己的分身（直接使用SQL，数据库列名是驼峰userId）
+        // 有效用户：只查询该用户自己的活跃分身（过滤已删除/训练中的）
         console.log('[AvatarService] 查询用户分身，userId:', userId)
-        const result = await db.query(`SELECT * FROM avatars WHERE user_id = ?`, [userId])
+        const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else if (isTestUser) {
-        // 测试用户：返回所有分身（开发环境）
+        // 测试用户：返回所有活跃分身（开发环境）
         console.log('[AvatarService] 测试用户，返回所有分身')
         const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
         rows = Array.isArray(result) ? result : (result?.data || [])
@@ -407,11 +407,59 @@ export class AvatarService {
   }
 
   /**
-   * 删除分身
+   * 删除分身（级联清理所有关联数据）
    */
   async deleteAvatar(avatarId: string, userId: string) {
     const db = getMySQLClient()
+
+    // 1. 先验证分身归属
+    const avatars = await db.query('SELECT id FROM avatars WHERE id = ? AND user_id = ?', [avatarId, userId]) as any[]
+    if (avatars.length === 0) {
+      return { success: false, error: '分身不存在或无权删除' }
+    }
+
+    // 2. 级联清理：将关联的 pending dispatch 标记为 cancelled
+    try {
+      await db.query(
+        `UPDATE order_dispatch_requests SET status = 'cancelled', updated_at = NOW() WHERE avatar_id = ? AND status = 'pending'`,
+        [avatarId]
+      )
+      console.log('[AvatarService] 已取消分身的所有待接单dispatch:', avatarId)
+    } catch (e) {
+      console.warn('[AvatarService] 取消待接单dispatch失败:', e.message)
+    }
+
+    // 3. 级联清理：删除 avatar_skills
+    try {
+      await db.query('DELETE FROM avatar_skills WHERE avatar_id = ?', [avatarId])
+      console.log('[AvatarService] 已删除分身技能:', avatarId)
+    } catch (e) {
+      console.warn('[AvatarService] 删除分身技能失败:', e.message)
+    }
+
+    // 4. 级联清理：删除 avatar_notifications
+    try {
+      await db.query('DELETE FROM avatar_notifications WHERE avatar_id = ?', [avatarId])
+      console.log('[AvatarService] 已删除分身通知:', avatarId)
+    } catch (e) {
+      console.warn('[AvatarService] 删除分身通知失败:', e.message)
+    }
+
+    // 5. 级联清理：删除 avatar_memories
+    try {
+      await db.query('DELETE FROM avatar_memories WHERE avatar_id = ?', [avatarId])
+      console.log('[AvatarService] 已删除分身记忆:', avatarId)
+    } catch (e) {
+      console.warn('[AvatarService] 删除分身记忆失败:', e.message)
+    }
+
+    // 6. 清除内存缓存
+    const userAvatars = sharedMemoryAvatars.get(userId) || []
+    sharedMemoryAvatars.set(userId, userAvatars.filter(a => a.id !== avatarId))
+
+    // 7. 最后删除分身本体
     const result = await db.delete('avatars', { id: avatarId, user_id: userId })
+    console.log('[AvatarService] 分身删除完成:', avatarId)
     return { success: (result as any)?.data?.affectedRows > 0 }
   }
 

@@ -123,6 +123,7 @@ export class OrderDispatchService {
   async getUserPendingRequests(userId: string) {
     const db = getMySQLClient()
     // 查询分派给当前用户分身的待接订单，关联订单表获取完整信息
+    // 关键修复：用 INNER JOIN 确保只返回分身仍然存在的记录（LEFT JOIN 会导致已删分身仍显示）
     const requests = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               o.title, o.description, o.content_type, o.platforms, o.budget,
@@ -132,8 +133,8 @@ export class OrderDispatchService {
               o.preferred_styles, o.industry_tags,
               a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
-       LEFT JOIN orders o ON r.order_id = o.id
-       LEFT JOIN avatars a ON r.avatar_id = a.id
+       INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
+       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'open', 'created', 'assigned', 'in_progress')
        WHERE r.user_id = ? AND r.status = 'pending'
        ORDER BY r.created_at DESC`, [userId]) as any[]
 
@@ -235,13 +236,13 @@ export class OrderDispatchService {
     const db = getMySQLClient()
     const hostedWhereClause = await this.buildHostedWhereClause()
 
-    // 查询开启托管的分身
-    let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = ? ORDER BY updated_at DESC`
+    // 查询开启托管的活跃分身
+    let sql = `SELECT * FROM avatars WHERE ${hostedWhereClause} AND status = 'active' ORDER BY updated_at DESC`
     if (limit > 0) {
       sql += ` LIMIT ${parseInt(String(limit)) * 3}`  // 取3倍数量用于匹配筛选
     }
     
-    const result = await db.query(sql, ['active'])
+    const result = await db.query(sql)
     const avatars = Array.isArray(result) ? result : (result?.data || [])
 
     // 如果有订单ID，尝试获取订单信息进行匹配排序
@@ -326,10 +327,10 @@ async getExecutionProgress(orderId: string) {
   async dispatchToAvatar(orderId: string, avatarId: string) {
     const db = getMySQLClient()
     
-    // 查询分身
-    const avatars = await db.query('SELECT * FROM avatars WHERE id = ?', [avatarId]) as any[]
+    // 查询分身（必须是活跃状态）
+    const avatars = await db.query('SELECT * FROM avatars WHERE id = ? AND status = \'active\'', [avatarId]) as any[]
     if (avatars.length === 0) {
-      throw new Error('分身不存在')
+      throw new Error('分身不存在或已失效')
     }
     
     const avatar = avatars[0]
@@ -388,16 +389,14 @@ async getExecutionProgress(orderId: string) {
     // 获取订单需要的分身数量
     const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1
     
-    // 查询所有开启托管的分身，并关联用户表获取手机号
-    // 兼容 is_hosted / trust_enabled，且兼容字符串/数字布尔值
+    // 查询所有开启托管的活跃分身，并关联用户表获取手机号
+    // 关键修复：确保 a.status = 'active' 过滤已删除/训练中分身
     const hostedWhereClause = await this.buildHostedWhereClause('a')
     const allAvatars = await db.query(`
       SELECT a.*, u.phone AS user_phone 
       FROM avatars a 
       LEFT JOIN users u ON a.user_id = u.id 
-      WHERE ${hostedWhereClause} AND a.status = ?`, 
-      ['active']
-    ) as any[]
+      WHERE ${hostedWhereClause} AND a.status = 'active'`) as any[]
     
     // 三维匹配排序：技能 + 风格 + 领域
     const scoredAvatars = allAvatars.map(avatar => {
@@ -578,6 +577,14 @@ async getExecutionProgress(orderId: string) {
     
     // 使用实际的 avatarId（可能是自动选择的）
     const actualAvatarId = request.avatar_id || request.avatarId || avatarId
+
+    // 验证分身仍然存在且活跃（防止已删除分身接单）
+    if (actualAvatarId) {
+      const avatarCheck = await db.query('SELECT id, status FROM avatars WHERE id = ?', [actualAvatarId]) as any[]
+      if (avatarCheck.length === 0 || avatarCheck[0].status !== 'active') {
+        throw new Error('分身不存在或已失效，无法接单')
+      }
+    }
     
     // 更新状态为 accepted
     await db.updateWhere('order_dispatch_requests', { id: request.id }, {
@@ -737,10 +744,14 @@ async getExecutionProgress(orderId: string) {
   async getAvatarAcceptedOrders(avatarId: string) {
     const db = getMySQLClient()
     
+    // 先确认分身仍然存在
+    const avatarCheck = await db.query('SELECT id FROM avatars WHERE id = ? AND status = \'active\'', [avatarId]) as any[]
+    if (avatarCheck.length === 0) return []
+    
     const results = await db.query(`
       SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at
       FROM order_dispatch_requests r
-      LEFT JOIN orders o ON r.order_id = o.id
+      INNER JOIN orders o ON r.order_id = o.id
       WHERE r.avatar_id = ? AND r.status = 'accepted'
       ORDER BY r.updated_at DESC
     `, [avatarId]) as any[]
@@ -757,8 +768,8 @@ async getExecutionProgress(orderId: string) {
     const results = await db.query(`
       SELECT r.*, o.title, o.status as order_status, o.budget, o.created_at as order_created_at, a.name as avatar_name
       FROM order_dispatch_requests r
-      LEFT JOIN orders o ON r.order_id = o.id
-      LEFT JOIN avatars a ON r.avatar_id = a.id
+      INNER JOIN orders o ON r.order_id = o.id
+      INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
       WHERE r.user_id = ? AND r.status = 'accepted'
       ORDER BY r.updated_at DESC
     `, [userId]) as any[]
@@ -790,7 +801,7 @@ async getExecutionProgress(orderId: string) {
     const results = await db.query(`
       SELECT a.*, r.id as dispatch_request_id
       FROM order_dispatch_requests r
-      LEFT JOIN avatars a ON r.avatar_id = a.id
+      INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
       WHERE r.order_id = ? AND r.status = 'accepted'
     `, [orderId]) as any[]
     
@@ -821,7 +832,7 @@ async getExecutionProgress(orderId: string) {
         SELECT a.*, u.phone AS user_phone 
         FROM avatars a 
         LEFT JOIN users u ON a.user_id = u.id 
-        WHERE a.id = ?`, [avatarId]) as any[]
+        WHERE a.id = ? AND a.status = 'active'`, [avatarId]) as any[]
       const avatar = avatars[0]
       
       if (!avatar) continue

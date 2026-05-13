@@ -49,8 +49,8 @@ export class UserStatsService {
     try {
       const db = getMySQLClient()
       
-      // 1. 获取用户所有分身
-      const dbAvatars = await db.query('avatars', { user_id: userId }) as any[]
+      // 1. 获取用户所有活跃分身（过滤已删除/训练中的）
+      const dbAvatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
       console.log('[UserStats] DB avatars for', userId, ':', dbAvatars?.length || 0)
       avatarList = dbAvatars || []
       
@@ -198,8 +198,8 @@ export class UserStatsService {
     try {
       const db = getMySQLClient()
       
-      // 获取用户所有分身
-      const avatars = await db.query('avatars', { user_id: userId }) as any[]
+      // 获取用户所有活跃分身
+      const avatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
       avatarList = avatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       
@@ -259,8 +259,8 @@ export class UserStatsService {
     try {
       const db = getMySQLClient()
       
-      // 获取用户所有分身
-      const avatars = await db.query('avatars', { user_id: userId }) as any[]
+      // 获取用户所有活跃分身
+      const avatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
       avatarList = avatars || []
       const avatarIds = avatarList.map((a: any) => a.id)
       

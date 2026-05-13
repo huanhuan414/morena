@@ -8,7 +8,11 @@ export class RecommendationService {
     const db = getMySQLClient()
     
     if (type === 'avatar') {
-      // 查询活跃的分身（真实数据）
+      // 查询开启托管且活跃的分身
+      const hostedChecks = [
+        "is_hosted = 1", "is_hosted = true", "is_hosted = '1'", "is_hosted = 'true'",
+        "trust_enabled = 1", "trust_enabled = true", "trust_enabled = '1'", "trust_enabled = 'true'"
+      ]
       let sql = `SELECT 
         a.id,
         a.name,
@@ -18,7 +22,7 @@ export class RecommendationService {
         a.created_at,
         a.updated_at
       FROM avatars a 
-      WHERE a.status = 'active'`
+      WHERE a.status = 'active' AND (${hostedChecks.join(' OR ')})`
       
       const params: any[] = []
       
@@ -175,7 +179,11 @@ export class RecommendationService {
     
     const contentType = order.content_type || order.contentType
     
-    // 查询所有活跃的分身
+    // 查询所有开启托管且活跃的分身
+    const hostedChecks = [
+      "a.is_hosted = 1", "a.is_hosted = true", "a.is_hosted = '1'", "a.is_hosted = 'true'",
+      "a.trust_enabled = 1", "a.trust_enabled = true", "a.trust_enabled = '1'", "a.trust_enabled = 'true'"
+    ]
     let sql = `SELECT 
       a.id,
       a.name,
@@ -184,10 +192,13 @@ export class RecommendationService {
       a.level,
       a.created_at,
       a.updated_at,
+      a.skills,
+      a.content_styles,
+      a.niche_tags,
       u.phone as user_phone
     FROM avatars a
     LEFT JOIN users u ON a.user_id = u.id
-    WHERE a.status = 'active'`
+    WHERE a.status = 'active' AND (${hostedChecks.join(' OR ')})`
     
     const avatars = await db.query(sql, []) as any[]
     console.log('[RecommendationService] 找到活跃分身数量:', avatars.length)

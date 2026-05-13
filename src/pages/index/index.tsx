@@ -41,6 +41,9 @@ const Index: React.FC = () => {
         const seen = new Set<string>()
         const orders = (res.data.data || []).filter((item: any) => {
           const oid = item.orderId
+          // 防御：过滤掉分身不存在或数据不完整的记录
+          if (!item.avatarId && !item.avatar_id) return false
+          if (!item.avatarName && !item.avatar_name) return false
           if (seen.has(oid)) return false
           seen.add(oid)
           return true
