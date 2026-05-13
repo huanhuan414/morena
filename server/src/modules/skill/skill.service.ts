@@ -150,6 +150,15 @@ export class SkillService {
   }
 
   /** 获取技能分类统计 */
+  async getSkillById(id: string) {
+    const db = getMySQLClient();
+    const rows = await db.query(
+      'SELECT * FROM skills WHERE id = ?',
+      [id]
+    );
+    return rows[0] || null;
+  }
+
   async getCategories() {
     const db = getMySQLClient();
     const rows: any[] = await db.query(

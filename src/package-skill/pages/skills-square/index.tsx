@@ -127,6 +127,13 @@ export default function SkillsSquare() {
     }
   }
 
+  const handleTrySkill = (skill: Skill) => {
+    const hexId = skill.id
+    Taro.navigateTo({
+      url: `/package-skill/pages/skill-try/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}&category=${encodeURIComponent(skill.category)}`,
+    })
+  }
+
   const formatCount = (n: number) => {
     if (n >= 10000) return (n / 10000).toFixed(1) + '万'
     if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
@@ -285,9 +292,16 @@ export default function SkillsSquare() {
                       </View>
 
                       {/* 操作按钮 */}
-                      {avatarId && (
-                        <View className="skill-card-action">
-                          {added ? (
+                      <View className="skill-card-action">
+                        <View
+                          className="skill-btn-try"
+                          onClick={() => handleTrySkill(skill)}
+                        >
+                          <Sparkles size={14} color="#8B5CF6" />
+                          <Text className="block skill-btn-try-text">体验</Text>
+                        </View>
+                        {avatarId && (
+                          added ? (
                             <View
                               className="skill-btn-added"
                               onClick={() => handleRemoveSkill(skill.id)}
@@ -305,13 +319,13 @@ export default function SkillsSquare() {
                               ) : (
                                 <>
                                   <Plus size={16} color="#fff" />
-                                  <Text className="block skill-btn-add-text">添加技能</Text>
+                                  <Text className="block skill-btn-add-text">添加</Text>
                                 </>
                               )}
                             </View>
-                          )}
-                        </View>
-                      )}
+                          )
+                        )}
+                      </View>
                     </View>
                   </View>
                 )

@@ -76,6 +76,7 @@ export default defineAppConfig({
         'pages/skill-create/index',
         'pages/skill-training/index',
         'pages/skills-square/index',
+        'pages/skill-try/index',
       ],
     },
     {

@@ -511,8 +511,8 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        status IN ('open', 'pending_dispatch', 'pending_acceptance')
-        OR (status = 'pending_payment' AND IFNULL(is_paid, 0) = 1)
+        status IN ('open', 'pending_dispatch', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'assigned')
+        OR (status IN ('pending_payment', 'submitted') AND IFNULL(is_paid, 0) = 1)
       )
     `
 
