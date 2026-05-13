@@ -162,7 +162,7 @@ export default function AvatarManagePage() {
       // 获取订阅信息和分身数量（添加时间戳绕过缓存）
       const timestamp = Date.now()
       const [subscriptionRes, avatarListRes] = await Promise.all([
-        Network.request({ url: `/api/subscription/user?_=${timestamp}`, header: { 'x-user-id': userId } }),
+        Network.request({ url: `/api/subscription/status?userId=${userId}&_=${timestamp}` }),
         Network.request({ url: `/api/avatar?_=${timestamp}`, header: { 'x-user-id': userId } })
       ])
 
@@ -173,11 +173,12 @@ export default function AvatarManagePage() {
       // 检查订阅权益
       if (subscriptionRes.data?.data?.plan) {
         const plan = subscriptionRes.data.data.plan
-        setMaxAvatars(plan.max_avatars)
-        setUserSubscription(subscriptionRes.data.data) // 🔴 保存订阅信息
+        setMaxAvatars(plan.maxAvatars || plan.max_avatars || 1)
+        setUserSubscription(subscriptionRes.data.data)
         
         // 检查是否可以创建分身
-        if (plan.max_avatars !== -1 && currentCount >= plan.max_avatars) {
+        const max = plan.maxAvatars || plan.max_avatars || 1
+        if (max !== -1 && currentCount >= max) {
           setCanCreateAvatar(false)
         } else {
           setCanCreateAvatar(true)
@@ -185,7 +186,7 @@ export default function AvatarManagePage() {
       } else {
         // 免费用户最多1个分身
         setMaxAvatars(1)
-        setUserSubscription(null) // 🔴 无订阅
+        setUserSubscription(null)
         if (currentCount >= 1) {
           setCanCreateAvatar(false)
         } else {
