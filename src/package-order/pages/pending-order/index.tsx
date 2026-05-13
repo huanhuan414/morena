@@ -6,8 +6,10 @@ import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import {
   ArrowLeft, Wallet, Users, FileText,
-  Zap, ChevronRight, CircleX, CircleCheck, Sparkles,
-  Image as ImageIcon, Video, Target, Calendar
+  Zap, ChevronRight, CircleX, Sparkles,
+  Image as ImageIcon, Video, Target,
+  Clock, Timer, TrendingUp, CircleCheckBig,
+  Flame, CircleAlert, ChevronDown, ChevronUp
 } from 'lucide-react-taro'
 import { canonicalizePlatforms, getPlatformMeta, getPlatformLabel, PLATFORM_UI_ORDER } from '@/constants/publish-platform'
 import './index.css'
@@ -30,16 +32,25 @@ interface PendingOrder {
   expectedQuantity: number
   orderCreatedAt: string
   targetAudience?: string
-  sellingPoints?: string
+  deadline?: string
+  priority?: string
+  requirements?: string
 }
 
 // 内容类型配置
-const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any; color: string }> = {
-  image_text: { label: '图文', icon: FileText, color: '#6366F1' },
-  article: { label: '文章', icon: FileText, color: '#8B5CF6' },
-  image: { label: '图片', icon: ImageIcon, color: '#10B981' },
-  video: { label: '视频', icon: Video, color: '#F59E0B' },
-  text: { label: '文案', icon: FileText, color: '#3B82F6' },
+const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any; color: string; effort: string }> = {
+  image_text: { label: '图文笔记', icon: FileText, color: '#6366F1', effort: '约15分钟' },
+  article: { label: '长篇文章', icon: FileText, color: '#8B5CF6', effort: '约30分钟' },
+  image: { label: '图片内容', icon: ImageIcon, color: '#10B981', effort: '约10分钟' },
+  video: { label: '短视频', icon: Video, color: '#F59E0B', effort: '约20分钟' },
+  text: { label: '纯文案', icon: FileText, color: '#3B82F6', effort: '约10分钟' },
+}
+
+// 优先级配置
+const PRIORITY_MAP: Record<string, { label: string; color: string; icon: any }> = {
+  urgent: { label: '紧急', color: '#EF4444', icon: Flame },
+  high: { label: '优先', color: '#F59E0B', icon: CircleAlert },
+  normal: { label: '普通', color: '#94A3B8', icon: Clock },
 }
 
 // 安全解析 JSON
@@ -51,11 +62,42 @@ function safeParseJSON(val: any): string[] {
   return []
 }
 
+// 计算距离截止时间
+function getTimeLeft(deadline?: string) {
+  if (!deadline) return null
+  const now = Date.now()
+  const end = new Date(deadline).getTime()
+  const diff = end - now
+  if (diff <= 0) return '已过期'
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  if (hours < 1) return '不足1小时'
+  if (hours < 24) return `${hours}小时`
+  return `${Math.floor(hours / 24)}天${hours % 24}小时`
+}
+
+// 解析 requirements JSON
+function safeParseRequirements(val: any): string[] {
+  if (Array.isArray(val)) return val.filter(Boolean)
+  if (typeof val === 'string') {
+    try {
+      const r = JSON.parse(val)
+      if (Array.isArray(r)) return r.filter(Boolean)
+      if (typeof r === 'object' && r !== null) {
+        // 可能是 { tone: '专业', style: '...'} 格式
+        return Object.entries(r).map(([k, v]) => `${k}: ${v}`)
+      }
+      return [val]
+    } catch { return [val] }
+  }
+  return []
+}
+
 export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
   useEffect(() => {
     fetchOrders()
@@ -99,6 +141,10 @@ export default function PendingOrderListPage() {
             quantityPerAvatar: item.quantityPerAvatar || 1,
             expectedQuantity: item.expectedQuantity || 1,
             orderCreatedAt: item.orderCreatedAt || '',
+            targetAudience: item.targetAudience || '',
+            deadline: item.deadline || '',
+            priority: item.priority || 'normal',
+            requirements: item.requirements || '',
           }
         })
         console.log('[待接订单] 解析后数据:', realOrders.length, '条')
@@ -127,7 +173,7 @@ export default function PendingOrderListPage() {
       })
       console.log('[待接订单] 接单响应:', res.data)
       if (res.data?.code === 200) {
-        Taro.showToast({ title: '接单成功', icon: 'success' })
+        Taro.showToast({ title: '接单成功，正在生成内容', icon: 'success' })
         const result = res.data?.data || {}
         const nextRequestId = result.requestId || ''
         const nextAvatarId = result.avatarId || order.avatarId
@@ -184,13 +230,6 @@ export default function PendingOrderListPage() {
     return CONTENT_TYPE_MAP[type] || CONTENT_TYPE_MAP.image_text
   }
 
-  // 格式化时间
-  const formatTime = (dateStr: string) => {
-    if (!dateStr) return ''
-    const d = new Date(dateStr)
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  }
-
   const statusBarHeight = getStatusBarHeight()
 
   return (
@@ -208,7 +247,7 @@ export default function PendingOrderListPage() {
           </View>
           <View className="po-header-center">
             <Text className="po-header-title">待接订单</Text>
-            <Text className="po-header-sub">匹配分身 · AI 智能创作 · 自动发布</Text>
+            <Text className="po-header-sub">分身为您匹配的专属任务</Text>
           </View>
           <View className="po-header-right" />
         </View>
@@ -217,19 +256,19 @@ export default function PendingOrderListPage() {
           <View className="po-stat-chip">
             <Zap size={14} color="#FBBF24" />
             <Text className="po-stat-num">{orders.length}</Text>
-            <Text className="po-stat-label">待接</Text>
+            <Text className="po-stat-label">待接任务</Text>
           </View>
           <View className="po-stat-divider" />
           <View className="po-stat-chip">
             <Wallet size={14} color="#34D399" />
             <Text className="po-stat-num">¥{orders.reduce((s, o) => s + o.budget, 0).toFixed(0)}</Text>
-            <Text className="po-stat-label">总预算</Text>
+            <Text className="po-stat-label">预期收益</Text>
           </View>
           <View className="po-stat-divider" />
           <View className="po-stat-chip">
             <Users size={14} color="#A78BFA" />
             <Text className="po-stat-num">{new Set(orders.map(o => o.avatarId)).size}</Text>
-            <Text className="po-stat-label">分身</Text>
+            <Text className="po-stat-label">参与分身</Text>
           </View>
         </View>
       </View>
@@ -273,7 +312,7 @@ export default function PendingOrderListPage() {
         ) : filteredOrders.length === 0 ? (
           <View className="po-empty">
             <View className="po-empty-icon">
-              <CircleCheck size={48} color="#CBD5E1" />
+              <CircleCheckBig size={48} color="#CBD5E1" />
             </View>
             <Text className="po-empty-title">暂无待接订单</Text>
             <Text className="po-empty-desc">所有订单都已处理，稍后再来看看</Text>
@@ -282,9 +321,23 @@ export default function PendingOrderListPage() {
           filteredOrders.map((order) => {
             const ctInfo = getContentTypeInfo(order.contentType)
             const isAccepting = accepting === order.dispatchId
+            const isExpanded = expandedCard === order.dispatchId
+            const priorityInfo = PRIORITY_MAP[order.priority || 'normal'] || PRIORITY_MAP.normal
+            const PriorityIcon = priorityInfo.icon
+            const timeLeft = getTimeLeft(order.deadline)
+            const requirementList = safeParseRequirements(order.requirements)
+            const perUnitBudget = order.quantityPerAvatar > 0
+              ? (Number(order.budget) / order.quantityPerAvatar).toFixed(1)
+              : Number(order.budget).toFixed(1)
+
             return (
               <View key={order.dispatchId} className="po-card">
-                {/* 卡片头部：分身 + 平台 + 类型 */}
+                {/* 紧急度指示条 */}
+                {(order.priority === 'urgent' || order.priority === 'high') && (
+                  <View className="po-priority-bar" style={{ backgroundColor: priorityInfo.color }} />
+                )}
+
+                {/* 卡片头部：分身 + 优先级 + 平台 */}
                 <View className="po-card-top">
                   <View className="po-avatar-chip">
                     {order.avatarUrl ? (
@@ -295,8 +348,17 @@ export default function PendingOrderListPage() {
                       </View>
                     )}
                     <Text className="po-avatar-label">{order.avatarName}</Text>
+                    <Text className="po-avatar-match">为你匹配</Text>
                   </View>
                   <View className="po-card-badges">
+                    {order.priority !== 'normal' && (
+                      <View className="po-priority-pill" style={{ background: `${priorityInfo.color}15` }}>
+                        <PriorityIcon size={12} color={priorityInfo.color} />
+                        <Text className="po-priority-pill-text" style={{ color: priorityInfo.color }}>
+                          {priorityInfo.label}
+                        </Text>
+                      </View>
+                    )}
                     {order.platforms.map(pKey => {
                       const meta = getPlatformMeta(pKey)
                       return (
@@ -318,26 +380,152 @@ export default function PendingOrderListPage() {
 
                 {/* 描述 */}
                 {order.description && (
-                  <Text className="po-card-desc" numberOfLines={3}>{order.description}</Text>
+                  <Text className="po-card-desc" numberOfLines={isExpanded ? 100 : 2}>{order.description}</Text>
                 )}
 
-                {/* 信息栏 */}
-                <View className="po-card-info">
-                  <View className="po-info-item">
-                    <Wallet size={14} color="#F59E0B" />
-                    <Text className="po-info-text po-info-budget">¥{order.budget}</Text>
+                {/* ===== 核心决策区：回报卡片 ===== */}
+                <View className="po-reward-card">
+                  <View className="po-reward-left">
+                    <View className="po-reward-amount">
+                      <Text className="po-reward-symbol">¥</Text>
+                      <Text className="po-reward-value">{perUnitBudget}</Text>
+                      <Text className="po-reward-unit">/条</Text>
+                    </View>
+                    <Text className="po-reward-hint">共{order.quantityPerAvatar}条 · 合计¥{order.budget.toFixed(0)}</Text>
                   </View>
-                  <View className="po-info-sep" />
-                  <View className="po-info-item">
-                    <Target size={14} color="#6366F1" />
-                    <Text className="po-info-text">{order.quantityPerAvatar}条/分身</Text>
-                  </View>
-                  <View className="po-info-sep" />
-                  <View className="po-info-item">
-                    <Calendar size={14} color="#94A3B8" />
-                    <Text className="po-info-text">{formatTime(order.orderCreatedAt)}</Text>
+                  <View className="po-reward-divider" />
+                  <View className="po-reward-right">
+                    <View className="po-reward-meta">
+                      <Clock size={14} color="#6366F1" />
+                      <Text className="po-reward-meta-text">{ctInfo.effort}</Text>
+                    </View>
+                    <Text className="po-reward-meta-sub">预计耗时</Text>
                   </View>
                 </View>
+
+                {/* ===== 接单后要做什么 ===== */}
+                <View className="po-what-section">
+                  <Text className="po-section-label">接单后流程</Text>
+                  <View className="po-steps">
+                    <View className="po-step">
+                      <View className="po-step-dot po-step-dot-1">
+                        <Text className="po-step-num">1</Text>
+                      </View>
+                      <Text className="po-step-text">AI自动创作</Text>
+                    </View>
+                    <View className="po-step-line" />
+                    <View className="po-step">
+                      <View className="po-step-dot po-step-dot-2">
+                        <Text className="po-step-num">2</Text>
+                      </View>
+                      <Text className="po-step-text">确认发布</Text>
+                    </View>
+                    <View className="po-step-line" />
+                    <View className="po-step">
+                      <View className="po-step-dot po-step-dot-3">
+                        <Text className="po-step-num">3</Text>
+                      </View>
+                      <Text className="po-step-text">获得收益</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 目标受众（如果有） */}
+                {order.targetAudience && (
+                  <View className="po-audience-row">
+                    <Target size={14} color="#8B5CF6" />
+                    <Text className="po-audience-label">目标受众：</Text>
+                    <Text className="po-audience-text">{order.targetAudience}</Text>
+                  </View>
+                )}
+
+                {/* 截止时间提醒 */}
+                {timeLeft && (
+                  <View
+                    className="po-deadline-row"
+                    style={{
+                      background: timeLeft === '已过期' || timeLeft === '不足1小时'
+                        ? '#FEF2F2' : timeLeft.includes('小时') && !timeLeft.includes('天')
+                          ? '#FFFBEB' : '#F0F9FF'
+                    }}
+                  >
+                    <Timer
+                      size={14}
+                      color={
+                        timeLeft === '已过期' || timeLeft === '不足1小时'
+                          ? '#EF4444' : timeLeft.includes('小时') && !timeLeft.includes('天')
+                            ? '#F59E0B' : '#3B82F6'
+                      }
+                    />
+                    <Text
+                      className="po-deadline-text"
+                      style={{
+                        color: timeLeft === '已过期' || timeLeft === '不足1小时'
+                          ? '#EF4444' : timeLeft.includes('小时') && !timeLeft.includes('天')
+                            ? '#F59E0B' : '#3B82F6'
+                      }}
+                    >
+                      {timeLeft === '已过期' ? '已过截止时间' : `剩余 ${timeLeft}`}
+                    </Text>
+                  </View>
+                )}
+
+                {/* 展开更多详情 */}
+                <View className="po-expand-row" onClick={() => setExpandedCard(isExpanded ? null : order.dispatchId)}>
+                  <Text className="po-expand-text">{isExpanded ? '收起详情' : '查看详情'}</Text>
+                  {isExpanded ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
+                </View>
+
+                {/* 展开区：需求详情 + 要求 */}
+                {isExpanded && (
+                  <View className="po-expand-area">
+                    {/* 特殊要求 */}
+                    {requirementList.length > 0 && (
+                      <View className="po-req-block">
+                        <Text className="po-req-title">创作要求</Text>
+                        {requirementList.slice(0, 5).map((req, idx) => (
+                          <View key={idx} className="po-req-item">
+                            <View className="po-req-dot" />
+                            <Text className="po-req-text">{req}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {/* 付出与回报说明 */}
+                    <View className="po-cost-benefit">
+                      <View className="po-cost-side">
+                        <Text className="po-cb-title">你需要做</Text>
+                        <View className="po-cb-item">
+                          <CircleCheckBig size={14} color="#6366F1" />
+                          <Text className="po-cb-text">AI自动生成{ctInfo.label}内容</Text>
+                        </View>
+                        <View className="po-cb-item">
+                          <CircleCheckBig size={14} color="#6366F1" />
+                          <Text className="po-cb-text">确认后一键发布到{order.platforms.map(p => getPlatformLabel(p)).join('、')}</Text>
+                        </View>
+                        <View className="po-cb-item">
+                          <CircleCheckBig size={14} color="#6366F1" />
+                          <Text className="po-cb-text">等待验收通过即可结算</Text>
+                        </View>
+                      </View>
+                      <View className="po-benefit-side">
+                        <Text className="po-cb-title">你将获得</Text>
+                        <View className="po-cb-item">
+                          <TrendingUp size={14} color="#10B981" />
+                          <Text className="po-cb-text po-cb-green">¥{order.budget.toFixed(0)} 创作收益</Text>
+                        </View>
+                        <View className="po-cb-item">
+                          <TrendingUp size={14} color="#10B981" />
+                          <Text className="po-cb-text po-cb-green">分身活跃度提升</Text>
+                        </View>
+                        <View className="po-cb-item">
+                          <TrendingUp size={14} color="#10B981" />
+                          <Text className="po-cb-text po-cb-green">接单信誉加分</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
 
                 {/* 操作按钮 */}
                 <View className="po-card-actions">
@@ -361,7 +549,7 @@ export default function PendingOrderListPage() {
                     ) : (
                       <>
                         <Sparkles size={16} color="#fff" />
-                        <Text className="po-btn-label po-btn-label-primary">立即接单</Text>
+                        <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.budget.toFixed(0)}</Text>
                         <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                       </>
                     )}

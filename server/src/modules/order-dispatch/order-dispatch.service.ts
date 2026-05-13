@@ -127,7 +127,8 @@ export class OrderDispatchService {
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
               o.title, o.description, o.content_type, o.platforms, o.budget,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
-              o.created_at as order_created_at
+              o.created_at as order_created_at, o.target_audience, o.deadline,
+              o.priority, o.requirements
        FROM order_dispatch_requests r
        LEFT JOIN orders o ON r.order_id = o.id
        WHERE r.user_id = ? AND r.status = 'pending'
