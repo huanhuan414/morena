@@ -79,7 +79,7 @@ export class UserStatsService {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         try {
           const contentResult = await db.queryWhere(
-            'content_generation',
+            'content_generation_requests',
             `avatar_id IN (${avatarIdList})`
           ) as any[]
           generatedContents = contentResult?.length || 0
@@ -132,7 +132,7 @@ export class UserStatsService {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         try {
           const contentResult = await db.queryWhere(
-            'content_generation',
+            'content_generation_requests',
             `avatar_id IN (${avatarIdList})`
           ) as any[]
           const completedCount = (Array.isArray(contentResult) ? contentResult : []).filter(
@@ -275,7 +275,7 @@ export class UserStatsService {
       }
       
       try {
-        const result = await db.queryWhere('content_generation', where, {
+        const result = await db.queryWhere('content_generation_requests', where, {
           orderBy: 'created_at',
           orderDirection: 'desc',
           limit: 50
@@ -313,13 +313,20 @@ export class UserStatsService {
       if (!Array.isArray(images)) images = images ? [String(images)] : []
       return {
         ...content,
-        avatar_name: avatar?.name || avatar?.userName || '未知分身',
-        avatar_url: avatar?.avatarUrl || avatar?.avatar_url || '',
+        // 确保前端常用的字段都有值（兼容 camelCase 和 snake_case）
+        orderId: content.orderId || content.order_id || '',
         avatarId: aid,
+        avatarName: avatar?.name || avatar?.userName || '未知分身',
+        avatar_name: avatar?.name || avatar?.userName || '未知分身',
+        avatarUrl: avatar?.avatarUrl || avatar?.avatar_url || '',
+        avatar_url: avatar?.avatarUrl || avatar?.avatar_url || '',
+        contentType: content.contentType || content.content_type || 'image_text',
         content_type: content.contentType || content.content_type || 'image_text',
+        platform: content.platform || (Array.isArray(platforms) ? platforms[0] : '') || '',
         platforms,
         images,
-        status: content.status
+        status: content.status,
+        createdAt: content.createdAt || content.created_at || '',
       }
     })
     

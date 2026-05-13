@@ -99,14 +99,26 @@ export default function GeneratedContentPage() {
           avatarUrl: a.avatar_url || a.avatarUrl || '',
         }))
 
-        const parsedContents = rawContents.map((c: any) => ({
-          ...c,
-          images: safeParseJSON(c.images),
-          platforms: safeParseJSON(c.platforms),
-          tags: safeParseJSON(c.tags),
-          platform: canonicalizePlatform(c.platform || (safeParseJSON(c.platforms)[0]) || ''),
-          contentType: c.content_type || c.contentType || 'image_text',
-        }))
+        const parsedContents = rawContents.map((c: any) => {
+          const images = safeParseJSON(c.images)
+          const platforms = safeParseJSON(c.platforms)
+          return {
+            ...c,
+            // 确保关键字段存在（兼容 camelCase 和 snake_case）
+            id: c.id,
+            orderId: c.orderId || c.order_id || '',
+            avatarId: c.avatarId || c.avatar_id || '',
+            avatarName: c.avatarName || c.avatar_name || '我的分身',
+            avatarUrl: c.avatarUrl || c.avatar_url || '',
+            images,
+            platforms,
+            tags: safeParseJSON(c.tags),
+            platform: canonicalizePlatform(c.platform || platforms[0] || ''),
+            contentType: c.contentType || c.content_type || 'image_text',
+            status: c.status,
+            createdAt: c.createdAt || c.created_at || '',
+          }
+        })
 
         setAvatars(parsedAvatars)
         setContents(parsedContents)
@@ -212,7 +224,7 @@ export default function GeneratedContentPage() {
   const getCardActions = (rawStatus: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
     switch (status) {
-      case 'completed':
+      case 'preview':
         return [
           { key: 'publish', label: '发布', icon: Send, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
@@ -222,13 +234,12 @@ export default function GeneratedContentPage() {
           { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
-      case 'reviewing':
+      case 'awaiting_acceptance':
         return [
           { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
-      case 'settled':
-      case 'done':
+      case 'completed':
         return [
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
