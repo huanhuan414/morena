@@ -358,13 +358,13 @@ export default function AvatarCreate() {
           || ''
         )
         Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
+        // 用 Storage 传递引导标记（switchTab 不支持 query 参数）
+        if (createdAvatarId) {
+          Taro.setStorageSync('onboarding_new_avatar_id', createdAvatarId)
+        }
         Taro.showToast({ title: '创建成功！', icon: 'success' })
         setTimeout(() => {
-          // 创建成功后跳转到分身页面，带上引导参数
-          const query = createdAvatarId
-            ? `onboarding=1&newAvatarId=${encodeURIComponent(createdAvatarId)}`
-            : 'onboarding=1'
-          Taro.switchTab({ url: `/pages/mind-chat/index?${query}` })
+          Taro.switchTab({ url: '/pages/mind-chat/index' })
         }, 1500)
       } else {
         Taro.showToast({

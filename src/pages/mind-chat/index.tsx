@@ -269,15 +269,15 @@ const MindChat: React.FC = () => {
     hasPageShownRef.current = true
 
     // 检测是否从创建分身页面跳转过来（引导开启托管）
-    const instance = Taro.getCurrentInstance()
-    const onboarding = instance?.router?.params?.onboarding
-    const avatarId = instance?.router?.params?.newAvatarId
-    if (onboarding === '1' && avatarId) {
-      setNewAvatarId(avatarId)
+    // switchTab 不支持 query 参数，使用 Storage 传递
+    const newAvatarIdFromStorage = Taro.getStorageSync('onboarding_new_avatar_id')
+    if (newAvatarIdFromStorage) {
+      Taro.removeStorageSync('onboarding_new_avatar_id')
+      setNewAvatarId(newAvatarIdFromStorage)
       // 延迟显示引导弹窗，等数据加载完
       setTimeout(() => {
         setShowOnboardingDialog(true)
-      }, 2000)
+      }, 1500)
     }
   })
 
