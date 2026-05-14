@@ -1,4 +1,4 @@
-import { useLoad, useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, navigateTo, reLaunch, showModal } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import * as Network from '@/network'
@@ -177,7 +177,7 @@ export default function ProfilePage() {
 
         {/* 统计数据 */}
         <View className="header-stats">
-          <View className="h-stat-item" onClick={() => navigateTo({ url: '/package-avatar/pages/avatar-manage/index' })}>
+          <View className="h-stat-item" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
             <Text className="h-stat-value">{stats.avatarCount}</Text>
             <Text className="h-stat-label">AI分身</Text>
           </View>

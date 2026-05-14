@@ -377,7 +377,7 @@ const Index: React.FC = () => {
             </View>
           )}
           <View className="stats-row">
-            <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/avatar-manage/index')}>
+            <View className="stat-item" onClick={() => goToPage('/pages/mind-chat/index')}>
               <View className="stat-icon-small" style={{ background: '#EEF2FF' }}>
                 <Users size={28} color="#6366F1" />
               </View>
