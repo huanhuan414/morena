@@ -457,8 +457,7 @@ export default function OrderPublishGuide() {
           <View className="guide-header-placeholder" />
         </View>
         <View className="guide-header-desc">
-          <Text className="block">按步骤发布内容</Text>
-          <Text className="block">到目标平台</Text>
+          <Text className="block">按步骤发布内容到目标平台</Text>
         </View>
       </View>
 
