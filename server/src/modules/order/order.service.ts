@@ -590,8 +590,9 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        status IN ('open', 'pending_dispatch', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'assigned')
-        OR (status IN ('pending_payment', 'submitted') AND IFNULL(is_paid, 0) = 1)
+        status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'published', 'publish_failed', 'publish_timeout')
+        OR (status = 'pending_payment' AND IFNULL(is_paid, 0) = 1)
+        OR (status = 'submitted')
       )
     `
 
@@ -774,10 +775,12 @@ export class OrderService {
       throw new Error('订单已支付')
     }
 
-    // 写入DB → snake_case
+    // 写入DB → snake_case，status必须使用orders表ENUM允许的值
+    // ENUM: pending, pending_acceptance, pending_payment, accepted, in_progress, ...
+    // 支付成功后 → pending（待接单/待处理）
     await db.query(
       'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
-      ['open', new Date(), orderId]
+      ['pending', new Date(), orderId]
     )
 
     // 读取DB返回值 → camelCase (order.userId)

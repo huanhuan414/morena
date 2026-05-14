@@ -12,24 +12,28 @@ import './index.css'
 // 订单状态映射（发单方视角）
 const ORDER_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
   pending_payment: { label: '待支付', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' },
-  pending: { label: '待处理', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' },
-  open: { label: '进行中', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
-  pending_dispatch: { label: '待分派', color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.1)' },
+  pending: { label: '待接单', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
   pending_acceptance: { label: '等待接单', color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.1)' },
+  accepted: { label: '已接单', color: '#6366f1', bgColor: 'rgba(99,102,241,0.1)' },
   in_progress: { label: '进行中', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
+  content_generated: { label: '内容已生成', color: '#14b8a6', bgColor: 'rgba(20,184,166,0.1)' },
   submitted: { label: '已提交', color: '#06b6d4', bgColor: 'rgba(6,182,212,0.1)' },
   awaiting_acceptance: { label: '待验收', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
+  published: { label: '已发布', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
+  publish_failed: { label: '发布失败', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
+  publish_timeout: { label: '发布超时', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
   completed: { label: '已完成', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
   cancelled: { label: '已取消', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
   auto_cancelled: { label: '自动取消', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
-  failed: { label: '失败', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
+  timeout: { label: '已超时', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
+  expired: { label: '已过期', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
 }
 
 // Tab 筛选
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
-  { key: 'in_progress', label: '进行中', includes: ['pending', 'open', 'pending_dispatch', 'pending_acceptance', 'in_progress'] },
-  { key: 'abnormal', label: '异常', includes: ['auto_cancelled', 'failed'] },
+  { key: 'in_progress', label: '进行中', includes: ['pending', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted'] },
+  { key: 'abnormal', label: '异常', includes: ['auto_cancelled', 'publish_failed', 'publish_timeout', 'timeout', 'expired'] },
   { key: 'awaiting_acceptance', label: '待验收', includes: ['awaiting_acceptance'] },
   { key: 'completed', label: '已完成', includes: ['completed'] },
 ]

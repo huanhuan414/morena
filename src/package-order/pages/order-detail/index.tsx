@@ -13,19 +13,24 @@ import { Button } from '@/components/ui/button'
 import './index.css'
 
 /* ── 状态映射 ── */
-const STATUS_MAP = {
-  pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰' },
-  open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢' },
-  pending_dispatch: { label: '待分配', color: '#3B82F6', bg: '#DBEAFE', icon: '📋' },
-  pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE', icon: '⏳' },
-  in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF', icon: '🔄' },
-  submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1', icon: '📝' },
-  awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅' },
-  completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉' },
-  cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌' },
-  auto_cancelled: { label: '自动取消', color: '#EF4444', bg: '#FEE2E2', icon: '🚫' },
-  failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️' },
-}
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+    pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰' },
+    pending: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢' },
+    pending_acceptance: { label: '等待接单', color: '#8B5CF6', bg: '#EDE9FE', icon: '⏳' },
+    in_progress: { label: '进行中', color: '#6366F1', bg: '#EEF2FF', icon: '🔄' },
+    content_generated: { label: '内容已生成', color: '#14B8A6', bg: '#CCFBF1', icon: '✍️' },
+    submitted: { label: '已提交', color: '#14B8A6', bg: '#CCFBF1', icon: '📝' },
+    awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅' },
+    published: { label: '已发布', color: '#22C55E', bg: '#DCFCE7', icon: '🚀' },
+    publish_failed: { label: '发布失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️' },
+    publish_timeout: { label: '发布超时', color: '#F97316', bg: '#FFF7ED', icon: '⏰' },
+    completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉' },
+    cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌' },
+    auto_cancelled: { label: '自动取消', color: '#EF4444', bg: '#FEE2E2', icon: '🚫' },
+    timeout: { label: '已超时', color: '#F97316', bg: '#FFF7ED', icon: '⏰' },
+    expired: { label: '已过期', color: '#EF4444', bg: '#FEE2E2', icon: '🗑️' },
+    accepted: { label: '已接单', color: '#6366F1', bg: '#EEF2FF', icon: '✅' },
+  }
 
 const AVATAR_STATUS_MAP = {
   pending: { label: '待接单', color: '#9CA3AF', bg: '#F3F4F6' },
