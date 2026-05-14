@@ -111,6 +111,15 @@ export default function AvatarCreate() {
             )
           } else {
             Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
+            setFormData({
+              photo: '',
+              photoUrl: '',
+              name: '',
+              contentStyles: [],
+              niches: [],
+              skills: [],
+            })
+            setCurrentStep(1)
           }
           setDraftReady(true)
         },
@@ -378,7 +387,15 @@ export default function AvatarCreate() {
           || ''
         )
         Taro.removeStorageSync(AVATAR_CREATE_DRAFT_KEY)
-        // 用 Storage 传递引导标记（switchTab 不支持 query 参数）
+        setFormData({
+          photo: '',
+          photoUrl: '',
+          name: '',
+          contentStyles: [],
+          niches: [],
+          skills: [],
+        })
+        setCurrentStep(1)
         if (createdAvatarId) {
           console.log('[avatar-create] Setting onboarding storage, avatarId =', createdAvatarId)
           Taro.setStorageSync('onboarding_new_avatar_id', createdAvatarId)

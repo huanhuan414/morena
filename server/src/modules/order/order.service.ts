@@ -778,6 +778,15 @@ export class OrderService {
       metadata: { orderId, transactionId }
     })
 
+    try {
+      const { OrderDispatchService } = await import('../order-dispatch/order-dispatch.service')
+      const dispatchService = new OrderDispatchService(this.earningService, this.notificationService)
+      const dispatchResult = await dispatchService.dispatchToAllAvatars(orderId)
+      console.log('[handlePaymentSuccess] 自动派单结果:', dispatchResult)
+    } catch (err) {
+      console.error('[handlePaymentSuccess] 自动派单失败:', err)
+    }
+
     return this.getOrderById(orderId)
   }
 
