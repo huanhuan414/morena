@@ -23,7 +23,12 @@ export class ContentGenerationService {
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService
   ) {
-    const config = new Config()
+    const config = new Config({
+      apiKey: process.env.COZE_WORKLOAD_IDENTITY_API_KEY,
+      baseUrl: process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn',
+    })
+    this.logger.log(`[Config] apiKey存在: ${!!process.env.COZE_WORKLOAD_IDENTITY_API_KEY}`)
+    this.logger.log(`[Config] baseUrl: ${process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn'}`)
     this.llmClient = new LLMClient(config)
     this.imageClient = new ImageGenerationClient(config)
     // 视频生成客户端（使用 SDK 的 VideoGenerationClient）
@@ -506,6 +511,14 @@ ${input.orderDescription}
 - 可以制造悬念或引发共鸣
 - 结尾自然带出产品/服务，不要硬广
 - 不要用markdown标题格式(#)，用纯文本换行`,
+      wechat_moments: `微信朋友圈风格要求：
+- 开头要抓眼球，让人忍不住往下看
+- 像朋友在聊天一样自然亲切，不要广告腔
+- 适当用emoji点缀，但不要堆砌
+- 控制在3-5行以内，朋友圈展示区域有限
+- 可以制造悬念或引发共鸣
+- 结尾自然带出产品/服务，不要硬广
+- 不要用markdown标题格式(#)，用纯文本换行`,
 
       xiaohongshu: `小红书风格要求：
 - 标题用【】或emoji开头，吸引点击
@@ -607,6 +620,9 @@ ${input.orderDescription}
         this.logger.log(`第${i + 1}张图片生成成功`)
       } else if (result.status === 'rejected') {
         this.logger.warn(`第${i + 1}张图片生成失败: ${result.reason?.message || result.reason}`)
+        this.logger.warn(`完整错误: ${JSON.stringify(result.reason, null, 2)}`)
+      } else if (result.status === 'fulfilled') {
+        this.logger.warn(`第${i + 1}张图片响应格式异常: ${JSON.stringify(result.value, null, 2)}`)
       }
     })
 
@@ -627,6 +643,7 @@ ${input.orderDescription}
 
     const styleMap: Record<string, string> = {
       wechat: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo',
+      wechat_moments: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo, 1:1 square format',
       xiaohongshu: 'aesthetic flat lay, trendy pastel tones, clean minimal composition, Instagram worthy, soft natural light, lifestyle inspiration',
       douyin: 'vibrant eye-catching, dynamic composition, high contrast colors, trending visual style, thumb-stopping thumbnail, bold and fresh',
       weibo: 'bold modern design, clean professional look, striking visual impact, celebrity endorsement style',

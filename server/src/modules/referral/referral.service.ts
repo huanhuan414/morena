@@ -58,7 +58,7 @@ export class ReferralService {
       throw new Error('不能使用自己的邀请码')
     }
     
-    const existingReferral = await db.queryOne('referrals', { invitee_id: inviteeId })
+    const existingReferral = await db.queryOne('referrals', { referred_id: inviteeId })
     
     if (existingReferral) {
       throw new Error('您已被邀请过')
@@ -71,8 +71,9 @@ export class ReferralService {
     const id = crypto.randomUUID()
     await db.insert('referrals', {
       id,
-      inviter_id: inviter.id,
-      invitee_id: inviteeId,
+      referrer_id: inviter.id,
+      referred_id: inviteeId,
+      referral_code: code,
       status: 'completed',
       reward_amount: INVITER_REWARD,
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -116,7 +117,7 @@ export class ReferralService {
     // 获取或生成邀请码
     const referralCode = await this.generateReferralCode(userId)
     
-    const referrals = await db.query('referrals', { inviter_id: userId }) as any
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
     
     return {
@@ -137,13 +138,13 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const offset = (page - 1) * pageSize
-    const referrals = await db.query('referrals', { inviter_id: userId }) as any
+    const referrals = await db.query('referrals', { referrer_id: userId }) as any
     
     const total = referrals?.length || 0
     const paginatedReferrals = referrals?.slice(offset, offset + pageSize) || []
     
     const list = await Promise.all(paginatedReferrals.map(async (ref: any) => {
-      const inviteeId = ref.invitee_id || ref.inviteeId
+      const inviteeId = ref.referred_id || ref.referredId
       let inviteeNickname = '未知用户'
       let inviteeAvatar = ''
       

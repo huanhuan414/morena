@@ -57,7 +57,7 @@ export default function OrderCreate() {
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
   const contentPricePerUnit = selectedType?.price || 10
   const totalPrice = {
-    base: 50 * form.avatarCount,
+    base: 10 * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
   }

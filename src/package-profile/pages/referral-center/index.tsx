@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { View, Text } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, ChevronLeft, User } from 'lucide-react-taro'
 import {
   INVITER_BASE_REWARD,
   REWARD_CONDITION,
@@ -103,14 +103,31 @@ export default function ReferralCenter() {
     return map[status] || '#9CA3AF'
   }
 
+  const formatTime = (time) => {
+    if (!time) return ''
+    try {
+      const date = new Date(time)
+      if (isNaN(date.getTime())) return time
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
+    } catch {
+      return time
+    }
+  }
+
   return (
     <View className="ref-page">
       {/* 头部渐变 */}
       <View className="ref-header">
         <View className="ref-header-decor1" />
         <View className="ref-header-decor2" />
+        <View className="ref-header-decor3" />
         <View className="ref-header-back" onClick={() => Taro.navigateBack()}>
-          <Text className="ref-header-back-text">←</Text>
+          <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
         </View>
         <View className="ref-header-center">
           <View className="ref-header-icon">
@@ -118,6 +135,9 @@ export default function ReferralCenter() {
           </View>
           <Text className="ref-header-title">邀请好友 赚现金</Text>
           <Text className="ref-header-desc">{REFERRAL_HEADER_DESC}</Text>
+        </View>
+        <View className="ref-header-badge">
+          <Text className="ref-header-badge-text">奖励</Text>
         </View>
       </View>
 
@@ -147,19 +167,23 @@ export default function ReferralCenter() {
       {/* 统计概览 */}
       <View className="ref-stats">
         <View className="ref-stat-item">
-          <Users size={16} color="#7C3AED" />
+          <View className="ref-stat-icon purple">
+            <Users size={16} color="#7C3AED" />
+          </View>
           <Text className="ref-stat-value">{stats.totalInvited}</Text>
           <Text className="ref-stat-label">已邀请</Text>
         </View>
-        <View className="ref-stat-divider" />
         <View className="ref-stat-item">
-          <Wallet size={16} color="#10B981" />
+          <View className="ref-stat-icon green">
+            <Wallet size={16} color="#10B981" />
+          </View>
           <Text className="ref-stat-value-green">¥{stats.totalReward.toFixed(2)}</Text>
           <Text className="ref-stat-label">已到账</Text>
         </View>
-        <View className="ref-stat-divider" />
         <View className="ref-stat-item">
-          <TrendingUp size={16} color="#F59E0B" />
+          <View className="ref-stat-icon yellow">
+            <TrendingUp size={16} color="#F59E0B" />
+          </View>
           <Text className="ref-stat-value-yellow">¥{stats.pendingReward.toFixed(2)}</Text>
           <Text className="ref-stat-label">待到账</Text>
         </View>
@@ -241,7 +265,9 @@ export default function ReferralCenter() {
         </View>
         {referralList.length === 0 ? (
           <View className="ref-empty">
-            <Gift size={32} color="#D1D5DB" />
+            <View className="ref-empty-icon">
+              <Gift size={28} color="#A78BFA" />
+            </View>
             <Text className="ref-empty-text">还没有邀请好友</Text>
             <Text className="ref-empty-hint">分享邀请码给好友，双方都能获得{INVITER_BASE_REWARD}元现金奖励</Text>
           </View>
@@ -250,8 +276,13 @@ export default function ReferralCenter() {
             {referralList.map((item, idx) => (
               <View key={idx} className="ref-list-item">
                 <View className="ref-list-left">
-                  <Text className="ref-list-name">{item.referredName || item.referred_name || `用户${idx + 1}`}</Text>
-                  <Text className="ref-list-time">{item.createdAt || item.created_at || ''}</Text>
+                  <View className="ref-list-avatar">
+                    <User size={18} color="#fff" />
+                  </View>
+                  <View className="ref-list-info">
+                    <Text className="ref-list-name">{item.referredName || item.referred_name || `用户${idx + 1}`}</Text>
+                    <Text className="ref-list-time">{formatTime(item.createdAt || item.created_at)}</Text>
+                  </View>
                 </View>
                 <View className="ref-list-right">
                   <Text className="ref-list-amount">+¥{Number(item.rewardAmount || item.reward_amount || 0).toFixed(2)}</Text>

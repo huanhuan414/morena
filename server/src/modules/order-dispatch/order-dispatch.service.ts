@@ -147,7 +147,7 @@ export class OrderDispatchService {
               a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
        INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
-       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'open', 'created', 'assigned', 'in_progress')
+       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'open', 'created', 'assigned', 'accepted', 'in_progress')
        WHERE r.user_id = ? AND r.status = 'pending'
        ORDER BY r.created_at DESC`, [userId])
     const requests = requestRows || []

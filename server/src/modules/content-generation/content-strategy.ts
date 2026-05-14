@@ -39,7 +39,7 @@ export const SKILL_STRATEGIES: Record<string, SkillStrategy> = {
   'skill_001': {
     skillId: 'skill_001',
     skillName: '图文爆款生成',
-    contentTypes: ['image_text', 'text'],
+    contentTypes: ['image_text', 'text', 'image'],
     coreCapability: '你是顶级新媒体爆款写手，精通各平台的内容算法和用户心理，擅长制造情绪共鸣和传播裂变',
     generationStrategy: `【图文爆款核心策略】
 1. 标题即流量：用数字+痛点+悬念制造点击欲，如"3个被忽视的XX真相，第2个扎心了"

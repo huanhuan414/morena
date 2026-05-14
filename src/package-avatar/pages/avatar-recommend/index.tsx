@@ -257,7 +257,7 @@ export default function AvatarRecommendPage() {
       if (res.data?.code === 200 || res.data?.code === 0) {
         Taro.showToast({ title: '订单发布成功', icon: 'success' })
         setTimeout(() => {
-          Taro.switchTab({ url: '/package-order/pages/order-list/index' })
+          Taro.redirectTo({ url: '/package-order/pages/order-list/index' })
         }, 1500)
       } else {
         Taro.showToast({ title: res.data?.msg || '发布失败', icon: 'none' })

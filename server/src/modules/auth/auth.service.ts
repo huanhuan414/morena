@@ -134,13 +134,17 @@ export class AuthService {
     // 如果提供了邀请码，处理邀请关系并发放奖励
     let referralReward = 0
     if (referralCode && newUser) {
+      console.log('[AuthService] 开始处理邀请码, referralCode:', referralCode, 'newUser.id:', newUser.id)
       try {
         const referralResult = await this.processReferral(newUser.id, referralCode)
         referralReward = referralResult.reward
+        console.log('[AuthService] 邀请码处理成功, reward:', referralReward)
       } catch (error: any) {
         // 邀请码处理失败不影响注册，但记录日志
         console.error('[AuthService] 处理邀请码失败:', error.message)
       }
+    } else {
+      console.log('[AuthService] 跳过邀请码处理, referralCode:', referralCode, 'newUser:', !!newUser)
     }
     
     return {
@@ -157,9 +161,13 @@ export class AuthService {
   private async processReferral(inviteeId: string, referralCode: string): Promise<{ inviterId: string; reward: number }> {
     const db = getMySQLClient()
     
+    console.log('[processReferral] 查找邀请人, referralCode:', referralCode)
+    
     // 查找邀请人
     const inviterResult = await db.query('users', { referral_code: referralCode })
-    const inviter = (inviterResult as any)?.data?.[0]
+    const inviter = Array.isArray(inviterResult) ? inviterResult[0] : (inviterResult as any)?.data?.[0]
+    
+    console.log('[processReferral] 查询结果 inviter:', inviter ? { id: inviter.id, phone: inviter.phone } : null)
     
     if (!inviter) {
       throw new Error('邀请码无效')
@@ -173,17 +181,29 @@ export class AuthService {
     const REWARD_AMOUNT = 10 // 邀请奖励金额
     const REWARD_CREDITS = 50 // 邀请奖励积分
     
+    console.log('[processReferral] 创建邀请记录, referrer_id:', inviter.id, 'referred_id:', inviteeId)
+    
     // 创建邀请记录
-    await db.insert('referrals', {
-      inviter_id: inviter.id,
-      invitee_id: inviteeId,
+    const referralId = require('uuid').v4()
+    const insertResult = await db.insert('referrals', {
+      id: referralId,
+      referrer_id: inviter.id,
+      referred_id: inviteeId,
+      referral_code: referralCode,
       status: 'completed',
       reward_amount: REWARD_AMOUNT,
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
+    console.log('[processReferral] insert 结果:', JSON.stringify(insertResult))
+    
+    if (insertResult.error) {
+      throw new Error(`创建邀请记录失败: ${insertResult.error.message || JSON.stringify(insertResult.error)}`)
+    }
     
     // 添加收益记录
-    await db.insert('earnings', {
+    const earningId = require('uuid').v4()
+    const earningInsertResult = await db.insert('earnings', {
+      id: earningId,
       user_id: inviter.id,
       type: 'referral_bonus',
       amount: REWARD_AMOUNT,
@@ -191,10 +211,16 @@ export class AuthService {
       status: 'settled',
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
+    console.log('[processReferral] earnings insert 结果:', JSON.stringify(earningInsertResult))
+    
+    if (earningInsertResult.error) {
+      console.error('[processReferral] 创建收益记录失败:', earningInsertResult.error)
+    }
     
     // 更新邀请人余额和总收益
     await db.update('users', inviter.id, {
       credits: inviter.credits + REWARD_CREDITS,
+      balance: (inviter.balance || 0) + REWARD_AMOUNT,
       total_earnings: (inviter.total_earnings || 0) + REWARD_AMOUNT,
       updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
