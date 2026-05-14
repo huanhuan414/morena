@@ -175,33 +175,36 @@ export class WechatPayService {
   /**
    * 生成小程序调起支付所需的参数（含签名）
    *
-   * V2签名规则：
-   * 签名串 = appId + "\n" + timeStamp + "\n" + nonceStr + "\n" + package + "\n"
-   * 签名方式 = RSA-SHA256 + 商户私钥（与V3调起支付一致）
+   * V2 MD5签名规则：
+   * 参与签名的字段：appId, nonceStr, package, signType, timeStamp
+   * 签名方式：将所有非空参数按key的ASCII码排序，拼接成key=value&形式，最后拼接&key=APIv2密钥，MD5后转大写
+   * signType = MD5
    *
-   * 注意：小程序调起支付的签名方式用RSA（需商户私钥），不是V2的MD5
-   * 参考: https://pay.weixin.qq.com/wiki/doc/apiv3/open/pay/chapter2_5_2.shtml
+   * 参考: https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_sl_api.php?chapter=7_7&index=5
    */
   private generateMiniProgramPayParams(prepayId: string) {
     const timeStamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = crypto.randomUUID().replace(/-/g, '');
     const packageStr = `prepay_id=${prepayId}`;
 
-    // 小程序调起支付签名（RSA-SHA256，用商户私钥）
-    const signStr = `${this.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
+    // 小程序调起支付签名（V2 MD5方式）
+    const signParams: Record<string, string> = {
+      appId: this.appId,
+      nonceStr,
+      package: packageStr,
+      signType: 'MD5',
+      timeStamp,
+    };
+    const paySign = this.signMd5(signParams);
 
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(signStr);
-    const paySign = sign.sign(this.privateKey, 'base64');
-
-    this.logger.log(`生成支付参数 - appId: ${this.appId}, timeStamp: ${timeStamp}, prepayId: ${prepayId}`);
+    this.logger.log(`生成支付参数 - appId: ${this.appId}, timeStamp: ${timeStamp}, prepayId: ${prepayId}, signType: MD5`);
 
     return {
       appId: this.appId,
       timeStamp,
       nonceStr,
       packageValue: packageStr,
-      signType: 'RSA',
+      signType: 'MD5',
       paySign,
     };
   }

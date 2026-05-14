@@ -142,7 +142,7 @@ export default function SubscriptionPage() {
           timeStamp: String(payParams.timeStamp),
           nonceStr: String(payParams.nonceStr),
           package: payParams.packageValue || `prepay_id=${payParams.prepayId}`,
-          signType: 'RSA' as const,
+          signType: String(payParams.signType || 'MD5'),
           paySign: String(payParams.paySign),
         }
 
