@@ -64,20 +64,19 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
-    const id = crypto.randomUUID()
-    await db.insert('referrals', {
-      id,
-      referrer_id: inviter.id,
-      invitee_id: inviteeId,
-      referral_code: code,
-      status: 'completed',
-      created_at: new Date(),
-      updated_at: new Date()
-    })
-    
     // 邀请人奖励：3元现金
     const INVITER_REWARD = 3
     const INVITEE_REWARD = 2
+    
+    const id = crypto.randomUUID()
+    await db.insert('referrals', {
+      id,
+      inviter_id: inviter.id,
+      invitee_id: inviteeId,
+      status: 'completed',
+      reward_amount: INVITER_REWARD,
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    })
     
     await this.earningService.createEarning(inviter.id, {
       type: 'referral_bonus',
@@ -117,7 +116,7 @@ export class ReferralService {
     // 获取或生成邀请码
     const referralCode = await this.generateReferralCode(userId)
     
-    const referrals = await db.query('referrals', { referrer_id: userId }) as any
+    const referrals = await db.query('referrals', { inviter_id: userId }) as any
     const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
     
     return {
@@ -138,19 +137,37 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const offset = (page - 1) * pageSize
-    const referrals = await db.query('referrals', { referrer_id: userId }) as any
+    const referrals = await db.query('referrals', { inviter_id: userId }) as any
     
     const total = referrals?.length || 0
     const paginatedReferrals = referrals?.slice(offset, offset + pageSize) || []
     
-    const list = paginatedReferrals.map((ref: any) => {
-      return {
-        invitee_nickname: '未知用户',
-        invitee_avatar: '',
-        status: ref.status,
-        created_at: ref.created_at
+    const list = await Promise.all(paginatedReferrals.map(async (ref: any) => {
+      const inviteeId = ref.invitee_id || ref.inviteeId
+      let inviteeNickname = '未知用户'
+      let inviteeAvatar = ''
+      
+      if (inviteeId) {
+        try {
+          const invitee = await db.queryOne('users', { id: inviteeId }) as any
+          if (invitee) {
+            inviteeNickname = invitee.nickname || inviteeNickname
+            inviteeAvatar = invitee.avatar || ''
+          }
+        } catch (e) {
+          console.error('[ReferralService] 获取被邀请人信息失败:', e)
+        }
       }
-    })
+      
+      return {
+        invitee_id: inviteeId,
+        invitee_nickname: inviteeNickname,
+        invitee_avatar: inviteeAvatar,
+        status: ref.status,
+        reward_amount: ref.reward_amount || ref.rewardAmount || 0,
+        created_at: ref.created_at || ref.createdAt
+      }
+    }))
     
     return {
       list,
