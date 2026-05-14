@@ -57,6 +57,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  // 微信支付V2回调使用XML格式，需要text/xml解析
+  app.use('/api/payment/wechat/notify', express.text({ type: 'text/xml', limit: '1mb' }));
 
   // 🔴 添加静态文件服务，用于本地存储的文件访问
   // 🔴 修复：确保路径指向项目根目录的 uploads 文件夹

@@ -92,26 +92,49 @@ export class PaymentController {
   }
 
   /**
-   * 微信支付回调通知
+   * 微信支付回调通知（V2 XML格式）
    * POST /api/payment/wechat/notify
+   *
+   * V2回调通知发送XML格式的请求体，需要用raw body解析
    */
   @Post('wechat/notify')
   @HttpCode(HttpStatus.OK)
-  async wechatNotify(@Body() body: any, @Headers() headers: any, @Req() req: Request, @Res() res: Response) {
+  async wechatNotify(@Req() req: Request, @Res() res: Response) {
     this.logger.log(`收到微信支付回调通知`);
 
     try {
-      const result = await this.wechatPayService.handlePaymentNotify(body, headers);
+      // V2回调是XML格式，直接取原始body
+      let rawBody = '';
+      if (typeof req.body === 'string') {
+        rawBody = req.body;
+      } else if (req.body && typeof req.body === 'object') {
+        // NestJS可能已解析为对象，需要还原为XML或直接传对象
+        rawBody = JSON.stringify(req.body);
+      }
 
-      // 微信支付回调需要返回JSON格式的应答
-      if (result.code === 'SUCCESS') {
-        return res.json({ code: 'SUCCESS', message: '成功' });
+      // 如果body为空，尝试从raw body读取
+      if (!rawBody) {
+        // 设置raw body中间件的情况
+        rawBody = (req as any).rawBody || '';
+      }
+
+      const result = await this.wechatPayService.handlePaymentNotify(rawBody, req.headers);
+
+      // V2回调需要返回XML格式的应答
+      if (typeof result === 'string' && result.includes('SUCCESS')) {
+        res.setHeader('Content-Type', 'application/xml');
+        return res.send(result);
+      } else if (result.code === 'SUCCESS') {
+        res.setHeader('Content-Type', 'application/xml');
+        return res.send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
       } else {
-        return res.json({ code: 'FAIL', message: result.message || '处理失败' });
+        res.setHeader('Content-Type', 'application/xml');
+        return res.send(`<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[${result.message || '处理失败'}]]></return_msg></xml>`);
       }
     } catch (error) {
       this.logger.error(`处理回调异常: ${error.message}`, error.stack);
-      return res.json({ code: 'FAIL', message: '内部错误' });
+      res.setHeader('Content-Type', 'application/xml');
+      return res.send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[内部错误]]></return_msg></xml>');
     }
   }
 

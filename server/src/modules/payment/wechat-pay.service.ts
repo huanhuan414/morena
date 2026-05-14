@@ -4,82 +4,31 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 
-// wechatpay-node-v3 ESM/CJS 兼容
-let Pay: any;
-try {
-  const mod = require('wechatpay-node-v3');
-  Pay = mod.default || mod;
-} catch (e) {
-  Pay = null;
-}
-
 @Injectable()
 export class WechatPayService {
   private readonly logger = new Logger(WechatPayService.name);
-  private pay: any;
   private appId: string;
   private mchId: string;
-  private apiV3Key: string;
-  private serialNo: string;
+  private apiKeyV2: string; // 商户APIv2密钥
   private notifyUrl: string;
   private privateKey: Buffer;
 
   constructor() {
     this.appId = process.env.WECHAT_PAY_APPID || '';
     this.mchId = process.env.WECHAT_PAY_MCHID || '';
-    this.apiV3Key = process.env.WECHAT_PAY_APIV3_KEY || '';
-    this.serialNo = process.env.WECHAT_PAY_SERIAL_NO || '';
+    this.apiKeyV2 = process.env.WECHAT_PAY_APIV2_KEY || process.env.WECHAT_PAY_APIV3_KEY || '';
     this.notifyUrl = process.env.WECHAT_PAY_NOTIFY_URL || '';
-    this.initPay();
-  }
 
-  private initPay() {
-    try {
-      const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH;
-      const publicKeyPath = process.env.WECHAT_PAY_PUBLIC_KEY_PATH;
-
-      if (privateKeyPath && fs.existsSync(path.resolve(privateKeyPath))) {
-        this.privateKey = fs.readFileSync(path.resolve(privateKeyPath));
-        this.logger.log('从文件加载商户私钥成功');
-      } else {
-        this.logger.error('商户私钥文件不存在，请检查 WECHAT_PAY_PRIVATE_KEY_PATH 配置');
-        return;
-      }
-
-      let publicKey: Buffer;
-      if (publicKeyPath && fs.existsSync(path.resolve(publicKeyPath))) {
-        publicKey = fs.readFileSync(path.resolve(publicKeyPath));
-        this.logger.log('从文件加载商户证书成功');
-      } else {
-        this.logger.error('商户证书文件不存在，请检查 WECHAT_PAY_PUBLIC_KEY_PATH 配置');
-        return;
-      }
-
-      // 自动从证书中提取序列号
-      let serialNo = this.serialNo;
-      if (!serialNo) {
-        try {
-          const x509 = new (crypto as any).X509Certificate(publicKey);
-          serialNo = x509.serialNumber.toUpperCase().replace(/:/g, '');
-          this.logger.log(`从证书自动提取序列号: ${serialNo}`);
-        } catch (e) {
-          this.logger.warn('无法从证书提取序列号，使用环境变量配置');
-        }
-      }
-
-      this.pay = new Pay({
-        appid: this.appId,
-        mchid: this.mchId,
-        serial_no: serialNo,
-        publicKey: publicKey,
-        privateKey: this.privateKey,
-        key: this.apiV3Key,
-      });
-
-      this.logger.log(`微信支付初始化成功 - AppID: ${this.appId}, MchID: ${this.mchId}, SerialNo: ${serialNo}`);
-    } catch (error) {
-      this.logger.error(`微信支付初始化失败: ${error.message}`, error.stack);
+    // 加载商户私钥（用于生成前端支付签名）
+    const privateKeyPath = process.env.WECHAT_PAY_PRIVATE_KEY_PATH;
+    if (privateKeyPath && fs.existsSync(path.resolve(privateKeyPath))) {
+      this.privateKey = fs.readFileSync(path.resolve(privateKeyPath));
+      this.logger.log('从文件加载商户私钥成功');
+    } else {
+      this.logger.error('商户私钥文件不存在，请检查 WECHAT_PAY_PRIVATE_KEY_PATH 配置');
     }
+
+    this.logger.log(`微信支付(V2)初始化 - AppID: ${this.appId}, MchID: ${this.mchId}`);
   }
 
   /**
@@ -99,17 +48,12 @@ export class WechatPayService {
   }
 
   /**
-   * 创建小程序支付订单（JSAPI）
-   * 
-   * 微信支付V3小程序支付完整流程（参考官方文档）：
-   * 1. 后端调用统一下单接口 POST /v3/pay/transactions/jsapi → 返回 prepay_id
+   * 创建小程序支付订单（JSAPI V2）
+   *
+   * 微信支付V2小程序支付流程：
+   * 1. 后端调用统一下单接口 POST https://api.mch.weixin.qq.com/pay/unifiedorder → 返回 prepay_id
    * 2. 后端用 prepay_id 生成签名参数（appId, timeStamp, nonceStr, package, signType, paySign）
-   *    - 签名串: appId\ntimeStamp\nnonceStr\npackage\n
-   *    - 签名方式: RSA-SHA256 + 商户私钥
    * 3. 前端调用 wx.requestPayment({timeStamp, nonceStr, package, signType, paySign})
-   * 
-   * wechatpay-node-v3 SDK 的 transactions_jsapi() 已自动完成1+2，
-   * 但返回格式不确定，所以这里做3层兼容
    */
   async createMiniProgramOrder(params: {
     userId: string;
@@ -119,10 +63,6 @@ export class WechatPayService {
     amount: number;
     orderType: string;
   }) {
-    if (!this.pay) {
-      throw new Error('微信支付未初始化');
-    }
-
     const { userId, openid, planId, description, amount, orderType } = params;
     const outTradeNo = `MRL${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -146,149 +86,115 @@ export class WechatPayService {
 
     this.logger.log(`创建本地支付订单: ${orderId}, outTradeNo: ${outTradeNo}, 金额: ${amount}元`);
 
-    // 2. 调用微信统一下单API
+    // 2. 调用微信V2统一下单API
     const amountInFen = Math.round(amount * 100);
 
-    let result: any;
+    const unifiedOrderParams: Record<string, string> = {
+      appid: this.appId,
+      mch_id: this.mchId,
+      nonce_str: crypto.randomUUID().replace(/-/g, '').substring(0, 32),
+      body: description,
+      out_trade_no: outTradeNo,
+      total_fee: String(amountInFen),
+      spbill_create_ip: '127.0.0.1',
+      notify_url: this.notifyUrl,
+      trade_type: 'JSAPI',
+      openid: openid,
+    };
+
+    // V2签名：MD5签名
+    unifiedOrderParams.sign = this.signMd5(unifiedOrderParams);
+
+    // 将参数转为XML
+    const xmlBody = this.buildXml(unifiedOrderParams);
+
+    this.logger.log(`调用微信V2统一下单: outTradeNo=${outTradeNo}, amount=${amountInFen}分`);
+
+    let prepayId: string;
     try {
-      result = await this.pay.transactions_jsapi({
-        appid: this.appId,
-        mchid: this.mchId,
-        description,
-        out_trade_no: outTradeNo,
-        notify_url: this.notifyUrl,
-        amount: {
-          total: amountInFen,
-          currency: 'CNY',
+      const axios = require('axios');
+      const response = await axios.post(
+        'https://api.mch.weixin.qq.com/pay/unifiedorder',
+        xmlBody,
+        {
+          headers: { 'Content-Type': 'application/xml' },
+          timeout: 15000,
         },
-        payer: {
-          openid,
-        },
-      });
-    } catch (sdkError: any) {
-      // SDK可能抛异常，但异常对象里可能包含成功的支付参数
-      this.logger.warn(`SDK抛出异常，检查是否包含支付参数: ${sdkError.message?.substring(0, 200)}`);
+      );
 
-      // 尝试从异常对象中提取支付参数
-      const errObj = sdkError;
-      if (errObj?.status === 200 && errObj?.data?.appId && errObj?.data?.paySign) {
-        this.logger.log('从SDK异常对象中成功提取支付参数(result.data)');
-        return this.buildPayResponse(orderId, outTradeNo, errObj.data);
-      }
-      if (errObj?.appId && errObj?.paySign) {
-        this.logger.log('从SDK异常对象中成功提取支付参数(result顶层)');
-        return this.buildPayResponse(orderId, outTradeNo, errObj);
+      // 解析XML响应
+      const result = this.parseXml(response.data);
+      const returnCode = result.return_code;
+      const resultCode = result.result_code;
+
+      this.logger.log(`微信V2统一下单返回: return_code=${returnCode}, result_code=${resultCode}`);
+
+      if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
+        const errMsg = result.err_code_des || result.return_msg || '下单失败';
+        const errCode = result.err_code || '';
+        this.logger.error(`微信统一下单失败: err_code=${errCode}, err_msg=${errMsg}`);
+
+        // 更新本地订单状态
+        const db2 = getMySQLClient();
+        await db2.query(
+          `UPDATE payment_orders SET status = 'failed', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.error', ?) WHERE id = ?`,
+          [`${errCode}: ${errMsg}`, orderId],
+        );
+
+        throw new Error(`微信下单失败: ${errMsg}(${errCode})`);
       }
 
-      // 真正的失败
-      this.logger.error(`微信统一下单失败: ${sdkError.message}`);
+      prepayId = result.prepay_id;
+      this.logger.log(`✅ 微信统一下单成功: prepay_id=${prepayId}`);
+    } catch (error) {
+      if (error.message.startsWith('微信下单失败:')) {
+        throw error;
+      }
+      this.logger.error(`微信统一下单请求异常: ${error.message}`);
+
       const db2 = getMySQLClient();
       await db2.query(
         `UPDATE payment_orders SET status = 'failed', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.error', ?) WHERE id = ?`,
-        [sdkError.message, orderId],
+        [error.message, orderId],
       );
-      throw new Error(`微信下单失败: ${sdkError.message}`);
+
+      throw new Error(`微信下单请求失败: ${error.message}`);
     }
 
-    // 3. 正常返回 - 从result中提取支付参数
-    this.logger.log(`微信统一下单返回: keys=[${Object.keys(result || {}).join(',')}], status=${result?.status}`);
+    // 3. 用prepay_id生成小程序支付参数
+    const payParams = this.generateMiniProgramPayParams(prepayId);
 
-    // 打印关键调试信息（不打印paySign完整值）
-    const debugInfo = {
-      status: result?.status,
-      hasData: !!result?.data,
-      dataKeys: result?.data ? Object.keys(result.data).join(',') : 'none',
-      hasAppId: !!(result?.data?.appId || result?.appId),
-      hasPaySign: !!(result?.data?.paySign || result?.paySign),
-      hasPackage: !!(result?.data?.package || result?.package),
-      hasPrepayId: !!(result?.prepay_id || result?.data?.prepay_id),
-    };
-    this.logger.log(`支付参数检测: ${JSON.stringify(debugInfo)}`);
-
-    // 方式1: 支付参数在 result.data 中（wechatpay-node-v3 常见格式）
-    if (result?.data?.appId && result?.data?.paySign && result?.data?.package) {
-      this.logger.log('✅ 提取方式1: 支付参数在result.data中');
-      return this.buildPayResponse(orderId, outTradeNo, result.data);
-    }
-
-    // 方式2: 支付参数在 result 顶层（部分SDK版本）
-    if (result?.appId && result?.paySign && result?.package) {
-      this.logger.log('✅ 提取方式2: 支付参数在result顶层');
-      return this.buildPayResponse(orderId, outTradeNo, result);
-    }
-
-    // 方式3: 只返回 prepay_id，需要手动签名生成支付参数
-    const prepayId = result?.prepay_id || result?.data?.prepay_id;
-    if (prepayId) {
-      this.logger.log(`✅ 提取方式3: 返回prepay_id=${prepayId}，手动生成签名`);
-      const payParams = this.generateMiniProgramPayParams(prepayId);
-      return {
-        orderId,
-        outTradeNo,
-        prepayId,
-        ...payParams,
-      };
-    }
-
-    // 方式4: 无论如何尝试从result中找任何包含prepay_id的字段
-    const resultStr = JSON.stringify(result);
-    const prepayIdMatch = resultStr.match(/"prepay_id"\s*:\s*"([^"]+)"/);
-    if (prepayIdMatch) {
-      this.logger.log(`✅ 提取方式4: 从JSON字符串中正则匹配到prepay_id=${prepayIdMatch[1]}`);
-      const payParams = this.generateMiniProgramPayParams(prepayIdMatch[1]);
-      return {
-        orderId,
-        outTradeNo,
-        prepayId: prepayIdMatch[1],
-        ...payParams,
-      };
-    }
-
-    // 全部失败
-    this.logger.error(`❌ 无法从SDK响应中提取支付参数: ${JSON.stringify(result).substring(0, 500)}`);
-    throw new Error(`微信下单响应格式异常: status=${result?.status}, keys=${Object.keys(result || {}).join(',')}`);
-  }
-
-  /**
-   * 构建统一的支付参数返回格式
-   */
-  private buildPayResponse(orderId: string, outTradeNo: string, payData: any) {
-    const packageStr = payData.package as string;
-    const prepayId = packageStr?.replace('prepay_id=', '') || '';
     return {
       orderId,
       outTradeNo,
       prepayId,
-      appId: payData.appId,
-      timeStamp: payData.timeStamp,
-      nonceStr: payData.nonceStr,
-      packageValue: packageStr,
-      signType: payData.signType || 'RSA',
-      paySign: payData.paySign,
+      ...payParams,
     };
   }
 
   /**
    * 生成小程序调起支付所需的参数（含签名）
-   * 
-   * 签名规则（微信支付V3官方文档）：
+   *
+   * V2签名规则：
    * 签名串 = appId + "\n" + timeStamp + "\n" + nonceStr + "\n" + package + "\n"
-   * 签名方式 = RSA-SHA256 + 商户私钥
-   * 返回给前端的参数: { appId, timeStamp, nonceStr, package, signType: "RSA", paySign }
+   * 签名方式 = RSA-SHA256 + 商户私钥（与V3调起支付一致）
+   *
+   * 注意：小程序调起支付的签名方式用RSA（需商户私钥），不是V2的MD5
+   * 参考: https://pay.weixin.qq.com/wiki/doc/apiv3/open/pay/chapter2_5_2.shtml
    */
   private generateMiniProgramPayParams(prepayId: string) {
     const timeStamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = crypto.randomUUID().replace(/-/g, '');
     const packageStr = `prepay_id=${prepayId}`;
 
-    // 微信支付V3签名规则：appId\ntimeStamp\nnonceStr\npackage\n
+    // 小程序调起支付签名（RSA-SHA256，用商户私钥）
     const signStr = `${this.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
 
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(signStr);
     const paySign = sign.sign(this.privateKey, 'base64');
 
-    this.logger.log(`手动生成支付参数 - appId: ${this.appId}, timeStamp: ${timeStamp}, prepayId: ${prepayId}`);
+    this.logger.log(`生成支付参数 - appId: ${this.appId}, timeStamp: ${timeStamp}, prepayId: ${prepayId}`);
 
     return {
       appId: this.appId,
@@ -301,34 +207,78 @@ export class WechatPayService {
   }
 
   /**
+   * V2 MD5签名
+   * 规则：将所有非空参数按key的ASCII码排序，拼接成key=value&形式，最后拼接&key=API密钥，MD5后转大写
+   */
+  private signMd5(params: Record<string, string>): string {
+    const sortedKeys = Object.keys(params).filter(k => params[k] !== undefined && params[k] !== '').sort();
+    const stringA = sortedKeys.map(k => `${k}=${params[k]}`).join('&');
+    const stringSignTemp = `${stringA}&key=${this.apiKeyV2}`;
+    return crypto.createHash('md5').update(stringSignTemp, 'utf8').digest('hex').toUpperCase();
+  }
+
+  /**
+   * 将对象转为微信支付V2所需的XML格式
+   */
+  private buildXml(params: Record<string, string>): string {
+    const xmlParts = Object.entries(params).map(([k, v]) => `<${k}><![CDATA[${v}]]></${k}>`);
+    return `<xml>${xmlParts.join('')}</xml>`;
+  }
+
+  /**
+   * 解析微信支付V2返回的XML
+   */
+  private parseXml(xml: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    // 简单XML解析（微信返回格式固定，不需要完整XML库）
+    const regex = /<(\w+)>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/\1>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null) {
+      if (match[1] !== 'xml') {
+        result[match[1]] = match[2];
+      }
+    }
+    return result;
+  }
+
+  /**
+   * 验证V2回调通知签名
+   */
+  private verifyNotifySign(params: Record<string, string>): boolean {
+    const sign = params.sign;
+    if (!sign) return false;
+    const paramsWithoutSign = { ...params };
+    delete paramsWithoutSign.sign;
+    delete paramsWithoutSign.sign_type;
+    const expectedSign = this.signMd5(paramsWithoutSign);
+    return sign === expectedSign;
+  }
+
+  /**
    * 验证并处理支付回调通知
    */
-  async handlePaymentNotify(body: any, headers: any) {
+  async handlePaymentNotify(body: string, headers: any) {
     this.logger.log(`收到支付回调通知`);
 
     try {
-      const resource = body?.resource;
-      if (!resource) {
-        this.logger.error('回调通知缺少resource字段');
-        return { code: 'FAIL', message: '通知格式错误' };
+      // V2回调通知是XML格式
+      const result = this.parseXml(body);
+
+      // 验证签名
+      if (!this.verifyNotifySign(result)) {
+        this.logger.error('回调通知签名验证失败');
+        return { code: 'FAIL', message: '签名验证失败' };
       }
 
-      const decryptedData = this.decryptResource(resource);
-      this.logger.log(`解密后的回调数据: ${JSON.stringify(decryptedData)}`);
+      const returnCode = result.return_code;
+      const resultCode = result.result_code;
+      const outTradeNo = result.out_trade_no;
+      const transactionId = result.transaction_id;
 
-      if (!decryptedData) {
-        this.logger.error('回调数据解密失败');
-        return { code: 'FAIL', message: '解密失败' };
-      }
-
-      const outTradeNo = decryptedData.out_trade_no;
-      const transactionId = decryptedData.transaction_id;
-      const tradeState = decryptedData.trade_state;
-      const payAmount = decryptedData.amount;
-
-      if (tradeState !== 'SUCCESS') {
-        this.logger.warn(`交易状态非成功: ${tradeState}, outTradeNo: ${outTradeNo}`);
-        return { code: 'SUCCESS', message: '已接收' };
+      if (returnCode !== 'SUCCESS' || resultCode !== 'SUCCESS') {
+        this.logger.warn(`交易状态非成功: return_code=${returnCode}, result_code=${resultCode}`);
+        // 仍返回SUCCESS给微信，避免重复通知
+        return this.buildNotifySuccessXml();
       }
 
       const db = getMySQLClient();
@@ -346,22 +296,25 @@ export class WechatPayService {
 
       if (order.status === 'paid') {
         this.logger.log(`订单已处理过: ${outTradeNo}`);
-        return { code: 'SUCCESS', message: '已处理' };
+        return this.buildNotifySuccessXml();
       }
+
+      // 获取支付金额（分）
+      const totalFee = Number(result.total_fee || 0);
 
       await db.query(
         `UPDATE payment_orders SET status = 'paid', transaction_id = ?, paid_at = NOW(), metadata = JSON_SET(COALESCE(metadata, '{}'), '$.wechatTransactionId', ?, '$.paidAmount', ?) WHERE out_trade_no = ?`,
-        [transactionId, transactionId, payAmount?.total ? payAmount.total / 100 : order.amount, outTradeNo],
+        [transactionId, transactionId, totalFee / 100, outTradeNo],
       );
 
       this.logger.log(`订单支付成功: outTradeNo=${outTradeNo}, transactionId=${transactionId}`);
 
       await this.activateSubscription(order);
 
-      // 上报微信发货信息管理（微信强制要求，不接入会导致jsapi has no permission）
+      // 上报微信发货信息管理
       await this.uploadShippingInfo(transactionId, order);
 
-      return { code: 'SUCCESS', message: '成功' };
+      return this.buildNotifySuccessXml();
     } catch (error) {
       this.logger.error(`处理支付回调失败: ${error.message}`, error.stack);
       return { code: 'FAIL', message: error.message };
@@ -369,29 +322,33 @@ export class WechatPayService {
   }
 
   /**
+   * 构建V2回调成功响应XML
+   */
+  private buildNotifySuccessXml() {
+    return '<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>';
+  }
+
+  /**
    * 上报微信发货信息管理
-   * 微信从2024年开始强制要求小程序接入发货管理，否则支付API被封禁（jsapi has no permission）
-   * 文档: https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/industry/mini-order/shipping.html
+   * 微信从2024年开始强制要求小程序接入发货管理，否则支付API被封禁
    */
   private async uploadShippingInfo(transactionId: string, order: any) {
     try {
-      // 获取小程序access_token
       const accessToken = await this.getMiniProgramAccessToken();
       if (!accessToken) {
         this.logger.warn('获取access_token失败，跳过发货信息上报');
         return;
       }
 
-      // 虚拟商品直接发货（订阅类属于虚拟商品）
       const shippingData = {
         order_key: {
-          order_number_type: 2, // 使用微信支付单号
+          order_number_type: 2,
           transaction_id: transactionId,
         },
-        delivery_mode: 1, // 统一发货
+        delivery_mode: 1,
         shipping_list: [
           {
-            item_desc: 'Morena AI 订阅服务', // 商品描述
+            item_desc: 'Morena AI 订阅服务',
           },
         ],
         upload_time: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
@@ -444,25 +401,6 @@ export class WechatPayService {
       return null;
     } catch (error) {
       this.logger.warn(`获取access_token异常: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
-   * 解密V3回调通知中的resource字段
-   */
-  private decryptResource(resource: any): any {
-    try {
-      const { nonce, associated_data, ciphertext } = resource;
-      const result: string = this.pay.decipher_gcm(
-        ciphertext,
-        this.apiV3Key,
-        nonce,
-        associated_data,
-      );
-      return JSON.parse(result);
-    } catch (error) {
-      this.logger.error(`解密resource失败: ${error.message}`);
       return null;
     }
   }
@@ -552,17 +490,31 @@ export class WechatPayService {
   }
 
   /**
-   * 主动查询微信订单状态（用于补单）
+   * 主动查询微信订单状态（V2接口，用于补单）
    */
   async queryWechatOrderStatus(outTradeNo: string) {
-    if (!this.pay) {
-      throw new Error('微信支付未初始化');
-    }
     try {
-      const result: any = await this.pay.query({
+      const params: Record<string, string> = {
+        appid: this.appId,
+        mch_id: this.mchId,
         out_trade_no: outTradeNo,
-      });
-      this.logger.log(`微信订单查询结果: ${JSON.stringify(result)}`);
+        nonce_str: crypto.randomUUID().replace(/-/g, '').substring(0, 32),
+      };
+      params.sign = this.signMd5(params);
+
+      const xmlBody = this.buildXml(params);
+      const axios = require('axios');
+      const response = await axios.post(
+        'https://api.mch.weixin.qq.com/pay/orderquery',
+        xmlBody,
+        {
+          headers: { 'Content-Type': 'application/xml' },
+          timeout: 15000,
+        },
+      );
+
+      const result = this.parseXml(response.data);
+      this.logger.log(`微信V2订单查询结果: trade_state=${result.trade_state}, out_trade_no=${outTradeNo}`);
       return result;
     } catch (error) {
       this.logger.error(`微信订单查询失败: ${error.message}`);
@@ -571,15 +523,31 @@ export class WechatPayService {
   }
 
   /**
-   * 关闭超时未支付订单
+   * 关闭超时未支付订单（V2接口）
    */
   async closeOrder(outTradeNo: string) {
-    if (!this.pay) {
-      throw new Error('微信支付未初始化');
-    }
     try {
-      const result: any = await this.pay.close(outTradeNo);
-      this.logger.log(`关闭订单结果: ${JSON.stringify(result)}`);
+      const params: Record<string, string> = {
+        appid: this.appId,
+        mch_id: this.mchId,
+        out_trade_no: outTradeNo,
+        nonce_str: crypto.randomUUID().replace(/-/g, '').substring(0, 32),
+      };
+      params.sign = this.signMd5(params);
+
+      const xmlBody = this.buildXml(params);
+      const axios = require('axios');
+      const response = await axios.post(
+        'https://api.mch.weixin.qq.com/pay/closeorder',
+        xmlBody,
+        {
+          headers: { 'Content-Type': 'application/xml' },
+          timeout: 15000,
+        },
+      );
+
+      const result = this.parseXml(response.data);
+      this.logger.log(`关闭订单结果: return_code=${result.return_code}, out_trade_no=${outTradeNo}`);
 
       const db = getMySQLClient();
       await db.query(
