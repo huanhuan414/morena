@@ -1,41 +1,41 @@
-import Taro, { useDidShow, navigateTo } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { useState, useCallback } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Network } from '@/network'
 import {
   ArrowLeft, Clock, Wallet, Users, FileText, Eye,
-  Loader, CircleCheck, TriangleAlert, Timer
+  Loader, CircleCheck, TriangleAlert, Timer, Trash2, CreditCard
 } from 'lucide-react-taro'
 import { canonicalizePlatforms, getPlatformLabel } from '@/constants/publish-platform'
 import './index.css'
 
-// 订单状态映射（发单方视角）
+// 订单状态映射（与DB ENUM完全对齐）
 const ORDER_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
   pending_payment: { label: '待支付', color: '#f59e0b', bgColor: 'rgba(245,158,11,0.1)' },
   pending: { label: '待接单', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
+  awaiting_acceptance: { label: '等待接单', color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.1)' },
   pending_acceptance: { label: '等待接单', color: '#8b5cf6', bgColor: 'rgba(139,92,246,0.1)' },
   accepted: { label: '已接单', color: '#6366f1', bgColor: 'rgba(99,102,241,0.1)' },
   in_progress: { label: '进行中', color: '#3b82f6', bgColor: 'rgba(59,130,246,0.1)' },
   content_generated: { label: '内容已生成', color: '#14b8a6', bgColor: 'rgba(20,184,166,0.1)' },
   submitted: { label: '已提交', color: '#06b6d4', bgColor: 'rgba(6,182,212,0.1)' },
-  awaiting_acceptance: { label: '待验收', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
   published: { label: '已发布', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
   publish_failed: { label: '发布失败', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
   publish_timeout: { label: '发布超时', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
   completed: { label: '已完成', color: '#22c55e', bgColor: 'rgba(34,197,94,0.1)' },
-  cancelled: { label: '已取消', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
-  auto_cancelled: { label: '自动取消', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
+  cancelled: { label: '已取消', color: '#9ca3af', bgColor: 'rgba(156,163,175,0.1)' },
+  auto_cancelled: { label: '自动取消', color: '#9ca3af', bgColor: 'rgba(156,163,175,0.1)' },
   timeout: { label: '已超时', color: '#f97316', bgColor: 'rgba(249,115,22,0.1)' },
-  expired: { label: '已过期', color: '#ef4444', bgColor: 'rgba(239,68,68,0.1)' },
+  expired: { label: '已过期', color: '#9ca3af', bgColor: 'rgba(156,163,175,0.1)' },
 }
 
-// Tab 筛选
+// Tab 筛选（与DB ENUM对齐）
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
-  { key: 'in_progress', label: '进行中', includes: ['pending', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted'] },
-  { key: 'abnormal', label: '异常', includes: ['auto_cancelled', 'publish_failed', 'publish_timeout', 'timeout', 'expired'] },
-  { key: 'awaiting_acceptance', label: '待验收', includes: ['awaiting_acceptance'] },
-  { key: 'completed', label: '已完成', includes: ['completed'] },
+  { key: 'pending_payment', label: '待支付', includes: ['pending_payment'] },
+  { key: 'in_progress', label: '进行中', includes: ['pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted'] },
+  { key: 'completed', label: '已完成', includes: ['published', 'completed'] },
+  { key: 'abnormal', label: '异常', includes: ['auto_cancelled', 'cancelled', 'publish_failed', 'publish_timeout', 'timeout', 'expired'] },
 ]
 
 function getPlatformNames(platforms: any): string[] {
@@ -53,7 +53,7 @@ function getStatusInfo(status: string) {
 
 /* ── 分身进度摘要 ── */
 function AvatarProgressSummary({ order }: { order: any }) {
-  const stats = order.summary_stats || {}
+  const stats = order.summaryStats || order.summary_stats || {}
   const total = stats.totalAvatars || order.avatarCount || 0
   if (!total) return null
 
@@ -66,11 +66,10 @@ function AvatarProgressSummary({ order }: { order: any }) {
   return (
     <View className="ol-avatar-progress">
       <View className="ol-progress-track">
-        {/* 进度分段 */}
         <View className="ol-progress-seg" style={{ flex: completed, background: '#22C55E' }} />
-        <View className="ol-progress-seg" style={{ flex: published - completed, background: '#14B8A6' }} />
-        <View className="ol-progress-seg" style={{ flex: generated - published, background: '#6366F1' }} />
-        <View className="ol-progress-seg" style={{ flex: accepted - generated, background: '#8B5CF6' }} />
+        <View className="ol-progress-seg" style={{ flex: Math.max(0, published - completed), background: '#14B8A6' }} />
+        <View className="ol-progress-seg" style={{ flex: Math.max(0, generated - published), background: '#6366F1' }} />
+        <View className="ol-progress-seg" style={{ flex: Math.max(0, accepted - generated), background: '#8B5CF6' }} />
         {abnormal > 0 && <View className="ol-progress-seg" style={{ flex: abnormal, background: '#EF4444' }} />}
         <View className="ol-progress-seg" style={{ flex: Math.max(0, total - accepted - abnormal), background: '#E5E7EB' }} />
       </View>
@@ -81,19 +80,19 @@ function AvatarProgressSummary({ order }: { order: any }) {
             <Text className="ol-progress-label-text" style={{ color: '#22C55E' }}>{completed}完成</Text>
           </View>
         )}
-        {published - completed > 0 && (
+        {Math.max(0, published - completed) > 0 && (
           <View className="ol-progress-label-item">
             <CircleCheck size={10} color="#14B8A6" />
             <Text className="ol-progress-label-text" style={{ color: '#14B8A6' }}>{published - completed}发布</Text>
           </View>
         )}
-        {generated - published > 0 && (
+        {Math.max(0, generated - published) > 0 && (
           <View className="ol-progress-label-item">
             <Clock size={10} color="#6366F1" />
             <Text className="ol-progress-label-text" style={{ color: '#6366F1' }}>{generated - published}生成</Text>
           </View>
         )}
-        {accepted - generated > 0 && (
+        {Math.max(0, accepted - generated) > 0 && (
           <View className="ol-progress-label-item">
             <Users size={10} color="#8B5CF6" />
             <Text className="ol-progress-label-text" style={{ color: '#8B5CF6' }}>{accepted - generated}接单</Text>
@@ -105,7 +104,7 @@ function AvatarProgressSummary({ order }: { order: any }) {
             <Text className="ol-progress-label-text" style={{ color: '#EF4444' }}>{abnormal}异常</Text>
           </View>
         )}
-        {total - accepted - abnormal > 0 && (
+        {Math.max(0, total - accepted - abnormal) > 0 && (
           <View className="ol-progress-label-item">
             <Timer size={10} color="#9CA3AF" />
             <Text className="ol-progress-label-text" style={{ color: '#9CA3AF' }}>{total - accepted - abnormal}待接</Text>
@@ -120,11 +119,9 @@ export default function OrderListPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
+  const [refreshing, setRefreshing] = useState(false)
 
-  useDidShow(() => { loadOrders() })
-  useEffect(() => { loadOrders() }, [])
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     try {
       const res = await Network.request({ url: '/api/order/list' })
       console.log('[订单列表] res.data:', res.data)
@@ -134,7 +131,15 @@ export default function OrderListPage() {
       console.error('[订单列表] 加载失败:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }, [])
+
+  useDidShow(() => { loadOrders() })
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await loadOrders()
   }
 
   const filteredOrders = activeTab === 'all'
@@ -145,19 +150,91 @@ export default function OrderListPage() {
       })
 
   const stats = {
-    total: orders.length,
-    inProgress: orders.filter(o => ['pending', 'open', 'pending_dispatch', 'pending_acceptance', 'in_progress'].includes(o.status)).length,
-    abnormal: orders.filter(o => ['auto_cancelled', 'failed'].includes(o.status)).length,
-    awaiting: orders.filter(o => o.status === 'awaiting_acceptance').length,
-    completed: orders.filter(o => o.status === 'completed').length,
+    pendingPayment: orders.filter(o => o.status === 'pending_payment').length,
+    inProgress: orders.filter(o => ['pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted'].includes(o.status)).length,
+    completed: orders.filter(o => ['published', 'completed'].includes(o.status)).length,
+    abnormal: orders.filter(o => ['auto_cancelled', 'cancelled', 'publish_failed', 'publish_timeout', 'timeout', 'expired'].includes(o.status)).length,
   }
 
   const handleOrderClick = (order: any) => {
-    navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}` })
+    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}` })
   }
 
   const handleVerify = (order: any) => {
-    navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}&action=verify` })
+    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${order.id}&action=verify` })
+  }
+
+  // 去支付
+  const handlePay = async (order: any) => {
+    try {
+      Taro.showLoading({ title: '发起支付...' })
+      const loginRes = await Taro.login()
+      const openidRes = await Network.request({ url: `/api/user/openid?code=${loginRes.code}` })
+      const openid = openidRes?.data?.data?.openid
+      if (!openid) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '获取支付信息失败', icon: 'none' })
+        return
+      }
+      const repayRes = await Network.request({
+        url: `/api/order/${order.id}/repay`,
+        method: 'POST',
+        data: { openid }
+      })
+      Taro.hideLoading()
+      const payment = repayRes?.data?.data?.payment
+      if (!payment) {
+        Taro.showToast({ title: repayRes?.data?.message || '发起支付失败', icon: 'none' })
+        return
+      }
+      await Taro.requestPayment({
+        timeStamp: payment.timeStamp,
+        nonceStr: payment.nonceStr,
+        package: payment.packageValue,
+        signType: payment.signType,
+        paySign: payment.paySign,
+      })
+      Taro.showToast({ title: '支付成功', icon: 'success' })
+      setTimeout(() => loadOrders(), 1500)
+    } catch (err: any) {
+      Taro.hideLoading()
+      if (err.errMsg?.includes('cancel')) {
+        Taro.showToast({ title: '已取消支付', icon: 'none' })
+      } else {
+        Taro.showToast({ title: '支付失败', icon: 'none' })
+      }
+    }
+  }
+
+  // 取消/删除订单
+  const handleCancelOrder = async (order: any) => {
+    const isPaid = order.isPaid || order.is_paid
+    const isTerminal = ['completed', 'cancelled', 'auto_cancelled', 'expired'].includes(order.status)
+
+    const title = isTerminal ? '删除订单' : '取消订单'
+    const content = isTerminal
+      ? '确定删除此订单？删除后不可恢复。'
+      : isPaid
+        ? '确定取消此订单？已支付金额将原路退回。'
+        : '确定取消此订单？'
+
+    const res = await Taro.showModal({ title, content })
+    if (!res.confirm) return
+
+    try {
+      const apiRes = await Network.request({
+        url: `/api/order/${order.id}/${isTerminal ? 'delete' : 'cancel'}`,
+        method: 'POST',
+      })
+      if (apiRes?.data?.code === 200) {
+        Taro.showToast({ title: isTerminal ? '已删除' : '已取消', icon: 'success' })
+        loadOrders()
+      } else {
+        Taro.showToast({ title: apiRes?.data?.message || '操作失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
   }
 
   return (
@@ -171,7 +248,6 @@ export default function OrderListPage() {
             className="ol-back-btn"
             onClick={() => {
               const pages = Taro.getCurrentPages()
-              console.log('[order-list] 当前页面栈:', pages.map(p => p.route))
               if (pages.length > 1) {
                 Taro.navigateBack()
               } else {
@@ -192,23 +268,23 @@ export default function OrderListPage() {
       {/* 统计栏 */}
       <View className="ol-stats">
         <View className="ol-stat-item">
+          <Text className="ol-stat-num block" style={{ color: stats.pendingPayment > 0 ? '#f59e0b' : undefined }}>{stats.pendingPayment}</Text>
+          <Text className="ol-stat-label block">待支付</Text>
+        </View>
+        <View className="ol-stat-divider" />
+        <View className="ol-stat-item">
           <Text className="ol-stat-num block">{stats.inProgress}</Text>
           <Text className="ol-stat-label block">进行中</Text>
         </View>
         <View className="ol-stat-divider" />
         <View className="ol-stat-item">
-          <Text className="ol-stat-num block" style={{ color: stats.abnormal > 0 ? '#EF4444' : undefined }}>{stats.abnormal}</Text>
-          <Text className="ol-stat-label block">异常</Text>
-        </View>
-        <View className="ol-stat-divider" />
-        <View className="ol-stat-item">
-          <Text className="ol-stat-num block">{stats.awaiting}</Text>
-          <Text className="ol-stat-label block">待验收</Text>
-        </View>
-        <View className="ol-stat-divider" />
-        <View className="ol-stat-item">
           <Text className="ol-stat-num block">{stats.completed}</Text>
           <Text className="ol-stat-label block">已完成</Text>
+        </View>
+        <View className="ol-stat-divider" />
+        <View className="ol-stat-item">
+          <Text className="ol-stat-num block" style={{ color: stats.abnormal > 0 ? '#EF4444' : undefined }}>{stats.abnormal}</Text>
+          <Text className="ol-stat-label block">异常</Text>
         </View>
       </View>
 
@@ -221,6 +297,11 @@ export default function OrderListPage() {
             onClick={() => setActiveTab(tab.key)}
           >
             <Text className="ol-tab-text block">{tab.label}</Text>
+            {tab.key === 'pending_payment' && stats.pendingPayment > 0 && (
+              <View className="ol-tab-badge">
+                <Text className="ol-tab-badge-text">{stats.pendingPayment}</Text>
+              </View>
+            )}
             {tab.key === 'abnormal' && stats.abnormal > 0 && (
               <View className="ol-tab-badge">
                 <Text className="ol-tab-badge-text">{stats.abnormal}</Text>
@@ -231,7 +312,13 @@ export default function OrderListPage() {
       </View>
 
       {/* 订单列表 */}
-      <ScrollView scrollY className="ol-list">
+      <ScrollView
+        scrollY
+        className="ol-list"
+        refresherEnabled
+        refresherTriggered={refreshing}
+        onRefresherRefresh={handleRefresh}
+      >
         {loading ? (
           <View className="ol-loading">
             <Loader size={24} color="#8b5cf6" className="ol-spin" />
@@ -246,12 +333,13 @@ export default function OrderListPage() {
           filteredOrders.map(order => {
             const si = getStatusInfo(order.status)
             const platforms = getPlatformNames(order.platforms)
-            const orderStats = order.summary_stats || {}
+            const orderStats = order.summaryStats || order.summary_stats || {}
             const alertCount = (orderStats.expiredAvatars || 0) + (orderStats.timeoutAvatars || 0) + (orderStats.failedAvatars || 0)
-            const isAbnormal = ['auto_cancelled', 'failed'].includes(order.status)
+            const isTerminal = ['completed', 'cancelled', 'auto_cancelled', 'expired'].includes(order.status)
+            const isPendingPayment = order.status === 'pending_payment'
 
             return (
-              <View key={order.id} className={`ol-card ${isAbnormal ? 'ol-card-abnormal' : ''}`} onClick={() => handleOrderClick(order)}>
+              <View key={order.id} className={`ol-card ${isPendingPayment ? 'ol-card-pending' : ''}`} onClick={() => handleOrderClick(order)}>
                 {/* 卡片头部 */}
                 <View className="ol-card-header">
                   <View className="ol-card-header-left">
@@ -259,7 +347,7 @@ export default function OrderListPage() {
                     <Text className="ol-card-title block">{order.title || '未命名订单'}</Text>
                   </View>
                   <View className="ol-card-header-right">
-                    {alertCount > 0 && !isAbnormal && (
+                    {alertCount > 0 && !isTerminal && (
                       <View className="ol-alert-badge">
                         <TriangleAlert size={10} color="#fff" />
                         <Text className="ol-alert-badge-text">{alertCount}</Text>
@@ -285,8 +373,8 @@ export default function OrderListPage() {
                   )}
                 </View>
 
-                {/* 分身进度摘要 */}
-                <AvatarProgressSummary order={order} />
+                {/* 分身进度摘要（仅进行中订单显示） */}
+                {!isPendingPayment && <AvatarProgressSummary order={order} />}
 
                 {/* 信息栏 */}
                 <View className="ol-card-info">
@@ -296,11 +384,7 @@ export default function OrderListPage() {
                   </View>
                   <View className="ol-info-item">
                     <FileText size={12} color="#9ca3af" />
-                    <Text className="ol-info-text block">{order.expectedQuantity || 1}篇</Text>
-                  </View>
-                  <View className="ol-info-item">
-                    <Users size={12} color="#9ca3af" />
-                    <Text className="ol-info-text block">{order.quantityPerAvatar || 1}篇/人</Text>
+                    <Text className="ol-info-text block">{order.expectedQuantity || order.quantityPerAvatar || 1}篇</Text>
                   </View>
                   <View className="ol-info-item">
                     <Clock size={12} color="#9ca3af" />
@@ -310,6 +394,12 @@ export default function OrderListPage() {
 
                 {/* 操作按钮 */}
                 <View className="ol-card-actions">
+                  {isPendingPayment && (
+                    <View className="ol-action-btn ol-action-primary" onClick={(e) => { e.stopPropagation(); handlePay(order) }}>
+                      <CreditCard size={14} color="#fff" />
+                      <Text className="ol-action-btn-text block" style={{ color: '#fff' }}>去支付</Text>
+                    </View>
+                  )}
                   {order.status === 'awaiting_acceptance' && (
                     <View className="ol-action-btn ol-action-primary" onClick={(e) => { e.stopPropagation(); handleVerify(order) }}>
                       <CircleCheck size={14} color="#fff" />
@@ -320,6 +410,18 @@ export default function OrderListPage() {
                     <Eye size={14} color="#8b5cf6" />
                     <Text className="ol-action-btn-text block" style={{ color: '#8b5cf6' }}>详情</Text>
                   </View>
+                  {!isPendingPayment && (
+                    <View className="ol-action-btn ol-action-danger" onClick={(e) => { e.stopPropagation(); handleCancelOrder(order) }}>
+                      <Trash2 size={14} color="#ef4444" />
+                      <Text className="ol-action-btn-text block" style={{ color: '#ef4444' }}>{isTerminal ? '删除' : '取消'}</Text>
+                    </View>
+                  )}
+                  {isPendingPayment && (
+                    <View className="ol-action-btn ol-action-danger" onClick={(e) => { e.stopPropagation(); handleCancelOrder(order) }}>
+                      <Trash2 size={14} color="#9ca3af" />
+                      <Text className="ol-action-btn-text block" style={{ color: '#9ca3af' }}>取消</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             )

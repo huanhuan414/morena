@@ -269,7 +269,8 @@ export default function OrderDetail() {
             paySign: payment.paySign,
           })
           Taro.showToast({ title: '支付成功', icon: 'success' })
-          setTimeout(() => loadOrder(order.id), 1500)
+          // 开始轮询确认后端状态
+          startStatusPolling(order.id)
         } catch (payErr: any) {
           const errMsg = String(payErr?.errMsg || payErr?.message || '')
           if (errMsg.includes('cancel') || errMsg.includes('取消')) {
@@ -296,6 +297,86 @@ export default function OrderDetail() {
       url: `/package-order/pages/order-processing/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
     })
     setDialogOpen(false)
+  }
+
+  /* ── 取消订单 ── */
+  const handleCancel = async () => {
+    if (!order?.id) return
+    const confirmRes = await Taro.showModal({
+      title: '取消订单',
+      content: '确定要取消此订单吗？取消后不可恢复。',
+      confirmColor: '#EF4444',
+    })
+    if (!confirmRes.confirm) return
+    try {
+      Taro.showLoading({ title: '取消中...' })
+      const res = await Network.request({
+        url: `/api/order/${order.id}/cancel`,
+        method: 'POST',
+      })
+      Taro.hideLoading()
+      if (res?.data?.code === 200) {
+        Taro.showToast({ title: '订单已取消', icon: 'success' })
+        setTimeout(() => loadOrder(order.id), 1500)
+      } else {
+        Taro.showToast({ title: res?.data?.message || '取消失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '网络错误', icon: 'none' })
+    }
+  }
+
+  /* ── 删除订单 ── */
+  const handleDelete = async () => {
+    if (!order?.id) return
+    const confirmRes = await Taro.showModal({
+      title: '删除订单',
+      content: '确定要删除此订单吗？删除后不可恢复。',
+      confirmColor: '#EF4444',
+    })
+    if (!confirmRes.confirm) return
+    try {
+      Taro.showLoading({ title: '删除中...' })
+      const res = await Network.request({
+        url: `/api/order/${order.id}`,
+        method: 'DELETE',
+      })
+      Taro.hideLoading()
+      if (res?.data?.code === 200) {
+        Taro.showToast({ title: '已删除', icon: 'success' })
+        setTimeout(() => Taro.navigateBack(), 1500)
+      } else {
+        Taro.showToast({ title: res?.data?.message || '删除失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '网络错误', icon: 'none' })
+    }
+  }
+
+  /* ── 支付后状态轮询 ── */
+  const startStatusPolling = (orderId: string) => {
+    let pollCount = 0
+    const maxPolls = 20 // 最多轮询20次（约30秒）
+    const pollInterval = setInterval(async () => {
+      pollCount++
+      try {
+        const res = await Network.request({ url: `/api/order/${orderId}` })
+        const orderData = res?.data?.data
+        if (orderData && orderData.status !== 'pending_payment') {
+          clearInterval(pollInterval)
+          setOrder(orderData)
+          Taro.showToast({ title: '订单状态已更新', icon: 'success' })
+          return
+        }
+      } catch (e) {
+        console.warn('[OrderDetail] 轮询失败:', e)
+      }
+      if (pollCount >= maxPolls) {
+        clearInterval(pollInterval)
+      }
+    }, 1500)
   }
 
   /* ── 获取事件图标组件 ── */
@@ -335,6 +416,8 @@ export default function OrderDetail() {
   const avatarList = order.avatarStats || stats.avatarStats || []
   const canAccept = order.status === 'awaiting_acceptance'
   const canPay = order.status === 'pending_payment'
+  const canCancel = ['pending_payment', 'pending'].includes(order.status)
+  const canDelete = ['completed', 'cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)
   const pipelineProgress = getPipelineProgress()
   const alertCount = getAlertCount()
 
@@ -617,8 +700,20 @@ export default function OrderDetail() {
         )}
 
         {/* Bottom Actions */}
-        {(canAccept || canPay) && (
+        {(canAccept || canPay || canCancel || canDelete) && (
           <View className="od-actions">
+            {canDelete && (
+              <View className="od-action-btn od-action-danger" onClick={handleDelete}>
+                <CircleX size={16} color="#EF4444" />
+                <Text className="od-action-text" style={{ color: '#EF4444' }}>删除订单</Text>
+              </View>
+            )}
+            {canCancel && !canPay && (
+              <View className="od-action-btn od-action-danger" onClick={handleCancel}>
+                <CircleX size={16} color="#EF4444" />
+                <Text className="od-action-text" style={{ color: '#EF4444' }}>取消订单</Text>
+              </View>
+            )}
             {canPay && (
               <View className="od-action-btn od-action-primary" onClick={handleRepay}>
                 <Wallet size={16} color="#fff" />

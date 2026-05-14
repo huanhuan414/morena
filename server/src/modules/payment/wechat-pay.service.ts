@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -13,7 +13,9 @@ export class WechatPayService {
   private notifyUrl: string;
   private privateKey: Buffer;
 
-  constructor() {
+  constructor(
+    @Inject(forwardRef(() => 'ORDER_SERVICE')) private readonly orderService: any,
+  ) {
     this.appId = process.env.WECHAT_PAY_APPID || '';
     this.mchId = process.env.WECHAT_PAY_MCHID || '';
     this.apiKeyV2 = process.env.WECHAT_PAY_APIV2_KEY || process.env.WECHAT_PAY_APIV3_KEY || '';
@@ -429,14 +431,7 @@ export class WechatPayService {
       }
       this.logger.log(`激活订单: orderId=${orderId}, transactionId=${transactionId}`);
 
-      const { OrderService } = await import('../order/order.service');
-      const { EarningService } = await import('../earning/earning.service');
-      const { NotificationService } = await import('../notification/notification.service');
-      const earningService = new EarningService();
-      const notificationService = new NotificationService();
-      const orderService = new OrderService(earningService, notificationService);
-
-      await orderService.handlePaymentSuccess(orderId, transactionId);
+      await this.orderService.handlePaymentSuccess(orderId, transactionId);
       this.logger.log(`✅ 订单激活成功: orderId=${orderId}`);
     } catch (error) {
       this.logger.error(`激活订单失败: ${error.message}`, error.stack);

@@ -1,5 +1,5 @@
 import Taro, { useLoad, useDidShow, useRouter, showToast, showLoading, hideLoading } from '@tarojs/taro'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import * as Network from '@/network'
@@ -46,6 +46,48 @@ export default function OrderMatchingPage() {
   const [loading, setLoading] = useState(true)
   const [dispatching, setDispatching] = useState(false)
   const [step, setStep] = useState(1)
+  const pollTimerRef = useRef<any>(null)
+
+  /* ── 支付后状态轮询 ── */
+  const startStatusPolling = (oid: string) => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    let pollCount = 0
+    pollTimerRef.current = setInterval(async () => {
+      pollCount++
+      try {
+        const res = await Network.request({ url: `/api/order/${oid}` })
+        const orderData = res?.data?.data
+        if (orderData && orderData.status && orderData.status !== 'pending_payment') {
+          clearInterval(pollTimerRef.current)
+          pollTimerRef.current = null
+          // 状态已更新，刷新页面数据
+          setOrder({
+            id: orderData.id,
+            title: orderData.title || '未命名订单',
+            budget: orderData.budget,
+            contentType: orderData.contentType || orderData.content_type,
+            requirements: orderData.requirements,
+            avatarCount: orderData.avatarCount || orderData.expectedQuantity || orderData.avatar_count || orderData.expected_quantity || 0
+          })
+          showToast({ title: '订单已确认', icon: 'success' })
+          loadRecommendations()
+          return
+        }
+      } catch (e) {
+        console.warn('[OrderMatching] 轮询失败:', e)
+      }
+      if (pollCount >= 20) {
+        clearInterval(pollTimerRef.current)
+        pollTimerRef.current = null
+      }
+    }, 2000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    }
+  }, [])
 
   useLoad(() => {
     if (orderId) {
@@ -73,10 +115,14 @@ export default function OrderMatchingPage() {
           id: orderData.id,
           title: orderData.title || '未命名订单',
           budget: orderData.budget,
-          contentType: orderData.content_type || orderData.contentType,
+          contentType: orderData.contentType || orderData.content_type,
           requirements: orderData.requirements,
-          avatarCount: orderData.expected_quantity || orderData.expectedQuantity || orderData.avatar_count || orderData.avatarCount || 0
+          avatarCount: orderData.avatarCount || orderData.expectedQuantity || orderData.avatar_count || orderData.expected_quantity || 0
         })
+        // 如果订单还在pending_payment状态，启动轮询等待支付回调确认
+        if (orderData.status === 'pending_payment') {
+          startStatusPolling(orderId)
+        }
       }
       
       // 加载推荐

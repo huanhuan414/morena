@@ -125,9 +125,19 @@ export class OrderController {
   }
 
   @Delete(':id')
-  async delete(@Param('id') orderId: string) {
-    await this.orderService.deleteOrder(orderId)
-    return { code: 200, data: null, message: '删除成功' }
+  async delete(@Param('id') orderId: string, @Headers('x-user-id') userId: string) {
+    const result = await this.orderService.deleteOrder(orderId, userId || '')
+    return { code: 200, data: result, message: '删除成功' }
+  }
+
+  /**
+   * 取消订单
+   * POST /api/order/:id/cancel
+   */
+  @Post(':id/cancel')
+  async cancel(@Param('id') orderId: string, @Headers('x-user-id') userId: string) {
+    const result = await this.orderService.cancelOrder(orderId, userId || '')
+    return { code: 200, data: result, message: '取消成功' }
   }
 
   /**

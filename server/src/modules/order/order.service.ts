@@ -1,9 +1,11 @@
 // @ts-nocheck
-import { Injectable, Inject } from '@nestjs/common'
+import { Injectable, Inject, forwardRef } from '@nestjs/common'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
+import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
+import { WechatPayService } from '../payment/wechat-pay.service'
 
 /**
  * 字段命名规则说明：
@@ -14,8 +16,11 @@ import { NotificationService } from '../notification/notification.service'
 
 @Injectable()
 export class OrderService {
-  constructor(@Inject(EarningService) private readonly earningService: EarningService,
-    private readonly notificationService: NotificationService
+  constructor(
+    @Inject(EarningService) private readonly earningService: EarningService,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => OrderDispatchService)) private readonly dispatchService: OrderDispatchService,
+    @Inject(forwardRef(() => WechatPayService)) private readonly wechatPayService: WechatPayService,
   ) {}
 
   private safeParseJson<T>(value: any, fallback: T): T {
@@ -231,9 +236,7 @@ export class OrderService {
     const openid = orderData.openid
     if (openid && budget > 0) {
       try {
-        const { WechatPayService } = await import('../payment/wechat-pay.service')
-        const wechatPayService = new WechatPayService()
-        const payResult = await wechatPayService.createMiniProgramOrder({
+        const payResult = await this.wechatPayService.createMiniProgramOrder({
           userId,
           openid,
           planId: id,
@@ -590,9 +593,8 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'published', 'publish_failed', 'publish_timeout')
+        status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
         OR (status = 'pending_payment' AND IFNULL(is_paid, 0) = 1)
-        OR (status = 'submitted')
       )
     `
 
@@ -755,12 +757,64 @@ export class OrderService {
     return this.getOrderById(orderId)
   }
 
-  async deleteOrder(orderId: string) {
+  /**
+   * 取消订单（仅允许特定状态，发单方操作）
+   */
+  async cancelOrder(orderId: string, userId: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+    if (order.userId !== userId) {
+      throw new Error('无权操作此订单')
+    }
+    // 只有这些状态可以取消
+    const cancellableStatuses = ['pending_payment', 'pending', 'awaiting_acceptance', 'pending_acceptance']
+    if (!cancellableStatuses.includes(order.status)) {
+      throw new Error(`订单状态为"${order.status}"，无法取消`)
+    }
+    // 如果已支付，需要退款逻辑（暂记TODO，目前先标记取消）
+    if (order.isPaid === 1) {
+      console.log(`[cancelOrder] 订单${orderId}已支付，取消后需退款 ¥${order.budget}`)
+      // TODO: 调用微信退款API
+    }
+    const db = getMySQLClient()
+    await db.updateWhere('orders', { id: orderId }, {
+      status: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled',
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    })
+    // 取消关联的派单请求
+    await db.updateWhere('dispatch_requests', { order_id: orderId, status: 'pending' }, {
+      status: 'expired',
+      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    })
+    console.log(`[cancelOrder] 订单${orderId}已取消，原状态: ${order.status}`)
+    return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
+  }
+
+  /**
+   * 删除订单（仅已取消/已完成的订单可删除，物理删除）
+   */
+  async deleteOrder(orderId: string, userId: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+    if (order.userId !== userId) {
+      throw new Error('无权操作此订单')
+    }
+    const deletableStatuses = ['cancelled', 'auto_cancelled', 'completed', 'expired']
+    if (!deletableStatuses.includes(order.status)) {
+      throw new Error('只有已完成或已取消的订单才能删除')
+    }
     const db = getMySQLClient()
     await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM content_generation_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])
+    await db.query('DELETE FROM order_events WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM orders WHERE id = ?', [orderId])
+    console.log(`[deleteOrder] 订单${orderId}已删除`)
+    return { success: true, orderId }
   }
 
   async handlePaymentSuccess(orderId: string, transactionId: string) {
@@ -793,9 +847,7 @@ export class OrderService {
     })
 
     try {
-      const { OrderDispatchService } = await import('../order-dispatch/order-dispatch.service')
-      const dispatchService = new OrderDispatchService(this.earningService, this.notificationService)
-      const dispatchResult = await dispatchService.dispatchToAllAvatars(orderId)
+      const dispatchResult = await this.dispatchService.dispatchToAllAvatars(orderId)
       console.log('[handlePaymentSuccess] 自动派单结果:', dispatchResult)
     } catch (err) {
       console.error('[handlePaymentSuccess] 自动派单失败:', err)
@@ -835,6 +887,9 @@ export class OrderService {
     if (order.isPaid === 1) {
       throw new Error('订单已支付，无需重复支付')
     }
+    if (order.status !== 'pending_payment') {
+      throw new Error('订单状态不允许支付')
+    }
     const budget = Number(order.budget || 0)
     if (budget <= 0) {
       throw new Error('订单金额异常，无法支付')
@@ -848,13 +903,10 @@ export class OrderService {
         [orderId]
       )
       if (pendingPayments && pendingPayments.length > 0) {
-        const { WechatPayService } = await import('../payment/wechat-pay.service')
-        const wechatPayService = new WechatPayService()
         for (const p of pendingPayments) {
           try {
-            // out_trade_no → outTradeNo (camelCase)
-            await wechatPayService.closeOrder(p.outTradeNo)
-            console.log('[repayOrder] 关闭旧支付单:', p.outTradeNo)
+            await this.wechatPayService.closeOrder(p.outTradeNo || p.out_trade_no)
+            console.log('[repayOrder] 关闭旧支付单:', p.outTradeNo || p.out_trade_no)
           } catch (e) {
             console.warn('[repayOrder] 关闭旧支付单失败(忽略):', e.message)
           }
@@ -865,9 +917,7 @@ export class OrderService {
     }
 
     // 创建新的支付单
-    const { WechatPayService } = await import('../payment/wechat-pay.service')
-    const wechatPayService = new WechatPayService()
-    const payResult = await wechatPayService.createMiniProgramOrder({
+    const payResult = await this.wechatPayService.createMiniProgramOrder({
       userId,
       openid,
       planId: orderId,
@@ -892,16 +942,18 @@ export class OrderService {
     if (!order) return
 
     const statusMessages: Record<string, string> = {
-      'open': '订单已打开，等待派单',
-      'pending_dispatch': '订单正在分配中',
-      'pending_acceptance': '订单已分配，等待分身确认',
+      'pending': '订单已支付，等待派单',
+      'awaiting_acceptance': '订单已分配，等待分身确认',
+      'accepted': '分身已接单',
       'in_progress': '订单开始处理',
+      'content_generated': '内容已生成',
       'submitted': '订单结果已提交',
-      'awaiting_acceptance': '等待验收',
+      'published': '内容已发布',
       'completed': '订单已完成',
       'cancelled': '订单已取消',
-      'rejected': '订单被拒绝',
-      'revision_requested': '需要修改'
+      'auto_cancelled': '订单已自动取消',
+      'timeout': '订单已超时',
+      'publish_failed': '发布失败',
     }
 
     const message = statusMessages[status] || `订单状态变更为: ${status}`
