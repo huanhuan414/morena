@@ -93,7 +93,9 @@ export default function OrderListPage() {
     try {
       const res = await Network.request({ url: '/api/order/list' })
       console.log('[OrderList] fetchOrders response:', res.data)
-      const list = res.data?.data?.list || res.data?.list || []
+      // 后端返回 { code: 200, data: [...], message: '获取成功' }
+      // Network.request 返回 res.data = { code, data, message }
+      const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data?.list) ? res.data.list : [])
       setOrders(list)
     } catch (err) {
       console.error('[OrderList] fetchOrders error:', err)
