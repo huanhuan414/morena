@@ -269,7 +269,12 @@ export class PaymentController {
 
         const orders = await db.query(`SELECT * FROM payment_orders WHERE out_trade_no = ?`, [outTradeNo]);
         if (orders && orders.length > 0) {
-          await this.wechatPayService['activateSubscription'](orders[0]);
+          const payOrder = orders[0];
+          if (payOrder.orderType === 'order' || payOrder.order_type === 'order') {
+            await this.wechatPayService['activateOrder'](payOrder, wechatResult.transaction_id || '');
+          } else {
+            await this.wechatPayService['activateSubscription'](payOrder);
+          }
         }
 
         return { code: 200, msg: '同步成功，订单已支付', data: { tradeState } };

@@ -249,6 +249,23 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
     setIsSubmitting(true)
     try {
+      // 获取用户openid（微信小程序支付必须）
+      let openid = ''
+      try {
+        const loginRes = await Taro.login()
+        if (loginRes.code) {
+          // 通过后端接口换取openid
+          const openidRes = await Network.request({
+            url: '/api/user/openid',
+            method: 'GET',
+            data: { code: loginRes.code },
+          })
+          openid = openidRes?.data?.data?.openid || ''
+        }
+      } catch (e) {
+        console.warn('[OrderCreate] 获取openid失败:', e)
+      }
+
       const orderData = {
         title: form.title,
         description: form.description,
@@ -259,6 +276,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
         avatar_count: form.avatarCount,
         quantity_per_avatar: form.quantityPerAvatar,
         total_price: totalPrice.total,
+        openid,
       }
 
       console.log('创建发单记录请求:', { url: '/api/order', method: 'POST', data: orderData })
@@ -280,8 +298,63 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
 
       if (payloadObj?.code === 200 && payloadObj?.data?.id) {
         const orderId = payloadObj.data.id
-        console.log('[OrderCreate] 订单创建成功，订单ID:', orderId)
-        Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+        const payment = payloadObj.data.payment
+
+        if (payment && payment.packageValue) {
+          // 有支付参数，唤起微信支付
+          try {
+            await Taro.requestPayment({
+              timeStamp: payment.timeStamp,
+              nonceStr: payment.nonceStr,
+              package: payment.packageValue,
+              signType: payment.signType || 'MD5',
+              paySign: payment.paySign,
+            })
+            // 支付成功
+            Taro.showToast({ title: '支付成功', icon: 'success' })
+            setTimeout(() => {
+              Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+            }, 1500)
+          } catch (payErr: any) {
+            console.warn('[OrderCreate] 支付结果:', payErr)
+            const errMsg = String(payErr?.errMsg || payErr?.message || '')
+            if (errMsg.includes('cancel') || errMsg.includes('取消')) {
+              // 用户取消支付 → 跳转到订单详情，显示待支付状态
+              Taro.showModal({
+                title: '支付已取消',
+                content: '您可以稍后在订单详情中继续支付',
+                confirmText: '去支付',
+                cancelText: '查看订单',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    // 重新支付
+                    repayAndNavigate(orderId, openid)
+                  } else {
+                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${orderId}` })
+                  }
+                },
+              })
+            } else {
+              // 支付失败
+              Taro.showModal({
+                title: '支付失败',
+                content: '支付遇到问题，您可以稍后重试',
+                confirmText: '重试',
+                cancelText: '查看订单',
+                success: (modalRes) => {
+                  if (modalRes.confirm) {
+                    repayAndNavigate(orderId, openid)
+                  } else {
+                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${orderId}` })
+                  }
+                },
+              })
+            }
+          }
+        } else {
+          // 无需支付（金额为0或支付创建失败），直接跳转
+          Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+        }
       } else {
         const msg = payloadObj?.msg || payloadObj?.message || '创建订单失败'
         Taro.showToast({ title: msg, icon: 'none' })
@@ -291,6 +364,45 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
       Taro.showToast({ title: err?.message || '网络错误，请重试', icon: 'none' })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const repayAndNavigate = async (orderId: string, openid: string) => {
+    if (!openid) {
+      Taro.showToast({ title: '请重新进入页面再试', icon: 'none' })
+      return
+    }
+    try {
+      Taro.showLoading({ title: '创建支付...' })
+      const res = await Network.request({
+        url: `/api/order/${orderId}/repay`,
+        method: 'POST',
+        data: { openid },
+      })
+      Taro.hideLoading()
+      const payload = res?.data
+      if (payload?.code === 200 && payload?.data?.payment) {
+        const payment = payload.data.payment
+        await Taro.requestPayment({
+          timeStamp: payment.timeStamp,
+          nonceStr: payment.nonceStr,
+          package: payment.packageValue,
+          signType: payment.signType || 'MD5',
+          paySign: payment.paySign,
+        })
+        Taro.showToast({ title: '支付成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.navigateTo({ url: `/package-order/pages/order-matching/index?orderId=${orderId}` })
+        }, 1500)
+      } else {
+        Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })
+      }
+    } catch (payErr: any) {
+      Taro.hideLoading()
+      const errMsg = String(payErr?.errMsg || payErr?.message || '')
+      if (!errMsg.includes('cancel')) {
+        Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+      }
     }
   }
 

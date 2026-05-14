@@ -163,15 +163,18 @@ export default function OrderListPage() {
         <View className="ol-header-decor ol-header-decor-1" />
         <View className="ol-header-decor ol-header-decor-2" />
         <View className="ol-header-nav">
-          <View className="ol-back-btn" onClick={() => {
-            const pages = Taro.getCurrentPages()
-            console.log('[order-list] 当前页面栈:', pages.map(p => p.route))
-            if (pages.length > 1) {
-              Taro.navigateBack()
-            } else {
-              Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
-            }
-          }}>
+          <View
+            className="ol-back-btn"
+            onClick={() => {
+              const pages = Taro.getCurrentPages()
+              console.log('[order-list] 当前页面栈:', pages.map(p => p.route))
+              if (pages.length > 1) {
+                Taro.navigateBack()
+              } else {
+                Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
+              }
+            }}
+          >
             <ArrowLeft size={18} color="#fff" />
           </View>
           <View className="ol-header-center">

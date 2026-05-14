@@ -16,11 +16,11 @@ export class OrderController {
     @Body() orderData: Record<string, any>
   ) {
     console.log('[OrderController] 创建订单，用户ID:', userId, '订单数据:', orderData)
-    const order = await this.orderService.createOrder(userId, orderData)
+    const result = await this.orderService.createOrder(userId, orderData)
     return {
       code: 200,
-      data: order,
-      message: order.status === 'pending_payment' ? '创建成功，请完成支付' : '创建成功'
+      data: result,
+      message: result.payment ? '创建成功，请完成支付' : '创建成功'
     }
   }
 
@@ -128,5 +128,28 @@ export class OrderController {
   async delete(@Param('id') orderId: string) {
     await this.orderService.deleteOrder(orderId)
     return { code: 200, data: null, message: '删除成功' }
+  }
+
+  /**
+   * 重新支付（支付取消/失败后再次发起）
+   * POST /api/order/:id/repay
+   */
+  @Post(':id/repay')
+  async repay(
+    @Param('id') orderId: string,
+    @Headers('x-user-id') userId: string,
+    @Body() body: Record<string, any>
+  ) {
+    const openid = body.openid
+    if (!openid) {
+      return { code: 400, data: null, message: '缺少openid参数' }
+    }
+    try {
+      const paymentParams = await this.orderService.repayOrder(orderId, userId, openid)
+      return { code: 200, data: { payment: paymentParams }, message: '支付订单创建成功' }
+    } catch (err: any) {
+      console.error('[OrderController] 重新支付失败:', err.message)
+      return { code: 500, data: null, message: err.message || '创建支付订单失败' }
+    }
   }
 }

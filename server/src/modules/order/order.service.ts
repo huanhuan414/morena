@@ -186,6 +186,8 @@ export class OrderService {
     }
     const priorityValue = priorityMap[orderData.priority] || priorityMap['normal']
     
+    const budget = orderData.total_price || orderData.budget || 0
+
     const insertData: Record<string, any> = {
       id,
       user_id: userId,
@@ -194,7 +196,7 @@ export class OrderService {
       content_type: orderData.content_type || orderData.contentType || 'text',
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
-      budget: orderData.total_price || orderData.budget || 0,
+      budget,
       status: 'pending_payment',
       expected_quantity: avatarCount,
       quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
@@ -232,13 +234,44 @@ export class OrderService {
         source: 'publisher',
         visibility: 'both',
         title: '订单已创建',
-        eventData: { title: orderData.title, budget: orderData.total_price || orderData.budget, contentType: orderData.content_type },
+        eventData: { title: orderData.title, budget, contentType: orderData.content_type },
       }).catch(err => console.warn('[事件] created 记录失败:', err.message))
     } catch (err) {
       console.warn('[OrderService] 事件记录跳过:', err.message)
     }
 
-    return { id, ...insertData, avatarCount }
+    // 📌 创建微信支付订单（需要openid）
+    let paymentParams = null
+    const openid = orderData.openid
+    if (openid && budget > 0) {
+      try {
+        const { WechatPayService } = await import('../payment/wechat-pay.service')
+        const wechatPayService = new WechatPayService()
+        const payResult = await wechatPayService.createMiniProgramOrder({
+          userId,
+          openid,
+          planId: id, // 订单支付场景下 planId 存 orderId
+          description: `Morena AI 任务: ${orderData.title || '发单支付'}`,
+          amount: Number(budget),
+          orderType: 'order',
+        })
+        paymentParams = {
+          paymentOrderId: payResult.orderId,
+          outTradeNo: payResult.outTradeNo,
+          timeStamp: payResult.timeStamp,
+          nonceStr: payResult.nonceStr,
+          packageValue: payResult.packageValue,
+          signType: payResult.signType,
+          paySign: payResult.paySign,
+        }
+        console.log('[OrderService] 支付订单创建成功:', payResult.outTradeNo)
+      } catch (err) {
+        console.error('[OrderService] 创建支付订单失败:', err.message)
+        // 支付订单创建失败不影响主订单，用户可以稍后重新支付
+      }
+    }
+
+    return { id, ...insertData, avatarCount, payment: paymentParams }
   }
 
   async getOrderById(orderId: string) {
@@ -800,6 +833,72 @@ export class OrderService {
       content: `订单"${order.title}"支付失败: ${reason}`,
       metadata: { orderId }
     })
+  }
+
+  /**
+   * 重新支付（支付取消/失败/超时后再次发起）
+   * 先关闭旧的微信支付单（如果有），再创建新的支付单
+   */
+  async repayOrder(orderId: string, userId: string, openid: string) {
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error('订单不存在')
+    }
+    if (order.user_id !== userId) {
+      throw new Error('无权操作此订单')
+    }
+    if (Number(order.isPaid ?? order.is_paid ?? 0) === 1) {
+      throw new Error('订单已支付，无需重复支付')
+    }
+    const budget = Number(order.budget || 0)
+    if (budget <= 0) {
+      throw new Error('订单金额异常，无法支付')
+    }
+
+    // 关闭之前未支付的支付单
+    try {
+      const db = getMySQLClient()
+      const pendingPayments = await db.query(
+        `SELECT out_trade_no FROM payment_orders WHERE plan_id = ? AND order_type = 'order' AND status = 'pending'`,
+        [orderId]
+      )
+      if (pendingPayments && pendingPayments.length > 0) {
+        const { WechatPayService } = await import('../payment/wechat-pay.service')
+        const wechatPayService = new WechatPayService()
+        for (const p of pendingPayments) {
+          try {
+            await wechatPayService.closeOrder(p.out_trade_no)
+            console.log('[repayOrder] 关闭旧支付单:', p.out_trade_no)
+          } catch (e) {
+            console.warn('[repayOrder] 关闭旧支付单失败(忽略):', e.message)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[repayOrder] 查询旧支付单失败(忽略):', e.message)
+    }
+
+    // 创建新的支付单
+    const { WechatPayService } = await import('../payment/wechat-pay.service')
+    const wechatPayService = new WechatPayService()
+    const payResult = await wechatPayService.createMiniProgramOrder({
+      userId,
+      openid,
+      planId: orderId,
+      description: `Morena AI 任务: ${order.title || '发单支付'}`,
+      amount: budget,
+      orderType: 'order',
+    })
+
+    return {
+      paymentOrderId: payResult.orderId,
+      outTradeNo: payResult.outTradeNo,
+      timeStamp: payResult.timeStamp,
+      nonceStr: payResult.nonceStr,
+      packageValue: payResult.packageValue,
+      signType: payResult.signType,
+      paySign: payResult.paySign,
+    }
   }
 
   private async notifyStatusChange(orderId: string, status: string) {

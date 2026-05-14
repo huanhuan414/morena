@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
@@ -107,7 +107,7 @@ export default function ReferralCenter() {
     if (!time) return ''
     try {
       const date = new Date(time)
-      if (isNaN(date.getTime())) return time
+      if (Number.isNaN(date.getTime())) return time
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')

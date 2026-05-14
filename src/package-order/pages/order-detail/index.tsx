@@ -221,6 +221,67 @@ export default function OrderDetail() {
     })
   }
 
+  const handleRepay = async () => {
+    if (!order?.id) return
+    try {
+      Taro.showLoading({ title: '创建支付...' })
+      // 先获取openid
+      let openid = ''
+      try {
+        const loginRes = await Taro.login()
+        if (loginRes.code) {
+          const openidRes = await Network.request({
+            url: '/api/user/openid',
+            method: 'GET',
+            data: { code: loginRes.code },
+          })
+          openid = openidRes?.data?.data?.openid || ''
+        }
+      } catch (e) {
+        console.warn('[OrderDetail] 获取openid失败:', e)
+      }
+      if (!openid) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '获取支付信息失败，请重试', icon: 'none' })
+        return
+      }
+      // 调用重新支付接口
+      const res = await Network.request({
+        url: `/api/order/${order.id}/repay`,
+        method: 'POST',
+        data: { openid },
+      })
+      Taro.hideLoading()
+      const payload = res?.data
+      if (payload?.code === 200 && payload?.data?.payment) {
+        const payment = payload.data.payment
+        try {
+          await Taro.requestPayment({
+            timeStamp: payment.timeStamp,
+            nonceStr: payment.nonceStr,
+            package: payment.packageValue,
+            signType: payment.signType || 'MD5',
+            paySign: payment.paySign,
+          })
+          Taro.showToast({ title: '支付成功', icon: 'success' })
+          setTimeout(() => loadOrder(order.id), 1500)
+        } catch (payErr: any) {
+          const errMsg = String(payErr?.errMsg || payErr?.message || '')
+          if (errMsg.includes('cancel') || errMsg.includes('取消')) {
+            Taro.showToast({ title: '支付已取消', icon: 'none' })
+          } else {
+            Taro.showToast({ title: '支付失败，请稍后重试', icon: 'none' })
+          }
+        }
+      } else {
+        Taro.showToast({ title: payload?.message || '创建支付失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '网络错误，请重试', icon: 'none' })
+    }
+  }
+
   const handleViewFeedback = () => {
     if (!dialogAvatar || !dialogContent) return
     const requestId = dialogAvatar.requestId || dialogAvatar.contentId
@@ -268,6 +329,7 @@ export default function OrderDetail() {
   const stats = order.summary_stats || {}
   const avatarList = order.avatarStats || stats.avatarStats || []
   const canAccept = order.status === 'awaiting_acceptance'
+  const canPay = order.status === 'pending_payment'
   const pipelineProgress = getPipelineProgress()
   const alertCount = getAlertCount()
 
@@ -550,12 +612,20 @@ export default function OrderDetail() {
         )}
 
         {/* Bottom Actions */}
-        {canAccept && (
+        {(canAccept || canPay) && (
           <View className="od-actions">
-            <View className="od-action-btn od-action-primary" onClick={handleAcceptWork}>
-              <CircleCheck size={16} color="#fff" />
-              <Text className="od-action-text" style={{ color: '#fff' }}>进入验收</Text>
-            </View>
+            {canPay && (
+              <View className="od-action-btn od-action-primary" onClick={handleRepay}>
+                <Wallet size={16} color="#fff" />
+                <Text className="od-action-text" style={{ color: '#fff' }}>立即支付 ¥{order.budget || order.totalPrice || '0'}</Text>
+              </View>
+            )}
+            {canAccept && (
+              <View className="od-action-btn od-action-primary" onClick={handleAcceptWork}>
+                <CircleCheck size={16} color="#fff" />
+                <Text className="od-action-text" style={{ color: '#fff' }}>进入验收</Text>
+              </View>
+            )}
           </View>
         )}
       </View>

@@ -312,7 +312,14 @@ export class WechatPayService {
 
       this.logger.log(`订单支付成功: outTradeNo=${outTradeNo}, transactionId=${transactionId}`);
 
-      await this.activateSubscription(order);
+      // 根据 order_type 分别处理
+      if (order.orderType === 'order' || order.order_type === 'order') {
+        // 订单支付场景：激活订单 → 自动派单
+        await this.activateOrder(order, transactionId);
+      } else {
+        // 订阅支付场景：激活订阅
+        await this.activateSubscription(order);
+      }
 
       // 上报微信发货信息管理
       await this.uploadShippingInfo(transactionId, order);
@@ -343,6 +350,7 @@ export class WechatPayService {
         return;
       }
 
+      const isOrderPayment = order.orderType === 'order' || order.order_type === 'order';
       const shippingData = {
         order_key: {
           order_number_type: 2,
@@ -351,7 +359,7 @@ export class WechatPayService {
         delivery_mode: 1,
         shipping_list: [
           {
-            item_desc: 'Morena AI 订阅服务',
+            item_desc: isOrderPayment ? 'Morena AI 内容创作服务' : 'Morena AI 订阅服务',
           },
         ],
         upload_time: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
@@ -405,6 +413,33 @@ export class WechatPayService {
     } catch (error) {
       this.logger.warn(`获取access_token异常: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * 激活订单（支付成功后调用）
+   * 更新 orders 表 is_paid=1, status=open → 触发自动派单
+   */
+  private async activateOrder(order: any, transactionId: string) {
+    try {
+      const orderId = order.planId || order.plan_id; // 订单支付场景下 planId 存的是 orderId
+      if (!orderId) {
+        this.logger.error('订单支付回调: planId(orderId)为空，无法激活');
+        return;
+      }
+      this.logger.log(`激活订单: orderId=${orderId}, transactionId=${transactionId}`);
+
+      const { OrderService } = await import('../order/order.service');
+      const { EarningService } = await import('../earning/earning.service');
+      const { NotificationService } = await import('../notification/notification.service');
+      const earningService = new EarningService();
+      const notificationService = new NotificationService();
+      const orderService = new OrderService(earningService, notificationService);
+
+      await orderService.handlePaymentSuccess(orderId, transactionId);
+      this.logger.log(`✅ 订单激活成功: orderId=${orderId}`);
+    } catch (error) {
+      this.logger.error(`激活订单失败: ${error.message}`, error.stack);
     }
   }
 
