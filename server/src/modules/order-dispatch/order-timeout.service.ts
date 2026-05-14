@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { getMySQLClient } from '../../storage/database/mysql-client';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,6 +20,21 @@ export class OrderTimeoutService {
   private readonly CONTENT_TIMEOUT = 2 * 3600;       // 2小时未产出内容视为超时
   private readonly PUBLISH_TIMEOUT = 24 * 3600;      // 24小时未发布视为超时
   private readonly MAX_RETRIES = 3;                   // 最大重试派单次数
+
+  private eventService: any = null;
+
+  private async getEventService() {
+    if (!this.eventService) {
+      try {
+        const { OrderEventService } = await import('./order-event.service');
+        this.eventService = new OrderEventService();
+        this.logger.log('OrderEventService 加载成功');
+      } catch (err) {
+        this.logger.warn(`OrderEventService 加载失败: ${err.message}`);
+      }
+    }
+    return this.eventService;
+  }
 
   /**
    * 定时任务：每分钟检查超时订单
@@ -46,13 +61,14 @@ export class OrderTimeoutService {
     const client = await getMySQLClient();
     const timeoutTime = new Date(Date.now() - this.DISPATCH_TIMEOUT * 1000);
 
-    // 查找超时的pending派单
+    // 查找超时的pending派单（跳过target_avatar_id为NULL的无效派单）
     const dispatches = await client.query(
-      `SELECT od.id, od.order_id, od.avatar_id, o.status as order_status
+      `SELECT od.id, od.order_id, od.target_avatar_id as avatar_id, o.status as order_status
        FROM order_dispatch_requests od
        JOIN orders o ON od.order_id = o.id
        WHERE od.status = 'pending' 
-       AND od.assigned_at < ?
+       AND od.target_avatar_id IS NOT NULL
+       AND od.created_at < ?
        AND o.status IN ('pending_acceptance', 'awaiting_acceptance')`,
       [timeoutTime]
     );
@@ -73,6 +89,7 @@ export class OrderTimeoutService {
   private async handleDispatchTimeout(dispatch: any) {
     const client = await getMySQLClient();
     const logId = uuidv4();
+    let result: { action: 'auto_cancel' | 'reassign'; orderId: string; dispatchId: string; avatarId: string; avatarName: string; retryCount: number } = null;
 
     try {
       await client.query('START TRANSACTION');
@@ -95,6 +112,10 @@ export class OrderTimeoutService {
         return;
       }
 
+      // 获取分身名称
+      let avatarName = '分身';
+      try { const a = await client.query('SELECT name FROM avatars WHERE id = ?', [dispatch.avatar_id]); avatarName = a?.[0]?.name || '分身' } catch {}
+
       if (order.retry_count >= (order.max_retries || this.MAX_RETRIES)) {
         // 超过最大重试次数，自动取消订单
         await client.query(
@@ -110,6 +131,8 @@ export class OrderTimeoutService {
            `已重试${order.retry_count}次，无分身接单，自动取消`]
         );
 
+        result = { action: 'auto_cancel', orderId: dispatch.order_id, dispatchId: dispatch.id, avatarId: dispatch.avatar_id, avatarName, retryCount: order.retry_count };
+
         this.logger.warn(`订单 ${dispatch.order_id} 已自动取消（重试${order.retry_count}次无人接单）`);
       } else {
         // 增加重试次数，尝试重新派单
@@ -123,8 +146,10 @@ export class OrderTimeoutService {
           `INSERT INTO order_timeout_logs (id, order_id, dispatch_id, avatar_id, event_type, old_status, new_status, notes)
            VALUES (?, ?, ?, ?, 'dispatch_timeout', ?, 'awaiting_acceptance', ?)`,
           [logId, dispatch.order_id, dispatch.id, dispatch.avatar_id, order.status,
-           `分身${dispatch.avatar_id}超时未接单，准备重新派单(第${order.retry_count + 1}次)`]
+           `分身${avatarName}超时未接单，准备重新派单(第${order.retry_count + 1}次)`]
         );
+
+        result = { action: 'reassign', orderId: dispatch.order_id, dispatchId: dispatch.id, avatarId: dispatch.avatar_id, avatarName, retryCount: order.retry_count + 1 };
 
         this.logger.log(`订单 ${dispatch.order_id} 派单超时，准备重新派单(第${order.retry_count + 1}次)`);
       }
@@ -133,6 +158,39 @@ export class OrderTimeoutService {
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error(`处理派单超时失败: ${error.message}`);
+      return;
+    }
+
+    // 📌 事务提交后记录事件（避免事务内嵌套查询死锁）
+    if (result) {
+      const evtSvc = await this.getEventService();
+      if (evtSvc) {
+        try {
+          if (result.action === 'auto_cancel') {
+            await evtSvc.recordEvent({
+              orderId: result.orderId, dispatchId: result.dispatchId, avatarId: result.avatarId,
+              eventType: 'auto_cancel', source: 'system', visibility: 'both',
+              title: `订单已自动取消（${result.avatarName}超时未接单，已重试${result.retryCount}次）`,
+              avatarName: result.avatarName,
+            });
+          } else {
+            await evtSvc.recordEvent({
+              orderId: result.orderId, dispatchId: result.dispatchId, avatarId: result.avatarId,
+              eventType: 'expired', source: 'system', visibility: 'both',
+              title: `${result.avatarName}超时未接单`,
+              avatarName: result.avatarName,
+              content: `准备重新派单(第${result.retryCount}次)`,
+            });
+            await evtSvc.recordEvent({
+              orderId: result.orderId, avatarId: result.avatarId,
+              eventType: 'reassign', source: 'system', visibility: 'both',
+              title: `订单已重新派单`,
+              avatarName: result.avatarName,
+              content: `${result.avatarName}超时未接单，正在重新分配分身(第${result.retryCount}次)`,
+            });
+          }
+        } catch (e) { this.logger.warn(`事件记录失败: ${e.message}`) }
+      }
     }
   }
 
@@ -165,6 +223,7 @@ export class OrderTimeoutService {
     for (const order of orders) {
       await this.handleContentTimeout(order);
     }
+    return orders.length;
   }
 
   /**
@@ -173,6 +232,7 @@ export class OrderTimeoutService {
   private async handleContentTimeout(order: any) {
     const client = await getMySQLClient();
     const logId = uuidv4();
+    let result: { action: 'auto_cancel' | 'reassign'; orderId: string; avatarId: string; retryCount: number } = null;
 
     try {
       await client.query('START TRANSACTION');
@@ -189,6 +249,10 @@ export class OrderTimeoutService {
         await client.query('ROLLBACK');
         return;
       }
+
+      // 获取分身名称
+      let avatarName = '分身';
+      try { const a = await client.query('SELECT name FROM avatars WHERE id = ?', [order.assigned_to]); avatarName = a?.[0]?.name || '分身' } catch {}
 
       // 标记该分身接单超时
       await client.query(
@@ -208,8 +272,10 @@ export class OrderTimeoutService {
           `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
            VALUES (?, ?, ?, 'auto_cancel', 'in_progress', 'auto_cancelled', ?)`,
           [logId, order.id, order.assigned_to,
-           `分身${order.assigned_to}接单后超时未产出内容，已重试${order.retry_count}次，自动取消`]
+           `${avatarName}接单后超时未产出内容，已重试${order.retry_count}次，自动取消`]
         );
+
+        result = { action: 'auto_cancel', orderId: order.id, avatarId: order.assigned_to, retryCount: order.retry_count };
       } else {
         // 取消当前分身，重新派单
         await client.query(
@@ -221,16 +287,42 @@ export class OrderTimeoutService {
           `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
            VALUES (?, ?, ?, 'auto_reassign', 'in_progress', 'awaiting_acceptance', ?)`,
           [logId, order.id, order.assigned_to,
-           `分身${order.assigned_to}接单后超时未产出内容，重新派单(第${order.retry_count + 1}次)`]
+           `${avatarName}接单后超时未产出内容，重新派单(第${order.retry_count + 1}次)`]
         );
+
+        result = { action: 'reassign', orderId: order.id, avatarId: order.assigned_to, retryCount: order.retry_count + 1 };
       }
 
       await client.query('COMMIT');
-      return 1;
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error(`处理内容超时失败: ${error.message}`);
-      return 0;
+      return;
+    }
+
+    // 📌 事务提交后记录事件
+    if (result) {
+      const evtSvc = await this.getEventService();
+      if (evtSvc) {
+        try {
+          if (result.action === 'auto_cancel') {
+            await evtSvc.recordEvent({
+              orderId: result.orderId, avatarId: result.avatarId,
+              eventType: 'auto_cancel', source: 'system', visibility: 'both',
+              title: `订单已自动取消（分身接单后超时未产出内容，已重试${result.retryCount}次）`,
+              avatarName: '分身',
+            });
+          } else {
+            await evtSvc.recordEvent({
+              orderId: result.orderId, avatarId: result.avatarId,
+              eventType: 'timeout', source: 'system', visibility: 'both',
+              title: `分身接单后超时未产出内容`,
+              avatarName: '分身',
+              content: `准备重新派单(第${result.retryCount}次)`,
+            });
+          }
+        } catch (e) { this.logger.warn(`事件记录失败: ${e.message}`) }
+      }
     }
   }
 
@@ -255,6 +347,10 @@ export class OrderTimeoutService {
     for (const order of orders) {
       const logId = uuidv4();
       try {
+        // 获取分身名称
+        let avatarName = '分身';
+        try { const a = await client.query('SELECT name FROM avatars WHERE id = ?', [order.assigned_to]); avatarName = a?.[0]?.name || '分身' } catch {}
+
         // 标记为发布超时，需要人工介入
         await client.query(
           `UPDATE orders SET status = 'publish_timeout' WHERE id = ?`,
@@ -265,10 +361,24 @@ export class OrderTimeoutService {
           `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
            VALUES (?, ?, ?, 'publish_timeout', 'content_generated', 'publish_timeout', ?)`,
           [logId, order.id, order.assigned_to,
-           `分身${order.assigned_to}内容已生成但超过24小时未发布`]
+           `${avatarName}内容已生成但超过24小时未发布`]
         );
 
         this.logger.warn(`订单 ${order.id} 发布超时`);
+
+        // 📌 记录事件
+        const evtSvc = await this.getEventService();
+        if (evtSvc) {
+          try {
+            await evtSvc.recordEvent({
+              orderId: order.id, avatarId: order.assigned_to,
+              eventType: 'timeout_warning', source: 'system', visibility: 'both',
+              title: `${avatarName}内容已生成但超时未发布`,
+              avatarName,
+              content: '内容已生成超过24小时未发布，需要人工介入',
+            });
+          } catch (e) { this.logger.warn(`事件记录失败: ${e.message}`) }
+        }
       } catch (error) {
         this.logger.error(`处理发布超时失败: ${error.message}`);
       }
@@ -385,9 +495,9 @@ export class OrderTimeoutService {
          SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired_count,
          SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END) as timeout_count,
          ROUND(AVG(CASE WHEN status = 'accepted' AND responded_at IS NOT NULL 
-           THEN TIMESTAMPDIFF(SECOND, assigned_at, responded_at) ELSE NULL END)) as avg_response_seconds
+           THEN TIMESTAMPDIFF(SECOND, created_at, responded_at) ELSE NULL END)) as avg_response_seconds
        FROM order_dispatch_requests 
-       WHERE avatar_id = ?`,
+       WHERE target_avatar_id = ?`,
       [avatarId]
     );
 

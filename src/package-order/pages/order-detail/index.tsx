@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image as TaroImage } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { ArrowLeft, Wallet, Users, Target, Calendar, ChevronRight, Eye, CircleCheck, Clock } from 'lucide-react-taro'
+import {
+  ArrowLeft, Wallet, Users, Target, Calendar, ChevronRight, Eye,
+  CircleCheck, Clock, TriangleAlert, CircleX,
+  RefreshCw, MessageSquare, Zap, Timer, ArrowRightLeft, Info
+} from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getPlatformMeta, canonicalizePlatforms } from '@/constants/publish-platform'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import './index.css'
 
+/* ── 状态映射 ── */
 const STATUS_MAP = {
   pending_payment: { label: '待支付', color: '#F59E0B', bg: '#FEF3C7', icon: '💰' },
   open: { label: '待接单', color: '#3B82F6', bg: '#DBEAFE', icon: '📢' },
@@ -18,6 +23,7 @@ const STATUS_MAP = {
   awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED', icon: '✅' },
   completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7', icon: '🎉' },
   cancelled: { label: '已取消', color: '#EF4444', bg: '#FEE2E2', icon: '❌' },
+  auto_cancelled: { label: '自动取消', color: '#EF4444', bg: '#FEE2E2', icon: '🚫' },
   failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2', icon: '⚠️' },
 }
 
@@ -31,28 +37,63 @@ const AVATAR_STATUS_MAP = {
   awaiting_acceptance: { label: '待验收', color: '#F97316', bg: '#FFF7ED' },
   failed: { label: '失败', color: '#EF4444', bg: '#FEE2E2' },
   declined: { label: '已婉拒', color: '#9CA3AF', bg: '#F3F4F6' },
+  expired: { label: '已过期', color: '#EF4444', bg: '#FEE2E2' },
+  timeout: { label: '已超时', color: '#F97316', bg: '#FFF7ED' },
   completed: { label: '已完成', color: '#22C55E', bg: '#DCFCE7' },
 }
 
-// 点击分身卡片时，哪些状态可以查看内容
+/* ── 事件图标 & 颜色映射 ── */
+const EVENT_ICON_MAP = {
+  created: { icon: Zap, color: '#6366F1' },
+  dispatched: { icon: Users, color: '#3B82F6' },
+  accepted: { icon: CircleCheck, color: '#22C55E' },
+  rejected: { icon: CircleX, color: '#EF4444' },
+  expired: { icon: Timer, color: '#F97316' },
+  content_started: { icon: RefreshCw, color: '#6366F1' },
+  content_completed: { icon: CircleCheck, color: '#22C55E' },
+  content_failed: { icon: CircleX, color: '#EF4444' },
+  publish_started: { icon: ArrowRightLeft, color: '#8B5CF6' },
+  publish_completed: { icon: CircleCheck, color: '#22C55E' },
+  publish_failed: { icon: CircleX, color: '#EF4444' },
+  publish_verified: { icon: CircleCheck, color: '#14B8A6' },
+  revision_requested: { icon: MessageSquare, color: '#F59E0B' },
+  reassign: { icon: ArrowRightLeft, color: '#8B5CF6' },
+  timeout_warning: { icon: TriangleAlert, color: '#F97316' },
+  auto_cancel: { icon: CircleX, color: '#EF4444' },
+  cancel: { icon: CircleX, color: '#EF4444' },
+  completed: { icon: CircleCheck, color: '#22C55E' },
+}
+
+/* ── 进度管道阶段 ── */
+const PIPELINE_STAGES = [
+  { key: 'dispatched', label: '已派单' },
+  { key: 'accepted', label: '已接单' },
+  { key: 'content_completed', label: '内容就绪' },
+  { key: 'publish_completed', label: '已发布' },
+  { key: 'completed', label: '已完成' },
+]
+
 const CAN_VIEW_CONTENT = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'completed', 'generating']
-// 哪些状态可以查看反馈
 const CAN_VIEW_FEEDBACK = ['published', 'awaiting_acceptance', 'completed']
 
 export default function OrderDetail() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [events, setEvents] = useState<any[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState<'content' | 'feedback'>('content')
   const [dialogAvatar, setDialogAvatar] = useState<any>(null)
   const [dialogContent, setDialogContent] = useState<any>(null)
   const [dialogLoading, setDialogLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('avatars')
 
   useEffect(() => {
     const params = Taro.getCurrentInstance().router?.params || {}
     const orderId = params.orderId || params.id
     if (orderId) {
       loadOrder(orderId)
+      loadEvents(orderId)
     } else {
       setLoading(false)
     }
@@ -73,6 +114,22 @@ export default function OrderDetail() {
     }
   }
 
+  const loadEvents = async (orderId: string) => {
+    setEventsLoading(true)
+    try {
+      console.log('[订单详情] 加载事件流:', orderId)
+      const res = await Network.request({ url: `/api/order-dispatch/events/${orderId}?visibility=publisher&limit=50` })
+      console.log('[订单详情] 事件响应:', res.data)
+      if (res.data?.code === 200 && res.data?.data) {
+        setEvents(Array.isArray(res.data.data) ? res.data.data : [])
+      }
+    } catch (err) {
+      console.error('[订单详情] 加载事件失败:', err)
+    } finally {
+      setEventsLoading(false)
+    }
+  }
+
   const getStatusInfo = (status: string) => STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6', icon: '📋' }
   const getAvatarStatusInfo = (status: string) => AVATAR_STATUS_MAP[status] || { label: status, color: '#6B7280', bg: '#F3F4F6' }
 
@@ -88,13 +145,45 @@ export default function OrderDetail() {
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
+  const formatEventTime = (t: string | object) => {
+    if (!t || typeof t !== 'string') return '--'
+    const d = new Date(t)
+    if (Number.isNaN(d.getTime())) return '--'
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return '刚刚'
+    if (diffMin < 60) return `${diffMin}分钟前`
+    const diffHr = Math.floor(diffMin / 60)
+    if (diffHr < 24) return `${diffHr}小时前`
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+
   const platformNames = () => {
     if (!order?.platforms) return []
     const arr = canonicalizePlatforms(order.platforms)
     return arr.map(p => getPlatformMeta(p)?.name || p)
   }
 
-  // 点击分身卡片 — 弹窗查看内容/反馈
+  /* ── 计算进度管道当前阶段 ── */
+  const getPipelineProgress = () => {
+    const stats = order?.summary_stats || {}
+    const total = stats.totalAvatars || order?.avatarCount || 1
+    return {
+      dispatched: Math.min(total, (stats.acceptedAvatars || 0) + (stats.pendingAvatars || 0)),
+      accepted: stats.acceptedAvatars || 0,
+      content_completed: stats.totalGenerated || 0,
+      publish_completed: stats.totalPublished || 0,
+      completed: stats.completedAvatars || 0,
+    }
+  }
+
+  /* ── 异常统计 ── */
+  const getAlertCount = () => {
+    const stats = order?.summary_stats || {}
+    return (stats.expiredAvatars || 0) + (stats.timeoutAvatars || 0) + (stats.failedAvatars || 0)
+  }
+
   const handleAvatarClick = async (avatar: any) => {
     const status = avatar.status || avatar.contentStatus
     if (!CAN_VIEW_CONTENT.includes(status) && !CAN_VIEW_FEEDBACK.includes(status)) {
@@ -109,14 +198,12 @@ export default function OrderDetail() {
     setDialogContent(null)
 
     try {
-      // 通过 orderId + avatarId 查询内容
       const res = await Network.request({
         url: `/api/content-generation/history/avatar/${avatar.avatarId}?orderId=${order.id}`
       })
       console.log('[订单详情] 查询分身内容:', res.data)
       const rawData = res.data?.data
       if (rawData) {
-        // API 可能返回单条对象或数组
         const contentItem = Array.isArray(rawData) ? rawData[0] : rawData
         setDialogContent(contentItem)
       }
@@ -127,7 +214,6 @@ export default function OrderDetail() {
     }
   }
 
-  // 统一进入验收页
   const handleAcceptWork = async () => {
     if (!order) return
     Taro.navigateTo({
@@ -135,7 +221,6 @@ export default function OrderDetail() {
     })
   }
 
-  // 查看发布反馈页面
   const handleViewFeedback = () => {
     if (!dialogAvatar || !dialogContent) return
     const requestId = dialogAvatar.requestId || dialogAvatar.contentId
@@ -145,6 +230,17 @@ export default function OrderDetail() {
       url: `/package-order/pages/order-processing/index?requestId=${requestId}&orderId=${orderId}&avatarId=${avatarId}`
     })
     setDialogOpen(false)
+  }
+
+  /* ── 获取事件图标组件 ── */
+  const getEventIcon = (eventType: string) => {
+    const mapping = EVENT_ICON_MAP[eventType]
+    if (!mapping) return Info
+    return mapping.icon
+  }
+  const getEventColor = (eventType: string) => {
+    const mapping = EVENT_ICON_MAP[eventType]
+    return mapping?.color || '#6B7280'
   }
 
   if (loading) {
@@ -171,9 +267,9 @@ export default function OrderDetail() {
   const statusInfo = getStatusInfo(order.status)
   const stats = order.summary_stats || {}
   const avatarList = order.avatarStats || stats.avatarStats || []
-
-  // 判断是否可以验收 — 发单方在待验收状态下可以确认验收
   const canAccept = order.status === 'awaiting_acceptance'
+  const pipelineProgress = getPipelineProgress()
+  const alertCount = getAlertCount()
 
   return (
     <View className="od-page">
@@ -191,12 +287,18 @@ export default function OrderDetail() {
           </View>
           <View className="od-header-right" />
         </View>
-        {/* Status Banner — 只显示一个状态 pill */}
+        {/* Status Banner */}
         <View className="od-status-banner">
           <Text className="od-status-emoji">{statusInfo.icon}</Text>
           <View className="od-status-pill" style={{ background: statusInfo.bg }}>
             <Text className="od-status-pill-text" style={{ color: statusInfo.color }}>{statusInfo.label}</Text>
           </View>
+          {alertCount > 0 && (
+            <View className="od-alert-pill">
+              <TriangleAlert size={12} color="#fff" />
+              <Text className="od-alert-pill-text">{alertCount}个异常</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -216,6 +318,49 @@ export default function OrderDetail() {
                 <Text className="od-pill-text">{order.orderType === 'image_text' ? '图文' : order.orderType === 'video' ? '视频' : '文案'}</Text>
               </View>
             ) : null}
+          </View>
+        </View>
+
+        {/* Pipeline Progress — 5阶段管道 */}
+        <View className="od-card od-pipeline-card">
+          <Text className="block od-section-title">订单进度</Text>
+          <View className="od-pipeline">
+            {PIPELINE_STAGES.map((stage, idx) => {
+              const count = pipelineProgress[stage.key] || 0
+              const total = stats.totalAvatars || order.avatarCount || 1
+              const isActive = count > 0
+              const isLast = idx === PIPELINE_STAGES.length - 1
+              return (
+                <View className="od-pipe-stage" key={stage.key}>
+                  <View className="od-pipe-node-wrap">
+                    <View
+                      className="od-pipe-node"
+                      style={{
+                        background: isActive ? 'linear-gradient(135deg, #6366F1, #A855F7)' : '#E5E7EB',
+                      }}
+                    >
+                      {isActive ? (
+                        <CircleCheck size={14} color="#fff" />
+                      ) : (
+                        <View className="od-pipe-node-empty" />
+                      )}
+                    </View>
+                    {!isLast && (
+                      <View
+                        className="od-pipe-line"
+                        style={{ background: isActive ? '#6366F1' : '#E5E7EB' }}
+                      />
+                    )}
+                  </View>
+                  <Text className="block od-pipe-label" style={{ color: isActive ? '#6366F1' : '#9CA3AF' }}>
+                    {stage.label}
+                  </Text>
+                  {isActive && (
+                    <Text className="block od-pipe-count">{count}/{total}</Text>
+                  )}
+                </View>
+              )
+            })}
           </View>
         </View>
 
@@ -248,26 +393,135 @@ export default function OrderDetail() {
           </View>
         </View>
 
-        {/* Progress Summary */}
-        <View className="od-card od-progress-card">
-          <Text className="block od-section-title">任务进度</Text>
-          <View className="od-progress-bar-track">
-            <View className="od-progress-bar-fill" style={{ width: `${Math.min(100, ((stats.totalPublished || 0) / Math.max(1, stats.totalAvatars || 1)) * 100)}%` }} />
+        {/* Tab Switcher: Avatars / Events */}
+        <View className="od-tab-card od-card">
+          <View className="od-tab-header">
+            <View
+              className={`od-tab-btn ${activeTab === 'avatars' ? 'od-tab-active' : ''}`}
+              onClick={() => setActiveTab('avatars')}
+            >
+              <Users size={14} color={activeTab === 'avatars' ? '#6366F1' : '#9CA3AF'} />
+              <Text className="od-tab-text" style={{ color: activeTab === 'avatars' ? '#6366F1' : '#9CA3AF' }}>
+                分身状态 ({avatarList.length})
+              </Text>
+            </View>
+            <View
+              className={`od-tab-btn ${activeTab === 'events' ? 'od-tab-active' : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              <Clock size={14} color={activeTab === 'events' ? '#6366F1' : '#9CA3AF'} />
+              <Text className="od-tab-text" style={{ color: activeTab === 'events' ? '#6366F1' : '#9CA3AF' }}>
+                事件动态 ({events.length})
+              </Text>
+            </View>
           </View>
-          <View className="od-progress-steps">
-            <View className="od-progress-step">
-              <Text className="block od-step-value">{stats.acceptedAvatars || 0}</Text>
-              <Text className="block od-step-label">已接单</Text>
+
+          {/* Avatar List Tab */}
+          {activeTab === 'avatars' && (
+            <View className="od-tab-content">
+              {avatarList.length === 0 ? (
+                <View className="od-empty">
+                  <Text className="block od-empty-text">暂无分身分配</Text>
+                </View>
+              ) : (
+                avatarList.map((avatar: any, idx: number) => {
+                  const aStatus = getAvatarStatusInfo(avatar.status)
+                  const canView = CAN_VIEW_CONTENT.includes(avatar.status) || CAN_VIEW_FEEDBACK.includes(avatar.status)
+                  const isAbnormal = ['expired', 'timeout', 'failed', 'declined'].includes(avatar.status)
+                  return (
+                    <View
+                      className={`od-avatar-item ${isAbnormal ? 'od-avatar-abnormal' : ''}`}
+                      key={avatar.id || idx}
+                      onClick={() => canView ? handleAvatarClick(avatar) : undefined}
+                    >
+                      <View className="od-avatar-left">
+                        {avatar.avatarUrl ? (
+                          <View className="od-avatar-img-wrap">
+                            <TaroImage className="od-avatar-img" src={avatar.avatarUrl} mode="aspectFill" />
+                          </View>
+                        ) : (
+                          <View className="od-avatar-fallback">
+                            <Text className="od-avatar-fallback-text">{(avatar.avatarName || avatar.nickname || '?')[0]}</Text>
+                          </View>
+                        )}
+                        <View className="od-avatar-info">
+                          <Text className="block od-avatar-name">{avatar.avatarName || avatar.nickname || '分身'}</Text>
+                          <View className="od-avatar-status-wrap">
+                            {isAbnormal && <TriangleAlert size={10} color="#EF4444" />}
+                            <View className="od-avatar-status-dot" style={{ background: aStatus.color }} />
+                            <Text className="od-avatar-status-text" style={{ color: aStatus.color }}>{aStatus.label}</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View className="od-avatar-right">
+                        {canView ? (
+                          <View className="od-avatar-view-btn" style={{ background: aStatus.bg }}>
+                            <Eye size={14} color={aStatus.color} />
+                            <Text className="od-avatar-view-text" style={{ color: aStatus.color }}>查看</Text>
+                          </View>
+                        ) : isAbnormal ? (
+                          <View className="od-avatar-reassign-btn">
+                            <RefreshCw size={12} color="#8B5CF6" />
+                            <Text className="od-avatar-reassign-text">转派</Text>
+                          </View>
+                        ) : (
+                          <ChevronRight size={16} color="#9CA3AF" />
+                        )}
+                      </View>
+                    </View>
+                  )
+                })
+              )}
             </View>
-            <View className="od-progress-step">
-              <Text className="block od-step-value">{stats.totalPublished || 0}</Text>
-              <Text className="block od-step-label">已发布</Text>
+          )}
+
+          {/* Event Timeline Tab */}
+          {activeTab === 'events' && (
+            <View className="od-tab-content">
+              {eventsLoading ? (
+                <View className="od-events-loading">
+                  <Clock size={20} color="#6366F1" />
+                  <Text className="block od-events-loading-text">加载事件流...</Text>
+                </View>
+              ) : events.length === 0 ? (
+                <View className="od-empty">
+                  <Text className="block od-empty-text">暂无事件记录</Text>
+                </View>
+              ) : (
+                <View className="od-timeline">
+                  {events.map((event: any, idx: number) => {
+                    const IconComp = getEventIcon(event.eventType)
+                    const iconColor = getEventColor(event.eventType)
+                    return (
+                      <View className="od-timeline-item" key={event.id || idx}>
+                        <View className="od-timeline-left">
+                          <View className="od-timeline-dot" style={{ background: iconColor }}>
+                            <IconComp size={10} color="#fff" />
+                          </View>
+                          {idx < events.length - 1 && <View className="od-timeline-line" />}
+                        </View>
+                        <View className="od-timeline-right">
+                          <View className="od-timeline-header">
+                            <Text className="block od-timeline-title" style={{ color: iconColor }}>{event.title}</Text>
+                            <Text className="block od-timeline-time">{formatEventTime(event.createdAt)}</Text>
+                          </View>
+                          {event.content && (
+                            <Text className="block od-timeline-desc">{event.content}</Text>
+                          )}
+                          {event.avatarName && (
+                            <View className="od-timeline-avatar-tag">
+                              <Users size={10} color="#6366F1" />
+                              <Text className="od-timeline-avatar-name">{event.avatarName}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              )}
             </View>
-            <View className="od-progress-step">
-              <Text className="block od-step-value">{stats.completedAvatars || 0}</Text>
-              <Text className="block od-step-label">已完成</Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Requirements */}
@@ -295,50 +549,7 @@ export default function OrderDetail() {
           </View>
         )}
 
-        {/* Avatar List — 点击弹窗查看内容/反馈 */}
-        {avatarList.length > 0 && (
-          <View className="od-card od-avatar-card">
-            <Text className="block od-section-title">分身执行情况</Text>
-            {avatarList.map((avatar: any, idx: number) => {
-              const aStatus = getAvatarStatusInfo(avatar.status)
-              const canView = CAN_VIEW_CONTENT.includes(avatar.status) || CAN_VIEW_FEEDBACK.includes(avatar.status)
-              return (
-                <View className="od-avatar-item" key={avatar.id || idx} onClick={() => canView ? handleAvatarClick(avatar) : undefined}>
-                  <View className="od-avatar-left">
-                    {avatar.avatarUrl ? (
-                      <View className="od-avatar-img-wrap">
-                        <TaroImage className="od-avatar-img" src={avatar.avatarUrl} mode="aspectFill" />
-                      </View>
-                    ) : (
-                      <View className="od-avatar-fallback">
-                        <Text className="od-avatar-fallback-text">{(avatar.avatarName || avatar.nickname || '?')[0]}</Text>
-                      </View>
-                    )}
-                    <View className="od-avatar-info">
-                      <Text className="block od-avatar-name">{avatar.avatarName || avatar.nickname || '分身'}</Text>
-                      <View className="od-avatar-status-wrap">
-                        <View className="od-avatar-status-dot" style={{ background: aStatus.color }} />
-                        <Text className="od-avatar-status-text" style={{ color: aStatus.color }}>{aStatus.label}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View className="od-avatar-right">
-                    {canView ? (
-                      <View className="od-avatar-view-btn" style={{ background: aStatus.bg }}>
-                        <Eye size={14} color={aStatus.color} />
-                        <Text className="od-avatar-view-text" style={{ color: aStatus.color }}>查看</Text>
-                      </View>
-                    ) : (
-                      <ChevronRight size={16} color="#9CA3AF" />
-                    )}
-                  </View>
-                </View>
-              )
-            })}
-          </View>
-        )}
-
-        {/* Bottom Actions — 发单方视角 */}
+        {/* Bottom Actions */}
         {canAccept && (
           <View className="od-actions">
             <View className="od-action-btn od-action-primary" onClick={handleAcceptWork}>
@@ -365,7 +576,6 @@ export default function OrderDetail() {
               </View>
             ) : dialogContent ? (
               <View className="od-dialog-detail">
-                {/* Avatar info */}
                 <View className="od-dialog-avatar-row">
                   {dialogAvatar?.avatarUrl ? (
                     <TaroImage className="od-dialog-avatar-img" src={dialogAvatar.avatarUrl} mode="aspectFill" />
@@ -382,7 +592,6 @@ export default function OrderDetail() {
                   </View>
                 </View>
 
-                {/* Content */}
                 {dialogContent.content && (
                   <View className="od-dialog-section">
                     <Text className="block od-dialog-label">文案内容</Text>
@@ -392,7 +601,6 @@ export default function OrderDetail() {
                   </View>
                 )}
 
-                {/* Images */}
                 {dialogContent.images && Array.isArray(dialogContent.images) && dialogContent.images.length > 0 && (
                   <View className="od-dialog-section">
                     <Text className="block od-dialog-label">配图 ({dialogContent.images.length}张)</Text>
@@ -404,7 +612,6 @@ export default function OrderDetail() {
                   </View>
                 )}
 
-                {/* Feedback info */}
                 {dialogType === 'feedback' && (
                   <View className="od-dialog-section">
                     <Text className="block od-dialog-label">发布状态</Text>
@@ -412,7 +619,6 @@ export default function OrderDetail() {
                   </View>
                 )}
 
-                {/* Action */}
                 {dialogType === 'feedback' && (
                   <View className="od-dialog-actions">
                     <Button className="od-dialog-btn" onClick={handleViewFeedback}>

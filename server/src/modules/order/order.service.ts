@@ -222,6 +222,23 @@ export class OrderService {
       throw err
     })
 
+    // 📌 记录事件：订单已创建
+    try {
+      const { OrderEventService } = await import('../order-dispatch/order-event.service')
+      const eventService = new OrderEventService()
+      eventService.recordEvent({
+        orderId: id,
+        userId: userId,
+        eventType: 'created',
+        source: 'publisher',
+        visibility: 'both',
+        title: '订单已创建',
+        eventData: { title: orderData.title, budget: orderData.total_price || orderData.budget, contentType: orderData.content_type },
+      }).catch(err => console.warn('[事件] created 记录失败:', err.message))
+    } catch (err) {
+      console.warn('[OrderService] 事件记录跳过:', err.message)
+    }
+
     return { id, ...insertData, avatarCount }
   }
 
@@ -362,6 +379,58 @@ export class OrderService {
       }
     }
     
+    // 获取每个订单的分身派单摘要（名字+状态）
+    let dispatchSummaries: Record<string, any[]> = {}
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(', ')
+      const dispatchRows = await db.query(
+        `SELECT d.order_id, d.target_avatar_id as avatar_id, d.status, d.responded_at, d.expires_at,
+                a.name as avatar_name, a.avatar_url
+         FROM order_dispatch_requests d
+         LEFT JOIN avatars a ON d.target_avatar_id = a.id
+         WHERE d.order_id IN (${placeholders})
+         ORDER BY d.created_at ASC`,
+        orderIds
+      )
+      for (const row of dispatchRows || []) {
+        if (!dispatchSummaries[row.order_id]) dispatchSummaries[row.order_id] = []
+        dispatchSummaries[row.order_id].push({
+          avatarId: row.avatar_id,
+          avatarName: row.avatar_name,
+          avatarUrl: row.avatar_url,
+          status: row.status,
+          respondedAt: row.responded_at,
+          expiresAt: row.expires_at,
+        })
+      }
+    }
+
+    // 获取每个订单的最新事件摘要
+    let latestEvents: Record<string, any> = {}
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(', ')
+      const eventRows = await db.query(
+        `SELECT e.order_id, e.title, e.event_type, e.color, e.icon, e.created_at
+         FROM order_events e
+         INNER JOIN (
+           SELECT order_id, MAX(created_at) as max_created
+           FROM order_events
+           WHERE order_id IN (${placeholders}) AND visibility IN ('both', 'publisher')
+           GROUP BY order_id
+         ) latest ON e.order_id = latest.order_id AND e.created_at = latest.max_created`,
+        [...orderIds, ...orderIds]
+      )
+      for (const row of eventRows || []) {
+        latestEvents[row.order_id] = {
+          title: row.title,
+          eventType: row.event_type,
+          color: row.color,
+          icon: row.icon,
+          createdAt: row.created_at,
+        }
+      }
+    }
+
     return (rows || []).map((row: any) => {
       let platforms = row.platforms
       if (typeof platforms === 'string') {
@@ -425,7 +494,9 @@ export class OrderService {
         dispatchedCount,
         avatarStats: avatarStats || [],
         isPaid: row.isPaid,
-        createdAt
+        createdAt,
+        dispatchSummary: dispatchSummaries[row.id] || [],
+        latestEvent: latestEvents[row.id] || null,
       }
     })
   }

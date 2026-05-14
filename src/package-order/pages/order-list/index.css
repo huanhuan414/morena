@@ -212,6 +212,93 @@
   font-size: 26rpx; color: #9ca3af; margin-top: 16rpx;
 }
 
+.ol-card-header-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+/* 异常卡片高亮 */
+.ol-card-abnormal {
+  border-left: 6rpx solid #EF4444;
+}
+
+/* 告警徽标 */
+.ol-alert-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 100rpx;
+  background: #EF4444;
+}
+.ol-alert-badge-text {
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Tab Badge */
+.ol-tab-badge {
+  position: absolute;
+  top: -4rpx;
+  right: -8rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  border-radius: 14rpx;
+  background: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6rpx;
+}
+.ol-tab-badge-text {
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: 600;
+}
+.ol-tab {
+  position: relative;
+}
+
+/* ═══════════════ Avatar Progress Summary ═══════════════ */
+.ol-avatar-progress {
+  margin-bottom: 12rpx;
+  padding: 12rpx 0;
+}
+.ol-progress-track {
+  display: flex;
+  flex-direction: row;
+  height: 8rpx;
+  border-radius: 4rpx;
+  overflow: hidden;
+  background: #F3F4F6;
+}
+.ol-progress-seg {
+  height: 100%;
+  min-width: 4rpx;
+}
+.ol-progress-labels {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+.ol-progress-label-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rpx;
+}
+.ol-progress-label-text {
+  font-size: 18rpx;
+  font-weight: 500;
+}
+
 /* 旋转动画 */
 .ol-spin {
   animation: ol-spin-anim 1s linear infinite;

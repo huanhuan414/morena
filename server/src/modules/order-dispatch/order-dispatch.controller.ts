@@ -2,12 +2,14 @@
 import { Controller, Get, Post, Put, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { OrderDispatchService } from './order-dispatch.service'
 import { OrderTimeoutService } from './order-timeout.service'
+import { OrderEventService } from './order-event.service'
 
 @Controller('order-dispatch')
 export class OrderDispatchController {
   constructor(
     @Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService,
     @Inject(OrderTimeoutService) private readonly timeoutService: OrderTimeoutService,
+    @Inject(OrderEventService) private readonly eventService: OrderEventService,
   ) {}
 
   /**
@@ -316,6 +318,67 @@ export class OrderDispatchController {
       code: 200,
       data: rows,
       message: '获取超时日志成功'
+    }
+  }
+
+  // ==================== 事件时间线 API ====================
+
+  /**
+   * 获取订单时间线（发单方视角）
+   */
+  @Get(':orderId/timeline')
+  async getOrderTimeline(
+    @Param('orderId') orderId: string,
+    @Query('limit') limit?: string
+  ) {
+    const timeline = await this.eventService.getPublisherTimeline(
+      orderId,
+      limit ? parseInt(limit) : 50
+    )
+    return {
+      code: 200,
+      data: timeline,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取订单时间线（分身视角）
+   */
+  @Get(':orderId/avatar-timeline')
+  async getAvatarTimeline(
+    @Param('orderId') orderId: string,
+    @Query('avatarId') avatarId: string,
+    @Query('limit') limit?: string
+  ) {
+    const timeline = await this.eventService.getAvatarTimeline(
+      orderId,
+      avatarId,
+      limit ? parseInt(limit) : 50
+    )
+    return {
+      code: 200,
+      data: timeline,
+      message: '获取成功'
+    }
+  }
+
+  /**
+   * 获取分身的所有事件（跨订单）
+   */
+  @Get('avatar-events')
+  async getAvatarEvents(
+    @Headers('x-user-id') userId: string,
+    @Query('limit') limit?: string
+  ) {
+    const events = await this.eventService.getAvatarEvents(
+      userId,
+      limit ? parseInt(limit) : 20
+    )
+    return {
+      code: 200,
+      data: events,
+      message: '获取成功'
     }
   }
 }

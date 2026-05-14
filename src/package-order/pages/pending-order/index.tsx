@@ -28,6 +28,8 @@ interface PendingOrder {
   budget: number
   orderStatus: string
   dispatchStatus: string
+  expiresAt?: string
+  dispatchCreatedAt?: string
   quantityPerAvatar: number
   expectedQuantity: number
   orderCreatedAt: string
@@ -103,6 +105,48 @@ function safeParseRequirements(val: any): string[] {
   return []
 }
 
+// 派单响应倒计时组件
+function DispatchCountdown({ expiresAt }: { expiresAt: string }) {
+  const [timeLeft, setTimeLeft] = useState('')
+
+  useEffect(() => {
+    const calc = () => {
+      const end = new Date(expiresAt).getTime()
+      const now = Date.now()
+      const diff = end - now
+      if (diff <= 0) {
+        setTimeLeft('已过期')
+        return
+      }
+      const min = Math.floor(diff / 60000)
+      const sec = Math.floor((diff % 60000) / 1000)
+      setTimeLeft(`${min}:${String(sec).padStart(2, '0')}`)
+    }
+    calc()
+    const timer = setInterval(calc, 1000)
+    return () => clearInterval(timer)
+  }, [expiresAt])
+
+  const isUrgent = timeLeft === '已过期' || (timeLeft && parseInt(timeLeft) < 10)
+
+  return (
+    <View
+      className="po-deadline-row"
+      style={{
+        background: isUrgent ? '#FEF2F2' : '#EEF2FF',
+      }}
+    >
+      <Timer size={14} color={isUrgent ? '#EF4444' : '#6366F1'} />
+      <Text
+        className="po-deadline-text"
+        style={{ color: isUrgent ? '#EF4444' : '#6366F1' }}
+      >
+        {timeLeft === '已过期' ? '响应已超时' : `接单截止 ${timeLeft}`}
+      </Text>
+    </View>
+  )
+}
+
 export default function PendingOrderListPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -149,6 +193,8 @@ export default function PendingOrderListPage() {
             budget: parseFloat(item.budget) || 0,
             orderStatus: item.orderStatus || '',
             dispatchStatus: item.dispatchStatus || 'pending',
+            expiresAt: item.expiresAt || '',
+            dispatchCreatedAt: item.dispatchCreatedAt || '',
             quantityPerAvatar: item.quantityPerAvatar || 1,
             expectedQuantity: item.expectedQuantity || 1,
             orderCreatedAt: item.orderCreatedAt || '',
@@ -479,6 +525,11 @@ export default function PendingOrderListPage() {
                       {timeLeft === '已过期' ? '已过截止时间' : `剩余 ${timeLeft}`}
                     </Text>
                   </View>
+                )}
+
+                {/* 派单响应倒计时 */}
+                {order.expiresAt && (
+                  <DispatchCountdown expiresAt={order.expiresAt} />
                 )}
 
                 {/* 匹配度展示 */}

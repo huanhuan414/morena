@@ -5,6 +5,7 @@ import { SmsService } from '../sms/sms.service'
 import { NotificationService } from '../notification/notification.service'
 import { OrderService } from '../order/order.service'
 import { ContentGenerationService } from '../content-generation/content-generation.service'
+import { OrderEventService } from './order-event.service'
 
 @Injectable()
 export class OrderDispatchService {
@@ -15,7 +16,8 @@ export class OrderDispatchService {
     @Inject(forwardRef(() => SmsService)) private readonly smsService: SmsService,
     @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => ContentGenerationService)) private readonly contentGenerationService: ContentGenerationService,
-    @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService
+    @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+    @Inject(forwardRef(() => OrderEventService)) private readonly eventService: OrderEventService,
   ) {}
 
   private normalizeDispatchStatus(status?: string): string {
@@ -136,6 +138,7 @@ export class OrderDispatchService {
     // 关键修复：用 INNER JOIN 确保只返回分身仍然存在的记录（LEFT JOIN 会导致已删分身仍显示）
     const requestRows = await db.query(
       `SELECT r.id as dispatch_id, r.order_id, r.avatar_id, r.status as dispatch_status,
+              r.expires_at, r.created_at as dispatch_created_at,
               o.title, o.description, o.content_type, o.platforms, o.budget,
               o.status as order_status, o.quantity_per_avatar, o.expected_quantity,
               o.created_at as order_created_at, o.target_audience, o.deadline,
@@ -483,10 +486,24 @@ async getExecutionProgress(orderId: string) {
         user_id: avatar.userId || avatar.user_id || avatar.userPhone,
         platform: 'auto',
         status: 'pending',
+        assigned_at: new Date(),
+        expires_at: new Date(Date.now() + 30 * 60 * 1000),
         created_at: new Date(),
         updated_at: new Date()
       })
       avatarIds.push(avatar.id)
+      
+      // 📌 记录事件：已派单
+      this.eventService.recordEvent({
+        orderId,
+        dispatchId: id,
+        avatarId: avatar.id,
+        userId: avatar.userId || avatar.user_id,
+        eventType: 'dispatched',
+        source: 'system',
+        avatarName: avatar.name,
+        eventData: { matchScore: avatar.matchScore, matchDetails: avatar.matchDetails },
+      }).catch(err => console.warn('[事件] dispatched 记录失败:', err.message))
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
@@ -648,6 +665,7 @@ async getExecutionProgress(orderId: string) {
     // 更新状态为 accepted
     await db.updateWhere('order_dispatch_requests', { id: request.id }, {
       status: 'accepted',
+      responded_at: new Date(),
       updated_at: new Date()
     })
     
@@ -656,6 +674,23 @@ async getExecutionProgress(orderId: string) {
       status: 'in_progress',
       updated_at: new Date()
     })
+    
+    // 📌 记录事件：分身已接单
+    let acceptedAvatarName = '分身'
+    try {
+      const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [actualAvatarId])
+      acceptedAvatarName = avatarInfo?.[0]?.name || '分身'
+    } catch {}
+    this.eventService.recordEvent({
+      orderId,
+      dispatchId: request.id,
+      avatarId: actualAvatarId,
+      userId: request.owner_user_id,
+      eventType: 'accepted',
+      source: 'avatar',
+      avatarName: acceptedAvatarName,
+      eventData: { respondedAt: new Date().toISOString() },
+    }).catch(err => console.warn('[事件] accepted 记录失败:', err.message))
     
     // 为订单所有者创建通知（分身接受了订单）
     try {
@@ -734,8 +769,24 @@ async getExecutionProgress(orderId: string) {
     // 更新状态为 declined
     await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
       status: 'declined',
+      responded_at: new Date(),
       updated_at: new Date()
     })
+    
+    // 📌 记录事件：分身婉拒
+    let declinedAvatarName = '分身'
+    try {
+      const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [request.avatar_id])
+      declinedAvatarName = avatarInfo?.[0]?.name || '分身'
+    } catch {}
+    this.eventService.recordEvent({
+      orderId: request.order_id,
+      dispatchId,
+      avatarId: request.avatar_id,
+      eventType: 'rejected',
+      source: 'avatar',
+      avatarName: declinedAvatarName,
+    }).catch(err => console.warn('[事件] rejected 记录失败:', err.message))
     
     console.log(`[declineOrder] 已婉拒: dispatchId=${dispatchId}`)
     return { success: true }
