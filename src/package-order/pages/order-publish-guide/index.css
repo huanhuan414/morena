@@ -10,9 +10,15 @@
 .guide-header {
   position: relative;
   background: linear-gradient(135deg, #8B5CF6, #6366F1, #4F46E5);
-  padding: 0 32rpx 48rpx;
+  padding: 0 32rpx;
   border-radius: 0 0 40rpx 40rpx;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20rpx;
+  align-items: center;
+  min-height: 360rpx;
 }
 
 .guide-header-deco {
@@ -51,6 +57,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  width: 100%;
 }
 
 .guide-back-btn {
@@ -85,7 +92,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 8rpx;
+  margin-top: 16rpx;
+  width: 100%;
 }
 
 .guide-header-desc Text,
