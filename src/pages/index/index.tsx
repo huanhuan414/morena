@@ -383,6 +383,9 @@ const Index: React.FC = () => {
               </View>
               <Text className="stat-value-small" style={{ color: '#6366F1' }}>{mindClones}</Text>
               <Text className="stat-label-small">我的分身</Text>
+              <Text className="stat-hint" style={{ color: mindClones > 0 ? '#6366F1' : '#94A3B8' }}>
+                {mindClones > 0 ? '管理分身' : '创建分身'}
+              </Text>
             </View>
             <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
               <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
