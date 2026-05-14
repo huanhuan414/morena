@@ -169,18 +169,18 @@ export class AuthService {
       throw new Error('不能使用自己的邀请码')
     }
     
-    // 创建邀请记录
-    await db.insert('referrals', {
-      referrer_id: inviter.id,
-      referee_id: inviteeId,
-      referral_code: referralCode,
-      status: 'completed',
-      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    })
-    
     // 发放邀请奖励（给邀请人）
     const REWARD_AMOUNT = 10 // 邀请奖励金额
     const REWARD_CREDITS = 50 // 邀请奖励积分
+    
+    // 创建邀请记录
+    await db.insert('referrals', {
+      inviter_id: inviter.id,
+      invitee_id: inviteeId,
+      status: 'completed',
+      reward_amount: REWARD_AMOUNT,
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    })
     
     // 添加收益记录
     await db.insert('earnings', {
