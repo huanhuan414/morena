@@ -161,7 +161,7 @@ export class OrderDispatchService {
         [avatarIds]
       )
       for (const sr of (skillRows || [])) {
-        const aid = sr.avatar_id
+        const aid = sr.avatarId
         if (!skillsMap.has(aid)) skillsMap.set(aid, [])
         skillsMap.get(aid)!.push(sr.skill_id)
       }
@@ -170,7 +170,7 @@ export class OrderDispatchService {
     // 计算每个请求的匹配度
     return requests.map(req => {
       // 注入 avatar_skills 表的技能数据
-      req._skillsFromTable = skillsMap.get(req.avatar_id) || []
+      req._skillsFromTable = skillsMap.get(req.avatarId) || []
       const { score, details } = this.calculateMatchScore(req, req)
       return {
         ...req,
@@ -188,16 +188,16 @@ export class OrderDispatchService {
     const details = { skillScore: 0, styleScore: 0, nicheScore: 0 }
 
     // 解析分身的 content_styles 和 niche_tags
-    const avatarStyles: string[] = this.safeParseJson(avatar.content_styles || avatar.contentStyles, [])
-    const avatarNiches: string[] = this.safeParseJson(avatar.niche_tags || avatar.nicheTags, [])
+    const avatarStyles: string[] = this.safeParseJson(avatar.contentStyles, [])
+    const avatarNiches: string[] = this.safeParseJson(avatar.nicheTags, [])
     // 优先使用 avatar_skills 表的技能数据，fallback 到 avatars.skills 字段
     const avatarSkills: string[] = (avatar._skillsFromTable && avatar._skillsFromTable.length > 0)
       ? avatar._skillsFromTable
       : this.safeParseJson(avatar.skills, [])
 
     // 解析订单的 preferred_styles 和 industry_tags
-    const orderStyles: string[] = this.safeParseJson(order.preferred_styles || order.preferredStyles, [])
-    const orderNiches: string[] = this.safeParseJson(order.industry_tags || order.industryTags, [])
+    const orderStyles: string[] = this.safeParseJson(order.preferredStyles, [])
+    const orderNiches: string[] = this.safeParseJson(order.industryTags, [])
     
     // 订单的 content_type 和 platforms 也作为技能匹配依据
     const orderContentType = (order.content_type || order.contentType || '').toLowerCase()
@@ -334,7 +334,7 @@ export class OrderDispatchService {
       id,
       order_id: orderId,
       avatar_id: avatar.id,
-      user_id: avatar.userId || avatar.user_id,
+      user_id: avatar.userId,
       platform: 'auto',
       status: 'pending',
       created_at: new Date(),
@@ -382,7 +382,7 @@ async getExecutionProgress(orderId: string) {
       id,
       order_id: orderId,
       avatar_id: avatarId,
-      user_id: avatar.userId || avatar.user_id,
+      user_id: avatar.userId,
       platform: 'manual',
       status: 'pending',
       created_at: new Date(),
@@ -428,7 +428,7 @@ async getExecutionProgress(orderId: string) {
     }
     
     // 获取订单需要的分身数量
-    const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || order.avatar_count || 1
+    const requiredCount = order.expectedQuantity || order.avatarCount || 1
     
     // 查询所有开启托管的活跃分身，并关联用户表获取手机号
     // 关键修复：确保 a.status = 'active' 过滤已删除/训练中分身
@@ -449,7 +449,7 @@ async getExecutionProgress(orderId: string) {
         [avatarIdsList]
       ) as any[]
       for (const sr of skillRows) {
-        const aid = sr.avatarId || sr.avatar_id
+        const aid = sr.avatarId || sr.avatarId
         if (!avatarSkillsMap[aid]) avatarSkillsMap[aid] = []
         avatarSkillsMap[aid].push(sr.skillId || sr.skill_id)
       }
@@ -483,7 +483,7 @@ async getExecutionProgress(orderId: string) {
         id,
         order_id: orderId,
         avatar_id: avatar.id,
-        user_id: avatar.userId || avatar.user_id || avatar.userPhone,
+        user_id: avatar.userId || avatar.userPhone,
         platform: 'auto',
         status: 'pending',
         assigned_at: new Date(),
@@ -498,7 +498,7 @@ async getExecutionProgress(orderId: string) {
         orderId,
         dispatchId: id,
         avatarId: avatar.id,
-        userId: avatar.userId || avatar.user_id,
+        userId: avatar.userId,
         eventType: 'dispatched',
         source: 'system',
         avatarName: avatar.name,
@@ -506,7 +506,7 @@ async getExecutionProgress(orderId: string) {
       }).catch(err => console.warn('[事件] dispatched 记录失败:', err.message))
       
       // 发送真实短信通知 - 使用分身所属账号的手机号
-      const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
+      const userPhone = avatar.userPhone || avatar.phone
       console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         const smsContent = `${order?.title || '内容创作'}`
@@ -546,7 +546,7 @@ async getExecutionProgress(orderId: string) {
     if (avatars.length > 0) {
       try {
         await this.notificationService.createNotification({
-          user_id: order.user_id,
+          user_id: order.userId,
           type: 'order_dispatched',
           title: '订单已分配',
           content: `已将订单"${order.title || '内容创作'}"分配给 ${avatars.length} 个分身，已发送短信通知。`,
@@ -620,7 +620,7 @@ async getExecutionProgress(orderId: string) {
         id: dispatchId,
         order_id: orderId,
         avatar_id: avatarId || null,
-        user_id: order.owner_user_id || null,
+        user_id: order.ownerUserId || null,
         platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
         status: 'pending',
       })
@@ -636,22 +636,22 @@ async getExecutionProgress(orderId: string) {
         id: dispatchId,
         order_id: orderId,
         avatar_id: avatarId || null,
-        user_id: order.owner_user_id || null,
+        user_id: order.ownerUserId || null,
         platform: Array.isArray(order.platforms) ? order.platforms[0] : (order.platforms || 'general'),
         status: 'pending',
         order_title: order.title,
-        owner_user_id: order.owner_user_id,
+        owner_user_id: order.ownerUserId,
         description: order.description,
         platforms: order.platforms,
         budget: order.budget,
-        expected_quantity: order.expected_quantity,
-        quantity_per_avatar: order.quantity_per_avatar,
-        target_audience: order.target_audience,
+        expected_quantity: order.expectedQuantity,
+        quantity_per_avatar: order.quantityPerAvatar,
+        target_audience: order.targetAudience,
       }
     }
     
     // 使用实际的 avatarId（可能是自动选择的）
-    const actualAvatarId = request.avatar_id || request.avatarId || avatarId
+    const actualAvatarId = request.avatarId || avatarId
 
     // 验证分身仍然存在且活跃（防止已删除分身接单）
     if (actualAvatarId) {
@@ -685,7 +685,7 @@ async getExecutionProgress(orderId: string) {
       orderId,
       dispatchId: request.id,
       avatarId: actualAvatarId,
-      userId: request.owner_user_id,
+      userId: request.ownerUserId,
       eventType: 'accepted',
       source: 'avatar',
       avatarName: acceptedAvatarName,
@@ -695,7 +695,7 @@ async getExecutionProgress(orderId: string) {
     // 为订单所有者创建通知（分身接受了订单）
     try {
       await this.notificationService.createNotification({
-        user_id: request.owner_user_id,
+        user_id: request.ownerUserId,
         type: 'avatar_accepted_order',
         title: '分身已接受订单',
         content: `分身"${request.avatar_name || '未知'}"已接受订单"${request.order_title || '内容创作'}"`,
@@ -776,13 +776,13 @@ async getExecutionProgress(orderId: string) {
     // 📌 记录事件：分身婉拒
     let declinedAvatarName = '分身'
     try {
-      const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [request.avatar_id])
+      const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [request.avatarId])
       declinedAvatarName = avatarInfo?.[0]?.name || '分身'
     } catch {}
     this.eventService.recordEvent({
-      orderId: request.order_id,
+      orderId: request.orderId,
       dispatchId,
-      avatarId: request.avatar_id,
+      avatarId: request.avatarId,
       eventType: 'rejected',
       source: 'avatar',
       avatarName: declinedAvatarName,
@@ -843,11 +843,11 @@ async getExecutionProgress(orderId: string) {
       let preferredStyles: string[] = []
       let industryTags: string[] = []
       try {
-        preferredStyles = order.preferred_styles 
-          ? (typeof order.preferred_styles === 'string' ? JSON.parse(order.preferred_styles) : order.preferred_styles)
+        preferredStyles = order.preferredStyles 
+          ? (typeof order.preferredStyles === 'string' ? JSON.parse(order.preferredStyles) : order.preferredStyles)
           : []
-        industryTags = order.industry_tags
-          ? (typeof order.industry_tags === 'string' ? JSON.parse(order.industry_tags) : order.industry_tags)
+        industryTags = order.industryTags
+          ? (typeof order.industryTags === 'string' ? JSON.parse(order.industryTags) : order.industryTags)
           : []
       } catch (_) {}
 
@@ -859,8 +859,8 @@ async getExecutionProgress(orderId: string) {
         orderDescription: request.description || order.description || '',
         platforms: normalizedPlatforms,
         contentType: order.content_type || 'image_text',
-        targetAudience: request.target_audience || order.target_audience || '年轻用户',
-        contentQuantity: request.quantity_per_avatar || request.expected_quantity || order.quantity_per_avatar || order.expected_quantity || 3,
+        targetAudience: request.target_audience || order.targetAudience || '年轻用户',
+        contentQuantity: request.quantityPerAvatar || request.expectedQuantity || order.quantityPerAvatar || order.expectedQuantity || 3,
         avatarName,
         avatarPersonality,
         avatarSkills,
@@ -1018,7 +1018,7 @@ async getExecutionProgress(orderId: string) {
       })
       
       // 发送真实短信 - 使用分身所属账号的手机号
-      const userPhone = avatar.userPhone || avatar.phone || avatar.user_phone
+      const userPhone = avatar.userPhone || avatar.phone
       console.log('[dispatchToAllAvatars] 分身手机号检查:', avatar.name, avatar.user_phone, avatar.phone, userPhone)
       if (userPhone) {
         try {

@@ -355,7 +355,8 @@ export class OrderEventService {
       let avatarUserId = null
       if (params.avatarId) {
         const avatars = await db.query('SELECT user_id FROM avatars WHERE id = ?', [params.avatarId])
-        avatarUserId = avatars?.[0]?.user_id
+        // 读取DB返回值 → camelCase (convertKeysToCamel自动转换)
+      avatarUserId = avatars?.[0]?.userId
       }
 
       const notificationService = new NotificationService()
@@ -367,9 +368,9 @@ export class OrderEventService {
       const notifyAvatar = ['dispatched', 'revision_requested', 'reassign', 'auto_cancel', 'cancel',
         'accepted_by_publisher'].includes(params.eventType)
 
-      if (notifyPublisher && order.user_id) {
+      if (notifyPublisher && order.userId) {
         await notificationService.createNotification({
-          user_id: order.user_id,
+          user_id: order.userId,
           type: `order_${params.eventType}`,
           title: '订单动态',
           content: title,

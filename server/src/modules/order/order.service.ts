@@ -5,6 +5,13 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
 
+/**
+ * 字段命名规则说明：
+ * - 写入DB（INSERT/UPDATE）：字段名用 snake_case（与DB列名一致）
+ * - 读取DB返回值：字段名用 camelCase（MysqlClient 的 convertKeysToCamel 自动转换）
+ * - SQL AS 别名：如 `x as avatar_id`，返回值也是 camelCase → `avatarId`
+ */
+
 @Injectable()
 export class OrderService {
   constructor(@Inject(EarningService) private readonly earningService: EarningService,
@@ -54,24 +61,13 @@ export class OrderService {
   }
 
   // 订单状态流转映射
-  /**
-   * 根据接单方（分身）整体状态同步订单状态
-   * 核心同步逻辑：
-   * - 所有内容都 completed → 订单 submitted（等待发单方确认）
-   * - 所有内容都 published/feedback_submitted → 订单 awaiting_acceptance
-   * - 所有内容都 settled/done 且所有 dispatch completed → 订单 completed
-   * - 存在任何 processing/generating_images → 订单 in_progress
-   * - 存在 accepted dispatch 但无内容记录 → 订单 in_progress
-   */
   async syncOrderStatusByContent(orderId: string): Promise<void> {
     const db = getMySQLClient()
     try {
-      // 获取该订单所有 dispatch 记录
       const dispatches = await db.query(
         'SELECT id, status FROM order_dispatch_requests WHERE order_id = ?',
         [orderId]
       )
-      // 获取该订单所有内容生成记录
       const contents = await db.query(
         'SELECT id, status FROM content_generation_requests WHERE order_id = ?',
         [orderId]
@@ -82,9 +78,8 @@ export class OrderService {
       const totalDispatches = allDispatchStatuses.length
       const totalContents = allContentStatuses.length
 
-      if (totalDispatches === 0) return // 没有分派记录，不做处理
+      if (totalDispatches === 0) return
 
-      // 判断各状态集合
       const hasPending = allDispatchStatuses.includes('pending')
       const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
       const allDispatchCompleted = allDispatchStatuses.every(s => ['completed', 'settled', 'done'].includes(s))
@@ -95,41 +90,33 @@ export class OrderService {
       const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
       const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
 
-      // 获取当前订单状态
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
       const currentStatus = currentOrder.status
 
       let newStatus: string | null = null
 
-      // 优先级从高到低判断
       if (allContentCompleted && allDispatchCompleted) {
-        // 所有内容已结算 + 所有 dispatch 完成 → 订单完成
         newStatus = 'completed'
       } else if (hasRevisionRequested) {
         newStatus = 'revision_requested'
       } else if (allContentAwaitingAcceptance) {
-        // 所有内容已进入待验收 → 订单待验收
         newStatus = 'awaiting_acceptance'
       } else if (allContentSubmitted) {
-        // 所有内容已生成或已发布 → 订单已提交
         newStatus = 'awaiting_acceptance'
         if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
           newStatus = 'submitted'
         }
       } else if (hasProcessing) {
-        // 有内容正在生成 → 订单进行中
         newStatus = 'in_progress'
       } else if (hasAccepted && !hasPending) {
-        // 有分身已接单且没有待接的 → 订单进行中
         newStatus = 'in_progress'
       } else if (hasAccepted && hasPending) {
-        // 部分接单 → 订单进行中（等待更多分身）
         newStatus = 'pending_acceptance'
       }
 
       if (newStatus && newStatus !== currentStatus) {
-        // 跳过状态转换校验，直接更新
+        // 写入DB → snake_case
         const payload: Record<string, any> = {
           status: newStatus,
           updated_at: new Date()
@@ -176,9 +163,8 @@ export class OrderService {
     const id = crypto.randomUUID()
     console.log('[OrderService] 创建订单，ID:', id, '数据:', orderData)
     
-    const avatarCount = orderData.avatar_count || orderData.avatarCount || orderData.requiredAvatars || 1
+    const avatarCount = orderData.avatarCount || orderData.avatar_count || orderData.requiredAvatars || 1
     
-    // 将优先级字符串转换为整数
     const priorityMap: Record<string, number> = {
       'low': 1,
       'normal': 2,
@@ -186,20 +172,21 @@ export class OrderService {
     }
     const priorityValue = priorityMap[orderData.priority] || priorityMap['normal']
     
-    const budget = orderData.total_price || orderData.budget || 0
+    const budget = orderData.totalPrice || orderData.total_price || orderData.budget || 0
 
+    // 写入DB → snake_case
     const insertData: Record<string, any> = {
       id,
       user_id: userId,
       title: orderData.title,
       description: orderData.description || '',
-      content_type: orderData.content_type || orderData.contentType || 'text',
+      content_type: orderData.contentType || orderData.content_type || 'text',
       platforms: JSON.stringify(orderData.platforms || []),
       requirements: JSON.stringify(orderData.requirements || {}),
       budget,
       status: 'pending_payment',
       expected_quantity: avatarCount,
-      quantity_per_avatar: orderData.quantity_per_avatar || orderData.quantityPerAvatar || 1,
+      quantity_per_avatar: orderData.quantityPerAvatar || orderData.quantity_per_avatar || 1,
       is_paid: 0,
       target_audience: orderData.targetAudience || orderData.target_audience || '',
       priority: priorityValue,
@@ -223,7 +210,6 @@ export class OrderService {
       throw err
     })
 
-    // 📌 记录事件：订单已创建
     try {
       const { OrderEventService } = await import('../order-dispatch/order-event.service')
       const eventService = new OrderEventService()
@@ -234,13 +220,13 @@ export class OrderService {
         source: 'publisher',
         visibility: 'both',
         title: '订单已创建',
-        eventData: { title: orderData.title, budget, contentType: orderData.content_type },
+        eventData: { title: orderData.title, budget, contentType: orderData.contentType || orderData.content_type },
       }).catch(err => console.warn('[事件] created 记录失败:', err.message))
     } catch (err) {
       console.warn('[OrderService] 事件记录跳过:', err.message)
     }
 
-    // 📌 创建微信支付订单（需要openid）
+    // 创建微信支付订单
     let paymentParams = null
     const openid = orderData.openid
     if (openid && budget > 0) {
@@ -250,7 +236,7 @@ export class OrderService {
         const payResult = await wechatPayService.createMiniProgramOrder({
           userId,
           openid,
-          planId: id, // 订单支付场景下 planId 存 orderId
+          planId: id,
           description: `Morena AI 任务: ${orderData.title || '发单支付'}`,
           amount: Number(budget),
           orderType: 'order',
@@ -267,7 +253,6 @@ export class OrderService {
         console.log('[OrderService] 支付订单创建成功:', payResult.outTradeNo)
       } catch (err) {
         console.error('[OrderService] 创建支付订单失败:', err.message)
-        // 支付订单创建失败不影响主订单，用户可以稍后重新支付
       }
     }
 
@@ -290,8 +275,10 @@ export class OrderService {
     if (!orderRows || orderRows.length === 0) {
       return null
     }
+    // 读取DB返回值 → camelCase
     const order = orderRows[0]
     
+    // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
       `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.created_at,
               a.name as nickname, a.avatar_url
@@ -312,14 +299,14 @@ export class OrderService {
 
     const latestProcessingMap = new Map<string, any>()
     for (const row of processingRows || []) {
-      const avatarId = row.avatarId || row.avatar_id
+      const avatarId = row.avatarId
       if (avatarId && !latestProcessingMap.has(avatarId)) {
         latestProcessingMap.set(avatarId, row)
       }
     }
     
     const avatarStats = (avatarRows || []).map((row: any) => {
-      const avatarId = row.avatarId || row.avatar_id
+      const avatarId = row.avatarId
       const processing = latestProcessingMap.get(avatarId)
       const normalizedStatus = processing
         ? this.normalizeContentStatus(processing?.status)
@@ -331,11 +318,11 @@ export class OrderService {
         avatarId,
         avatarName: row.nickname || '未知分身',
         nickname: row.nickname || '未知分身',
-        avatarUrl: row.avatarUrl || row.avatar_url || '',
+        avatarUrl: row.avatarUrl,
         platform: row.platform || 'unknown',
         status: normalizedStatus,
-        publishFeedback: this.safeParseJson(processing?.publishFeedback || processing?.publish_feedback, {}),
-        createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
+        publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
       }
     })
 
@@ -354,16 +341,16 @@ export class OrderService {
       avatarStats
     }
     
-    const createdAt = order.created_at instanceof Date 
-      ? order.created_at.toISOString() 
-      : String(order.created_at)
+    const createdAt = order.createdAt instanceof Date 
+      ? order.createdAt.toISOString() 
+      : String(order.createdAt)
     
     return {
       ...order,
       id: order.id,
       title: order.title,
       description: order.description,
-      contentType: order.content_type,
+      contentType: order.contentType,
       platforms: typeof order.platforms === 'string' 
         ? JSON.parse(order.platforms) 
         : (order.platforms || []),
@@ -372,7 +359,7 @@ export class OrderService {
         : (order.requirements || {}),
       budget: order.budget,
       status: order.status,
-      avatarCount: order.avatarCount || order.avatar_count || 1,
+      avatarCount: order.avatarCount || 1,
       avatarStats,
       summary_stats: summaryStats,
       createdAt
@@ -407,11 +394,12 @@ export class OrderService {
         orderIds
       )
       for (const row of countRows) {
-        dispatchCounts[row.order_id] = row.count
+        // order_id → orderId (camelCase)
+        dispatchCounts[row.orderId] = row.count
       }
     }
     
-    // 获取每个订单的分身派单摘要（名字+状态）
+    // 获取每个订单的分身派单摘要
     let dispatchSummaries: Record<string, any[]> = {}
     if (orderIds.length > 0) {
       const placeholders = orderIds.map(() => '?').join(', ')
@@ -425,14 +413,15 @@ export class OrderService {
         orderIds
       )
       for (const row of dispatchRows || []) {
-        if (!dispatchSummaries[row.order_id]) dispatchSummaries[row.order_id] = []
-        dispatchSummaries[row.order_id].push({
-          avatarId: row.avatar_id,
-          avatarName: row.avatar_name,
-          avatarUrl: row.avatar_url,
+        // SQL别名 order_id → orderId, avatar_id → avatarId
+        if (!dispatchSummaries[row.orderId]) dispatchSummaries[row.orderId] = []
+        dispatchSummaries[row.orderId].push({
+          avatarId: row.avatarId,
+          avatarName: row.avatarName,
+          avatarUrl: row.avatarUrl,
           status: row.status,
-          respondedAt: row.responded_at,
-          expiresAt: row.expires_at,
+          respondedAt: row.respondedAt,
+          expiresAt: row.expiresAt,
         })
       }
     }
@@ -453,12 +442,12 @@ export class OrderService {
         [...orderIds, ...orderIds]
       )
       for (const row of eventRows || []) {
-        latestEvents[row.order_id] = {
+        latestEvents[row.orderId] = {
           title: row.title,
-          eventType: row.event_type,
+          eventType: row.eventType,
           color: row.color,
           icon: row.icon,
-          createdAt: row.created_at,
+          createdAt: row.createdAt,
         }
       }
     }
@@ -466,43 +455,26 @@ export class OrderService {
     return (rows || []).map((row: any) => {
       let platforms = row.platforms
       if (typeof platforms === 'string') {
-        try {
-          platforms = JSON.parse(platforms)
-        } catch {
-          platforms = []
-        }
+        try { platforms = JSON.parse(platforms) } catch { platforms = [] }
       }
       
       let requirements = row.requirements
       if (typeof requirements === 'string') {
-        try {
-          requirements = JSON.parse(requirements)
-        } catch {
-          requirements = {}
-        }
-      }
-      
-      let avatarStats = row.avatar_stats
-      if (typeof avatarStats === 'string') {
-        try {
-          avatarStats = JSON.parse(avatarStats)
-        } catch {
-          avatarStats = []
-        }
+        try { requirements = JSON.parse(requirements) } catch { requirements = {} }
       }
       
       let createdAt = ''
-      if (row.created_at) {
-        if (row.created_at instanceof Date) {
-          createdAt = row.created_at.toISOString()
-        } else if (typeof row.created_at === 'string' && row.created_at.length > 0) {
+      if (row.createdAt) {
+        if (row.createdAt instanceof Date) {
+          createdAt = row.createdAt.toISOString()
+        } else if (typeof row.createdAt === 'string' && row.createdAt.length > 0) {
           try {
-            const date = new Date(row.created_at)
+            const date = new Date(row.createdAt)
             if (!Number.isNaN(date.getTime())) {
               createdAt = date.toISOString()
             }
           } catch {
-            createdAt = row.created_at
+            createdAt = row.createdAt
           }
         }
       }
@@ -524,7 +496,7 @@ export class OrderService {
         status: row.status,
         avatarCount: needAvatarCount,
         dispatchedCount,
-        avatarStats: avatarStats || [],
+        avatarStats: row.avatarStats || [],
         isPaid: row.isPaid,
         createdAt,
         dispatchSummary: dispatchSummaries[row.id] || [],
@@ -638,22 +610,23 @@ export class OrderService {
     )
     const total = Number(totalRows?.[0]?.total || 0)
 
+    // 读取DB返回值 → camelCase
     const items = (rows || []).map((row: any) => ({
       id: row.id,
-      userId: row.userId || row.user_id,
-      avatarId: row.avatarId || row.avatar_id,
+      userId: row.userId,
+      avatarId: row.avatarId,
       title: row.title,
       description: row.description || '',
-      contentType: row.contentType || row.content_type || 'text',
+      contentType: row.contentType,
       platforms: this.safeParseJson<any[]>(row.platforms, []),
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
       budget: Number(row.budget || 0),
       status: row.status,
-      avatarCount: row.expectedQuantity || row.avatarCount || row.expected_quantity || row.avatar_count || 1,
-      quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
-      isPaid: row.isPaid ?? row.is_paid ?? 0,
-      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
-      updatedAt: row.updatedAt || row.updated_at || null
+      avatarCount: row.expectedQuantity || row.avatarCount || 1,
+      quantityPerAvatar: row.quantityPerAvatar || 1,
+      isPaid: row.isPaid ?? 0,
+      createdAt: row.createdAt || new Date().toISOString(),
+      updatedAt: row.updatedAt || null
     }))
 
     return {
@@ -678,13 +651,14 @@ export class OrderService {
     const row = rows?.[0]
     if (!row) return null
 
+    // 读取DB返回值 → camelCase
     return {
       id: row.id,
-      orderId: row.orderId || row.order_id,
-      avatarId: row.avatarId || row.avatar_id,
+      orderId: row.orderId,
+      avatarId: row.avatarId,
       result: this.safeParseJson<Record<string, any>>(row.result, {}),
-      createdAt: row.createdAt || row.created_at,
-      updatedAt: row.updatedAt || row.updated_at
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
     }
   }
 
@@ -692,8 +666,8 @@ export class OrderService {
     const db = getMySQLClient()
     const rows = await db.query(
       `SELECT
-         AVG(CASE WHEN customer_rating IS NOT NULL THEN customer_rating END) as average_rating,
-         COUNT(CASE WHEN customer_rating IS NOT NULL THEN 1 END) as rating_count
+         AVG(CASE WHEN customer_rating IS NOT NULL THEN customer_rating END) as averageRating,
+         COUNT(CASE WHEN customer_rating IS NOT NULL THEN 1 END) as ratingCount
        FROM order_results
        WHERE order_id = ?`,
       [orderId]
@@ -701,8 +675,8 @@ export class OrderService {
 
     const data = rows?.[0] || {}
     return {
-      averageRating: Number(data.averageRating || data.average_rating || 0),
-      ratingCount: Number(data.ratingCount || data.rating_count || 0)
+      averageRating: Number(data.averageRating || 0),
+      ratingCount: Number(data.ratingCount || 0)
     }
   }
 
@@ -719,6 +693,7 @@ export class OrderService {
       throw new Error(`无法从状态 "${currentStatus}" 转换到 "${status}"`)
     }
 
+    // 写入DB → snake_case
     const payload: Record<string, any> = {
       status,
       updated_at: new Date()
@@ -756,7 +731,8 @@ export class OrderService {
       throw new Error('订单不存在')
     }
 
-    const isPaid = Number(order.isPaid ?? order.is_paid ?? 0)
+    // 读取DB返回值 → camelCase
+    const isPaid = Number(order.isPaid ?? 0)
     if (order.status === 'pending_payment' && isPaid !== 1) {
       throw new Error('订单未支付，暂不可接单')
     }
@@ -766,6 +742,7 @@ export class OrderService {
 
   async submitOrderResult(orderId: string, result: Record<string, any>) {
     const db = getMySQLClient()
+    // 写入DB → snake_case
     const payload = {
       result: JSON.stringify(result || {}),
       status: 'submitted',
@@ -797,13 +774,15 @@ export class OrderService {
       throw new Error('订单已支付')
     }
 
+    // 写入DB → snake_case
     await db.query(
       'UPDATE orders SET is_paid = 1, status = ?, updated_at = ? WHERE id = ?',
       ['open', new Date(), orderId]
     )
 
+    // 读取DB返回值 → camelCase (order.userId)
     await this.notificationService.createNotification({
-      user_id: order.user_id,
+      user_id: order.userId,
       type: 'order_paid',
       title: '订单支付成功',
       content: `订单"${order.title}"支付成功，正在分配分身...`,
@@ -826,8 +805,9 @@ export class OrderService {
     const order = await this.getOrderById(orderId)
     if (!order) return
 
+    // 读取DB返回值 → camelCase (order.userId)
     await this.notificationService.createNotification({
-      user_id: order.user_id,
+      user_id: order.userId,
       type: 'order_payment_failed',
       title: '订单支付失败',
       content: `订单"${order.title}"支付失败: ${reason}`,
@@ -837,19 +817,19 @@ export class OrderService {
 
   /**
    * 重新支付（支付取消/失败/超时后再次发起）
-   * 先关闭旧的微信支付单（如果有），再创建新的支付单
    */
   async repayOrder(orderId: string, userId: string, openid: string) {
     const order = await this.getOrderById(orderId)
     if (!order) {
       throw new Error('订单不存在')
     }
-    const orderUserId = order.userId || order.user_id
-    if (orderUserId !== userId) {
-      console.error('[repayOrder] 用户ID不匹配:', { orderUserId, requestUserId: userId, orderKeys: Object.keys(order) })
+
+    // 读取DB返回值 → camelCase
+    if (order.userId !== userId) {
+      console.error('[repayOrder] 用户ID不匹配:', { orderUserId: order.userId, requestUserId: userId })
       throw new Error('无权操作此订单')
     }
-    if (Number(order.isPaid ?? order.is_paid ?? 0) === 1) {
+    if (order.isPaid === 1) {
       throw new Error('订单已支付，无需重复支付')
     }
     const budget = Number(order.budget || 0)
@@ -869,8 +849,9 @@ export class OrderService {
         const wechatPayService = new WechatPayService()
         for (const p of pendingPayments) {
           try {
-            await wechatPayService.closeOrder(p.out_trade_no)
-            console.log('[repayOrder] 关闭旧支付单:', p.out_trade_no)
+            // out_trade_no → outTradeNo (camelCase)
+            await wechatPayService.closeOrder(p.outTradeNo)
+            console.log('[repayOrder] 关闭旧支付单:', p.outTradeNo)
           } catch (e) {
             console.warn('[repayOrder] 关闭旧支付单失败(忽略):', e.message)
           }
@@ -922,8 +903,9 @@ export class OrderService {
 
     const message = statusMessages[status] || `订单状态变更为: ${status}`
 
+    // notificationService.createNotification 接收 snake_case 字段（它内部自己处理）
     await this.notificationService.createNotification({
-      user_id: order.user_id,
+      user_id: order.userId,
       type: `order_${status}`,
       title: '订单状态变更',
       content: message,
@@ -946,9 +928,10 @@ export class OrderService {
     const participantCount = dispatchRequests.length || 1
     const amountPerAvatar = totalAmount / participantCount
 
+    // 读取DB返回值 → camelCase
     const participants = dispatchRequests.map((request: any) => ({
-      user_id: request.user_id || request.userId,
-      avatar_id: request.avatar_id || request.avatarId,
+      user_id: request.userId,
+      avatar_id: request.avatarId,
       amount: amountPerAvatar
     }))
 
@@ -972,14 +955,15 @@ export class OrderService {
     }
 
     const id = crypto.randomUUID()
+    // 写入DB → snake_case（order.userId/order.avatarId 是从getOrderById读取的camelCase值）
     await db.query(
       `INSERT INTO order_results (id, order_id, avatar_id, user_id, result, customer_rating, customer_comment, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         orderId,
-        order.avatar_id,
-        order.user_id,
+        order.avatarId,
+        order.userId,
         JSON.stringify({ rating, comment }),
         rating,
         comment || '',

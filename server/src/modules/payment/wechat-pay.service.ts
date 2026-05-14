@@ -464,11 +464,12 @@ export class WechatPayService {
     }
 
     const plan = plans[0];
-    const durationDays = plan.durationDays || plan.duration_days || 30;
+    // 读取DB返回值 → camelCase (convertKeysToCamel自动转换)
+    const durationDays = plan.durationDays || 30;
     const now = new Date();
     const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    const maxAvatars = plan.maxAvatars || plan.max_avatars || 1;
-    const canReceiveOrders = plan.canReceiveOrders || plan.can_receive_orders || 0;
+    const maxAvatars = plan.maxAvatars || 1;
+    const canReceiveOrders = plan.canReceiveOrders || 0;
 
     const existing = await db.query(
       `SELECT * FROM user_subscriptions WHERE user_id = ? AND status = 'active' ORDER BY end_date DESC LIMIT 1`,
@@ -476,7 +477,7 @@ export class WechatPayService {
     );
 
     if (existing && existing.length > 0) {
-      const currentEnd = new Date(existing[0].endDate || existing[0].end_date);
+      const currentEnd = new Date(existing[0].endDate);
       const newEndDate = currentEnd > now
         ? new Date(currentEnd.getTime() + durationDays * 24 * 60 * 60 * 1000)
         : endDate;
