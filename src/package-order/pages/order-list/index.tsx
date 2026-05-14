@@ -8,7 +8,7 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import {
   ArrowLeft, Plus, Clock, LoaderCircle, Users,
   CircleCheck, CircleX, TriangleAlert, ChevronRight,
-  Wallet, FileText, Video, Zap, Trash2, CreditCard
+  Wallet, FileText, Video, Zap, Trash2, CreditCard, Camera
 } from 'lucide-react-taro'
 
 // ===== 状态映射（与 DB ENUM 对齐） =====
@@ -34,9 +34,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
 // 内容类型图标
 const CONTENT_TYPE_ICON: Record<string, any> = {
   text: FileText,
-  image_text: Image,
+  image_text: Camera,
   article: FileText,
-  image: Image,
+  image: Camera,
   video: Video,
 }
 
