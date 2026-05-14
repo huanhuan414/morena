@@ -456,7 +456,10 @@ export default function OrderPublishGuide() {
           </View>
           <View className="guide-header-placeholder" />
         </View>
-        <Text className="guide-header-desc">按步骤发布内容到目标平台</Text>
+        <View className="guide-header-desc">
+          <Text className="block">按步骤发布内容</Text>
+          <Text className="block">到目标平台</Text>
+        </View>
       </View>
 
       <ScrollView className="guide-scroll" scrollY>
