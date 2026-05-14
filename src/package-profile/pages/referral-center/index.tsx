@@ -103,6 +103,22 @@ export default function ReferralCenter() {
     return map[status] || '#9CA3AF'
   }
 
+  const formatTime = (time) => {
+    if (!time) return ''
+    try {
+      const date = new Date(time)
+      if (isNaN(date.getTime())) return time
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
+    } catch {
+      return time
+    }
+  }
+
   return (
     <View className="ref-page">
       {/* 头部渐变 */}
@@ -265,7 +281,7 @@ export default function ReferralCenter() {
                   </View>
                   <View className="ref-list-info">
                     <Text className="ref-list-name">{item.referredName || item.referred_name || `用户${idx + 1}`}</Text>
-                    <Text className="ref-list-time">{item.createdAt || item.created_at || ''}</Text>
+                    <Text className="ref-list-time">{formatTime(item.createdAt || item.created_at)}</Text>
                   </View>
                 </View>
                 <View className="ref-list-right">
