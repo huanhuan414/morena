@@ -121,15 +121,18 @@ export class PaymentController {
       const result = await this.wechatPayService.handlePaymentNotify(rawBody, req.headers);
 
       // V2回调需要返回XML格式的应答
-      if (typeof result === 'string' && result.includes('SUCCESS')) {
+      if (typeof result === 'string') {
         res.setHeader('Content-Type', 'application/xml');
         return res.send(result);
-      } else if (result.code === 'SUCCESS') {
-        res.setHeader('Content-Type', 'application/xml');
-        return res.send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
       } else {
-        res.setHeader('Content-Type', 'application/xml');
-        return res.send(`<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[${result.message || '处理失败'}]]></return_msg></xml>`);
+        // result 是 { code, message } 对象
+        if (result.code === 'SUCCESS') {
+          res.setHeader('Content-Type', 'application/xml');
+          return res.send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
+        } else {
+          res.setHeader('Content-Type', 'application/xml');
+          return res.send(`<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[${(result as any).message || '处理失败'}]]></return_msg></xml>`);
+        }
       }
     } catch (error) {
       this.logger.error(`处理回调异常: ${error.message}`, error.stack);
