@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { OrderTimeoutService } from './order-timeout.service'
 import { Module, forwardRef } from '@nestjs/common'
 import { OrderDispatchController } from './order-dispatch.controller'
 import { OrderDispatchService } from './order-dispatch.service'
@@ -21,6 +22,7 @@ import { OrderModule } from '../order/order.module'
   controllers: [OrderDispatchController],
   providers: [
     OrderDispatchService,
+    OrderTimeoutService,
     { provide: 'ORDER_DISPATCH_SERVICE', useClass: OrderDispatchService }
   ],
   exports: [OrderDispatchService, 'ORDER_DISPATCH_SERVICE']

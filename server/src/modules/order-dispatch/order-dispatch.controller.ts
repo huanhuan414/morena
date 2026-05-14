@@ -1,10 +1,14 @@
 // @ts-nocheck
 import { Controller, Get, Post, Put, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { OrderDispatchService } from './order-dispatch.service'
+import { OrderTimeoutService } from './order-timeout.service'
 
 @Controller('order-dispatch')
 export class OrderDispatchController {
-  constructor(@Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService) {}
+  constructor(
+    @Inject('ORDER_DISPATCH_SERVICE') private readonly dispatchService: OrderDispatchService,
+    @Inject(OrderTimeoutService) private readonly timeoutService: OrderTimeoutService,
+  ) {}
 
   /**
    * 触发订单分配
@@ -269,6 +273,49 @@ export class OrderDispatchController {
       code: 200,
       data: result,
       message: `已发送 ${result.count} 条通知`
+    }
+  }
+
+  /**
+   * 手动触发超时检查
+   */
+  @Post('timeout/check')
+  async checkTimeouts() {
+    const result = await this.timeoutService.handleTimeoutOrders()
+    return {
+      code: 200,
+      data: result,
+      message: `处理了 ${result.total} 个超时订单`
+    }
+  }
+
+  /**
+   * 手动重新分配超时订单
+   */
+  @Post(':orderId/reassign')
+  async reassignOrder(@Param('orderId') orderId: string) {
+    const result = await this.timeoutService.reassignOrder(orderId)
+    return {
+      code: 200,
+      data: result,
+      message: result.message || '重新分配完成'
+    }
+  }
+
+  /**
+   * 获取订单超时日志
+   */
+  @Get(':orderId/timeout-logs')
+  async getTimeoutLogs(@Param('orderId') orderId: string) {
+    const mysqlClient = require('../../storage/database/mysql-client').getMySQLClient()
+    const rows = await mysqlClient.query(
+      'SELECT * FROM order_timeout_logs WHERE order_id = ? ORDER BY created_at DESC',
+      [orderId]
+    )
+    return {
+      code: 200,
+      data: rows,
+      message: '获取超时日志成功'
     }
   }
 }

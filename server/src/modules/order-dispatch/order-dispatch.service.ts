@@ -90,6 +90,7 @@ export class OrderDispatchService {
     const db = getMySQLClient()
     
     const id = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30分钟内必须接单
     await db.insert('order_dispatch_requests', {
       id,
       order_id: data.order_id,
@@ -97,6 +98,7 @@ export class OrderDispatchService {
       user_id: data.user_id,
       platform: data.platform,
       status: 'pending',
+      expires_at: expiresAt,
       created_at: new Date(),
       updated_at: new Date()
     })
@@ -109,13 +111,21 @@ export class OrderDispatchService {
     return await db.query('order_dispatch_requests', { order_id: orderId }) as any
   }
 
-  async updateDispatchStatus(dispatchId: string, status: string) {
+  async updateDispatchStatus(dispatchId: string, status: string, rejectReason?: string) {
     const db = getMySQLClient()
     
-    await db.updateWhere('order_dispatch_requests', { id: dispatchId }, {
+    const updateData: Record<string, any> = {
       status,
       updated_at: new Date()
-    })
+    }
+    if (status === 'accepted' || status === 'rejected') {
+      updateData.responded_at = new Date()
+    }
+    if (rejectReason) {
+      updateData.reject_reason = rejectReason
+    }
+    
+    await db.updateWhere('order_dispatch_requests', { id: dispatchId }, updateData)
     
     return { success: true }
   }

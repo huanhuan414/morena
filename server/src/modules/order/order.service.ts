@@ -204,6 +204,10 @@ export class OrderService {
       priority: priorityValue,
       preferred_styles: JSON.stringify(orderData.preferredStyles || orderData.preferred_styles || []),
       industry_tags: JSON.stringify(orderData.industryTags || orderData.industry_tags || []),
+      deadline_at: new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      content_deadline_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      auto_cancel_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      max_retries: 3,
     }
 
     const fields = Object.keys(insertData).join(', ')

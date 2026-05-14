@@ -177,6 +177,96 @@ export class ContentGenerationController {
   }
 
   /**
+   * 提交发布凭证（分身发布内容后上传截图/URL作为凭证）
+   */
+  @Post('content/:contentId/publish-proof')
+  async submitPublishProof(
+    @Param('contentId') contentId: string,
+    @Body() body: { publishUrl?: string; publishScreenshot?: string }
+  ) {
+    try {
+      const db = await getMySQLClient()
+      
+      // 更新内容的发布凭证和验证状态
+      await db.query(
+        `UPDATE content_generation_requests 
+         SET publish_url = ?, publish_screenshot = ?, verification_status = 'pending', verified_at = NULL
+         WHERE id = ?`,
+        [body.publishUrl || null, body.publishScreenshot || null, contentId]
+      )
+
+      // 同时更新关联订单的发布凭证
+      const [contents]: any = await db.query(
+        'SELECT order_id FROM content_generation_requests WHERE id = ?',
+        [contentId]
+      )
+      if (contents && contents.length > 0 && contents[0].orderId) {
+        await db.query(
+          `UPDATE orders SET publish_proof_url = ?, publish_verified = 0 WHERE id = ?`,
+          [body.publishScreenshot || body.publishUrl || null, contents[0].orderId]
+        )
+      }
+
+      console.log(`[发布凭证] contentId=${contentId}, publishUrl=${body.publishUrl}`)
+      return { code: 200, message: '发布凭证提交成功，等待验证' }
+    } catch (error: any) {
+      return { code: 500, message: '提交失败', error: error.message }
+    }
+  }
+
+  /**
+   * 验证发布结果（用户确认/驳回发布）
+   */
+  @Post('content/:contentId/verify')
+  async verifyPublish(
+    @Param('contentId') contentId: string,
+    @Body() body: { verified: boolean; reason?: string }
+  ) {
+    try {
+      const db = await getMySQLClient()
+      const verificationStatus = body.verified ? 'verified' : 'failed'
+
+      await db.query(
+        `UPDATE content_generation_requests 
+         SET verification_status = ?, verified_at = NOW()
+         WHERE id = ?`,
+        [verificationStatus, contentId]
+      )
+
+      // 如果验证通过，更新关联订单
+      const [contents]: any = await db.query(
+        'SELECT order_id FROM content_generation_requests WHERE id = ?',
+        [contentId]
+      )
+      if (contents && contents.length > 0 && contents[0].orderId) {
+        if (body.verified) {
+          await db.query(
+            `UPDATE orders SET publish_verified = 1, status = 'completed' WHERE id = ?`,
+            [contents[0].orderId]
+          )
+        } else {
+          // 验证失败，标记需要重新发布
+          await db.query(
+            `UPDATE orders SET publish_verified = 0, status = 'publish_failed' WHERE id = ?`,
+            [contents[0].orderId]
+          )
+          // 记录超时日志
+          await db.query(
+            `INSERT INTO order_timeout_logs (id, order_id, event_type, old_status, new_status, notes)
+             VALUES (UUID(), ?, 'publish_timeout', 'published', 'publish_failed', ?)`,
+            [contents[0].orderId, body.reason || '发布验证失败']
+          )
+        }
+      }
+
+      console.log(`[发布验证] contentId=${contentId}, verified=${body.verified}`)
+      return { code: 200, message: body.verified ? '验证通过' : '验证失败，需重新发布' }
+    } catch (error: any) {
+      return { code: 500, message: '验证失败', error: error.message }
+    }
+  }
+
+  /**
    * 清除订单的内容生成记录（重新生成时调用）
    */
   @Delete('clear/:orderId')

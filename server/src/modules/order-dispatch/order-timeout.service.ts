@@ -1,0 +1,479 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { getMySQLClient } from '../../storage/database/mysql-client';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * 订单超时处理服务
+ * 
+ * 处理三大核心问题：
+ * 1. 分身不接单 → 派单超时自动重新分配
+ * 2. 分身接单后不产出 → 内容超时自动取消并重新分配
+ * 3. 假发布 → 发布验证机制
+ */
+@Injectable()
+export class OrderTimeoutService {
+  private readonly logger = new Logger(OrderTimeoutService.name);
+
+  // 超时配置（秒）
+  private readonly DISPATCH_TIMEOUT = 30 * 60;      // 30分钟未接单视为超时
+  private readonly CONTENT_TIMEOUT = 2 * 3600;       // 2小时未产出内容视为超时
+  private readonly PUBLISH_TIMEOUT = 24 * 3600;      // 24小时未发布视为超时
+  private readonly MAX_RETRIES = 3;                   // 最大重试派单次数
+
+  /**
+   * 定时任务：每分钟检查超时订单
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleTimeoutOrders() {
+    const result = { dispatch: 0, content: 0, publish: 0, total: 0 }
+    try {
+      result.dispatch = await this.checkDispatchTimeouts();
+      result.content = await this.checkContentTimeouts();
+      result.publish = await this.checkPublishTimeouts();
+      result.total = result.dispatch + result.content + result.publish
+    } catch (error) {
+      this.logger.error(`定时任务执行失败: ${error.message}`);
+    }
+    return result
+  }
+
+  /**
+   * 1. 检查派单超时（分身不接单）
+   * 流程：pending派单超过30分钟 → 标记expired → 自动重新派单给其他分身
+   */
+  private async checkDispatchTimeouts() {
+    const client = await getMySQLClient();
+    const timeoutTime = new Date(Date.now() - this.DISPATCH_TIMEOUT * 1000);
+
+    // 查找超时的pending派单
+    const dispatches = await client.query(
+      `SELECT od.id, od.order_id, od.avatar_id, o.status as order_status
+       FROM order_dispatch_requests od
+       JOIN orders o ON od.order_id = o.id
+       WHERE od.status = 'pending' 
+       AND od.assigned_at < ?
+       AND o.status IN ('pending_acceptance', 'awaiting_acceptance')`,
+      [timeoutTime]
+    );
+
+    if (!dispatches || dispatches.length === 0) return 0;
+
+    this.logger.log(`发现 ${dispatches.length} 个派单超时`);
+
+    for (const dispatch of dispatches) {
+      await this.handleDispatchTimeout(dispatch);
+    }
+    return dispatches.length
+  }
+
+  /**
+   * 处理单个派单超时
+   */
+  private async handleDispatchTimeout(dispatch: any) {
+    const client = await getMySQLClient();
+    const logId = uuidv4();
+
+    try {
+      await client.query('START TRANSACTION');
+
+      // 1. 标记当前派单为expired
+      await client.query(
+        `UPDATE order_dispatch_requests SET status = 'expired', responded_at = NOW() WHERE id = ? AND status = 'pending'`,
+        [dispatch.id]
+      );
+
+      // 2. 检查订单重试次数
+      const orders = await client.query(
+        `SELECT retry_count, max_retries, status FROM orders WHERE id = ?`,
+        [dispatch.order_id]
+      );
+
+      const order = orders?.[0];
+      if (!order) {
+        await client.query('ROLLBACK');
+        return;
+      }
+
+      if (order.retry_count >= (order.max_retries || this.MAX_RETRIES)) {
+        // 超过最大重试次数，自动取消订单
+        await client.query(
+          `UPDATE orders SET status = 'auto_cancelled', auto_cancel_at = NOW() WHERE id = ?`,
+          [dispatch.order_id]
+        );
+
+        // 记录日志
+        await client.query(
+          `INSERT INTO order_timeout_logs (id, order_id, dispatch_id, avatar_id, event_type, old_status, new_status, notes)
+           VALUES (?, ?, ?, ?, 'auto_cancel', ?, 'auto_cancelled', ?)`,
+          [logId, dispatch.order_id, dispatch.id, dispatch.avatar_id, order.status,
+           `已重试${order.retry_count}次，无分身接单，自动取消`]
+        );
+
+        this.logger.warn(`订单 ${dispatch.order_id} 已自动取消（重试${order.retry_count}次无人接单）`);
+      } else {
+        // 增加重试次数，尝试重新派单
+        await client.query(
+          `UPDATE orders SET retry_count = retry_count + 1, status = 'awaiting_acceptance' WHERE id = ?`,
+          [dispatch.order_id]
+        );
+
+        // 记录日志
+        await client.query(
+          `INSERT INTO order_timeout_logs (id, order_id, dispatch_id, avatar_id, event_type, old_status, new_status, notes)
+           VALUES (?, ?, ?, ?, 'dispatch_timeout', ?, 'awaiting_acceptance', ?)`,
+          [logId, dispatch.order_id, dispatch.id, dispatch.avatar_id, order.status,
+           `分身${dispatch.avatar_id}超时未接单，准备重新派单(第${order.retry_count + 1}次)`]
+        );
+
+        this.logger.log(`订单 ${dispatch.order_id} 派单超时，准备重新派单(第${order.retry_count + 1}次)`);
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error(`处理派单超时失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 2. 检查内容生成超时（分身接单但不产出）
+   * 流程：in_progress超过2小时无内容 → 警告通知 → 超时取消并重新派单
+   */
+  private async checkContentTimeouts() {
+    const client = await getMySQLClient();
+    const timeoutTime = new Date(Date.now() - this.CONTENT_TIMEOUT * 1000);
+
+    // 查找内容生成超时的订单
+    const orders = await client.query(
+      `SELECT o.id, o.status, o.assigned_to, o.retry_count, o.max_retries,
+              (SELECT COUNT(*) FROM generated_content gc WHERE gc.order_id = o.id AND gc.status = 'completed') as completed_content
+       FROM orders o
+       WHERE o.status = 'in_progress'
+       AND o.updated_at < ?
+       AND NOT EXISTS (
+         SELECT 1 FROM generated_content gc 
+         WHERE gc.order_id = o.id AND gc.status = 'completed'
+       )`,
+      [timeoutTime]
+    );
+
+    if (!orders || orders.length === 0) return 0;
+
+    this.logger.log(`发现 ${orders.length} 个内容生成超时订单`);
+
+    for (const order of orders) {
+      await this.handleContentTimeout(order);
+    }
+  }
+
+  /**
+   * 处理内容生成超时
+   */
+  private async handleContentTimeout(order: any) {
+    const client = await getMySQLClient();
+    const logId = uuidv4();
+
+    try {
+      await client.query('START TRANSACTION');
+
+      // 检查是否有正在进行的生成任务
+      const processing = await client.query(
+        `SELECT COUNT(*) as cnt FROM generated_content WHERE order_id = ? AND status = 'processing'`,
+        [order.id]
+      );
+
+      if (processing?.[0]?.cnt > 0) {
+        // 还有正在处理的任务，给30分钟宽限
+        this.logger.log(`订单 ${order.id} 还有处理中的内容，暂不超时`);
+        await client.query('ROLLBACK');
+        return;
+      }
+
+      // 标记该分身接单超时
+      await client.query(
+        `UPDATE order_dispatch_requests SET status = 'timeout' 
+         WHERE order_id = ? AND avatar_id = ? AND status = 'accepted'`,
+        [order.id, order.assigned_to]
+      );
+
+      if (order.retry_count >= (order.max_retries || this.MAX_RETRIES)) {
+        // 超过重试次数，自动取消
+        await client.query(
+          `UPDATE orders SET status = 'auto_cancelled', auto_cancel_at = NOW() WHERE id = ?`,
+          [order.id]
+        );
+
+        await client.query(
+          `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
+           VALUES (?, ?, ?, 'auto_cancel', 'in_progress', 'auto_cancelled', ?)`,
+          [logId, order.id, order.assigned_to,
+           `分身${order.assigned_to}接单后超时未产出内容，已重试${order.retry_count}次，自动取消`]
+        );
+      } else {
+        // 取消当前分身，重新派单
+        await client.query(
+          `UPDATE orders SET status = 'awaiting_acceptance', retry_count = retry_count + 1, assigned_to = NULL WHERE id = ?`,
+          [order.id]
+        );
+
+        await client.query(
+          `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
+           VALUES (?, ?, ?, 'auto_reassign', 'in_progress', 'awaiting_acceptance', ?)`,
+          [logId, order.id, order.assigned_to,
+           `分身${order.assigned_to}接单后超时未产出内容，重新派单(第${order.retry_count + 1}次)`]
+        );
+      }
+
+      await client.query('COMMIT');
+      return 1;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error(`处理内容超时失败: ${error.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * 3. 检查发布超时（内容生成但未发布）
+   */
+  private async checkPublishTimeouts(): Promise<number> {
+    const client = await getMySQLClient();
+    const timeoutTime = new Date(Date.now() - this.PUBLISH_TIMEOUT * 1000);
+
+    // 查找发布超时的订单（内容已生成但超过24小时未发布）
+    const orders = await client.query(
+      `SELECT o.id, o.status, o.assigned_to
+       FROM orders o
+       WHERE o.status = 'content_generated'
+       AND o.updated_at < ?`,
+      [timeoutTime]
+    );
+
+    if (!orders || orders.length === 0) return 0;
+
+    for (const order of orders) {
+      const logId = uuidv4();
+      try {
+        // 标记为发布超时，需要人工介入
+        await client.query(
+          `UPDATE orders SET status = 'publish_timeout' WHERE id = ?`,
+          [order.id]
+        );
+
+        await client.query(
+          `INSERT INTO order_timeout_logs (id, order_id, avatar_id, event_type, old_status, new_status, notes)
+           VALUES (?, ?, ?, 'publish_timeout', 'content_generated', 'publish_timeout', ?)`,
+          [logId, order.id, order.assigned_to,
+           `分身${order.assigned_to}内容已生成但超过24小时未发布`]
+        );
+
+        this.logger.warn(`订单 ${order.id} 发布超时`);
+      } catch (error) {
+        this.logger.error(`处理发布超时失败: ${error.message}`);
+      }
+    }
+    return orders.length;
+  }
+
+  /**
+   * 创建派单时设置过期时间
+   */
+  async createDispatchWithExpiry(orderId: string, avatarId: string, userId: string): Promise<string> {
+    const client = await getMySQLClient();
+    const dispatchId = uuidv4();
+    const expiresAt = new Date(Date.now() + this.DISPATCH_TIMEOUT * 1000);
+
+    await client.query(
+      `INSERT INTO order_dispatch_requests (id, order_id, avatar_id, user_id, status, expires_at)
+       VALUES (?, ?, ?, ?, 'pending', ?)`,
+      [dispatchId, orderId, avatarId, userId, expiresAt]
+    );
+
+    return dispatchId;
+  }
+
+  /**
+   * 分身接单
+   */
+  async acceptDispatch(dispatchId: string): Promise<boolean> {
+    const client = await getMySQLClient();
+
+    const result = await client.query(
+      `UPDATE order_dispatch_requests SET status = 'accepted', responded_at = NOW() 
+       WHERE id = ? AND status = 'pending'`,
+      [dispatchId]
+    );
+
+    return result.affectedRows > 0;
+  }
+
+  /**
+   * 分身拒绝接单
+   */
+  async rejectDispatch(dispatchId: string, reason?: string): Promise<boolean> {
+    const client = await getMySQLClient();
+
+    const result = await client.query(
+      `UPDATE order_dispatch_requests SET status = 'rejected', responded_at = NOW(), reject_reason = ? 
+       WHERE id = ? AND status = 'pending'`,
+      [reason || '', dispatchId]
+    );
+
+    return result.affectedRows > 0;
+  }
+
+  /**
+   * 验证发布真实性
+   */
+  async verifyPublish(orderId: string, proofUrl: string, publishUrl?: string): Promise<boolean> {
+    const client = await getMySQLClient();
+
+    try {
+      await client.query('START TRANSACTION');
+
+      // 更新订单的发布凭证
+      await client.query(
+        `UPDATE orders SET publish_proof_url = ?, publish_verified = 1, status = 'completed' WHERE id = ?`,
+        [proofUrl, orderId]
+      );
+
+      // 更新生成内容的发布URL和验证状态
+      await client.query(
+        `UPDATE generated_content SET publish_url = ?, verification_status = 'verified', verified_at = NOW()
+         WHERE order_id = ?`,
+        [publishUrl || '', orderId]
+      );
+
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error(`验证发布失败: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * 获取订单的完整状态历史
+   */
+  async getOrderTimeline(orderId: string): Promise<any[]> {
+    const client = await getMySQLClient();
+
+    const logs = await client.query(
+      `SELECT event_type, old_status, new_status, notes, created_at 
+       FROM order_timeout_logs 
+       WHERE order_id = ? 
+       ORDER BY created_at ASC`,
+      [orderId]
+    );
+
+    return logs || [];
+  }
+
+  /**
+   * 获取分身的接单表现统计
+   */
+  async getAvatarPerformance(avatarId: string): Promise<any> {
+    const client = await getMySQLClient();
+
+    const dispatchStats = await client.query(
+      `SELECT 
+         COUNT(*) as total_dispatched,
+         SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted_count,
+         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
+         SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired_count,
+         SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END) as timeout_count,
+         ROUND(AVG(CASE WHEN status = 'accepted' AND responded_at IS NOT NULL 
+           THEN TIMESTAMPDIFF(SECOND, assigned_at, responded_at) ELSE NULL END)) as avg_response_seconds
+       FROM order_dispatch_requests 
+       WHERE avatar_id = ?`,
+      [avatarId]
+    );
+
+    const contentStats = await client.query(
+      `SELECT 
+         COUNT(DISTINCT o.id) as total_accepted_orders,
+         SUM(CASE WHEN o.status IN ('content_generated', 'published', 'completed') THEN 1 ELSE 0 END) as delivered_count,
+         SUM(CASE WHEN o.status = 'auto_cancelled' THEN 1 ELSE 0 END) as failed_count
+       FROM orders o
+       WHERE o.assigned_to = ?`,
+      [avatarId]
+    );
+
+    return {
+      dispatch: dispatchStats?.[0] || {},
+      content: contentStats?.[0] || {},
+    };
+  }
+
+  /**
+   * 手动转派订单到其他分身
+   */
+  async reassignOrder(orderId: string, reason?: string) {
+    const client = await getMySQLClient();
+
+    // 1. 获取订单当前信息
+    const orders = await client.query(
+      `SELECT id, status, assigned_to, retry_count, max_retries FROM orders WHERE id = ?`,
+      [orderId]
+    );
+    const order = orders?.[0];
+    if (!order) {
+      return { success: false, message: '订单不存在' };
+    }
+
+    // 2. 检查重试次数
+    if (order.retry_count >= order.max_retries) {
+      // 超过最大重试次数，自动取消订单
+      await client.query(
+        `UPDATE orders SET status = 'auto_cancelled', auto_cancel_at = NOW() WHERE id = ?`,
+        [orderId]
+      );
+      await this.logTimeout(orderId, null, order.assigned_to, 'auto_cancel', order.status, 'auto_cancelled', '超过最大重试次数，自动取消');
+      return { success: false, message: '超过最大重试次数，订单已自动取消' };
+    }
+
+    // 3. 标记旧派单为 expired
+    if (order.assigned_to) {
+      await client.query(
+        `UPDATE order_dispatch_requests SET status = 'expired' WHERE order_id = ? AND avatar_id = ? AND status IN ('pending', 'accepted')`,
+        [orderId, order.assigned_to]
+      );
+    }
+
+    // 4. 增加重试次数，重置订单状态
+    await client.query(
+      `UPDATE orders SET 
+        status = 'awaiting_acceptance',
+        assigned_to = NULL,
+        retry_count = retry_count + 1,
+        deadline_at = DATE_ADD(NOW(), INTERVAL 30 MINUTE)
+      WHERE id = ?`,
+      [orderId]
+    );
+
+    // 5. 记录日志
+    await this.logTimeout(orderId, null, order.assigned_to, 'auto_reassign', order.status, 'awaiting_acceptance', reason || '手动转派');
+
+    return { success: true, message: '订单已重新分配', retryCount: order.retry_count + 1 };
+  }
+
+  private async logTimeout(
+    orderId: string,
+    dispatchId: string | null,
+    avatarId: string | null,
+    eventType: string,
+    oldStatus: string,
+    newStatus: string,
+    notes: string,
+  ) {
+    const client = getMySQLClient();
+    const id = 'otl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+    await client.query(
+      `INSERT INTO order_timeout_logs (id, order_id, dispatch_id, avatar_id, event_type, old_status, new_status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, orderId, dispatchId, avatarId, eventType, oldStatus, newStatus, notes],
+    );
+  }
+}
