@@ -1,9 +1,9 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common'
+import { Inject, Controller, Post, Body, Get, Query } from '@nestjs/common'
 import { TikHubService } from './tikhub.service'
 
 @Controller('tikhub')
 export class TikHubController {
-  constructor(private readonly tikhubService: TikHubService) {}
+  constructor(@Inject(TikHubService) private readonly tikhubService: TikHubService) {}
 
   /**
    * 验证发布内容

@@ -1,9 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Inject, Controller, Get, Query } from '@nestjs/common'
 import { MediaService } from './media.service';
 
 @Controller('media')
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(@Inject(MediaService) private readonly mediaService: MediaService) {}
 
   /**
    * 使用 key 重新生成签名URL

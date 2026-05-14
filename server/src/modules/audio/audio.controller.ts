@@ -1,10 +1,10 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Inject, Controller, Post, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioService } from './audio.service';
 
 @Controller('audio')
 export class AudioController {
-  constructor(private readonly audioService: AudioService) {}
+  constructor(@Inject(AudioService) private readonly audioService: AudioService) {}
 
   @Post('asr')
   @UseInterceptors(FileInterceptor('audio'))

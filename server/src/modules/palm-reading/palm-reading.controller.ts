@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Post, Body, Get, Query, Param, Delete, Headers } from '@nestjs/common';
+import { Inject, Controller, Post, Body, Get, Query, Param, Delete, Headers } from '@nestjs/common'
 import { PalmReadingService } from './palm-reading.service';
 
 @Controller('palm-reading')
 export class PalmReadingController {
-  constructor(private readonly palmReadingService: PalmReadingService) {}
+  constructor(@Inject(PalmReadingService) private readonly palmReadingService: PalmReadingService) {}
 
   /**
    * 创建掌相阅读任务（异步，立即返回taskId）

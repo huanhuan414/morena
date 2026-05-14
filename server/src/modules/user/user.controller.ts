@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Get, Put, Post, Body, Headers } from '@nestjs/common'
+import { Inject, Controller, Get, Put, Post, Body, Headers } from '@nestjs/common'
 import { UserService } from './user.service'
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(@Inject(UserService) private readonly userService: UserService) {}
 
   @Get('profile')
   async getProfile(@Headers('x-user-id') userId: string) {

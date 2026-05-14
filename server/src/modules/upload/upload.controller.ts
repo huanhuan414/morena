@@ -1,4 +1,4 @@
-import { Controller, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common'
+import { Inject, Controller, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { UploadService } from './upload.service'
 
@@ -11,7 +11,7 @@ const multerOptions = {
 
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly uploadService: UploadService) {}
+  constructor(@Inject(UploadService) private readonly uploadService: UploadService) {}
 
   /**
    * 上传订单截图

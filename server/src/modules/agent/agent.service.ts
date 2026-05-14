@@ -95,8 +95,8 @@ export class AgentService {
   constructor(
     @Inject(forwardRef(() => AgentGateway))
     private readonly gateway: AgentGateway,
-    private readonly progressCache: ProgressCacheService,
-    private readonly learningService: LearningService
+    @Inject(ProgressCacheService) private readonly progressCache: ProgressCacheService,
+    @Inject(LearningService) private readonly learningService: LearningService
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)

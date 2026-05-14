@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 
 @Controller('content-generation')
 export class ContentGenerationController {
-  constructor(private readonly contentGenerationService: ContentGenerationService) {}
+  constructor(@Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService) {}
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)

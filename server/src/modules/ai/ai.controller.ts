@@ -1,9 +1,9 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Param } from '@nestjs/common'
+import { Inject, Controller, Post, Body, HttpCode, HttpStatus, Get, Param } from '@nestjs/common'
 import { AiService } from './ai.service'
 
 @Controller('ai')
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(@Inject(AiService) private readonly aiService: AiService) {}
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)

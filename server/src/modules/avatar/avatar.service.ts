@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import { Config, LLMClient, ImageGenerationClient, VideoGenerationClient } from 'coze-coding-dev-sdk'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
@@ -12,7 +12,7 @@ const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 
 @Injectable()
 export class AvatarService {
-  constructor(private readonly reverseGeocodingService: ReverseGeocodingService) {}
+  constructor(@Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService) {}
   private avatarColumnsCache: Set<string> | null = null
 
   private hasOwnKey(obj: any, key: string) {

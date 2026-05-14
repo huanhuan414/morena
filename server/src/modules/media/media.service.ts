@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common'
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class MediaService {
-  constructor(private readonly storageService: StorageService) {}
+  constructor(@Inject(StorageService) private readonly storageService: StorageService) {}
 
   /**
    * 使用 key 生成签名URL

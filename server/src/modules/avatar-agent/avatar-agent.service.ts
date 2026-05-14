@@ -18,10 +18,10 @@ export class AvatarAgentService {
   private llmClient: LLMClient
 
   constructor(
-    private readonly memoryService: AvatarMemoryService,
+    @Inject(AvatarMemoryService) private readonly memoryService: AvatarMemoryService,
     @Inject(forwardRef(() => AvatarLearningService))
     private readonly learningService: AvatarLearningService,
-    private readonly toolRegistry: AvatarToolRegistry
+    @Inject(AvatarToolRegistry) private readonly toolRegistry: AvatarToolRegistry
   ) {
     const config = new Config()
     this.llmClient = new LLMClient(config)

@@ -4,7 +4,7 @@
  * 分身 Agent API 接口
  */
 
-import { Controller, Get, Post, Put, Body, Param, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Body, Param, Headers, Query, Inject } from '@nestjs/common'
 import { AvatarAgentService } from './avatar-agent.service'
 import { AvatarMemoryService } from './avatar-memory.service'
 import { AvatarLearningService } from './avatar-learning.service'
@@ -14,9 +14,9 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 @Controller('avatar-agent')
 export class AvatarAgentController {
   constructor(
-    private readonly agentService: AvatarAgentService,
-    private readonly memoryService: AvatarMemoryService,
-    private readonly learningService: AvatarLearningService
+    @Inject(AvatarAgentService) private readonly agentService: AvatarAgentService,
+    @Inject(AvatarMemoryService) private readonly memoryService: AvatarMemoryService,
+    @Inject(AvatarLearningService) private readonly learningService: AvatarLearningService
   ) {}
 
   /**

@@ -11,7 +11,8 @@ import {
   Logger,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
+  Inject,
+} from '@nestjs/common'
 import { Request, Response } from 'express';
 import { WechatPayService } from './wechat-pay.service';
 import { getMySQLClient } from '../../storage/database/mysql-client';
@@ -20,7 +21,7 @@ import { getMySQLClient } from '../../storage/database/mysql-client';
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
 
-  constructor(private readonly wechatPayService: WechatPayService) {}
+  constructor(@Inject(WechatPayService) private readonly wechatPayService: WechatPayService) {}
 
   /**
    * 创建微信支付订单

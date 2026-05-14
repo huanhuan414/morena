@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Inject, Controller, Post, Get, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
 import { VoiceCloneService } from './voice-clone.service'
 
 @Controller('voice-clone')
 export class VoiceCloneController {
-  constructor(private readonly voiceCloneService: VoiceCloneService) {}
+  constructor(@Inject(VoiceCloneService) private readonly voiceCloneService: VoiceCloneService) {}
 
   /**
    * 获取预设音色列表

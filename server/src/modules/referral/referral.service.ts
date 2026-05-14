@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
 import * as crypto from 'crypto'
 
 @Injectable()
 export class ReferralService {
-  constructor(private readonly earningService: EarningService) {}
+  constructor(@Inject(EarningService) private readonly earningService: EarningService) {}
 
   /**
    * 生成邀请码

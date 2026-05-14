@@ -1,9 +1,9 @@
-import { Controller, Post, Get, Put, Param, Body, Headers } from '@nestjs/common'
+import { Inject, Controller, Post, Get, Put, Param, Body, Headers } from '@nestjs/common'
 import { TaskService } from './task.service'
 
 @Controller('tasks')
 export class TaskController {
-  constructor(private readonly taskService: TaskService) {}
+  constructor(@Inject(TaskService) private readonly taskService: TaskService) {}
 
   @Post()
   async createTask(

@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common'
+import { Inject, Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { SmsService, SendSmsParams } from './sms.service'
 
 @Controller('sms')
 export class SmsController {
-  constructor(private readonly smsService: SmsService) {}
+  constructor(@Inject(SmsService) private readonly smsService: SmsService) {}
 
   /**
    * 发送短信

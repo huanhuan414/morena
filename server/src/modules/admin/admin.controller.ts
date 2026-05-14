@@ -1,9 +1,9 @@
-import { Controller, Post, Body, Get, Query, Headers, Param, Put, Delete } from '@nestjs/common'
+import { Inject, Controller, Post, Body, Get, Query, Headers, Param, Put, Delete } from '@nestjs/common'
 import { AdminService } from './admin.service'
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(@Inject(AdminService) private readonly adminService: AdminService) {}
 
   private getAdminAuthHeader(headers: Record<string, string | string[] | undefined>): string | undefined {
     const authorization = headers.authorization ?? headers.Authorization

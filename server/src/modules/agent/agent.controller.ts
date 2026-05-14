@@ -3,7 +3,7 @@
  * 提供 Agent 相关的 API 接口
  */
 
-import { Controller, Get, Post, Delete, Body, Param, Headers, Query, Sse, Req } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Headers, Query, Sse, Req, Inject } from '@nestjs/common'
 import { Request } from 'express'
 import { Observable, from, of } from 'rxjs'
 import { map, catchError } from 'rxjs/operators'
@@ -14,8 +14,8 @@ import { ProgressCacheService } from './progress-cache.service'
 @Controller('agent')
 export class AgentController {
   constructor(
-    private readonly agentService: AgentService,
-    private readonly progressCache: ProgressCacheService
+    @Inject(AgentService) private readonly agentService: AgentService,
+    @Inject(ProgressCacheService) private readonly progressCache: ProgressCacheService
   ) {}
 
   /**

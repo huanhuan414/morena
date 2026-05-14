@@ -1,9 +1,9 @@
-import { Controller, Post, Body, Headers } from '@nestjs/common';
+import { Inject, Controller, Post, Body, Headers } from '@nestjs/common'
 import { VideoService } from './video.service';
 
 @Controller('video')
 export class VideoController {
-  constructor(private readonly videoService: VideoService) {}
+  constructor(@Inject(VideoService) private readonly videoService: VideoService) {}
 
   /**
    * 生成莫瑞娜推广视频

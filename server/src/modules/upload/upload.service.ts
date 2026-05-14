@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject } from '@nestjs/common'
 import { VolcengineService } from './volcengine.service'
 import { StorageService } from '../storage/storage.service'
 
@@ -6,8 +6,7 @@ import { StorageService } from '../storage/storage.service'
 export class UploadService {
   private readonly logger = new Logger(UploadService.name)
 
-  constructor(
-    private readonly volcengineService: VolcengineService,
+  constructor(@Inject(VolcengineService) private readonly volcengineService: VolcengineService,
     private readonly storageService: StorageService
   ) {
     this.logger.log('初始化上传服务')

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
 import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { EarningService } from '../earning/earning.service'
@@ -7,8 +7,7 @@ import { NotificationService } from '../notification/notification.service'
 
 @Injectable()
 export class OrderService {
-  constructor(
-    private readonly earningService: EarningService,
+  constructor(@Inject(EarningService) private readonly earningService: EarningService,
     private readonly notificationService: NotificationService
   ) {}
 

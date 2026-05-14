@@ -1,13 +1,13 @@
 // @ts-nocheck
-import { Controller, Get, Post, Put, Param, Body, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Param, Body, Headers, Query, Inject } from '@nestjs/common'
 import { OrderProcessingService } from './order-processing.service'
 import { LinkValidationService } from './link-validation.service'
 
 @Controller('order-processing')
 export class OrderProcessingController {
   constructor(
-    private readonly processingService: OrderProcessingService,
-    private readonly linkValidationService: LinkValidationService
+    @Inject(OrderProcessingService) private readonly processingService: OrderProcessingService,
+    @Inject(LinkValidationService) private readonly linkValidationService: LinkValidationService
   ) {}
 
   /**
