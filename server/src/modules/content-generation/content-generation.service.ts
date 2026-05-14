@@ -687,15 +687,38 @@ ${input.orderDescription}
 
     if (this.videoClient) {
       try {
-        const videoResult = await this.videoClient.generate({
-          prompt: videoScript.substring(0, 500),
-          image_url: referenceImage,
-          aspect_ratio: platform === 'douyin' || platform === 'kuaishou' ? '9:16' : '16:9',
+        const videoPrompt = videoScript.substring(0, 500)
+        const videoOptions: any = {
           duration: 5,
-        })
-        if (videoResult?.data?.[0]?.url) {
-          videoUrls.push(videoResult.data[0].url)
-          this.logger.log('视频生成成功')
+          ratio: platform === 'douyin' || platform === 'kuaishou' ? '9:16' : '16:9',
+        }
+        if (referenceImage) {
+          videoOptions.model = 'default'
+        }
+        // content 参数必须是数组格式 [{type: 'text', text: '...'}]
+        const contentItems: any[] = [{ type: 'text', text: videoPrompt }]
+        if (referenceImage) {
+          contentItems.push({ type: 'image', image_url: referenceImage })
+        }
+        this.logger.log(`调用视频生成API: prompt=${videoPrompt.substring(0, 50)}..., ratio=${videoOptions.ratio}`)
+        const videoResult = await this.videoClient.videoGenerationAsync(contentItems, videoOptions)
+        // videoGenerationAsync 返回 {videoUrl, response} 或 {response}
+        if (videoResult?.videoUrl) {
+          videoUrls.push(videoResult.videoUrl)
+          this.logger.log('视频生成成功，获取到视频URL')
+        } else if (videoResult?.response?.id) {
+          // 异步任务，需要轮询获取结果
+          this.logger.log(`视频生成任务已提交，task_id=${videoResult.response.id}，等待结果...`)
+          const maxWaitTime = 120 // 最多等120秒
+          const videoUrl = await this.pollVideoResult(videoResult.response.id, maxWaitTime)
+          if (videoUrl) {
+            videoUrls.push(videoUrl)
+            this.logger.log('视频生成成功（异步），获取到视频URL')
+          } else {
+            this.logger.warn('视频生成超时，未获取到视频URL')
+          }
+        } else {
+          this.logger.warn(`视频生成返回格式未知: ${JSON.stringify(videoResult).substring(0, 200)}`)
         }
       } catch (err: any) {
         this.logger.warn(`视频生成API调用失败: ${err.message}`)
@@ -711,6 +734,53 @@ ${input.orderDescription}
     }
 
     return videoUrls
+  }
+
+  /**
+   * 轮询视频生成任务结果
+   */
+  private async pollVideoResult(taskId: string, maxWaitSeconds: number): Promise<string | null> {
+    const startTime = Date.now()
+    const pollInterval = 5000 // 每5秒轮询一次
+
+    while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
+      try {
+        // 使用 fetch 直接查询任务状态
+        const baseUrl = process.env.COZE_INTEGRATION_BASE_URL || 'https://integration.coze.cn'
+        const apiKey = process.env.COZE_WORKLOAD_IDENTITY_API_KEY
+        const response = await fetch(`${baseUrl}/api/v3/contents/generations/tasks/${taskId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        const result = await response.json() as any
+        
+        if (result?.output?.video_url) {
+          return result.output.video_url
+        }
+        if (result?.data?.video_url) {
+          return result.data.video_url
+        }
+        if (result?.data?.[0]?.url) {
+          return result.data[0].url
+        }
+        // 检查任务状态
+        const status = result?.status || result?.task_status || result?.data?.status
+        if (status === 'failed' || status === 'error') {
+          this.logger.warn(`视频生成任务失败: ${JSON.stringify(result).substring(0, 200)}`)
+          return null
+        }
+        this.logger.log(`视频任务 ${taskId} 状态: ${status || 'processing'}，继续等待...`)
+      } catch (err: any) {
+        this.logger.warn(`轮询视频任务失败: ${err.message}`)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollInterval))
+    }
+
+    return null
   }
 
   /**
