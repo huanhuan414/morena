@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import { SkillService } from './skill.service';
 import { AiService } from '../ai/ai.service';
 
@@ -8,8 +8,8 @@ export class SkillController {
   private readonly aiService: AiService
 
   constructor(
-    skillService: SkillService,
-    aiService: AiService,
+    @Inject(SkillService) skillService: SkillService,
+    @Inject(AiService) aiService: AiService,
   ) {
     this.skillService = skillService
     this.aiService = aiService

@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { Controller, Get, Put, Post, Body, Param, Headers } from '@nestjs/common'
+import { Controller, Get, Put, Post, Body, Param, Headers, Inject } from '@nestjs/common'
 import { NotificationService } from './notification.service'
 
 @Controller('notifications')
 export class NotificationController {
   private readonly notificationService: NotificationService
 
-  constructor(notificationService: NotificationService) {
+  constructor(@Inject(NotificationService) notificationService: NotificationService) {
     this.notificationService = notificationService
   }
 

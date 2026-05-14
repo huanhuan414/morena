@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { Controller, Get, Post, Body, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Post, Body, Headers, Query, Inject } from '@nestjs/common'
 import { ReferralService } from './referral.service'
 
 @Controller('referral')
 export class ReferralController {
   private readonly referralService: ReferralService
 
-  constructor(referralService: ReferralService) {
+  constructor(@Inject(ReferralService) referralService: ReferralService) {
     this.referralService = referralService
   }
 

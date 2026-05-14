@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { Controller, Get, Headers, Query } from '@nestjs/common'
+import { Controller, Get, Headers, Query, Inject } from '@nestjs/common'
 import { UserStatsService } from './user-stats.service'
 
 @Controller('user-stats')
 export class UserStatsController {
   private readonly userStatsService: UserStatsService
 
-  constructor(userStatsService: UserStatsService) {
+  constructor(@Inject(UserStatsService) userStatsService: UserStatsService) {
     this.userStatsService = userStatsService
   }
 

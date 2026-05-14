@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Body, Query, Inject } from '@nestjs/common'
 import { SubscriptionService } from './subscription.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
 
@@ -8,8 +8,8 @@ export class SubscriptionController {
   private readonly wechatPayService: WechatPayService
 
   constructor(
-    subscriptionService: SubscriptionService,
-    wechatPayService: WechatPayService,
+    @Inject(SubscriptionService) subscriptionService: SubscriptionService,
+    @Inject(WechatPayService) wechatPayService: WechatPayService,
   ) {
     this.subscriptionService = subscriptionService
     this.wechatPayService = wechatPayService

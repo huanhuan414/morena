@@ -1,11 +1,11 @@
-import { Controller, Get, Query, HttpCode, HttpStatus, Req } from '@nestjs/common'
+import { Controller, Get, Query, HttpCode, HttpStatus, Req, Inject } from '@nestjs/common'
 import { ActivitiesService } from './activities.service'
 
 @Controller('activities')
 export class ActivitiesController {
   private readonly activitiesService: ActivitiesService
 
-  constructor(activitiesService: ActivitiesService) {
+  constructor(@Inject(ActivitiesService) activitiesService: ActivitiesService) {
     this.activitiesService = activitiesService
   }
 
