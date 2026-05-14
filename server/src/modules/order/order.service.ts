@@ -844,7 +844,9 @@ export class OrderService {
     if (!order) {
       throw new Error('订单不存在')
     }
-    if (order.user_id !== userId) {
+    const orderUserId = order.userId || order.user_id
+    if (orderUserId !== userId) {
+      console.error('[repayOrder] 用户ID不匹配:', { orderUserId, requestUserId: userId, orderKeys: Object.keys(order) })
       throw new Error('无权操作此订单')
     }
     if (Number(order.isPaid ?? order.is_paid ?? 0) === 1) {
