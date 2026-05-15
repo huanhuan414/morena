@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { Button } from '@/components/ui/button'
 import { Network } from '@/network'
 import {
-  Plus, Loader, Users,
+  ArrowLeft, Plus, Loader, Users,
   CircleCheck, CircleX, TriangleAlert,
-  Wallet, FileText, Video, Zap, Trash2, CreditCard, Camera,
-  Clock
+  Wallet, FileText, Video, Trash2, CreditCard, Camera,
+  Zap
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -76,33 +75,6 @@ function isStatusInTab(status: string, tabKey: string): boolean {
   return false
 }
 
-// 从 dispatchSummary 提取进度
-function getDispatchProgress(order: any) {
-  const summary = order.dispatchSummary
-  if (!Array.isArray(summary) || summary.length === 0) {
-    const total = order.avatarCount || 0
-    return { accepted: 0, total, published: 0 }
-  }
-  const total = summary.length
-  const accepted = summary.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length
-  const published = summary.filter((s: any) => ['published', 'completed'].includes(s.status)).length
-  return { accepted, total, published }
-}
-
-// 进度文案
-function getPhaseText(order: any): string {
-  const phase = STATUS_CONFIG[order.status]?.phase ?? -1
-  const progress = getDispatchProgress(order)
-  switch (phase) {
-    case 0: return '等待支付'
-    case 1: return progress.total > 0 ? `匹配 ${progress.total} 个分身中` : '匹配分身中'
-    case 2: return `${progress.accepted}/${progress.total} 制作中`
-    case 3: return `${progress.published}/${progress.total} 已发布`
-    case 4: return '全部完成'
-    default: return ''
-  }
-}
-
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
   try {
@@ -115,6 +87,23 @@ function formatTime(dateStr: string): string {
     if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
     return `${d.getMonth() + 1}/${d.getDate()}`
   } catch { return '' }
+}
+
+// 进度文案
+function getPhaseText(order: any): string {
+  const phase = STATUS_CONFIG[order.status]?.phase ?? -1
+  const ds = order.dispatchSummary
+  const total = order.avatarCount || 0
+  const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
+  const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+  switch (phase) {
+    case 0: return '等待支付'
+    case 1: return total > 0 ? `匹配 ${total} 个分身中` : '匹配分身中'
+    case 2: return `${accepted}/${total} 制作中`
+    case 3: return `${published}/${total} 已发布`
+    case 4: return '全部完成'
+    default: return ''
+  }
 }
 
 export default function OrderListPage() {
@@ -155,14 +144,13 @@ export default function OrderListPage() {
       return new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime()
     })
 
-  // 统计数据
+  // 统计
   const statsData = {
     total: orders.length,
     active: orders.filter(o => isStatusInTab(o.status, 'active')).length,
     pendingPayment: orders.filter(o => o.status === 'pending_payment').length,
   }
 
-  // Tab 数量
   const tabCounts = STATUS_TABS.reduce((acc, tab) => {
     acc[tab.key] = orders.filter(o => isStatusInTab(o.status, tab.key)).length
     return acc
@@ -211,10 +199,14 @@ export default function OrderListPage() {
 
   // 渲染进度条色段
   const renderProgress = (order: any) => {
-    const progress = getDispatchProgress(order)
-    if (progress.total <= 0) return null
-    const acceptedPct = (progress.accepted / progress.total) * 100
-    const publishedPct = (progress.published / progress.total) * 100
+    const ds = order.dispatchSummary
+    const total = order.avatarCount || 0
+    if (total <= 0) return null
+    const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
+    const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+    if (accepted === 0 && published === 0) return null
+    const acceptedPct = (accepted / total) * 100
+    const publishedPct = (published / total) * 100
     return (
       <View className="ol-avatar-progress">
         <View className="ol-progress-track">
@@ -223,16 +215,16 @@ export default function OrderListPage() {
           <View className="ol-progress-seg" style={{ flex: 1, backgroundColor: '#E5E7EB' }} />
         </View>
         <View className="ol-progress-labels">
-          {progress.accepted > 0 && (
+          {accepted > 0 && (
             <View className="ol-progress-label-item">
               <View style={{ width: '12rpx', height: '12rpx', borderRadius: '50%', backgroundColor: '#10B981' }} />
-              <Text className="ol-progress-label-text" style={{ color: '#10B981' }}>{progress.accepted} 接单</Text>
+              <Text className="ol-progress-label-text" style={{ color: '#10B981' }}>{accepted} 接单</Text>
             </View>
           )}
-          {progress.published > 0 && (
+          {published > 0 && (
             <View className="ol-progress-label-item">
               <View style={{ width: '12rpx', height: '12rpx', borderRadius: '50%', backgroundColor: '#059669' }} />
-              <Text className="ol-progress-label-text" style={{ color: '#059669' }}>{progress.published} 已发布</Text>
+              <Text className="ol-progress-label-text" style={{ color: '#059669' }}>{published} 已发布</Text>
             </View>
           )}
         </View>
@@ -248,11 +240,10 @@ export default function OrderListPage() {
         <View className="ol-header-decor ol-header-decor-2" />
         <View className="ol-header-nav" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
           <View className="ol-back-btn" onClick={() => Taro.navigateBack()}>
-            {/* 返回按钮 */}
+            <ArrowLeft size={18} color="#fff" />
           </View>
           <View className="ol-header-center">
             <Text className="block ol-header-title">我的订单</Text>
-            <Text className="block ol-header-subtitle">管理你的全部发单</Text>
           </View>
           <View className="ol-header-right" onClick={handleCreate}>
             <Plus size={20} color="#fff" />
@@ -264,7 +255,7 @@ export default function OrderListPage() {
       <View className="ol-stats">
         <View className="ol-stat-item">
           <Text className="block ol-stat-num">{statsData.total}</Text>
-          <Text className="block ol-stat-label">全部订单</Text>
+          <Text className="block ol-stat-label">全部</Text>
         </View>
         <View className="ol-stat-divider" />
         <View className="ol-stat-item">
@@ -288,9 +279,7 @@ export default function OrderListPage() {
           >
             <Text className="block ol-tab-text">{tab.label}</Text>
             {tabCounts[tab.key] > 0 && (
-              <View className="ol-tab-badge">
-                <Text className="block ol-tab-badge-text">{tabCounts[tab.key]}</Text>
-              </View>
+              <Text className="block ol-tab-count">{tabCounts[tab.key]}</Text>
             )}
           </View>
         ))}
@@ -299,7 +288,7 @@ export default function OrderListPage() {
       {/* ===== 内容区域 ===== */}
       {loading && orders.length === 0 ? (
         <View className="ol-loading">
-          <Loader size={40} color="#7C3AED" className="ol-spin" />
+          <Loader size={36} color="#7C3AED" className="ol-spin" />
           <Text className="block ol-loading-text">加载中...</Text>
         </View>
       ) : filteredOrders.length === 0 ? (
@@ -309,10 +298,9 @@ export default function OrderListPage() {
             {activeTab === 'all' ? '暂无订单，去发一单吧' : '该状态下暂无订单'}
           </Text>
           {activeTab === 'all' && (
-            <View style={{ marginTop: '24rpx' }}>
-              <Button size="sm" onClick={handleCreate}>
-                <Text className="text-xs text-white">立即发单</Text>
-              </Button>
+            <View className="ol-empty-btn" onClick={handleCreate}>
+              <Plus size={14} color="#7C3AED" />
+              <Text className="block ol-empty-btn-text">立即发单</Text>
             </View>
           )}
         </View>
@@ -338,60 +326,40 @@ export default function OrderListPage() {
 
             return (
               <View key={order.id} className={`ol-card ${isAbnormal ? 'ol-card-abnormal' : ''}`} onClick={() => handleGoDetail(order.id)}>
-                {/* 卡片头部：状态 + 标题 */}
-                <View className="ol-card-header">
-                  <View className="ol-card-header-left">
-                    <View className="ol-status-dot" style={{ backgroundColor: statusCfg.color }} />
-                    <Text className="block ol-card-title">{order.title || '未命名订单'}</Text>
+                {/* 卡片头部：状态标签 + 标题 */}
+                <View className="ol-card-top">
+                  <View className="ol-status-tag" style={{ backgroundColor: statusCfg.bgColor }}>
+                    <StatusIcon size={12} color={statusCfg.color} />
+                    <Text className="block ol-status-tag-text" style={{ color: statusCfg.color }}>{statusCfg.label}</Text>
                   </View>
-                  <View className="ol-card-header-right">
-                    {isAbnormal && (
-                      <View className="ol-alert-badge">
-                        <TriangleAlert size={16} color="#fff" />
-                        <Text className="block ol-alert-badge-text">异常</Text>
-                      </View>
-                    )}
-                    <View className="ol-status-pill" style={{ backgroundColor: statusCfg.bgColor }}>
-                      <StatusIcon size={20} color={statusCfg.color} />
-                      <Text className="block ol-status-pill-text" style={{ color: statusCfg.color }}>{statusCfg.label}</Text>
-                    </View>
-                  </View>
+                  <Text className="block ol-card-time">{formatTime(order.createdAt || order.created_at)}</Text>
                 </View>
+
+                {/* 标题 */}
+                <Text className="block ol-card-title">{order.title || '未命名订单'}</Text>
 
                 {/* 标签行：内容类型 + 平台 */}
                 <View className="ol-card-pills">
-                  <View className="ol-platform-pill" style={{ backgroundColor: 'rgba(139,92,246,0.08)' }}>
-                    <ContentTypeIcon size={20} color="#7C3AED" />
-                    <Text className="block ol-pill-text" style={{ color: '#7C3AED' }}>{ctConfig.label}</Text>
+                  <View className="ol-type-pill">
+                    <ContentTypeIcon size={12} color="#7C3AED" />
+                    <Text className="block ol-type-pill-text">{ctConfig.label}</Text>
                   </View>
                   {Array.isArray(order.platforms) ? order.platforms.map((p: string, i: number) => (
                     <View key={i} className="ol-platform-pill">
-                      <Text className="block ol-pill-text">{PLATFORM_MAP[p] || p}</Text>
+                      <Text className="block ol-platform-pill-text">{PLATFORM_MAP[p] || p}</Text>
                     </View>
                   )) : null}
                 </View>
 
-                {/* 分身进度条（活跃订单） */}
+                {/* 分身进度条 */}
                 {statusCfg.phase > 0 && renderProgress(order)}
 
-                {/* 信息栏 */}
-                <View className="ol-card-info">
-                  <View className="ol-info-item">
-                    <Wallet size={22} color="#F59E0B" />
-                    <Text className="block ol-info-text">¥{budget}</Text>
-                  </View>
-                  <View className="ol-info-item">
-                    <Users size={22} color="#7C3AED" />
-                    <Text className="block ol-info-text">{order.avatarCount || 0} 个分身</Text>
-                  </View>
-                  <View className="ol-info-item">
-                    <Clock size={22} color="#9CA3AF" />
-                    <Text className="block ol-info-text">{formatTime(order.createdAt || order.created_at)}</Text>
-                  </View>
+                {/* 底部：金额 + 分身 + 进度 */}
+                <View className="ol-card-bottom">
+                  <Text className="block ol-card-budget">¥{budget}</Text>
+                  <Text className="block ol-card-avatars">{order.avatarCount || 0}个分身</Text>
                   {phaseText && statusCfg.phase > 0 && (
-                    <View className="ol-info-item">
-                      <Text className="block ol-info-text" style={{ color: statusCfg.color }}>{phaseText}</Text>
-                    </View>
+                    <Text className="block ol-card-phase" style={{ color: statusCfg.color }}>{phaseText}</Text>
                   )}
                 </View>
 
@@ -400,7 +368,7 @@ export default function OrderListPage() {
                   <View className="ol-card-actions" onClick={(e) => e.stopPropagation()}>
                     {isPayable && (
                       <View className="ol-action-btn ol-action-primary" onClick={() => handleGoToPay(order.id)}>
-                        <CreditCard size={22} color="#fff" />
+                        <CreditCard size={14} color="#fff" />
                         <Text className="block ol-action-btn-text" style={{ color: '#fff' }}>去支付</Text>
                       </View>
                     )}
@@ -410,8 +378,8 @@ export default function OrderListPage() {
                       </View>
                     )}
                     {isDeletable && (
-                      <View className="ol-action-btn ol-action-default" onClick={() => handleDelete(order.id)}>
-                        <Trash2 size={22} color="#EF4444" />
+                      <View className="ol-action-btn ol-action-danger" onClick={() => handleDelete(order.id)}>
+                        <Trash2 size={14} color="#EF4444" />
                         <Text className="block ol-action-btn-text" style={{ color: '#EF4444' }}>删除</Text>
                       </View>
                     )}
@@ -422,32 +390,16 @@ export default function OrderListPage() {
           })}
 
           {/* 底部安全区 */}
-          <View style={{ height: '120rpx' }} />
+          <View style={{ height: '140rpx' }} />
         </ScrollView>
       )}
 
       {/* ===== 底部发单按钮 ===== */}
-      <View
-        style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          padding: '20rpx 32rpx', paddingBottom: '40rpx',
-          backgroundColor: '#fff',
-          borderTop: '1rpx solid #F3F4F6',
-          zIndex: 100
-        }}
-      >
-        <Button
-          className="w-full"
-          style={{
-            background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
-            borderRadius: '48rpx',
-            height: '88rpx'
-          }}
-          onClick={handleCreate}
-        >
+      <View className="ol-footer">
+        <View className="ol-create-btn" onClick={handleCreate}>
           <Zap size={16} color="#fff" />
-          <Text style={{ color: '#fff', fontWeight: '600', marginLeft: '8rpx' }}>发布新订单</Text>
-        </Button>
+          <Text className="block ol-create-btn-text">发布新订单</Text>
+        </View>
       </View>
     </View>
   )

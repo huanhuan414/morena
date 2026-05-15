@@ -1,33 +1,53 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 import {
-  ArrowLeft, Clock, Loader, Users, CircleCheckBig, CircleX,
-  Wallet, CreditCard, Send, Trash2,
-  FileText, CircleDot
+  ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
+  CreditCard, Send, Trash2,
+  FileText, CircleDot, Camera, Video
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
+// ===== 平台名称映射 =====
+const PLATFORM_MAP: Record<string, string> = {
+  xiaohongshu: '小红书',
+  wechat_moments: '朋友圈',
+  douyin: '抖音',
+  weibo: '微博',
+  bilibili: 'B站',
+  zhihu: '知乎',
+  kuaishou: '快手',
+}
+
+// ===== 内容类型映射 =====
+const CONTENT_TYPE_MAP: Record<string, { label: string; icon: any }> = {
+  text: { label: '纯文案', icon: FileText },
+  image_text: { label: '图文', icon: Camera },
+  article: { label: '长文', icon: FileText },
+  image: { label: '图片', icon: Camera },
+  video: { label: '短视频', icon: Video },
+}
+
 // ===== 状态配置 =====
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; phase: number }> = {
-  pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FEF3C7', phase: 0 },
-  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', phase: 1 },
-  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1 },
-  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1 },
-  accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', phase: 2 },
-  in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', phase: 2 },
-  content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2 },
-  submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3 },
-  published: { label: '已发布', color: '#059669', bgColor: '#ECFDF5', phase: 3 },
-  completed: { label: '已完成', color: '#059669', bgColor: '#ECFDF5', phase: 4 },
-  publish_failed: { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1 },
-  publish_timeout: { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1 },
-  cancelled: { label: '已取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
-  auto_cancelled: { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
-  timeout: { label: '已超时', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
-  expired: { label: '已过期', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; phase: number; desc: string }> = {
+  pending_payment:    { label: '待支付',   color: '#F59E0B', bgColor: '#FEF3C7', phase: 0, desc: '请尽快完成支付，超时订单将自动取消' },
+  pending:            { label: '匹配中',   color: '#7C3AED', bgColor: '#F5F3FF', phase: 1, desc: '系统正在为你匹配合适的分身' },
+  awaiting_acceptance:{ label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
+  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1, desc: '分身正在确认接单' },
+  accepted:           { label: '已接单',   color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身已接单，正在制作内容' },
+  in_progress:        { label: '制作中',   color: '#10B981', bgColor: '#ECFDF5', phase: 2, desc: '分身正在创作内容' },
+  content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
+  submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3, desc: '内容已提交，即将发布' },
+  published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', phase: 3, desc: '内容已成功发布' },
+  completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', phase: 4, desc: '订单已全部完成' },
+  publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布遇到问题，请查看详情' },
+  publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布超时，请查看详情' },
+  cancelled:          { label: '已取消',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已取消' },
+  auto_cancelled:     { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单因超时自动取消' },
+  timeout:            { label: '已超时',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已超时' },
+  expired:            { label: '已过期',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已过期' },
 }
 
 // 4阶段进度定义
@@ -50,33 +70,48 @@ function getPhaseIndex(status: string): number {
 
 // 事件图标映射
 const EVENT_ICONS: Record<string, any> = {
-  order_created: CircleDot,
+  created: CircleDot,
+  dispatched: Send,
+  accepted: CircleCheckBig,
+  rejected: CircleX,
+  completed: CircleCheckBig,
+  cancelled: CircleX,
   payment_success: CircleCheckBig,
-  dispatch_created: Users,
-  dispatch_accepted: CircleCheckBig,
-  dispatch_rejected: CircleX,
   content_generated: FileText,
   content_submitted: Send,
   content_published: CircleCheckBig,
   publish_failed: CircleX,
-  order_completed: CircleCheckBig,
-  order_cancelled: CircleX,
-  dispatch_timeout: Clock,
+  timeout: Clock,
 }
 
 const EVENT_COLORS: Record<string, string> = {
-  order_created: '#3B82F6',
+  created: '#3B82F6',
+  dispatched: '#6366F1',
+  accepted: '#10B981',
+  rejected: '#EF4444',
+  completed: '#059669',
+  cancelled: '#9CA3AF',
   payment_success: '#10B981',
-  dispatch_created: '#6366F1',
-  dispatch_accepted: '#10B981',
-  dispatch_rejected: '#EF4444',
   content_generated: '#8B5CF6',
   content_submitted: '#F59E0B',
   content_published: '#059669',
   publish_failed: '#EF4444',
-  order_completed: '#059669',
-  order_cancelled: '#9CA3AF',
-  dispatch_timeout: '#F59E0B',
+  timeout: '#F59E0B',
+}
+
+const EVENT_LABELS: Record<string, string> = {
+  created: '订单已创建',
+  dispatched: '已派单',
+  accepted: '分身已接单',
+  rejected: '分身已拒绝',
+  completed: '订单已完成',
+  cancelled: '订单已取消',
+  payment_success: '支付成功',
+  content_generated: '内容已生成',
+  content_submitted: '内容已提交',
+  content_published: '内容已发布',
+  publish_failed: '发布失败',
+  timeout: '派单超时',
 }
 
 function formatTime(dateStr: string): string {
@@ -91,7 +126,7 @@ function formatTime(dateStr: string): string {
 export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
-  const [dispatches, setDispatches] = useState<any[]>([])
+  const [dispatchStatus, setDispatchStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const pollingRef = useRef<any>(null)
@@ -103,19 +138,22 @@ export default function OrderDetailPage() {
   const fetchDetail = useCallback(async () => {
     if (!orderId) return
     try {
-      const [orderRes, eventRes] = await Promise.all([
+      const [orderRes, eventRes, dispatchRes] = await Promise.all([
         Network.request({ url: `/api/order/${orderId}` }),
         Network.request({ url: `/api/order-dispatch/${orderId}/timeline` }).catch(() => ({ data: { data: [] } })),
+        Network.request({ url: `/api/order/${orderId}/dispatch-status` }).catch(() => ({ data: { data: null } })),
       ])
-      console.log('[OrderDetail] order:', orderRes.data, 'events:', eventRes.data)
+      console.log('[OrderDetail] order:', JSON.stringify(orderRes.data)?.substring(0, 200))
       const orderData = orderRes.data?.data || orderRes.data
       setOrder(orderData)
-      const evts = eventRes.data?.data?.events || eventRes.data?.events || []
+
+      // 事件时间线 - 后端返回的是数组
+      const evtData = eventRes.data?.data
+      const evts = Array.isArray(evtData) ? evtData : (evtData?.events || [])
       setEvents(evts)
 
-      // 分身派单信息
-      const dispatchData = orderData?.dispatches || orderData?.dispatchSummary?.dispatches || []
-      setDispatches(dispatchData)
+      // 分身派单状态
+      setDispatchStatus(dispatchRes.data?.data || null)
     } catch (err) {
       console.error('[OrderDetail] fetch error:', err)
     } finally {
@@ -148,7 +186,6 @@ export default function OrderDetailPage() {
     if (paying) return
     setPaying(true)
     try {
-      // 获取openid
       const loginRes = await Taro.login()
       const openidRes = await Network.request({ url: `/api/user/openid?code=${loginRes.code}` })
       const openid = openidRes.data?.data?.openid
@@ -157,7 +194,6 @@ export default function OrderDetailPage() {
         return
       }
 
-      // 创建支付
       const payRes = await Network.request({
         url: `/api/order/${orderId}/repay`,
         method: 'POST',
@@ -169,7 +205,6 @@ export default function OrderDetailPage() {
         return
       }
 
-      // 唤起微信支付
       await Taro.requestPayment({
         timeStamp: payment.timeStamp,
         nonceStr: payment.nonceStr,
@@ -178,7 +213,6 @@ export default function OrderDetailPage() {
         paySign: payment.paySign,
       })
 
-      // 支付成功，轮询确认
       Taro.showToast({ title: '支付成功', icon: 'success' })
       setTimeout(() => fetchDetail(), 1000)
 
@@ -227,7 +261,7 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <View className="od-page od-loading">
-        <Loader size={40} color="#6366F1" className="od-loading-icon" />
+        <Loader size={36} color="#6366F1" className="od-loading-icon" />
         <Text className="block od-loading-text">加载中...</Text>
       </View>
     )
@@ -241,12 +275,18 @@ export default function OrderDetailPage() {
     )
   }
 
-  const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 }
+  const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
   const currentPhase = getPhaseIndex(order.status)
   const isPayable = order.status === 'pending_payment'
   const isCancellable = ['pending_payment', 'pending'].includes(order.status)
   const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status)
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
+  const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
+
+  // 分身统计
+  const totalAvatars = order.avatarCount || 0
+  const acceptedCount = dispatchStatus?.accepted || dispatchStatus?.confirmed || 0
+  const pendingCount = dispatchStatus?.pending || 0
 
   return (
     <View className="od-page">
@@ -256,32 +296,31 @@ export default function OrderDetailPage() {
         <View className="od-header-deco2" />
         <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
           <View className="od-back-btn" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={20} color="#fff" />
+            <ArrowLeft size={18} color="#fff" />
           </View>
           <View className="od-header-center">
             <Text className="block od-header-title">订单详情</Text>
-            <Text className="block od-header-sub">{order.title || '未命名订单'}</Text>
           </View>
           <View className="od-header-right" />
         </View>
 
-        {/* 状态 Banner */}
-        <View className="od-status-banner">
-          <View className="od-status-dot" style={{ backgroundColor: statusCfg.color }} />
-          <Text className="block od-status-label" style={{ color: statusCfg.color }}>
-            {statusCfg.label}
-          </Text>
+        {/* 状态信息 */}
+        <View className="od-status-section">
+          <View className="od-status-badge" style={{ backgroundColor: statusCfg.bgColor }}>
+            <Text className="block od-status-badge-text" style={{ color: statusCfg.color }}>{statusCfg.label}</Text>
+          </View>
           {isAbnormal && (
             <View className="od-alert-pill">
-              <CircleX size={20} color="#fff" />
+              <CircleX size={14} color="#fff" />
               <Text className="block od-alert-pill-text">异常</Text>
             </View>
           )}
+          <Text className="block od-status-desc">{statusCfg.desc}</Text>
         </View>
       </View>
 
       {/* ===== 内容区 ===== */}
-      <View className="od-body">
+      <ScrollView scrollY className="od-body">
         {/* 4阶段进度条 */}
         {currentPhase >= 0 && (
           <View className="od-card od-pipeline-card">
@@ -294,32 +333,20 @@ export default function OrderDetailPage() {
                   <View key={phase.key} className="od-pipe-stage">
                     <View className="od-pipe-node-wrap">
                       {idx > 0 && (
-                        <View
-                          className="od-pipe-line"
-                          style={{ backgroundColor: idx <= currentPhase ? '#6366F1' : '#D1D5DB' }}
-                        />
+                        <View className="od-pipe-line" style={{ backgroundColor: idx <= currentPhase ? '#6366F1' : '#D1D5DB' }} />
                       )}
-                      <View
-                        className="od-pipe-node"
-                        style={{ backgroundColor: isActive ? '#6366F1' : '#F3F4F6' }}
-                      >
+                      <View className="od-pipe-node" style={{ backgroundColor: isActive ? '#6366F1' : '#F3F4F6' }}>
                         {isActive ? (
-                          <PhaseIcon size={16} color="#fff" />
+                          <PhaseIcon size={14} color="#fff" />
                         ) : (
                           <View className="od-pipe-node-empty" />
                         )}
                       </View>
                       {idx < PHASES.length - 1 && (
-                        <View
-                          className="od-pipe-line"
-                          style={{ backgroundColor: idx < currentPhase ? '#6366F1' : '#D1D5DB' }}
-                        />
+                        <View className="od-pipe-line" style={{ backgroundColor: idx < currentPhase ? '#6366F1' : '#D1D5DB' }} />
                       )}
                     </View>
-                    <Text
-                      className="block od-pipe-label"
-                      style={{ color: isActive ? '#6366F1' : '#9CA3AF', fontWeight: isCurrent ? '600' : '400' }}
-                    >
+                    <Text className="block od-pipe-label" style={{ color: isActive ? '#6366F1' : '#9CA3AF', fontWeight: isCurrent ? '600' : '400' }}>
                       {phase.label}
                     </Text>
                   </View>
@@ -330,22 +357,20 @@ export default function OrderDetailPage() {
         )}
 
         {/* 订单信息卡 */}
-        <View className="od-card od-info-card">
+        <View className="od-card">
           <Text className="block od-card-title">{order.title || '未命名订单'}</Text>
           {order.description && (
             <Text className="block od-card-desc">{order.description}</Text>
           )}
-
           {/* 标签 */}
           <View className="od-info-pills">
             <View className="od-pill od-pill-type">
-              <Text className="block od-pill-text">
-                {order.contentType === 'text' ? '纯文案' : order.contentType === 'image_text' ? '图文' : order.contentType === 'video' ? '短视频' : order.contentType === 'article' ? '长文' : order.contentType || '—'}
-              </Text>
+              {(() => { const CTIcon = ctConfig.icon; return <CTIcon size={12} color="#9333EA" /> })()}
+              <Text className="block od-pill-text od-pill-type-text">{ctConfig.label}</Text>
             </View>
             {Array.isArray(order.platforms) ? order.platforms.map((p: string, i: number) => (
               <View key={i} className="od-pill od-pill-platform">
-                <Text className="block od-pill-text">{p}</Text>
+                <Text className="block od-pill-text od-pill-platform-text">{PLATFORM_MAP[p] || p}</Text>
               </View>
             )) : null}
           </View>
@@ -355,19 +380,16 @@ export default function OrderDetailPage() {
         <View className="od-card">
           <View className="od-stats-row">
             <View className="od-stat-item">
-              <View className="od-stat-icon"><Wallet size={28} color="#F59E0B" /></View>
-              <Text className="block od-stat-value">¥{order.budget || order.totalPrice || 0}</Text>
+              <Text className="block od-stat-value od-stat-budget">¥{order.budget || order.totalPrice || 0}</Text>
               <Text className="block od-stat-label">订单金额</Text>
             </View>
             <View className="od-stat-divider" />
             <View className="od-stat-item">
-              <View className="od-stat-icon"><Users size={28} color="#7C3AED" /></View>
-              <Text className="block od-stat-value">{order.avatarCount || order.avatar_count || 0}</Text>
+              <Text className="block od-stat-value">{totalAvatars}</Text>
               <Text className="block od-stat-label">分身数量</Text>
             </View>
             <View className="od-stat-divider" />
             <View className="od-stat-item">
-              <View className="od-stat-icon"><Clock size={28} color="#6B7280" /></View>
               <Text className="block od-stat-value">{formatTime(order.createdAt || order.created_at)}</Text>
               <Text className="block od-stat-label">创建时间</Text>
             </View>
@@ -375,35 +397,23 @@ export default function OrderDetailPage() {
         </View>
 
         {/* 分身状态卡 */}
-        {dispatches.length > 0 && (
+        {totalAvatars > 0 && (acceptedCount > 0 || pendingCount > 0) && (
           <View className="od-card">
             <Text className="block od-section-title">分身进度</Text>
-            {dispatches.map((d: any, idx: number) => {
-              const dStatus = d.status || d.dispatchStatus || ''
-              const dCfg = STATUS_CONFIG[dStatus] || { label: dStatus, color: '#9CA3AF', bgColor: '#F9FAFB' }
-              const avatarName = d.avatarName || `分身 ${idx + 1}`
-              return (
-                <View key={d.id || idx} className="od-avatar-item">
-                  <View className="od-avatar-left">
-                    <View className="od-avatar-fallback">
-                      <Text className="block od-avatar-fallback-text">{avatarName.charAt(0)}</Text>
-                    </View>
-                    <View className="od-avatar-info">
-                      <Text className="block od-avatar-name">{avatarName}</Text>
-                      <View className="od-avatar-status-wrap">
-                        <View className="od-avatar-status-dot" style={{ backgroundColor: dCfg.color }} />
-                        <Text className="block od-avatar-status-text" style={{ color: dCfg.color }}>{dCfg.label}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View className="od-avatar-right">
-                    <View className="od-avatar-status-pill" style={{ backgroundColor: dCfg.bgColor }}>
-                      <Text className="block od-avatar-status-pill-text" style={{ color: dCfg.color }}>{dCfg.label}</Text>
-                    </View>
-                  </View>
-                </View>
-              )
-            })}
+            <View className="od-dispatch-row">
+              <View className="od-dispatch-item">
+                <Text className="block od-dispatch-num" style={{ color: '#10B981' }}>{acceptedCount}</Text>
+                <Text className="block od-dispatch-label">已接单</Text>
+              </View>
+              <View className="od-dispatch-item">
+                <Text className="block od-dispatch-num" style={{ color: '#6366F1' }}>{pendingCount}</Text>
+                <Text className="block od-dispatch-label">匹配中</Text>
+              </View>
+              <View className="od-dispatch-item">
+                <Text className="block od-dispatch-num" style={{ color: '#9CA3AF' }}>{totalAvatars - acceptedCount - pendingCount}</Text>
+                <Text className="block od-dispatch-label">待分配</Text>
+              </View>
+            </View>
           </View>
         )}
 
@@ -413,19 +423,21 @@ export default function OrderDetailPage() {
             <Text className="block od-section-title">动态记录</Text>
             <View className="od-timeline">
               {events.map((evt: any, idx: number) => {
-                const EventIcon = EVENT_ICONS[evt.eventType || evt.event_type] || CircleDot
-                const eventColor = EVENT_COLORS[evt.eventType || evt.event_type] || '#9CA3AF'
+                const evtType = evt.eventType || evt.event_type || ''
+                const EventIcon = EVENT_ICONS[evtType] || CircleDot
+                const eventColor = EVENT_COLORS[evtType] || '#9CA3AF'
+                const eventLabel = evt.title || EVENT_LABELS[evtType] || evtType
                 return (
                   <View key={evt.id || idx} className="od-timeline-item">
                     <View className="od-timeline-left">
                       <View className="od-timeline-dot" style={{ backgroundColor: `${eventColor}20` }}>
-                        <EventIcon size={14} color={eventColor} />
+                        <EventIcon size={12} color={eventColor} />
                       </View>
                       {idx < events.length - 1 && <View className="od-timeline-line" />}
                     </View>
                     <View className="od-timeline-right">
                       <View className="od-timeline-header">
-                        <Text className="block od-timeline-title">{evt.eventTitle || evt.description || evt.eventType || ''}</Text>
+                        <Text className="block od-timeline-title">{eventLabel}</Text>
                         <Text className="block od-timeline-time">{formatTime(evt.createdAt || evt.created_at)}</Text>
                       </View>
                     </View>
@@ -441,7 +453,7 @@ export default function OrderDetailPage() {
           <View className="od-actions">
             {isPayable && (
               <View className="od-action-btn od-action-primary" onClick={handlePay}>
-                <CreditCard size={22} color="#fff" />
+                <CreditCard size={16} color="#fff" />
                 <Text className="block od-action-text" style={{ color: '#fff' }}>
                   {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
                 </Text>
@@ -453,8 +465,8 @@ export default function OrderDetailPage() {
               </View>
             )}
             {isDeletable && (
-              <View className="od-action-btn od-action-secondary" onClick={handleDelete}>
-                <Trash2 size={22} color="#EF4444" />
+              <View className="od-action-btn od-action-danger" onClick={handleDelete}>
+                <Trash2 size={16} color="#EF4444" />
                 <Text className="block od-action-text" style={{ color: '#EF4444' }}>删除订单</Text>
               </View>
             )}
@@ -463,7 +475,7 @@ export default function OrderDetailPage() {
 
         {/* 底部安全区 */}
         <View style={{ height: '40rpx' }} />
-      </View>
+      </ScrollView>
     </View>
   )
 }

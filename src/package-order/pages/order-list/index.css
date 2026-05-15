@@ -1,18 +1,18 @@
 /* 订单列表页 - ol 前缀 */
 .ol-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #F5F5F7;
   display: flex;
   flex-direction: column;
 }
 
-/* 头部渐变 */
+/* ═══════ 头部渐变 ═══════ */
 .ol-header {
-  background: linear-gradient(135deg, #7c3aed, #6366f1, #4f46e5);
+  background: linear-gradient(135deg, #7C3AED, #6366F1, #4F46E5);
   padding: 0 0 48rpx 0;
   position: relative;
   overflow: hidden;
-  border-radius: 0 0 48rpx 48rpx;
+  border-radius: 0 0 40rpx 40rpx;
 }
 .ol-header-decor {
   position: absolute;
@@ -26,80 +26,119 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 80rpx 32rpx 24rpx 32rpx;
+  padding: 20rpx 28rpx;
 }
 .ol-back-btn {
-  width: 56rpx; height: 56rpx;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   background: rgba(255,255,255,0.2);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .ol-header-center {
   flex: 1;
-  display: flex; flex-direction: column; align-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .ol-header-title {
-  font-size: 34rpx; font-weight: 700; color: #fff;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #fff;
 }
-.ol-header-subtitle {
-  font-size: 22rpx; color: rgba(255,255,255,0.7); margin-top: 4rpx;
+.ol-header-right {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.ol-header-right { width: 56rpx; }
 
-/* 统计栏 */
+/* ═══════ 统计栏 ═══════ */
 .ol-stats {
-  display: flex; flex-direction: row;
-  align-items: center; justify-content: space-around;
-  margin: -32rpx 24rpx 0 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  margin: -28rpx 24rpx 0 24rpx;
   padding: 24rpx 16rpx;
   background: #fff;
   border-radius: 20rpx;
   box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06);
-  position: relative; z-index: 10;
+  position: relative;
+  z-index: 10;
 }
 .ol-stat-item {
-  display: flex; flex-direction: column; align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .ol-stat-num {
-  font-size: 36rpx; font-weight: 700; color: #1f2937;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1F2937;
 }
 .ol-stat-label {
-  font-size: 20rpx; color: #9ca3af; margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9CA3AF;
+  margin-top: 4rpx;
 }
 .ol-stat-divider {
-  width: 1rpx; height: 48rpx; background: #f3f4f6;
+  width: 1rpx;
+  height: 48rpx;
+  background: #F3F4F6;
 }
 
-/* Tab 筛选 */
+/* ═══════ Tab 筛选 ═══════ */
 .ol-tabs {
-  display: flex; flex-direction: row;
+  display: flex;
+  flex-direction: row;
   padding: 24rpx 24rpx 0 24rpx;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 .ol-tab {
-  padding: 10rpx 24rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  padding: 12rpx 24rpx;
   border-radius: 100rpx;
   background: #fff;
-  border: 1rpx solid #e5e7eb;
+  border: 1rpx solid #E5E7EB;
+  flex-shrink: 0;
 }
 .ol-tab-active {
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: #7C3AED;
+  border-color: #7C3AED;
 }
 .ol-tab-text {
-  font-size: 24rpx; color: #6b7280;
+  font-size: 24rpx;
+  color: #6B7280;
 }
 .ol-tab-active .ol-tab-text {
   color: #fff;
 }
-
-/* 列表 */
-.ol-list {
-  flex: 1;
-  padding: 20rpx 24rpx 120rpx 24rpx;
+.ol-tab-count {
+  font-size: 20rpx;
+  color: #9CA3AF;
+}
+.ol-tab-active .ol-tab-count {
+  color: rgba(255,255,255,0.8);
 }
 
-/* 订单卡片 */
+/* ═══════ 列表 ═══════ */
+.ol-list {
+  flex: 1;
+  padding: 20rpx 24rpx;
+}
+
+/* ═══════ 订单卡片 ═══════ */
 .ol-card {
   background: #fff;
   border-radius: 24rpx;
@@ -108,163 +147,140 @@
   box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
 }
 
-/* 卡片头部 */
-.ol-card-header {
-  display: flex; flex-direction: row;
-  align-items: center; justify-content: space-between;
-  margin-bottom: 16rpx;
-}
-.ol-card-header-left {
-  display: flex; flex-direction: row; align-items: center;
-  flex: 1; margin-right: 12rpx;
-}
-.ol-status-dot {
-  width: 12rpx; height: 12rpx;
-  border-radius: 50%;
-  margin-right: 12rpx;
-  flex-shrink: 0;
-}
-.ol-card-title {
-  font-size: 28rpx; font-weight: 600; color: #1f2937;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ol-status-pill {
-  padding: 2rpx 12rpx;
-  border-radius: 100rpx;
-  flex-shrink: 0;
-}
-.ol-status-pill-text {
-  font-size: 20rpx; line-height: 1.4;
-}
-
-/* 标签 */
-.ol-card-pills {
-  display: flex; flex-direction: row;
-  flex-wrap: wrap; gap: 8rpx;
-  margin-bottom: 16rpx;
-}
-.ol-platform-pill {
-  padding: 2rpx 12rpx;
-  border-radius: 100rpx;
-  background: rgba(139,92,246,0.08);
-}
-.ol-pill-text {
-  font-size: 20rpx; color: #7c3aed; line-height: 1.4;
-}
-
-/* 信息栏 */
-.ol-card-info {
-  display: flex; flex-direction: row;
-  flex-wrap: wrap; gap: 16rpx;
-  padding: 12rpx 0;
-  border-top: 1rpx solid #f3f4f6;
-}
-.ol-info-item {
-  display: flex; flex-direction: row; align-items: center; gap: 4rpx;
-}
-.ol-info-text {
-  font-size: 22rpx; color: #9ca3af;
-}
-
-/* 操作按钮 */
-.ol-card-actions {
-  display: flex; flex-direction: row;
-  gap: 12rpx;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid #f3f4f6;
-}
-.ol-action-btn {
-  display: flex; flex-direction: row; align-items: center;
-  gap: 6rpx;
-  padding: 10rpx 24rpx;
-  border-radius: 100rpx;
-}
-.ol-action-primary {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-}
-.ol-action-default {
-  background: rgba(139,92,246,0.08);
-}
-.ol-action-btn-text {
-  font-size: 24rpx; font-weight: 500;
-}
-
-/* 加载态 */
-.ol-loading {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 120rpx 0;
-}
-.ol-loading-text {
-  font-size: 26rpx; color: #9ca3af; margin-top: 16rpx;
-}
-
-/* 空状态 */
-.ol-empty {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 120rpx 0;
-}
-.ol-empty-text {
-  font-size: 26rpx; color: #9ca3af; margin-top: 16rpx;
-}
-
-.ol-card-header-right {
+/* 卡片顶部：状态标签 + 时间 */
+.ol-card-top {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8rpx;
-  flex-shrink: 0;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.ol-status-tag {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+}
+.ol-status-tag-text {
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.ol-card-time {
+  font-size: 22rpx;
+  color: #9CA3AF;
 }
 
-/* 异常卡片高亮 */
+/* 卡片标题 */
+.ol-card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 16rpx;
+}
+
+/* 标签行 */
+.ol-card-pills {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+.ol-type-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+  background: rgba(124,58,237,0.08);
+}
+.ol-type-pill-text {
+  font-size: 22rpx;
+  color: #7C3AED;
+  line-height: 1.5;
+}
+.ol-platform-pill {
+  padding: 4rpx 16rpx;
+  border-radius: 100rpx;
+  background: #EEF2FF;
+}
+.ol-platform-pill-text {
+  font-size: 22rpx;
+  color: #6366F1;
+  line-height: 1.5;
+}
+
+/* 卡片底部 */
+.ol-card-bottom {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #F3F4F6;
+}
+.ol-card-budget {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #F59E0B;
+}
+.ol-card-avatars {
+  font-size: 22rpx;
+  color: #7C3AED;
+}
+.ol-card-phase {
+  font-size: 22rpx;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* ═══════ 操作按钮 ═══════ */
+.ol-card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #F3F4F6;
+}
+.ol-action-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 100rpx;
+}
+.ol-action-primary {
+  background: linear-gradient(135deg, #7C3AED, #6366F1);
+}
+.ol-action-default {
+  background: rgba(124,58,237,0.08);
+}
+.ol-action-danger {
+  background: rgba(239,68,68,0.08);
+}
+.ol-action-btn-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ═══════ 异常卡片 ═══════ */
 .ol-card-abnormal {
   border-left: 6rpx solid #EF4444;
 }
 
-/* 告警徽标 */
-.ol-alert-badge {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 2rpx;
-  padding: 2rpx 10rpx;
-  border-radius: 100rpx;
-  background: #EF4444;
-}
-.ol-alert-badge-text {
-  font-size: 18rpx;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* Tab Badge */
-.ol-tab-badge {
-  position: absolute;
-  top: -4rpx;
-  right: -8rpx;
-  min-width: 28rpx;
-  height: 28rpx;
-  border-radius: 14rpx;
-  background: #EF4444;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6rpx;
-}
-.ol-tab-badge-text {
-  font-size: 18rpx;
-  color: #fff;
-  font-weight: 600;
-}
-.ol-tab {
-  position: relative;
-}
-
-/* ═══════════════ Avatar Progress Summary ═══════════════ */
+/* ═══════ 分身进度条 ═══════ */
 .ol-avatar-progress {
   margin-bottom: 12rpx;
   padding: 12rpx 0;
@@ -285,21 +301,93 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 16rpx;
   margin-top: 8rpx;
 }
 .ol-progress-label-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 2rpx;
+  gap: 6rpx;
 }
 .ol-progress-label-text {
-  font-size: 18rpx;
+  font-size: 20rpx;
   font-weight: 500;
 }
 
-/* 旋转动画 */
+/* ═══════ 底部发单按钮 ═══════ */
+.ol-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16rpx 32rpx;
+  padding-bottom: 32rpx;
+  background: #fff;
+  border-top: 1rpx solid #F3F4F6;
+  z-index: 100;
+}
+.ol-create-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(135deg, #7C3AED, #6366F1);
+}
+.ol-create-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ═══════ 加载态 ═══════ */
+.ol-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+.ol-loading-text {
+  font-size: 26rpx;
+  color: #9CA3AF;
+  margin-top: 16rpx;
+}
+
+/* ═══════ 空状态 ═══════ */
+.ol-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+.ol-empty-text {
+  font-size: 26rpx;
+  color: #9CA3AF;
+  margin-top: 16rpx;
+}
+.ol-empty-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  margin-top: 24rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 100rpx;
+  background: rgba(124,58,237,0.08);
+}
+.ol-empty-btn-text {
+  font-size: 24rpx;
+  color: #7C3AED;
+  font-weight: 500;
+}
+
+/* ═══════ 旋转动画 ═══════ */
 .ol-spin {
   animation: ol-spin-anim 1s linear infinite;
 }
