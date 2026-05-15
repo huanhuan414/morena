@@ -6,9 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Network } from '@/network'
-import { getStatusBarHeight } from '@/utils/safe-area'
 import {
-  ArrowLeft, Clock, Loader, Users, CircleCheckBig, CircleX,
+  ArrowLeft, Clock, LoaderCircle, Users, CircleCheckBig, CircleX,
   Wallet, CreditCard, Send, Trash2,
   FileText, CircleDot
 } from 'lucide-react-taro'
@@ -43,11 +42,11 @@ const PHASES = [
 
 function getPhaseIndex(status: string): number {
   const phase = STATUS_CONFIG[status]?.phase ?? -1
-  if (phase <= 0) return -1 // 未支付或异常
-  if (phase === 1) return 0 // 匹配中
-  if (phase === 2) return 1 // 制作中
-  if (phase === 3) return 2 // 发布中
-  if (phase === 4) return 3 // 已完成
+  if (phase <= 0) return -1
+  if (phase === 1) return 0
+  if (phase === 2) return 1
+  if (phase === 3) return 2
+  if (phase === 4) return 3
   return -1
 }
 
@@ -89,7 +88,6 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const pollingRef = useRef<any>(null)
-  const statusBarHeight = getStatusBarHeight()
 
   const orderId = Taro.getCurrentInstance().router?.params?.id
   const action = Taro.getCurrentInstance().router?.params?.action
@@ -132,7 +130,6 @@ export default function OrderDetailPage() {
           }
         } catch { /* ignore */ }
       }, 3000)
-      // 最多轮询60秒
       setTimeout(() => clearInterval(pollingRef.current), 60000)
     }
     return () => clearInterval(pollingRef.current)
@@ -221,15 +218,16 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <View className="flex items-center justify-center h-screen bg-gray-50">
-        <Loader size={32} color="#3B82F6" className="animate-spin" />
+      <View className="flex items-center justify-center bg-gray-50" style={{ minHeight: '100vh' }}>
+        <LoaderCircle size={32} color="#3B82F6" />
+        <Text className="block mt-3 text-sm text-gray-400">加载中...</Text>
       </View>
     )
   }
 
   if (!order) {
     return (
-      <View className="flex items-center justify-center h-screen bg-gray-50">
+      <View className="flex items-center justify-center bg-gray-50" style={{ minHeight: '100vh' }}>
         <Text className="block text-gray-400">订单不存在</Text>
       </View>
     )
@@ -243,10 +241,10 @@ export default function OrderDetailPage() {
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
 
   return (
-    <View className="flex flex-col h-screen bg-gray-50">
+    <View className="flex flex-col bg-gray-50" style={{ minHeight: '100vh' }}>
       {/* 顶部导航 */}
-      <View className="bg-white" style={{ paddingTop: statusBarHeight }}>
-        <View className="flex flex-row items-center px-4 py-3">
+      <View className="bg-white px-4 py-3 border-b border-gray-100">
+        <View className="flex flex-row items-center">
           <View onClick={() => Taro.navigateBack()}>
             <ArrowLeft size={20} color="#333" />
           </View>
@@ -254,186 +252,186 @@ export default function OrderDetailPage() {
         </View>
       </View>
 
-      <ScrollView scrollY className="flex-1">
-        {/* ====== 状态横幅 ====== */}
-        <View className="mx-4 mt-3 rounded-xl p-4" style={{ backgroundColor: statusCfg.bgColor }}>
-          <View className="flex flex-row items-center">
-            <View className="w-10 h-10 rounded-full flex items-center justify-center mr-3" style={{ backgroundColor: `${statusCfg.color}20` }}>
-              {isPayable ? <Clock size={20} color={statusCfg.color} /> :
-               currentPhase >= 0 ? <Loader size={20} color={statusCfg.color} /> :
-               isAbnormal ? <CircleX size={20} color={statusCfg.color} /> :
-               <CircleCheckBig size={20} color={statusCfg.color} />}
-            </View>
-            <View className="flex-1">
-              <Text className="block text-base font-semibold" style={{ color: statusCfg.color }}>
-                {statusCfg.label}
-              </Text>
-              <Text className="block text-xs mt-1" style={{ color: `${statusCfg.color}CC` }}>
-                {isPayable ? '请尽快完成支付，超时订单将自动取消' :
-                 currentPhase === 0 ? '正在为你匹配最合适的分身...' :
-                 currentPhase === 1 ? '分身正在制作内容' :
-                 currentPhase === 2 ? '内容准备发布到平台' :
-                 currentPhase === 3 ? '订单已完成' :
-                 isAbnormal ? '订单出现异常，请关注' : ''}
-              </Text>
+      <ScrollView scrollY style={{ height: 'calc(100vh - 120rpx)' }}>
+        <View className="px-4 pt-3 pb-24">
+          {/* ====== 状态横幅 ====== */}
+          <View className="rounded-xl p-4" style={{ backgroundColor: statusCfg.bgColor }}>
+            <View className="flex flex-row items-center">
+              <View className="w-10 h-10 rounded-full flex items-center justify-center mr-3" style={{ backgroundColor: `${statusCfg.color}20` }}>
+                {isPayable ? <Clock size={20} color={statusCfg.color} /> :
+                 currentPhase >= 0 ? <LoaderCircle size={20} color={statusCfg.color} /> :
+                 isAbnormal ? <CircleX size={20} color={statusCfg.color} /> :
+                 <CircleCheckBig size={20} color={statusCfg.color} />}
+              </View>
+              <View className="flex-1">
+                <Text className="block text-base font-semibold" style={{ color: statusCfg.color }}>
+                  {statusCfg.label}
+                </Text>
+                <Text className="block text-xs mt-1" style={{ color: `${statusCfg.color}CC` }}>
+                  {isPayable ? '请尽快完成支付，超时订单将自动取消' :
+                   currentPhase === 0 ? '正在为你匹配最合适的分身...' :
+                   currentPhase === 1 ? '分身正在制作内容' :
+                   currentPhase === 2 ? '内容准备发布到平台' :
+                   currentPhase === 3 ? '订单已完成' :
+                   isAbnormal ? '订单出现异常，请关注' : ''}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* ====== 4阶段进度条（非pending_payment） ====== */}
-        {currentPhase >= 0 && (
-          <View className="mx-4 mt-3 bg-white rounded-xl p-4">
-            <View className="flex flex-row items-center justify-between">
-              {PHASES.map((phase, idx) => {
-                const PhaseIcon = phase.icon
-                const isActive = idx <= currentPhase
-                const isCurrent = idx === currentPhase
-                return (
-                  <View key={phase.key} className="flex flex-row items-center flex-1">
-                    <View className="flex flex-col items-center">
-                      <View className={`w-8 h-8 rounded-full flex items-center justify-center ${isCurrent ? 'ring-2 ring-blue-200' : ''}`}
-                        style={{ backgroundColor: isActive ? '#3B82F6' : '#F3F4F6' }}
-                      >
-                        <PhaseIcon size={14} color={isActive ? '#fff' : '#9CA3AF'} />
+          {/* ====== 4阶段进度条（非pending_payment） ====== */}
+          {currentPhase >= 0 && (
+            <View className="mt-3 bg-white rounded-xl p-4">
+              <View className="flex flex-row items-center justify-between">
+                {PHASES.map((phase, idx) => {
+                  const PhaseIcon = phase.icon
+                  const isActive = idx <= currentPhase
+                  const isCurrent = idx === currentPhase
+                  return (
+                    <View key={phase.key} className="flex flex-row items-center flex-1">
+                      <View className="flex flex-col items-center">
+                        <View
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${isCurrent ? 'ring-2 ring-blue-200' : ''}`}
+                          style={{ backgroundColor: isActive ? '#3B82F6' : '#F3F4F6' }}
+                        >
+                          <PhaseIcon size={14} color={isActive ? '#fff' : '#9CA3AF'} />
+                        </View>
+                        <Text className={`block text-xs mt-1 ${isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+                          {phase.label}
+                        </Text>
                       </View>
-                      <Text className={`block text-xs mt-1 ${isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-                        {phase.label}
-                      </Text>
+                      {idx < PHASES.length - 1 && (
+                        <View
+                          className="flex-1 h-1 mx-1"
+                          style={{ backgroundColor: idx < currentPhase ? '#3B82F6' : '#E5E7EB', marginTop: '-12px' }}
+                        />
+                      )}
                     </View>
-                    {idx < PHASES.length - 1 && (
-                      <View className="flex-1 h-1 mx-1 mt-[-12px]"
-                        style={{ backgroundColor: idx < currentPhase ? '#3B82F6' : '#E5E7EB' }}
-                      />
-                    )}
-                  </View>
-                )
-              })}
+                  )
+                })}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* ====== 订单信息卡 ====== */}
-        <Card className="mx-4 mt-3">
-          <CardContent className="p-4">
-            <Text className="block text-sm font-semibold text-gray-900 mb-3">订单信息</Text>
+          {/* ====== 订单信息卡 ====== */}
+          <Card className="mt-3">
+            <CardContent className="p-4">
+              <Text className="block text-sm font-semibold text-gray-900 mb-3">订单信息</Text>
 
-            <View className="flex flex-row items-center mb-2">
-              <Text className="block text-xs text-gray-400 w-16">标题</Text>
-              <Text className="block text-sm text-gray-700 flex-1">{order.title || '—'}</Text>
-            </View>
-            <View className="flex flex-row items-center mb-2">
-              <Text className="block text-xs text-gray-400 w-16">类型</Text>
-              <Text className="block text-sm text-gray-700 flex-1">
-                {order.contentType === 'text' ? '纯文案' : order.contentType === 'image_text' ? '图文笔记' : order.contentType === 'video' ? '短视频' : order.contentType === 'article' ? '长文' : order.contentType || '—'}
-              </Text>
-            </View>
-            <View className="flex flex-row items-center mb-2">
-              <Text className="block text-xs text-gray-400 w-16">平台</Text>
-              <Text className="block text-sm text-gray-700 flex-1">
-                {Array.isArray(order.platforms) ? order.platforms.join('、') : order.platforms || '—'}
-              </Text>
-            </View>
-            <View className="flex flex-row items-center mb-2">
-              <Text className="block text-xs text-gray-400 w-16">分身</Text>
-              <Text className="block text-sm text-gray-700 flex-1">{order.avatarCount || order.avatar_count || '—'} 个</Text>
-            </View>
-            {order.targetAudience && (
               <View className="flex flex-row items-center mb-2">
-                <Text className="block text-xs text-gray-400 w-16">受众</Text>
-                <Text className="block text-sm text-gray-700 flex-1">{order.targetAudience}</Text>
+                <Text className="block text-xs text-gray-400 w-16">标题</Text>
+                <Text className="block text-sm text-gray-700 flex-1">{order.title || '—'}</Text>
               </View>
-            )}
-
-            <Separator className="my-3" />
-
-            <View className="flex flex-row items-center justify-between">
-              <View className="flex flex-row items-center">
-                <Wallet size={14} color="#F59E0B" className="mr-1" />
-                <Text className="block text-xs text-gray-400">订单金额</Text>
+              <View className="flex flex-row items-center mb-2">
+                <Text className="block text-xs text-gray-400 w-16">类型</Text>
+                <Text className="block text-sm text-gray-700 flex-1">
+                  {order.contentType === 'text' ? '纯文案' : order.contentType === 'image_text' ? '图文笔记' : order.contentType === 'video' ? '短视频' : order.contentType === 'article' ? '长文' : order.contentType || '—'}
+                </Text>
               </View>
-              <Text className="block text-lg font-bold text-gray-900">¥{order.budget || order.totalPrice || 0}</Text>
-            </View>
-          </CardContent>
-        </Card>
+              <View className="flex flex-row items-center mb-2">
+                <Text className="block text-xs text-gray-400 w-16">平台</Text>
+                <Text className="block text-sm text-gray-700 flex-1">
+                  {Array.isArray(order.platforms) ? order.platforms.join('、') : order.platforms || '—'}
+                </Text>
+              </View>
+              <View className="flex flex-row items-center mb-2">
+                <Text className="block text-xs text-gray-400 w-16">分身</Text>
+                <Text className="block text-sm text-gray-700 flex-1">{order.avatarCount || order.avatar_count || '—'} 个</Text>
+              </View>
+              {order.targetAudience && (
+                <View className="flex flex-row items-center mb-2">
+                  <Text className="block text-xs text-gray-400 w-16">受众</Text>
+                  <Text className="block text-sm text-gray-700 flex-1">{order.targetAudience}</Text>
+                </View>
+              )}
 
-        {/* ====== 分身状态卡 ====== */}
-        {dispatches.length > 0 && (
-          <Card className="mx-4 mt-3">
-            <CardContent className="p-4">
-              <Text className="block text-sm font-semibold text-gray-900 mb-3">分身进度</Text>
-              {dispatches.map((d: any, idx: number) => {
-                const dStatus = d.status || d.dispatchStatus || ''
-                const dCfg = STATUS_CONFIG[dStatus] || { label: dStatus, color: '#94A3B8', bgColor: '#F1F5F9' }
-                return (
-                  <View key={d.id || idx} className="flex flex-row items-center py-2 border-b border-gray-50 last:border-0">
-                    <View className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
-                      <Users size={14} color="#6B7280" />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="block text-sm text-gray-700">{d.avatarName || `分身 ${idx + 1}`}</Text>
-                      <Text className="block text-xs text-gray-400 mt-1">{d.avatarPlatform || ''}</Text>
-                    </View>
-                    <Badge className="text-xs" style={{ backgroundColor: dCfg.bgColor, color: dCfg.color }}>
-                      {dCfg.label}
-                    </Badge>
-                  </View>
-                )
-              })}
+              <Separator className="my-3" />
+
+              <View className="flex flex-row items-center justify-between">
+                <View className="flex flex-row items-center">
+                  <Wallet size={14} color="#F59E0B" />
+                  <Text className="block text-xs text-gray-400 ml-1">订单金额</Text>
+                </View>
+                <Text className="block text-lg font-bold text-gray-900">¥{order.budget || order.totalPrice || 0}</Text>
+              </View>
             </CardContent>
           </Card>
-        )}
 
-        {/* ====== 事件时间线 ====== */}
-        {events.length > 0 && (
-          <Card className="mx-4 mt-3 mb-6">
-            <CardContent className="p-4">
-              <Text className="block text-sm font-semibold text-gray-900 mb-3">动态记录</Text>
-              {events.map((evt: any, idx: number) => {
-                const EventIcon = EVENT_ICONS[evt.eventType || evt.event_type] || CircleDot
-                const eventColor = EVENT_COLORS[evt.eventType || evt.event_type] || '#94A3B8'
-                return (
-                  <View key={evt.id || idx} className="flex flex-row items-start mb-3 last:mb-0">
-                    <View className="flex flex-col items-center mr-3">
-                      <View className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${eventColor}15` }}>
-                        <EventIcon size={12} color={eventColor} />
+          {/* ====== 分身状态卡 ====== */}
+          {dispatches.length > 0 && (
+            <Card className="mt-3">
+              <CardContent className="p-4">
+                <Text className="block text-sm font-semibold text-gray-900 mb-3">分身进度</Text>
+                {dispatches.map((d: any, idx: number) => {
+                  const dStatus = d.status || d.dispatchStatus || ''
+                  const dCfg = STATUS_CONFIG[dStatus] || { label: dStatus, color: '#94A3B8', bgColor: '#F1F5F9' }
+                  return (
+                    <View key={d.id || idx} className="flex flex-row items-center py-2 border-b border-gray-50 last:border-0">
+                      <View className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                        <Users size={14} color="#6B7280" />
                       </View>
-                      {idx < events.length - 1 && <View className="w-1 h-4 bg-gray-100 mt-1" />}
+                      <View className="flex-1">
+                        <Text className="block text-sm text-gray-700">{d.avatarName || `分身 ${idx + 1}`}</Text>
+                        <Text className="block text-xs text-gray-400 mt-1">{d.avatarPlatform || ''}</Text>
+                      </View>
+                      <Badge className="text-xs" style={{ backgroundColor: dCfg.bgColor, color: dCfg.color }}>
+                        {dCfg.label}
+                      </Badge>
                     </View>
-                    <View className="flex-1">
-                      <Text className="block text-sm text-gray-700">{evt.eventTitle || evt.description || evt.eventType || ''}</Text>
-                      <Text className="block text-xs text-gray-400 mt-1">
-                        {formatTime(evt.createdAt || evt.created_at)}
-                      </Text>
-                    </View>
-                  </View>
-                )
-              })}
-            </CardContent>
-          </Card>
-        )}
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* 底部安全区 */}
-        <View className="h-24" />
+          {/* ====== 事件时间线 ====== */}
+          {events.length > 0 && (
+            <Card className="mt-3 mb-4">
+              <CardContent className="p-4">
+                <Text className="block text-sm font-semibold text-gray-900 mb-3">动态记录</Text>
+                {events.map((evt: any, idx: number) => {
+                  const EventIcon = EVENT_ICONS[evt.eventType || evt.event_type] || CircleDot
+                  const eventColor = EVENT_COLORS[evt.eventType || evt.event_type] || '#94A3B8'
+                  return (
+                    <View key={evt.id || idx} className="flex flex-row items-start mb-3 last:mb-0">
+                      <View className="flex flex-col items-center mr-3">
+                        <View className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${eventColor}15` }}>
+                          <EventIcon size={12} color={eventColor} />
+                        </View>
+                        {idx < events.length - 1 && <View className="w-1 h-4 bg-gray-100 mt-1" />}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="block text-sm text-gray-700">{evt.eventTitle || evt.description || evt.eventType || ''}</Text>
+                        <Text className="block text-xs text-gray-400 mt-1">
+                          {formatTime(evt.createdAt || evt.created_at)}
+                        </Text>
+                      </View>
+                    </View>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </View>
       </ScrollView>
 
       {/* ====== 底部操作栏 ====== */}
       {(isPayable || isCancellable || isDeletable) && (
-        <View style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          display: 'flex', flexDirection: 'row', gap: '8px',
-          padding: '12px 16px', paddingBottom: 24, backgroundColor: '#fff',
-          borderTop: '1px solid #F3F4F6', zIndex: 100,
-        }}
+        <View
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            display: 'flex', flexDirection: 'row', gap: '8px',
+            padding: '12px 16px', paddingBottom: 24, backgroundColor: '#fff',
+            borderTop: '1px solid #F3F4F6', zIndex: 100,
+          }}
         >
           {isPayable && (
             <View style={{ flex: 2 }} onClick={handlePay}>
               <Button className="w-full rounded-xl py-3" disabled={paying}>
-                <View className="flex flex-row items-center justify-center">
-                  <CreditCard size={16} color="#fff" className="mr-2" />
-                  <Text className="text-white font-medium">
-                    {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
-                  </Text>
-                </View>
+                <CreditCard size={16} color="#fff" />
+                <Text className="text-white font-medium ml-2">
+                  {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
+                </Text>
               </Button>
             </View>
           )}
@@ -447,10 +445,8 @@ export default function OrderDetailPage() {
           {isDeletable && (
             <View style={{ flex: 1 }} onClick={handleDelete}>
               <Button variant="outline" className="w-full rounded-xl py-3 border-red-200">
-                <View className="flex flex-row items-center justify-center">
-                  <Trash2 size={12} color="#EF4444" className="mr-1" />
-                  <Text className="text-xs text-red-500">删除</Text>
-                </View>
+                <Trash2 size={12} color="#EF4444" />
+                <Text className="text-xs text-red-500 ml-1">删除</Text>
               </Button>
             </View>
           )}
