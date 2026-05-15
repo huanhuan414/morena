@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { View, Text, Button } from '@tarojs/components'
+import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
 import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, ChevronLeft, User } from 'lucide-react-taro'
@@ -25,6 +25,14 @@ export default function ReferralCenter() {
 
   useDidShow(() => {
     loadReferralData()
+  })
+
+  useShareAppMessage(() => {
+    return {
+      title: `邀请你一起用Morena AI，双方各得${INVITER_BASE_REWARD}元现金奖励！`,
+      path: `/pages/login/index?inviteCode=${stats.referralCode}`,
+      imageUrl: '/assets/share.png'
+    }
   })
 
   const loadReferralData = async () => {
@@ -70,16 +78,6 @@ export default function ReferralCenter() {
     Taro.setClipboardData({
       data: stats.referralCode,
       success: () => Taro.showToast({ title: '邀请码已复制', icon: 'success' }),
-    })
-  }
-
-  const handleShareToFriend = () => {
-    if (!stats.referralCode) return
-    Taro.showModal({
-      title: '分享给好友',
-      content: `我的Morena AI邀请码: ${stats.referralCode}，快来注册创建分身，双方各得${INVITER_BASE_REWARD}元现金奖励！`,
-      showCancel: false,
-      confirmText: '知道了',
     })
   }
 
@@ -157,10 +155,16 @@ export default function ReferralCenter() {
             <Copy size={14} color="#fff" />
             <Text className="ref-btn-text">复制邀请码</Text>
           </View>
-          <View className="ref-btn-share" onClick={handleShareToFriend}>
-            <Share2 size={14} color="#7C3AED" />
-            <Text className="ref-btn-text-purple">分享给好友</Text>
-          </View>
+          <Button 
+            open-type="share" 
+            className="ref-btn-share"
+            style={{ border: 'none', background: 'transparent', padding: 0, lineHeight: 'normal' }}
+          >
+            <View className="ref-btn-share-inner" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Share2 size={14} color="#7C3AED" />
+              <Text className="ref-btn-text-purple">分享给好友</Text>
+            </View>
+          </Button>
         </View>
       </View>
 

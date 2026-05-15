@@ -292,24 +292,29 @@ export class OrderService {
       [orderId]
     )
 
-    const processingRows = await db.query(
-      `SELECT id, order_id, avatar_id, status, publish_feedback, publish_status, created_at, updated_at
-       FROM content_generation_requests
-       WHERE order_id = ?
-       ORDER BY updated_at DESC, created_at DESC`,
-      [orderId]
-    ).catch(() => [])
+    let processingRows: any[] = []
+    try {
+      processingRows = await db.query(
+        `SELECT id, order_id, avatar_id, status, publish_feedback, created_at, updated_at
+         FROM content_generation_requests
+         WHERE order_id = ?
+         ORDER BY updated_at DESC, created_at DESC`,
+        [orderId]
+      )
+    } catch (err: any) {
+      console.error('[OrderService] processingRows 查询失败:', err.message)
+    }
 
     const latestProcessingMap = new Map<string, any>()
     for (const row of processingRows || []) {
-      const avatarId = row.avatarId
+      const avatarId = row.avatar_id || row.avatarId
       if (avatarId && !latestProcessingMap.has(avatarId)) {
         latestProcessingMap.set(avatarId, row)
       }
     }
     
     const avatarStats = (avatarRows || []).map((row: any) => {
-      const avatarId = row.avatarId
+      const avatarId = row.avatar_id || row.avatarId
       const processing = latestProcessingMap.get(avatarId)
       const normalizedStatus = processing
         ? this.normalizeContentStatus(processing?.status)
@@ -321,11 +326,11 @@ export class OrderService {
         avatarId,
         avatarName: row.nickname || '未知分身',
         nickname: row.nickname || '未知分身',
-        avatarUrl: row.avatarUrl,
+        avatarUrl: row.avatar_url || row.avatarUrl,
         platform: row.platform || 'unknown',
         status: normalizedStatus,
-        publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
-        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
+        publishFeedback: this.safeParseJson(processing?.publish_feedback || processing?.publishFeedback, {}),
+        createdAt: row.created_at || row.createdAt ? new Date(row.created_at || row.createdAt).toISOString() : new Date().toISOString()
       }
     })
 

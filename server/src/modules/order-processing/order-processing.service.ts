@@ -390,7 +390,9 @@ export class OrderProcessingService {
   }
 
   async submitFeedback(identifier: string, feedback: Record<string, any>): Promise<any> {
+    console.log('[OrderProcessingService] submitFeedback 被调用, identifier:', identifier)
     const current = await this.findRecordByIdentifier(identifier)
+    console.log('[OrderProcessingService] current record:', current?.id, 'orderId:', current?.orderId || current?.order_id)
     if (!current) return null
     const existingFeedback = this.parseJsonObject<Record<string, any>>(
       current.publishFeedback || current.publish_feedback,
@@ -405,6 +407,7 @@ export class OrderProcessingService {
     if (!record) return null
 
     const normalized = this.normalizeRecord(record)
+    console.log('[OrderProcessingService] normalized:', 'requestId:', normalized.requestId, 'orderId:', normalized.orderId)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
     await this.syncOrderStatus(normalized.orderId)
@@ -413,13 +416,25 @@ export class OrderProcessingService {
 
   async acceptProcessing(identifier: string): Promise<any> {
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'completed'
+      status: 'settled'
     })
     if (!record) return null
 
     const normalized = this.normalizeRecord(record)
     setCache(normalized.requestId, normalized)
     setCache(normalized.orderId, normalized)
+
+    const db = getMySQLClient()
+    const orderId = normalized.orderId || normalized.order_id
+    const avatarId = normalized.avatarId || normalized.avatar_id
+
+    if (orderId && avatarId) {
+      await db.query(
+        `UPDATE order_dispatch_requests SET status = 'completed', updated_at = NOW() WHERE order_id = ? AND avatar_id = ?`,
+        [orderId, avatarId]
+      )
+      console.log(`[OrderProcessingService] 派单状态更新为 completed: orderId=${orderId}, avatarId=${avatarId}`)
+    }
 
     await this.syncOrderStatus(normalized.orderId)
     return normalized

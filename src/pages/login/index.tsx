@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,15 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [codeLoading, setCodeLoading] = useState(false)
   const { setUserInfo, setToken } = useUserStore(state => state)
+
+  useEffect(() => {
+    const instance = Taro.getCurrentInstance()
+    const inviteCode = instance?.router?.params?.inviteCode || instance?.router?.params?.referralCode
+    if (inviteCode) {
+      setReferralCode(inviteCode)
+      Taro.showToast({ title: '已自动填充邀请码', icon: 'success' })
+    }
+  }, [])
 
   // 获取重定向地址
   const getRedirectUrl = () => {

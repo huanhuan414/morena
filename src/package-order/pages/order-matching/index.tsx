@@ -10,6 +10,16 @@ import {
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
+const CONTENT_TYPE_MAP: Record<string, string> = {
+  text: '纯文案',
+  copywriting: '文案',
+  image_text: '图文',
+  article: '长文',
+  image: '图片',
+  video: '短视频',
+  video_script: '视频脚本',
+}
+
 interface Avatar {
   id: string
   name: string
@@ -325,7 +335,7 @@ export default function OrderMatchingPage() {
             <View className="order-tags">
               {order.contentType && (
                 <View className="tag tag-primary">
-                  <Text className="tag-text">{order.contentType}</Text>
+                  <Text className="tag-text">{CONTENT_TYPE_MAP[order.contentType] || order.contentType}</Text>
                 </View>
               )}
               <View className="tag">

@@ -61,29 +61,43 @@ export default function OrderAcceptance() {
   const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
 
   useLoad(() => {
+    console.log('[OrderAcceptance] 页面加载, orderId:', orderId)
     // 初始化安全区域信息
     const safeArea = getSafeArea()
     setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
 
     if (orderId) {
       fetchAvatars()
+    } else {
+      console.error('[OrderAcceptance] 缺少 orderId')
+      showToast({ title: '缺少订单ID', icon: 'none' })
+      setLoading(false)
     }
   })
 
   const fetchAvatars = async () => {
     try {
+      console.log('[OrderAcceptance] 开始获取数据, orderId:', orderId)
       const res = await Network.request({
         url: `/api/order/${orderId}`
       })
 
+      console.log('[OrderAcceptance] API 响应:', JSON.stringify(res.data)?.substring(0, 500))
+
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
-        const pendingAvatars = res.data.data.summary_stats.avatarStats.filter(
+        const allAvatars = res.data.data.summary_stats.avatarStats
+        console.log('[OrderAcceptance] 所有分身:', allAvatars.length, JSON.stringify(allAvatars.map((a: any) => ({ name: a.avatarName, status: a.status }))))
+        
+        const pendingAvatars = allAvatars.filter(
           (avatar: AvatarStat) => avatar.status === 'awaiting_acceptance' || avatar.status === 'feedback_submitted'
         )
+        console.log('[OrderAcceptance] 待验收分身:', pendingAvatars.length)
         setAvatars(pendingAvatars.map((a: AvatarStat) => ({ ...a, orderId })))
+      } else {
+        console.log('[OrderAcceptance] API 响应格式不正确')
       }
     } catch (error) {
-      console.error('获取分身列表失败:', error)
+      console.error('[OrderAcceptance] 获取分身列表失败:', error)
       showToast({ title: '加载失败', icon: 'none' })
     } finally {
       setLoading(false)
@@ -243,6 +257,7 @@ export default function OrderAcceptance() {
 
         {/* 内容 */}
         <ScrollView scrollY className="content-scroll">
+          <View className="content-scroll-inner">
           {/* 分身信息卡片 */}
           <View className="avatar-header-card">
             <Image
@@ -355,6 +370,7 @@ export default function OrderAcceptance() {
               ))}
             </View>
           )}
+          </View>
         </ScrollView>
 
         {/* 底部操作 */}
@@ -468,6 +484,7 @@ export default function OrderAcceptance() {
 
       {/* 内容 */}
       <ScrollView scrollY className="content-scroll-list">
+        <View className="content-scroll-inner">
         {avatars.length > 0 ? (
           <View className="avatar-list-modern">
             {avatars.map((avatar, index) => (
@@ -509,6 +526,7 @@ export default function OrderAcceptance() {
             </Button>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   )

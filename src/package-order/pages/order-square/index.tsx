@@ -233,7 +233,7 @@ export default function OrderSquarePage() {
         showToast({ title: '请先登录', icon: 'none' })
         return
       }
-      const avatarRes = await Network.request({ url: `/api/avatars?userId=${userId}&status=active` })
+      const avatarRes = await Network.request({ url: `/api/avatar` })
       const avatars = avatarRes.data?.data || []
       if (!Array.isArray(avatars) || avatars.length === 0) {
         showToast({ title: '请先创建分身', icon: 'none' })
