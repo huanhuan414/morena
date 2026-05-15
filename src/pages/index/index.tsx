@@ -287,7 +287,7 @@ const Index: React.FC = () => {
       {/* 顶部通栏 */}
       <View className="header">
         <View className="header-bg" />
-        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 35}px` }}>
+        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 50}px` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
               <Image className="avatar" src={userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'} />

@@ -9,7 +9,7 @@
 
 /* 头部渐变 */
 .settings-header {
-  background: linear-gradient(135deg, #7B3FE4 0%, #6366F1 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #6366f1 50%, #4f46e5 100%);
   position: relative;
   overflow: hidden;
   border-radius: 0 0 40rpx 40rpx;
@@ -52,6 +52,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 10;
 }
 
 .back-btn:active {
@@ -94,7 +96,7 @@
   width: 8rpx;
   height: 28rpx;
   border-radius: 4rpx;
-  background: linear-gradient(180deg, #7B3FE4, #6366F1);
+  background: linear-gradient(180deg, #7b3fe4, #6366f1);
 }
 
 .sg-title {
@@ -180,13 +182,13 @@
 }
 
 .logout-btn:active {
-  background: #FEF2F2;
+  background: #fef2f2;
 }
 
 .logout-text {
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
-  color: #EF4444;
+  color: #ef4444;
 }
 
 /* 版本 */

@@ -9,7 +9,7 @@
 
 /* 头部渐变 */
 .noti-header {
-  background: linear-gradient(135deg, #7B3FE4 0%, #6366F1 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #6366f1 50%, #4f46e5 100%);
   position: relative;
   overflow: hidden;
   border-radius: 0 0 40rpx 40rpx;
@@ -52,6 +52,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 10;
 }
 
 .back-btn:active {
@@ -121,7 +123,7 @@
   width: 8rpx;
   height: 28rpx;
   border-radius: 4rpx;
-  background: linear-gradient(180deg, #7B3FE4, #6366F1);
+  background: linear-gradient(180deg, #7b3fe4, #6366f1);
 }
 
 .section-title {
@@ -205,7 +207,7 @@
 }
 
 .noti-item.unread {
-  background: #F3E8FF;
+  background: #f3e8ff;
   border: 1rpx solid rgba(123, 63, 228, 0.15);
 }
 
@@ -268,7 +270,7 @@
 .unread-dot {
   width: 14rpx;
   height: 14rpx;
-  background: #7B3FE4;
+  background: #7b3fe4;
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: 14rpx;
@@ -301,7 +303,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .bottom-space {
