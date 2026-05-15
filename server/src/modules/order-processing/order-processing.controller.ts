@@ -196,6 +196,71 @@ export class OrderProcessingController {
     }
   }
 
+  @Post('dispute/:id')
+  async openDispute(
+    @Param('id') id: string,
+    @Body('reason') reason?: string,
+    @Body('evidence') evidence?: any
+  ) {
+    try {
+      const result = await this.processingService.createDispute(id, { reason, evidence })
+      return {
+        code: 200,
+        data: result,
+        message: result ? '已发起争议' : '记录不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '发起争议失败'
+      }
+    }
+  }
+
+  @Get('disputes')
+  async listDisputes(
+    @Query('status') status: string = 'open',
+    @Query('limit') limit: number = 50
+  ) {
+    try {
+      const result = await this.processingService.listDisputes(status, Number(limit) || 50)
+      return {
+        code: 200,
+        data: result,
+        message: 'success'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '获取争议列表失败'
+      }
+    }
+  }
+
+  @Post('disputes/resolve')
+  async resolveDispute(
+    @Body('dispute_id') disputeId: string,
+    @Body('resolution') resolution: string,
+    @Body('note') note?: string
+  ) {
+    try {
+      const result = await this.processingService.resolveDispute(disputeId, { resolution, note })
+      return {
+        code: 200,
+        data: result,
+        message: result ? '已处理' : '争议不存在'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '处理争议失败'
+      }
+    }
+  }
+
   @Post('urge-acceptance/:id')
   async urgeAcceptance(@Param('id') id: string) {
     try {

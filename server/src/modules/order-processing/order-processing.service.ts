@@ -12,11 +12,156 @@ const lastUrgeAcceptanceAt = new Map<string, number>()
 export class OrderProcessingService {
   private readonly logger = new Logger(OrderProcessingService.name)
   private columnsCache: Set<string> | null = null
+  private disputesTableReady = false
 
   constructor(
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService
   ) {}
+
+  private async ensureDisputesTable() {
+    if (this.disputesTableReady) return
+    const db = getMySQLClient()
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS order_disputes (
+        id VARCHAR(36) PRIMARY KEY,
+        order_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        avatar_id VARCHAR(36),
+        status VARCHAR(20) DEFAULT 'open',
+        reason TEXT,
+        evidence TEXT,
+        resolution VARCHAR(50),
+        resolution_note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_order_id (order_id),
+        INDEX idx_status (status),
+        INDEX idx_avatar_id (avatar_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单争议表'`
+    )
+    this.disputesTableReady = true
+  }
+
+  private async hasOpenDispute(orderId?: string): Promise<boolean> {
+    if (!orderId) return false
+    await this.ensureDisputesTable()
+    const db = getMySQLClient()
+    const rows = await db.query(
+      `SELECT id FROM order_disputes WHERE order_id = ? AND status = 'open' LIMIT 1`,
+      [orderId]
+    )
+    return Boolean(rows && rows.length > 0)
+  }
+
+  async createDispute(identifier: string, payload: { reason?: string; evidence?: any }): Promise<any> {
+    const current = await this.findRecordByIdentifier(identifier)
+    if (!current) return null
+
+    const normalized = this.normalizeRecord(current)
+    const orderId = normalized.orderId
+    if (!orderId) return null
+
+    await this.ensureDisputesTable()
+    const db = getMySQLClient()
+
+    const existing = await db.query(
+      `SELECT id FROM order_disputes WHERE order_id = ? AND status = 'open' LIMIT 1`,
+      [orderId]
+    )
+    if (existing && existing.length > 0) {
+      return { success: false, message: '该订单已有未处理的争议' }
+    }
+
+    const order = await db.queryOne('orders', { id: orderId }) as any
+    const userId = order?.user_id || order?.userId
+    const avatarId = order?.assigned_to || order?.assignedTo || normalized.avatarId
+    if (!userId) return null
+
+    const disputeId = randomUUID()
+    await db.query(
+      `INSERT INTO order_disputes (id, order_id, user_id, avatar_id, status, reason, evidence, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'open', ?, ?, NOW(), NOW())`,
+      [
+        disputeId,
+        orderId,
+        userId,
+        avatarId || null,
+        String(payload?.reason || '').trim() || null,
+        payload?.evidence ? JSON.stringify(payload.evidence) : null
+      ]
+    )
+
+    try {
+      if (avatarId) {
+        await db.insert('avatar_notifications', {
+          id: randomUUID(),
+          avatar_id: avatarId,
+          order_id: orderId,
+          type: 'order_dispute_opened',
+          title: '订单进入争议处理',
+          content: '发单方发起争议，等待仲裁处理',
+          status: 'unread',
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+      }
+    } catch (error: any) {
+      this.logger.warn(`写入分身通知失败: orderId=${orderId}, error=${error.message}`)
+    }
+
+    return { success: true, id: disputeId, orderId }
+  }
+
+  async listDisputes(status: string = 'open', limit: number = 50): Promise<any> {
+    await this.ensureDisputesTable()
+    const db = getMySQLClient()
+    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 50))
+    const st = String(status || 'open').trim().toLowerCase()
+    const result = await db.query(
+      `SELECT d.*, o.title as order_title, a.name as avatar_name
+       FROM order_disputes d
+       LEFT JOIN orders o ON d.order_id = o.id
+       LEFT JOIN avatars a ON d.avatar_id = a.id
+       WHERE d.status = ?
+       ORDER BY d.updated_at DESC
+       LIMIT ?`,
+      [st, safeLimit]
+    )
+    return { status: st, list: result || [], total: (result || []).length }
+  }
+
+  async resolveDispute(disputeId: string, payload: { resolution: string; note?: string }): Promise<any> {
+    await this.ensureDisputesTable()
+    const db = getMySQLClient()
+    const rows = await db.query(`SELECT * FROM order_disputes WHERE id = ? LIMIT 1`, [disputeId])
+    const dispute = rows?.[0]
+    if (!dispute) return null
+
+    await db.query(
+      `UPDATE order_disputes
+       SET status = 'resolved', resolution = ?, resolution_note = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [String(payload?.resolution || '').trim() || 'resolved', String(payload?.note || '').trim() || null, disputeId]
+    )
+
+    try {
+      const notificationService = new NotificationService()
+      const orderId = dispute.orderId || dispute.order_id
+      const userId = dispute.userId || dispute.user_id
+      await notificationService.createNotification({
+        user_id: userId,
+        type: 'order_dispute_resolved',
+        title: '争议已处理',
+        content: '你的订单争议已完成处理，可继续流程',
+        metadata: { orderId, disputeId, resolution: payload?.resolution }
+      })
+    } catch (e: any) {
+      this.logger.warn(`争议处理通知发送失败: disputeId=${disputeId}, error=${e.message}`)
+    }
+
+    return { success: true }
+  }
 
   private readonly platformAliasMap: Record<string, string> = {
     wechat: 'wechat_channel',
@@ -472,6 +617,14 @@ export class OrderProcessingService {
   }
 
   async acceptProcessing(identifier: string): Promise<any> {
+    const current = await this.findRecordByIdentifier(identifier)
+    if (!current) return null
+    const currentNormalized = this.normalizeRecord(current)
+    const blocked = await this.hasOpenDispute(currentNormalized.orderId)
+    if (blocked) {
+      throw new Error('订单存在未处理争议，暂不可验收')
+    }
+
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'settled'
     })
