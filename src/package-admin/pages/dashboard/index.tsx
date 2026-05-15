@@ -5,6 +5,8 @@ import {
   Users, Bot, ShoppingCart, Wallet, TrendingUp, Eye
 } from 'lucide-react-taro'
 import AdminLayout from '@/components/admin/Layout'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import * as Network from '@/network'
 import './index.css'
 
@@ -21,6 +23,21 @@ interface DashboardStats {
   pendingDispatch: number
   dispatchExpiredToday: number
   awaitingAcceptance: number
+}
+
+interface CampaignConfig {
+  enabled: number
+  title: string
+  description: string
+  startAt: string
+  endAt: string
+}
+
+interface CampaignStats {
+  totalExposures: number
+  totalClicks: number
+  clickThroughRate: number
+  daily: Array<{ day: string; exposures: number; clicks: number }>
 }
 
 export default function AdminDashboard() {
@@ -43,6 +60,19 @@ export default function AdminDashboard() {
     dispatch_expired: any[]
     awaiting_acceptance: any[]
   }>({ pending_dispatch: [], dispatch_expired: [], awaiting_acceptance: [] })
+  const [campaignConfig, setCampaignConfig] = useState<CampaignConfig>({
+    enabled: 0,
+    title: '',
+    description: '',
+    startAt: '',
+    endAt: '',
+  })
+  const [campaignStats, setCampaignStats] = useState<CampaignStats>({
+    totalExposures: 0,
+    totalClicks: 0,
+    clickThroughRate: 0,
+    daily: [],
+  })
 
   useEffect(() => {
     fetchDashboardData()
@@ -64,13 +94,52 @@ export default function AdminDashboard() {
         Network.request({ url: '/api/admin/queues/supply', data: { queue: 'awaiting_acceptance', limit: 10 } }),
       ])
 
+      const [campaignConfigRes, campaignStatsRes] = await Promise.all([
+        Network.request({ url: '/api/admin/activities/campaign' }),
+        Network.request({ url: '/api/admin/activities/campaign/stats', data: { days: 7 } }),
+      ])
+
       setSupplyQueues({
         pending_dispatch: pendingDispatchRes?.data?.data?.list || [],
         dispatch_expired: dispatchExpiredRes?.data?.data?.list || [],
         awaiting_acceptance: awaitingAcceptanceRes?.data?.data?.list || [],
       })
+
+      if (campaignConfigRes?.data?.code === 200 && campaignConfigRes?.data?.data) {
+        const data = campaignConfigRes.data.data
+        setCampaignConfig({
+          enabled: Number(data.enabled || 0),
+          title: data.title || '',
+          description: data.description || '',
+          startAt: data.startAt || '',
+          endAt: data.endAt || '',
+        })
+      }
+
+      if (campaignStatsRes?.data?.code === 200 && campaignStatsRes?.data?.data) {
+        setCampaignStats(campaignStatsRes.data.data)
+      }
     } catch (err) {
       console.error('获取仪表盘数据失败:', err)
+    }
+  }
+
+  const handleSaveCampaign = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/admin/activities/campaign',
+        method: 'PUT',
+        data: campaignConfig,
+      })
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '活动已保存', icon: 'success' })
+        fetchDashboardData()
+        return
+      }
+      Taro.showToast({ title: res.data?.message || '保存失败', icon: 'none' })
+    } catch (err) {
+      console.error('保存活动配置失败:', err)
+      Taro.showToast({ title: '保存失败', icon: 'none' })
     }
   }
 
@@ -132,6 +201,85 @@ export default function AdminDashboard() {
                     <Text className="alert-text">需处理</Text>
                   </View>
                 )}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className="quick-stats-section">
+          <Text className="section-title">增长活动</Text>
+          <View className="grid grid-cols-2 gap-4">
+            <View className="quick-stat-item">
+              <Text className="quick-stat-value">{campaignStats.totalExposures}</Text>
+              <Text className="quick-stat-label">近7天曝光</Text>
+            </View>
+            <View className="quick-stat-item">
+              <Text className="quick-stat-value">{campaignStats.totalClicks}</Text>
+              <Text className="quick-stat-label">近7天点击</Text>
+            </View>
+            <View className="quick-stat-item">
+              <Text className="quick-stat-value">{(campaignStats.clickThroughRate * 100).toFixed(1)}%</Text>
+              <Text className="quick-stat-label">点击率</Text>
+            </View>
+            <View className={`quick-stat-item ${campaignConfig.enabled ? '' : 'alert'}`}>
+              <Text className="quick-stat-value">{campaignConfig.enabled ? '开启' : '关闭'}</Text>
+              <Text className="quick-stat-label">活动状态</Text>
+            </View>
+          </View>
+
+          <View className="mt-4 flex flex-col gap-3">
+            <View className="flex items-center gap-3">
+              <Text className="w-24 text-sm text-gray-600">启用活动</Text>
+              <Button
+                variant={campaignConfig.enabled ? 'default' : 'outline'}
+                onClick={() => setCampaignConfig((prev) => ({ ...prev, enabled: prev.enabled ? 0 : 1 }))}
+              >
+                <Text>{campaignConfig.enabled ? '已开启' : '点击开启'}</Text>
+              </Button>
+            </View>
+            <View className="flex items-center gap-3">
+              <Text className="w-24 text-sm text-gray-600">活动标题</Text>
+              <Input
+                value={campaignConfig.title}
+                onInput={(e: any) => setCampaignConfig((prev) => ({ ...prev, title: e.detail?.value || '' }))}
+                placeholder="例如：邀请好友得奖励"
+              />
+            </View>
+            <View className="flex items-center gap-3">
+              <Text className="w-24 text-sm text-gray-600">活动说明</Text>
+              <Input
+                value={campaignConfig.description}
+                onInput={(e: any) => setCampaignConfig((prev) => ({ ...prev, description: e.detail?.value || '' }))}
+                placeholder="例如：立即邀请好友注册并领取奖励"
+              />
+            </View>
+            <View className="flex items-center gap-3">
+              <Text className="w-24 text-sm text-gray-600">开始时间</Text>
+              <Input
+                value={campaignConfig.startAt}
+                onInput={(e: any) => setCampaignConfig((prev) => ({ ...prev, startAt: e.detail?.value || '' }))}
+                placeholder="留空表示立即生效"
+              />
+            </View>
+            <View className="flex items-center gap-3">
+              <Text className="w-24 text-sm text-gray-600">结束时间</Text>
+              <Input
+                value={campaignConfig.endAt}
+                onInput={(e: any) => setCampaignConfig((prev) => ({ ...prev, endAt: e.detail?.value || '' }))}
+                placeholder="留空表示长期有效"
+              />
+            </View>
+            <Button onClick={handleSaveCampaign}>
+              <Text>保存活动配置</Text>
+            </Button>
+          </View>
+
+          <View className="mt-4 flex flex-col gap-3">
+            {campaignStats.daily.map((item) => (
+              <View key={item.day} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
+                <Text className="text-sm text-gray-700">{item.day}</Text>
+                <Text className="text-sm text-gray-500">曝光 {item.exposures}</Text>
+                <Text className="text-sm text-gray-500">点击 {item.clicks}</Text>
               </View>
             ))}
           </View>
