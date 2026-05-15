@@ -1,4 +1,4 @@
-import { useDidShow, navigateBack, showToast } from '@tarojs/taro'
+import { useDidShow, navigateBack, navigateTo, showToast } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
@@ -22,6 +22,7 @@ interface Notification {
   type: string
   title: string
   content: string
+  metadata?: any
   is_read: boolean
   created_at: string
 }
@@ -100,6 +101,32 @@ export default function NotificationsPage() {
       ))
     } catch (error) {
       console.error('标记已读失败:', error)
+    }
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    await markAsRead(notification.id)
+
+    let metadata = notification.metadata
+    if (typeof metadata === 'string') {
+      try {
+        metadata = JSON.parse(metadata)
+      } catch {
+        metadata = null
+      }
+    }
+
+    const orderId = metadata?.orderId || metadata?.order_id
+    const eventType = metadata?.eventType || metadata?.event_type
+    const avatarId = metadata?.avatarId || metadata?.avatar_id
+
+    if (orderId) {
+      if (['dispatched', 'revision_requested'].includes(String(eventType || '')) && avatarId) {
+        navigateTo({ url: `/package-order/pages/order-processing/index?orderId=${encodeURIComponent(orderId)}&avatarId=${encodeURIComponent(avatarId)}` })
+        return
+      }
+      navigateTo({ url: `/package-order/pages/order-detail/index?id=${encodeURIComponent(orderId)}` })
+      return
     }
   }
 
@@ -207,13 +234,14 @@ export default function NotificationsPage() {
           ) : (
             <View className="noti-list">
               {notifications.map((notification, idx) => {
-                const Icon = typeIconMap[notification.type] || Bell
-                const color = typeColorMap[notification.type] || '#7B3FE4'
+                const normalizedType = notification.type?.startsWith('order_') ? 'system' : notification.type
+                const Icon = typeIconMap[normalizedType] || Bell
+                const color = typeColorMap[normalizedType] || '#7B3FE4'
                 return (
                   <View
                     key={idx}
                     className={`noti-item ${notification.is_read ? 'read' : 'unread'}`}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <View className="noti-icon-wrap" style={{ backgroundColor: `${color}12` }}>
                       <Icon size={18} color={color} />
