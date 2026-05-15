@@ -259,6 +259,42 @@ export class OrderEventService {
     return this.formatTimeline(rows || [])
   }
 
+  async getPublisherTimelineSummary(orderId: string, limit = 50) {
+    const timeline = await this.getPublisherTimeline(orderId, limit)
+    return {
+      timeline,
+      durations: this.computeDurations(timeline)
+    }
+  }
+
+  private computeDurations(timeline: any[]) {
+    const firstTimeOf = (eventType: string): number | null => {
+      const found = (timeline || []).find((item: any) => item?.eventType === eventType)
+      if (!found?.createdAt) return null
+      const ts = new Date(found.createdAt).getTime()
+      return Number.isNaN(ts) ? null : ts
+    }
+
+    const createdAt = firstTimeOf('created')
+    const acceptedAt = firstTimeOf('accepted')
+    const contentCompletedAt = firstTimeOf('content_completed')
+    const publishCompletedAt = firstTimeOf('publish_completed')
+    const publisherAcceptedAt = firstTimeOf('accepted_by_publisher')
+    const completedAt = firstTimeOf('completed')
+
+    const duration = (from: number | null, to: number | null) =>
+      typeof from === 'number' && typeof to === 'number' && to >= from ? (to - from) : null
+
+    return {
+      createdToAcceptedMs: duration(createdAt, acceptedAt),
+      acceptedToContentCompletedMs: duration(acceptedAt, contentCompletedAt),
+      contentCompletedToPublishCompletedMs: duration(contentCompletedAt, publishCompletedAt),
+      publishCompletedToPublisherAcceptedMs: duration(publishCompletedAt, publisherAcceptedAt),
+      publishCompletedToCompletedMs: duration(publishCompletedAt, completedAt),
+      createdToCompletedMs: duration(createdAt, completedAt)
+    }
+  }
+
   /**
    * 获取分身的所有事件（跨订单）
    */
@@ -343,8 +379,8 @@ export class OrderEventService {
     try {
       const { NotificationService } = await import('../notification/notification.service')
       // 延迟导入避免循环依赖
-      const { getMySQLClient } = await import('../../storage/database/mysql-client')
-      const db = getMySQLClient()
+      const { getMySQLClient: getMySQLClientLazy } = await import('../../storage/database/mysql-client')
+      const db = getMySQLClientLazy()
 
       // 获取订单信息
       const orders = await db.query('SELECT user_id, title FROM orders WHERE id = ?', [params.orderId])
