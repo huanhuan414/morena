@@ -18,6 +18,7 @@
   position: absolute;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 .ol-header-decor-1 {
   width: 240rpx;
@@ -37,6 +38,8 @@
   flex-direction: row;
   align-items: center;
   padding: 20rpx 28rpx;
+  position: relative;
+  z-index: 10;
 }
 .ol-back-btn {
   width: 64rpx;

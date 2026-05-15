@@ -193,6 +193,10 @@ export default function OrderListPage() {
     Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}` })
   }, [])
 
+  const handleBack = useCallback(() => {
+    Taro.navigateBack({ delta: 1 })
+  }, [])
+
   const handleCreate = useCallback(() => {
     Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
   }, [])
@@ -239,8 +243,8 @@ export default function OrderListPage() {
         <View className="ol-header-decor ol-header-decor-1" />
         <View className="ol-header-decor ol-header-decor-2" />
         <View className="ol-header-nav" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
-          <View className="ol-back-btn" onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={18} color="#fff" />
+          <View className="ol-back-btn" onClick={handleBack}>
+            <ArrowLeft size={20} color="#fff" strokeWidth={2.5} />
           </View>
           <View className="ol-header-center">
             <Text className="block ol-header-title">我的订单</Text>
