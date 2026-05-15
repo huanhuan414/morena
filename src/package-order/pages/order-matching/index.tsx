@@ -243,13 +243,24 @@ export default function OrderMatchingPage() {
     }
   }
 
-  // 获取人格中文名
+  // 获取人格标签
   const getPersonalityName = (p?: string): string => {
+    if (!p) return '友好助手'
+    
+    try {
+      const parsed = JSON.parse(p)
+      if (parsed.tags && Array.isArray(parsed.tags)) {
+        return parsed.tags.join(' · ')
+      }
+    } catch {
+      // JSON 解析失败，尝试作为简单字符串处理
+    }
+    
     const map: Record<string, string> = {
       analytical: '分析型', creative: '创意型', empathetic: '共情型',
       humorous: '幽默型', professional: '专业型', friendly: '友好型'
     }
-    return p ? (map[p] || p) : '友好助手'
+    return map[p] || p
   }
 
   // 匹配度颜色
