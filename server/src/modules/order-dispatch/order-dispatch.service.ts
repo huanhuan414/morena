@@ -286,6 +286,37 @@ export class OrderDispatchService {
     const resultRows = await db.query(sql)
     const avatars = resultRows || []
 
+    const avatarIds = [...new Set(avatars.map((a: any) => a.id).filter(Boolean))]
+    const skillsMap = new Map<string, string[]>()
+    if (avatarIds.length > 0) {
+      try {
+        const skillRows = await db.query(
+          `SELECT s.avatar_id, s.skill_id FROM avatar_skills s WHERE s.avatar_id IN (?)`,
+          [avatarIds]
+        )
+        for (const sr of (skillRows || [])) {
+          const aid = sr.avatarId || sr.avatar_id
+          if (!aid) continue
+          if (!skillsMap.has(aid)) skillsMap.set(aid, [])
+          skillsMap.get(aid)!.push(sr.skillId || sr.skill_id)
+        }
+      } catch (err) {
+        this.logger.warn('读取 avatar_skills 失败，回退使用 avatars.skills 字段:', err)
+      }
+    }
+
+    const readyAvatars = avatars
+      .map((avatar: any) => {
+        avatar._skillsFromTable = skillsMap.get(avatar.id) || []
+        return avatar
+      })
+      .filter((avatar: any) => {
+        const skillsFromTable: string[] = Array.isArray(avatar._skillsFromTable) ? avatar._skillsFromTable : []
+        if (skillsFromTable.length > 0) return true
+        const skillsFromField: string[] = this.safeParseJson(avatar.skills, [])
+        return skillsFromField.length > 0
+      })
+
     // 如果有订单ID，尝试获取订单信息进行匹配排序
     if (orderId) {
       try {
@@ -294,7 +325,7 @@ export class OrderDispatchService {
         
         if (order) {
           // 计算每个分身的匹配分数
-          const scoredAvatars = avatars.map(avatar => {
+          const scoredAvatars = readyAvatars.map(avatar => {
             const { score, details } = this.calculateMatchScore(avatar, order)
             return { ...avatar, matchScore: score, matchDetails: details }
           })
@@ -310,7 +341,7 @@ export class OrderDispatchService {
       }
     }
     
-    return avatars
+    return readyAvatars
   }
 
   /**
