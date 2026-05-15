@@ -976,7 +976,7 @@ export class OrderService {
     
     const dispatchRequests = await db.query(
       'SELECT avatar_id, user_id FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
-      [orderId, 'accepted']
+      [orderId, 'completed']
     )
 
     const totalAmount = Number(order.budget || 0)

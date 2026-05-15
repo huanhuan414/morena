@@ -207,38 +207,29 @@ export class AvatarService {
   async getUserAvatars(userId?: string) {
     let rows: any[] = []
     
-    // 统一用户ID规范
     const isTestUser = userId && TEST_USER_IDS.includes(userId)
-    
-    // 有效用户ID：非空且非测试用户ID
     const hasValidUserId = userId && userId.trim() && !isTestUser
     
-    // 尝试使用数据库
     try {
       const db = getMySQLClient()
       
       if (hasValidUserId) {
-        // 有效用户：只查询该用户自己的活跃分身（过滤已删除/训练中的）
         console.log('[AvatarService] 查询用户分身，userId:', userId)
         const result = await db.query(`SELECT * FROM avatars WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC`, [userId])
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else if (isTestUser) {
-        // 测试用户：返回所有活跃分身（开发环境）
         console.log('[AvatarService] 测试用户，返回所有分身')
         const result = await db.query(`SELECT * FROM avatars WHERE status = 'active' ORDER BY created_at DESC LIMIT 50`)
         rows = Array.isArray(result) ? result : (result?.data || [])
       } else {
-        // 无用户ID：返回空
         rows = []
       }
       
-      // 存入内存缓存
       if (hasValidUserId && userId) {
         sharedMemoryAvatars.set(userId, rows)
       }
     } catch (error) {
       console.warn('[AvatarService] 数据库不可用，使用内存缓存')
-      // 使用内存缓存
       if (hasValidUserId && userId) {
         rows = sharedMemoryAvatars.get(userId) || []
       } else {
@@ -246,21 +237,57 @@ export class AvatarService {
       }
     }
     
-    // 格式化返回数据（query已转换为驼峰，需转回蛇形兼容前端）
+    const avatarIds = rows.map((a: any) => a.id || a.avatarId)
+    let earningsMap: Record<string, { total: number; today: number }> = {}
+    
+    if (avatarIds.length > 0) {
+      try {
+        const db = getMySQLClient()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        const idList = avatarIds.map(id => `'${id}'`).join(', ')
+        const earningsRows = await db.query(
+          `SELECT 
+            avatar_id,
+            SUM(amount) as total_earnings,
+            SUM(CASE WHEN created_at >= ? THEN amount ELSE 0 END) as today_earnings
+           FROM earnings 
+           WHERE avatar_id IN (${idList}) AND status = 'completed'
+           GROUP BY avatar_id`,
+          [today]
+        )
+        
+        console.log('[AvatarService] 收益查询结果:', earningsRows)
+        
+        const earningsData = Array.isArray(earningsRows) ? earningsRows : (earningsRows?.data || [])
+        for (const e of earningsData) {
+          const avatarId = e.avatarId || e.avatar_id
+          earningsMap[avatarId] = {
+            total: Number(e.totalEarnings || e.total_earnings) || 0,
+            today: Number(e.todayEarnings || e.today_earnings) || 0
+          }
+        }
+      } catch (error) {
+        console.warn('[AvatarService] 查询收益失败:', error)
+      }
+    }
+    
     const avatars = rows.map((avatar: any) => {
       const personality = this.safeParseJson(avatar.personality, {})
       const config = this.safeParseJson(avatar.config, {})
       const trustEnabled = this.resolveTrustEnabled(avatar)
+      const avatarId = avatar.id || avatar.avatarId
+      const earnings = earningsMap[avatarId] || { total: 0, today: 0 }
 
-      // 如果没有头像，生成默认头像（使用 PNG 格式，兼容小程序）
       const defaultAvatarUrl = avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatar.id)}&size=200`
 
       return {
         ...avatar,
         config,
-        avatar_url: defaultAvatarUrl, // 蛇形兼容前端
+        avatar_url: defaultAvatarUrl,
         photo: defaultAvatarUrl,
-        avatarUrl: defaultAvatarUrl, // 驼峰格式也加上
+        avatarUrl: defaultAvatarUrl,
         tags: personality.tags || [],
         abilities: personality.abilities || {},
         trust_enabled: trustEnabled,
@@ -271,7 +298,9 @@ export class AvatarService {
         latitude: avatar.latitude ?? null,
         longitude: avatar.longitude ?? null,
         voice_type: avatar.voiceType || 'preset',
-        voice_url: avatar.voiceUrl || ''
+        voice_url: avatar.voiceUrl || '',
+        totalEarnings: earnings.total,
+        todayEarnings: earnings.today
       }
     })
     
