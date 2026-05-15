@@ -83,19 +83,14 @@ export class OrderTimeoutService {
       const lastAt = this.lastAcceptanceRemindAt.get(orderId) || 0;
       if (lastAt && Date.now() - lastAt < this.ACCEPTANCE_REMIND_TIMEOUT * 1000) continue;
 
-      const title = '验收超时提醒';
-      const content = order.title
-        ? `你的订单「${order.title}」已超过6小时未验收，请尽快处理`
-        : '你的订单已超过6小时未验收，请尽快处理';
-
       try {
-        await notificationService.createNotification({
-          user_id: userId,
-          type: 'order_acceptance_overdue',
-          title,
-          content,
-          metadata: { orderId }
-        });
+        const orderTitle = order.title || '订单'
+        await notificationService.createTemplateNotification(
+          userId,
+          'acceptance_overdue',
+          { orderTitle },
+          { orderId }
+        );
         this.lastAcceptanceRemindAt.set(orderId, Date.now());
         reminded += 1;
       } catch (error) {
