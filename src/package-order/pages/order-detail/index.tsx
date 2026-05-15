@@ -1,35 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { Network } from '@/network'
 import {
-  ArrowLeft, Clock, LoaderCircle, Users, CircleCheckBig, CircleX,
+  ArrowLeft, Clock, Loader, Users, CircleCheckBig, CircleX,
   Wallet, CreditCard, Send, Trash2,
   FileText, CircleDot
 } from 'lucide-react-taro'
+import { getStatusBarHeight } from '@/utils/safe-area'
+import './index.css'
 
 // ===== 状态配置 =====
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; phase: number }> = {
   pending_payment: { label: '待支付', color: '#F59E0B', bgColor: '#FEF3C7', phase: 0 },
-  pending: { label: '匹配中', color: '#3B82F6', bgColor: '#DBEAFE', phase: 1 },
-  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#E0E7FF', phase: 1 },
-  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#E0E7FF', phase: 1 },
-  accepted: { label: '已接单', color: '#10B981', bgColor: '#D1FAE5', phase: 2 },
-  in_progress: { label: '制作中', color: '#10B981', bgColor: '#D1FAE5', phase: 2 },
-  content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#EDE9FE', phase: 2 },
-  submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#EDE9FE', phase: 3 },
-  published: { label: '已发布', color: '#059669', bgColor: '#D1FAE5', phase: 3 },
-  completed: { label: '已完成', color: '#059669', bgColor: '#D1FAE5', phase: 4 },
-  publish_failed: { label: '发布失败', color: '#EF4444', bgColor: '#FEE2E2', phase: -1 },
-  publish_timeout: { label: '发布超时', color: '#EF4444', bgColor: '#FEE2E2', phase: -1 },
-  cancelled: { label: '已取消', color: '#94A3B8', bgColor: '#F1F5F9', phase: -1 },
-  auto_cancelled: { label: '自动取消', color: '#94A3B8', bgColor: '#F1F5F9', phase: -1 },
-  timeout: { label: '已超时', color: '#94A3B8', bgColor: '#F1F5F9', phase: -1 },
-  expired: { label: '已过期', color: '#94A3B8', bgColor: '#F1F5F9', phase: -1 },
+  pending: { label: '匹配中', color: '#7C3AED', bgColor: '#F5F3FF', phase: 1 },
+  awaiting_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1 },
+  pending_acceptance: { label: '等待接单', color: '#6366F1', bgColor: '#EEF2FF', phase: 1 },
+  accepted: { label: '已接单', color: '#10B981', bgColor: '#ECFDF5', phase: 2 },
+  in_progress: { label: '制作中', color: '#10B981', bgColor: '#ECFDF5', phase: 2 },
+  content_generated: { label: '已生成', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2 },
+  submitted: { label: '待发布', color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3 },
+  published: { label: '已发布', color: '#059669', bgColor: '#ECFDF5', phase: 3 },
+  completed: { label: '已完成', color: '#059669', bgColor: '#ECFDF5', phase: 4 },
+  publish_failed: { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1 },
+  publish_timeout: { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1 },
+  cancelled: { label: '已取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
+  auto_cancelled: { label: '自动取消', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
+  timeout: { label: '已超时', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
+  expired: { label: '已过期', color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 },
 }
 
 // 4阶段进度定义
@@ -77,8 +75,17 @@ const EVENT_COLORS: Record<string, string> = {
   content_published: '#059669',
   publish_failed: '#EF4444',
   order_completed: '#059669',
-  order_cancelled: '#94A3B8',
+  order_cancelled: '#9CA3AF',
   dispatch_timeout: '#F59E0B',
+}
+
+function formatTime(dateStr: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = new Date(dateStr)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch { return '' }
 }
 
 export default function OrderDetailPage() {
@@ -88,6 +95,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const pollingRef = useRef<any>(null)
+  const statusBarHeight = getStatusBarHeight()
 
   const orderId = Taro.getCurrentInstance().router?.params?.id
   const action = Taro.getCurrentInstance().router?.params?.action
@@ -218,22 +226,22 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <View className="flex items-center justify-center bg-gray-50" style={{ minHeight: '100vh' }}>
-        <LoaderCircle size={32} color="#3B82F6" />
-        <Text className="block mt-3 text-sm text-gray-400">加载中...</Text>
+      <View className="od-page od-loading">
+        <Loader size={40} color="#6366F1" className="od-loading-icon" />
+        <Text className="block od-loading-text">加载中...</Text>
       </View>
     )
   }
 
   if (!order) {
     return (
-      <View className="flex items-center justify-center bg-gray-50" style={{ minHeight: '100vh' }}>
-        <Text className="block text-gray-400">订单不存在</Text>
+      <View className="od-page od-loading">
+        <Text className="block od-loading-text">订单不存在</Text>
       </View>
     )
   }
 
-  const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#94A3B8', bgColor: '#F1F5F9', phase: -1 }
+  const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1 }
   const currentPhase = getPhaseIndex(order.status)
   const isPayable = order.status === 'pending_payment'
   const isCancellable = ['pending_payment', 'pending'].includes(order.status)
@@ -241,226 +249,221 @@ export default function OrderDetailPage() {
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
 
   return (
-    <View className="flex flex-col bg-gray-50" style={{ minHeight: '100vh' }}>
-      {/* 顶部导航 */}
-      <View className="bg-white px-4 py-3 border-b border-gray-100">
-        <View className="flex flex-row items-center">
-          <View onClick={() => Taro.navigateBack()}>
-            <ArrowLeft size={20} color="#333" />
+    <View className="od-page">
+      {/* ===== 顶部渐变头部 ===== */}
+      <View className="od-header">
+        <View className="od-header-deco1" />
+        <View className="od-header-deco2" />
+        <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+          <View className="od-back-btn" onClick={() => Taro.navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
           </View>
-          <Text className="block ml-2 text-lg font-semibold text-gray-900">订单详情</Text>
+          <View className="od-header-center">
+            <Text className="block od-header-title">订单详情</Text>
+            <Text className="block od-header-sub">{order.title || '未命名订单'}</Text>
+          </View>
+          <View className="od-header-right" />
+        </View>
+
+        {/* 状态 Banner */}
+        <View className="od-status-banner">
+          <View className="od-status-dot" style={{ backgroundColor: statusCfg.color }} />
+          <Text className="block od-status-label" style={{ color: statusCfg.color }}>
+            {statusCfg.label}
+          </Text>
+          {isAbnormal && (
+            <View className="od-alert-pill">
+              <CircleX size={20} color="#fff" />
+              <Text className="block od-alert-pill-text">异常</Text>
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView scrollY style={{ height: 'calc(100vh - 120rpx)' }}>
-        <View className="px-4 pt-3 pb-24">
-          {/* ====== 状态横幅 ====== */}
-          <View className="rounded-xl p-4" style={{ backgroundColor: statusCfg.bgColor }}>
-            <View className="flex flex-row items-center">
-              <View className="w-10 h-10 rounded-full flex items-center justify-center mr-3" style={{ backgroundColor: `${statusCfg.color}20` }}>
-                {isPayable ? <Clock size={20} color={statusCfg.color} /> :
-                 currentPhase >= 0 ? <LoaderCircle size={20} color={statusCfg.color} /> :
-                 isAbnormal ? <CircleX size={20} color={statusCfg.color} /> :
-                 <CircleCheckBig size={20} color={statusCfg.color} />}
-              </View>
-              <View className="flex-1">
-                <Text className="block text-base font-semibold" style={{ color: statusCfg.color }}>
-                  {statusCfg.label}
-                </Text>
-                <Text className="block text-xs mt-1" style={{ color: `${statusCfg.color}CC` }}>
-                  {isPayable ? '请尽快完成支付，超时订单将自动取消' :
-                   currentPhase === 0 ? '正在为你匹配最合适的分身...' :
-                   currentPhase === 1 ? '分身正在制作内容' :
-                   currentPhase === 2 ? '内容准备发布到平台' :
-                   currentPhase === 3 ? '订单已完成' :
-                   isAbnormal ? '订单出现异常，请关注' : ''}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* ====== 4阶段进度条（非pending_payment） ====== */}
-          {currentPhase >= 0 && (
-            <View className="mt-3 bg-white rounded-xl p-4">
-              <View className="flex flex-row items-center justify-between">
-                {PHASES.map((phase, idx) => {
-                  const PhaseIcon = phase.icon
-                  const isActive = idx <= currentPhase
-                  const isCurrent = idx === currentPhase
-                  return (
-                    <View key={phase.key} className="flex flex-row items-center flex-1">
-                      <View className="flex flex-col items-center">
+      {/* ===== 内容区 ===== */}
+      <View className="od-body">
+        {/* 4阶段进度条 */}
+        {currentPhase >= 0 && (
+          <View className="od-card od-pipeline-card">
+            <View className="od-pipeline">
+              {PHASES.map((phase, idx) => {
+                const PhaseIcon = phase.icon
+                const isActive = idx <= currentPhase
+                const isCurrent = idx === currentPhase
+                return (
+                  <View key={phase.key} className="od-pipe-stage">
+                    <View className="od-pipe-node-wrap">
+                      {idx > 0 && (
                         <View
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${isCurrent ? 'ring-2 ring-blue-200' : ''}`}
-                          style={{ backgroundColor: isActive ? '#3B82F6' : '#F3F4F6' }}
-                        >
-                          <PhaseIcon size={14} color={isActive ? '#fff' : '#9CA3AF'} />
-                        </View>
-                        <Text className={`block text-xs mt-1 ${isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-                          {phase.label}
-                        </Text>
+                          className="od-pipe-line"
+                          style={{ backgroundColor: idx <= currentPhase ? '#6366F1' : '#D1D5DB' }}
+                        />
+                      )}
+                      <View
+                        className="od-pipe-node"
+                        style={{ backgroundColor: isActive ? '#6366F1' : '#F3F4F6' }}
+                      >
+                        {isActive ? (
+                          <PhaseIcon size={16} color="#fff" />
+                        ) : (
+                          <View className="od-pipe-node-empty" />
+                        )}
                       </View>
                       {idx < PHASES.length - 1 && (
                         <View
-                          className="flex-1 h-1 mx-1"
-                          style={{ backgroundColor: idx < currentPhase ? '#3B82F6' : '#E5E7EB', marginTop: '-12px' }}
+                          className="od-pipe-line"
+                          style={{ backgroundColor: idx < currentPhase ? '#6366F1' : '#D1D5DB' }}
                         />
                       )}
                     </View>
-                  )
-                })}
-              </View>
+                    <Text
+                      className="block od-pipe-label"
+                      style={{ color: isActive ? '#6366F1' : '#9CA3AF', fontWeight: isCurrent ? '600' : '400' }}
+                    >
+                      {phase.label}
+                    </Text>
+                  </View>
+                )
+              })}
             </View>
+          </View>
+        )}
+
+        {/* 订单信息卡 */}
+        <View className="od-card od-info-card">
+          <Text className="block od-card-title">{order.title || '未命名订单'}</Text>
+          {order.description && (
+            <Text className="block od-card-desc">{order.description}</Text>
           )}
 
-          {/* ====== 订单信息卡 ====== */}
-          <Card className="mt-3">
-            <CardContent className="p-4">
-              <Text className="block text-sm font-semibold text-gray-900 mb-3">订单信息</Text>
-
-              <View className="flex flex-row items-center mb-2">
-                <Text className="block text-xs text-gray-400 w-16">标题</Text>
-                <Text className="block text-sm text-gray-700 flex-1">{order.title || '—'}</Text>
+          {/* 标签 */}
+          <View className="od-info-pills">
+            <View className="od-pill od-pill-type">
+              <Text className="block od-pill-text">
+                {order.contentType === 'text' ? '纯文案' : order.contentType === 'image_text' ? '图文' : order.contentType === 'video' ? '短视频' : order.contentType === 'article' ? '长文' : order.contentType || '—'}
+              </Text>
+            </View>
+            {Array.isArray(order.platforms) ? order.platforms.map((p: string, i: number) => (
+              <View key={i} className="od-pill od-pill-platform">
+                <Text className="block od-pill-text">{p}</Text>
               </View>
-              <View className="flex flex-row items-center mb-2">
-                <Text className="block text-xs text-gray-400 w-16">类型</Text>
-                <Text className="block text-sm text-gray-700 flex-1">
-                  {order.contentType === 'text' ? '纯文案' : order.contentType === 'image_text' ? '图文笔记' : order.contentType === 'video' ? '短视频' : order.contentType === 'article' ? '长文' : order.contentType || '—'}
-                </Text>
-              </View>
-              <View className="flex flex-row items-center mb-2">
-                <Text className="block text-xs text-gray-400 w-16">平台</Text>
-                <Text className="block text-sm text-gray-700 flex-1">
-                  {Array.isArray(order.platforms) ? order.platforms.join('、') : order.platforms || '—'}
-                </Text>
-              </View>
-              <View className="flex flex-row items-center mb-2">
-                <Text className="block text-xs text-gray-400 w-16">分身</Text>
-                <Text className="block text-sm text-gray-700 flex-1">{order.avatarCount || order.avatar_count || '—'} 个</Text>
-              </View>
-              {order.targetAudience && (
-                <View className="flex flex-row items-center mb-2">
-                  <Text className="block text-xs text-gray-400 w-16">受众</Text>
-                  <Text className="block text-sm text-gray-700 flex-1">{order.targetAudience}</Text>
-                </View>
-              )}
-
-              <Separator className="my-3" />
-
-              <View className="flex flex-row items-center justify-between">
-                <View className="flex flex-row items-center">
-                  <Wallet size={14} color="#F59E0B" />
-                  <Text className="block text-xs text-gray-400 ml-1">订单金额</Text>
-                </View>
-                <Text className="block text-lg font-bold text-gray-900">¥{order.budget || order.totalPrice || 0}</Text>
-              </View>
-            </CardContent>
-          </Card>
-
-          {/* ====== 分身状态卡 ====== */}
-          {dispatches.length > 0 && (
-            <Card className="mt-3">
-              <CardContent className="p-4">
-                <Text className="block text-sm font-semibold text-gray-900 mb-3">分身进度</Text>
-                {dispatches.map((d: any, idx: number) => {
-                  const dStatus = d.status || d.dispatchStatus || ''
-                  const dCfg = STATUS_CONFIG[dStatus] || { label: dStatus, color: '#94A3B8', bgColor: '#F1F5F9' }
-                  return (
-                    <View key={d.id || idx} className="flex flex-row items-center py-2 border-b border-gray-50 last:border-0">
-                      <View className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
-                        <Users size={14} color="#6B7280" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="block text-sm text-gray-700">{d.avatarName || `分身 ${idx + 1}`}</Text>
-                        <Text className="block text-xs text-gray-400 mt-1">{d.avatarPlatform || ''}</Text>
-                      </View>
-                      <Badge className="text-xs" style={{ backgroundColor: dCfg.bgColor, color: dCfg.color }}>
-                        {dCfg.label}
-                      </Badge>
-                    </View>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ====== 事件时间线 ====== */}
-          {events.length > 0 && (
-            <Card className="mt-3 mb-4">
-              <CardContent className="p-4">
-                <Text className="block text-sm font-semibold text-gray-900 mb-3">动态记录</Text>
-                {events.map((evt: any, idx: number) => {
-                  const EventIcon = EVENT_ICONS[evt.eventType || evt.event_type] || CircleDot
-                  const eventColor = EVENT_COLORS[evt.eventType || evt.event_type] || '#94A3B8'
-                  return (
-                    <View key={evt.id || idx} className="flex flex-row items-start mb-3 last:mb-0">
-                      <View className="flex flex-col items-center mr-3">
-                        <View className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: `${eventColor}15` }}>
-                          <EventIcon size={12} color={eventColor} />
-                        </View>
-                        {idx < events.length - 1 && <View className="w-1 h-4 bg-gray-100 mt-1" />}
-                      </View>
-                      <View className="flex-1">
-                        <Text className="block text-sm text-gray-700">{evt.eventTitle || evt.description || evt.eventType || ''}</Text>
-                        <Text className="block text-xs text-gray-400 mt-1">
-                          {formatTime(evt.createdAt || evt.created_at)}
-                        </Text>
-                      </View>
-                    </View>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
+            )) : null}
+          </View>
         </View>
-      </ScrollView>
 
-      {/* ====== 底部操作栏 ====== */}
-      {(isPayable || isCancellable || isDeletable) && (
-        <View
-          style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            display: 'flex', flexDirection: 'row', gap: '8px',
-            padding: '12px 16px', paddingBottom: 24, backgroundColor: '#fff',
-            borderTop: '1px solid #F3F4F6', zIndex: 100,
-          }}
-        >
-          {isPayable && (
-            <View style={{ flex: 2 }} onClick={handlePay}>
-              <Button className="w-full rounded-xl py-3" disabled={paying}>
-                <CreditCard size={16} color="#fff" />
-                <Text className="text-white font-medium ml-2">
+        {/* 统计卡 */}
+        <View className="od-card">
+          <View className="od-stats-row">
+            <View className="od-stat-item">
+              <View className="od-stat-icon"><Wallet size={28} color="#F59E0B" /></View>
+              <Text className="block od-stat-value">¥{order.budget || order.totalPrice || 0}</Text>
+              <Text className="block od-stat-label">订单金额</Text>
+            </View>
+            <View className="od-stat-divider" />
+            <View className="od-stat-item">
+              <View className="od-stat-icon"><Users size={28} color="#7C3AED" /></View>
+              <Text className="block od-stat-value">{order.avatarCount || order.avatar_count || 0}</Text>
+              <Text className="block od-stat-label">分身数量</Text>
+            </View>
+            <View className="od-stat-divider" />
+            <View className="od-stat-item">
+              <View className="od-stat-icon"><Clock size={28} color="#6B7280" /></View>
+              <Text className="block od-stat-value">{formatTime(order.createdAt || order.created_at)}</Text>
+              <Text className="block od-stat-label">创建时间</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 分身状态卡 */}
+        {dispatches.length > 0 && (
+          <View className="od-card">
+            <Text className="block od-section-title">分身进度</Text>
+            {dispatches.map((d: any, idx: number) => {
+              const dStatus = d.status || d.dispatchStatus || ''
+              const dCfg = STATUS_CONFIG[dStatus] || { label: dStatus, color: '#9CA3AF', bgColor: '#F9FAFB' }
+              const avatarName = d.avatarName || `分身 ${idx + 1}`
+              return (
+                <View key={d.id || idx} className="od-avatar-item">
+                  <View className="od-avatar-left">
+                    <View className="od-avatar-fallback">
+                      <Text className="block od-avatar-fallback-text">{avatarName.charAt(0)}</Text>
+                    </View>
+                    <View className="od-avatar-info">
+                      <Text className="block od-avatar-name">{avatarName}</Text>
+                      <View className="od-avatar-status-wrap">
+                        <View className="od-avatar-status-dot" style={{ backgroundColor: dCfg.color }} />
+                        <Text className="block od-avatar-status-text" style={{ color: dCfg.color }}>{dCfg.label}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="od-avatar-right">
+                    <View className="od-avatar-status-pill" style={{ backgroundColor: dCfg.bgColor }}>
+                      <Text className="block od-avatar-status-pill-text" style={{ color: dCfg.color }}>{dCfg.label}</Text>
+                    </View>
+                  </View>
+                </View>
+              )
+            })}
+          </View>
+        )}
+
+        {/* 事件时间线 */}
+        {events.length > 0 && (
+          <View className="od-card">
+            <Text className="block od-section-title">动态记录</Text>
+            <View className="od-timeline">
+              {events.map((evt: any, idx: number) => {
+                const EventIcon = EVENT_ICONS[evt.eventType || evt.event_type] || CircleDot
+                const eventColor = EVENT_COLORS[evt.eventType || evt.event_type] || '#9CA3AF'
+                return (
+                  <View key={evt.id || idx} className="od-timeline-item">
+                    <View className="od-timeline-left">
+                      <View className="od-timeline-dot" style={{ backgroundColor: `${eventColor}20` }}>
+                        <EventIcon size={14} color={eventColor} />
+                      </View>
+                      {idx < events.length - 1 && <View className="od-timeline-line" />}
+                    </View>
+                    <View className="od-timeline-right">
+                      <View className="od-timeline-header">
+                        <Text className="block od-timeline-title">{evt.eventTitle || evt.description || evt.eventType || ''}</Text>
+                        <Text className="block od-timeline-time">{formatTime(evt.createdAt || evt.created_at)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* 操作按钮 */}
+        {(isPayable || isCancellable || isDeletable) && (
+          <View className="od-actions">
+            {isPayable && (
+              <View className="od-action-btn od-action-primary" onClick={handlePay}>
+                <CreditCard size={22} color="#fff" />
+                <Text className="block od-action-text" style={{ color: '#fff' }}>
                   {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
                 </Text>
-              </Button>
-            </View>
-          )}
-          {isCancellable && (
-            <View style={{ flex: 1 }} onClick={handleCancel}>
-              <Button variant="outline" className="w-full rounded-xl py-3">
-                <Text className="text-xs">取消订单</Text>
-              </Button>
-            </View>
-          )}
-          {isDeletable && (
-            <View style={{ flex: 1 }} onClick={handleDelete}>
-              <Button variant="outline" className="w-full rounded-xl py-3 border-red-200">
-                <Trash2 size={12} color="#EF4444" />
-                <Text className="text-xs text-red-500 ml-1">删除</Text>
-              </Button>
-            </View>
-          )}
-        </View>
-      )}
+              </View>
+            )}
+            {isCancellable && !isPayable && (
+              <View className="od-action-btn od-action-secondary" onClick={handleCancel}>
+                <Text className="block od-action-text" style={{ color: '#6366F1' }}>取消订单</Text>
+              </View>
+            )}
+            {isDeletable && (
+              <View className="od-action-btn od-action-secondary" onClick={handleDelete}>
+                <Trash2 size={22} color="#EF4444" />
+                <Text className="block od-action-text" style={{ color: '#EF4444' }}>删除订单</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* 底部安全区 */}
+        <View style={{ height: '40rpx' }} />
+      </View>
     </View>
   )
-}
-
-function formatTime(dateStr: string): string {
-  if (!dateStr) return ''
-  try {
-    const d = new Date(dateStr)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
-  } catch { return '' }
 }
