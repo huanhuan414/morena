@@ -52,12 +52,34 @@ export default function OrderAcceptanceFeedback() {
   }
 
   // 接单者催促验收
-  const handleUrgeAcceptance = () => {
-    const name = data?.avatarName || data?.generatedContent?.avatarName || '该分身'
-    Taro.showToast({
-      title: `已催促发单者验收「${name}」`,
-      icon: 'success'
-    })
+  const handleUrgeAcceptance = async () => {
+    try {
+      Taro.showLoading({ title: '催促中...' })
+      const response = await Network.request({
+        url: `/api/order-processing/urge-acceptance/${requestId}`,
+        method: 'POST'
+      })
+      if (response.data?.code === 200 && response.data.data?.success) {
+        const name = data?.avatarName || data?.generatedContent?.avatarName || '该分身'
+        Taro.showToast({
+          title: `已催促发单者验收「${name}」`,
+          icon: 'success'
+        })
+        return
+      }
+      Taro.showToast({
+        title: response.data?.message || '催促失败',
+        icon: 'none'
+      })
+    } catch (error) {
+      console.error('[OrderAcceptanceFeedback] 催促验收失败:', error)
+      Taro.showToast({
+        title: '催促失败',
+        icon: 'none'
+      })
+    } finally {
+      Taro.hideLoading()
+    }
   }
 
   // 发单者确认验收
