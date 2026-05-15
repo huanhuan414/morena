@@ -317,6 +317,35 @@ export class OrderDispatchService {
         return skillsFromField.length > 0
       })
 
+    const dispatchStatsMap = new Map<string, { total: number; accepted: number; expired: number }>()
+    const readyAvatarIds = [...new Set(readyAvatars.map((a: any) => a.id).filter(Boolean))]
+    if (readyAvatarIds.length > 0) {
+      try {
+        const rows = await db.query(
+          `SELECT COALESCE(od.avatar_id, od.target_avatar_id) as avatar_id,
+                  COUNT(*) as total,
+                  SUM(CASE WHEN od.status IN ('accepted', 'confirmed') THEN 1 ELSE 0 END) as accepted,
+                  SUM(CASE WHEN od.status = 'expired' THEN 1 ELSE 0 END) as expired
+           FROM order_dispatch_requests od
+           WHERE COALESCE(od.avatar_id, od.target_avatar_id) IN (?)
+             AND od.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+           GROUP BY COALESCE(od.avatar_id, od.target_avatar_id)`,
+          [readyAvatarIds]
+        )
+        for (const r of (rows || [])) {
+          const id = r.avatarId || r.avatar_id
+          if (!id) continue
+          dispatchStatsMap.set(id, {
+            total: Number(r.total || 0),
+            accepted: Number(r.accepted || 0),
+            expired: Number(r.expired || 0),
+          })
+        }
+      } catch (err) {
+        this.logger.warn('读取派单统计失败，跳过派单权重:', err)
+      }
+    }
+
     // 如果有订单ID，尝试获取订单信息进行匹配排序
     if (orderId) {
       try {
@@ -327,7 +356,20 @@ export class OrderDispatchService {
           // 计算每个分身的匹配分数
           const scoredAvatars = readyAvatars.map(avatar => {
             const { score, details } = this.calculateMatchScore(avatar, order)
-            return { ...avatar, matchScore: score, matchDetails: details }
+            const stats = dispatchStatsMap.get(avatar.id) || { total: 0, accepted: 0, expired: 0 }
+            const rate = stats.total > 0 ? stats.accepted / stats.total : 0
+            const baseScore = score
+            let bonus = 0
+            if (stats.total >= 5 && rate >= 0.8) bonus = 5
+            if (stats.total >= 5 && rate <= 0.3) bonus = -10
+            const finalScore = Math.max(0, Math.min(100, baseScore + bonus))
+            return {
+              ...avatar,
+              matchScoreBase: baseScore,
+              matchScore: finalScore,
+              matchDetails: details,
+              dispatchStats: { ...stats, acceptanceRate: rate }
+            }
           })
 
           // 按匹配分数降序排序
