@@ -245,6 +245,61 @@ export class OrderTimeoutService {
         } catch (e) { this.logger.warn(`事件记录失败: ${e.message}`) }
       }
     }
+
+    try {
+      await this.applyDispatchTimeoutGovernance(dispatch.avatarId || dispatch.avatar_id, dispatch.orderId || dispatch.order_id);
+    } catch (e) {
+      this.logger.warn(`派单超时治理处理失败: ${e.message}`);
+    }
+  }
+
+  private async applyDispatchTimeoutGovernance(avatarId?: string, orderId?: string) {
+    if (!avatarId) return;
+
+    const client = await getMySQLClient();
+    const rows = await client.query(
+      `SELECT COUNT(*) as cnt
+       FROM order_dispatch_requests
+       WHERE avatar_id = ?
+       AND status = 'expired'
+       AND updated_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)`,
+      [avatarId]
+    );
+    const cnt = Number(rows?.[0]?.cnt || 0);
+    if (cnt < 3) return;
+
+    const existing = await client.query(
+      `SELECT id FROM avatar_notifications
+       WHERE avatar_id = ?
+       AND type = 'hosting_auto_paused'
+       AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       LIMIT 1`,
+      [avatarId]
+    );
+    if (existing && existing.length > 0) return;
+
+    let paused = false;
+    for (const field of ['trust_enabled', 'hosting_enabled', 'is_hosted']) {
+      try {
+        await client.query(`UPDATE avatars SET ${field} = 0 WHERE id = ?`, [avatarId]);
+        paused = true;
+        break;
+      } catch {}
+    }
+
+    if (!paused) return;
+
+    await client.insert('avatar_notifications', {
+      id: uuidv4(),
+      avatar_id: avatarId,
+      order_id: orderId || null,
+      type: 'hosting_auto_paused',
+      title: '托管已自动暂停',
+      content: `24小时内派单超时达到${cnt}次，已自动暂停托管，请检查接单设置`,
+      status: 'unread',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
   }
 
   /**
