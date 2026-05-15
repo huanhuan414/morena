@@ -18,6 +18,9 @@ interface DashboardStats {
   pendingOrders: number
   pendingContent: number
   acceptanceOverdue: number
+  pendingDispatch: number
+  dispatchExpiredToday: number
+  awaitingAcceptance: number
 }
 
 export default function AdminDashboard() {
@@ -30,8 +33,16 @@ export default function AdminDashboard() {
     todayOrders: 0,
     pendingOrders: 0,
     pendingContent: 0,
-    acceptanceOverdue: 0
+    acceptanceOverdue: 0,
+    pendingDispatch: 0,
+    dispatchExpiredToday: 0,
+    awaitingAcceptance: 0
   })
+  const [supplyQueues, setSupplyQueues] = useState<{
+    pending_dispatch: any[]
+    dispatch_expired: any[]
+    awaiting_acceptance: any[]
+  }>({ pending_dispatch: [], dispatch_expired: [], awaiting_acceptance: [] })
 
   useEffect(() => {
     fetchDashboardData()
@@ -46,6 +57,18 @@ export default function AdminDashboard() {
       if (res.data.code === 200) {
         setStats(res.data.data)
       }
+
+      const [pendingDispatchRes, dispatchExpiredRes, awaitingAcceptanceRes] = await Promise.all([
+        Network.request({ url: '/api/admin/queues/supply', data: { queue: 'pending_dispatch', limit: 10 } }),
+        Network.request({ url: '/api/admin/queues/supply', data: { queue: 'dispatch_expired', limit: 10 } }),
+        Network.request({ url: '/api/admin/queues/supply', data: { queue: 'awaiting_acceptance', limit: 10 } }),
+      ])
+
+      setSupplyQueues({
+        pending_dispatch: pendingDispatchRes?.data?.data?.list || [],
+        dispatch_expired: dispatchExpiredRes?.data?.data?.list || [],
+        awaiting_acceptance: awaitingAcceptanceRes?.data?.data?.list || [],
+      })
     } catch (err) {
       console.error('获取仪表盘数据失败:', err)
     }
@@ -63,6 +86,9 @@ export default function AdminDashboard() {
     { label: '今日订单', value: stats.todayOrders, trend: '+8%' },
     { label: '待处理订单', value: stats.pendingOrders, alert: stats.pendingOrders > 0 },
     { label: '待审核内容', value: stats.pendingContent, alert: stats.pendingContent > 0 },
+    { label: '待接单派单', value: stats.pendingDispatch, alert: stats.pendingDispatch > 0 },
+    { label: '派单超时(今日)', value: stats.dispatchExpiredToday, alert: stats.dispatchExpiredToday > 0 },
+    { label: '待验收', value: stats.awaitingAcceptance, alert: stats.awaitingAcceptance > 0 },
     { label: '待验收超时', value: stats.acceptanceOverdue, alert: stats.acceptanceOverdue > 0 },
   ]
 
@@ -131,6 +157,38 @@ export default function AdminDashboard() {
               <Wallet size={24} color="#10b981" />
               <Text className="quick-action-text">财务统计</Text>
             </View>
+          </View>
+        </View>
+
+        <View className="quick-stats-section">
+          <Text className="section-title">供给队列</Text>
+          <View className="data-table">
+            <View className="table-header">
+              <Text className="th col-order">队列</Text>
+              <Text className="th col-order">订单</Text>
+              <Text className="th col-avatar">分身</Text>
+              <Text className="th col-date">时间</Text>
+            </View>
+
+            {[
+              { key: 'pending_dispatch', label: '待接单派单', list: supplyQueues.pending_dispatch, timeKey: 'created_at' },
+              { key: 'dispatch_expired', label: '派单超时', list: supplyQueues.dispatch_expired, timeKey: 'responded_at' },
+              { key: 'awaiting_acceptance', label: '待验收', list: supplyQueues.awaiting_acceptance, timeKey: 'updated_at' },
+            ].map((q) => (
+              <View key={q.key}>
+                {(q.list || []).map((row: any) => (
+                  <View key={`${q.key}-${row.id || row.order_id || row.orderId}`} className="table-row">
+                    <Text className="td col-order">{q.label}</Text>
+                    <View className="td col-order">
+                      <Text className="order-title">{row.order_title || row.title || '-'}</Text>
+                      <Text className="order-id">ID: {(row.order_id || row.id || '').slice(-8)}</Text>
+                    </View>
+                    <Text className="td col-avatar">{row.avatar_name || '-'}</Text>
+                    <Text className="td col-date">{row[q.timeKey] ? new Date(row[q.timeKey]).toLocaleString('zh-CN') : '-'}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
           </View>
         </View>
       </View>
