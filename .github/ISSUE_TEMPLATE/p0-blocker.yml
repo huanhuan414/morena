@@ -1,0 +1,71 @@
+name: "P0 阻断缺陷"
+description: "内测阻断：必须清零（闭环卡死/崩溃/资金与风控）"
+title: "[P0] "
+labels: ["p0-blocker", "type:bug", "status:needs-repro"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 模块
+      options:
+        - module:order
+        - module:payment
+        - module:avatar
+        - module:profile
+        - module:notification
+    validations:
+      required: true
+
+  - type: textarea
+    id: preconditions
+    attributes:
+      label: 前置条件
+      description: "账号/分身/订单状态/平台/数据准备等"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: "按 1/2/3 列出可复现步骤"
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据与日志
+      description: "截图/录屏、关键日志、相关接口入参与响应等"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: smoke
+    attributes:
+      label: 关联 Smoke 用例
+      options:
+        - label: Smoke-01
+        - label: Smoke-02
+        - label: Smoke-03
+        - label: Smoke-04
+        - label: Smoke-05
+

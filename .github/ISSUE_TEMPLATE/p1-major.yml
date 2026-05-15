@@ -1,0 +1,59 @@
+name: "P1 严重问题"
+description: "内测放行前必须修复（可信度/一致性/高频困惑）"
+title: "[P1] "
+labels: ["p1-major", "type:ux", "status:needs-repro"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 模块
+      options:
+        - module:order
+        - module:payment
+        - module:avatar
+        - module:profile
+        - module:notification
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 场景描述
+      description: "用户在什么场景下会遇到这个问题？"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响与风险
+      description: "对转化/交付/信任/成本的影响"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为/设计建议
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据与日志（可选）
+    validations:
+      required: false
+

@@ -1,0 +1,39 @@
+name: "P2 优化项"
+description: "不阻塞内测放行的优化/技术债/测试补齐"
+title: "[P2] "
+labels: ["p2-minor", "type:tech-debt", "status:needs-repro"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: 模块
+      options:
+        - module:order
+        - module:payment
+        - module:avatar
+        - module:profile
+        - module:notification
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题/优化点
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+    validations:
+      required: false
+
