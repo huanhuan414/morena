@@ -141,6 +141,9 @@ export default function NotificationsPage() {
             <ChevronLeft size={22} color="#fff" />
           </View>
           <Text className="nav-title">消息通知</Text>
+          <View className="nav-placeholder" />
+        </View>
+        <View className="header-actions">
           <View className="nav-action" onClick={markAllAsRead}>
             <CheckCheck size={18} color="rgba(255,255,255,0.75)" />
             <Text className="nav-action-text">全部已读</Text>
