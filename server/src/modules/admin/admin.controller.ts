@@ -228,6 +228,25 @@ export class AdminController {
     }
   }
 
+  @Get('queues/supply')
+  async getSupplyQueue(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('queue') queue: string,
+    @Query('limit') limit: number = 20
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.getSupplyQueue(queue, Number(limit) || 20)
+    return {
+      code: 200,
+      data: result,
+      message: 'success'
+    }
+  }
+
   /**
    * 更新订单状态
    */

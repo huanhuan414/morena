@@ -87,6 +87,22 @@ export class AdminService {
       );
       const acceptanceOverdue = acceptanceOverdueResult.data?.[0]?.count || 0;
 
+      const pendingDispatchResult = await db.query(
+        `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE status = 'pending'`
+      );
+      const pendingDispatch = pendingDispatchResult.data?.[0]?.count || 0;
+
+      const dispatchExpiredResult = await db.query(
+        `SELECT COUNT(*) as count FROM order_dispatch_requests WHERE status = 'expired' AND updated_at >= ?`,
+        [todayStr]
+      );
+      const dispatchExpiredToday = dispatchExpiredResult.data?.[0]?.count || 0;
+
+      const awaitingAcceptanceResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE status = 'awaiting_acceptance'`
+      );
+      const awaitingAcceptance = awaitingAcceptanceResult.data?.[0]?.count || 0;
+
       return {
         totalUsers,
         totalAvatars,
@@ -96,15 +112,72 @@ export class AdminService {
         todayOrders,
         pendingOrders,
         pendingContent,
-        acceptanceOverdue
+        acceptanceOverdue,
+        pendingDispatch,
+        dispatchExpiredToday,
+        awaitingAcceptance
       };
     } catch (error) {
       console.error('获取仪表盘数据失败:', error);
       return {
         totalUsers: 0, totalAvatars: 0, totalOrders: 0, totalRevenue: 0,
-        todayNewUsers: 0, todayOrders: 0, pendingOrders: 0, pendingContent: 0, acceptanceOverdue: 0
+        todayNewUsers: 0, todayOrders: 0, pendingOrders: 0, pendingContent: 0, acceptanceOverdue: 0,
+        pendingDispatch: 0, dispatchExpiredToday: 0, awaitingAcceptance: 0
       };
     }
+  }
+
+  async getSupplyQueue(queue: string, limit: number = 20): Promise<any> {
+    const db = getMySQLClient();
+    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+
+    if (queue === 'pending_dispatch') {
+      const result = await db.query(
+        `SELECT od.id, od.order_id, od.target_avatar_id as avatar_id, od.created_at,
+                o.title as order_title,
+                a.name as avatar_name
+         FROM order_dispatch_requests od
+         LEFT JOIN orders o ON od.order_id = o.id
+         LEFT JOIN avatars a ON od.target_avatar_id = a.id
+         WHERE od.status = 'pending'
+         ORDER BY od.created_at ASC
+         LIMIT ?`,
+        [safeLimit]
+      );
+      return { queue, list: result.data || [], total: (result.data || []).length };
+    }
+
+    if (queue === 'dispatch_expired') {
+      const result = await db.query(
+        `SELECT od.id, od.order_id, od.avatar_id, od.responded_at, od.updated_at,
+                o.title as order_title,
+                a.name as avatar_name
+         FROM order_dispatch_requests od
+         LEFT JOIN orders o ON od.order_id = o.id
+         LEFT JOIN avatars a ON od.avatar_id = a.id
+         WHERE od.status = 'expired'
+         ORDER BY COALESCE(od.responded_at, od.updated_at) DESC
+         LIMIT ?`,
+        [safeLimit]
+      );
+      return { queue, list: result.data || [], total: (result.data || []).length };
+    }
+
+    if (queue === 'awaiting_acceptance') {
+      const result = await db.query(
+        `SELECT o.id, o.user_id, o.title, o.updated_at, o.assigned_to,
+                a.name as avatar_name
+         FROM orders o
+         LEFT JOIN avatars a ON o.assigned_to = a.id
+         WHERE o.status = 'awaiting_acceptance'
+         ORDER BY o.updated_at ASC
+         LIMIT ?`,
+        [safeLimit]
+      );
+      return { queue, list: result.data || [], total: (result.data || []).length };
+    }
+
+    return { queue, list: [], total: 0 };
   }
 
   async getAcceptanceOverdueOrders(hours: number = 6, limit: number = 50): Promise<any> {
