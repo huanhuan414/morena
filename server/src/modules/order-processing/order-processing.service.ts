@@ -3,6 +3,10 @@ import { randomUUID } from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
+import { NotificationService } from '../notification/notification.service'
+
+const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
+const lastUrgeAcceptanceAt = new Map<string, number>()
 
 @Injectable()
 export class OrderProcessingService {
@@ -411,9 +415,65 @@ export class OrderProcessingService {
     return normalized
   }
 
+  async urgeAcceptance(identifier: string): Promise<any> {
+    const current = await this.findRecordByIdentifier(identifier)
+    if (!current) return null
+
+    const normalized = this.normalizeRecord(current)
+    const requestId = normalized.requestId || identifier
+    const now = Date.now()
+    const lastAt = lastUrgeAcceptanceAt.get(requestId) || 0
+    if (lastAt && now - lastAt < URGE_ACCEPTANCE_COOLDOWN_MS) {
+      return {
+        success: false,
+        cooldownRemainingMs: URGE_ACCEPTANCE_COOLDOWN_MS - (now - lastAt)
+      }
+    }
+
+    const db = getMySQLClient()
+    const orderId = normalized.orderId || normalized.order_id
+    if (!orderId) return { success: false }
+
+    let order: any = null
+    try {
+      order = await db.queryOne('orders', { id: orderId })
+    } catch (error: any) {
+      this.logger.warn(`催促验收查询订单失败: orderId=${orderId}, error=${error.message}`)
+      return { success: false }
+    }
+
+    const issuerUserId = order?.user_id || order?.userId
+    if (!issuerUserId) return { success: false }
+
+    const title = '验收提醒'
+    const content = order?.title
+      ? `你的订单「${order.title}」已提交发布反馈，请尽快验收`
+      : '你的订单已提交发布反馈，请尽快验收'
+
+    try {
+      const notificationService = new NotificationService()
+      await notificationService.createNotification({
+        user_id: issuerUserId,
+        type: 'order_urge_acceptance',
+        title,
+        content,
+        metadata: {
+          orderId,
+          requestId
+        }
+      })
+      lastUrgeAcceptanceAt.set(requestId, now)
+    } catch (error: any) {
+      this.logger.warn(`催促验收通知发送失败: requestId=${requestId}, error=${error.message}`)
+      return { success: false }
+    }
+
+    return { success: true }
+  }
+
   async acceptProcessing(identifier: string): Promise<any> {
     const record = await this.updateRecordByIdentifier(identifier, {
-      status: 'completed'
+      status: 'settled'
     })
     if (!record) return null
 

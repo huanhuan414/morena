@@ -209,6 +209,25 @@ export class AdminController {
     }
   }
 
+  @Get('orders/acceptance-overdue')
+  async getAcceptanceOverdueOrders(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('hours') hours: number = 6,
+    @Query('limit') limit: number = 50
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.getAcceptanceOverdueOrders(Number(hours) || 6, Number(limit) || 50)
+    return {
+      code: 200,
+      data: result,
+      message: 'success'
+    }
+  }
+
   /**
    * 更新订单状态
    */

@@ -342,6 +342,22 @@ export class OrderDispatchController {
     }
   }
 
+  @Get(':orderId/timeline-summary')
+  async getOrderTimelineSummary(
+    @Param('orderId') orderId: string,
+    @Query('limit') limit?: string
+  ) {
+    const summary = await this.eventService.getPublisherTimelineSummary(
+      orderId,
+      limit ? parseInt(limit) : 50
+    )
+    return {
+      code: 200,
+      data: summary,
+      message: '获取成功'
+    }
+  }
+
   /**
    * 获取订单时间线（分身视角）
    */

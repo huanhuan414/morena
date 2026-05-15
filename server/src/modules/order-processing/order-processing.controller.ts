@@ -196,6 +196,38 @@ export class OrderProcessingController {
     }
   }
 
+  @Post('urge-acceptance/:id')
+  async urgeAcceptance(@Param('id') id: string) {
+    try {
+      const result = await this.processingService.urgeAcceptance(id)
+      if (!result) {
+        return {
+          code: 200,
+          data: null,
+          message: '记录不存在'
+        }
+      }
+      if (!result.success) {
+        return {
+          code: 200,
+          data: result,
+          message: result.cooldownRemainingMs ? '催促过于频繁，请稍后再试' : '催促失败'
+        }
+      }
+      return {
+        code: 200,
+        data: result,
+        message: '已催促发单者验收'
+      }
+    } catch (error: any) {
+      return {
+        code: 500,
+        data: null,
+        message: error.message || '催促失败'
+      }
+    }
+  }
+
   /**
    * 请求修改
    * 支持 requestId / orderId

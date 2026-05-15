@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, TrendingUp, ChartBar
 } from 'lucide-react-taro'
 import * as Network from '@/network'
+import { Avatar } from '@/components/ui/avatar'
 import './index.css'
 
 interface Post {
@@ -263,11 +264,7 @@ export default function OrderStats() {
               <View key={avatar.avatarId} className="avatar-card">
                 {/* 头部 */}
                 <View className="avatar-header" onClick={() => toggleAvatarExpand(avatar.avatarId)}>
-                  <Image
-                    src={avatar.avatarUrl || 'https://via.placeholder.com/48'}
-                    className="avatar-avatar"
-                    mode="aspectFill"
-                  />
+                  <Avatar src={avatar.avatarUrl} name={avatar.avatarName} size={96} className="avatar-avatar" />
                   <View className="avatar-info">
                     <View className="avatar-name-row">
                       <Text className="avatar-name">{avatar.avatarName}</Text>
