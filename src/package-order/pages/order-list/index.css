@@ -1,14 +1,14 @@
 /* 订单列表页 - ol 前缀 */
 .ol-page {
   min-height: 100vh;
-  background: #F5F5F7;
+  background: #f5f5f7;
   display: flex;
   flex-direction: column;
 }
 
 /* ═══════ 头部渐变 ═══════ */
 .ol-header {
-  background: linear-gradient(135deg, #7C3AED, #6366F1, #4F46E5);
+  background: linear-gradient(135deg, #7c3aed, #6366f1, #4f46e5);
   padding: 0 0 48rpx 0;
   position: relative;
   overflow: hidden;
@@ -17,10 +17,20 @@
 .ol-header-decor {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
-.ol-header-decor-1 { width: 240rpx; height: 240rpx; top: -80rpx; right: -40rpx; }
-.ol-header-decor-2 { width: 160rpx; height: 160rpx; bottom: 20rpx; left: -60rpx; }
+.ol-header-decor-1 {
+  width: 240rpx;
+  height: 240rpx;
+  top: -80rpx;
+  right: -40rpx;
+}
+.ol-header-decor-2 {
+  width: 160rpx;
+  height: 160rpx;
+  bottom: 20rpx;
+  left: -60rpx;
+}
 
 .ol-header-nav {
   display: flex;
@@ -29,14 +39,18 @@
   padding: 20rpx 28rpx;
 }
 .ol-back-btn {
-  width: 56rpx;
-  height: 56rpx;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.ol-back-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.95);
 }
 .ol-header-center {
   flex: 1;
@@ -53,7 +67,7 @@
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,7 +84,7 @@
   padding: 24rpx 16rpx;
   background: #fff;
   border-radius: 20rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06);
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
   position: relative;
   z-index: 10;
 }
@@ -82,17 +96,17 @@
 .ol-stat-num {
   font-size: 36rpx;
   font-weight: 700;
-  color: #1F2937;
+  color: #1f2937;
 }
 .ol-stat-label {
   font-size: 22rpx;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin-top: 4rpx;
 }
 .ol-stat-divider {
   width: 1rpx;
   height: 48rpx;
-  background: #F3F4F6;
+  background: #f3f4f6;
 }
 
 /* ═══════ Tab 筛选 ═══════ */
@@ -100,36 +114,54 @@
   display: flex;
   flex-direction: row;
   padding: 24rpx 24rpx 0 24rpx;
-  gap: 16rpx;
+  gap: 20rpx;
+  white-space: nowrap;
 }
 .ol-tab {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 6rpx;
-  padding: 12rpx 24rpx;
+  gap: 8rpx;
+  padding: 16rpx 28rpx;
   border-radius: 100rpx;
   background: #fff;
-  border: 1rpx solid #E5E7EB;
+  border: 2rpx solid #e5e7eb;
   flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+.ol-tab:active {
+  transform: scale(0.96);
 }
 .ol-tab-active {
-  background: #7C3AED;
-  border-color: #7C3AED;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  border-color: #7c3aed;
+  box-shadow: 0 4rpx 16rpx rgba(124, 58, 237, 0.35);
 }
 .ol-tab-text {
-  font-size: 24rpx;
-  color: #6B7280;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #6b7280;
 }
 .ol-tab-active .ol-tab-text {
   color: #fff;
+  font-weight: 600;
 }
 .ol-tab-count {
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 16rpx;
+  background: #f3f4f6;
   font-size: 20rpx;
-  color: #9CA3AF;
+  font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .ol-tab-active .ol-tab-count {
-  color: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
 
 /* ═══════ 列表 ═══════ */
@@ -144,7 +176,7 @@
   border-radius: 24rpx;
   padding: 24rpx 28rpx;
   margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
 /* 卡片顶部：状态标签 + 时间 */
@@ -170,14 +202,14 @@
 }
 .ol-card-time {
   font-size: 22rpx;
-  color: #9CA3AF;
+  color: #9ca3af;
 }
 
 /* 卡片标题 */
 .ol-card-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1F2937;
+  color: #1f2937;
   line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -200,21 +232,21 @@
   gap: 4rpx;
   padding: 4rpx 16rpx;
   border-radius: 100rpx;
-  background: rgba(124,58,237,0.08);
+  background: rgba(124, 58, 237, 0.08);
 }
 .ol-type-pill-text {
   font-size: 22rpx;
-  color: #7C3AED;
+  color: #7c3aed;
   line-height: 1.5;
 }
 .ol-platform-pill {
   padding: 4rpx 16rpx;
   border-radius: 100rpx;
-  background: #EEF2FF;
+  background: #eef2ff;
 }
 .ol-platform-pill-text {
   font-size: 22rpx;
-  color: #6366F1;
+  color: #6366f1;
   line-height: 1.5;
 }
 
@@ -225,16 +257,16 @@
   align-items: center;
   gap: 20rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #F3F4F6;
+  border-top: 1rpx solid #f3f4f6;
 }
 .ol-card-budget {
   font-size: 30rpx;
   font-weight: 700;
-  color: #F59E0B;
+  color: #f59e0b;
 }
 .ol-card-avatars {
   font-size: 22rpx;
-  color: #7C3AED;
+  color: #7c3aed;
 }
 .ol-card-phase {
   font-size: 22rpx;
@@ -249,7 +281,7 @@
   gap: 16rpx;
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #F3F4F6;
+  border-top: 1rpx solid #f3f4f6;
 }
 .ol-action-btn {
   display: flex;
@@ -261,13 +293,13 @@
   border-radius: 100rpx;
 }
 .ol-action-primary {
-  background: linear-gradient(135deg, #7C3AED, #6366F1);
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
 }
 .ol-action-default {
-  background: rgba(124,58,237,0.08);
+  background: rgba(124, 58, 237, 0.08);
 }
 .ol-action-danger {
-  background: rgba(239,68,68,0.08);
+  background: rgba(239, 68, 68, 0.08);
 }
 .ol-action-btn-text {
   font-size: 24rpx;
@@ -277,7 +309,7 @@
 
 /* ═══════ 异常卡片 ═══════ */
 .ol-card-abnormal {
-  border-left: 6rpx solid #EF4444;
+  border-left: 6rpx solid #ef4444;
 }
 
 /* ═══════ 分身进度条 ═══════ */
@@ -291,7 +323,7 @@
   height: 8rpx;
   border-radius: 4rpx;
   overflow: hidden;
-  background: #F3F4F6;
+  background: #f3f4f6;
 }
 .ol-progress-seg {
   height: 100%;
@@ -324,7 +356,7 @@
   padding: 16rpx 32rpx;
   padding-bottom: 32rpx;
   background: #fff;
-  border-top: 1rpx solid #F3F4F6;
+  border-top: 1rpx solid #f3f4f6;
   z-index: 100;
 }
 .ol-create-btn {
@@ -335,7 +367,7 @@
   gap: 8rpx;
   height: 80rpx;
   border-radius: 40rpx;
-  background: linear-gradient(135deg, #7C3AED, #6366F1);
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
 }
 .ol-create-btn-text {
   font-size: 28rpx;
@@ -353,7 +385,7 @@
 }
 .ol-loading-text {
   font-size: 26rpx;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin-top: 16rpx;
 }
 
@@ -367,7 +399,7 @@
 }
 .ol-empty-text {
   font-size: 26rpx;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin-top: 16rpx;
 }
 .ol-empty-btn {
@@ -379,11 +411,11 @@
   margin-top: 24rpx;
   padding: 12rpx 28rpx;
   border-radius: 100rpx;
-  background: rgba(124,58,237,0.08);
+  background: rgba(124, 58, 237, 0.08);
 }
 .ol-empty-btn-text {
   font-size: 24rpx;
-  color: #7C3AED;
+  color: #7c3aed;
   font-weight: 500;
 }
 
@@ -392,6 +424,10 @@
   animation: ol-spin-anim 1s linear infinite;
 }
 @keyframes ol-spin-anim {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
