@@ -39,6 +39,7 @@ import { UserStatsModule } from './modules/user-stats/user-stats.module';
 import { AiModule } from './modules/ai/ai.module';
 import { SkillModule } from './modules/skill/skill.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { ImageGenModule } from './modules/image-gen/image-gen.module';
 
 @Module({
   imports: [
@@ -78,7 +79,8 @@ import { PaymentModule } from './modules/payment/payment.module';
     UserStatsModule,
     AiModule,
     SkillModule,
-    PaymentModule
+    PaymentModule,
+    ImageGenModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -3,7 +3,7 @@ import { createPool, Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise
 // 数据库连接池
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!pool) {
     pool = createPool({
       host: process.env.MYSQL_HOST || '127.0.0.1',
