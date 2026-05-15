@@ -76,7 +76,7 @@ export class NotificationController {
   ) {
     try {
       if (this.notificationService) {
-        await this.notificationService.markAsRead(userId, notificationId)
+        await this.notificationService.markAsRead(notificationId, userId)
       }
     } catch (e) {
       console.error('[NotificationController] markAsRead error:', e.message)

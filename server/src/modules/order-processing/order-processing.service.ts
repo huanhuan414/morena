@@ -438,9 +438,18 @@ export class OrderProcessingService {
    * 请求修改（进入修改流程）
    */
   async requestRevision(identifier: string, feedback: Record<string, any>): Promise<any> {
+    const current = await this.findRecordByIdentifier(identifier)
+    if (!current) return null
+
+    const existingFeedback = this.parseJsonObject<Record<string, any>>(
+      current.publishFeedback || current.publish_feedback,
+      {}
+    )
+    const mergedFeedback = this.mergeFeedback(existingFeedback, feedback || {})
+
     const record = await this.updateRecordByIdentifier(identifier, {
       status: 'revision_requested',
-      publish_feedback: JSON.stringify(feedback || {})
+      publish_feedback: JSON.stringify(mergedFeedback)
     })
     if (!record) return null
 
