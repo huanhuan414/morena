@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
-import axios from 'axios';
+import { LLMClient, Config, Message } from 'coze-coding-dev-sdk';
 import * as crypto from 'crypto';
 
 interface ImageGenParams {
@@ -26,13 +26,20 @@ export class ImageGenService {
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
-  private readonly cozeApiBaseUrl = process.env.COZE_API_BASE_URL || 'https://api.coze.cn';
-  private readonly cozeApiKey = process.env.COZE_WORKLOAD_IDENTITY_API_KEY || '';
+  private readonly llmClient: LLMClient;
 
-  constructor() {}
+  constructor() {
+    const config = new Config();
+    this.llmClient = new LLMClient(config);
+  }
 
   /**
    * 用豆包大模型将用户描述转为专业文生图提示词
+   * 核心逻辑：
+   * 1. 分析用户意图（情感、场景、叙事）
+   * 2. 将意图转化为英文专业视觉描述
+   * 3. 融入指定风格
+   * 4. 输出纯英文高质量prompt
    */
   private async enhancePromptWithLLM(userPrompt: string, style: string): Promise<string> {
     const styleMap: Record<string, string> = {
@@ -47,95 +54,50 @@ export class ImageGenService {
     };
     const styleName = styleMap[style] || 'photorealistic photography';
 
-    const systemPrompt = `You are an expert AI image prompt engineer. Your task is to transform simple user descriptions into professional, high-quality image generation prompts.
+    const systemPrompt = `你是一位世界顶级的AI图像提示词工程师。你的任务是将用户的简单描述转化为专业、生动、极具画面感的英文文生图提示词。
 
-Rules:
-1. Preserve the user's original intent and core elements
-2. Add detailed visual details: lighting, composition, color palette, atmosphere, texture
-3. Add quality-enhancing terms: masterpiece, best quality, highly detailed, professional
-4. Output in English only (image models understand English better)
-5. Keep the prompt under 80 words
-6. The style MUST be: ${styleName}
-7. Output ONLY the prompt text, no explanations or extra text`;
+## 你的工作流程：
+1. **意图分析**：深入理解用户真正想要表达什么——情绪、主题、场景、故事性
+2. **视觉扩展**：用具体的视觉元素丰富画面——光线方向与质感、色彩搭配、构图法则、相机角度、景深效果、材质纹理
+3. **风格融合**：将"${styleName}"风格无缝融入描述中——不是作为标签附加，而是融入视觉叙事本身
+4. **品质提升**：自然地加入品质词汇——masterpiece, ultra detailed, professional, 8K
+5. **最终输出**：输出一段连贯的英文描述，像一个完整的画面
+
+## 严格规则：
+- 只输出最终的英文提示词，不要输出任何中文、解释、标签
+- 提示词必须是自然流畅的英文描述（不是逗号分隔的标签堆砌）
+- 字数控制在50-120词
+- 必须全部使用英文（图片生成模型对英文理解远好于中文）
+- 不要简单追加风格关键词——风格必须是描述的有机组成部分
+- 思考什么让这幅画面在视觉上令人震撼，然后描述它`;
 
     try {
-      // 直接用Coze OpenAPI调用豆包大模型
-      console.log('[ImageGenService] 调用豆包大模型优化提示词...');
+      console.log('[ImageGenService] 调用豆包大模型分析意图并优化提示词...');
 
-      const token = await this.getCozeToken();
-      if (!token) {
-        throw new Error('获取Coze token失败');
-      }
+      const messages: Message[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
 
-      const response = await axios.post(
-        `${this.cozeApiBaseUrl}/v3/chat`,
-        {
-          bot_id: 'default',
-          user_id: 'image-gen-service',
-          stream: false,
-          auto_save_history: false,
-          additional_messages: [
-            { role: 'system', content: systemPrompt, content_type: 'text' },
-            { role: 'user', content: `Transform this description into a professional image generation prompt:\n\n"${userPrompt}"`, content_type: 'text' },
-          ],
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          timeout: 30000,
-        },
-      );
+      const response = await this.llmClient.invoke(messages, {
+        model: 'doubao-seed-2-0-lite-260215',
+        temperature: 0.8,
+      });
 
-      // 从Coze API响应中提取内容
-      const messages = response.data?.messages || [];
-      const answerMsg = messages.find((m: any) => m.role === 'assistant' && m.type === 'answer');
-      const enhanced = answerMsg?.content?.trim();
+      const enhanced = response.content?.trim();
 
       if (enhanced && enhanced.length > 10) {
-        console.log(`[ImageGenService] 提示词优化: "${userPrompt}" -> "${enhanced.slice(0, 80)}..."`);
+        console.log(`[ImageGenService] 豆包完整输出: "${enhanced}"`);
         return enhanced;
       }
+
+      console.warn('[ImageGenService] 豆包返回内容过短，使用本地增强');
     } catch (err: any) {
       console.warn('[ImageGenService] 豆包提示词优化失败，使用本地增强:', err.message);
     }
 
     // fallback: 本地简单增强
     return this.buildLocalEnhancedPrompt(userPrompt, style);
-  }
-
-  /**
-   * 获取Coze API Token（使用Workload Identity）
-   */
-  private async getCozeToken(): Promise<string> {
-    const clientId = process.env.COZE_WORKLOAD_IDENTITY_CLIENT_ID;
-    const clientSecret = process.env.COZE_WORKLOAD_IDENTITY_CLIENT_SECRET;
-    const tokenEndpoint = process.env.COZE_WORKLOAD_IDENTITY_TOKEN_ENDPOINT;
-
-    if (!clientId || !clientSecret || !tokenEndpoint) {
-      console.warn('[ImageGenService] 缺少COZE环境变量');
-      return '';
-    }
-
-    try {
-      const response = await axios.post(
-        tokenEndpoint,
-        new URLSearchParams({
-          grant_type: 'client_credentials',
-          client_id: clientId,
-          client_secret: clientSecret,
-        }).toString(),
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 10000,
-        },
-      );
-      return response.data?.access_token || '';
-    } catch (err: any) {
-      console.error('[ImageGenService] 获取Coze token失败:', err.message);
-      return '';
-    }
   }
 
   /**
