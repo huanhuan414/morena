@@ -41,6 +41,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
   submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3, desc: '内容已提交，即将发布' },
   published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', phase: 3, desc: '内容已成功发布' },
+  revision_requested: { label: '待修改',   color: '#F97316', bgColor: '#FFF7ED', phase: 2, desc: '已发起修改，请等待分身重新提交' },
   completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', phase: 4, desc: '订单已全部完成' },
   publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布遇到问题，请查看详情' },
   publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布超时，请查看详情' },

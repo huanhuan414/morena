@@ -48,6 +48,7 @@ const STATUS_CONFIG: Record<string, {
   content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText,     phase: 2 },
   submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', icon: FileText,     phase: 3 },
   published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck,  phase: 3 },
+  revision_requested: { label: '待修改',   color: '#F97316', bgColor: '#FFF7ED', icon: Zap,          phase: 2 },
   completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', icon: CircleCheck,  phase: 4 },
   publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
   publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', icon: TriangleAlert, phase: -1 },
@@ -68,7 +69,7 @@ const STATUS_TABS = [
 
 function isStatusInTab(status: string, tabKey: string): boolean {
   if (tabKey === 'all') return true
-  if (tabKey === 'active') return ['pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted', 'published'].includes(status)
+  if (tabKey === 'active') return ['pending', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'revision_requested'].includes(status)
   if (tabKey === 'pending_payment') return status === 'pending_payment'
   if (tabKey === 'completed') return status === 'completed'
   if (tabKey === 'closed') return ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'publish_failed', 'publish_timeout'].includes(status)

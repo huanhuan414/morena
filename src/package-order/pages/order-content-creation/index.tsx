@@ -222,7 +222,7 @@ export default function OrderContentCreation() {
         : ['wechat_channel']
     const title = orderInfo?.title || processingData?.orderTitle || '内容发布'
     const requestId = processingData?.requestId || ''
-    const avatarId = processingData?.avatarId || orderInfo?.id || ''
+    const avatarId = processingData?.avatarId || ''
     const images = content.images || []
 
     const query = [

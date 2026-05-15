@@ -330,7 +330,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                     // 重新支付
                     repayAndNavigate(orderId, openid)
                   } else {
-                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${orderId}` })
+                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
                   }
                 },
               })
@@ -345,7 +345,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
                   if (modalRes.confirm) {
                     repayAndNavigate(orderId, openid)
                   } else {
-                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${orderId}` })
+                    Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })
                   }
                 },
               })

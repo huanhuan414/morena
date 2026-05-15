@@ -176,9 +176,18 @@ export default function OrderPublishFeedback() {
       const uploadedUrls: string[] = []
 
       results.forEach(result => {
-        const uploadData = JSON.parse(result.data)
-        if (uploadData.code === 200) {
-          uploadedUrls.push(uploadData.data.url)
+        let uploadData: any = result?.data
+        if (typeof uploadData === 'string') {
+          try {
+            uploadData = JSON.parse(uploadData)
+          } catch {
+            uploadData = null
+          }
+        }
+
+        const url = uploadData?.data?.url || uploadData?.data?.fileUrl || uploadData?.url
+        if (uploadData?.code === 200 && url) {
+          uploadedUrls.push(url)
         }
       })
 
@@ -307,11 +316,37 @@ export default function OrderPublishFeedback() {
       return
     }
 
-    // 检查需要验证的平台是否都已通过验证
-    if (!allVerified()) {
-      Taro.showToast({ title: '请先完成发布验证', icon: 'none' })
-      return
+    const verified = allVerified()
+
+    if (!verified && publishPlatforms.some(p => isVerifyRequired(p.platform))) {
+      const modalRes = await Taro.showModal({
+        title: '发布验证未通过',
+        content: '仍可提交并进入人工核验（可能影响验收速度）',
+        confirmText: '人工核验提交',
+        cancelText: '返回验证',
+      })
+      if (!modalRes.confirm) return
     }
+
+    const feedbackPayload = (() => {
+      if (verified) return feedback
+      const required = publishPlatforms
+        .filter(p => isVerifyRequired(p.platform))
+        .map(p => p.platform)
+
+      const next: Record<string, any> = { ...feedback }
+      required.forEach(platform => {
+        const prev = next[platform] || {}
+        next[platform] = {
+          ...prev,
+          verification: {
+            status: 'manual_pending',
+            message: verifyResults[platform]?.message || '',
+          },
+        }
+      })
+      return next
+    })()
 
     setSubmitting(true)
     try {
@@ -319,7 +354,7 @@ export default function OrderPublishFeedback() {
       const response = await Network.request({
         url: `/api/order-processing/feedback/${reqId}`,
         method: 'POST',
-        data: { feedback }
+        data: { feedback: feedbackPayload }
       })
 
       if (response.data?.code === 200) {
@@ -615,11 +650,11 @@ export default function OrderPublishFeedback() {
       {/* 底部提交按钮 */}
       <View className="feedback-bottom-bar">
         {!allVerified() && publishPlatforms.some(p => isVerifyRequired(p.platform)) && (
-          <Text className="feedback-verify-hint">请先完成发布验证再提交</Text>
+          <Text className="feedback-verify-hint">验证失败可选择人工核验提交</Text>
         )}
         <View
-          className={`feedback-submit-btn ${submitting ? 'disabled' : ''} ${!allVerified() ? 'disabled' : ''}`}
-          onClick={submitting || !allVerified() ? undefined : handleSubmit}
+          className={`feedback-submit-btn ${submitting ? 'disabled' : ''}`}
+          onClick={submitting ? undefined : handleSubmit}
         >
           <Send size={16} color="#fff" />
           <Text className="feedback-submit-text">{submitting ? '提交中...' : '提交反馈'}</Text>

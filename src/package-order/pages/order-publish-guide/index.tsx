@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import {
@@ -150,46 +150,46 @@ export default function OrderPublishGuide() {
     if (params.orderId) setOrderId(params.orderId)
   }, [])
 
-  // 获取分身绑定的账号信息
-  useEffect(() => {
-    const fetchAvatarAccounts = async () => {
-      if (!avatarId) {
+  const fetchAvatarAccounts = useCallback(async () => {
+    if (!avatarId) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const statusIdentifier = requestId || orderId
+      if (!statusIdentifier) {
         setLoading(false)
         return
       }
-
-      try {
-        const statusIdentifier = requestId || orderId
-        if (!statusIdentifier) {
-          setLoading(false)
-          return
+      const res = await Network.request({
+        url: `/api/order-processing/status/${statusIdentifier}`
+      })
+      
+      const resData = res.data as any
+      if (resData?.code === 200 && resData?.data) {
+        if (resData.data.avatarId && !avatarId) {
+          setAvatarId(resData.data.avatarId)
         }
-        const res = await Network.request({
-          url: `/api/order-processing/status/${statusIdentifier}`
-        })
-        
-        const resData = res.data as any
-        if (resData?.code === 200 && resData?.data) {
-          if (resData.data.avatarId && !avatarId) {
-            setAvatarId(resData.data.avatarId)
-          }
-          if (Array.isArray(resData.data.avatarAccounts)) {
-            setAvatarAccounts(resData.data.avatarAccounts)
-          }
+        if (Array.isArray(resData.data.avatarAccounts)) {
+          setAvatarAccounts(resData.data.avatarAccounts)
         }
-      } catch (error) {
-        console.error('获取分身账号信息失败:', error)
-      } finally {
-        setLoading(false)
       }
-    }
-
-    if (avatarId) {
-      fetchAvatarAccounts()
-    } else {
+    } catch (error) {
+      console.error('获取分身账号信息失败:', error)
+    } finally {
       setLoading(false)
     }
-  }, [avatarId])
+  }, [avatarId, orderId, requestId])
+
+  // 获取分身绑定的账号信息
+  useEffect(() => {
+    fetchAvatarAccounts()
+  }, [fetchAvatarAccounts])
+
+  useDidShow(() => {
+    fetchAvatarAccounts()
+  })
 
   const handleBack = () => {
     Taro.navigateBack()
