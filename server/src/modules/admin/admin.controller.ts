@@ -535,13 +535,16 @@ export class AdminController {
    * 获取推广统计
    */
   @Get('referral/stats')
-  async getReferralStats(@Headers() headers: Record<string, string | string[] | undefined>) {
+  async getReferralStats(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: string
+  ) {
     const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
     if (!admin) {
       return { code: 401, data: null, message: '未授权' }
     }
     
-    const stats = await this.adminService.getReferralStats()
+    const stats = await this.adminService.getReferralStats(Number(days) || 14)
     return {
       code: 200,
       data: stats,
