@@ -878,36 +878,109 @@ export class AdminService {
     }
   }
 
-  async getReferralStats(): Promise<any> {
+  async getReferralStats(days: number = 14): Promise<any> {
     try {
       const db = getMySQLClient();
       
-      const totalResult = await db.query(`SELECT COUNT(*) as count FROM referrals`);
-      const totalReferrers = totalResult.data?.[0]?.count || 0;
-      
-      const bonusResult = await db.query(
+      const totalReferredResult = await db.query(`SELECT COUNT(*) as count FROM referrals`);
+      const totalReferred = totalReferredResult.data?.[0]?.count || 0;
+
+      const totalReferrersResult = await db.query(`SELECT COUNT(DISTINCT referrer_id) as count FROM referrals`);
+      const totalReferrers = totalReferrersResult.data?.[0]?.count || 0;
+
+      const totalCommissionResult = await db.query(
         `SELECT SUM(amount) as total FROM earnings WHERE type = 'referral_bonus'`
       );
-      const totalBonus = bonusResult.data?.[0]?.total || 0;
-      
-      const usersResult = await db.query(
-        `SELECT COUNT(*) as count FROM users WHERE referral_code IS NOT NULL AND referral_code != ''`
-      );
-      const referredUsers = usersResult.data?.[0]?.count || 0;
+      const totalCommission = totalCommissionResult.data?.[0]?.total || 0;
+
+      let commissionRate = 10
+      try {
+        const configResult = await db.query(`SELECT commission_rate FROM system_config WHERE id = 'system'`)
+        const rate = configResult.data?.[0]?.commission_rate
+        if (rate !== undefined && rate !== null && rate !== '') {
+          commissionRate = Number(rate)
+        }
+      } catch (e) {
+        console.error('获取佣金比例失败:', e);
+      }
+
+      const normalizedDays = Math.max(1, Math.min(90, Number(days) || 14))
+      const startDateResult = await db.query(
+        `SELECT DATE_SUB(CURDATE(), INTERVAL ? DAY) as start_date`,
+        [normalizedDays - 1]
+      )
+      const startDate = startDateResult.data?.[0]?.start_date
+
+      const referralDailyResult = await db.query(
+        `SELECT DATE(created_at) as day,
+                COUNT(*) as invitedRegistrations,
+                COUNT(DISTINCT referrer_id) as inviters
+         FROM referrals
+         WHERE created_at >= ?
+         GROUP BY DATE(created_at)
+         ORDER BY day DESC`,
+        [startDate]
+      )
+      const referralDailyRows = referralDailyResult.data || []
+
+      const bonusDailyResult = await db.query(
+        `SELECT DATE(created_at) as day,
+                COUNT(*) as bonusCount,
+                SUM(amount) as bonusAmount
+         FROM earnings
+         WHERE type = 'referral_bonus' AND created_at >= ?
+         GROUP BY DATE(created_at)
+         ORDER BY day DESC`,
+        [startDate]
+      )
+      const bonusDailyRows = bonusDailyResult.data || []
+
+      const referralDailyMap = new Map<string, any>()
+      for (const row of referralDailyRows) {
+        if (!row?.day) continue
+        referralDailyMap.set(String(row.day), row)
+      }
+
+      const bonusDailyMap = new Map<string, any>()
+      for (const row of bonusDailyRows) {
+        if (!row?.day) continue
+        bonusDailyMap.set(String(row.day), row)
+      }
+
+      const funnelByDay: any[] = []
+      for (let i = 0; i < normalizedDays; i++) {
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        d.setDate(d.getDate() - i)
+        const day = d.toISOString().slice(0, 10)
+        const referralRow = referralDailyMap.get(day) || {}
+        const bonusRow = bonusDailyMap.get(day) || {}
+        funnelByDay.push({
+          day,
+          inviters: Number(referralRow.inviters || 0),
+          invitedRegistrations: Number(referralRow.invitedRegistrations || 0),
+          bonusCount: Number(bonusRow.bonusCount || 0),
+          bonusAmount: Number(bonusRow.bonusAmount || 0)
+        })
+      }
 
       return {
         totalReferrers,
-        totalBonus,
-        referredUsers,
-        averageBonus: totalReferrers > 0 ? totalBonus / totalReferrers : 0
+        totalReferred,
+        totalCommission,
+        commissionRate,
+        funnelByDay,
+        averageCommission: totalReferrers > 0 ? totalCommission / totalReferrers : 0
       };
     } catch (error) {
       console.error('获取推荐统计失败:', error);
       return {
         totalReferrers: 0,
-        totalBonus: 0,
-        referredUsers: 0,
-        averageBonus: 0
+        totalReferred: 0,
+        totalCommission: 0,
+        commissionRate: 10,
+        funnelByDay: [],
+        averageCommission: 0
       };
     }
   }

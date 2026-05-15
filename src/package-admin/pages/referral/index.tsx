@@ -13,6 +13,15 @@ interface ReferralStats {
   totalReferred: number
   totalCommission: number
   commissionRate: number
+  funnelByDay?: FunnelDay[]
+}
+
+interface FunnelDay {
+  day: string
+  inviters: number
+  invitedRegistrations: number
+  bonusCount: number
+  bonusAmount: number
 }
 
 interface Referrer {
@@ -32,7 +41,8 @@ export default function ReferralManagement() {
     totalReferrers: 0,
     totalReferred: 0,
     totalCommission: 0,
-    commissionRate: 10
+    commissionRate: 10,
+    funnelByDay: []
   })
   const [referrers, setReferrers] = useState<Referrer[]>([])
   const [showSettings, setShowSettings] = useState(false)
@@ -141,6 +151,42 @@ export default function ReferralManagement() {
               <Text className="stat-value">{stats.commissionRate}%</Text>
               <Text className="stat-label">分佣比例</Text>
             </View>
+          </View>
+        </View>
+
+        {/* 推广员列表 */}
+        <View className="section">
+          <Text className="section-title">邀请漏斗（近14天）</Text>
+          <View className="referrer-list">
+            {(stats.funnelByDay || []).map((row) => (
+              <View key={row.day} className="referrer-card">
+                <View className="referrer-header">
+                  <Text className="user-name">{row.day}</Text>
+                </View>
+
+                <View className="referrer-stats">
+                  <View className="stat-box">
+                    <Text className="stat-num">{row.inviters}</Text>
+                    <Text className="stat-label">活跃推广员</Text>
+                  </View>
+                  <View className="stat-divider" />
+                  <View className="stat-box">
+                    <Text className="stat-num">{row.invitedRegistrations}</Text>
+                    <Text className="stat-label">邀请注册</Text>
+                  </View>
+                  <View className="stat-divider" />
+                  <View className="stat-box">
+                    <Text className="stat-num">{row.bonusCount}</Text>
+                    <Text className="stat-label">奖励发放</Text>
+                  </View>
+                  <View className="stat-divider" />
+                  <View className="stat-box">
+                    <Text className="stat-num">¥{Number(row.bonusAmount || 0).toFixed(2)}</Text>
+                    <Text className="stat-label">奖励金额</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
         </View>
 

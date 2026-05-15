@@ -176,6 +176,26 @@ export class AuthService {
     if (inviter.id === inviteeId) {
       throw new Error('不能使用自己的邀请码')
     }
+
+    const existingReferralResult = await db.query('referrals', { referred_id: inviteeId })
+    const existingReferral = Array.isArray(existingReferralResult) ? existingReferralResult[0] : (existingReferralResult as any)?.data?.[0]
+    if (existingReferral) {
+      throw new Error('您已被邀请过')
+    }
+
+    const DAILY_INVITE_LIMIT = 20
+    try {
+      const dailyCountResult = await db.query(
+        `SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ? AND DATE(created_at) = CURDATE()`,
+        [inviter.id]
+      )
+      const dailyCount = dailyCountResult?.data?.[0]?.count ?? (Array.isArray(dailyCountResult) ? dailyCountResult[0]?.count : 0) ?? 0
+      if (Number(dailyCount) >= DAILY_INVITE_LIMIT) {
+        throw new Error('今日邀请已达上限')
+      }
+    } catch (e) {
+      console.error('[processReferral] daily limit check failed:', (e as any)?.message || e)
+    }
     
     // 发放邀请奖励（给邀请人）
     const REWARD_AMOUNT = 10 // 邀请奖励金额
