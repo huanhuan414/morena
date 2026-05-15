@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import * as crypto from 'crypto'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 
 export interface Activity {
@@ -15,6 +16,127 @@ export interface Activity {
 
 @Injectable()
 export class ActivitiesService {
+  private async ensureGrowthCampaignTables() {
+    const db = getMySQLClient()
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS growth_campaigns (
+        id VARCHAR(36) PRIMARY KEY,
+        enabled TINYINT(1) DEFAULT 0,
+        title VARCHAR(200) DEFAULT '',
+        description TEXT,
+        start_at DATETIME NULL,
+        end_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+    )
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS growth_campaign_events (
+        id VARCHAR(36) PRIMARY KEY,
+        campaign_id VARCHAR(36) NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        user_id VARCHAR(36) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_campaign_event (campaign_id, event_type),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+    )
+  }
+
+  async getCampaignConfig() {
+    await this.ensureGrowthCampaignTables()
+    const db = getMySQLClient()
+    const rows = await db.query(`SELECT * FROM growth_campaigns WHERE id = 'current' LIMIT 1`)
+    const row = rows?.[0] || rows?.data?.[0]
+    if (!row) {
+      return {
+        id: 'current',
+        enabled: 0,
+        title: '',
+        description: '',
+        startAt: null,
+        endAt: null
+      }
+    }
+    return {
+      id: row.id,
+      enabled: Number(row.enabled || 0),
+      title: row.title || '',
+      description: row.description || '',
+      startAt: row.start_at || row.startAt || null,
+      endAt: row.end_at || row.endAt || null,
+      updatedAt: row.updated_at || row.updatedAt || null
+    }
+  }
+
+  async getActiveCampaign() {
+    const config = await this.getCampaignConfig()
+    if (!config || !config.enabled) return null
+    const now = Date.now()
+    const startAt = config.startAt ? new Date(config.startAt).getTime() : null
+    const endAt = config.endAt ? new Date(config.endAt).getTime() : null
+    if (startAt && now < startAt) return null
+    if (endAt && now > endAt) return null
+    return config
+  }
+
+  async upsertCampaignConfig(payload: {
+    enabled?: number
+    title?: string
+    description?: string
+    startAt?: string | null
+    endAt?: string | null
+  }) {
+    await this.ensureGrowthCampaignTables()
+    const db = getMySQLClient()
+
+    const enabled = payload.enabled ? 1 : 0
+    const title = payload.title || ''
+    const description = payload.description || ''
+    const startAt = payload.startAt ? new Date(payload.startAt) : null
+    const endAt = payload.endAt ? new Date(payload.endAt) : null
+
+    await db.query(
+      `INSERT INTO growth_campaigns (id, enabled, title, description, start_at, end_at, created_at, updated_at)
+       VALUES ('current', ?, ?, ?, ?, ?, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), title = VALUES(title), description = VALUES(description),
+       start_at = VALUES(start_at), end_at = VALUES(end_at), updated_at = NOW()`,
+      [enabled, title, description, startAt, endAt]
+    )
+
+    return await this.getCampaignConfig()
+  }
+
+  async trackCampaignEvent(userId: string | undefined, eventType: string) {
+    const active = await this.getActiveCampaign()
+    if (!active) return { skipped: true }
+    await this.ensureGrowthCampaignTables()
+    const db = getMySQLClient()
+    const id = crypto.randomUUID()
+    await db.query(
+      `INSERT INTO growth_campaign_events (id, campaign_id, event_type, user_id, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [id, 'current', String(eventType || ''), userId || null]
+    )
+    return { success: true }
+  }
+
+  async getCampaignStats(days: number = 7) {
+    await this.ensureGrowthCampaignTables()
+    const db = getMySQLClient()
+    const normalizedDays = Math.max(1, Math.min(90, Number(days) || 7))
+    const rows = await db.query(
+      `SELECT DATE(created_at) as day, event_type, COUNT(*) as count
+       FROM growth_campaign_events
+       WHERE campaign_id = 'current' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY DATE(created_at), event_type
+       ORDER BY day DESC`,
+      [normalizedDays - 1]
+    )
+    const dataRows = rows?.data || rows || []
+    return { days: normalizedDays, rows: dataRows }
+  }
+
   async getRecentActivities(userId: string, limit: number = 10): Promise<Activity[]> {
     const activities: Activity[] = []
 

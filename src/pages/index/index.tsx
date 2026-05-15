@@ -19,6 +19,8 @@ const Index: React.FC = () => {
   const [totalEarnings, setTotalEarnings] = useState(0)
   const [pendingOrders, setPendingOrders] = useState(0)
   const [generatedContents, setGeneratedContents] = useState(0)
+  const [growthCampaign, setGrowthCampaign] = useState<any>(null)
+  const [trackedCampaignId, setTrackedCampaignId] = useState('')
   const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
 
   const [showOrderModal, setShowOrderModal] = useState(false)
@@ -156,6 +158,33 @@ const Index: React.FC = () => {
       console.error('获取实时动态失败:', err)
     }
   }
+
+  const trackGrowthCampaign = async (eventType: 'exposure' | 'click') => {
+    try {
+      await Network.request({
+        url: '/api/activities/campaign/track',
+        method: 'POST',
+        data: { eventType }
+      })
+    } catch (err) {
+      console.error('记录活动事件失败:', err)
+    }
+  }
+
+  const fetchGrowthCampaign = async () => {
+    try {
+      const res = await Network.request({ url: '/api/activities/campaign/active' })
+      const campaign = res.data?.data || null
+      setGrowthCampaign(campaign)
+      if (campaign?.id && trackedCampaignId !== campaign.id) {
+        await trackGrowthCampaign('exposure')
+        setTrackedCampaignId(campaign.id)
+      }
+    } catch (err) {
+      console.error('获取增长活动失败:', err)
+      setGrowthCampaign(null)
+    }
+  }
   
   const getTimeAgo = (timestamp: string): string => {
     const diffMs = Date.now() - new Date(timestamp).getTime()
@@ -170,6 +199,7 @@ const Index: React.FC = () => {
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchActivities()
+      fetchGrowthCampaign()
       fetchOrderNotifications()
     }).catch(err => console.error('初始化数据加载失败:', err))
   }, [])
@@ -178,6 +208,7 @@ const Index: React.FC = () => {
     loadUserFromStorage().then(() => {
       fetchStats()
       fetchActivities()
+      fetchGrowthCampaign()
       fetchOrderNotifications()
     }).catch(err => console.error('刷新数据失败:', err))
   })
@@ -421,6 +452,35 @@ const Index: React.FC = () => {
         </View>
 
         {/* 推广Banner - 根据用户阶段精准引导 */}
+        {growthCampaign && (
+          <View
+            className="banner"
+            onClick={async () => {
+              await trackGrowthCampaign('click')
+              goToPage('/package-profile/pages/referral-center/index')
+            }}
+          >
+            <View className="banner-bg" />
+            <View className="banner-content">
+              <View className="banner-tag">
+                <Eye size={20} color="#FBBF24" />
+                <Text className="banner-tag-text">活动进行中</Text>
+              </View>
+              <Text className="banner-title">{growthCampaign.title || '限时增长活动'}</Text>
+              <Text className="banner-desc">{growthCampaign.description || '立即参与，查看活动详情与奖励说明'}</Text>
+              <View className="banner-btn">
+                <Text className="banner-btn-text">立即参与</Text>
+                <ChevronRight size={24} color="#6366F1" />
+              </View>
+            </View>
+            <View className="banner-decoration">
+              <View className="deco-circle circle-1" />
+              <View className="deco-circle circle-2" />
+              <TrendingUp size={100} color="rgba(255,255,255,0.15)" />
+            </View>
+          </View>
+        )}
+
         <View
           className="banner"
           onClick={() => {

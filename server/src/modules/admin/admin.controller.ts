@@ -591,6 +591,57 @@ export class AdminController {
     }
   }
 
+  @Get('activities/campaign')
+  async getGrowthCampaign(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const config = await this.adminService.getGrowthCampaignConfig()
+    return {
+      code: 200,
+      data: config,
+      message: 'success'
+    }
+  }
+
+  @Put('activities/campaign')
+  async updateGrowthCampaign(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Body() payload: any
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const result = await this.adminService.updateGrowthCampaignConfig(payload)
+    return {
+      code: result.success ? 200 : 400,
+      data: result.data,
+      message: result.success ? '配置更新成功' : '配置更新失败'
+    }
+  }
+
+  @Get('activities/campaign/stats')
+  async getGrowthCampaignStats(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Query('days') days?: string
+  ) {
+    const admin = await this.adminService.verifyToken(this.getAdminAuthHeader(headers))
+    if (!admin) {
+      return { code: 401, data: null, message: '未授权' }
+    }
+
+    const stats = await this.adminService.getGrowthCampaignStats(Number(days) || 7)
+    return {
+      code: 200,
+      data: stats,
+      message: 'success'
+    }
+  }
+
   // ===== 系统设置 =====
 
   /**

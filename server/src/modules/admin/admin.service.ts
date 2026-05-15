@@ -3,6 +3,144 @@ import { getMySQLClient } from '../../storage/database/mysql-client';
 
 @Injectable()
 export class AdminService {
+  private async ensureGrowthCampaignTables(): Promise<void> {
+    const db = getMySQLClient();
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS growth_campaigns (
+        id VARCHAR(36) PRIMARY KEY,
+        enabled TINYINT(1) DEFAULT 0,
+        title VARCHAR(200) DEFAULT '',
+        description TEXT,
+        start_at DATETIME NULL,
+        end_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+    );
+    await db.query(
+      `CREATE TABLE IF NOT EXISTS growth_campaign_events (
+        id VARCHAR(36) PRIMARY KEY,
+        campaign_id VARCHAR(36) NOT NULL,
+        event_type VARCHAR(50) NOT NULL,
+        user_id VARCHAR(36) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_campaign_event (campaign_id, event_type),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+    );
+  }
+
+  async getGrowthCampaignConfig(): Promise<any> {
+    try {
+      await this.ensureGrowthCampaignTables();
+      const db = getMySQLClient();
+      const result = await db.query(`SELECT * FROM growth_campaigns WHERE id = 'current' LIMIT 1`);
+      const row = result.data?.[0] || result?.[0];
+      return {
+        id: 'current',
+        enabled: Number(row?.enabled || 0),
+        title: row?.title || '',
+        description: row?.description || '',
+        startAt: row?.start_at || row?.startAt || '',
+        endAt: row?.end_at || row?.endAt || '',
+        updatedAt: row?.updated_at || row?.updatedAt || null,
+      };
+    } catch (error) {
+      console.error('获取活动配置失败:', error);
+      return {
+        id: 'current',
+        enabled: 0,
+        title: '',
+        description: '',
+        startAt: '',
+        endAt: '',
+      };
+    }
+  }
+
+  async updateGrowthCampaignConfig(payload: any): Promise<any> {
+    try {
+      await this.ensureGrowthCampaignTables();
+      const db = getMySQLClient();
+      const enabled = payload?.enabled ? 1 : 0;
+      const title = payload?.title || '';
+      const description = payload?.description || '';
+      const startAt = payload?.startAt ? new Date(payload.startAt) : null;
+      const endAt = payload?.endAt ? new Date(payload.endAt) : null;
+
+      await db.query(
+        `INSERT INTO growth_campaigns (id, enabled, title, description, start_at, end_at, created_at, updated_at)
+         VALUES ('current', ?, ?, ?, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), title = VALUES(title), description = VALUES(description),
+         start_at = VALUES(start_at), end_at = VALUES(end_at), updated_at = NOW()`,
+        [enabled, title, description, startAt, endAt]
+      );
+
+      return { success: true, data: await this.getGrowthCampaignConfig() };
+    } catch (error) {
+      console.error('更新活动配置失败:', error);
+      return { success: false, data: null };
+    }
+  }
+
+  async getGrowthCampaignStats(days: number = 7): Promise<any> {
+    try {
+      await this.ensureGrowthCampaignTables();
+      const db = getMySQLClient();
+      const normalizedDays = Math.max(1, Math.min(30, Number(days) || 7));
+      const result = await db.query(
+        `SELECT DATE(created_at) as day, event_type, COUNT(*) as count
+         FROM growth_campaign_events
+         WHERE campaign_id = 'current' AND created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+         GROUP BY DATE(created_at), event_type
+         ORDER BY day DESC`,
+        [normalizedDays - 1]
+      );
+      const rows = result.data || result || [];
+      const statMap = new Map<string, { exposures: number; clicks: number }>();
+
+      for (const row of rows) {
+        const day = String(row.day || '');
+        if (!day) continue;
+        const current = statMap.get(day) || { exposures: 0, clicks: 0 };
+        if (row.event_type === 'exposure') current.exposures = Number(row.count || 0);
+        if (row.event_type === 'click') current.clicks = Number(row.count || 0);
+        statMap.set(day, current);
+      }
+
+      const daily: Array<{ day: string; exposures: number; clicks: number }> = [];
+      let totalExposures = 0;
+      let totalClicks = 0;
+      for (let i = 0; i < normalizedDays; i++) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        const day = d.toISOString().slice(0, 10);
+        const current = statMap.get(day) || { exposures: 0, clicks: 0 };
+        totalExposures += current.exposures;
+        totalClicks += current.clicks;
+        daily.push({ day, exposures: current.exposures, clicks: current.clicks });
+      }
+
+      return {
+        days: normalizedDays,
+        totalExposures,
+        totalClicks,
+        clickThroughRate: totalExposures > 0 ? totalClicks / totalExposures : 0,
+        daily,
+      };
+    } catch (error) {
+      console.error('获取活动统计失败:', error);
+      return {
+        days: Number(days) || 7,
+        totalExposures: 0,
+        totalClicks: 0,
+        clickThroughRate: 0,
+        daily: [],
+      };
+    }
+  }
+
   private generateToken(admin: any): string {
     return Buffer.from(JSON.stringify({
       id: admin.id,
