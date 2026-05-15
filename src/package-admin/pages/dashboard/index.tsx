@@ -17,6 +17,7 @@ interface DashboardStats {
   todayOrders: number
   pendingOrders: number
   pendingContent: number
+  acceptanceOverdue: number
 }
 
 export default function AdminDashboard() {
@@ -28,7 +29,8 @@ export default function AdminDashboard() {
     todayNewUsers: 0,
     todayOrders: 0,
     pendingOrders: 0,
-    pendingContent: 0
+    pendingContent: 0,
+    acceptanceOverdue: 0
   })
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function AdminDashboard() {
     { label: '今日订单', value: stats.todayOrders, trend: '+8%' },
     { label: '待处理订单', value: stats.pendingOrders, alert: stats.pendingOrders > 0 },
     { label: '待审核内容', value: stats.pendingContent, alert: stats.pendingContent > 0 },
+    { label: '待验收超时', value: stats.acceptanceOverdue, alert: stats.acceptanceOverdue > 0 },
   ]
 
   return (

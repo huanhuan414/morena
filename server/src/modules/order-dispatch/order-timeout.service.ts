@@ -1,7 +1,8 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { getMySQLClient } from '../../storage/database/mysql-client';
 import { v4 as uuidv4 } from 'uuid';
+import { getMySQLClient } from '../../storage/database/mysql-client';
+import { NotificationService } from '../notification/notification.service';
 
 /**
  * 订单超时处理服务
@@ -19,7 +20,9 @@ export class OrderTimeoutService {
   private readonly DISPATCH_TIMEOUT = 30 * 60;      // 30分钟未接单视为超时
   private readonly CONTENT_TIMEOUT = 2 * 3600;       // 2小时未产出内容视为超时
   private readonly PUBLISH_TIMEOUT = 24 * 3600;      // 24小时未发布视为超时
+  private readonly ACCEPTANCE_REMIND_TIMEOUT = 6 * 3600; // 6小时未验收提醒
   private readonly MAX_RETRIES = 3;                   // 最大重试派单次数
+  private readonly lastAcceptanceRemindAt = new Map<string, number>();
 
   private eventService: any = null;
 
@@ -41,16 +44,66 @@ export class OrderTimeoutService {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleTimeoutOrders() {
-    const result = { dispatch: 0, content: 0, publish: 0, total: 0 }
+    const result = { dispatch: 0, content: 0, publish: 0, acceptance: 0, total: 0 }
     try {
       result.dispatch = await this.checkDispatchTimeouts();
       result.content = await this.checkContentTimeouts();
       result.publish = await this.checkPublishTimeouts();
-      result.total = result.dispatch + result.content + result.publish
+      result.acceptance = await this.checkAcceptanceTimeouts();
+      result.total = result.dispatch + result.content + result.publish + result.acceptance
     } catch (error) {
       this.logger.error(`定时任务执行失败: ${error.message}`);
     }
     return result
+  }
+
+  private async checkAcceptanceTimeouts() {
+    const client = await getMySQLClient();
+    const timeoutTime = new Date(Date.now() - this.ACCEPTANCE_REMIND_TIMEOUT * 1000);
+    const orders = await client.query(
+      `SELECT id, user_id, title, updated_at
+       FROM orders
+       WHERE status = 'awaiting_acceptance'
+       AND updated_at < ?
+       ORDER BY updated_at ASC
+       LIMIT 200`,
+      [timeoutTime]
+    );
+
+    if (!orders || orders.length === 0) return 0;
+
+    let reminded = 0;
+    const notificationService = new NotificationService();
+
+    for (const order of orders) {
+      const orderId = order.id || order.orderId;
+      const userId = order.userId || order.user_id;
+      if (!orderId || !userId) continue;
+
+      const lastAt = this.lastAcceptanceRemindAt.get(orderId) || 0;
+      if (lastAt && Date.now() - lastAt < this.ACCEPTANCE_REMIND_TIMEOUT * 1000) continue;
+
+      const title = '验收超时提醒';
+      const content = order.title
+        ? `你的订单「${order.title}」已超过6小时未验收，请尽快处理`
+        : '你的订单已超过6小时未验收，请尽快处理';
+
+      try {
+        await notificationService.createNotification({
+          user_id: userId,
+          type: 'order_acceptance_overdue',
+          title,
+          content,
+          metadata: { orderId }
+        });
+        this.lastAcceptanceRemindAt.set(orderId, Date.now());
+        reminded += 1;
+      } catch (error) {
+        this.logger.warn(`验收超时提醒发送失败: orderId=${orderId}`);
+      }
+    }
+
+    return reminded;
   }
 
   /**

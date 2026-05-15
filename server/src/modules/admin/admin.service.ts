@@ -79,6 +79,14 @@ export class AdminService {
       );
       const pendingContent = pendingContentResult.data?.[0]?.count || 0;
 
+      const acceptanceTimeout = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      const acceptanceTimeoutStr = acceptanceTimeout.toISOString().slice(0, 19).replace('T', ' ');
+      const acceptanceOverdueResult = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE status = 'awaiting_acceptance' AND updated_at < ?`,
+        [acceptanceTimeoutStr]
+      );
+      const acceptanceOverdue = acceptanceOverdueResult.data?.[0]?.count || 0;
+
       return {
         totalUsers,
         totalAvatars,
@@ -87,14 +95,36 @@ export class AdminService {
         todayNewUsers,
         todayOrders,
         pendingOrders,
-        pendingContent
+        pendingContent,
+        acceptanceOverdue
       };
     } catch (error) {
       console.error('获取仪表盘数据失败:', error);
       return {
         totalUsers: 0, totalAvatars: 0, totalOrders: 0, totalRevenue: 0,
-        todayNewUsers: 0, todayOrders: 0, pendingOrders: 0, pendingContent: 0
+        todayNewUsers: 0, todayOrders: 0, pendingOrders: 0, pendingContent: 0, acceptanceOverdue: 0
       };
+    }
+  }
+
+  async getAcceptanceOverdueOrders(hours: number = 6, limit: number = 50): Promise<any> {
+    try {
+      const db = getMySQLClient();
+      const timeout = new Date(Date.now() - hours * 60 * 60 * 1000);
+      const timeoutStr = timeout.toISOString().slice(0, 19).replace('T', ' ');
+      const result = await db.query(
+        `SELECT id, user_id, title, status, updated_at
+         FROM orders
+         WHERE status = 'awaiting_acceptance'
+         AND updated_at < ?
+         ORDER BY updated_at ASC
+         LIMIT ?`,
+        [timeoutStr, limit]
+      );
+      return { list: result.data || [], total: (result.data || []).length, hours, limit };
+    } catch (error) {
+      console.error('获取待验收超时订单失败:', error);
+      return { list: [], total: 0, hours, limit };
     }
   }
 
