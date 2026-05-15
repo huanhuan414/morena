@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
+import axios from 'axios';
 import * as crypto from 'crypto';
 
 interface ImageGenParams {
@@ -14,6 +15,7 @@ interface ImageGenResult {
   id: string;
   url: string;
   prompt: string;
+  enhancedPrompt: string;
   style: string;
   size: string;
   createdAt: string;
@@ -24,21 +26,150 @@ export class ImageGenService {
   private readonly baseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
   private readonly apiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK';
   private readonly model = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
+  private readonly cozeApiBaseUrl = process.env.COZE_API_BASE_URL || 'https://api.coze.cn';
+  private readonly cozeApiKey = process.env.COZE_WORKLOAD_IDENTITY_API_KEY || '';
+
+  constructor() {}
 
   /**
-   * 生成图片 - 调用 OpenAI 兼容的图片生成 API
+   * 用豆包大模型将用户描述转为专业文生图提示词
+   */
+  private async enhancePromptWithLLM(userPrompt: string, style: string): Promise<string> {
+    const styleMap: Record<string, string> = {
+      realistic: 'photorealistic photography',
+      anime: 'Japanese anime illustration',
+      oil_painting: 'classical oil painting',
+      watercolor: 'watercolor painting',
+      sketch: 'pencil sketch drawing',
+      '3d': '3D rendered artwork',
+      cyberpunk: 'cyberpunk sci-fi',
+      chinese: 'Chinese ink wash painting',
+    };
+    const styleName = styleMap[style] || 'photorealistic photography';
+
+    const systemPrompt = `You are an expert AI image prompt engineer. Your task is to transform simple user descriptions into professional, high-quality image generation prompts.
+
+Rules:
+1. Preserve the user's original intent and core elements
+2. Add detailed visual details: lighting, composition, color palette, atmosphere, texture
+3. Add quality-enhancing terms: masterpiece, best quality, highly detailed, professional
+4. Output in English only (image models understand English better)
+5. Keep the prompt under 80 words
+6. The style MUST be: ${styleName}
+7. Output ONLY the prompt text, no explanations or extra text`;
+
+    try {
+      // 直接用Coze OpenAPI调用豆包大模型
+      console.log('[ImageGenService] 调用豆包大模型优化提示词...');
+
+      const token = await this.getCozeToken();
+      if (!token) {
+        throw new Error('获取Coze token失败');
+      }
+
+      const response = await axios.post(
+        `${this.cozeApiBaseUrl}/v3/chat`,
+        {
+          bot_id: 'default',
+          user_id: 'image-gen-service',
+          stream: false,
+          auto_save_history: false,
+          additional_messages: [
+            { role: 'system', content: systemPrompt, content_type: 'text' },
+            { role: 'user', content: `Transform this description into a professional image generation prompt:\n\n"${userPrompt}"`, content_type: 'text' },
+          ],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          timeout: 30000,
+        },
+      );
+
+      // 从Coze API响应中提取内容
+      const messages = response.data?.messages || [];
+      const answerMsg = messages.find((m: any) => m.role === 'assistant' && m.type === 'answer');
+      const enhanced = answerMsg?.content?.trim();
+
+      if (enhanced && enhanced.length > 10) {
+        console.log(`[ImageGenService] 提示词优化: "${userPrompt}" -> "${enhanced.slice(0, 80)}..."`);
+        return enhanced;
+      }
+    } catch (err: any) {
+      console.warn('[ImageGenService] 豆包提示词优化失败，使用本地增强:', err.message);
+    }
+
+    // fallback: 本地简单增强
+    return this.buildLocalEnhancedPrompt(userPrompt, style);
+  }
+
+  /**
+   * 获取Coze API Token（使用Workload Identity）
+   */
+  private async getCozeToken(): Promise<string> {
+    const clientId = process.env.COZE_WORKLOAD_IDENTITY_CLIENT_ID;
+    const clientSecret = process.env.COZE_WORKLOAD_IDENTITY_CLIENT_SECRET;
+    const tokenEndpoint = process.env.COZE_WORKLOAD_IDENTITY_TOKEN_ENDPOINT;
+
+    if (!clientId || !clientSecret || !tokenEndpoint) {
+      console.warn('[ImageGenService] 缺少COZE环境变量');
+      return '';
+    }
+
+    try {
+      const response = await axios.post(
+        tokenEndpoint,
+        new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: clientId,
+          client_secret: clientSecret,
+        }).toString(),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 10000,
+        },
+      );
+      return response.data?.access_token || '';
+    } catch (err: any) {
+      console.error('[ImageGenService] 获取Coze token失败:', err.message);
+      return '';
+    }
+  }
+
+  /**
+   * 本地提示词增强（fallback）
+   */
+  private buildLocalEnhancedPrompt(prompt: string, style: string): string {
+    const styleEnhancements: Record<string, string> = {
+      realistic: 'photorealistic, high detail, professional photography, 8k resolution, natural lighting',
+      anime: 'anime style, vibrant colors, clean lines, Japanese animation aesthetic, detailed illustration',
+      oil_painting: 'oil painting style, rich textures, classical art, masterpiece, dramatic lighting',
+      watercolor: 'watercolor painting, soft colors, artistic, dreamy atmosphere, flowing paint',
+      sketch: 'pencil sketch, detailed linework, artistic drawing, monochrome, fine details',
+      '3d': '3D render, realistic lighting, detailed textures, high quality, octane render',
+      cyberpunk: 'cyberpunk style, neon lights, futuristic, dark atmosphere, sci-fi',
+      chinese: 'Chinese ink wash painting, traditional art, elegant, flowing brush strokes',
+    };
+    const enhancement = styleEnhancements[style] || styleEnhancements.realistic;
+    return `${prompt}, ${enhancement}, high quality, detailed, beautiful composition`;
+  }
+
+  /**
+   * 生成图片 - 先用豆包优化提示词，再调用图片生成API
    */
   async generate(params: ImageGenParams): Promise<ImageGenResult> {
-    const { userId, prompt, style = 'realistic', size = '1024x1024', n = 1 } = params;
+    const { userId, prompt, style = 'realistic', size = '1024x1536', n = 1 } = params;
 
     console.log(`[ImageGenService] generate: userId=${userId}, prompt="${prompt.slice(0, 50)}", style=${style}, size=${size}`);
 
-    // 增强提示词
-    const enhancedPrompt = this.buildEnhancedPrompt(prompt, style);
+    // Step 1: 用豆包大模型优化提示词
+    const enhancedPrompt = await this.enhancePromptWithLLM(prompt, style);
 
-    // 调用图片生成 API
+    // Step 2: 调用图片生成 API
     const apiUrl = `${this.baseUrl}/v1/images/generations`;
-    console.log(`[ImageGenService] calling API: ${apiUrl}, model: ${this.model}`);
+    console.log(`[ImageGenService] calling API: ${apiUrl}, model: ${this.model}, enhancedPrompt: "${enhancedPrompt.slice(0, 80)}..."`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -65,7 +196,6 @@ export class ImageGenService {
     console.log(`[ImageGenService] API response:`, JSON.stringify(result).slice(0, 300));
 
     // 解析返回的图片 URL
-    // OpenAI 格式: { data: [{ url: "https://..." }, { b64_json: "..." }] }
     let imageUrl = '';
 
     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
@@ -73,7 +203,6 @@ export class ImageGenService {
       if (firstItem.url) {
         imageUrl = firstItem.url;
       } else if (firstItem.b64_json) {
-        // base64 格式需要转为可访问的 URL（上传到对象存储）
         imageUrl = `data:image/png;base64,${firstItem.b64_json}`;
       }
     }
@@ -84,7 +213,7 @@ export class ImageGenService {
 
     console.log(`[ImageGenService] 图片生成成功, url: ${imageUrl.slice(0, 80)}...`);
 
-    // 保存记录到数据库
+    // Step 3: 保存记录到数据库
     const recordId = crypto.randomUUID();
     try {
       const pool = getPool();
@@ -97,22 +226,22 @@ export class ImageGenService {
           'image',
           'image',
           prompt,
-          JSON.stringify({ url: imageUrl, style, size, model: this.model }),
+          JSON.stringify({ url: imageUrl, style, size, model: this.model, enhancedPrompt }),
           imageUrl,
           'completed',
-          JSON.stringify({ style, size, enhancedPrompt, model: this.model, apiResponse: { created: result.created } }),
+          JSON.stringify({ style, size, enhancedPrompt, originalPrompt: prompt, model: this.model, apiResponse: { created: result.created } }),
         ]
       );
       console.log('[ImageGenService] 保存记录成功, id:', recordId);
     } catch (dbError: any) {
       console.error('[ImageGenService] 保存记录失败:', dbError.message);
-      // 数据库保存失败不影响返回结果
     }
 
     return {
       id: recordId,
       url: imageUrl,
       prompt,
+      enhancedPrompt,
       style,
       size,
       createdAt: new Date().toISOString(),
@@ -144,15 +273,20 @@ export class ImageGenService {
     const total = countData[0]?.total || 0;
 
     return {
-      list: (Array.isArray(rows) ? rows : []).map((r: any) => ({
-        id: r.id,
-        prompt: r.prompt,
-        url: r.images,
-        style: r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata).style : r.metadata?.style) : undefined,
-        size: r.metadata ? (typeof r.metadata === 'string' ? JSON.parse(r.metadata).size : r.metadata?.size) : undefined,
-        status: r.status,
-        createdAt: r.created_at,
-      })),
+      list: (Array.isArray(rows) ? rows : []).map((r: any) => {
+        let meta = r.metadata;
+        if (typeof meta === 'string') { try { meta = JSON.parse(meta); } catch { meta = {}; } }
+        return {
+          id: r.id,
+          prompt: r.prompt,
+          enhancedPrompt: meta?.enhancedPrompt || meta?.originalPrompt,
+          url: r.images,
+          style: meta?.style,
+          size: meta?.size,
+          status: r.status,
+          createdAt: r.created_at,
+        };
+      }),
       total,
       page,
       pageSize,
@@ -174,12 +308,19 @@ export class ImageGenService {
       return null;
     }
 
+    let meta = record.metadata;
+    if (typeof meta === 'string') { try { meta = JSON.parse(meta); } catch { meta = {}; } }
+
+    let resultData = record.result;
+    if (typeof resultData === 'string') { try { resultData = JSON.parse(resultData); } catch { resultData = {}; } }
+
     return {
       id: record.id,
       prompt: record.prompt,
+      enhancedPrompt: meta?.enhancedPrompt,
       url: record.images,
-      result: record.result ? (typeof record.result === 'string' ? JSON.parse(record.result) : record.result) : null,
-      metadata: record.metadata ? (typeof record.metadata === 'string' ? JSON.parse(record.metadata) : record.metadata) : null,
+      result: resultData,
+      metadata: meta,
       status: record.status,
       createdAt: record.created_at,
     };
@@ -192,20 +333,5 @@ export class ImageGenService {
     const pool = getPool();
     await pool.query('DELETE FROM generated_content WHERE id = ? AND user_id = ?', [id, userId]);
     return true;
-  }
-
-  private buildEnhancedPrompt(prompt: string, style: string): string {
-    const styleEnhancements: Record<string, string> = {
-      realistic: 'photorealistic, high detail, professional photography, 8k resolution',
-      anime: 'anime style, vibrant colors, clean lines, Japanese animation aesthetic',
-      oil_painting: 'oil painting style, rich textures, classical art, masterpiece',
-      watercolor: 'watercolor painting, soft colors, artistic, dreamy atmosphere',
-      sketch: 'pencil sketch, detailed linework, artistic drawing, monochrome',
-      poster: 'poster design, bold typography, eye-catching, professional layout',
-      logo: 'logo design, minimalist, clean, professional branding',
-      '3d': '3D render, realistic lighting, detailed textures, high quality',
-    };
-    const enhancement = styleEnhancements[style] || styleEnhancements.realistic;
-    return `${prompt}, ${enhancement}, high quality, detailed`;
   }
 }

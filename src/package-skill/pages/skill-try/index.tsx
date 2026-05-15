@@ -69,6 +69,7 @@ export default function SkillTryPage() {
   // 图片生成专用状态
   const [imageStyle, setImageStyle] = useState('realistic')
   const [generatedImageUrl, setGeneratedImageUrl] = useState('')
+  const [enhancedPrompt, setEnhancedPrompt] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [historyList, setHistoryList] = useState<ImageRecord[]>([])
 
@@ -154,13 +155,14 @@ export default function SkillTryPage() {
       const res = await Network.request({
         url: '/api/image-gen/generate',
         method: 'POST',
-        data: { prompt: input.trim(), style: imageStyle, size: '1024x1024' },
+        data: { prompt: input.trim(), style: imageStyle, size: '1024x1536' },
       })
       console.log('[SkillTry] 图片生成响应:', res.data)
 
       const data = res.data?.data
       if (res.data?.code === 200 && data?.url) {
         setGeneratedImageUrl(data.url)
+        setEnhancedPrompt(data.enhancedPrompt || '')
         setHasResult(true)
         // 刷新历史
         loadHistory()
@@ -191,6 +193,7 @@ export default function SkillTryPage() {
     setResult('')
     setHasResult(false)
     setGeneratedImageUrl('')
+    setEnhancedPrompt('')
   }
 
   const handleDeleteImage = async (id: string) => {
@@ -362,7 +365,14 @@ export default function SkillTryPage() {
               <Image className="try-generated-image" src={generatedImageUrl} mode="widthFix" />
             </View>
             <View className="try-image-prompt">
+              <Text className="block try-image-prompt-label">你的描述</Text>
               <Text className="block try-image-prompt-text">{input}</Text>
+              {enhancedPrompt && enhancedPrompt !== input && (
+                <>
+                  <Text className="block try-image-prompt-label">AI优化提示词</Text>
+                  <Text className="block try-image-prompt-text try-image-prompt-enhanced">{enhancedPrompt}</Text>
+                </>
+              )}
             </View>
             <View className="try-result-footer">
               <Text className="block try-result-tip">点击图片可查看大图</Text>
