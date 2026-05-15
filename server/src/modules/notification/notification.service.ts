@@ -4,8 +4,56 @@ import { Injectable } from '@nestjs/common'
 // 共享内存存储
 const sharedMemoryNotifications: Map<string, any[]> = new Map()
 
+const TEMPLATE_DEFS: Record<string, any> = {
+  first_order_guide: {
+    envKey: 'NOTIFY_TPL_FIRST_ORDER_ENABLED',
+    type: 'growth_first_order_guide',
+    title: '首单完成引导',
+    content: '你已完成首单支付，订单「{orderTitle}」正在分配分身。你可以在订单页查看进度与时间线。',
+  },
+  acceptance_overdue: {
+    envKey: 'NOTIFY_TPL_ACCEPTANCE_OVERDUE_ENABLED',
+    type: 'order_acceptance_overdue',
+    title: '验收超时提醒',
+    content: '你的订单「{orderTitle}」已超过6小时未验收，请尽快处理。',
+  }
+}
+
 @Injectable()
 export class NotificationService {
+  private renderTemplate(input: string, params: Record<string, any> = {}) {
+    if (!input) return input
+    return String(input).replace(/\{(\w+)\}/g, (_, key: string) => {
+      const value = params[key]
+      if (value === undefined || value === null) return ''
+      return String(value)
+    })
+  }
+
+  async createTemplateNotification(
+    userId: string,
+    templateKey: string,
+    params: Record<string, any> = {},
+    metadata?: Record<string, any>
+  ) {
+    const def = TEMPLATE_DEFS[templateKey]
+    if (!def) {
+      throw new Error('未知通知模板')
+    }
+    if (def.envKey && process.env?.[def.envKey] === '0') {
+      return { skipped: true }
+    }
+    const title = this.renderTemplate(def.title, params)
+    const content = this.renderTemplate(def.content, params)
+    return await this.createNotification({
+      user_id: userId,
+      type: def.type,
+      title,
+      content,
+      metadata: { ...(metadata || {}), templateKey }
+    })
+  }
+
   async createNotification(data: {
     user_id: string
     type: string

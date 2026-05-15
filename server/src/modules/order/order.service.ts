@@ -847,6 +847,24 @@ export class OrderService {
     })
 
     try {
+      const paidCountRows = await db.query(
+        `SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND is_paid = 1`,
+        [order.userId]
+      )
+      const paidCount = paidCountRows?.[0]?.count ?? paidCountRows?.data?.[0]?.count ?? 0
+      if (Number(paidCount) === 1) {
+        await this.notificationService.createTemplateNotification(
+          order.userId,
+          'first_order_guide',
+          { orderTitle: order.title || '订单' },
+          { orderId }
+        )
+      }
+    } catch (e) {
+      console.warn('[handlePaymentSuccess] 首单引导通知发送失败(忽略):', (e as any)?.message || e)
+    }
+
+    try {
       const dispatchResult = await this.dispatchService.dispatchToAllAvatars(orderId)
       console.log('[handlePaymentSuccess] 自动派单结果:', dispatchResult)
     } catch (err) {
