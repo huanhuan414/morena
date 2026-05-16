@@ -501,7 +501,8 @@ async getExecutionProgress(orderId: string) {
     }
     
     // 获取订单需要的分身数量
-    const requiredCount = order.expectedQuantity || order.avatarCount || 1
+    const requiredCount = order.expectedQuantity || order.expected_quantity || order.avatarCount || 1
+    console.log(`[dispatchToAllAvatars] 订单需要分身数量: expectedQuantity=${order.expectedQuantity}, expected_quantity=${order.expected_quantity}, requiredCount=${requiredCount}`)
     
     // 查询所有开启托管的活跃分身，并关联用户表获取手机号
     // 关键修复：确保 a.status = 'active' 过滤已删除/训练中分身
@@ -552,6 +553,17 @@ async getExecutionProgress(orderId: string) {
     // 为每个分身创建分发请求并发送短信
     for (const avatar of avatars) {
       const id = crypto.randomUUID()
+      
+      // 检查该分身是否已经有派单记录（防止重复派单）
+      const existingDispatchRows = await db.query(
+        'SELECT id FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ?',
+        [orderId, avatar.id]
+      )
+      if (existingDispatchRows && existingDispatchRows.length > 0) {
+        console.log(`[dispatchToAllAvatars] 分身 ${avatar.name} 已有派单记录，跳过`)
+        continue
+      }
+      
       await db.insert('order_dispatch_requests', {
         id,
         order_id: orderId,
@@ -682,9 +694,21 @@ async getExecutionProgress(orderId: string) {
       }
       
       // 检查订单状态是否允许接单
-      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned']
+      const acceptablStatuses = ['pending', 'pending_payment', 'open', 'created', 'assigned', 'pending_acceptance', 'pending_dispatch']
       if (!acceptablStatuses.includes(order.status)) {
         throw new Error(`订单已${order.status === 'in_progress' ? '进行中' : order.status === 'completed' ? '完成' : '处理'}, 无法接单`)
+      }
+
+      // 检查该分身是否已经接单（防止重复接单）
+      if (avatarId) {
+        const existingDispatchRows = await db.query(
+          'SELECT id, status FROM order_dispatch_requests WHERE order_id = ? AND avatar_id = ?',
+          [orderId, avatarId]
+        )
+        const existingDispatch = existingDispatchRows?.[0]
+        if (existingDispatch) {
+          throw new Error(`该分身已接单（状态：${existingDispatch.status}），不能重复接单`)
+        }
       }
 
       // 自动创建分派记录
@@ -717,7 +741,8 @@ async getExecutionProgress(orderId: string) {
         description: order.description,
         platforms: order.platforms,
         budget: order.budget,
-        expected_quantity: order.expectedQuantity,
+        expectedQuantity: order.expectedQuantity || order.expected_quantity,
+        expected_quantity: order.expectedQuantity || order.expected_quantity,
         quantity_per_avatar: order.quantityPerAvatar,
         target_audience: order.targetAudience,
       }
@@ -742,11 +767,25 @@ async getExecutionProgress(orderId: string) {
       updated_at: new Date()
     })
     
-    // 更新订单状态为 in_progress
-    await db.updateWhere('orders', { id: orderId }, {
-      status: 'in_progress',
-      updated_at: new Date()
-    })
+    // 检查是否所有需要的分身都已接单
+    const requiredCount = request.expectedQuantity || request.expected_quantity || 1
+    console.log(`[acceptOrder] 检查接单进度: expectedQuantity=${request.expectedQuantity}, expected_quantity=${request.expected_quantity}, requiredCount=${requiredCount}`)
+    const acceptedCountRows = await db.query(
+      'SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
+      [orderId, 'accepted']
+    )
+    const acceptedCount = acceptedCountRows?.[0]?.count || 0
+    
+    // 只有当已接单数量 >= 需要数量时，才更新订单状态为 in_progress
+    if (acceptedCount >= requiredCount) {
+      await db.updateWhere('orders', { id: orderId }, {
+        status: 'in_progress',
+        updated_at: new Date()
+      })
+      console.log(`[acceptOrder] 所有分身已接单(${acceptedCount}/${requiredCount})，订单状态更新为 in_progress`)
+    } else {
+      console.log(`[acceptOrder] 分身接单进度: ${acceptedCount}/${requiredCount}，等待其他分身接单`)
+    }
     
     // 📌 记录事件：分身已接单
     let acceptedAvatarName = '分身'
