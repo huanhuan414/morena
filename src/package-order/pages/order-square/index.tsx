@@ -233,23 +233,24 @@ export default function OrderSquarePage() {
         showToast({ title: '请先登录', icon: 'none' })
         return
       }
-      const avatarRes = await Network.request({ url: `/api/avatars?userId=${userId}&status=active` })
+      const avatarRes = await Network.request({ url: `/api/avatar` })
       const avatars = avatarRes.data?.data || []
-      if (!Array.isArray(avatars) || avatars.length === 0) {
+      const activeAvatars = avatars.filter((a: any) => a.status === 'active')
+      if (!Array.isArray(activeAvatars) || activeAvatars.length === 0) {
         showToast({ title: '请先创建分身', icon: 'none' })
         return
       }
       // 如果只有一个分身，直接接单
-      if (avatars.length === 1) {
-        doAcceptOrder(avatars[0].id, orderId)
+      if (activeAvatars.length === 1) {
+        doAcceptOrder(activeAvatars[0].id, orderId)
         return
       }
       // 多个分身时弹出选择
-      const avatarNames = avatars.map((a: any) => a.name || a.nickname || '未命名分身')
+      const avatarNames = activeAvatars.map((a: any) => a.name || a.nickname || '未命名分身')
       Taro.showActionSheet({
         itemList: avatarNames,
         success: (res) => {
-          doAcceptOrder(avatars[res.tapIndex].id, orderId)
+          doAcceptOrder(activeAvatars[res.tapIndex].id, orderId)
         }
       })
     } catch (error) {

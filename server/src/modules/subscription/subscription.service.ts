@@ -155,6 +155,7 @@ export class SubscriptionService {
     current?: number
   }> {
     const subscription = await this.getUserSubscription(userId)
+    console.log('[Subscription] getUserSubscription result:', JSON.stringify(subscription, null, 2))
 
     // 获取当前用户套餐的 features
     let features: any = {}
@@ -162,21 +163,25 @@ export class SubscriptionService {
 
     if (subscription && subscription.status === 'active') {
       planId = subscription.plan?.id || 'plan_free'
+      console.log('[Subscription] planId from subscription:', planId)
       const plan = await this.getPlanById(planId)
+      console.log('[Subscription] plan from getPlanById:', JSON.stringify(plan, null, 2))
       if (plan) {
         features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || {})
       }
     } else {
+      console.log('[Subscription] No active subscription, using free plan')
       // 免费用户
       const freePlan = await this.getPlanById('plan_free')
       if (freePlan) {
         features = typeof freePlan.features === 'string' ? JSON.parse(freePlan.features) : (freePlan.features || {})
       }
     }
+    console.log('[Subscription] features:', JSON.stringify(features, null, 2))
 
     switch (type) {
       case 'check_avatars': {
-        const maxAvatars = features.max_avatars || 1
+        const maxAvatars = features.maxAvatars || features.max_avatars || 1
         const allowed = currentCount < maxAvatars
         return {
           allowed,
@@ -186,14 +191,14 @@ export class SubscriptionService {
         }
       }
       case 'check_orders': {
-        const canReceive = features.can_receive_orders || false
+        const canReceive = features.canReceiveOrders || features.can_receive_orders || false
         return {
           allowed: canReceive,
           reason: canReceive ? undefined : '接单赚钱需要专业版及以上套餐，请升级',
         }
       }
       case 'check_skills': {
-        const skillUses = features.skill_uses_per_day || 3
+        const skillUses = features.skillUsesPerDay || features.skill_uses_per_day || 3
         // 简单返回限制数，具体扣减逻辑由调用方实现
         return {
           allowed: true,
