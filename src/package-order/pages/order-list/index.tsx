@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import {
-  ArrowLeft, Plus, Loader, Users,
+  ArrowLeft, Plus, Loader, Users, ArrowUp,
   CircleCheck, CircleX, TriangleAlert,
   Wallet, FileText, Video, Trash2, CreditCard, Camera,
   Zap
@@ -112,6 +112,19 @@ export default function OrderListPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
   const statusBarHeight = getStatusBarHeight()
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [scrollTop, setScrollTop] = useState(0)
+  
+  // 滚动监听（只用于显示按钮）
+  const handleScroll = (e: any) => {
+    const currentScrollTop = e.detail.scrollTop
+    setShowBackToTop(currentScrollTop > 300)
+  }
+
+  // 回到顶部
+  const scrollToTop = () => {
+    setScrollTop(prev => prev + 1)
+  }
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -135,21 +148,24 @@ export default function OrderListPage() {
     fetchOrders()
   }, [fetchOrders])
 
-  // 筛选 + 排序
-  const filteredOrders = orders
-    .filter(o => isStatusInTab(o.status, activeTab))
-    .sort((a, b) => {
-      const pa = STATUS_CONFIG[a.status]?.phase ?? 99
-      const pb = STATUS_CONFIG[b.status]?.phase ?? 99
-      if (pa !== pb) return pa - pb
-      return new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime()
-    })
+   // 筛选 + 排序
+  // const filteredOrders = orders
+  //   .filter(o => isStatusInTab(o.status, activeTab))
+  //   .sort((a, b) => {
+  //     const pa = STATUS_CONFIG[a.status]?.phase ?? 99
+  //     const pb = STATUS_CONFIG[b.status]?.phase ?? 99
+  //     if (pa !== pb) return pa - pb
+  //     return new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime()
+  //   })
+  const filteredOrders = orders.filter(o => isStatusInTab(o.status, activeTab))
 
   // 统计
   const statsData = {
     total: orders.length,
     active: orders.filter(o => isStatusInTab(o.status, 'active')).length,
     pendingPayment: orders.filter(o => o.status === 'pending_payment').length,
+    completed: orders.filter(o => o.status === 'completed').length,
+    closed: orders.filter(o => o.status === 'closed').length,
   }
 
   const tabCounts = STATUS_TABS.reduce((acc, tab) => {
@@ -258,6 +274,7 @@ export default function OrderListPage() {
 
       {/* ===== 统计栏 ===== */}
       <View className="ol-stats">
+        
         <View className="ol-stat-item">
           <Text className="block ol-stat-num">{statsData.total}</Text>
           <Text className="block ol-stat-label">全部</Text>
@@ -272,8 +289,18 @@ export default function OrderListPage() {
           <Text className="block ol-stat-num" style={{ color: '#F59E0B' }}>{statsData.pendingPayment}</Text>
           <Text className="block ol-stat-label">待支付</Text>
         </View>
+        <View className="ol-stat-divider" />
+        <View className="ol-stat-item">
+          <Text className="block ol-stat-num" style={{ color: '#2FA4D7' }}>{statsData.completed}</Text>
+          <Text className="block ol-stat-label">已完成</Text>
+        </View>
+        <View className="ol-stat-divider" />
+        <View className="ol-stat-item">
+          <Text className="block ol-stat-num" style={{ color: '#5C4F4A' }}>{statsData.closed}</Text>
+          <Text className="block ol-stat-label">已关闭</Text>
+        </View>
       </View>
-
+ 
       {/* ===== Tab 筛选 ===== */}
       <ScrollView scrollX className="ol-tabs">
         {STATUS_TABS.map(tab => (
@@ -283,13 +310,13 @@ export default function OrderListPage() {
             onClick={() => setActiveTab(tab.key)}
           >
             <Text className="block ol-tab-text">{tab.label}</Text>
-            {tabCounts[tab.key] > 0 && (
+            {/* {tabCounts[tab.key] > 0 && (
               <Text className="block ol-tab-count">{tabCounts[tab.key]}</Text>
-            )}
+            )} */}
           </View>
         ))}
       </ScrollView>
-
+     
       {/* ===== 内容区域 ===== */}
       {loading && orders.length === 0 ? (
         <View className="ol-loading">
@@ -316,6 +343,9 @@ export default function OrderListPage() {
           refresherEnabled
           onRefresherRefresh={() => onRefresh()}
           refresherTriggered={loading}
+          onScroll={handleScroll}
+          scrollTop={scrollTop}
+          scrollWithAnimation
         >
           {filteredOrders.map(order => {
             const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#9CA3AF', bgColor: '#F9FAFB', icon: FileText, phase: -1 }
@@ -406,6 +436,12 @@ export default function OrderListPage() {
           <Text className="block ol-create-btn-text">发布新订单</Text>
         </View>
       </View>
+
+      {showBackToTop && (
+        <View className="back-to-top" onClick={scrollToTop}>
+          <ArrowUp size={20} color="#fff" />
+        </View>
+      )}
     </View>
   )
 }
