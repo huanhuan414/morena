@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Controller, Get, Query, Inject } from '@nestjs/common'
+import { Controller, Get, Query, Headers, Inject } from '@nestjs/common'
 import { EarningsService } from './earnings.service'
 
 @Controller('earnings')
@@ -19,7 +19,14 @@ export class EarningsController {
   }
 
   @Get('overview')
-  async getOverview(@Query('userId') userId?: string) {
+  async getOverview(@Headers('x-user-id') userId?: string) {
+    if (!userId) {
+      return {
+        code: 401,
+        msg: '未登录',
+        data: { total_earnings: 0, pending_earnings: 0, available_earnings: 0 }
+      }
+    }
     const result = await this.earningsService.getEarningStats(userId)
     
     return {

@@ -47,14 +47,17 @@ export class EarningsService {
     const db = getMySQLClient()
     
     const earnings = await db.query('earnings', { user_id: userId }) as any
-    const totalEarnings = earnings?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
-    const pendingEarnings = earnings?.filter((e: any) => e.status === 'pending')
-      .reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0
+    
+    const completedEarnings = earnings?.filter((e: any) => e.status === 'completed') || []
+    const pendingEarnings = earnings?.filter((e: any) => e.status === 'pending') || []
+    
+    const totalEarnings = completedEarnings.reduce((sum: number, e: any) => sum + (e.amount || 0), 0)
+    const pendingAmount = pendingEarnings.reduce((sum: number, e: any) => sum + (e.amount || 0), 0)
     
     return {
       total_earnings: totalEarnings,
-      pending_earnings: pendingEarnings,
-      available_earnings: totalEarnings - pendingEarnings
+      pending_earnings: pendingAmount,
+      available_earnings: totalEarnings
     }
   }
 

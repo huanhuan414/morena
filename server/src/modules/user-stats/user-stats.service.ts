@@ -88,23 +88,16 @@ export class UserStatsService {
         }
       }
       
-      // 4. 统计累计收益
+      // 4. 统计累计收益（只从 earnings 表计算，status='completed'）
       userResult = await db.queryOne('users', { id: userId }) as any
-      totalEarnings = userResult?.total_earnings || 0
       
-      if (avatarIds.length > 0) {
-        const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
-        try {
-          const earningsResult = await db.queryWhere(
-            'earnings',
-            `avatar_id IN (${avatarIdList}) AND status = 'completed'`
-          ) as any[]
-          const avatarEarnings = earningsResult?.reduce(
-            (sum: number, e: any) => sum + Number(e.amount || 0), 0
-          ) || 0
-          totalEarnings += avatarEarnings
-        } catch (e) {}
-      }
+      const earningsResult = await db.queryWhere(
+        'earnings',
+        `user_id = '${userId}' AND status = 'completed'`
+      ) as any[]
+      totalEarnings = earningsResult?.reduce(
+        (sum: number, e: any) => sum + Number(e.amount || 0), 0
+      ) || 0
       
       // 5. 获取用户邀请码和邀请人数（与 ReferralService 逻辑一致：查 users.referral_code，没有则生成并写入）
       try {
