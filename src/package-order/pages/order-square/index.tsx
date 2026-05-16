@@ -6,7 +6,7 @@ import * as Network from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import {
-  ArrowLeft,
+  ArrowLeft, ArrowUp,
   Clock, Star, Zap,
   Flame, TrendingUp, DollarSign, Users
 } from 'lucide-react-taro'
@@ -150,12 +150,28 @@ export default function OrderSquarePage() {
   const [selectedPlatform, setSelectedPlatform] = useState('all')
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [isDemo, setIsDemo] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [refresherTriggered, setRefresherTriggered] = useState(false)
+
 
   useDidShow(() => {
     fetchOrders()
   })
 
+  // 滚动监听（只用于显示按钮）
+  const handleScroll = (e: any) => {
+    const currentScrollTop = e.detail.scrollTop
+    setShowBackToTop(currentScrollTop > 300)
+  }
+
+  // 回到顶部
+  const scrollToTop = () => {
+    setScrollTop(prev => prev + 1)
+  }
+
   const fetchOrders = async () => {
+    setRefresherTriggered(true)
     try {
       const res = await Network.request({
         url: '/api/order/open?page=1&pageSize=50'
@@ -183,7 +199,7 @@ export default function OrderSquarePage() {
           const filtered = selectedPlatform === 'all'
             ? mapped
             : mapped.filter((item) => item.platform === selectedPlatform)
-
+          
           setOrders(filtered)
           setIsDemo(false)
         } else {
@@ -199,6 +215,8 @@ export default function OrderSquarePage() {
       console.error('获取订单失败:', error)
       setOrders(getDemoOrdersForPlatform(selectedPlatform))
       setIsDemo(true)
+    } finally {
+      setRefresherTriggered(false)
     }
   }
 
@@ -369,7 +387,11 @@ export default function OrderSquarePage() {
         className="order-scroll"
         scrollY
         refresherEnabled
+        refresherTriggered={refresherTriggered}
         onRefresherRefresh={fetchOrders}
+        onScroll={handleScroll}
+        scrollTop={scrollTop}
+        scrollWithAnimation
       >
         <View className="order-list">
           {orders.map(order => {
@@ -386,7 +408,6 @@ export default function OrderSquarePage() {
                 {urgencyTag && (
                   <View className="card-top-strip" style={{ background: urgencyTag.color }} />
                 )}
-
                 {/* 卡片头部 */}
                 <View className="card-header">
                   <View className="card-header-left">
@@ -500,6 +521,12 @@ export default function OrderSquarePage() {
 
         <View className="safe-bottom" />
       </ScrollView>
+
+      {showBackToTop && (
+        <View className="back-to-top" onClick={scrollToTop}>
+          <ArrowUp size={20} color="#fff" />
+        </View>
+      )}
     </View>
   )
 }

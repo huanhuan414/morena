@@ -2,10 +2,12 @@
 
 /* 页面容器 */
 .order-square-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
 .order-square-page .page-header {
@@ -198,7 +200,10 @@
 /* 订单列表滚动区域 */
 .order-scroll {
   flex: 1;
+  min-height: 0;
   padding: 0 24rpx;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 订单列表 */
@@ -486,4 +491,25 @@
 /* 底部安全区 */
 .safe-bottom {
   height: 50rpx;
+}
+
+/* 回到顶部按钮 */
+.back-to-top {
+  position: absolute;
+  right: 32rpx;
+  bottom: 120rpx;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7b3fe4 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(123, 63, 228, 0.4);
+  z-index: 100;
+}
+
+.back-to-top:active {
+  transform: scale(0.9);
+  opacity: 0.9;
 }
