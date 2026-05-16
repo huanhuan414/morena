@@ -434,7 +434,7 @@ export default function OrderContentCreation() {
                 </View>
                 {processingData.generatedContent.videos.map((v: string, idx: number) => (
                   <View key={idx} className="cc-video-item">
-                    <TaroVideo src={v} style={{ width: '100%' }} controls />
+                    <TaroVideo src={v} style={{ width: '100%', height: '200px' }} controls />
                   </View>
                 ))}
               </View>

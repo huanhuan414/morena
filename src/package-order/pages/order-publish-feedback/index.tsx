@@ -483,7 +483,7 @@ export default function OrderPublishFeedback() {
             </Text>
             {generatedContent.videos.map((url, index) => (
               <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
-                <TaroVideo src={url} style={{ width: '100%' }} controls autoplay={false} />
+                <TaroVideo src={url} style={{ width: '100%', height: '200px' }} controls autoplay={false} />
               </View>
             ))}
           </View>

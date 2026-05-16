@@ -423,8 +423,8 @@ export default function GeneratedContentPage() {
                 {videoUrls.length > 0 && (
                   <View style={{ marginTop: 8 }}>
                     {videoUrls.map((url: string, idx: number) => (
-                      <View key={idx} style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
-                        <TaroVideo src={url} style={{ width: '100%' }} autoplay={false} controls />
+                      <View key={idx} style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 4, height: 200 }}>
+                        <TaroVideo src={url} style={{ width: '100%', height: '200px' }} autoplay={false} controls />
                       </View>
                     ))}
                   </View>
