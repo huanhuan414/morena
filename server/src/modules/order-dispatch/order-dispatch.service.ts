@@ -147,7 +147,7 @@ export class OrderDispatchService {
               a.name as avatar_name, a.content_styles, a.niche_tags, a.skills
        FROM order_dispatch_requests r
        INNER JOIN avatars a ON r.avatar_id = a.id AND a.status = 'active'
-       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'open', 'created', 'assigned', 'accepted', 'in_progress')
+       INNER JOIN orders o ON r.order_id = o.id AND o.status IN ('pending', 'pending_payment', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress')
        WHERE r.user_id = ? AND r.status = 'pending'
        ORDER BY r.created_at DESC`, [userId])
     const requests = requestRows || []
@@ -564,18 +564,21 @@ async getExecutionProgress(orderId: string) {
         continue
       }
       
-      await db.insert('order_dispatch_requests', {
+      const insertResult = await db.insert('order_dispatch_requests', {
         id,
         order_id: orderId,
         avatar_id: avatar.id,
         user_id: avatar.userId || avatar.userPhone,
         platform: 'auto',
         status: 'pending',
-        assigned_at: new Date(),
         expires_at: new Date(Date.now() + 30 * 60 * 1000),
         created_at: new Date(),
         updated_at: new Date()
       })
+      if (insertResult.error) {
+        console.error('[dispatchToAllAvatars] 创建派发记录失败:', insertResult.error)
+        continue
+      }
       avatarIds.push(avatar.id)
       
       // 📌 记录事件：已派单
@@ -613,17 +616,19 @@ async getExecutionProgress(orderId: string) {
         
         // 创建通知记录
         const notifId = crypto.randomUUID()
-        await db.insert('avatar_notifications', {
+        const notifResult = await db.insert('avatar_notifications', {
           id: notifId,
           avatar_id: avatar.id,
-          order_id: orderId,
-          type: 'order_assigned',
+          notification_type: 'order_assigned',
           title: '新订单分配',
           content: smsContent,
-          status: 'unread',
-          created_at: new Date(),
-          updated_at: new Date()
+          is_read: 0,
+          data: JSON.stringify({ orderId }),
+          created_at: new Date()
         })
+        if (notifResult.error) {
+          console.error('[dispatchToAllAvatars] 创建分身通知记录失败:', notifResult.error)
+        }
       }
     }
     
@@ -1116,18 +1121,20 @@ async getExecutionProgress(orderId: string) {
       const smsContent = `【莫瑞拉】${message}`
       
       // 创建通知记录
-      const id = crypto.randomUUID()
-      await db.insert('avatar_notifications', {
-        id,
+      const notifId = crypto.randomUUID()
+      const notifResult = await db.insert('avatar_notifications', {
+        id: notifId,
         avatar_id: avatarId,
-        order_id: orderId,
-        type: 'order_assigned',
+        notification_type: 'order_assigned',
         title: '新订单分配',
         content: message,
-        status: 'unread',
-        created_at: new Date(),
-        updated_at: new Date()
+        is_read: 0,
+        data: JSON.stringify({ orderId }),
+        created_at: new Date()
       })
+      if (notifResult.error) {
+        console.error('[dispatchToAllAvatars] 创建分身通知记录失败:', notifResult.error)
+      }
       
       // 发送真实短信 - 使用分身所属账号的手机号
       const userPhone = avatar.userPhone || avatar.phone
