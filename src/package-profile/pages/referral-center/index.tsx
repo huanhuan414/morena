@@ -127,7 +127,6 @@ export default function ReferralCenter() {
         <View className="ref-header-decor2" />
         <View className="ref-header-decor3" />
         <View className="ref-header-back" onClick={() => Taro.navigateBack()}>
-          {/* <ChevronLeft size={24} color="#fff" strokeWidth={2.5} /> */}
           <ArrowLeft size={20} color="#fff" />
         </View>
         <View className="ref-header-center">

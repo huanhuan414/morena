@@ -1,6 +1,6 @@
 import { navigateBack } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { ChevronLeft, Sparkles, Shield, Zap, Users, Globe, Heart, Star } from 'lucide-react-taro'
+import { ChevronLeft, ArrowLeft , Sparkles, Shield, Zap, Users, Globe, Heart, Star } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
 import './index.css'
@@ -22,21 +22,25 @@ export default function AboutPage() {
   return (
     <View className="about-page">
       {/* 紫蓝渐变头部 */}
-      <View className="about-header" style={{ paddingTop: `${statusBarHeight}px` }}>
+      
+      <View className="about-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
         <View className="header-decor-1" />
         <View className="header-decor-2" />
         <View className="header-decor-3" />
-        <View className="header-nav">
-          <View className="back-btn" onClick={handleBack}>
-            <ChevronLeft size={22} color="#fff" />
+        <View className="about-header-content">
+          <View className="about-nav-row">
+            <View className="about-nav-back" onClick={handleBack}>
+              <ArrowLeft size={20} color="#fff" />
+            </View>
+            <View className="logo-wrap">
+              <View className="logo-icon">
+                <Sparkles size={32} color="#fff" />
+              </View>
+            </View>
+            <View className="about-nav-right" />
           </View>
         </View>
         <View className="header-content">
-          <View className="logo-wrap">
-            <View className="logo-icon">
-              <Sparkles size={32} color="#fff" />
-            </View>
-          </View>
           <Text className="app-name">莫瑞娜</Text>
           <Text className="app-slogan">AI原生人机共生协同平台</Text>
           <View className="version-badge">

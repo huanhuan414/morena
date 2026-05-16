@@ -126,7 +126,7 @@ export default function EarningCenterPage() {
   return (
     <View className="earning-page">
       {/* 顶部导航 */}
-      <View className="earning-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+      <View className="earning-header" style={{ paddingTop: `${statusBarHeight + 10}px` }}>
         <View className="earning-header-bg" />
         {/* 装饰圆 */}
         <View className="earning-deco-circle earning-deco-1" />
