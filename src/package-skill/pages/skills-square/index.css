@@ -5,7 +5,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #F8FAFC;
+  background: #f8fafc;
   overflow: hidden;
 }
 
@@ -22,7 +22,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
   border-radius: 0 0 40rpx 40rpx;
   z-index: 0;
 }
@@ -81,7 +81,7 @@
 .skills-header-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 48rpx;
   text-align: center;
 }
@@ -103,6 +103,7 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  margin-top: 20rpx;
 }
 
 /* ========== 新手攻略卡 - 与首页guide-section完全一致 ========== */
@@ -110,7 +111,7 @@
   margin: -24rpx 24rpx 0;
   position: relative;
   z-index: 2;
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24rpx;
   padding: 28rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
@@ -132,7 +133,7 @@
 .skills-title-dot {
   width: 8rpx;
   height: 32rpx;
-  background: linear-gradient(180deg, #8B5CF6, #6366F1);
+  background: linear-gradient(180deg, #8b5cf6, #6366f1);
   border-radius: 4rpx;
   flex-shrink: 0;
 }
@@ -140,14 +141,14 @@
 .skills-guide-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
 }
 
 .skills-guide-badge {
   font-size: 20rpx;
   font-weight: 600;
-  color: #6366F1;
-  background: #EEF2FF;
+  color: #6366f1;
+  background: #eef2ff;
   padding: 6rpx 16rpx;
   border-radius: 16rpx;
 }
@@ -155,7 +156,7 @@
 .skills-guide-badge-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #6366F1;
+  color: #6366f1;
   line-height: 28rpx;
 }
 
@@ -175,8 +176,8 @@
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -184,17 +185,17 @@
 }
 
 .skills-step-num-2 {
-  background: linear-gradient(135deg, #6366F1, #4F46E5);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
 }
 
 .skills-step-num-3 {
-  background: linear-gradient(135deg, #10B981, #059669);
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
 .skills-step-num-text {
   font-size: 26rpx;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 36rpx;
 }
 
@@ -208,20 +209,20 @@
 .skills-step-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1E293B;
+  color: #1e293b;
   line-height: 40rpx;
 }
 
 .skills-step-desc {
   font-size: 22rpx;
-  color: #64748B;
+  color: #64748b;
   line-height: 32rpx;
 }
 
 .skills-step-connector {
   width: 2rpx;
   height: 16rpx;
-  background: #E2E8F0;
+  background: #e2e8f0;
   margin-left: 28rpx;
 }
 
@@ -231,7 +232,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
   border-radius: 20rpx;
   padding: 20rpx 28rpx;
 }
@@ -245,14 +246,14 @@
 .skills-status-label {
   font-size: 26rpx;
   font-weight: 500;
-  color: #065F46;
+  color: #065f46;
   line-height: 36rpx;
 }
 
 .skills-status-count {
   font-size: 36rpx;
   font-weight: 800;
-  color: #10B981;
+  color: #10b981;
   line-height: 44rpx;
 }
 
@@ -264,7 +265,7 @@
 
 .skills-status-hint {
   font-size: 22rpx;
-  color: #10B981;
+  color: #10b981;
   line-height: 32rpx;
 }
 
@@ -289,12 +290,12 @@
 .skills-section-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
   line-height: 44rpx;
 }
 
 .skills-count-badge {
-  background: #EEF2FF;
+  background: #eef2ff;
   border-radius: 16rpx;
   padding: 2rpx 12rpx;
 }
@@ -302,7 +303,7 @@
 .skills-count-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #6366F1;
+  color: #6366f1;
   line-height: 28rpx;
 }
 
@@ -319,19 +320,21 @@
 .skills-loading-spinner {
   width: 40rpx;
   height: 40rpx;
-  border: 4rpx solid #E2E8F0;
-  border-top-color: #8B5CF6;
+  border: 4rpx solid #e2e8f0;
+  border-top-color: #8b5cf6;
   border-radius: 50%;
   animation: skillsSpin 0.8s linear infinite;
 }
 
 @keyframes skillsSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .skills-loading-text {
   font-size: 24rpx;
-  color: #94A3B8;
+  color: #94a3b8;
   line-height: 34rpx;
 }
 
@@ -343,7 +346,7 @@
 }
 
 .skill-card {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24rpx;
   overflow: hidden;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
@@ -388,7 +391,7 @@
 .skill-card-name {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
   line-height: 42rpx;
   margin-bottom: 8rpx;
 }
@@ -408,18 +411,18 @@
 }
 
 .skill-tag-cat {
-  background: #EEF2FF;
+  background: #eef2ff;
 }
 
 .skill-tag-text {
   font-size: 20rpx;
   font-weight: 500;
-  color: #6366F1;
+  color: #6366f1;
   line-height: 28rpx;
 }
 
 .skill-tag-earn {
-  background: #FFFBEB;
+  background: #fffbeb;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -429,14 +432,14 @@
 .skill-tag-text-earn {
   font-size: 20rpx;
   font-weight: 600;
-  color: #D97706;
+  color: #d97706;
   line-height: 28rpx;
 }
 
 /* 描述 */
 .skill-card-desc {
   font-size: 24rpx;
-  color: #64748B;
+  color: #64748b;
   line-height: 36rpx;
   margin-bottom: 16rpx;
   overflow: hidden;
@@ -464,7 +467,7 @@
 
 .skill-stat-val {
   font-size: 22rpx;
-  color: #94A3B8;
+  color: #94a3b8;
   font-weight: 500;
   line-height: 30rpx;
 }
@@ -472,7 +475,7 @@
 .skill-stat-divider {
   width: 2rpx;
   height: 20rpx;
-  background: #E2E8F0;
+  background: #e2e8f0;
 }
 
 /* ========== 操作按钮 ========== */
@@ -499,7 +502,7 @@
 .skill-btn-try-text {
   font-size: 24rpx;
   font-weight: 600;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 .skill-btn-add {
@@ -510,14 +513,14 @@
   gap: 8rpx;
   padding: 14rpx 32rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
   box-shadow: 0 4rpx 16rpx rgba(99, 102, 241, 0.3);
 }
 
 .skill-btn-add-text {
   font-size: 26rpx;
   font-weight: 600;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 36rpx;
 }
 
@@ -529,14 +532,14 @@
   gap: 8rpx;
   padding: 14rpx 32rpx;
   border-radius: 24rpx;
-  background: #F3E8FF;
+  background: #f3e8ff;
   border: 2rpx solid rgba(139, 92, 246, 0.15);
 }
 
 .skill-btn-added-text {
   font-size: 26rpx;
   font-weight: 600;
-  color: #8B5CF6;
+  color: #8b5cf6;
   line-height: 36rpx;
 }
 
@@ -555,7 +558,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
 }
 
 .skills-deco-3 {
@@ -595,14 +598,14 @@
 .skills-bottom-tag-text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #FBBF24;
+  color: #fbbf24;
   line-height: 30rpx;
 }
 
 .skills-bottom-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 44rpx;
   margin-bottom: 6rpx;
 }
@@ -619,7 +622,7 @@
   align-items: center;
   justify-content: center;
   gap: 6rpx;
-  background: #FFFFFF;
+  background: #ffffff;
   padding: 14rpx 28rpx;
   border-radius: 30rpx;
   width: fit-content;
@@ -629,6 +632,6 @@
 .skills-bottom-btn-text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #6366F1;
+  color: #6366f1;
   line-height: 30rpx;
 }

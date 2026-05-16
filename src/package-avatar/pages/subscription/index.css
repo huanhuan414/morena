@@ -2,7 +2,7 @@
 
 .sub-page {
   min-height: 100vh;
-  background: #F8FAFC;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
 }
@@ -19,7 +19,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
   border-radius: 0 0 40rpx 40rpx;
 }
 .sub-header-content {
@@ -33,11 +33,14 @@
   padding: 20rpx 24rpx;
 }
 .sub-nav-back {
-  width: 64rpx;
-  height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
 }
 .sub-nav-title {
   font-size: 34rpx;
@@ -83,7 +86,7 @@
 .sub-status-badge-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: #FFD700;
+  color: #ffd700;
 }
 .sub-status-badge-text-free {
   font-size: 22rpx;
@@ -124,14 +127,14 @@
 .sub-title-dot {
   width: 6rpx;
   height: 28rpx;
-  background: linear-gradient(180deg, #8B5CF6, #6366F1);
+  background: linear-gradient(180deg, #8b5cf6, #6366f1);
   border-radius: 4rpx;
   flex-shrink: 0;
 }
 .sub-section-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
 }
 
 /* ===== 核心权益展示 - 2x2宫格 ===== */
@@ -141,7 +144,7 @@
   gap: 16rpx;
 }
 .sub-benefit-card {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24rpx;
   padding: 24rpx 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
@@ -159,24 +162,32 @@
   justify-content: center;
   margin-bottom: 4rpx;
 }
-.sub-benefit-icon-purple { background: #F3F0FF; }
-.sub-benefit-icon-green { background: #ECFDF5; }
-.sub-benefit-icon-blue { background: #EEF2FF; }
-.sub-benefit-icon-orange { background: #FFF7ED; }
+.sub-benefit-icon-purple {
+  background: #f3f0ff;
+}
+.sub-benefit-icon-green {
+  background: #ecfdf5;
+}
+.sub-benefit-icon-blue {
+  background: #eef2ff;
+}
+.sub-benefit-icon-orange {
+  background: #fff7ed;
+}
 
 .sub-benefit-num {
   font-size: 20rpx;
   font-weight: 700;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 .sub-benefit-title {
   font-size: 24rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
 }
 .sub-benefit-desc {
   font-size: 20rpx;
-  color: #64748B;
+  color: #64748b;
   text-align: center;
   line-height: 1.3;
 }
@@ -188,7 +199,7 @@
   gap: 20rpx;
 }
 .sub-plan-card {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24rpx;
   padding: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
@@ -196,7 +207,7 @@
   overflow: hidden;
 }
 .sub-plan-card-recommend {
-  border: 3rpx solid #10B981;
+  border: 3rpx solid #10b981;
   box-shadow: 0 4rpx 24rpx rgba(16, 185, 129, 0.12);
 }
 
@@ -246,10 +257,18 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.sub-plan-icon-free { background: #F1F5F9; }
-.sub-plan-icon-basic { background: #EFF6FF; }
-.sub-plan-icon-pro { background: #ECFDF5; }
-.sub-plan-icon-enterprise { background: #FFFBEB; }
+.sub-plan-icon-free {
+  background: #f1f5f9;
+}
+.sub-plan-icon-basic {
+  background: #eff6ff;
+}
+.sub-plan-icon-pro {
+  background: #ecfdf5;
+}
+.sub-plan-icon-enterprise {
+  background: #fffbeb;
+}
 
 .sub-plan-info {
   flex: 1;
@@ -261,14 +280,22 @@
   font-weight: 800;
   display: block;
 }
-.sub-plan-name-free { color: #64748B; }
-.sub-plan-name-basic { color: #2563EB; }
-.sub-plan-name-pro { color: #059669; }
-.sub-plan-name-enterprise { color: #D97706; }
+.sub-plan-name-free {
+  color: #64748b;
+}
+.sub-plan-name-basic {
+  color: #2563eb;
+}
+.sub-plan-name-pro {
+  color: #059669;
+}
+.sub-plan-name-enterprise {
+  color: #d97706;
+}
 
 .sub-plan-desc {
   font-size: 20rpx;
-  color: #94A3B8;
+  color: #94a3b8;
   line-height: 1.3;
   display: block;
   margin-top: 2rpx;
@@ -287,19 +314,27 @@
 .sub-plan-currency {
   font-size: 22rpx;
   font-weight: 700;
-  color: #94A3B8;
+  color: #94a3b8;
 }
 .sub-plan-price {
   font-size: 44rpx;
   font-weight: 900;
 }
-.sub-plan-price-free { color: #94A3B8; }
-.sub-plan-price-basic { color: #2563EB; }
-.sub-plan-price-pro { color: #059669; }
-.sub-plan-price-enterprise { color: #D97706; }
+.sub-plan-price-free {
+  color: #94a3b8;
+}
+.sub-plan-price-basic {
+  color: #2563eb;
+}
+.sub-plan-price-pro {
+  color: #059669;
+}
+.sub-plan-price-enterprise {
+  color: #d97706;
+}
 .sub-plan-period {
   font-size: 20rpx;
-  color: #94A3B8;
+  color: #94a3b8;
 }
 
 /* 权益摘要 */
@@ -309,7 +344,7 @@
   gap: 8rpx 20rpx;
   margin-bottom: 20rpx;
   padding: 16rpx 0;
-  border-top: 1rpx solid #F1F5F9;
+  border-top: 1rpx solid #f1f5f9;
 }
 .sub-highlight {
   display: flex;
@@ -333,7 +368,9 @@
   border: none;
   height: 72rpx;
 }
-.sub-plan-btn-free { background: #F1F5F9; }
+.sub-plan-btn-free {
+  background: #f1f5f9;
+}
 .sub-plan-btn-basic {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.2);
@@ -347,7 +384,7 @@
   box-shadow: 0 4rpx 16rpx rgba(245, 158, 11, 0.2);
 }
 .sub-plan-btn-current {
-  background: #F8FAFC !important;
+  background: #f8fafc !important;
   box-shadow: none !important;
 }
 .sub-plan-btn-label {
@@ -355,13 +392,17 @@
   font-weight: 700;
   color: #fff;
 }
-.sub-plan-btn-current .sub-plan-btn-label { color: #94A3B8; }
-.sub-plan-btn-label-current { color: #94A3B8; }
+.sub-plan-btn-current .sub-plan-btn-label {
+  color: #94a3b8;
+}
+.sub-plan-btn-label-current {
+  color: #94a3b8;
+}
 
 /* ===== 权益对比表格 - 移动端：左侧固定 + 右侧滚动 ===== */
 .sub-compare-wrapper {
   display: flex;
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
   overflow: hidden;
@@ -372,15 +413,15 @@
   flex-shrink: 0;
   width: 150rpx;
   z-index: 2;
-  background: #FFFFFF;
-  border-right: 1rpx solid #F1F5F9;
+  background: #ffffff;
+  border-right: 1rpx solid #f1f5f9;
 }
 .sub-compare-labels-head {
   height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
 }
 .sub-compare-labels-head-text {
   font-size: 20rpx;
@@ -393,9 +434,11 @@
   align-items: center;
   gap: 6rpx;
   padding: 0 12rpx;
-  border-bottom: 1rpx solid #F1F5F9;
+  border-bottom: 1rpx solid #f1f5f9;
 }
-.sub-compare-label-row:last-child { border-bottom: none; }
+.sub-compare-label-row:last-child {
+  border-bottom: none;
+}
 .sub-compare-label-text {
   font-size: 20rpx;
   color: #475569;
@@ -424,10 +467,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
 }
 .sub-compare-head-pro {
-  background: linear-gradient(135deg, #7C3AED, #6D28D9) !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
 }
 .sub-compare-body-head-text {
   font-size: 20rpx;
@@ -435,15 +478,17 @@
   color: rgba(255, 255, 255, 0.8);
 }
 .sub-compare-head-text-pro {
-  color: #FFD700 !important;
+  color: #ffd700 !important;
 }
 
 .sub-compare-body-row {
   display: flex;
   height: 72rpx;
-  border-bottom: 1rpx solid #F1F5F9;
+  border-bottom: 1rpx solid #f1f5f9;
 }
-.sub-compare-body-row:last-child { border-bottom: none; }
+.sub-compare-body-row:last-child {
+  border-bottom: none;
+}
 .sub-compare-body-cell {
   flex: 1;
   min-width: 130rpx;
@@ -463,7 +508,7 @@
 
 /* 交替行背景 */
 .sub-compare-row-even {
-  background: #FAFBFD;
+  background: #fafbfd;
 }
 
 /* ===== FAQ ===== */
@@ -473,7 +518,7 @@
   gap: 12rpx;
 }
 .sub-faq-item {
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 20rpx;
   padding: 20rpx 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
@@ -481,13 +526,13 @@
 .sub-faq-q {
   font-size: 26rpx;
   font-weight: 700;
-  color: #1E293B;
+  color: #1e293b;
   margin-bottom: 8rpx;
   display: block;
 }
 .sub-faq-a {
   font-size: 22rpx;
-  color: #64748B;
+  color: #64748b;
   line-height: 1.5;
   display: block;
 }

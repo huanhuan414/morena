@@ -241,12 +241,12 @@ export default function SubscriptionPage() {
   return (
     <View className="sub-page">
       {/* 紫蓝渐变头部 - 与首页一致 */}
-      <View className="sub-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight) }}>
+      <View className="sub-header" style={{ paddingTop: Taro.pxTransform(statusBarHeight + 36)}}>
         <View className="sub-header-bg" />
         <View className="sub-header-content">
           <View className="sub-nav-row">
             <View className="sub-nav-back" onClick={() => navigateBack()}>
-              <ArrowLeft size={22} color="#fff" />
+              <ArrowLeft size={20} color="#fff" />
             </View>
             <Text className="sub-nav-title">会员订阅</Text>
             <View className="sub-nav-placeholder" />

@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, ChevronLeft, User } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, ChevronLeft, User, ArrowLeft } from 'lucide-react-taro'
 import {
   INVITER_BASE_REWARD,
   REWARD_CONDITION,
@@ -127,7 +127,8 @@ export default function ReferralCenter() {
         <View className="ref-header-decor2" />
         <View className="ref-header-decor3" />
         <View className="ref-header-back" onClick={() => Taro.navigateBack()}>
-          <ChevronLeft size={24} color="#fff" strokeWidth={2.5} />
+          {/* <ChevronLeft size={24} color="#fff" strokeWidth={2.5} /> */}
+          <ArrowLeft size={20} color="#fff" />
         </View>
         <View className="ref-header-center">
           <View className="ref-header-icon">
