@@ -7,7 +7,13 @@
 /* ===== 头部渐变 ===== */
 .ew-header {
   position: relative;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 30%, #6366F1 70%, #4F46E5 100%);
+  background: linear-gradient(
+    135deg,
+    #8b5cf6 0%,
+    #7c3aed 30%,
+    #6366f1 70%,
+    #4f46e5 100%
+  );
   padding-bottom: 48rpx;
   border-radius: 0 0 40rpx 40rpx;
   overflow: hidden;
@@ -44,13 +50,14 @@
 }
 
 .ew-nav-back {
-  width: 64rpx;
-  height: 64rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 16rpx;
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
 }
 
 .ew-nav-title {
@@ -117,7 +124,7 @@
 .ew-stat-val {
   font-size: 32rpx;
   font-weight: 800;
-  color: #FFD700;
+  color: #ffd700;
   margin-bottom: 4rpx;
 }
 
@@ -152,7 +159,7 @@
 
 .ew-sample-tip-text {
   font-size: 22rpx;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 /* 区块通用 */
@@ -186,7 +193,7 @@
 .ew-growth-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #10B981;
+  color: #10b981;
 }
 
 /* ===== 领奖台 Top3 ===== */
@@ -213,7 +220,8 @@
   transform: translateY(-16rpx);
 }
 
-.ew-podium-2, .ew-podium-3 {
+.ew-podium-2,
+.ew-podium-3 {
   transform: translateY(8rpx);
 }
 
@@ -232,24 +240,24 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
   box-shadow: 0 4rpx 16rpx rgba(139, 92, 246, 0.3);
 }
 
 .ew-podium-avatar-1 {
   width: 100rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, #FFD700, #F59E0B);
+  background: linear-gradient(135deg, #ffd700, #f59e0b);
   box-shadow: 0 8rpx 24rpx rgba(245, 158, 11, 0.4);
 }
 
 .ew-podium-avatar-2 {
-  background: linear-gradient(135deg, #C0C0C0, #9CA3AF);
+  background: linear-gradient(135deg, #c0c0c0, #9ca3af);
   box-shadow: 0 4rpx 16rpx rgba(156, 163, 175, 0.3);
 }
 
 .ew-podium-avatar-3 {
-  background: linear-gradient(135deg, #CD7F32, #B45309);
+  background: linear-gradient(135deg, #cd7f32, #b45309);
   box-shadow: 0 4rpx 16rpx rgba(180, 83, 9, 0.3);
 }
 
@@ -276,12 +284,12 @@
 .ew-podium-earn {
   font-size: 24rpx;
   font-weight: 800;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 .ew-podium-earn-1 {
   font-size: 28rpx;
-  color: #F59E0B;
+  color: #f59e0b;
 }
 
 .ew-podium-skill {
@@ -337,7 +345,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
   border-radius: 50%;
   margin-right: 16rpx;
   flex-shrink: 0;
@@ -375,7 +383,7 @@
 
 .ew-list-platform-text {
   font-size: 18rpx;
-  color: #6366F1;
+  color: #6366f1;
   font-weight: 500;
 }
 
@@ -400,7 +408,7 @@
 .ew-list-earn {
   font-size: 28rpx;
   font-weight: 800;
-  color: #8B5CF6;
+  color: #8b5cf6;
   margin-bottom: 2rpx;
 }
 
@@ -418,7 +426,7 @@
 .ew-list-growth {
   font-size: 18rpx;
   font-weight: 600;
-  color: #10B981;
+  color: #10b981;
 }
 
 /* ===== CTA 激励卡 ===== */
@@ -431,7 +439,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 24rpx;
-  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #4f46e5 100%);
   border-radius: 24rpx;
   box-shadow: 0 8rpx 32rpx rgba(99, 102, 241, 0.3);
   position: relative;
@@ -439,7 +447,7 @@
 }
 
 .ew-cta-card::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 200rpx;
   height: 200rpx;
@@ -498,7 +506,7 @@
 .ew-cta-btn-text {
   font-size: 24rpx;
   font-weight: 700;
-  color: #6366F1;
+  color: #6366f1;
 }
 
 /* ===== 赚钱真相 3步 ===== */
@@ -530,17 +538,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #8B5CF6, #6366F1);
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
   border-radius: 12rpx;
   flex-shrink: 0;
 }
 
 .ew-truth-num-2 {
-  background: linear-gradient(135deg, #6366F1, #4F46E5);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
 }
 
 .ew-truth-num-3 {
-  background: linear-gradient(135deg, #10B981, #059669);
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
 .ew-truth-num {
@@ -581,14 +589,16 @@
   width: 56rpx;
   height: 56rpx;
   border: 4rpx solid #e5e7eb;
-  border-top-color: #8B5CF6;
+  border-top-color: #8b5cf6;
   border-radius: 50%;
   animation: ew-spin 0.8s linear infinite;
   margin-bottom: 12rpx;
 }
 
 @keyframes ew-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ew-loading-text {
