@@ -278,7 +278,18 @@ export default function OrderAcceptance() {
                     <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} className="od-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                    <View key={idx} className="od-video-cover" onClick={() => {
+                    console.log('播放视频:', url)
+                    Taro.previewMedia({
+                      sources: [{ url, type: 'video' }],
+                      current: 0
+                    }).catch((err) => {
+                      console.error('previewMedia 失败:', err)
+                      Taro.setClipboardData({ data: url }).then(() => {
+                        Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+                      })
+                    })
+                  }}>
                       <View className="od-video-play">
                         <View className="od-play-circle">
                           <View className="od-play-triangle" />

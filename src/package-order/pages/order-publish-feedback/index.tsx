@@ -482,7 +482,22 @@ export default function OrderPublishFeedback() {
               <Video size={14} color="#8B5CF6" /> 视频 ({generatedContent.videos.length})
             </Text>
             {generatedContent.videos.map((url, index) => (
-              <View key={index} className="preview-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+              <View
+                key={index}
+                className="preview-video-cover"
+                onClick={() => {
+                  console.log('播放视频:', url)
+                  Taro.previewMedia({
+                    sources: [{ url, type: 'video' }],
+                    current: 0
+                  }).catch((err) => {
+                    console.error('previewMedia 失败:', err)
+                    Taro.setClipboardData({ data: url }).then(() => {
+                      Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+                    })
+                  })
+                }}
+              >
                 <View className="preview-video-play">
                   <View className="preview-play-circle">
                     <View className="preview-play-triangle" />

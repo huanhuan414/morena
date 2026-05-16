@@ -433,7 +433,22 @@ export default function OrderContentCreation() {
                   <Text className="cc-card-title">视频</Text>
                 </View>
                 {processingData.generatedContent.videos.map((v: string, idx: number) => (
-                  <View key={idx} className="cc-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url: v, type: 'video' }] })}>
+                  <View
+                    key={idx}
+                    className="cc-video-cover"
+                    onClick={() => {
+                      console.log('播放视频:', v)
+                      Taro.previewMedia({
+                        sources: [{ url: v, type: 'video' }],
+                        current: 0
+                      }).catch((err) => {
+                        console.error('previewMedia 失败:', err)
+                        Taro.setClipboardData({ data: v }).then(() => {
+                          Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+                        })
+                      })
+                    }}
+                  >
                     <View className="cc-video-play">
                       <View className="cc-play-circle">
                         <View className="cc-play-triangle" />

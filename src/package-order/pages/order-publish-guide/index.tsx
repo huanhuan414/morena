@@ -669,7 +669,22 @@ export default function OrderPublishGuide() {
                 </View>
               </View>
               {videos.map((url, index) => (
-                <View key={index} className="video-cover-card" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                <View
+                  key={index}
+                  className="video-cover-card"
+                  onClick={() => {
+                    console.log('播放视频:', url)
+                    Taro.previewMedia({
+                      sources: [{ url, type: 'video' }],
+                      current: 0
+                    }).catch((err) => {
+                      console.error('previewMedia 失败:', err)
+                      Taro.setClipboardData({ data: url }).then(() => {
+                        Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+                      })
+                    })
+                  }}
+                >
                   <View className="video-cover-bg">
                     <View className="video-play-circle">
                       <View className="video-play-triangle" />

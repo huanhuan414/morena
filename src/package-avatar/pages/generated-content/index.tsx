@@ -419,24 +419,29 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频内容 - 缩略图预览，点击跳转发布指引页查看 */}
+                {/* 视频内容 - 封面卡片，点击播放 */}
                 {videoUrls.length > 0 && (
-                  <View className="image-preview-row">
-                    {videoUrls.slice(0, 2).map((_url: string, idx: number) => (
+                  <View className="card-video-list">
+                    {videoUrls.map((url: string, idx: number) => (
                       <View
                         key={idx}
-                        className="video-preview"
-                        style={{ width: '180rpx', height: '180rpx', marginBottom: 0 }}
-                        onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })}
+                        className="card-video-cover"
+                        onClick={() => {
+                          console.log('播放视频:', url)
+                          Taro.previewMedia({
+                            sources: [{ url, type: 'video' }],
+                            current: 0
+                          }).catch(() => {
+                            Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
+                          })
+                        }}
                       >
-                        <Play size={28} color="#fff" />
+                        <View className="card-video-play-icon">
+                          <Play size={24} color="#fff" />
+                        </View>
+                        <Text className="card-video-text">视频 {idx + 1} · 点击播放</Text>
                       </View>
                     ))}
-                    {videoUrls.length > 2 && (
-                      <View className="more-images">
-                        <Text style={{ fontSize: 12, color: '#64748B' }}>+{videoUrls.length - 2}</Text>
-                      </View>
-                    )}
                   </View>
                 )}
 
