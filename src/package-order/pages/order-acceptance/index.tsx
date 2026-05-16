@@ -83,7 +83,7 @@ export default function OrderAcceptance() {
           setGeneratedContent({
             content: data.content || data.textContent || '',
             images: Array.isArray(data.images) ? data.images : [],
-            videos: Array.isArray(data.videoUrl) ? data.videoUrl : (data.videoUrl ? [data.videoUrl] : [])
+            videos: Array.isArray(data.videos) ? data.videos : (Array.isArray(data.videoUrl) ? data.videoUrl : (data.videoUrl ? [data.videoUrl] : []))
           })
         }
       } catch (error) {
