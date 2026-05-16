@@ -87,6 +87,7 @@ export class OrderService {
 
       const hasPending = allDispatchStatuses.includes('pending')
       const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
+      const acceptedDispatchCount = allDispatchStatuses.filter(s => ['accepted', 'feedback_submitted'].includes(s)).length
       const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
 
       const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
@@ -116,7 +117,11 @@ export class OrderService {
       } else if (hasProcessing) {
         newStatus = 'in_progress'
       } else if (hasAccepted && !hasPending) {
-        newStatus = 'in_progress'
+        if (acceptedDispatchCount >= requiredAvatarCount) {
+          newStatus = 'in_progress'
+        } else {
+          newStatus = 'pending_acceptance'
+        }
       } else if (hasAccepted && hasPending) {
         newStatus = 'pending_acceptance'
       }
@@ -362,7 +367,7 @@ export class OrderService {
         : (order.requirements || {}),
       budget: order.budget,
       status: order.status,
-      avatarCount: order.avatarCount || 1,
+      avatarCount: order.expectedQuantity || order.avatarCount || 1,
       avatarStats,
       summary_stats: summaryStats,
       createdAt
