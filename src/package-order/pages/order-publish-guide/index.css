@@ -359,20 +359,88 @@
   line-height: 1.8;
 }
 
-.preview-markdown-content h1,
-.preview-markdown-content h2,
-.preview-markdown-content h3 {
+.preview-markdown-content .markdown-body {
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.8;
+}
+
+.preview-markdown-content .md-heading {
+  font-weight: 600;
+  color: #1E293B;
   margin: 20rpx 0 10rpx;
 }
 
-.preview-markdown-content p {
+.preview-markdown-content .md-heading-1 {
+  font-size: 34rpx;
+}
+
+.preview-markdown-content .md-heading-2 {
+  font-size: 32rpx;
+}
+
+.preview-markdown-content .md-heading-3 {
+  font-size: 30rpx;
+}
+
+.preview-markdown-content .md-paragraph {
   margin: 8rpx 0;
+  line-height: 1.8;
+}
+
+.preview-markdown-content .md-bold {
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.preview-markdown-content .md-italic {
+  font-style: italic;
+}
+
+.preview-markdown-content .md-list-item {
+  padding-left: 24rpx;
+  margin: 6rpx 0;
+  position: relative;
+  line-height: 1.8;
+}
+
+.preview-markdown-content .md-hashtag {
+  color: #3B82F6;
 }
 
 .preview-markdown-content .md-image-wrapper {
   margin: 16rpx 0;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   overflow: hidden;
+  background: #F1F5F9;
+}
+
+.preview-markdown-content .md-image {
+  width: 100%;
+  min-height: 200rpx;
+  display: block;
+  border-radius: 16rpx;
+  background: #F1F5F9;
+}
+
+.preview-markdown-content .md-image-caption {
+  font-size: 22rpx;
+  color: #94A3B8;
+  text-align: center;
+  padding: 8rpx 0 16rpx;
+}
+
+/* 视频预览 */
+.video-preview-item {
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000;
+}
+
+.video-player {
+  width: 100%;
+  height: 420rpx;
 }
 
 /* 图片网格 */

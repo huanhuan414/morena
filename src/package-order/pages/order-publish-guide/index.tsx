@@ -606,14 +606,13 @@ export default function OrderPublishGuide() {
             </View>
           )}
 
-          {/* 正文 */}
+          {/* 正文（含嵌入图片的图文文章用 Markdown 渲染，纯文案直接展示） */}
           {content && (
             <View className="content-preview-card">
               <View className="preview-label">
                 <MessageSquare size={14} color="#8b5cf6" />
                 <Text className="preview-label-text">正文</Text>
               </View>
-              {/* 图文文章型：用 Markdown 渲染，图片嵌入文中 */}
               {content.includes('![') ? (
                 <View className="preview-markdown-content">
                   <MarkdownRenderer content={content} />
@@ -624,7 +623,7 @@ export default function OrderPublishGuide() {
             </View>
           )}
 
-          {/* 图片（仅文案+配图分离型时单独显示） */}
+          {/* 独立配图（仅文案与配图分离时展示，文章型图文的图片已在正文中渲染） */}
           {images.length > 0 && !content.includes('![') && (
             <View className="content-preview-card">
               <View className="preview-label-row">
@@ -660,7 +659,7 @@ export default function OrderPublishGuide() {
             </View>
           )}
 
-          {/* 视频 */}
+          {/* 视频：放在配图后面，正文区块内 */}
           {videos.length > 0 && (
             <View className="content-preview-card">
               <View className="preview-label-row">
@@ -670,8 +669,16 @@ export default function OrderPublishGuide() {
                 </View>
               </View>
               {videos.map((url, index) => (
-                <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
-                  <TaroVideo src={url} style={{ width: '100%', height: '180px' }} controls autoplay={false} />
+                <View key={index} className="video-preview-item">
+                  <TaroVideo
+                    src={url}
+                    className="video-player"
+                    controls
+                    autoplay={false}
+                    showFullscreenBtn
+                    showPlayBtn
+                    objectFit="contain"
+                  />
                 </View>
               ))}
             </View>

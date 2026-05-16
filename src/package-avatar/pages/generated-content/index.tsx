@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Image as TaroImage, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -419,20 +419,17 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频内容 - 缩略图预览 */}
+                {/* 视频内容 - 缩略图预览，点击跳转发布指引页查看 */}
                 {videoUrls.length > 0 && (
                   <View className="image-preview-row">
-                    {videoUrls.slice(0, 2).map((url: string, idx: number) => (
+                    {videoUrls.slice(0, 2).map((_url: string, idx: number) => (
                       <View
                         key={idx}
-                        className="preview-image"
-                        style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}
+                        className="video-preview"
+                        style={{ width: '180rpx', height: '180rpx', marginBottom: 0 }}
                         onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })}
                       >
-                        <TaroVideo src={url} style={{ width: '180rpx', height: '180rpx' }} autoplay={false} controls={false} />
-                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                          <Play size={24} color="#fff" />
-                        </View>
+                        <Play size={28} color="#fff" />
                       </View>
                     ))}
                     {videoUrls.length > 2 && (

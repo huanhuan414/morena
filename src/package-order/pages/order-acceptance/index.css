@@ -647,3 +647,30 @@
 .modal-btn-confirm-success:active {
   transform: scale(0.98);
 }
+
+/* 视频预览 */
+.od-video-item {
+  margin-bottom: 12rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #000;
+}
+
+.od-video-player {
+  width: 100%;
+  height: 420rpx;
+}
+
+/* 图片预览网格 */
+.od-images-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.od-preview-image {
+  width: calc(33.33% - 8rpx);
+  height: 180rpx;
+  border-radius: 12rpx;
+}

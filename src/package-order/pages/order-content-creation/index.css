@@ -476,7 +476,9 @@
 
 .cc-markdown-body .md-image {
   width: 100%;
+  min-height: 200rpx;
   border-radius: 16rpx;
+  background: #F1F5F9;
 }
 
 .cc-markdown-body .md-image-caption {
@@ -511,6 +513,12 @@
   border-radius: 16rpx;
   overflow: hidden;
   margin-bottom: 16rpx;
+  background: #000;
+}
+
+.cc-video-player {
+  width: 100%;
+  height: 420rpx;
 }
 
 /* 操作按钮 */

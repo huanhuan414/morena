@@ -477,13 +477,13 @@ export default function OrderPublishFeedback() {
 
         {/* 视频预览 */}
         {generatedContent.videos && generatedContent.videos.length > 0 && (
-          <View className="preview-images">
+          <View className="preview-videos">
             <Text className="preview-section-label">
               <Video size={14} color="#8B5CF6" /> 视频 ({generatedContent.videos.length})
             </Text>
             {generatedContent.videos.map((url, index) => (
-              <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
-                <TaroVideo src={url} style={{ width: '100%', height: '180px' }} controls autoplay={false} />
+              <View key={index} className="preview-video-item">
+                <TaroVideo src={url} className="preview-video-player" controls autoplay={false} showFullscreenBtn showPlayBtn objectFit="contain" />
               </View>
             ))}
           </View>

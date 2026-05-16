@@ -278,8 +278,8 @@ export default function OrderAcceptance() {
                     <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden' }}>
-                      <TaroVideo src={url} style={{ width: '100%', height: '180px' }} autoplay={false} controls />
+                    <View key={idx} className="od-video-item">
+                      <TaroVideo src={url} className="od-video-player" autoplay={false} controls showFullscreenBtn showPlayBtn objectFit="contain" />
                     </View>
                   ))}
                 </View>
