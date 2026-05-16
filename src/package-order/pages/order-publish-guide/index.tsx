@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video as TaroVideo } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -75,6 +75,7 @@ export default function OrderPublishGuide() {
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
   const [images, setImages] = useState<string[]>([])
+  const [videos, setVideos] = useState<string[]>([])
   const [contentType, setContentType] = useState<string>('图文')
   const [copied, setCopied] = useState(false)
   const [avatarId, setAvatarId] = useState('')
@@ -102,6 +103,17 @@ export default function OrderPublishGuide() {
             const data = resData.data
             if (data.content) setContent(data.content)
             if (data.images && data.images.length > 0) setImages(data.images)
+            // 解析视频：兼容 videos 数组和 videoUrl 字符串
+            if (data.videos && data.videos.length > 0) {
+              setVideos(data.videos)
+            } else if (data.videoUrl) {
+              try {
+                const parsed = JSON.parse(data.videoUrl)
+                setVideos(Array.isArray(parsed) ? parsed : [data.videoUrl])
+              } catch {
+                setVideos([data.videoUrl])
+              }
+            }
             if (data.avatarId) setAvatarId(data.avatarId)
             if (data.orderId) setOrderId(data.orderId)
             if (data.platforms && data.platforms.length > 0) {
@@ -121,6 +133,7 @@ export default function OrderPublishGuide() {
               const typeMap: Record<string, string> = {
                 image_text: '图文',
                 article: '图文',
+                video: '视频',
                 video_text: '视频',
               }
               setContentType(typeMap[data.contentType] || '图文')
@@ -644,6 +657,23 @@ export default function OrderPublishGuide() {
                   </View>
                 ))}
               </View>
+            </View>
+          )}
+
+          {/* 视频 */}
+          {videos.length > 0 && (
+            <View className="content-preview-card">
+              <View className="preview-label-row">
+                <View className="preview-label">
+                  <Video size={14} color="#ef4444" />
+                  <Text className="preview-label-text">视频 ({videos.length}个)</Text>
+                </View>
+              </View>
+              {videos.map((url, index) => (
+                <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
+                  <TaroVideo src={url} style={{ width: '100%' }} controls autoplay={false} />
+                </View>
+              ))}
             </View>
           )}
         </View>

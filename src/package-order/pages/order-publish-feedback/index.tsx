@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Video as TaroVideo } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader } from 'lucide-react-taro'
+import { ArrowLeft, ImagePlus, Eye, X, Send, Link, ShieldCheck, ShieldAlert, Loader, Video } from 'lucide-react-taro'
 import { canonicalizePlatform, canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
@@ -83,6 +83,7 @@ export default function OrderPublishFeedback() {
             title: contentData.title || '',
             content: contentData.content || '',
             images: safeParseArray(contentData.images),
+            videos: safeParseVideoUrls(contentData.videos, contentData.videoUrl),
             platforms: safeParseArray(contentData.platforms),
             contentType: contentData.contentType || contentData.content_type || 'image_text',
           })
@@ -158,6 +159,26 @@ export default function OrderPublishFeedback() {
       catch { return [] }
     }
     return []
+  }
+
+  // 安全解析视频URL（兼容数组、JSON字符串、纯URL字符串）
+  const safeParseVideoUrls = (videosVal: any, videoUrlVal: any): string[] => {
+    const result: string[] = []
+    const tryAdd = (v: any) => {
+      if (!v) return
+      if (Array.isArray(v)) { v.forEach(tryAdd); return }
+      if (typeof v === 'string') {
+        const trimmed = v.trim()
+        if (trimmed.startsWith('[')) {
+          try { const r = JSON.parse(trimmed); if (Array.isArray(r)) r.forEach(tryAdd) } catch {}
+        } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          result.push(trimmed)
+        }
+      }
+    }
+    tryAdd(videosVal)
+    tryAdd(videoUrlVal)
+    return result
   }
 
   const handlePreviewImage = (urls: string[], current: string) => {
@@ -451,6 +472,20 @@ export default function OrderPublishFeedback() {
                 </View>
               )}
             </View>
+          </View>
+        )}
+
+        {/* 视频预览 */}
+        {generatedContent.videos && generatedContent.videos.length > 0 && (
+          <View className="preview-images">
+            <Text className="preview-section-label">
+              <Video size={14} color="#8B5CF6" /> 视频 ({generatedContent.videos.length})
+            </Text>
+            {generatedContent.videos.map((url, index) => (
+              <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
+                <TaroVideo src={url} style={{ width: '100%' }} controls autoplay={false} />
+              </View>
+            ))}
           </View>
         )}
       </View>

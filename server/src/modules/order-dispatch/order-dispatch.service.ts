@@ -975,7 +975,7 @@ async getExecutionProgress(orderId: string) {
         orderTitle: request.order_title || order.title || '内容生成',
         orderDescription: request.description || order.description || '',
         platforms: normalizedPlatforms,
-        contentType: order.content_type || 'image_text',
+        contentType: order.contentType || order.content_type || 'image_text',
         targetAudience: request.target_audience || order.targetAudience || '年轻用户',
         contentQuantity: request.quantityPerAvatar || request.expectedQuantity || order.quantityPerAvatar || order.expectedQuantity || 3,
         avatarName,

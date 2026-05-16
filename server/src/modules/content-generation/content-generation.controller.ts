@@ -97,6 +97,25 @@ export class ContentGenerationController {
       let images: string[] = []
       try { images = record.images ? (Array.isArray(record.images) ? record.images : JSON.parse(record.images)) : [] } catch { images = [] }
 
+      // 解析 videoUrl：兼容 JSON 数组字符串、纯 URL 字符串、null
+      let videos: string[] = []
+      try {
+        const rawVideoUrl = record.videoUrl
+        if (rawVideoUrl) {
+          if (Array.isArray(rawVideoUrl)) {
+            videos = rawVideoUrl
+          } else if (typeof rawVideoUrl === 'string') {
+            const trimmed = rawVideoUrl.trim()
+            if (trimmed.startsWith('[')) {
+              const parsed = JSON.parse(trimmed)
+              videos = Array.isArray(parsed) ? parsed : []
+            } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+              videos = [trimmed]
+            }
+          }
+        }
+      } catch { videos = [] }
+
       // 解析 platforms：兼容数组、JSON字符串、单个字符串
       let parsedPlatforms: string[] = []
       try {
@@ -124,7 +143,8 @@ export class ContentGenerationController {
           orderId: record.orderId,
           content: record.content || '',
           images,
-          videoUrl: record.videoUrl || null,
+          videos,
+          videoUrl: videos.length > 0 ? videos[0] : null,
           platform: record.platform,
           platforms: parsedPlatforms,
           status: record.status,

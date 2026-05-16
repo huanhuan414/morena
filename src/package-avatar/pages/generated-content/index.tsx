@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage, Video as TaroVideo } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -361,7 +361,8 @@ export default function GeneratedContentPage() {
             const platformInfo = getPlatformInfo(platformKey)
             const contentText = content.content || ''
             const images = content.images || []
-            const videoUrl = content.video_url || content.videoUrl || ''
+            const rawVideoUrl = content.video_url || content.videoUrl || ''
+            const videoUrls: string[] = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
             const actions = getCardActions(content.status)
 
@@ -418,11 +419,14 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频标识 */}
-                {videoUrl && (
-                  <View className="video-preview">
-                    <Play size={24} color="#fff" />
-                    <Text style={{ fontSize: 12, color: '#fff', marginLeft: 8 }}>视频内容</Text>
+                {/* 视频内容 */}
+                {videoUrls.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    {videoUrls.map((url: string, idx: number) => (
+                      <View key={idx} style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
+                        <TaroVideo src={url} style={{ width: '100%' }} autoplay={false} controls />
+                      </View>
+                    ))}
                   </View>
                 )}
 

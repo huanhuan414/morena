@@ -1,11 +1,11 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input, Video as TaroVideo } from '@tarojs/components'
 import * as Network from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp, CircleCheckBig
+  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText
 } from 'lucide-react-taro'
 import '../order-detail/index.css'
 
@@ -47,6 +47,7 @@ export default function OrderAcceptance() {
   const [showApprove, setShowApprove] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [generatedContent, setGeneratedContent] = useState<{ content?: string; images?: string[]; videos?: string[] } | null>(null)
   const statusBarHeight = getStatusBarHeight()
 
   useLoad(() => {
@@ -67,6 +68,27 @@ export default function OrderAcceptance() {
       showToast({ title: '加载失败', icon: 'none' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSelectAvatar = async (avatar: AvatarStat) => {
+    setSelectedAvatar(avatar)
+    setGeneratedContent(null)
+    if (avatar.requestId) {
+      try {
+        const res = await Network.request({ url: `/api/content-generation/content/${avatar.requestId}` })
+        console.log('验收页获取生成内容:', res.data)
+        if (res.data?.code === 200 && res.data.data) {
+          const data = res.data.data
+          setGeneratedContent({
+            content: data.content || data.textContent || '',
+            images: Array.isArray(data.images) ? data.images : [],
+            videos: Array.isArray(data.videoUrl) ? data.videoUrl : (data.videoUrl ? [data.videoUrl] : [])
+          })
+        }
+      } catch (error) {
+        console.error('获取生成内容失败:', error)
+      }
     }
   }
 
@@ -173,7 +195,7 @@ export default function OrderAcceptance() {
           <View className="od-header-deco1" />
           <View className="od-header-deco2" />
           <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
-            <View className="od-back-btn" onClick={() => setSelectedAvatar(null)}>
+            <View className="od-back-btn" onClick={() => { setSelectedAvatar(null); setGeneratedContent(null) }}>
               <ArrowLeft size={18} color="#fff" />
             </View>
             <View className="od-header-center">
@@ -206,6 +228,64 @@ export default function OrderAcceptance() {
               </View>
             </View>
           </View>
+
+          {/* 生成内容 */}
+          {generatedContent && (
+            <View className="od-card">
+              <View className="od-stats-header" style={{ marginBottom: 12 }}>
+                <FileText size={16} color="#6366F1" />
+                <Text className="block od-stats-title">分身创作内容</Text>
+              </View>
+
+              {/* 文案内容 */}
+              {generatedContent.content && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginBottom: 4 }}>文案</Text>
+                  <View style={{ backgroundColor: '#F9FAFB', borderRadius: 8, padding: 12 }}>
+                    <Text className="block" style={{ fontSize: '14px', color: '#1F2937', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {generatedContent.content}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* 图片内容 */}
+              {generatedContent.images && generatedContent.images.length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <ImageIcon size={14} color="#6366F1" />
+                    <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>配图 ({generatedContent.images.length})</Text>
+                  </View>
+                  <View className="od-images-grid">
+                    {generatedContent.images.map((img: string, idx: number) => (
+                      <Image
+                        key={idx}
+                        src={img}
+                        className="od-preview-image"
+                        mode="aspectFill"
+                        onClick={() => handleImagePreview(img)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* 视频内容 */}
+              {generatedContent.videos && generatedContent.videos.length > 0 && (
+                <View>
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Video size={14} color="#6366F1" />
+                    <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
+                  </View>
+                  {generatedContent.videos.map((url: string, idx: number) => (
+                    <View key={idx} style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden' }}>
+                      <TaroVideo src={url} style={{ width: '100%' }} autoplay={false} controls />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 发布提交 */}
           {selectedAvatar.publishFeedback && (
@@ -401,7 +481,7 @@ export default function OrderAcceptance() {
           <View className="od-card">
             <Text className="block od-section-title">待验收分身</Text>
             {avatars.map((avatar, index) => (
-              <View key={avatar.avatarId} className="od-avatar-item" onClick={() => setSelectedAvatar(avatar)}>
+              <View key={avatar.avatarId} className="od-avatar-item" onClick={() => handleSelectAvatar(avatar)}>
                 <View className="od-avatar-left">
                   <View className="od-avatar-num">{index + 1}</View>
                   <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />

@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
-import { Config, LLMClient } from 'coze-coding-dev-sdk'
+import { Config, LLMClient, Message } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
@@ -162,9 +162,11 @@ export class ContentGenerationService {
     input: any
   ): Promise<void> {
     const { contentType, primarySkill } = input
-    const needImage = contentType === 'image' || contentType === 'image_text' || contentType === 'video'
-    const needText = contentType === 'text' || contentType === 'image_text' || contentType === 'video'
+    const needImage = contentType === 'image' || contentType === 'image_text'
+    const needText = contentType === 'text' || contentType === 'image_text'
     const needVideo = contentType === 'video'
+    // 视频类型也需要生成视频脚本作为文案内容
+    const needVideoScript = contentType === 'video'
 
     this.logger.log(`开始后台生成: requestId=${requestId}, platform=${platform}, contentType=${contentType}, primarySkill=${primarySkill}`)
 
@@ -202,6 +204,19 @@ export class ContentGenerationService {
           await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
         } catch (err: any) {
           this.logger.warn(`文案生成失败: ${err.message}`)
+        }
+      }
+
+      // 视频类型：生成视频脚本作为文案内容（分身参考+发布指引）
+      if (needVideoScript && !textContent) {
+        try {
+          this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+          const skillStrategy = getSkillStrategy(primarySkill)
+          textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
+          this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
+        } catch (err: any) {
+          this.logger.warn(`视频脚本生成失败: ${err.message}`)
         }
       }
 
@@ -410,7 +425,7 @@ ${input.orderDescription}
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages)
+      const response = await this.llmClient.invoke(messages as Message[])
       return response?.content || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
@@ -591,7 +606,7 @@ ${input.orderDescription}
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages)
+      const response = await this.llmClient.invoke(messages as Message[])
       return response?.content || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
@@ -678,30 +693,36 @@ ${input.orderDescription}
   }
 
   /**
-   * 生成视频 — 基于技能的视频脚本 + Seedance 2.0 视频生成
+   * 生成视频 — 从已有文案/脚本中提取视觉 prompt + Seedance 2.0 视频生成
    */
   private async generateVideos(platform: string, input: any, textContent: string, images: string[]): Promise<string[]> {
     const { primarySkill } = input
     const skillStrategy = getSkillStrategy(primarySkill)
 
-    // 1. 先生成视频脚本
-    this.logger.log(`开始生成视频脚本: skill=${primarySkill}, platform=${platform}`)
-
-    const videoScript = await this.generateVideoScript(platform, input, textContent, skillStrategy)
-    if (!videoScript) {
-      this.logger.warn('视频脚本生成失败，跳过视频生成')
-      return []
+    // 1. 如果没有现成的脚本，先生成视频脚本
+    let videoScript = textContent
+    if (!videoScript || videoScript.length < 50) {
+      this.logger.log(`无现成脚本，先生成视频脚本: skill=${primarySkill}, platform=${platform}`)
+      videoScript = await this.generateVideoScript(platform, input, textContent, skillStrategy) || ''
+      if (!videoScript) {
+        this.logger.warn('视频脚本生成失败，跳过视频生成')
+        return []
+      }
     }
 
-    this.logger.log(`视频脚本生成完成: ${videoScript.length}字`)
+    this.logger.log(`视频脚本准备完成: ${videoScript.length}字`)
 
-    // 2. 使用 Seedance API 生成视频
+    // 2. 从脚本中提取适合 Seedance 的视觉描述 prompt
+    // Seedance 是文生视频模型，需要简短的视觉画面描述，不需要表格脚本
+    const seedancePrompt = await this.extractVisualPrompt(videoScript, input)
+    this.logger.log(`Seedance视觉prompt提取完成: ${seedancePrompt.substring(0, 80)}...`)
+
+    // 3. 使用 Seedance API 生成视频
     const videoUrls: string[] = []
 
     try {
-      const videoPrompt = videoScript.substring(0, 500)
-      this.logger.log(`调用Seedance视频生成API: prompt=${videoPrompt.substring(0, 50)}...`)
-      const videoUrl = await this.generateVideoViaSeedance(videoPrompt)
+      this.logger.log(`调用Seedance视频生成API: prompt=${seedancePrompt.substring(0, 50)}...`)
+      const videoUrl = await this.generateVideoViaSeedance(seedancePrompt)
       if (videoUrl) {
         videoUrls.push(videoUrl)
         this.logger.log('Seedance视频生成成功')
@@ -710,12 +731,43 @@ ${input.orderDescription}
       this.logger.warn(`Seedance视频生成失败: ${err.message}`)
     }
 
-    // 3. 即使视频生成失败，也将脚本保存到内容中
-    if (videoUrls.length === 0 && videoScript) {
-      this.logger.log('视频文件生成未完成，视频脚本已保存到文案中')
-    }
-
     return videoUrls
+  }
+
+  /**
+   * 从视频脚本中提取适合 Seedance 文生视频模型的视觉描述 prompt
+   * Seedance 需要的是简短的视觉画面描述，不是完整的分镜脚本
+   */
+  private async extractVisualPrompt(videoScript: string, input: any): Promise<string> {
+    const systemPrompt = `你是一个视频视觉描述提取专家。你的任务是从视频脚本中提取出适合AI文生视频模型的视觉画面描述。
+
+要求：
+1. 输出一段50-150字的核心视觉画面描述，描述视频最重要的3-5个画面
+2. 只描述视觉画面，不包含口播/旁白/字幕等文字内容
+3. 画面描述要具体：场景、人物动作、表情、道具、光影
+4. 不需要分镜编号、时间标记、表格格式
+5. 直接输出描述文本，不要加任何前缀说明
+
+示例输出：
+"一位年轻女性在温馨的咖啡厅里，手持精致的产品包装盒，惊喜地打开展示内部。特写镜头捕捉她满意的微笑和产品的精美细节。随后切到户外阳光下的使用场景，自然光影中产品质感更加突出。结尾画面是她举起产品对镜头竖起大拇指推荐。"`
+
+    try {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `请从以下视频脚本中提取核心视觉画面描述：\n\n${videoScript.substring(0, 2000)}` }
+      ]
+      const response = await this.llmClient.invoke(messages as Message[])
+      const prompt = response?.content || ''
+      // 限制 prompt 长度，Seedance 对过长 prompt 效果不好
+      return prompt.substring(0, 500)
+    } catch (err: any) {
+      this.logger.warn(`视觉prompt提取失败，使用脚本前500字: ${err.message}`)
+      // 降级：直接用脚本前500字作为 prompt（去除表格标记）
+      return videoScript
+        .replace(/[|：:：]/g, ' ')
+        .replace(/\n/g, ', ')
+        .substring(0, 500)
+    }
   }
 
   /**
@@ -784,7 +836,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages)
+      const response = await this.llmClient.invoke(messages as Message[])
       return response?.content || ''
     } catch (err: any) {
       this.logger.warn(`视频脚本LLM调用失败: ${err.message}`)
@@ -977,7 +1029,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
 英文关键词：`
 
         const response = await this.llmClient.invoke(
-          [{ role: 'user', content: llmPrompt }]
+          [{ role: 'user', content: llmPrompt }] as Message[]
         )
         const keywords = response?.content?.trim() || ''
         this.logger.log(`LLM翻译结果: ${keywords}`)

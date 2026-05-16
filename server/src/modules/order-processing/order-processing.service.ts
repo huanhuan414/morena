@@ -240,6 +240,11 @@ export class OrderProcessingService {
         const parsed = JSON.parse(input)
         return Array.isArray(parsed) ? parsed : []
       } catch {
+        // 兼容纯 URL 字符串：如果看起来是 URL，包装成单元素数组
+        const trimmed = input.trim()
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          return [trimmed]
+        }
         return []
       }
     }
