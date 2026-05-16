@@ -593,43 +593,47 @@ export class OrderService {
 
     const whereClause = `
       WHERE (
-        status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
-        OR (status = 'pending_payment' AND IFNULL(is_paid, 0) = 1)
+        o.status IN ('pending', 'pending_acceptance', 'awaiting_acceptance', 'in_progress', 'accepted', 'content_generated', 'submitted', 'published', 'publish_failed', 'publish_timeout')
+        OR (o.status = 'pending_payment' AND IFNULL(o.is_paid, 0) = 1)
       )
     `
 
     const rows = await db.query(
-      `SELECT id, user_id, avatar_id, title, description, content_type, platforms, requirements,
-              budget, status, expected_quantity, avatar_count, quantity_per_avatar, is_paid,
-              created_at, updated_at
-       FROM orders
+      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.requirements,
+              o.budget, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+              o.created_at, o.updated_at,
+              u.nickname as publisher_nickname, u.avatar as publisher_avatar
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY o.created_at DESC
        LIMIT ${safePageSize} OFFSET ${offset}`
     )
 
     const totalRows = await db.query(
-      `SELECT COUNT(*) as total FROM orders ${whereClause}`
+      `SELECT COUNT(*) as total FROM orders o ${whereClause}`
     )
     const total = Number(totalRows?.[0]?.total || 0)
 
     // 读取DB返回值 → camelCase
     const items = (rows || []).map((row: any) => ({
       id: row.id,
-      userId: row.userId,
-      avatarId: row.avatarId,
+      userId: row.userId || row.user_id,
+      avatarId: row.avatarId || row.avatar_id,
       title: row.title,
       description: row.description || '',
-      contentType: row.contentType,
+      contentType: row.contentType || row.content_type,
       platforms: this.safeParseJson<any[]>(row.platforms, []),
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
       budget: Number(row.budget || 0),
       status: row.status,
-      avatarCount: row.expectedQuantity || row.avatarCount || 1,
-      quantityPerAvatar: row.quantityPerAvatar || 1,
-      isPaid: row.isPaid ?? 0,
-      createdAt: row.createdAt || new Date().toISOString(),
-      updatedAt: row.updatedAt || null
+      avatarCount: row.expectedQuantity || row.expected_quantity || row.avatarCount || row.avatar_count || 1,
+      quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
+      isPaid: row.isPaid ?? row.is_paid ?? 0,
+      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      updatedAt: row.updatedAt || row.updated_at || null,
+      publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
+      publisherAvatar: row.publisherAvatar || row.publisher_avatar || ''
     }))
 
     return {
