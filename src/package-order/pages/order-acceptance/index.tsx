@@ -12,13 +12,31 @@ import '../order-detail/index.css'
 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
 const AVATAR_STATUS_LABELS: Record<string, string> = {
-  pending: '待确认',
+  pending: '等待接单',
   accepted: '已接单',
   generating: '生成中',
+  preview: '内容已生成',
   publishing: '发布中',
   published: '已发布',
   awaiting_acceptance: '待验收',
-  feedback_submitted: '已提交'
+  feedback_submitted: '已提交',
+  completed: '已验收',
+  rejected: '已拒绝',
+  expired: '已过期'
+}
+
+const AVATAR_STATUS_STYLES: Record<string, { color: string; bgColor: string }> = {
+  pending: { color: '#9CA3AF', bgColor: '#F3F4F6' },
+  accepted: { color: '#3B82F6', bgColor: '#DBEAFE' },
+  generating: { color: '#8B5CF6', bgColor: '#F5F3FF' },
+  preview: { color: '#F59E0B', bgColor: '#FEF3C7' },
+  publishing: { color: '#6366F1', bgColor: '#EEF2FF' },
+  published: { color: '#059669', bgColor: '#ECFDF5' },
+  awaiting_acceptance: { color: '#F59E0B', bgColor: '#FEF3C7' },
+  feedback_submitted: { color: '#F97316', bgColor: '#FFF7ED' },
+  completed: { color: '#10B981', bgColor: '#D1FAE5' },
+  rejected: { color: '#EF4444', bgColor: '#FEE2E2' },
+  expired: { color: '#9CA3AF', bgColor: '#F3F4F6' }
 }
 
 function formatNumber(num: number): string {
@@ -206,10 +224,27 @@ export default function OrderAcceptance() {
             <View className="od-header-right" />
           </View>
           <View className="od-status-section">
-            <View className="od-status-badge" style={{ backgroundColor: '#EEF2FF' }}>
-              <Text className="block od-status-badge-text" style={{ color: '#6366F1' }}>待验收</Text>
-            </View>
-            <Text className="block od-status-desc">请检查分身提交的内容并确认验收</Text>
+            {(() => {
+              const st = selectedAvatar.status
+              const style = AVATAR_STATUS_STYLES[st] || AVATAR_STATUS_STYLES.pending
+              const label = AVATAR_STATUS_LABELS[st] || '未知状态'
+              const isAwaiting = st === 'awaiting_acceptance'
+              return (
+                <>
+                  <View className="od-status-badge" style={{ backgroundColor: style.bgColor }}>
+                    <Text className="block od-status-badge-text" style={{ color: style.color }}>{label}</Text>
+                  </View>
+                  <Text className="block od-status-desc">
+                    {isAwaiting ? '请检查分身提交的内容并确认验收' :
+                     st === 'completed' ? '此分身内容已验收通过' :
+                     st === 'generating' || st === 'preview' ? '分身正在创作内容，请耐心等待' :
+                     st === 'rejected' ? '此分身已拒绝接单' :
+                     st === 'pending' ? '等待分身确认接单' :
+                     '分身状态：' + label}
+                  </Text>
+                </>
+              )
+            })()}
           </View>
         </View>
 
@@ -221,12 +256,19 @@ export default function OrderAcceptance() {
               <Image src={selectedAvatar.avatarUrl || ''} className="od-avatar-large" mode="aspectFill" />
               <View className="od-avatar-info">
                 <Text className="block od-avatar-name">{selectedAvatar.avatarName}</Text>
-                <View className="od-status-badge" style={{ backgroundColor: '#EEF2FF' }}>
-                  <Check size={12} color="#6366F1" />
-                  <Text className="block od-status-badge-text" style={{ color: '#6366F1', fontSize: '12px' }}>
-                    {AVATAR_STATUS_LABELS[selectedAvatar.status] || '待验收'}
-                  </Text>
-                </View>
+                {(() => {
+                  const st = selectedAvatar.status
+                  const style = AVATAR_STATUS_STYLES[st] || AVATAR_STATUS_STYLES.pending
+                  const label = AVATAR_STATUS_LABELS[st] || '未知'
+                  return (
+                    <View className="od-status-badge" style={{ backgroundColor: style.bgColor }}>
+                      <Check size={12} color={style.color} />
+                      <Text className="block od-status-badge-text" style={{ color: style.color, fontSize: '12px' }}>
+                        {label}
+                      </Text>
+                    </View>
+                  )
+                })()}
               </View>
             </View>
           </View>
@@ -410,17 +452,19 @@ export default function OrderAcceptance() {
           )}
         </ScrollView>
 
-        {/* 底部操作 */}
-        <View className="od-actions">
-          <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
-            <CircleAlert size={16} color="#EF4444" />
-            <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
+        {/* 底部操作 - 仅待验收状态显示验收/驳回按钮 */}
+        {selectedAvatar.status === 'awaiting_acceptance' && (
+          <View className="od-actions">
+            <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
+              <CircleAlert size={16} color="#EF4444" />
+              <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
+            </View>
+            <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
+              <CircleCheckBig size={16} color="#fff" />
+              <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+            </View>
           </View>
-          <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
-            <CircleCheckBig size={16} color="#fff" />
-            <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
-          </View>
-        </View>
+        )}
 
         {/* 驳回弹窗 */}
         {showReject && (

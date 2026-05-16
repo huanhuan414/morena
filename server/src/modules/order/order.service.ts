@@ -322,7 +322,7 @@ export class OrderService {
 
       return {
         id: row.id,
-        requestId: processing?.id || row.id,
+        requestId: processing?.id || null,
         avatarId,
         avatarName: row.nickname || '未知分身',
         nickname: row.nickname || '未知分身',

@@ -285,7 +285,7 @@ export default function OrderDetailPage() {
 
   const avatarStats = order.avatarStats || []
   const hasPublishFeedback = avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)
-  const isVerified = avatarStats.some((a: any) => a.verified === true)
+  const isVerified = avatarStats.some((a: any) => a.status === 'completed')
   console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
   console.log('[OrderDetail] hasPublishFeedback:', hasPublishFeedback, 'isVerified:', isVerified, 'order.status:', order.status)
   let effectiveStatus = order.status
@@ -306,7 +306,7 @@ export default function OrderDetailPage() {
 
   // 分身统计
   const totalAvatars = order.avatarCount || 0
-  const acceptedCount = dispatchStatus?.accepted || dispatchStatus?.confirmed || 0
+  const acceptedCount = (dispatchStatus?.accepted || 0) + (dispatchStatus?.completed || 0)
   const pendingCount = dispatchStatus?.pending || 0
 
   return (
