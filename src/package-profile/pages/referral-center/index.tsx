@@ -136,9 +136,9 @@ export default function ReferralCenter() {
           <Text className="ref-header-title">邀请好友 赚现金</Text>
           <Text className="ref-header-desc">{REFERRAL_HEADER_DESC}</Text>
         </View>
-        <View className="ref-header-badge">
+        {/* <View className="ref-header-badge">
           <Text className="ref-header-badge-text">奖励</Text>
-        </View>
+        </View> */}
       </View>
 
       {/* 邀请码卡片 */}
