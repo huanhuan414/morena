@@ -1,17 +1,14 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
-import { getSafeArea } from '@/utils/safe-area'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image } from '@tarojs/components'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import * as Network from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Link2, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp
+  ChevronRight, TrendingUp, CircleCheckBig, CircleX
 } from 'lucide-react-taro'
-import './index.css'
+import '../order-detail/index.css'
 
-// 检测平台环境
 const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
 const AVATAR_STATUS_LABELS: Record<string, string> = {
@@ -24,18 +21,10 @@ const AVATAR_STATUS_LABELS: Record<string, string> = {
   feedback_submitted: '已提交'
 }
 
-/**
- * 格式化数字，将大数字转换为更易读的形式
- * 例如：12345 -> 1.2万
- */
 function formatNumber(num: number): string {
   if (num === undefined || num === null) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + '万'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
   return num.toString()
 }
 
@@ -58,24 +47,15 @@ export default function OrderAcceptance() {
   const [showApprove, setShowApprove] = useState(false)
   const [showReject, setShowReject] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [capsulePlaceholderWidth, setCapsulePlaceholderWidth] = useState(120)
+  const statusBarHeight = getStatusBarHeight()
 
   useLoad(() => {
-    // 初始化安全区域信息
-    const safeArea = getSafeArea()
-    setCapsulePlaceholderWidth(safeArea.placeholderWidthRpx)
-
-    if (orderId) {
-      fetchAvatars()
-    }
+    if (orderId) fetchAvatars()
   })
 
   const fetchAvatars = async () => {
     try {
-      const res = await Network.request({
-        url: `/api/order/${orderId}`
-      })
-
+      const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
         const pendingAvatars = res.data.data.summary_stats.avatarStats.filter(
           (avatar: AvatarStat) => avatar.status === 'awaiting_acceptance' || avatar.status === 'feedback_submitted'
@@ -92,7 +72,6 @@ export default function OrderAcceptance() {
 
   const handleApprove = async () => {
     if (!selectedAvatar) return
-
     try {
       const requestId = selectedAvatar.requestId
       if (!requestId) {
@@ -103,7 +82,6 @@ export default function OrderAcceptance() {
         url: `/api/order-processing/accept/${requestId}`,
         method: 'PUT'
       })
-
       if (res.data?.code === 200) {
         const rewardAmount = res.data?.data?.rewardAmount
         const message = rewardAmount
@@ -125,7 +103,6 @@ export default function OrderAcceptance() {
       showToast({ title: '请输入驳回原因', icon: 'none' })
       return
     }
-
     try {
       const requestId = selectedAvatar.requestId
       if (!requestId) {
@@ -137,7 +114,6 @@ export default function OrderAcceptance() {
         method: 'POST',
         data: { feedback: { rejectReason: rejectReason.trim(), status: 'revision_requested' } }
       })
-
       if (res.data?.code === 200) {
         showToast({ title: '已驳回', icon: 'success' })
         setShowReject(false)
@@ -151,153 +127,121 @@ export default function OrderAcceptance() {
     }
   }
 
-  const openAvatarDetail = (avatar: AvatarStat) => {
-    setSelectedAvatar(avatar)
-  }
-
-  const backToList = () => {
-    setSelectedAvatar(null)
-  }
-
-  // 处理链接点击
   const handleLinkClick = (url: string) => {
-    console.log('点击链接:', url)
     if (!url) {
       showToast({ title: '链接为空', icon: 'none' })
       return
     }
     try {
-      // 检查是否是完整URL
       const isFullUrl = url.startsWith('http://') || url.startsWith('https://')
       if (!isFullUrl) {
         showToast({ title: '链接格式不正确', icon: 'none' })
         return
       }
-
-      // 检测平台
-      const env = Taro.getEnv()
-      console.log('当前环境:', env)
-
       if (isH5) {
-        // H5 环境：直接打开新标签页
         window.open(url, '_blank')
-      } else if (env === Taro.ENV_TYPE.WEAPP || env === Taro.ENV_TYPE.TT) {
-        // 小程序环境：使用 webview 页面打开
-        Taro.navigateTo({
-          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
-        }).catch((err) => {
-          console.error('跳转失败:', err)
-          showToast({ title: '打开链接失败', icon: 'none' })
-        })
       } else {
-        // 其他环境：尝试使用 webview 打开
-        Taro.navigateTo({
-          url: `/pages/webview/index?url=${encodeURIComponent(url)}`
-        }).catch((err) => {
-          console.error('跳转失败:', err)
-          showToast({ title: '打开链接失败', icon: 'none' })
-        })
+        Taro.navigateTo({ url: `/pages/webview/index?url=${encodeURIComponent(url)}` })
       }
     } catch (error) {
-      console.error('打开链接失败:', error)
       showToast({ title: '打开链接失败', icon: 'none' })
     }
   }
 
-  // 处理图片预览
   const handleImagePreview = (imageUrl: string) => {
     if (!imageUrl) return
     try {
-      previewImage({
-        urls: [imageUrl],
-        current: imageUrl
-      })
+      previewImage({ urls: [imageUrl], current: imageUrl })
     } catch (error) {
-      console.error('预览图片失败:', error)
       showToast({ title: '预览图片失败', icon: 'none' })
     }
   }
 
   if (loading) {
     return (
-      <View className="acceptance-page">
-        <View className="loading-container">
-          <View className="loading-spinner" />
-          <Text className="loading-text text-sm font-medium">加载中...</Text>
-        </View>
+      <View className="od-page od-loading">
+        <Text className="block od-loading-text">加载中...</Text>
       </View>
     )
   }
 
   if (selectedAvatar) {
     return (
-      <View className="acceptance-page">
+      <View className="od-page">
         {/* 头部 */}
-        <View className="page-header">
-          <View className="header-btn" onClick={backToList}>
-            <ArrowLeft size={22} color="#1e293b" />
+        <View className="od-header">
+          <View className="od-header-deco1" />
+          <View className="od-header-deco2" />
+          <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+            <View className="od-back-btn" onClick={() => setSelectedAvatar(null)}>
+              <ArrowLeft size={18} color="#fff" />
+            </View>
+            <View className="od-header-center">
+              <Text className="block od-header-title">验收详情</Text>
+            </View>
+            <View className="od-header-right" />
           </View>
-          <Text className="header-title text-base font-semibold">验收详情</Text>
-          <View className="header-btn" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
+          <View className="od-status-section">
+            <View className="od-status-badge" style={{ backgroundColor: '#EEF2FF' }}>
+              <Text className="block od-status-badge-text" style={{ color: '#6366F1' }}>待验收</Text>
+            </View>
+            <Text className="block od-status-desc">请检查分身提交的内容并确认验收</Text>
+          </View>
         </View>
 
         {/* 内容 */}
-        <ScrollView scrollY className="content-scroll">
-          {/* 分身信息卡片 */}
-          <View className="avatar-header-card">
-            <Image
-              src={selectedAvatar.avatarUrl || ''}
-              className="avatar-avatar-large"
-              mode="aspectFill"
-            />
-            <View className="avatar-info-large">
-              <Text className="avatar-name-large text-2xl font-bold">{selectedAvatar.avatarName}</Text>
-              <View className="avatar-status-badge">
-                <Check size={14} color="#6366f1" />
-                <Text className="avatar-status-text text-sm">
-                  {AVATAR_STATUS_LABELS[selectedAvatar.status] || '待验收'}
-                </Text>
+        <ScrollView scrollY className="od-body">
+          {/* 分身信息卡 */}
+          <View className="od-card">
+            <View className="od-avatar-header">
+              <Image src={selectedAvatar.avatarUrl || ''} className="od-avatar-large" mode="aspectFill" />
+              <View className="od-avatar-info">
+                <Text className="block od-avatar-name">{selectedAvatar.avatarName}</Text>
+                <View className="od-status-badge" style={{ backgroundColor: '#EEF2FF' }}>
+                  <Check size={12} color="#6366F1" />
+                  <Text className="block od-status-badge-text" style={{ color: '#6366F1', fontSize: '12px' }}>
+                    {AVATAR_STATUS_LABELS[selectedAvatar.status] || '待验收'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
           {/* 发布提交 */}
           {selectedAvatar.publishFeedback && (
-            <View className="content-section">
-              <Text className="section-title text-lg font-semibold">发布提交</Text>
-
-              {/* 数据统计 - 独立卡片，占满宽度 */}
+            <>
+              {/* 数据统计 */}
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
                 <View key={platform}>
                   {(feedback.views !== undefined || feedback.likes !== undefined || feedback.comments !== undefined || feedback.shares !== undefined) && (
-                    <View className="stats-item">
-                      <View className="stats-icon">
-                        <TrendingUp size={22} color="#ffffff" />
-                        <Text className="text-base font-semibold">数据统计</Text>
+                    <View className="od-card od-stats-card">
+                      <View className="od-stats-header">
+                        <TrendingUp size={16} color="#6366F1" />
+                        <Text className="block od-stats-title">数据统计</Text>
                       </View>
-                      <View className="stats-row">
+                      <View className="od-stats-row">
                         {feedback.views !== undefined && (
-                          <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(feedback.views)}</Text>
-                            <Text className="stat-label text-sm">浏览</Text>
+                          <View className="od-stat-item">
+                            <Text className="block od-stat-value">{formatNumber(feedback.views)}</Text>
+                            <Text className="block od-stat-label">浏览</Text>
                           </View>
                         )}
                         {feedback.likes !== undefined && (
-                          <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(feedback.likes)}</Text>
-                            <Text className="stat-label text-sm">点赞</Text>
+                          <View className="od-stat-item">
+                            <Text className="block od-stat-value">{formatNumber(feedback.likes)}</Text>
+                            <Text className="block od-stat-label">点赞</Text>
                           </View>
                         )}
                         {feedback.comments !== undefined && (
-                          <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(feedback.comments)}</Text>
-                            <Text className="stat-label text-sm">评论</Text>
+                          <View className="od-stat-item">
+                            <Text className="block od-stat-value">{formatNumber(feedback.comments)}</Text>
+                            <Text className="block od-stat-label">评论</Text>
                           </View>
                         )}
                         {feedback.shares !== undefined && (
-                          <View className="stat-box">
-                            <Text className="stat-value font-bold">{formatNumber(feedback.shares)}</Text>
-                            <Text className="stat-label text-sm">分享</Text>
+                          <View className="od-stat-item">
+                            <Text className="block od-stat-value">{formatNumber(feedback.shares)}</Text>
+                            <Text className="block od-stat-label">分享</Text>
                           </View>
                         )}
                       </View>
@@ -306,46 +250,57 @@ export default function OrderAcceptance() {
                 </View>
               ))}
 
-              {/* 平台卡片 - 只包含链接和截图 */}
+              {/* 链接和截图 */}
               {Object.entries(selectedAvatar.publishFeedback).map(([platform, feedback]: [string, any]) => (
-                <View key={platform} className="platform-card">
-                  {/* 只在有内容时才显示头部 */}
-                  {(feedback.link || feedback.image) && (
-                    <View className="platform-header">
-                      <View className="platform-icon">
-                        <Link2 size={20} color="#6366f1" />
-                      </View>
-                      <Text className="platform-name text-base font-semibold">
-                        {platform === 'wechat_mp' ? '微信公众号' : platform}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* 链接 */}
+                <View key={platform} className="od-card">
+                  <Text className="block od-section-title">
+                    {platform === 'xiaohongshu' ? '小红书' : platform === 'wechat_mp' ? '微信公众号' : platform}
+                  </Text>
+                  
                   {feedback.link && (
-                    <View className="link-item" onClick={() => handleLinkClick(feedback.link)}>
-                      <View className="link-icon">
-                        <ExternalLink size={16} color="#6366f1" />
+                    <View className="od-link-item" onClick={() => handleLinkClick(feedback.link)}>
+                      <View className="od-link-icon">
+                        <ExternalLink size={14} color="#6366F1" />
                       </View>
-                      <View className="link-content">
-                        <Text className="link-label text-sm font-semibold">发布链接</Text>
-                        <Text className="link-url text-base">{feedback.link}</Text>
+                      <View className="od-link-content">
+                        <Text className="block od-link-label">发布链接</Text>
+                        <Text className="block od-link-url">{feedback.link}</Text>
+                      </View>
+                      <ChevronRight size={16} color="#9CA3AF" />
+                    </View>
+                  )}
+
+                  {feedback.images && Array.isArray(feedback.images) && feedback.images.length > 0 && (
+                    <View className="od-images-section">
+                      <View className="od-images-header">
+                        <ImageIcon size={14} color="#6366F1" />
+                        <Text className="block od-images-label">发布截图</Text>
+                      </View>
+                      <View className="od-images-grid">
+                        {feedback.images.map((img: string, idx: number) => (
+                          <Image
+                            key={idx}
+                            src={img}
+                            className="od-preview-image"
+                            mode="aspectFill"
+                            onClick={() => handleImagePreview(img)}
+                          />
+                        ))}
                       </View>
                     </View>
                   )}
 
-                  {/* 截图 */}
-                  {feedback.image && (
-                    <View className="image-item">
-                      <View className="image-icon">
-                        <ImageIcon size={16} color="#6366f1" />
+                  {feedback.image && !feedback.images && (
+                    <View className="od-images-section">
+                      <View className="od-images-header">
+                        <ImageIcon size={14} color="#6366F1" />
+                        <Text className="block od-images-label">发布截图</Text>
                       </View>
-                      <View className="image-content">
-                        <Text className="image-label text-sm font-semibold">发布截图</Text>
+                      <View className="od-images-grid">
                         <Image
                           src={feedback.image}
-                          className="screenshot-image"
-                          mode="widthFix"
+                          className="od-preview-image"
+                          mode="aspectFill"
                           onClick={() => handleImagePreview(feedback.image)}
                         />
                       </View>
@@ -353,59 +308,41 @@ export default function OrderAcceptance() {
                   )}
                 </View>
               ))}
-            </View>
+            </>
           )}
         </ScrollView>
 
         {/* 底部操作 */}
-        <View className="bottom-actions">
-          <Button
-            variant="outline"
-            className="reject-btn-modern"
-            onClick={() => setShowReject(true)}
-          >
-            <CircleAlert size={18} color="#ef4444" />
-            <Text>驳回</Text>
-          </Button>
-          <Button
-            className="approve-btn-modern"
-            onClick={() => setShowApprove(true)}
-          >
-            <Check size={18} color="#ffffff" />
-            <Text>验收</Text>
-          </Button>
+        <View className="od-actions">
+          <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
+            <CircleAlert size={16} color="#EF4444" />
+            <Text className="block od-action-text" style={{ color: '#EF4444' }}>驳回</Text>
+          </View>
+          <View className="od-action-btn od-action-primary" onClick={() => setShowApprove(true)}>
+            <CircleCheckBig size={16} color="#fff" />
+            <Text className="block od-action-text" style={{ color: '#fff' }}>验收通过</Text>
+          </View>
         </View>
 
         {/* 驳回弹窗 */}
         {showReject && (
-          <View className="modal-backdrop" onClick={() => setShowReject(false)}>
-            <View className="modal-container" onClick={(e) => e.stopPropagation()}>
-              <View className="modal-icon-wrapper">
-                <CircleAlert size={36} color="#ef4444" />
+          <View className="od-modal-overlay" onClick={() => setShowReject(false)}>
+            <View className="od-modal" onClick={(e) => e.stopPropagation()}>
+              <View className="od-modal-icon" style={{ backgroundColor: '#FEE2E2' }}>
+                <CircleAlert size={24} color="#EF4444" />
               </View>
-              <Text className="modal-title-modern text-xl font-bold">驳回修改</Text>
-              <Text className="modal-subtitle text-sm font-normal">请输入驳回原因</Text>
-              <Textarea
-                className="modal-textarea-modern"
-                placeholder="请详细描述问题，方便分身修改..."
-                value={rejectReason}
-                onInput={(e) => setRejectReason(e.detail.value)}
-                maxlength={500}
-              />
-              <View className="modal-footer">
-                <Button
-                  variant="outline"
-                  className="modal-btn-cancel"
-                  onClick={() => setShowReject(false)}
-                >
-                  <Text>取消</Text>
-                </Button>
-                <Button
-                  className="modal-btn-confirm"
-                  onClick={handleReject}
-                >
-                  <Text>确认驳回</Text>
-                </Button>
+              <Text className="block od-modal-title">驳回修改</Text>
+              <Text className="block od-modal-desc">请输入驳回原因，方便分身修改</Text>
+              <View className="od-modal-input-wrap">
+                <View className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
+              </View>
+              <View className="od-modal-actions">
+                <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowReject(false)}>
+                  <Text className="block">取消</Text>
+                </View>
+                <View className="od-modal-btn od-modal-btn-danger" onClick={handleReject}>
+                  <Text className="block" style={{ color: '#fff' }}>确认驳回</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -413,27 +350,20 @@ export default function OrderAcceptance() {
 
         {/* 验收通过弹窗 */}
         {showApprove && (
-          <View className="modal-backdrop" onClick={() => setShowApprove(false)}>
-            <View className="modal-container" onClick={(e) => e.stopPropagation()}>
-              <View className="modal-icon-wrapper modal-icon-success">
-                <Check size={36} color="#22c55e" />
+          <View className="od-modal-overlay" onClick={() => setShowApprove(false)}>
+            <View className="od-modal" onClick={(e) => e.stopPropagation()}>
+              <View className="od-modal-icon" style={{ backgroundColor: '#D1FAE5' }}>
+                <Check size={24} color="#10B981" />
               </View>
-              <Text className="modal-title-modern text-xl font-bold">确认验收通过？</Text>
-              <Text className="modal-subtitle text-sm font-normal">验收通过后将无法撤回，请仔细检查</Text>
-              <View className="modal-footer">
-                <Button
-                  variant="outline"
-                  className="modal-btn-cancel"
-                  onClick={() => setShowApprove(false)}
-                >
-                  <Text>取消</Text>
-                </Button>
-                <Button
-                  className="modal-btn-confirm-success"
-                  onClick={handleApprove}
-                >
-                  <Text>确认通过</Text>
-                </Button>
+              <Text className="block od-modal-title">确认验收通过？</Text>
+              <Text className="block od-modal-desc">验收通过后将无法撤回，请仔细检查</Text>
+              <View className="od-modal-actions">
+                <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowApprove(false)}>
+                  <Text className="block">取消</Text>
+                </View>
+                <View className="od-modal-btn od-modal-btn-primary" onClick={handleApprove}>
+                  <Text className="block" style={{ color: '#fff' }}>确认通过</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -443,70 +373,59 @@ export default function OrderAcceptance() {
   }
 
   return (
-    <View className="acceptance-page">
+    <View className="od-page">
       {/* 头部 */}
-      <View className="page-header">
-        <View className="header-btn" onClick={() => navigateBack()}>
-          <ArrowLeft size={22} color="#1e293b" />
+      <View className="od-header">
+        <View className="od-header-deco1" />
+        <View className="od-header-deco2" />
+        <View className="od-header-bar" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+          <View className="od-back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={18} color="#fff" />
+          </View>
+          <View className="od-header-center">
+            <Text className="block od-header-title">验收中</Text>
+          </View>
+          <View className="od-header-right" />
         </View>
-        <Text className="header-title text-base font-semibold">验收中</Text>
-        <View className="header-btn" style={{ width: `${capsulePlaceholderWidth}rpx` }} />
-      </View>
-
-      {/* 进度指示 */}
-      <View className="progress-section">
-        <View className="progress-bar">
-          <View
-            className="progress-fill"
-            style={{ width: `${Math.min((avatars.length / (avatars.length + 0.1)) * 100, 100)}%` }}
-          />
+        <View className="od-status-section">
+          <View className="od-status-badge" style={{ backgroundColor: '#FEF3C7' }}>
+            <Text className="block od-status-badge-text" style={{ color: '#F59E0B' }}>待验收</Text>
+          </View>
+          <Text className="block od-status-desc">共 {avatars.length} 个分身待验收</Text>
         </View>
-        <Text className="progress-text text-sm font-medium">
-          待验收 {avatars.length} 个分身
-        </Text>
       </View>
 
       {/* 内容 */}
-      <ScrollView scrollY className="content-scroll-list">
+      <ScrollView scrollY className="od-body">
         {avatars.length > 0 ? (
-          <View className="avatar-list-modern">
+          <View className="od-card">
+            <Text className="block od-section-title">待验收分身</Text>
             {avatars.map((avatar, index) => (
-              <View
-                key={avatar.avatarId}
-                className="avatar-card-modern"
-                onClick={() => openAvatarDetail(avatar)}
-              >
-                <View className="avatar-card-left">
-                  <View className="avatar-number text-sm font-bold">{index + 1}</View>
-                  <Image
-                    src={avatar.avatarUrl || ''}
-                    className="avatar-card-avatar"
-                    mode="aspectFill"
-                  />
-                  <View className="avatar-card-info">
-                    <Text className="avatar-card-name text-base font-semibold">{avatar.avatarName}</Text>
-                    <Text className="avatar-card-hint text-sm font-medium">
+              <View key={avatar.avatarId} className="od-avatar-item" onClick={() => setSelectedAvatar(avatar)}>
+                <View className="od-avatar-left">
+                  <View className="od-avatar-num">{index + 1}</View>
+                  <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                  <View className="od-avatar-text">
+                    <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                    <Text className="block od-avatar-hint">
                       {avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
                     </Text>
                   </View>
                 </View>
-                <ChevronRight size={20} color="#cbd5e1" />
+                <ChevronRight size={18} color="#9CA3AF" />
               </View>
             ))}
           </View>
         ) : (
-          <View className="empty-state-modern">
-            <View className="empty-icon">
-              <Check size={64} color="#22c55e" />
+          <View className="od-card od-empty-card">
+            <View className="od-empty-icon">
+              <CircleCheckBig size={48} color="#10B981" />
             </View>
-            <Text className="empty-title text-xl font-bold">全部完成</Text>
-            <Text className="empty-desc text-sm font-medium">所有分身已验收完成</Text>
-            <Button
-              className="empty-btn"
-              onClick={() => navigateBack()}
-            >
-              <Text>返回订单详情</Text>
-            </Button>
+            <Text className="block od-empty-title">全部完成</Text>
+            <Text className="block od-empty-desc">所有分身已验收完成</Text>
+            <View className="od-action-btn od-action-primary" onClick={() => navigateBack()}>
+              <Text className="block od-action-text" style={{ color: '#fff' }}>返回订单详情</Text>
+            </View>
           </View>
         )}
       </ScrollView>

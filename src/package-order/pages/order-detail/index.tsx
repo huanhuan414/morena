@@ -41,8 +41,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   content_generated:  { label: '已生成',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 2, desc: '内容已生成，等待发布' },
   submitted:          { label: '待发布',   color: '#8B5CF6', bgColor: '#F5F3FF', phase: 3, desc: '内容已提交，即将发布' },
   published:          { label: '已发布',   color: '#059669', bgColor: '#ECFDF5', phase: 3, desc: '内容已成功发布' },
+  pending_verify:     { label: '待验收',   color: '#F59E0B', bgColor: '#FEF3C7', phase: 4, desc: '内容已发布，请验收确认' },
   revision_requested: { label: '待修改',   color: '#F97316', bgColor: '#FFF7ED', phase: 2, desc: '已发起修改，请等待分身重新提交' },
-  completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', phase: 4, desc: '订单已全部完成' },
+  completed:          { label: '已完成',   color: '#059669', bgColor: '#ECFDF5', phase: 5, desc: '订单已全部完成' },
   publish_failed:     { label: '发布失败', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布遇到问题，请查看详情' },
   publish_timeout:    { label: '发布超时', color: '#EF4444', bgColor: '#FEF2F2', phase: -1, desc: '发布超时，请查看详情' },
   cancelled:          { label: '已取消',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已取消' },
@@ -51,11 +52,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   expired:            { label: '已过期',   color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '订单已过期' },
 }
 
-// 4阶段进度定义
+// 5阶段进度定义
 const PHASES = [
   { key: 'match', label: '匹配', icon: Users },
   { key: 'create', label: '制作', icon: FileText },
   { key: 'publish', label: '发布', icon: Send },
+  { key: 'verify', label: '验收', icon: CircleCheckBig },
   { key: 'done', label: '完成', icon: CircleCheckBig },
 ]
 
@@ -66,6 +68,7 @@ function getPhaseIndex(status: string): number {
   if (phase === 2) return 1
   if (phase === 3) return 2
   if (phase === 4) return 3
+  if (phase === 5) return 4
   return -1
 }
 
@@ -259,6 +262,10 @@ export default function OrderDetailPage() {
     } catch { Taro.showToast({ title: '删除失败', icon: 'none' }) }
   }, [orderId])
 
+  const handleVerify = useCallback(() => {
+    Taro.navigateTo({ url: `/package-order/pages/order-acceptance/index?orderId=${orderId}` })
+  }, [orderId])
+
   if (loading) {
     return (
       <View className="od-page od-loading">
@@ -276,11 +283,24 @@ export default function OrderDetailPage() {
     )
   }
 
-  const statusCfg = STATUS_CONFIG[order.status] || { label: order.status, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
-  const currentPhase = getPhaseIndex(order.status)
+  const avatarStats = order.avatarStats || []
+  const hasPublishFeedback = avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)
+  const isVerified = avatarStats.some((a: any) => a.verified === true)
+  console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
+  console.log('[OrderDetail] hasPublishFeedback:', hasPublishFeedback, 'isVerified:', isVerified, 'order.status:', order.status)
+  let effectiveStatus = order.status
+  if (hasPublishFeedback && !isVerified && !['completed', 'cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)) {
+    effectiveStatus = 'pending_verify'
+  } else if (order.status === 'awaiting_acceptance' && hasPublishFeedback) {
+    effectiveStatus = 'submitted'
+  }
+  console.log('[OrderDetail] effectiveStatus:', effectiveStatus)
+  const statusCfg = STATUS_CONFIG[effectiveStatus] || { label: effectiveStatus, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
+  const currentPhase = getPhaseIndex(effectiveStatus)
   const isPayable = order.status === 'pending_payment'
   const isCancellable = ['pending_payment', 'pending'].includes(order.status)
   const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status)
+  const isVerifiable = hasPublishFeedback && !isVerified && !['completed', 'cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
   const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
 
@@ -450,7 +470,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* 操作按钮 */}
-        {(isPayable || isCancellable || isDeletable) && (
+        {(isPayable || isCancellable || isDeletable || isVerifiable) && (
           <View className="od-actions">
             {isPayable && (
               <View className="od-action-btn od-action-primary" onClick={handlePay}>
@@ -458,6 +478,12 @@ export default function OrderDetailPage() {
                 <Text className="block od-action-text" style={{ color: '#fff' }}>
                   {paying ? '支付中...' : `立即支付 ¥${order.budget || order.totalPrice || 0}`}
                 </Text>
+              </View>
+            )}
+            {isVerifiable && (
+              <View className="od-action-btn od-action-primary" onClick={handleVerify}>
+                <CircleCheckBig size={16} color="#fff" />
+                <Text className="block od-action-text" style={{ color: '#fff' }}>去验收</Text>
               </View>
             )}
             {isCancellable && !isPayable && (

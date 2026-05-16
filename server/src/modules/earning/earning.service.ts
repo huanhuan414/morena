@@ -95,7 +95,7 @@ export class EarningService {
   async createEarning(userId: string, earningData: {
     type: string
     amount: number
-    source: string
+    source?: string
     description?: string
     avatar_id?: string
     order_id?: string
@@ -109,12 +109,10 @@ export class EarningService {
       type: earningData.type,
       amount: earningData.amount,
       status: 'pending',
-      source: earningData.source,
       description: earningData.description || '',
       avatar_id: earningData.avatar_id || null,
       order_id: earningData.order_id || null,
-      created_at: new Date(),
-      updated_at: new Date()
+      created_at: new Date()
     })
     
     return await db.queryOne('users', { id })
@@ -139,12 +137,10 @@ export class EarningService {
         type: 'order_reward',
         amount: participant.amount,
         status: 'pending',
-        source: `order-${orderId}`,
         description: `订单收益`,
         avatar_id: participant.avatar_id,
         order_id: orderId,
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date()
       })
       results.push({ id, ...participant })
     }
@@ -162,8 +158,7 @@ export class EarningService {
     
     for (const earning of earnings) {
       await db.updateWhere('earnings', { id: earning.id }, {
-        status: 'completed',
-        updated_at: new Date()
+        status: 'completed'
       })
       
       await db.query(

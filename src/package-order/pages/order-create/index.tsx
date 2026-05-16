@@ -20,9 +20,14 @@ import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const CONTENT_TYPES = [
-  { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作', output: '篇原创文案' },
-  { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现', output: '篇图文笔记' },
-  { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划', output: '条短视频脚本' },
+  // 测试模式价格
+  { id: 'text', label: '纯文案', icon: '📝', price: 0.1, desc: '文字内容创作', output: '篇原创文案' },
+  { id: 'image', label: '图文笔记', icon: '🖼️', price: 0.1, desc: '图文搭配呈现', output: '篇图文笔记' },
+  { id: 'video', label: '短视频', icon: '🎬', price: 0.1, desc: '视频内容策划', output: '条短视频脚本' },
+  // 正式模式价格
+  // { id: 'text', label: '纯文案', icon: '📝', price: 5, desc: '文字内容创作', output: '篇原创文案' },
+  // { id: 'image', label: '图文笔记', icon: '🖼️', price: 15, desc: '图文搭配呈现', output: '篇图文笔记' },
+  // { id: 'video', label: '短视频', icon: '🎬', price: 20, desc: '视频内容策划', output: '条短视频脚本' },
 ]
 
 const PLATFORM_OPTIONS = PLATFORM_UI_ORDER
@@ -59,7 +64,10 @@ export default function OrderCreate() {
   const selectedType = CONTENT_TYPES.find(t => t.id === form.contentType)
   const contentPricePerUnit = selectedType?.price || 10
   const totalPrice = {
-    base: 10 * form.avatarCount,
+    // 测试模式价格
+    base: 0.1 * form.avatarCount,
+    // 正式模式价格
+    // base: 10 * form.avatarCount,
     content: contentPricePerUnit * form.quantityPerAvatar * form.avatarCount,
     get total() { return this.base + this.content }
   }

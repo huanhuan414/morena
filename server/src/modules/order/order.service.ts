@@ -87,7 +87,7 @@ export class OrderService {
 
       const hasPending = allDispatchStatuses.includes('pending')
       const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
-      const allDispatchCompleted = allDispatchStatuses.every(s => ['completed', 'settled', 'done'].includes(s))
+      const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
 
       const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
       const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
@@ -98,10 +98,11 @@ export class OrderService {
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
       const currentStatus = currentOrder.status
+      const requiredAvatarCount = currentOrder.expectedQuantity || currentOrder.avatarCount || 1
 
       let newStatus: string | null = null
 
-      if (allContentCompleted && allDispatchCompleted) {
+      if (completedDispatchCount >= requiredAvatarCount) {
         newStatus = 'completed'
       } else if (hasRevisionRequested) {
         newStatus = 'revision_requested'
@@ -121,7 +122,6 @@ export class OrderService {
       }
 
       if (newStatus && newStatus !== currentStatus) {
-        // 写入DB → snake_case
         const payload: Record<string, any> = {
           status: newStatus,
           updated_at: new Date()
@@ -132,7 +132,7 @@ export class OrderService {
         const setClause = Object.keys(payload).map((key) => `${key} = ?`).join(', ')
         const params = [...Object.values(payload), orderId]
         await db.query(`UPDATE orders SET ${setClause} WHERE id = ?`, params)
-        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}`)
+        console.log(`[OrderService] 订单状态同步: ${currentStatus} → ${newStatus}, orderId=${orderId}, 已验收${completedDispatchCount}/${requiredAvatarCount}`)
 
         if (newStatus === 'completed') {
           await this.triggerSettlement(orderId)
@@ -292,13 +292,13 @@ export class OrderService {
       [orderId]
     )
 
-    const processingRows = await db.query(
-      `SELECT id, order_id, avatar_id, status, publish_feedback, publish_status, created_at, updated_at
-       FROM content_generation_requests
-       WHERE order_id = ?
-       ORDER BY updated_at DESC, created_at DESC`,
-      [orderId]
-    ).catch(() => [])
+    let processingRows: any[] = []
+    try {
+      const sql = `SELECT id, order_id, avatar_id, status, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
+      processingRows = await db.query(sql, [orderId])
+    } catch (err) {
+      console.log('[OrderService] processingRows error:', err)
+    }
 
     const latestProcessingMap = new Map<string, any>()
     for (const row of processingRows || []) {
