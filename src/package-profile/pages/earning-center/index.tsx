@@ -126,14 +126,20 @@ export default function EarningCenterPage() {
   return (
     <View className="earning-page">
       {/* 顶部导航 */}
-      <View className="earning-header" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="header-left" onClick={() => navigateBack()}>
-          <ArrowLeft size={22} color="#fff" />
+      <View className="earning-header" style={{ paddingTop: `${statusBarHeight + 12}px` }}>
+        <View className="earning-header-bg" />
+        {/* 装饰圆 */}
+        <View className="earning-deco-circle earning-deco-1" />
+        <View className="earning-deco-circle earning-deco-2" />
+        <View className="earning-header-content">
+          <View className="earning-back-btn" onClick={() => navigateBack()}>
+            <ArrowLeft size={20} color="#fff" />
+          </View>
+          <View className="earning-header-center">
+           <Text className="header-title">收益中心</Text>
+          </View>
+          <View className="earning-header-right" />
         </View>
-        <View className="header-title-wrap">
-          <Text className="header-title">收益中心</Text>
-        </View>
-        <View className="header-right" />
       </View>
 
       {/* 收益概览卡片 */}
