@@ -36,6 +36,10 @@ interface AvatarStat {
   status: string
   publishFeedback: any
   orderId: string
+  dispatchStatus?: string
+  contentStatus?: string
+  rejectReason?: string
+  contentType?: string
 }
 
 export default function OrderAcceptance() {
@@ -58,10 +62,8 @@ export default function OrderAcceptance() {
     try {
       const res = await Network.request({ url: `/api/order/${orderId}` })
       if (res.data?.code === 200 && res.data.data?.summary_stats?.avatarStats) {
-        const pendingAvatars = res.data.data.summary_stats.avatarStats.filter(
-          (avatar: AvatarStat) => avatar.status === 'awaiting_acceptance' || avatar.status === 'feedback_submitted'
-        )
-        setAvatars(pendingAvatars.map((a: AvatarStat) => ({ ...a, orderId })))
+        const allAvatars = res.data.data.summary_stats.avatarStats.map((a: AvatarStat) => ({ ...a, orderId }))
+        setAvatars(allAvatars)
       }
     } catch (error) {
       console.error('获取分身列表失败:', error)
@@ -487,43 +489,160 @@ export default function OrderAcceptance() {
           <View className="od-status-badge" style={{ backgroundColor: '#FEF3C7' }}>
             <Text className="block od-status-badge-text" style={{ color: '#F59E0B' }}>待验收</Text>
           </View>
-          <Text className="block od-status-desc">共 {avatars.length} 个分身待验收</Text>
+          <Text className="block od-status-desc">
+            {(() => {
+              const awaiting = avatars.filter(a => a.status === 'awaiting_acceptance' || a.status === 'feedback_submitted').length
+              const generating = avatars.filter(a => a.status === 'generating' || a.status === 'preview').length
+              const completed = avatars.filter(a => a.status === 'completed').length
+              return `${awaiting}个待验收 · ${generating}个制作中 · ${completed}个已验收`
+            })()}
+          </Text>
         </View>
       </View>
 
       {/* 内容 */}
       <ScrollView scrollY className="od-body">
-        {avatars.length > 0 ? (
-          <View className="od-card">
-            <Text className="block od-section-title">待验收分身</Text>
-            {avatars.map((avatar, index) => (
-              <View key={avatar.avatarId} className="od-avatar-item" onClick={() => handleSelectAvatar(avatar)}>
-                <View className="od-avatar-left">
-                  <View className="od-avatar-num">{index + 1}</View>
-                  <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
-                  <View className="od-avatar-text">
-                    <Text className="block od-avatar-name">{avatar.avatarName}</Text>
-                    <Text className="block od-avatar-hint">
-                      {avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
-                    </Text>
+        {/* 待验收分身 */}
+        {(() => {
+          const awaitingAvatars = avatars.filter(a => a.status === 'awaiting_acceptance' || a.status === 'feedback_submitted')
+          const generatingAvatars = avatars.filter(a => a.status === 'generating' || a.status === 'preview')
+          const completedAvatars = avatars.filter(a => a.status === 'completed')
+          const pendingAvatars = avatars.filter(a => a.status === 'pending')
+          const rejectedAvatars = avatars.filter(a => a.status === 'rejected')
+
+          return (
+            <>
+              {/* 待验收 */}
+              {awaitingAvatars.length > 0 && (
+                <View className="od-card">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B', marginRight: 8 }} />
+                    <Text className="block od-section-title" style={{ marginBottom: 0 }}>待验收 ({awaitingAvatars.length})</Text>
                   </View>
+                  {awaitingAvatars.map((avatar, index) => (
+                    <View key={avatar.avatarId} className="od-avatar-item" onClick={() => handleSelectAvatar(avatar)}>
+                      <View className="od-avatar-left">
+                        <View className="od-avatar-num" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>{index + 1}</View>
+                        <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                        <View className="od-avatar-text">
+                          <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                          <Text className="block od-avatar-hint">
+                            {avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
+                          </Text>
+                        </View>
+                      </View>
+                      <ChevronRight size={18} color="#9CA3AF" />
+                    </View>
+                  ))}
                 </View>
-                <ChevronRight size={18} color="#9CA3AF" />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View className="od-card od-empty-card">
-            <View className="od-empty-icon">
-              <CircleCheckBig size={48} color="#10B981" />
-            </View>
-            <Text className="block od-empty-title">全部完成</Text>
-            <Text className="block od-empty-desc">所有分身已验收完成</Text>
-            <View className="od-action-btn od-action-primary" onClick={() => navigateBack()}>
-              <Text className="block od-action-text" style={{ color: '#fff' }}>返回订单详情</Text>
-            </View>
-          </View>
-        )}
+              )}
+
+              {/* 制作中 */}
+              {generatingAvatars.length > 0 && (
+                <View className="od-card">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6', marginRight: 8 }} />
+                    <Text className="block od-section-title" style={{ marginBottom: 0 }}>制作中 ({generatingAvatars.length})</Text>
+                  </View>
+                  {generatingAvatars.map(avatar => (
+                    <View key={avatar.avatarId} className="od-avatar-item" style={{ opacity: 0.7 }}>
+                      <View className="od-avatar-left">
+                        <View className="od-avatar-num" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}>⏳</View>
+                        <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                        <View className="od-avatar-text">
+                          <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                          <Text className="block od-avatar-hint" style={{ color: '#3B82F6' }}>
+                            {avatar.status === 'generating' ? '内容生成中...' : '内容已完成，待发布'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 已完成 */}
+              {completedAvatars.length > 0 && (
+                <View className="od-card">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 8 }} />
+                    <Text className="block od-section-title" style={{ marginBottom: 0 }}>已验收 ({completedAvatars.length})</Text>
+                  </View>
+                  {completedAvatars.map(avatar => (
+                    <View key={avatar.avatarId} className="od-avatar-item" onClick={() => handleSelectAvatar(avatar)}>
+                      <View className="od-avatar-left">
+                        <View className="od-avatar-num" style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}>✓</View>
+                        <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                        <View className="od-avatar-text">
+                          <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                          <Text className="block od-avatar-hint" style={{ color: '#10B981' }}>已验收通过</Text>
+                        </View>
+                      </View>
+                      <ChevronRight size={18} color="#9CA3AF" />
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 未接单 */}
+              {pendingAvatars.length > 0 && (
+                <View className="od-card">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#9CA3AF', marginRight: 8 }} />
+                    <Text className="block od-section-title" style={{ marginBottom: 0 }}>未接单 ({pendingAvatars.length})</Text>
+                  </View>
+                  {pendingAvatars.map(avatar => (
+                    <View key={avatar.avatarId} className="od-avatar-item" style={{ opacity: 0.5 }}>
+                      <View className="od-avatar-left">
+                        <View className="od-avatar-num" style={{ backgroundColor: '#F3F4F6', color: '#6B7280' }}>·</View>
+                        <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                        <View className="od-avatar-text">
+                          <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                          <Text className="block od-avatar-hint" style={{ color: '#9CA3AF' }}>等待接单</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 已拒绝 */}
+              {rejectedAvatars.length > 0 && (
+                <View className="od-card">
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 8 }} />
+                    <Text className="block od-section-title" style={{ marginBottom: 0 }}>已拒绝 ({rejectedAvatars.length})</Text>
+                  </View>
+                  {rejectedAvatars.map(avatar => (
+                    <View key={avatar.avatarId} className="od-avatar-item" style={{ opacity: 0.5 }}>
+                      <View className="od-avatar-left">
+                        <View className="od-avatar-num" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>✕</View>
+                        <Image src={avatar.avatarUrl || ''} className="od-avatar-thumb" mode="aspectFill" />
+                        <View className="od-avatar-text">
+                          <Text className="block od-avatar-name">{avatar.avatarName}</Text>
+                          <Text className="block od-avatar-hint" style={{ color: '#EF4444' }}>
+                            {avatar.rejectReason || '已拒绝接单'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 无分身 */}
+              {avatars.length === 0 && (
+                <View className="od-card od-empty-card">
+                  <View className="od-empty-icon">
+                    <CircleCheckBig size={48} color="#10B981" />
+                  </View>
+                  <Text className="block od-empty-title">暂无分身</Text>
+                  <Text className="block od-empty-desc">还没有分身被分配到这个订单</Text>
+                </View>
+              )}
+            </>
+          )
+        })()}
       </ScrollView>
     </View>
   )

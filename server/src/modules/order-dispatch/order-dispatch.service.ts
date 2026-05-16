@@ -434,6 +434,7 @@ async getExecutionProgress(orderId: string) {
       pending: normalizedStatuses.filter((status) => status === 'pending').length,
       accepted: acceptedCount,
       confirmed: acceptedCount,
+      completed: normalizedStatuses.filter((status) => status === 'completed').length,
       rejected: normalizedStatuses.filter((status) => status === 'rejected').length
     }
   }

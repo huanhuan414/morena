@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Network } from '@/network'
 import {
@@ -417,7 +417,62 @@ export default function OrderDetailPage() {
           </View>
         </View>
 
-        {/* 分身状态卡 */}
+        {/* 分身列表卡 */}
+        {order.avatarStats && order.avatarStats.length > 0 && (
+          <View className="od-card">
+            <Text className="block od-section-title">分身详情</Text>
+            {order.avatarStats.map((avatar: any, idx: number) => {
+              const avatarStatus = avatar.status || 'pending'
+              const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
+                pending: { label: '待接单', color: '#9CA3AF', icon: '⏳' },
+                accepted: { label: '已接单', color: '#3B82F6', icon: '✅' },
+                generating: { label: '内容生成中', color: '#8B5CF6', icon: '🎨' },
+                preview: { label: '内容已生成', color: '#F59E0B', icon: '📝' },
+                publishing: { label: '发布中', color: '#6366F1', icon: '📤' },
+                awaiting_acceptance: { label: '待验收', color: '#EF4444', icon: '🔍' },
+                feedback_submitted: { label: '已提交反馈', color: '#F97316', icon: '📋' },
+                completed: { label: '已验收', color: '#10B981', icon: '✅' },
+                rejected: { label: '已拒绝', color: '#EF4444', icon: '❌' },
+                expired: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
+              }
+              const cfg = statusConfig[avatarStatus] || statusConfig.pending
+              return (
+                <View key={avatar.avatarId || idx} className="od-avatar-item">
+                  <View className="od-avatar-left">
+                    {avatar.avatarUrl ? (
+                      <Image src={avatar.avatarUrl} className="od-avatar-img" mode="aspectFill" />
+                    ) : (
+                      <View className="od-avatar-placeholder">
+                        <Text className="block od-avatar-placeholder-text">{(avatar.avatarName || '?')[0]}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View className="od-avatar-center">
+                    <Text className="block od-avatar-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
+                    {avatar.rejectReason && (
+                      <Text className="block od-avatar-reason">拒绝原因: {avatar.rejectReason}</Text>
+                    )}
+                    {avatar.contentType && avatarStatus !== 'pending' && avatarStatus !== 'rejected' && avatarStatus !== 'expired' && (
+                      <Text className="block od-avatar-content-type">
+                        {avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType}
+                      </Text>
+                    )}
+                    {avatar.contentUpdatedAt && (
+                      <Text className="block od-avatar-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
+                    )}
+                  </View>
+                  <View className="od-avatar-right">
+                    <View className="od-avatar-badge" style={{ backgroundColor: `${cfg.color}15`, borderColor: cfg.color }}>
+                      <Text className="block od-avatar-badge-text" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</Text>
+                    </View>
+                  </View>
+                </View>
+              )
+            })}
+          </View>
+        )}
+
+        {/* 分身状态卡（统计概览） */}
         {totalAvatars > 0 && (acceptedCount > 0 || pendingCount > 0) && (
           <View className="od-card">
             <Text className="block od-section-title">分身进度</Text>

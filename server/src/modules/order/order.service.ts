@@ -288,7 +288,7 @@ export class OrderService {
     
     // SQL别名 avatar_id → 返回值为 avatarId
     const avatarRows = await db.query(
-      `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.created_at,
+      `SELECT odr.id, odr.avatar_id, odr.status, odr.platform, odr.reject_reason, odr.created_at,
               a.name as nickname, a.avatar_url
        FROM order_dispatch_requests odr
        LEFT JOIN avatars a ON odr.avatar_id = a.id
@@ -299,7 +299,7 @@ export class OrderService {
 
     let processingRows: any[] = []
     try {
-      const sql = `SELECT id, order_id, avatar_id, status, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
+      const sql = `SELECT id, order_id, avatar_id, status, content_type, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
       processingRows = await db.query(sql, [orderId])
     } catch (err) {
       console.log('[OrderService] processingRows error:', err)
@@ -329,6 +329,11 @@ export class OrderService {
         avatarUrl: row.avatarUrl,
         platform: row.platform || 'unknown',
         status: normalizedStatus,
+        dispatchStatus: row.status,
+        contentStatus: processing?.status || null,
+        rejectReason: row.rejectReason || null,
+        contentType: processing?.contentType || order.contentType || 'image_text',
+        contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
         createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
       }
