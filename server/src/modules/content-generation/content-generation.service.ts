@@ -82,6 +82,7 @@ export class ContentGenerationService {
           order_id: input.orderId,
           platform,
           status: 'processing',
+          content_type: effectiveContentType,
           content: '',
           images: null,
           video_url: null,
@@ -163,7 +164,8 @@ export class ContentGenerationService {
   ): Promise<void> {
     const { contentType, primarySkill } = input
     const needImage = contentType === 'image' || contentType === 'image_text'
-    const needText = contentType === 'text' || contentType === 'image_text'
+    // 'image'(图文笔记)也需要文案：用户选"图文笔记"期望获得文案+图片，而非纯图片
+    const needText = contentType === 'text' || contentType === 'image_text' || contentType === 'image'
     const needVideo = contentType === 'video'
     // 视频类型也需要生成视频脚本作为文案内容
     const needVideoScript = contentType === 'video'
@@ -534,6 +536,22 @@ ${input.orderDescription}
 - 可以制造悬念或引发共鸣
 - 结尾自然带出产品/服务，不要硬广
 - 不要用markdown标题格式(#)，用纯文本换行`,
+      wechat_mp: `微信公众号文章风格要求：
+- 标题要有吸引力，让人想点进来
+- 开头用一段引人入胜的导语，制造悬念或痛点共鸣
+- 正文分段清晰，每段2-4句话，用小标题分隔
+- 语言像朋友在分享，不要广告腔
+- 结尾加互动引导：点赞/在看/关注
+- 整体字数800-1500字
+- 使用markdown格式，标题用##，段落用换行`,
+      wechat_official: `微信公众号文章风格要求：
+- 标题要有吸引力，让人想点进来
+- 开头用一段引人入胜的导语，制造悬念或痛点共鸣
+- 正文分段清晰，每段2-4句话，用小标题分隔
+- 语言像朋友在分享，不要广告腔
+- 结尾加互动引导：点赞/在看/关注
+- 整体字数800-1500字
+- 使用markdown格式，标题用##，段落用换行`,
 
       xiaohongshu: `小红书风格要求：
 - 标题用【】或emoji开头，吸引点击
@@ -658,11 +676,16 @@ ${input.orderDescription}
     const styleMap: Record<string, string> = {
       wechat: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo',
       wechat_moments: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo, 1:1 square format',
+      wechat_mp: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, suitable for article illustration',
+      wechat_official: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, suitable for article illustration',
+      wechat_channel: 'trendy lifestyle photo, eye-catching, modern composition, social media optimized, short video cover style',
       xiaohongshu: 'aesthetic flat lay, trendy pastel tones, clean minimal composition, Instagram worthy, soft natural light, lifestyle inspiration',
       douyin: 'vibrant eye-catching, dynamic composition, high contrast colors, trending visual style, thumb-stopping thumbnail, bold and fresh',
       weibo: 'bold modern design, clean professional look, striking visual impact, celebrity endorsement style',
       bilibili: 'creative playful, colorful, anime-inspired elements, fun and imaginative, youth culture',
-      kuaishou: 'authentic real-life, down-to-earth, natural unposed, relatable everyday scene, warm and genuine'
+      kuaishou: 'authentic real-life, down-to-earth, natural unposed, relatable everyday scene, warm and genuine',
+      toutiao: 'professional news style photo, informative and clear, editorial quality, impactful',
+      zhihu: 'professional and informative, clean data visualization style, high quality, academic feel'
     }
     const platformStyle = styleMap[platform] || styleMap.wechat
 
