@@ -279,7 +279,7 @@ export default function OrderAcceptance() {
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
                     <View key={idx} style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden' }}>
-                      <TaroVideo src={url} style={{ width: '100%', height: '200px' }} autoplay={false} controls />
+                      <TaroVideo src={url} style={{ width: '100%', height: '180px' }} autoplay={false} controls />
                     </View>
                   ))}
                 </View>

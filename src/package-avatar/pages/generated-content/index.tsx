@@ -419,14 +419,27 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频内容 */}
+                {/* 视频内容 - 缩略图预览 */}
                 {videoUrls.length > 0 && (
-                  <View style={{ marginTop: 8 }}>
-                    {videoUrls.map((url: string, idx: number) => (
-                      <View key={idx} style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 4, height: 200 }}>
-                        <TaroVideo src={url} style={{ width: '100%', height: '200px' }} autoplay={false} controls />
+                  <View className="image-preview-row">
+                    {videoUrls.slice(0, 2).map((url: string, idx: number) => (
+                      <View
+                        key={idx}
+                        className="preview-image"
+                        style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}
+                        onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })}
+                      >
+                        <TaroVideo src={url} style={{ width: '180rpx', height: '180rpx' }} autoplay={false} controls={false} />
+                        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                          <Play size={24} color="#fff" />
+                        </View>
                       </View>
                     ))}
+                    {videoUrls.length > 2 && (
+                      <View className="more-images">
+                        <Text style={{ fontSize: 12, color: '#64748B' }}>+{videoUrls.length - 2}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
 

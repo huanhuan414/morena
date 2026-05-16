@@ -671,7 +671,7 @@ export default function OrderPublishGuide() {
               </View>
               {videos.map((url, index) => (
                 <View key={index} style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
-                  <TaroVideo src={url} style={{ width: '100%', height: '200px' }} controls autoplay={false} />
+                  <TaroVideo src={url} style={{ width: '100%', height: '180px' }} controls autoplay={false} />
                 </View>
               ))}
             </View>
