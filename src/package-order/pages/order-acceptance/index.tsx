@@ -2,7 +2,7 @@ import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from 
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
 import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
-import * as Network from '@/network'
+import { Network } from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
   ChevronRight, TrendingUp, CircleCheckBig, Video, FileText
@@ -228,7 +228,7 @@ export default function OrderAcceptance() {
               const st = selectedAvatar.status
               const style = AVATAR_STATUS_STYLES[st] || AVATAR_STATUS_STYLES.pending
               const label = AVATAR_STATUS_LABELS[st] || '未知状态'
-              const isAwaiting = st === 'awaiting_acceptance'
+              const isAwaiting = st === 'awaiting_acceptance' || st === 'preview' || st === 'feedback_submitted'
               return (
                 <>
                   <View className="od-status-badge" style={{ backgroundColor: style.bgColor }}>
@@ -237,7 +237,7 @@ export default function OrderAcceptance() {
                   <Text className="block od-status-desc">
                     {isAwaiting ? '请检查分身提交的内容并确认验收' :
                      st === 'completed' ? '此分身内容已验收通过' :
-                     st === 'generating' || st === 'preview' ? '分身正在创作内容，请耐心等待' :
+                     st === 'generating' || st === 'accepted' ? '分身正在创作内容，请耐心等待' :
                      st === 'rejected' ? '此分身已拒绝接单' :
                      st === 'pending' ? '等待分身确认接单' :
                      '分身状态：' + label}
@@ -452,8 +452,8 @@ export default function OrderAcceptance() {
           )}
         </ScrollView>
 
-        {/* 底部操作 - 仅待验收状态显示验收/驳回按钮 */}
-        {selectedAvatar.status === 'awaiting_acceptance' && (
+        {/* 底部操作 - 仅待验收状态(含preview)显示验收/驳回按钮 */}
+        {['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(selectedAvatar.status) && (
           <View className="od-actions">
             <View className="od-action-btn od-action-danger" onClick={() => setShowReject(true)}>
               <CircleAlert size={16} color="#EF4444" />
@@ -535,8 +535,8 @@ export default function OrderAcceptance() {
           </View>
           <Text className="block od-status-desc">
             {(() => {
-              const awaiting = avatars.filter(a => a.status === 'awaiting_acceptance' || a.status === 'feedback_submitted').length
-              const generating = avatars.filter(a => a.status === 'generating' || a.status === 'preview').length
+              const awaiting = avatars.filter(a => ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)).length
+              const generating = avatars.filter(a => a.status === 'generating' || a.status === 'accepted').length
               const completed = avatars.filter(a => a.status === 'completed').length
               return `${awaiting}个待验收 · ${generating}个制作中 · ${completed}个已验收`
             })()}
@@ -548,8 +548,8 @@ export default function OrderAcceptance() {
       <ScrollView scrollY className="od-body">
         {/* 待验收分身 */}
         {(() => {
-          const awaitingAvatars = avatars.filter(a => a.status === 'awaiting_acceptance' || a.status === 'feedback_submitted')
-          const generatingAvatars = avatars.filter(a => a.status === 'generating' || a.status === 'preview')
+          const awaitingAvatars = avatars.filter(a => ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status))
+          const generatingAvatars = avatars.filter(a => a.status === 'generating' || a.status === 'accepted')
           const completedAvatars = avatars.filter(a => a.status === 'completed')
           const pendingAvatars = avatars.filter(a => a.status === 'pending')
           const rejectedAvatars = avatars.filter(a => a.status === 'rejected')
@@ -571,7 +571,7 @@ export default function OrderAcceptance() {
                         <View className="od-avatar-text">
                           <Text className="block od-avatar-name">{avatar.avatarName}</Text>
                           <Text className="block od-avatar-hint">
-                            {avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
+                            {avatar.status === 'preview' ? '内容已生成，请验收' : avatar.publishFeedback ? '已提交发布内容' : '等待提交'}
                           </Text>
                         </View>
                       </View>
@@ -596,7 +596,7 @@ export default function OrderAcceptance() {
                         <View className="od-avatar-text">
                           <Text className="block od-avatar-name">{avatar.avatarName}</Text>
                           <Text className="block od-avatar-hint" style={{ color: '#3B82F6' }}>
-                            {avatar.status === 'generating' ? '内容生成中...' : '内容已完成，待发布'}
+                            {avatar.status === 'generating' ? '内容生成中...' : avatar.status === 'accepted' ? '已接单，即将开始创作' : '内容已完成，待发布'}
                           </Text>
                         </View>
                       </View>

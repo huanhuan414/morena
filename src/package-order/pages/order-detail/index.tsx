@@ -130,7 +130,6 @@ function formatTime(dateStr: string): string {
 export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null)
   const [events, setEvents] = useState<any[]>([])
-  const [dispatchStatus, setDispatchStatus] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const pollingRef = useRef<any>(null)
@@ -142,10 +141,9 @@ export default function OrderDetailPage() {
   const fetchDetail = useCallback(async () => {
     if (!orderId) return
     try {
-      const [orderRes, eventRes, dispatchRes] = await Promise.all([
+      const [orderRes, eventRes] = await Promise.all([
         Network.request({ url: `/api/order/${orderId}` }),
         Network.request({ url: `/api/order-dispatch/${orderId}/timeline` }).catch(() => ({ data: { data: [] } })),
-        Network.request({ url: `/api/order/${orderId}/dispatch-status` }).catch(() => ({ data: { data: null } })),
       ])
       console.log('[OrderDetail] order:', JSON.stringify(orderRes.data)?.substring(0, 200))
       const orderData = orderRes.data?.data || orderRes.data
@@ -155,9 +153,6 @@ export default function OrderDetailPage() {
       const evtData = eventRes.data?.data
       const evts = Array.isArray(evtData) ? evtData : (evtData?.events || [])
       setEvents(evts)
-
-      // 分身派单状态
-      setDispatchStatus(dispatchRes.data?.data || null)
     } catch (err) {
       console.error('[OrderDetail] fetch error:', err)
     } finally {
@@ -284,14 +279,27 @@ export default function OrderDetailPage() {
   }
 
   const avatarStats = order.avatarStats || []
-  const hasPublishFeedback = avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)
-  const isVerified = avatarStats.some((a: any) => a.status === 'completed')
+  // 有待验收或已验收的分身
+  const hasVerifiableAvatars = avatarStats.some((a: any) =>
+    ['awaiting_acceptance', 'feedback_submitted', 'preview', 'completed'].includes(a.status)
+  )
+  const hasAwaitingAcceptance = avatarStats.some((a: any) =>
+    ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
+  )
+  const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
+    ['completed', 'rejected'].includes(a.status)
+  )
   console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
-  console.log('[OrderDetail] hasPublishFeedback:', hasPublishFeedback, 'isVerified:', isVerified, 'order.status:', order.status)
+  console.log('[OrderDetail] hasVerifiableAvatars:', hasVerifiableAvatars, 'hasAwaitingAcceptance:', hasAwaitingAcceptance, 'isAllVerified:', isAllVerified, 'order.status:', order.status)
+
+  // 确定页面上展示的 effective 状态
   let effectiveStatus = order.status
-  if (hasPublishFeedback && !isVerified && !['completed', 'cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)) {
+  if (isAllVerified) {
+    effectiveStatus = 'completed'
+  } else if (hasAwaitingAcceptance) {
+    // 有分身内容已生成/待验收 → 显示"待验收"
     effectiveStatus = 'pending_verify'
-  } else if (order.status === 'awaiting_acceptance' && hasPublishFeedback) {
+  } else if (order.status === 'awaiting_acceptance' && avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)) {
     effectiveStatus = 'submitted'
   }
   console.log('[OrderDetail] effectiveStatus:', effectiveStatus)
@@ -300,14 +308,19 @@ export default function OrderDetailPage() {
   const isPayable = order.status === 'pending_payment'
   const isCancellable = ['pending_payment', 'pending'].includes(order.status)
   const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status)
-  const isVerifiable = hasPublishFeedback && !isVerified && !['completed', 'cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)
+  // 去验收：有分身处于 preview/awaiting_acceptance/feedback_submitted 状态，且尚未全部完成
+  const isVerifiable = hasAwaitingAcceptance && !isAllVerified && !['cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
   const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
 
-  // 分身统计
+  // 分身统计 — 使用 normalizedStatus（avatarStats.status），不使用 raw dispatchStatus
   const totalAvatars = order.avatarCount || 0
-  const acceptedCount = (dispatchStatus?.accepted || 0) + (dispatchStatus?.completed || 0)
-  const pendingCount = dispatchStatus?.pending || 0
+  const acceptedCount = avatarStats.filter((a: any) =>
+    ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(a.status)
+  ).length
+  const completedCount = avatarStats.filter((a: any) => a.status === 'completed').length
+  const pendingCount = avatarStats.filter((a: any) => a.status === 'pending').length
+  const rejectedCount = avatarStats.filter((a: any) => a.status === 'rejected').length
 
   return (
     <View className="od-page">
@@ -473,22 +486,28 @@ export default function OrderDetailPage() {
         )}
 
         {/* 分身状态卡（统计概览） */}
-        {totalAvatars > 0 && (acceptedCount > 0 || pendingCount > 0) && (
+        {totalAvatars > 0 && (acceptedCount > 0 || pendingCount > 0 || completedCount > 0) && (
           <View className="od-card">
             <Text className="block od-section-title">分身进度</Text>
             <View className="od-dispatch-row">
               <View className="od-dispatch-item">
-                <Text className="block od-dispatch-num" style={{ color: '#10B981' }}>{acceptedCount}</Text>
-                <Text className="block od-dispatch-label">已接单</Text>
+                <Text className="block od-dispatch-num" style={{ color: '#10B981' }}>{completedCount}</Text>
+                <Text className="block od-dispatch-label">已验收</Text>
               </View>
               <View className="od-dispatch-item">
-                <Text className="block od-dispatch-num" style={{ color: '#6366F1' }}>{pendingCount}</Text>
-                <Text className="block od-dispatch-label">匹配中</Text>
+                <Text className="block od-dispatch-num" style={{ color: '#3B82F6' }}>{acceptedCount - completedCount}</Text>
+                <Text className="block od-dispatch-label">进行中</Text>
               </View>
               <View className="od-dispatch-item">
-                <Text className="block od-dispatch-num" style={{ color: '#9CA3AF' }}>{totalAvatars - acceptedCount - pendingCount}</Text>
-                <Text className="block od-dispatch-label">待分配</Text>
+                <Text className="block od-dispatch-num" style={{ color: '#9CA3AF' }}>{pendingCount}</Text>
+                <Text className="block od-dispatch-label">待接单</Text>
               </View>
+              {rejectedCount > 0 && (
+                <View className="od-dispatch-item">
+                  <Text className="block od-dispatch-num" style={{ color: '#EF4444' }}>{rejectedCount}</Text>
+                  <Text className="block od-dispatch-label">已拒绝</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
