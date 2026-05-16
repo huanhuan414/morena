@@ -13,21 +13,23 @@ export class EarningService {
     
     const user = await db.queryOne('users', { id: userId })
     
-    const pendingEarnings = await db.query('earnings', {
-      user_id: userId,
-      status: 'pending'
-    }) as any
+    const completedEarnings = await db.queryWhere('earnings',
+      `user_id = '${userId}' AND status = 'completed'`
+    ) as any
+    const totalEarnings = completedEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
     
-    const pendingAmount = pendingEarnings?.data?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
+    const pendingEarnings = await db.queryWhere('earnings',
+      `user_id = '${userId}' AND status = 'pending'`
+    ) as any
+    const pendingAmount = pendingEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
     
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     
     const monthlyEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND created_at >= '${monthStart.toISOString()}'`
+      `user_id = '${userId}' AND status = 'completed' AND created_at >= '${monthStart.toISOString()}'`
     ) as any
-    
-    const monthlyAmount = monthlyEarnings?.data?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
+    const monthlyAmount = monthlyEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
     
     const totalOrders = await db.countWhere('earnings',
       `user_id = '${userId}' AND type = 'order_reward'`
@@ -39,7 +41,7 @@ export class EarningService {
     
     return {
       balance: user?.balance || 0,
-      totalEarnings: user?.total_earnings || 0,
+      totalEarnings,
       pendingAmount,
       monthlyAmount,
       totalOrders: totalOrders || 0,
