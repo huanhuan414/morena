@@ -257,26 +257,66 @@ export class TikHubService {
    */
   private async verifyViaTikHub(platform: string, postUrl: string, keywords: string[]) {
     try {
-      const response = await this.axios.get('/hybrid/video_data', {
-        params: { url: postUrl },
-      })
+      let response: any
+      let title = ''
+      let nickname = ''
+      let awemeId = ''
+      let fullContent = ''
 
-      if (response.data?.code !== 200 || !response.data?.data) {
-        return {
-          success: false,
-          message: response.data?.message || '无法解析该链接，请确认链接是否正确',
+      // 小红书使用专用接口
+      if (platform === 'xiaohongshu') {
+        // 直接使用 axios 发送请求，避免预配置的 axios 实例可能的问题
+        response = await axios.get(
+          `https://api.tikhub.io/api/v1/xiaohongshu/app_v2/get_image_note_detail`,
+          {
+            params: { share_text: postUrl },
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+            timeout: 30000,
+          }
+        )
+
+        // API返回结构: response.data.data.data[0].note_list[0]
+        const noteList = response.data?.data?.data?.[0]?.note_list
+        if (response.data?.code !== 200 || !noteList?.[0]) {
+          return {
+            success: false,
+            message: response.data?.msg || response.data?.message || '无法解析该小红书链接，请确认链接是否正确',
+          }
         }
+
+        const noteData = noteList[0]
+        title = noteData.title || ''
+        const desc = noteData.desc || ''
+        fullContent = `${title} ${desc}`.trim()
+        nickname = noteData.user?.nickname || ''
+        awemeId = noteData.id || noteData.note_id || ''
+      } else {
+        // 抖音/快手使用混合解析接口
+        response = await this.axios.get('/hybrid/video_data', {
+          params: { url: postUrl },
+        })
+
+        if (response.data?.code !== 200 || !response.data?.data) {
+          return {
+            success: false,
+            message: response.data?.message || '无法解析该链接，请确认链接是否正确',
+          }
+        }
+
+        const videoData = response.data.data
+        title = videoData.title || ''
+        const desc = videoData.desc || ''
+        fullContent = `${title} ${desc}`.trim()
+        nickname = videoData.author?.nickname || videoData.author?.unique_id || ''
+        awemeId = videoData.aweme_id || videoData.note_id || ''
       }
 
-      const videoData = response.data.data
-      const title = videoData.title || videoData.desc || ''
-      const nickname = videoData.author?.nickname || videoData.author?.unique_id || ''
-      const awemeId = videoData.aweme_id || videoData.note_id || ''
-
-      // 关键词比对：只要有任意一个关键词出现在标题中即可
+      // 关键词比对：检查关键词是否出现在完整内容中
       let keywordMatch = false
       if (keywords.length > 0) {
-        keywordMatch = keywords.some(kw => title.toLowerCase().includes(kw.toLowerCase()))
+        keywordMatch = keywords.some(kw => fullContent.toLowerCase().includes(kw.toLowerCase()))
       } else {
         // 没有关键词时，只要能解析到内容就算验证通过
         keywordMatch = true
@@ -296,7 +336,7 @@ export class TikHubService {
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.detail || error.response?.data?.message || error.message
-      console.error('[TikHubService] TikHub 解析失败:', errorMsg)
+      console.error('[TikHubService] TikHub 解析失败:', error.response?.data || error)
       return {
         success: false,
         message: `链接解析失败: ${errorMsg}`,
