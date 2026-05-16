@@ -267,7 +267,7 @@ export default function GeneratedContentPage() {
   return (
     <View className="generated-content-page">
       {/* 顶部蓝色背景 */}
-      <View className="page-header" style={{ paddingTop: `${getStatusBarHeight() + 15}px` }}>
+      <View className="generated-page-header" style={{ paddingTop: `${getStatusBarHeight() + 12}px` }}>
         <View className="header-decoration">
           <View className="decoration-circle circle-1" />
           <View className="decoration-circle circle-2" />

@@ -2,7 +2,7 @@
    技能训练页面
    ======================================== */
 
-@import '../../../styles/variables.css';
+@import "../../../styles/variables.css";
 
 .skill-training-page {
   min-height: 100vh;
@@ -13,7 +13,11 @@
 .page-header {
   position: relative;
   padding: 48rpx 32rpx 32rpx;
-  background: linear-gradient(180deg, rgba(123, 63, 228, 0.12) 0%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(123, 63, 228, 0.12) 0%,
+    transparent 100%
+  );
   display: flex;
   align-items: center;
   gap: 24rpx;
@@ -21,8 +25,8 @@
 }
 
 .header-left {
-  width: 72rpx;
-  height: 72rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,7 +120,7 @@
 
 .generate-btn {
   width: 100%;
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #9b6ef3 100%);
   border-radius: var(--radius-lg);
   padding: 32rpx;
   display: flex;
@@ -146,8 +150,12 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 提示区域 */
@@ -208,7 +216,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #9b6ef3 100%);
   border-radius: 24rpx;
 }
 
@@ -271,7 +279,7 @@
 
 .save-btn {
   width: 100%;
-  background: linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%);
+  background: linear-gradient(135deg, #7b3fe4 0%, #9b6ef3 100%);
   border-radius: var(--radius-lg);
   padding: 28rpx;
   display: flex;

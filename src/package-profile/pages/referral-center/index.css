@@ -42,8 +42,8 @@
   position: absolute;
   top: 100rpx;
   left: 24rpx;
-  width: 72rpx;
-  height: 72rpx;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 32rpx;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);

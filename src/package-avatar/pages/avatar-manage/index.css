@@ -8,28 +8,45 @@
 }
 
 .avatar-manage-page::before {
-  content: '';
+  content: "";
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 20% 30%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+    radial-gradient(
+      ellipse at 20% 30%,
+      rgba(6, 182, 212, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 70%,
+      rgba(59, 130, 246, 0.08) 0%,
+      transparent 50%
+    );
   pointer-events: none;
   z-index: 0;
   animation: bgBreath 25s ease-in-out infinite;
 }
 
 @keyframes bgBreath {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Header */
 .manage-header {
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.12) 0%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(6, 182, 212, 0.12) 0%,
+    transparent 100%
+  );
   padding: 20rpx 32rpx;
   position: relative;
   z-index: 10;
@@ -41,8 +58,14 @@
 }
 
 @keyframes headerSlideDown {
-  from { opacity: 0; transform: translateY(-100%); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-left-wrap {
@@ -55,8 +78,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
   background: rgba(6, 182, 212, 0.8);
   box-shadow: 0 4rpx 12rpx rgba(6, 182, 212, 0.3);
@@ -114,7 +137,11 @@
 
 /* Subscription Info Card */
 .subscription-info-card {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.1) 0%,
+    rgba(245, 158, 11, 0.05) 100%
+  );
   border: 1.5rpx solid rgba(251, 191, 36, 0.2);
   border-radius: var(--radius-lg);
   padding: 24rpx;
@@ -127,24 +154,38 @@
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20rpx); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .subscription-info-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   right: -50%;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(251, 191, 36, 0.1) 0%,
+    transparent 70%
+  );
   animation: goldShine 8s infinite linear;
 }
 
 @keyframes goldShine {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .subscription-info-header {
@@ -198,8 +239,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 .subscription-upgrade-text {
@@ -219,15 +265,25 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .empty-icon {
   width: 180rpx;
   height: 180rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.15) 0%,
+    rgba(59, 130, 246, 0.15) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,18 +292,29 @@
 }
 
 .empty-icon::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -4rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(59, 130, 246, 0.3));
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.3),
+    rgba(59, 130, 246, 0.3)
+  );
   animation: pulse 2s ease-in-out infinite;
   z-index: -1;
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.1); opacity: 0.3; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
 }
 
 .empty-title {
@@ -299,8 +366,8 @@
   border-radius: var(--radius-xl);
   border: 2rpx solid rgba(6, 182, 212, 0.15);
   padding: 28rpx;
-  padding-top: 36rpx;  /* 为设置按钮留出空间 */
-  padding-right: 90rpx;  /* 为设置按钮留出空间 */
+  padding-top: 36rpx; /* 为设置按钮留出空间 */
+  padding-right: 90rpx; /* 为设置按钮留出空间 */
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -314,7 +381,7 @@
 }
 
 .avatar-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -329,10 +396,18 @@
   opacity: 1;
 }
 
-.avatar-card:nth-child(1) { animation-delay: 0.15s; }
-.avatar-card:nth-child(2) { animation-delay: 0.25s; }
-.avatar-card:nth-child(3) { animation-delay: 0.35s; }
-.avatar-card:nth-child(4) { animation-delay: 0.45s; }
+.avatar-card:nth-child(1) {
+  animation-delay: 0.15s;
+}
+.avatar-card:nth-child(2) {
+  animation-delay: 0.25s;
+}
+.avatar-card:nth-child(3) {
+  animation-delay: 0.35s;
+}
+.avatar-card:nth-child(4) {
+  animation-delay: 0.45s;
+}
 
 .avatar-card:active {
   transform: scale(0.98);
@@ -352,7 +427,11 @@
   width: 104rpx;
   height: 104rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.15) 0%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
   border: 2.5rpx solid rgba(6, 182, 212, 0.25);
   display: flex;
   align-items: center;
@@ -364,8 +443,13 @@
 }
 
 @keyframes avatarPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.3); }
-  50% { box-shadow: 0 0 24rpx 0 rgba(6, 182, 212, 0.1); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24rpx 0 rgba(6, 182, 212, 0.1);
+  }
 }
 
 .avatar-img {
@@ -459,7 +543,11 @@
   margin-bottom: 24rpx;
   padding: 24rpx;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.08) 0%,
+    rgba(59, 130, 246, 0.08) 100%
+  );
   border: 1.5rpx solid rgba(6, 182, 212, 0.18);
 }
 
@@ -524,7 +612,7 @@
 .onboarding-action-title {
   font-size: 26rpx;
   font-weight: 700;
-  color: #0F172A;
+  color: #0f172a;
   display: block;
 }
 
@@ -532,7 +620,7 @@
   margin-top: 8rpx;
   font-size: 22rpx;
   line-height: 1.5;
-  color: #64748B;
+  color: #64748b;
   display: block;
 }
 
@@ -572,8 +660,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .hosting-badge-text {
@@ -592,8 +685,14 @@
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10rpx); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .settings-desc {
@@ -740,7 +839,11 @@
   justify-content: center;
   gap: 8rpx;
   padding: 20rpx 16rpx;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.06) 0%,
+    rgba(59, 130, 246, 0.04) 100%
+  );
   border-radius: var(--radius-lg);
   border: 1.5rpx solid rgba(6, 182, 212, 0.12);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -800,8 +903,12 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .time-modal-header {
@@ -1069,8 +1176,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .notification-modal {
@@ -1093,7 +1204,7 @@
 .notification-modal-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .notification-modal-close {
@@ -1108,7 +1219,7 @@
 
 .notification-modal-close-text {
   font-size: 36rpx;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 1;
 }
 
@@ -1148,5 +1259,5 @@
 .notification-modal-btn-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #FFFFFF;
+  color: #ffffff;
 }
