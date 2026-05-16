@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Switch } from '@/components/ui/switch'
 import * as Network from '@/network'
-import { ChevronLeft, Bell, MessageCircle, Heart, UserPlus, Info, CheckCheck } from 'lucide-react-taro'
+import { ChevronLeft,ArrowLeft, Bell, MessageCircle, Heart, UserPlus, Info, CheckCheck } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
 import './index.css'
@@ -165,7 +165,7 @@ export default function NotificationsPage() {
         <View className="header-decor-2" />
         <View className="header-nav">
           <View className="back-btn" onClick={() => navigateBack()}>
-            <ChevronLeft size={22} color="#fff" />
+            <ArrowLeft size={20} color="#fff" />
           </View>
           <Text className="nav-title">消息通知</Text>
           <View className="nav-placeholder" />

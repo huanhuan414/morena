@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
-  ChevronLeft, Bell, Shield, Lock, Globe, CircleQuestionMark,
+  ChevronLeft,ArrowLeft, Bell, Shield, Lock, Globe, CircleQuestionMark,
   Info, Trash2, LogOut, User, ChevronRight
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -159,7 +159,7 @@ export default function SettingsPage() {
         <View className="header-decor-2" />
         <View className="header-nav">
           <View className="back-btn" onClick={handleBack}>
-            <ChevronLeft size={22} color="#fff" />
+            <ArrowLeft size={20} color="#fff" />
           </View>
           <Text className="nav-title">设置</Text>
           <View className="nav-placeholder" />

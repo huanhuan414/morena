@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Send, Check, ChevronRight, Loader, ChevronLeft,
+  Send, Check, ChevronRight, Loader, ChevronLeft, ArrowLeft,
   Users, Coins, Sparkles, Zap, ShieldCheck, Clock,
   Target, TrendingUp, Lightbulb, ClipboardList
 } from 'lucide-react-taro'
@@ -16,6 +16,7 @@ import {
   canonicalizePlatforms
 } from '@/constants/publish-platform'
 import { CONTENT_STYLES, NICHE_TAGS } from '@/constants/avatar-tags'
+import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
 const CONTENT_TYPES = [
@@ -44,6 +45,7 @@ export default function OrderCreate() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPlatformReq, setShowPlatformReq] = useState(false)
   const aiPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const statusBarHeight = getStatusBarHeight()
 
   const stopAiPolling = () => {
     if (aiPollTimerRef.current) {
@@ -417,14 +419,14 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
   return (
     <View className="order-create-page">
       {/* 顶部渐变头部 */}
-      <View className="page-header">
+      <View className="order-page-header" style={{ paddingTop: `${statusBarHeight + 32}px` }}>
         <View className="header-decoration">
           <View className="deco-circle circle-1" />
           <View className="deco-circle circle-2" />
         </View>
         <View className="header-content">
           <View className="back-btn" onClick={() => Taro.navigateBack()}>
-            <ChevronLeft size={22} color="#fff" />
+            <ArrowLeft size={20} color="#fff" />
           </View>
           <View className="header-center">
             <Text className="header-title">发布任务</Text>
