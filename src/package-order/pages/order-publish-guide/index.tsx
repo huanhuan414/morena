@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, Image, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -669,16 +669,13 @@ export default function OrderPublishGuide() {
                 </View>
               </View>
               {videos.map((url, index) => (
-                <View key={index} className="video-preview-item">
-                  <TaroVideo
-                    src={url}
-                    className="video-player"
-                    controls
-                    autoplay={false}
-                    showFullscreenBtn
-                    showPlayBtn
-                    objectFit="contain"
-                  />
+                <View key={index} className="video-cover-card" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                  <View className="video-cover-bg">
+                    <View className="video-play-circle">
+                      <View className="video-play-triangle" />
+                    </View>
+                  </View>
+                  <Text className="video-cover-label">视频 {index + 1} · 点击播放</Text>
                 </View>
               ))}
             </View>

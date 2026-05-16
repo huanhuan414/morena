@@ -649,16 +649,52 @@
 }
 
 /* 视频预览 */
-.od-video-item {
-  margin-bottom: 12rpx;
+.od-video-cover {
+  position: relative;
   border-radius: 12rpx;
   overflow: hidden;
-  background: #000;
+  margin-bottom: 12rpx;
+  background: #1E293B;
+  height: 360rpx;
 }
 
-.od-video-player {
+.od-video-play {
   width: 100%;
-  height: 420rpx;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.od-play-circle {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 48rpx;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.3);
+}
+
+.od-play-triangle {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 20rpx 0 20rpx 32rpx;
+  border-color: transparent transparent transparent #1E293B;
+  margin-left: 6rpx;
+}
+
+.od-video-label {
+  position: absolute;
+  bottom: 20rpx;
+  left: 20rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
 }
 
 /* 图片预览网格 */

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, Image, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import { Network } from '@/network'
@@ -482,8 +482,13 @@ export default function OrderPublishFeedback() {
               <Video size={14} color="#8B5CF6" /> 视频 ({generatedContent.videos.length})
             </Text>
             {generatedContent.videos.map((url, index) => (
-              <View key={index} className="preview-video-item">
-                <TaroVideo src={url} className="preview-video-player" controls autoplay={false} showFullscreenBtn showPlayBtn objectFit="contain" />
+              <View key={index} className="preview-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                <View className="preview-video-play">
+                  <View className="preview-play-circle">
+                    <View className="preview-play-triangle" />
+                  </View>
+                </View>
+                <Text className="preview-video-label">视频 {index + 1} · 点击播放</Text>
               </View>
             ))}
           </View>

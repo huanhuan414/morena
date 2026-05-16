@@ -1,7 +1,7 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Input, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
 import * as Network from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
@@ -278,8 +278,13 @@ export default function OrderAcceptance() {
                     <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} className="od-video-item">
-                      <TaroVideo src={url} className="od-video-player" autoplay={false} controls showFullscreenBtn showPlayBtn objectFit="contain" />
+                    <View key={idx} className="od-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url, type: 'video' }] })}>
+                      <View className="od-video-play">
+                        <View className="od-play-circle">
+                          <View className="od-play-triangle" />
+                        </View>
+                      </View>
+                      <Text className="od-video-label">视频 {idx + 1} · 点击播放</Text>
                     </View>
                   ))}
                 </View>

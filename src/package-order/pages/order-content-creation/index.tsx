@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, Image as TaroImage, ScrollView, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, Image as TaroImage, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
 import { ArrowLeft, Loader, RefreshCw, Send, FileText, Image as ImageIcon, Video as VideoIcon, Wallet, Users, Sparkles } from 'lucide-react-taro'
@@ -433,8 +433,13 @@ export default function OrderContentCreation() {
                   <Text className="cc-card-title">视频</Text>
                 </View>
                 {processingData.generatedContent.videos.map((v: string, idx: number) => (
-                  <View key={idx} className="cc-video-item">
-                    <TaroVideo src={v} className="cc-video-player" controls autoplay={false} showFullscreenBtn showPlayBtn objectFit="contain" />
+                  <View key={idx} className="cc-video-cover" onClick={() => Taro.previewMedia({ sources: [{ url: v, type: 'video' }] })}>
+                    <View className="cc-video-play">
+                      <View className="cc-play-circle">
+                        <View className="cc-play-triangle" />
+                      </View>
+                    </View>
+                    <Text className="cc-video-label">视频 {idx + 1} · 点击播放</Text>
                   </View>
                 ))}
               </View>
