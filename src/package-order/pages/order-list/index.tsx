@@ -168,11 +168,6 @@ export default function OrderListPage() {
     closed: orders.filter(o => o.status === 'closed').length,
   }
 
-  const tabCounts = STATUS_TABS.reduce((acc, tab) => {
-    acc[tab.key] = orders.filter(o => isStatusInTab(o.status, tab.key)).length
-    return acc
-  }, {} as Record<string, number>)
-
   // ===== 操作 =====
   const handleGoToPay = useCallback((orderId: string) => {
     Taro.navigateTo({ url: `/package-order/pages/order-detail/index?id=${orderId}&action=pay` })

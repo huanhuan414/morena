@@ -97,13 +97,12 @@ export class OrderProcessingService {
         await db.insert('avatar_notifications', {
           id: randomUUID(),
           avatar_id: avatarId,
-          order_id: orderId,
-          type: 'order_dispute_opened',
+          notification_type: 'order_dispute_opened',
           title: '订单进入争议处理',
           content: '发单方发起争议，等待仲裁处理',
-          status: 'unread',
+          is_read: 0,
+          data: JSON.stringify({ order_id: orderId }),
           created_at: new Date(),
-          updated_at: new Date(),
         })
       }
     } catch (error: any) {

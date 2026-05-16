@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
-import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, ChevronLeft, User, ArrowLeft } from 'lucide-react-taro'
+import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, User, ArrowLeft } from 'lucide-react-taro'
 import {
   INVITER_BASE_REWARD,
   REWARD_CONDITION,

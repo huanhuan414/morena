@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import * as Network from '@/network'
 import { useUserStore } from '@/stores/user'
 import {
-  ChevronLeft,ArrowLeft, Bell, Shield, Lock, Globe, CircleQuestionMark,
+  ArrowLeft, Bell, Shield, Lock, Globe, CircleQuestionMark,
   Info, Trash2, LogOut, User, ChevronRight
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'

@@ -1,11 +1,11 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
 import * as Network from '@/network'
 import {
-  ArrowLeft, Check, CircleAlert, Link2, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp, CircleCheckBig, CircleX
+  ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
+  ChevronRight, TrendingUp, CircleCheckBig
 } from 'lucide-react-taro'
 import '../order-detail/index.css'
 
@@ -334,7 +334,7 @@ export default function OrderAcceptance() {
               <Text className="block od-modal-title">驳回修改</Text>
               <Text className="block od-modal-desc">请输入驳回原因，方便分身修改</Text>
               <View className="od-modal-input-wrap">
-                <View className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
+                <Input className="od-modal-input" placeholder="请详细描述问题..." value={rejectReason} onInput={(e: any) => setRejectReason(e.detail.value)} />
               </View>
               <View className="od-modal-actions">
                 <View className="od-modal-btn od-modal-btn-cancel" onClick={() => setShowReject(false)}>

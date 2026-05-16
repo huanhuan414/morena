@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
-import { Config, LLMClient, ImageGenerationClient } from 'coze-coding-dev-sdk'
+import { Config, LLMClient } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
@@ -16,8 +16,16 @@ import {
 export class ContentGenerationService {
   private readonly logger = new Logger(ContentGenerationService.name)
   private readonly llmClient: LLMClient
-  private readonly imageClient: ImageGenerationClient
-  private readonly videoClient: any
+
+  // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
+  private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
+  private readonly imageGenApiKey = process.env.IMAGE_GEN_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
+  private readonly imageGenModel = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all'
+
+  // 视频生成：直接 HTTP 调用火山引擎 Seedance API（coze SDK VideoGenerationClient 线上报 Invalid URL）
+  private readonly seedanceApiKey = process.env.SEEDANCE_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+  private readonly seedanceBaseUrl = process.env.SEEDANCE_BASE_URL || 'https://ark.cn-beijing.volces.com'
+  private readonly seedanceModel = process.env.SEEDANCE_MODEL || 'doubao-seedance-2-0-260128'
 
   constructor(
     @Inject(forwardRef(() => OrderService))
@@ -30,14 +38,6 @@ export class ContentGenerationService {
     this.logger.log(`[Config] apiKey存在: ${!!process.env.COZE_WORKLOAD_IDENTITY_API_KEY}`)
     this.logger.log(`[Config] baseUrl: ${process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn'}`)
     this.llmClient = new LLMClient(config)
-    this.imageClient = new ImageGenerationClient(config)
-    // 视频生成客户端（使用 SDK 的 VideoGenerationClient）
-    try {
-      const { VideoGenerationClient } = require('coze-coding-dev-sdk')
-      this.videoClient = new VideoGenerationClient(config)
-    } catch (_) {
-      this.videoClient = null
-    }
   }
 
   /**
@@ -449,14 +449,14 @@ ${input.orderDescription}
     const results = await Promise.allSettled(
       prompts.map((prompt, i) => {
         this.logger.log(`正在生成文章第${i + 1}张配图，提示词: ${prompt.substring(0, 80)}...`)
-        return this.imageClient.generate({ prompt, size: '2k' })
+        return this.generateImageViaHttp(prompt)
       })
     )
 
     const images: string[] = []
     results.forEach((result, i) => {
-      if (result.status === 'fulfilled' && result.value?.data?.[0]?.url) {
-        images.push(result.value.data[0].url)
+      if (result.status === 'fulfilled' && result.value) {
+        images.push(result.value)
         this.logger.log(`文章第${i + 1}张配图生成成功`)
       } else if (result.status === 'rejected') {
         this.logger.warn(`文章第${i + 1}张配图生成失败: ${result.reason?.message || result.reason}`)
@@ -609,20 +609,19 @@ ${input.orderDescription}
     const results = await Promise.allSettled(
       imagePrompts.map((prompt, i) => {
         this.logger.log(`正在生成第${i + 1}张图片，提示词: ${prompt.substring(0, 80)}...`)
-        return this.imageClient.generate({ prompt, size: '2k' })
+        return this.generateImageViaHttp(prompt)
       })
     )
 
     const images: string[] = []
     results.forEach((result, i) => {
-      if (result.status === 'fulfilled' && result.value?.data?.[0]?.url) {
-        images.push(result.value.data[0].url)
+      if (result.status === 'fulfilled' && result.value) {
+        images.push(result.value)
         this.logger.log(`第${i + 1}张图片生成成功`)
       } else if (result.status === 'rejected') {
         this.logger.warn(`第${i + 1}张图片生成失败: ${result.reason?.message || result.reason}`)
-        this.logger.warn(`完整错误: ${JSON.stringify(result.reason, null, 2)}`)
       } else if (result.status === 'fulfilled') {
-        this.logger.warn(`第${i + 1}张图片响应格式异常: ${JSON.stringify(result.value, null, 2)}`)
+        this.logger.warn(`第${i + 1}张图片响应格式异常: ${JSON.stringify(result.value)}`)
       }
     })
 
@@ -679,7 +678,7 @@ ${input.orderDescription}
   }
 
   /**
-   * 生成视频 — 基于技能的视频脚本 + AI视频生成
+   * 生成视频 — 基于技能的视频脚本 + Seedance 2.0 视频生成
    */
   private async generateVideos(platform: string, input: any, textContent: string, images: string[]): Promise<string[]> {
     const { primarySkill } = input
@@ -696,108 +695,27 @@ ${input.orderDescription}
 
     this.logger.log(`视频脚本生成完成: ${videoScript.length}字`)
 
-    // 2. 使用第一张已生成的图片作为视频首帧（如果有）
-    const referenceImage = images.length > 0 ? images[0] : undefined
-
-    // 3. 尝试调用视频生成 API
+    // 2. 使用 Seedance API 生成视频
     const videoUrls: string[] = []
 
-    if (this.videoClient) {
-      try {
-        const videoPrompt = videoScript.substring(0, 500)
-        const videoOptions: any = {
-          duration: 5,
-          ratio: platform === 'douyin' || platform === 'kuaishou' ? '9:16' : '16:9',
-        }
-        if (referenceImage) {
-          videoOptions.model = 'default'
-        }
-        // content 参数必须是数组格式 [{type: 'text', text: '...'}]
-        const contentItems: any[] = [{ type: 'text', text: videoPrompt }]
-        if (referenceImage) {
-          contentItems.push({ type: 'image', image_url: referenceImage })
-        }
-        this.logger.log(`调用视频生成API: prompt=${videoPrompt.substring(0, 50)}..., ratio=${videoOptions.ratio}`)
-        const videoResult = await this.videoClient.videoGenerationAsync(contentItems, videoOptions)
-        // videoGenerationAsync 返回 {videoUrl, response} 或 {response}
-        if (videoResult?.videoUrl) {
-          videoUrls.push(videoResult.videoUrl)
-          this.logger.log('视频生成成功，获取到视频URL')
-        } else if (videoResult?.response?.id) {
-          // 异步任务，需要轮询获取结果
-          this.logger.log(`视频生成任务已提交，task_id=${videoResult.response.id}，等待结果...`)
-          const maxWaitTime = 120 // 最多等120秒
-          const videoUrl = await this.pollVideoResult(videoResult.response.id, maxWaitTime)
-          if (videoUrl) {
-            videoUrls.push(videoUrl)
-            this.logger.log('视频生成成功（异步），获取到视频URL')
-          } else {
-            this.logger.warn('视频生成超时，未获取到视频URL')
-          }
-        } else {
-          this.logger.warn(`视频生成返回格式未知: ${JSON.stringify(videoResult).substring(0, 200)}`)
-        }
-      } catch (err: any) {
-        this.logger.warn(`视频生成API调用失败: ${err.message}`)
+    try {
+      const videoPrompt = videoScript.substring(0, 500)
+      this.logger.log(`调用Seedance视频生成API: prompt=${videoPrompt.substring(0, 50)}...`)
+      const videoUrl = await this.generateVideoViaSeedance(videoPrompt)
+      if (videoUrl) {
+        videoUrls.push(videoUrl)
+        this.logger.log('Seedance视频生成成功')
       }
-    } else {
-      this.logger.warn('视频生成客户端未初始化，跳过视频生成')
+    } catch (err: any) {
+      this.logger.warn(`Seedance视频生成失败: ${err.message}`)
     }
 
-    // 4. 即使视频生成失败，也将脚本保存到内容中（发单方可以手动制作视频）
+    // 3. 即使视频生成失败，也将脚本保存到内容中
     if (videoUrls.length === 0 && videoScript) {
-      // 将视频脚本追加到文本内容中
       this.logger.log('视频文件生成未完成，视频脚本已保存到文案中')
     }
 
     return videoUrls
-  }
-
-  /**
-   * 轮询视频生成任务结果
-   */
-  private async pollVideoResult(taskId: string, maxWaitSeconds: number): Promise<string | null> {
-    const startTime = Date.now()
-    const pollInterval = 5000 // 每5秒轮询一次
-
-    while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
-      try {
-        // 使用 fetch 直接查询任务状态
-        const baseUrl = process.env.COZE_INTEGRATION_BASE_URL || 'https://integration.coze.cn'
-        const apiKey = process.env.COZE_WORKLOAD_IDENTITY_API_KEY
-        const response = await fetch(`${baseUrl}/api/v3/contents/generations/tasks/${taskId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        const result = await response.json() as any
-        
-        if (result?.output?.video_url) {
-          return result.output.video_url
-        }
-        if (result?.data?.video_url) {
-          return result.data.video_url
-        }
-        if (result?.data?.[0]?.url) {
-          return result.data[0].url
-        }
-        // 检查任务状态
-        const status = result?.status || result?.task_status || result?.data?.status
-        if (status === 'failed' || status === 'error') {
-          this.logger.warn(`视频生成任务失败: ${JSON.stringify(result).substring(0, 200)}`)
-          return null
-        }
-        this.logger.log(`视频任务 ${taskId} 状态: ${status || 'processing'}，继续等待...`)
-      } catch (err: any) {
-        this.logger.warn(`轮询视频任务失败: ${err.message}`)
-      }
-
-      await new Promise(resolve => setTimeout(resolve, pollInterval))
-    }
-
-    return null
   }
 
   /**
@@ -1087,5 +1005,177 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     } catch (err: any) {
       this.logger.warn(`同步订单状态失败: ${err.message}`)
     }
+  }
+
+  /**
+   * 通过 HTTP 直接调用 api.aaigc.top 图片生成（替代 coze SDK ImageGenerationClient）
+   */
+  private async generateImageViaHttp(prompt: string, size = '1024x1536'): Promise<string> {
+    const apiUrl = `${this.imageGenBaseUrl}/v1/images/generations`
+    this.logger.log(`[ImageHTTP] calling: ${apiUrl}, model: ${this.imageGenModel}, size: ${size}`)
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.imageGenApiKey}`,
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.imageGenModel,
+        prompt,
+        n: 1,
+        size,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      this.logger.error(`[ImageHTTP] API error: ${response.status} ${errorText.slice(0, 200)}`)
+      throw new Error(`图片生成API错误: ${response.status}`)
+    }
+
+    const result = await response.json() as any
+    this.logger.log(`[ImageHTTP] response received`)
+
+    let imageUrl = ''
+    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+      const firstItem = result.data[0]
+      imageUrl = firstItem.url || (firstItem.b64_json ? `data:image/png;base64,${firstItem.b64_json}` : '')
+    }
+
+    if (!imageUrl) {
+      throw new Error('图片生成返回数据为空')
+    }
+
+    this.logger.log(`[ImageHTTP] 图片生成成功, url: ${imageUrl.slice(0, 80)}...`)
+    return imageUrl
+  }
+
+  /**
+   * 通过 HTTP 直接调用火山引擎 Seedance 2.0 视频生成（替代 coze SDK VideoGenerationClient）
+   * 异步流程：创建任务 → 轮询结果 → 返回视频 URL
+   */
+  private async generateVideoViaSeedance(prompt: string): Promise<string> {
+    const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
+    this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
+
+    // 步骤1：创建异步视频生成任务
+    const createResponse = await fetch(createUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.seedanceApiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.seedanceModel,
+        content: [
+          { type: 'text', text: prompt },
+        ],
+      }),
+    })
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text()
+      this.logger.error(`[Seedance] create task error: ${createResponse.status} ${errorText.slice(0, 200)}`)
+      throw new Error(`Seedance创建任务失败: ${createResponse.status}`)
+    }
+
+    const createResult = await createResponse.json() as any
+    const taskId = createResult?.id
+    if (!taskId) {
+      this.logger.error(`[Seedance] no task ID in response: ${JSON.stringify(createResult).slice(0, 200)}`)
+      throw new Error('Seedance返回无任务ID')
+    }
+
+    this.logger.log(`[Seedance] task created: ${taskId}, status: ${createResult.status}`)
+
+    // 步骤2：轮询任务状态，最长等待5分钟
+    const maxPollTime = 5 * 60 * 1000
+    const pollInterval = 10 * 1000
+    const startTime = Date.now()
+
+    while (Date.now() - startTime < maxPollTime) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval))
+
+      const pollUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks/${taskId}`
+      const pollResponse = await fetch(pollUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.seedanceApiKey}`,
+        },
+      })
+
+      if (!pollResponse.ok) {
+        this.logger.warn(`[Seedance] poll error: ${pollResponse.status}, retrying...`)
+        continue
+      }
+
+      const pollResult = await pollResponse.json() as any
+      const status = pollResult.status
+
+      this.logger.log(`[Seedance] task ${taskId} status: ${status}, response keys: ${Object.keys(pollResult).join(',')}`)
+
+      if (status === 'succeeded' || status === 'complete' || status === 'success') {
+        // 火山引擎 Seedance 响应格式：
+        // 格式1: content 是对象 { video_url: "https://..." }（最常见）
+        // 格式2: content 是数组 [{ type: "video_url", video_url: "..." }]
+        // 格式3: content 在 data.content 或 output.content 中
+        // 先检查 content 是对象且包含 video_url
+        if (pollResult.content && typeof pollResult.content === 'object' && !Array.isArray(pollResult.content)) {
+          const contentObj = pollResult.content as Record<string, any>
+          if (contentObj.video_url) {
+            this.logger.log(`[Seedance] 视频生成成功(content.video_url): ${contentObj.video_url.slice(0, 80)}...`)
+            return contentObj.video_url as string
+          }
+        }
+        let contentItems: any[] = []
+        if (Array.isArray(pollResult.content)) {
+          contentItems = pollResult.content
+        } else if (Array.isArray(pollResult.data?.content)) {
+          contentItems = pollResult.data.content
+        } else if (Array.isArray(pollResult.output?.content)) {
+          contentItems = pollResult.output.content
+        } else if (pollResult.content && typeof pollResult.content === 'string') {
+          // content 是字符串URL的情况
+          this.logger.log(`[Seedance] 视频生成成功(字符串URL): ${pollResult.content.slice(0, 80)}...`)
+          return pollResult.content
+        }
+        for (const item of contentItems) {
+          if (item.type === 'video_url' && item.video_url) {
+            this.logger.log(`[Seedance] 视频生成成功: ${item.video_url.slice(0, 80)}...`)
+            return item.video_url
+          }
+          if (item.type === 'video' && item.url) {
+            this.logger.log(`[Seedance] 视频生成成功: ${item.url.slice(0, 80)}...`)
+            return item.url
+          }
+          // 兜底：如果item本身就是URL字符串
+          if (typeof item === 'string' && (item.startsWith('http://') || item.startsWith('https://'))) {
+            this.logger.log(`[Seedance] 视频生成成功(直接URL): ${item.slice(0, 80)}...`)
+            return item
+          }
+        }
+        // 兜底：尝试从其他字段获取
+        if (pollResult.output?.video_url) {
+          return pollResult.output.video_url
+        }
+        if (pollResult.data?.video_url) {
+          return pollResult.data.video_url
+        }
+        this.logger.error(`[Seedance] 任务成功但未找到视频URL: ${JSON.stringify(pollResult).slice(0, 500)}`)
+        throw new Error('Seedance任务成功但未找到视频URL')
+      }
+
+      if (status === 'failed' || status === 'error') {
+        const errorMsg = pollResult.error?.message || pollResult.message || '未知错误'
+        this.logger.error(`[Seedance] task failed: ${errorMsg}`)
+        throw new Error(`Seedance视频生成失败: ${errorMsg}`)
+      }
+
+      // 状态为 processing/in_progress/queued 等，继续轮询
+    }
+
+    throw new Error('Seedance视频生成超时（5分钟）')
   }
 }

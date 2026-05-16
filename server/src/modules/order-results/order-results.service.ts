@@ -1,28 +1,44 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import * as crypto from 'crypto'
 
 @Injectable()
 export class OrderResultsService {
   async createOrderResult(data: {
     order_id: string
     avatar_id: string
-    user_id: string
-    result: Record<string, any>
+    exposure?: number
+    likes?: number
+    comments?: number
+    shares?: number
+    link_url?: string
+    description?: string
+    screenshots?: string | string[]
   }) {
     const db = getMySQLClient()
-    
+
     const id = crypto.randomUUID()
-    await db.insert('order_results', {
+    const insertResult = await db.insert('order_results', {
       id,
       order_id: data.order_id,
       avatar_id: data.avatar_id,
-      user_id: data.user_id,
-      result: JSON.stringify(data.result),
+      platform: 'auto',
+      task_description: data.description || data.link_url || '',
+      actual_exposure: data.exposure || 0,
+      actual_likes: data.likes || 0,
+      actual_comments: data.comments || 0,
+      actual_shares: data.shares || 0,
+      quality_score: 0,
+      notes: data.link_url || '',
       created_at: new Date(),
-      updated_at: new Date()
+      screenshots: typeof data.screenshots === 'string' ? data.screenshots : JSON.stringify(data.screenshots || []),
     })
-    
+
+    if (insertResult.error) {
+      console.error('[OrderResultsService] createOrderResult 失败:', insertResult.error)
+    }
+
     return { id }
   }
 
@@ -31,10 +47,13 @@ export class OrderResultsService {
     return await db.queryOne('order_results', { order_id: orderId }) as any
   }
 
-  async getOrderResults(userId: string) {
+  async getOrderResultsByOrder(orderId: string) {
     const db = getMySQLClient()
-    return await db.query('order_results', { user_id: userId }) as any
+    const pool = (db as any)._pool || (db as any).pool
+    if (pool) {
+      const [rows] = await pool.query('SELECT * FROM order_results WHERE order_id = ? ORDER BY created_at DESC', [orderId])
+      return rows
+    }
+    return []
   }
 }
-
-import * as crypto from 'crypto'

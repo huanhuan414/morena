@@ -273,13 +273,24 @@ export default function OrderFeedbackPage() {
 
   const updateOrderStatus = async () => {
     try {
+      // 调用 acceptProcessing 正规验收流程（会更新 dispatch_requests 状态 → 触发结算）
+      // 而不是直接 PUT status=completed（会跳过结算流程）
       await Network.request({
-        url: `/api/order/${orderId}/status`,
+        url: `/api/order-processing/accept/${orderId}`,
         method: 'PUT',
-        data: { status: 'completed' }
       })
     } catch (error) {
-      console.error('更新订单状态失败:', error)
+      console.error('验收操作失败:', error)
+      // 兜底：如果 acceptProcessing 失败，尝试直接更新状态
+      try {
+        await Network.request({
+          url: `/api/order/${orderId}/status`,
+          method: 'PUT',
+          data: { status: 'completed' }
+        })
+      } catch (fallbackError) {
+        console.error('更新订单状态失败:', fallbackError)
+      }
     }
   }
 

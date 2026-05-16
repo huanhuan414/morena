@@ -20,6 +20,7 @@ interface OrderInfo {
   targetAudience: string
   status: string
   orderType: string
+  contentType?: string
 }
 
 interface GeneratedContent {
@@ -124,13 +125,15 @@ export default function OrderContentCreation() {
         || descText.match(/面向[：:]?\s*([^\n]+)/)
       const targetAudience = order?.targetAudience || audienceMatch?.[1]?.trim() || '年轻用户'
 
+      const contentType = order?.contentType || (orderInfo as any)?.contentType || 'image_text'
+
       const params: Record<string, any> = {
         orderId: id,
-        avatarId: 'default',
+        avatarId: router.params.avatarId || 'default',
         orderTitle: order?.title || '内容生成',
         orderDescription: order?.description || '',
         platforms: normalizedPlatforms,
-        contentType: 'image_text',
+        contentType,
         targetAudience,
         contentQuantity: order?.quantityPerAvatar || order?.expectedQuantity || 3,
       }
@@ -290,7 +293,7 @@ export default function OrderContentCreation() {
               </View>
               <View className="cc-order-type">
                 <FileText size={12} color="#6366F1" />
-                <Text className="cc-order-type-text">图文创作</Text>
+                <Text className="cc-order-type-text">{(orderInfo as any)?.contentType === 'video' ? '视频创作' : (orderInfo as any)?.contentType === 'text' ? '文案创作' : '图文创作'}</Text>
               </View>
             </View>
             <Text className="cc-order-title">{orderInfo.title}</Text>

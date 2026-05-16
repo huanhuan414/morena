@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import * as crypto from 'crypto'
 
 @Injectable()
@@ -58,32 +58,36 @@ export class EarningService {
     page?: number
     pageSize?: number
   }) {
-    const db = getMySQLClient()
+    const pool = getPool()
     
     const page = options?.page || 1
     const pageSize = options?.pageSize || 20
     const offset = (page - 1) * pageSize
     
-    let where = `user_id = '${userId}'`
+    let where = 'user_id = ?'
+    const params: any[] = [userId]
     if (options?.type) {
-      where += ` AND type = '${options.type}'`
+      where += ' AND type = ?'
+      params.push(options.type)
     }
     if (options?.status) {
-      where += ` AND status = '${options.status}'`
+      where += ' AND status = ?'
+      params.push(options.status)
     }
     
-    const list = await db.queryWhere('earnings', where, {
-      orderBy: 'created_at',
-      orderDirection: 'desc',
-      limit: pageSize,
-      offset: offset
-    }) as any
+    const [list] = await pool.query(
+      `SELECT * FROM earnings WHERE ${where} ORDER BY created_at DESC LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}`,
+      params
+    )
     
-    const total = await db.countWhere('earnings', where)
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM earnings WHERE ${where}`,
+      params
+    )
     
     return {
-      list: list?.data || [],
-      total: total || 0,
+      list: Array.isArray(list) ? list : [],
+      total: countResult?.[0]?.total || 0,
       page,
       pageSize
     }
@@ -126,25 +130,23 @@ export class EarningService {
     avatar_id: string
     amount: number
   }>) {
-    const db = getMySQLClient()
-    
+    const pool = getPool()
+
     const results = []
     for (const participant of participants) {
       const id = crypto.randomUUID()
-      await db.insert('earnings', {
-        id,
-        user_id: participant.user_id,
-        type: 'order_reward',
-        amount: participant.amount,
-        status: 'pending',
-        description: `订单收益`,
-        avatar_id: participant.avatar_id,
-        order_id: orderId,
-        created_at: new Date()
-      })
-      results.push({ id, ...participant })
+      try {
+        await pool.query(
+          `INSERT INTO earnings (id, user_id, type, amount, status, description, avatar_id, order_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, participant.user_id, 'order_reward', participant.amount, 'pending', '订单收益', participant.avatar_id, orderId, new Date()]
+        )
+        results.push({ id, ...participant })
+      } catch (e) {
+        console.error('[EarningService] createOrderEarnings 写入失败:', e.message)
+      }
     }
-    
+
     return results
   }
 
@@ -152,21 +154,19 @@ export class EarningService {
    * 结算订单收益（将pending状态转为completed并加入余额）
    */
   async settleOrderEarnings(orderId: string) {
-    const db = getMySQLClient()
-    
-    const earnings = await db.query('SELECT * FROM earnings WHERE order_id = ? AND status = ?', [orderId, 'pending']) as any[]
-    
+    const pool = getPool()
+
+    const [earnings] = await pool.query('SELECT * FROM earnings WHERE order_id = ? AND status = ?', [orderId, 'pending']) as any[]
+
     for (const earning of earnings) {
-      await db.updateWhere('earnings', { id: earning.id }, {
-        status: 'completed'
-      })
-      
-      await db.query(
-        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
-        [earning.amount, earning.amount, new Date(), earning.user_id]
+      await pool.query('UPDATE earnings SET status = ? WHERE id = ?', ['settled', earning.id])
+
+      await pool.query(
+        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
+        [earning.amount, earning.amount, earning.user_id]
       )
     }
-    
+
     return { count: earnings.length }
   }
 
