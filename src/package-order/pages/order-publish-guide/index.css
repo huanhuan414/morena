@@ -430,6 +430,13 @@
   padding: 8rpx 0 16rpx;
 }
 
+/* 视频容器 */
+.pg-video-wrapper {
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
 /* 视频封面卡片 */
 .video-cover-card {
   position: relative;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, ScrollView, Image } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Video as TaroVideo } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -131,8 +131,10 @@ export default function OrderPublishGuide() {
             }
             if (data.contentType) {
               const typeMap: Record<string, string> = {
+                image: '图片',
                 image_text: '图文',
                 article: '图文',
+                text: '排版',
                 video: '视频',
                 video_text: '视频',
               }
@@ -659,7 +661,7 @@ export default function OrderPublishGuide() {
             </View>
           )}
 
-          {/* 视频：放在配图后面，正文区块内 */}
+          {/* 视频 */}
           {videos.length > 0 && (
             <View className="content-preview-card">
               <View className="preview-label-row">
@@ -668,31 +670,51 @@ export default function OrderPublishGuide() {
                   <Text className="preview-label-text">视频 ({videos.length}个)</Text>
                 </View>
               </View>
-              {videos.map((url, index) => (
-                <View
-                  key={index}
-                  className="video-cover-card"
-                  onClick={() => {
-                    console.log('播放视频:', url)
-                    Taro.previewMedia({
-                      sources: [{ url, type: 'video' }],
-                      current: 0
-                    }).catch((err) => {
-                      console.error('previewMedia 失败:', err)
-                      Taro.setClipboardData({ data: url }).then(() => {
-                        Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
-                      })
-                    })
-                  }}
-                >
-                  <View className="video-cover-bg">
-                    <View className="video-play-circle">
-                      <View className="video-play-triangle" />
-                    </View>
+              {videos.map((url, index) => {
+                const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
+                return (
+                  <View key={index} className="pg-video-wrapper">
+                    {isH5 ? (
+                      /* H5 端：直接用 Video 组件播放，无浮层问题 */
+                      <TaroVideo
+                        src={url}
+                        className="pg-video-player"
+                        controls
+                        autoplay={false}
+                        loop={false}
+                        muted={false}
+                        showFullscreenBtn
+                        showPlayBtn
+                        showCenterPlayBtn
+                        objectFit="contain"
+                        style={{ width: '100%', height: '420rpx', borderRadius: '16rpx' }}
+                      />
+                    ) : (
+                      /* 小程序端：封面卡 + previewMedia 播放 */
+                      <View
+                        className="video-cover-card"
+                        onClick={() => {
+                          Taro.previewMedia({
+                            sources: [{ url, type: 'video' }],
+                            current: 0
+                          }).catch(() => {
+                            Taro.setClipboardData({ data: url }).then(() => {
+                              Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+                            })
+                          })
+                        }}
+                      >
+                        <View className="video-cover-bg">
+                          <View className="video-play-circle">
+                            <View className="video-play-triangle" />
+                          </View>
+                        </View>
+                        <Text className="video-cover-label">视频 {index + 1} · 点击播放</Text>
+                      </View>
+                    )}
                   </View>
-                  <Text className="video-cover-label">视频 {index + 1} · 点击播放</Text>
-                </View>
-              ))}
+                )
+              })}
             </View>
           )}
         </View>

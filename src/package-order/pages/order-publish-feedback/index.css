@@ -746,3 +746,17 @@
 @keyframes feedback-spin {
   to { transform: rotate(360deg); }
 }
+
+/* 视频播放器 */
+.pg-video-wrapper {
+  width: 100%;
+  margin-bottom: 12rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000;
+}
+
+.pg-video-player {
+  width: 100%;
+  height: 420rpx;
+}

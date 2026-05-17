@@ -1,7 +1,7 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input, Video as TaroVideo } from '@tarojs/components'
 import { Network } from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
@@ -322,24 +322,16 @@ export default function OrderAcceptance() {
                     <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} className="od-video-cover" onClick={() => {
-                    console.log('播放视频:', url)
-                    Taro.previewMedia({
-                      sources: [{ url, type: 'video' }],
-                      current: 0
-                    }).catch((err) => {
-                      console.error('previewMedia 失败:', err)
-                      Taro.setClipboardData({ data: url }).then(() => {
-                        Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
-                      })
-                    })
-                  }}>
-                      <View className="od-video-play">
-                        <View className="od-play-circle">
-                          <View className="od-play-triangle" />
-                        </View>
-                      </View>
-                      <Text className="od-video-label">视频 {idx + 1} · 点击播放</Text>
+                    <View key={idx} className="pg-video-wrapper">
+                      <TaroVideo
+                        src={url}
+                        className="pg-video-player"
+                        controls
+                        autoplay={false}
+                        showFullscreenBtn={false}
+                        showPlayBtn
+                        objectFit="contain"
+                      />
                     </View>
                   ))}
                 </View>

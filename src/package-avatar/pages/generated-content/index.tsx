@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage, Video } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -423,27 +423,20 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频内容 - 封面卡片，点击播放 */}
+                {/* 视频内容 */}
                 {videoUrls.length > 0 && (
                   <View className="card-video-list">
                     {videoUrls.map((url: string, idx: number) => (
-                      <View
-                        key={idx}
-                        className="card-video-cover"
-                        onClick={() => {
-                          console.log('播放视频:', url)
-                          Taro.previewMedia({
-                            sources: [{ url, type: 'video' }],
-                            current: 0
-                          }).catch(() => {
-                            Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(content.id)}` })
-                          })
-                        }}
-                      >
-                        <View className="card-video-play-icon">
-                          <Play size={24} color="#fff" />
-                        </View>
-                        <Text className="card-video-text">视频 {idx + 1} · 点击播放</Text>
+                      <View key={idx} className="pg-video-wrapper">
+                        <Video
+                          src={url}
+                          className="pg-video-player"
+                          controls
+                          autoplay={false}
+                          showFullscreenBtn={false}
+                          showPlayBtn
+                          objectFit="contain"
+                        />
                       </View>
                     ))}
                   </View>
