@@ -1,11 +1,11 @@
 import Taro, { useLoad, useRouter, navigateBack, showToast, previewImage } from '@tarojs/taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { useState } from 'react'
-import { View, Text, ScrollView, Image, Input, Video as TaroVideo } from '@tarojs/components'
+import { View, Text, ScrollView, Image, Input } from '@tarojs/components'
 import { Network } from '@/network'
 import {
   ArrowLeft, Check, CircleAlert, Image as ImageIcon, ExternalLink,
-  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText
+  ChevronRight, TrendingUp, CircleCheckBig, Video, FileText, Play
 } from 'lucide-react-taro'
 import '../order-detail/index.css'
 
@@ -314,7 +314,7 @@ export default function OrderAcceptance() {
                 </View>
               )}
 
-              {/* 视频内容 */}
+              {/* 视频内容 - 封面卡点击播放 */}
               {generatedContent.videos && generatedContent.videos.length > 0 && (
                 <View>
                   <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -322,16 +322,24 @@ export default function OrderAcceptance() {
                     <Text className="block" style={{ fontSize: '13px', color: '#6B7280', marginLeft: 4 }}>视频 ({generatedContent.videos.length})</Text>
                   </View>
                   {generatedContent.videos.map((url: string, idx: number) => (
-                    <View key={idx} className="pg-video-wrapper">
-                      <TaroVideo
-                        src={url}
-                        className="pg-video-player"
-                        controls
-                        autoplay={false}
-                        showFullscreenBtn={false}
-                        showPlayBtn
-                        objectFit="contain"
-                      />
+                    <View key={idx} className="gc-video-cover-card" onClick={() => {
+                      Taro.previewMedia({
+                        sources: [{ url, type: 'video' }],
+                        current: 0,
+                      }).catch(() => {
+                        Taro.setClipboardData({ data: url })
+                        Taro.showToast({ title: '视频链接已复制', icon: 'none' })
+                      })
+                    }}
+                    >
+                      <View className="gc-video-cover-bg">
+                        <View className="gc-video-play-btn">
+                          <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                        </View>
+                        <View className="gc-video-cover-label">
+                          <Text className="gc-video-cover-text">视频 {idx + 1} · 点击播放</Text>
+                        </View>
+                      </View>
                     </View>
                   ))}
                 </View>

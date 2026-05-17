@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Image as TaroImage, Video } from '@tarojs/components'
+import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -257,6 +257,17 @@ export default function GeneratedContentPage() {
     }
   }
 
+  const playVideo = (url: string) => {
+    console.log('[generated-content] playVideo url:', url)
+    Taro.previewMedia({
+      sources: [{ url, type: 'video' }],
+      current: 0,
+    }).catch(() => {
+      Taro.setClipboardData({ data: url })
+      Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none' })
+    })
+  }
+
   const handleAction = (actionKey: string, content: any) => {
     switch (actionKey) {
       case 'publish': handlePublish(content); break
@@ -423,20 +434,19 @@ export default function GeneratedContentPage() {
                   </View>
                 )}
 
-                {/* 视频内容 */}
+                {/* 视频内容 - 封面卡点击播放，避免小程序Video原生组件浮层 */}
                 {videoUrls.length > 0 && (
                   <View className="card-video-list">
                     {videoUrls.map((url: string, idx: number) => (
-                      <View key={idx} className="pg-video-wrapper">
-                        <Video
-                          src={url}
-                          className="pg-video-player"
-                          controls
-                          autoplay={false}
-                          showFullscreenBtn={false}
-                          showPlayBtn
-                          objectFit="contain"
-                        />
+                      <View key={idx} className="gc-video-cover-card" onClick={() => playVideo(url)}>
+                        <View className="gc-video-cover-bg">
+                          <View className="gc-video-play-btn">
+                            <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                          </View>
+                          <View className="gc-video-cover-label">
+                            <Text className="gc-video-cover-text">点击播放视频</Text>
+                          </View>
+                        </View>
                       </View>
                     ))}
                   </View>

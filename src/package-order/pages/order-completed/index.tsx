@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { View, Text, Image, ScrollView, Video } from '@tarojs/components'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useLoad, useRouter, navigateBack } from '@tarojs/taro'
 import * as Network from '@/network'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, CircleCheck, Wallet, Clock, ExternalLink } from 'lucide-react-taro'
+import { ArrowLeft, CircleCheck, Wallet, Clock, ExternalLink, Play } from 'lucide-react-taro'
 import './index.css'
 
 export default function OrderCompletedPage() {
@@ -106,7 +106,6 @@ export default function OrderCompletedPage() {
   }
 
   const parsedContent = parseContent(generatedContent.content || '')
-  const isH5 = Taro.getEnv() === Taro.ENV_TYPE.WEB
 
   // 收益状态配置
   const earningsStatusConfig = {
@@ -185,18 +184,27 @@ export default function OrderCompletedPage() {
               {/* 视频类型 */}
               {contentType === 'video' && generatedContent.videos?.length > 0 && (
                 <View className="video-preview">
-                  {isH5 ? (
-                    <View className="video-placeholder">
-                      <Text className="video-placeholder-text">视频内容（小程序端可播放）</Text>
+                  {generatedContent.videos.map((url: string, idx: number) => (
+                    <View key={idx} className="gc-video-cover-card" onClick={() => {
+                      Taro.previewMedia({
+                        sources: [{ url, type: 'video' }],
+                        current: 0,
+                      }).catch(() => {
+                        Taro.setClipboardData({ data: url })
+                        Taro.showToast({ title: '视频链接已复制', icon: 'none' })
+                      })
+                    }}
+                    >
+                      <View className="gc-video-cover-bg">
+                        <View className="gc-video-play-btn">
+                          <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                        </View>
+                        <View className="gc-video-cover-label">
+                          <Text className="gc-video-cover-text">视频 {idx + 1} · 点击播放</Text>
+                        </View>
+                      </View>
                     </View>
-                  ) : (
-                    <Video
-                      src={generatedContent.videos[0]}
-                      className="video-player"
-                      controls
-                      poster={generatedContent.cover_image}
-                    />
-                  )}
+                  ))}
                 </View>
               )}
 
