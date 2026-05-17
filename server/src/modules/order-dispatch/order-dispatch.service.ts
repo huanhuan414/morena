@@ -167,15 +167,20 @@ export class OrderDispatchService {
       }
     }
 
-    // 计算每个请求的匹配度
+    // 计算每个请求的匹配度 + 预期收益
     return requests.map(req => {
       // 注入 avatar_skills 表的技能数据
       req._skillsFromTable = skillsMap.get(req.avatarId) || []
       const { score, details } = this.calculateMatchScore(req, req)
+      // 预期收益 = 总预算 / 期望分身数
+      const budget = Number(req.budget || 0)
+      const expectedQuantity = Number(req.expectedQuantity || req.expected_quantity || 1)
+      const expectedEarnings = expectedQuantity > 0 ? Math.round(budget / expectedQuantity * 100) / 100 : budget
       return {
         ...req,
         matchScore: score,
         matchDetails: details,
+        expectedEarnings,
       }
     })
   }

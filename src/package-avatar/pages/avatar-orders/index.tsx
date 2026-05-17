@@ -345,8 +345,8 @@ export default function AvatarOrdersPage() {
 
                   <View className="order-info">
                     <View className="info-tag">
-                      <Text className="info-tag-label">预算</Text>
-                      <Text className="info-tag-value">¥{order.orders?.budget || 0}</Text>
+                      <Text className="info-tag-label">预期收益</Text>
+                      <Text className="info-tag-value">¥{order.orders?.expectedEarnings || 0}</Text>
                     </View>
                     {order.orders?.platforms && order.orders.platforms.length > 0 && (
                       <View className="info-tag">

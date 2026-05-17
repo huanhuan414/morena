@@ -190,7 +190,7 @@ export default function OrderSquarePage() {
             budget: Number(item.budget || 0),
             platform: canonicalizePlatform(Array.isArray(item.platforms) && item.platforms.length > 0 ? item.platforms[0] : (item.platform || '')),
             contentType: item.contentType || item.content_type || 'content',
-            estimatedEarning: Number(item.budget || 0),
+            estimatedEarning: Number(item.expectedEarnings || item.expected_earnings || 0) || (Number(item.budget || 0) / Math.max(Number(item.avatarCount || item.expected_quantity || 1), 1)),
             deliveryDays: item.deliveryDays || item.delivery_days || 3,
             requirements: Array.isArray(item.requirements?.requiredSkills) ? item.requirements.requiredSkills : (Array.isArray(item.requiredSkills) ? item.requiredSkills : []),
             publisher: { nickname: item.publisherNickname || item.publisher_nickname || '发布方', avatar: item.publisherAvatar || item.publisher_avatar || '', rating: item.publisherRating || 5 },
@@ -455,7 +455,7 @@ export default function OrderSquarePage() {
                 <View className="stats-row">
                   <View className="stat-item">
                     <DollarSign size={14} color="#F59E0B" />
-                    <Text className="stat-value earn">¥{order.budget}</Text>
+                    <Text className="stat-value earn">¥{order.estimatedEarning}</Text>
                     <Text className="stat-label">单笔收益</Text>
                   </View>
                   <View className="stat-divider" />

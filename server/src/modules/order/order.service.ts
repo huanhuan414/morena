@@ -375,6 +375,9 @@ export class OrderService {
         ? JSON.parse(order.requirements) 
         : (order.requirements || {}),
       budget: order.budget,
+      expectedEarnings: (order.expectedQuantity && Number(order.budget) > 0)
+        ? Math.round(Number(order.budget) / order.expectedQuantity * 100) / 100
+        : Number(order.budget) || 0,
       status: order.status,
       avatarCount: order.expectedQuantity || order.avatarCount || 1,
       avatarStats,
@@ -523,7 +526,9 @@ export class OrderService {
       
       const dispatchedCount = dispatchCounts[row.id] || 0
       const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
-      
+      const budget = Number(row.budget) || 0
+      const expectedEarnings = needAvatarCount > 0 ? Math.round(budget / needAvatarCount * 100) / 100 : budget
+
       return {
         id: row.id,
         title: row.title,
@@ -532,6 +537,7 @@ export class OrderService {
         platforms,
         requirements,
         budget: row.budget,
+        expectedEarnings,
         status: row.status,
         avatarCount: needAvatarCount,
         dispatchedCount,
