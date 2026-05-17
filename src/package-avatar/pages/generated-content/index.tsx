@@ -8,7 +8,7 @@ import { canonicalizePlatform, getPlatformLabel, getPlatformMeta } from '@/const
 import './index.css'
 
 // 内容状态映射
-// 后端状态 → 前端 tab key 映射
+// 后端原始状态 → 前端展示状态
 const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   queuing: 'generating',
   pending: 'generating',
@@ -16,6 +16,7 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   generating: 'generating',
   generating_text: 'generating',
   generating_images: 'generating',
+  generating_video: 'generating',
   preview: 'preview',
   completed: 'preview',
   revision_requested: 'preview',
@@ -27,6 +28,17 @@ const BACKEND_STATUS_TO_TAB: Record<string, string> = {
   settled: 'completed',
   done: 'completed',
   failed: 'failed',
+}
+
+// 生成中的子阶段文案映射（用于进度提示）
+const GENERATING_PHASE: Record<string, string> = {
+  queuing: '排队等待中...',
+  pending: '准备生成...',
+  processing: '正在处理...',
+  generating: '内容生成中...',
+  generating_text: '文案生成中...',
+  generating_images: '配图生成中...',
+  generating_video: '视频生成中（约1-3分钟）...',
 }
 
 const CONTENT_STATUS_MAP: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -157,12 +169,19 @@ export default function GeneratedContentPage() {
 
   // 查看内容详情
   const handleView = (content: any) => {
-    const query = [
-      `orderId=${encodeURIComponent(content.orderId || '')}`,
-      content.avatarId ? `avatarId=${encodeURIComponent(content.avatarId)}` : '',
-      content.id ? `requestId=${encodeURIComponent(content.id)}` : '',
-    ].filter(Boolean).join('&')
-    Taro.navigateTo({ url: `/package-order/pages/order-processing/index?${query}` })
+    const normalizedStatus = BACKEND_STATUS_TO_TAB[content.status] || content.status
+    if (normalizedStatus === 'generating') {
+      // 生成中 → 跳转内容创作页查看进度
+      const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
+      Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
+    } else {
+      // 已完成/已发布 → 跳转发布引导页查看详情
+      const query = [
+        `contentId=${encodeURIComponent(content.id || '')}`,
+        `orderId=${encodeURIComponent(content.orderId || '')}`,
+      ].filter(Boolean).join('&')
+      Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
+    }
   }
 
   // 发布
@@ -221,31 +240,32 @@ export default function GeneratedContentPage() {
   }
 
   // 获取卡片底部按钮配置
-  const getCardActions = (rawStatus: string) => {
+  const getCardActions = (rawStatus: string, contentType?: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
+    const isVideo = contentType === 'video_text'
     switch (status) {
       case 'preview':
         return [
           { key: 'publish', label: '发布', icon: Send, type: 'primary' },
-          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'published':
         return [
           { key: 'feedback', label: '反馈', icon: MessageSquare, type: 'primary' },
-          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'awaiting_acceptance':
         return [
           { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
-          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'generating':
         return [
-          { key: 'view', label: '查看进度', icon: Eye, type: 'default' },
+          { key: 'view', label: isVideo ? '查看生成进度' : '查看进度', icon: Eye, type: 'default' },
         ]
       case 'completed':
         return [
-          { key: 'view', label: '查看', icon: Eye, type: 'default' },
+          { key: 'view', label: '查看详情', icon: Eye, type: 'default' },
         ]
       case 'failed':
         return [
@@ -253,7 +273,7 @@ export default function GeneratedContentPage() {
           { key: 'regenerate', label: '重新生成', icon: RefreshCw, type: 'primary' },
         ]
       default:
-        return []
+        return [{ key: 'view', label: '查看详情', icon: Eye, type: 'default' }]
     }
   }
 
@@ -379,7 +399,7 @@ export default function GeneratedContentPage() {
             const rawVideoUrl = content.video_url || content.videoUrl || ''
             const videoUrls: string[] = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
-            const actions = getCardActions(content.status)
+            const actions = getCardActions(content.status, content.contentType)
 
             return (
               <View key={content.id} className="content-card">
@@ -449,6 +469,18 @@ export default function GeneratedContentPage() {
                         </View>
                       </View>
                     ))}
+                    <View className="video-detail-entry" onClick={() => handleView(content)}>
+                      <Eye size={14} color="#6366F1" />
+                      <Text className="video-detail-text">查看详情</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* 视频生成中状态提示 */}
+                {content.contentType === 'video_text' && videoUrls.length === 0 && BACKEND_STATUS_TO_TAB[content.status] === 'generating' && (
+                  <View className="generating-phase-hint">
+                    <View className="generating-spinner" />
+                    <Text className="generating-phase-text">{GENERATING_PHASE[content.status] || '内容生成中...'}</Text>
                   </View>
                 )}
 
