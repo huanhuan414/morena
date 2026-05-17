@@ -149,7 +149,7 @@ export default function OrderContentCreation() {
 
     const fetchStatus = async () => {
       try {
-        const res = await Network.request({ url: `/api/order-processing/status?orderId=${orderId}` })
+        const res = await Network.request({ url: `/api/order-processing/status/${orderId}` })
         console.log('[content-creation] status response:', JSON.stringify(res.data))
         const data = res.data?.data || res.data
         if (data) {
