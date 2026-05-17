@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, Image, Input } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
 import { Network } from '@/network'
+import { Upload, Sparkles, History, Shirt } from 'lucide-react-taro'
 
 const BUILT_IN_PROMPT = `请根据用户输入的【主题】或上传的【参考图片】，创作一张横向 4:3 的高完成度「AI服装灵感方案 / AI Fashion Inspiration Board」。
 
@@ -30,7 +34,6 @@ export default function FashionMakeoverPage() {
   const [generating, setGenerating] = useState(false)
   const [resultImageUrl, setResultImageUrl] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
-  const [showHistory, setShowHistory] = useState(false)
 
   useDidShow(() => {
     loadHistory()
@@ -85,13 +88,13 @@ export default function FashionMakeoverPage() {
 
   const handleGenerate = async () => {
     if (!inputImageUrl && !inputText.trim()) {
-      Taro.showToast({ title: '请上传参考图片或输入主题', icon: 'none' })
+      Taro.showToast({ title: '请上传参考图或输入主题', icon: 'none' })
       return
     }
     setGenerating(true)
     setResultImageUrl('')
     try {
-      console.log('[衣品改造] 开始生成, inputImageUrl:', inputImageUrl, 'inputText:', inputText)
+      console.log('[衣品改造] 开始生成')
       const res = await Network.request({
         url: '/api/ai-skill/generate',
         method: 'POST',
@@ -156,141 +159,239 @@ export default function FashionMakeoverPage() {
     setGenerating(false)
   }
 
-  const handlePreviewResult = () => {
-    if (resultImageUrl) {
-      Taro.previewImage({ urls: [resultImageUrl], current: resultImageUrl })
-    }
-  }
-
-  const handlePreviewHistory = (item: HistoryRecord) => {
-    const urls = [item.resultImageUrl]
-    if (item.inputImageUrl) urls.unshift(item.inputImageUrl)
-    Taro.previewImage({ urls, current: item.resultImageUrl })
+  const handlePreviewImage = (url: string) => {
+    Taro.previewImage({ urls: [url], current: url })
   }
 
   return (
-    <View className="flex flex-col min-h-screen bg-gray-50">
-      {/* 顶部说明 */}
-      <View className="mx-4 mt-4 p-4 bg-white rounded-2xl shadow-sm">
-        <Text className="block text-lg font-bold text-gray-800 mb-2">AI 衣品改造</Text>
-        <Text className="block text-sm text-gray-500 leading-relaxed">上传参考图片或输入主题，AI 为您生成 3 套完整的穿搭灵感方案。</Text>
-      </View>
-
-      {/* 上传区域 */}
-      <View className="mx-4 mt-4">
-        <Text className="block text-base font-semibold text-gray-700 mb-2">上传参考图片</Text>
-        {inputImageUrl ? (
-          <View className="relative">
-            <Image
-              src={inputImageUrl}
-              className="w-full rounded-2xl"
-              mode="aspectFit"
-              style={{ maxHeight: '300px' }}
-              onClick={() => Taro.previewImage({ urls: [inputImageUrl] })}
-            />
-            <View
-              className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center"
-              onClick={() => setInputImageUrl('')}
-            >
-              <Text className="text-white text-sm">✕</Text>
-            </View>
-          </View>
-        ) : (
-          <View
-            className="flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-gray-300 py-12"
-            onClick={handleChooseImage}
-          >
-            <Text className="block text-4xl mb-2">👗</Text>
-            <Text className="block text-sm text-gray-400">点击上传参考图片</Text>
-          </View>
-        )}
-      </View>
-
-      {/* 主题输入 */}
-      <View className="mx-4 mt-4">
-        <Text className="block text-base font-semibold text-gray-700 mb-2">输入主题（可选）</Text>
-        <View className="bg-white rounded-xl px-4 py-3">
-          <Input
-            className="w-full bg-transparent text-sm"
-            placeholder="如：职场精英、周末休闲、约会穿搭..."
-            value={inputText}
-            onInput={(e) => setInputText(e.detail.value)}
-          />
+    <View className="flex flex-col min-h-screen" style={{ background: '#F8F7FC' }}>
+      {/* 渐变 Header */}
+      <View className="px-4 pt-6 pb-8" style={{ background: 'linear-gradient(135deg, #7B3FE4 0%, #9B6EF3 100%)' }}>
+        <View className="flex flex-row items-center mb-3">
+          <Shirt size={28} color="#ffffff" className="mr-2" />
+          <Text className="block text-xl font-bold text-white">衣品改造</Text>
         </View>
+        <Text className="block text-sm text-white text-opacity-80 leading-relaxed">
+          上传参考图或输入穿搭主题，AI 为您生成 3 套完整穿搭灵感方案
+        </Text>
       </View>
 
-      {/* 生成按钮 */}
-      <View className="mx-4 mt-4">
-        <Button
-          className="w-full"
-          disabled={(!inputImageUrl && !inputText.trim()) || generating}
-          onClick={handleGenerate}
-        >
-          <Text className="text-white font-semibold">
-            {generating ? '正在生成中...' : '开始生成穿搭方案'}
-          </Text>
-        </Button>
-      </View>
+      <View className="px-4 -mt-4">
+        <Tabs defaultValue="generate">
+          <TabsList className="mb-4">
+            <TabsTrigger value="generate">
+              <View className="flex flex-row items-center">
+                <Sparkles size={14} color="#7B3FE4" className="mr-1" />
+                <Text className="text-sm">AI 生成</Text>
+              </View>
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <View className="flex flex-row items-center">
+                <History size={14} color="#7B3FE4" className="mr-1" />
+                <Text className="text-sm">历史记录</Text>
+              </View>
+            </TabsTrigger>
+          </TabsList>
 
-      {/* 生成结果 */}
-      {resultImageUrl && (
-        <View className="mx-4 mt-4">
-          <Text className="block text-base font-semibold text-gray-700 mb-2">穿搭方案</Text>
-          <View className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            <Image
-              src={resultImageUrl}
-              className="w-full"
-              mode="widthFix"
-              onClick={handlePreviewResult}
-            />
-          </View>
-          <View className="mt-2 flex flex-row gap-2">
-            <View className="flex-1">
-              <Button size="sm" variant="outline" className="w-full" onClick={() => Taro.saveImageToPhotosAlbum({ filePath: resultImageUrl }).then(() => Taro.showToast({ title: '已保存', icon: 'success' })).catch(() => Taro.showToast({ title: '保存失败', icon: 'none' }))}>
-                <Text className="text-xs">保存到相册</Text>
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* 历史记录 */}
-      <View className="mx-4 mt-6 mb-8">
-        <View className="flex flex-row items-center justify-between mb-2" onClick={() => setShowHistory(!showHistory)}>
-          <Text className="block text-base font-semibold text-gray-700">历史记录</Text>
-          <Text className="block text-sm text-gray-400">{showHistory ? '收起' : '展开'} ({history.length})</Text>
-        </View>
-        {showHistory && (
-          history.length === 0 ? (
-            <View className="bg-white rounded-2xl py-8 flex items-center justify-center">
-              <Text className="block text-sm text-gray-400">暂无记录</Text>
-            </View>
-          ) : (
-            <View className="flex flex-col gap-2">
-              {history.map((item) => (
-                <View
-                  key={item.id}
-                  className="flex flex-row bg-white rounded-xl p-3 shadow-sm"
-                  onClick={() => item.resultImageUrl && handlePreviewHistory(item)}
-                >
-                  {item.inputImageUrl && (
-                    <Image src={item.inputImageUrl} className="w-16 h-16 rounded-lg" mode="aspectFill" />
-                  )}
-                  <View className="flex-1 ml-3 justify-center">
-                    <Text className="block text-sm text-gray-700">
-                      {item.inputText ? item.inputText.substring(0, 20) : (item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中')}
-                    </Text>
-                    <Text className="block text-xs text-gray-400 mt-1">{item.createdAt}</Text>
+          {/* 生成 Tab */}
+          <TabsContent value="generate">
+            {/* 输入区域 */}
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                {/* 参考图上传 */}
+                <Text className="block text-sm font-semibold text-gray-700 mb-3">上传参考图片</Text>
+                {inputImageUrl ? (
+                  <View className="relative mb-4">
+                    <Image
+                      src={inputImageUrl}
+                      className="w-full rounded-xl"
+                      mode="aspectFit"
+                      style={{ maxHeight: '240px' }}
+                      onClick={() => handlePreviewImage(inputImageUrl)}
+                    />
+                    <View
+                      className="absolute top-2 right-2 rounded-full flex items-center justify-center"
+                      style={{ width: '28px', height: '28px', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                      onClick={() => setInputImageUrl('')}
+                    >
+                      <Text className="text-white text-xs">✕</Text>
+                    </View>
                   </View>
-                  {item.resultImageUrl && (
-                    <Image src={item.resultImageUrl} className="w-12 h-12 rounded-lg" mode="aspectFill" />
-                  )}
+                ) : (
+                  <View
+                    className="flex flex-col items-center justify-center rounded-xl py-8 mb-4"
+                    style={{ border: '2px dashed #D4BFFF', backgroundColor: '#F3E8FF' }}
+                    onClick={handleChooseImage}
+                  >
+                    <Upload size={28} color="#7B3FE4" />
+                    <Text className="block text-sm mt-2" style={{ color: '#7B3FE4' }}>上传参考穿搭图片</Text>
+                    <Text className="block text-xs mt-1 text-gray-400">可选，支持相册或拍照</Text>
+                  </View>
+                )}
+
+                {/* 主题输入 */}
+                <Text className="block text-sm font-semibold text-gray-700 mb-2">穿搭主题</Text>
+                <View className="rounded-xl px-3 py-2" style={{ backgroundColor: '#F5F5F7' }}>
+                  <View className="flex flex-row flex-wrap gap-2 mb-2">
+                    {['职场通勤', '周末休闲', '约会穿搭', '运动活力'].map(tag => (
+                      <View
+                        key={tag}
+                        className="rounded-full px-3 py-1"
+                        style={{ backgroundColor: inputText === tag ? '#7B3FE4' : '#EDE9FE' }}
+                        onClick={() => setInputText(inputText === tag ? '' : tag)}
+                      >
+                        <Text className="text-xs" style={{ color: inputText === tag ? '#ffffff' : '#7B3FE4' }}>
+                          {tag}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View className="mt-2 rounded-lg px-3 py-2" style={{ backgroundColor: '#ffffff' }}>
+                    <Input
+                      className="text-sm"
+                      placeholder="或自定义主题，如：法式复古、韩系简约..."
+                      value={inputText}
+                      onInput={(e) => setInputText(e.detail.value)}
+                    />
+                  </View>
                 </View>
-              ))}
-            </View>
-          )
-        )}
+              </CardContent>
+            </Card>
+
+            {/* 生成按钮 */}
+            <Button
+              className="w-full mb-4"
+              style={{ backgroundColor: '#7B3FE4' }}
+              disabled={(!inputImageUrl && !inputText.trim()) || generating}
+              onClick={handleGenerate}
+            >
+              <View className="flex flex-row items-center justify-center">
+                <Sparkles size={16} color="#ffffff" className="mr-2" />
+                <Text className="text-white font-semibold">
+                  {generating ? 'AI 正在创作灵感方案...' : '生成穿搭灵感'}
+                </Text>
+              </View>
+            </Button>
+
+            {/* 生成结果 */}
+            {resultImageUrl && (
+              <Card>
+                <CardContent className="p-4">
+                  <View className="flex flex-row items-center mb-3">
+                    <View className="w-1 h-4 rounded-full mr-2" style={{ backgroundColor: '#7B3FE4' }} />
+                    <Text className="block text-sm font-semibold text-gray-800">穿搭灵感方案</Text>
+                  </View>
+                  <View className="rounded-xl overflow-hidden">
+                    <Image
+                      src={resultImageUrl}
+                      className="w-full"
+                      mode="widthFix"
+                      onClick={() => handlePreviewImage(resultImageUrl)}
+                    />
+                  </View>
+                  <View className="mt-3 flex flex-row gap-2">
+                    <View className="flex-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        style={{ borderColor: '#7B3FE4', color: '#7B3FE4' }}
+                        onClick={() => {
+                          Taro.saveImageToPhotosAlbum({ filePath: resultImageUrl })
+                            .then(() => Taro.showToast({ title: '已保存', icon: 'success' }))
+                            .catch(() => Taro.showToast({ title: '保存失败', icon: 'none' }))
+                        }}
+                      >
+                        <Text className="text-xs" style={{ color: '#7B3FE4' }}>保存到相册</Text>
+                      </Button>
+                    </View>
+                    <View className="flex-1">
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        style={{ backgroundColor: '#7B3FE4' }}
+                        onClick={() => handlePreviewImage(resultImageUrl)}
+                      >
+                        <Text className="text-xs text-white">查看大图</Text>
+                      </Button>
+                    </View>
+                  </View>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 生成中提示 */}
+            {generating && !resultImageUrl && (
+              <Card className="mb-4">
+                <CardContent className="p-6 flex flex-col items-center">
+                  <View className="flex flex-row items-center mb-2">
+                    <Sparkles size={20} color="#7B3FE4" className="mr-2" />
+                    <Text className="block text-sm font-semibold" style={{ color: '#7B3FE4' }}>AI 正在创作穿搭灵感</Text>
+                  </View>
+                  <Text className="block text-xs text-gray-400 mt-1">预计需要 15-30 秒，请耐心等待...</Text>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* 历史 Tab */}
+          <TabsContent value="history">
+            {history.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 flex flex-col items-center">
+                  <Shirt size={40} color="#D4BFFF" />
+                  <Text className="block text-sm text-gray-400 mt-3">暂无穿搭灵感记录</Text>
+                  <Text className="block text-xs text-gray-300 mt-1">上传参考图或输入主题开始体验</Text>
+                </CardContent>
+              </Card>
+            ) : (
+              <View className="flex flex-col gap-3">
+                {history.map((item) => (
+                  <Card key={item.id} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
+                    <CardContent className="p-3">
+                      <View className="flex flex-row">
+                        {item.inputImageUrl && (
+                          <Image
+                            src={item.inputImageUrl}
+                            className="rounded-lg"
+                            mode="aspectFill"
+                            style={{ width: '56px', height: '56px' }}
+                          />
+                        )}
+                        <View className="flex-1 ml-3 justify-center">
+                          <Text className="block text-sm font-medium text-gray-700">
+                            {item.inputText || '穿搭灵感方案'}
+                          </Text>
+                          <View className="flex flex-row items-center mt-1">
+                            <View
+                              className="w-2 h-2 rounded-full mr-1"
+                              style={{ backgroundColor: item.status === 'completed' ? '#10B981' : item.status === 'failed' ? '#EF4444' : '#F59E0B' }}
+                            />
+                            <Text className="block text-xs text-gray-400">
+                              {item.status === 'completed' ? '已完成' : item.status === 'failed' ? '失败' : '生成中'}
+                            </Text>
+                          </View>
+                          <Text className="block text-xs text-gray-300 mt-1">{item.createdAt}</Text>
+                        </View>
+                        {item.resultImageUrl && (
+                          <Image
+                            src={item.resultImageUrl}
+                            className="rounded-lg"
+                            mode="aspectFill"
+                            style={{ width: '48px', height: '48px' }}
+                          />
+                        )}
+                      </View>
+                    </CardContent>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </TabsContent>
+        </Tabs>
       </View>
+
+      <View className="h-8" />
     </View>
   )
 }
