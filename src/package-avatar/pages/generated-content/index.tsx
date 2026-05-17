@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
@@ -87,10 +87,6 @@ export default function GeneratedContentPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null)
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false)
-
-  useEffect(() => {
-    loadData()
-  }, [])
 
   useDidShow(() => {
     loadData()
