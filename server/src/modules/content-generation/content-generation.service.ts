@@ -550,10 +550,12 @@ ${input.orderDescription}
   }
 
   /**
-   * 生成图文文章的配图 - 增强版：融合技能图片策略
+   * 生成图文文章的配图 - 增强版：融合技能图片策略 + LLM上下文感知
    */
   private async generateArticleImages(platform: string, input: any, textContent: string, imageCount: number): Promise<string[]> {
-    const imageContexts = this.extractImageContexts(textContent, imageCount)
+    // 用LLM从文章内容中为每张图生成精准的视觉描述
+    const imageVisualDescs = await this.generateContextAwareImageDescs(textContent, imageCount, input.orderTitle || '产品')
+
     const productKeywords = await this.extractProductKeywords(input.orderTitle || '', input.orderDescription || '')
     const title = input.orderTitle || '产品'
 
@@ -564,6 +566,7 @@ ${input.orderDescription}
     // 平台视觉风格（中文描述）
     const styleMap: Record<string, string> = {
       wechat_mp: '专业编辑风格，杂志品质，构图干净整洁，温暖高端感，4K',
+      wechat_official: '专业编辑风格，杂志品质，构图干净整洁，温暖高端感，4K',
       wechat_channel: '潮流生活风，吸睛抢眼，现代构图，社交短视频封面风格，4K',
       toutiao: '专业资讯风格，信息清晰，编辑级品质，4K',
       zhihu: '专业学术风，干净数据可视化风格，高品质，4K'
@@ -572,12 +575,11 @@ ${input.orderDescription}
 
     const chineseTextRule = '图片中出现的所有文字、标语、标签必须使用中文，禁止出现英文文字'
 
-    const prompts = imageContexts.map((context, i) => {
-      const contextHint = context ? `，文章上下文：${context.substring(0, 100)}` : ''
+    const prompts = imageVisualDescs.map((desc, i) => {
       const skillHint = skillImageStyle ? `，${skillImageStyle}` : ''
       return i === 0
-        ? `${title}文章封面主图，${platformStyle}${skillHint}${contextHint}，吸睛专业，主视觉，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
-        : `${title}文章配图${i + 1}，${platformStyle}${skillHint}${contextHint}，与主题相关，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
+        ? `${title}文章封面主图，视觉描述：${desc}，${platformStyle}${skillHint}，吸睛专业，主视觉，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
+        : `${title}文章配图${i + 1}，视觉描述：${desc}，${platformStyle}${skillHint}，与上下文紧密呼应，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
     })
 
     // 文章配图用横版
@@ -606,6 +608,65 @@ ${input.orderDescription}
   }
 
   /**
+   * 用LLM从文章内容中为每张图片生成精准的视觉描述
+   * 让每张图都与文章对应段落的主题紧密呼应
+   */
+  private async generateContextAwareImageDescs(textContent: string, imageCount: number, title: string): Promise<string[]> {
+    // 先提取每张图占位符周围的上下文
+    const rawContexts = this.extractImageContexts(textContent, imageCount)
+
+    // 如果只有1张图，直接用标题+上下文即可
+    if (imageCount <= 1) {
+      return rawContexts.map((ctx, i) =>
+        i === 0
+          ? `展示"${title}"核心卖点的封面主视觉，${ctx ? `围绕：${ctx.substring(0, 80)}` : '突出品牌和产品'}`
+          : ctx || `与"${title}"相关的视觉场景`
+      )
+    }
+
+    // 多张图：用LLM生成差异化视觉描述
+    try {
+      const contextBlock = rawContexts
+        .map((ctx, i) => `【第${i + 1}张图上下文】${ctx || '（无明确上下文，请根据文章整体主题推断）'}`)
+        .join('\n')
+
+      const prompt = `你是一个专业的视觉创意总监。以下是一篇关于"${title}"的文章中${imageCount}张配图各自对应的上下文内容。
+
+请为每张图生成一段精准的视觉描述（30-50字），要求：
+1. 每张图的视觉描述必须不同，体现该段文章内容的独特主题
+2. 描述要具体，包含具体场景、物体、色调、氛围等视觉元素
+3. 第1张是封面图，要最具视觉冲击力
+4. 后续配图要与对应上下文主题紧密呼应
+5. 只输出每张图的视觉描述，用"图1:xxx\n图2:xxx"格式，不要其他解释
+
+${contextBlock}`
+
+      const response = await this.invokeLlm([
+        { role: 'user', content: prompt }
+      ])
+
+      if (response) {
+        const descs: string[] = []
+        for (let i = 1; i <= imageCount; i++) {
+          const match = response.match(new RegExp(`图${i}[：:]\\s*(.+?)(?:\\n|$)`))
+          descs.push(match ? match[1].trim() : rawContexts[i - 1] || `与"${title}"相关的视觉场景`)
+        }
+        this.logger.log(`LLM生成${descs.length}张图片的差异化视觉描述成功`)
+        return descs
+      }
+    } catch (err: any) {
+      this.logger.warn(`LLM生成图片视觉描述失败: ${err.message}，降级为上下文提取`)
+    }
+
+    // 降级：使用原始上下文
+    return rawContexts.map((ctx, i) =>
+      i === 0
+        ? `展示"${title}"核心卖点的封面主视觉，${ctx ? `围绕：${ctx.substring(0, 80)}` : '突出品牌和产品'}`
+        : ctx ? `与文章段落主题呼应：${ctx.substring(0, 80)}` : `与"${title}"相关的视觉场景`
+    )
+  }
+
+  /**
    * 从文章内容中提取每张图片对应的上下文
    */
   private extractImageContexts(textContent: string, imageCount: number): string[] {
@@ -614,11 +675,20 @@ ${input.orderDescription}
       const placeholder = `[IMG_${i}]`
       const idx = textContent.indexOf(placeholder)
       if (idx >= 0) {
-        const start = Math.max(0, idx - 100)
-        const context = textContent.substring(start, idx).replace(/[#*\n]/g, ' ').trim()
-        contexts.push(context)
+        // 提取占位符前后各150字符的上下文（共300字符）
+        const start = Math.max(0, idx - 150)
+        const end = Math.min(textContent.length, idx + placeholder.length + 50)
+        const before = textContent.substring(start, idx).replace(/[#*\n]/g, ' ').trim()
+        const after = textContent.substring(idx + placeholder.length, end).replace(/[#*\n]/g, ' ').trim()
+        // 优先取占位符前面的内容（所属段落主题）
+        const context = before || after
+        contexts.push(context.substring(0, 200))
       } else {
-        contexts.push('')
+        // 没有占位符时，按文章长度均匀切分段落
+        const chunkSize = Math.floor(textContent.length / imageCount)
+        const start = Math.min(chunkSize * (i - 1), textContent.length - 100)
+        const context = textContent.substring(Math.max(0, start), Math.min(textContent.length, start + 200)).replace(/[#*\n]/g, ' ').trim()
+        contexts.push(context)
       }
     }
     return contexts
@@ -824,26 +894,52 @@ ${input.orderDescription}
 
     const productKeywords = await this.extractProductKeywords(title, desc)
 
-    const prompts: string[] = []
-    const skillHint = skillImageStyle ? `，${skillImageStyle}` : ''
-
     // 通用中文指令：图片中所有文字必须使用中文
     const chineseTextRule = '图片中出现的所有文字、标语、标签必须使用中文，禁止出现英文文字'
 
-    // 第1张：封面主图 - 强吸引力，决定用户是否点击
-    prompts.push(`${title}的封面主图，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，让人忍不住点进来看，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+    const skillHint = skillImageStyle ? `，${skillImageStyle}` : ''
 
-    // 第2张：使用场景 - 生活化代入感
+    // 多图场景（>=3张）：用LLM生成差异化视觉描述
+    if (quantity >= 3 && textContent && textContent.length > 100) {
+      try {
+        const llmPrompts = await this.generateContextAwareImageDescs(textContent, quantity, title)
+        if (llmPrompts && llmPrompts.length === quantity) {
+          this.logger.log(`使用LLM差异化提示词生成${quantity}张图片`)
+          return llmPrompts.map((desc, i) => {
+            if (i === 0) {
+              return `${title}的封面主图，视觉描述：${desc}，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`
+            }
+            return `${title}的${desc}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
+          })
+        }
+      } catch (err: any) {
+        this.logger.warn(`LLM生成差异化图片提示词失败: ${err.message}，降级为模板模式`)
+      }
+    }
+
+    // 降级：模板模式（2张图以下，或LLM失败时）
+    const prompts: string[] = []
+
+    // 从文案中提取关键场景信息（非LLM方式，取文案关键词句）
+    const textHighlights = this.extractTextHighlights(textContent, quantity)
+
+    // 第1张：封面主图
+    const coverHint = textHighlights[0] ? `，画面呼应：${textHighlights[0]}` : ''
+    prompts.push(`${title}的封面主图，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，让人忍不住点进来看${coverHint}，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+
+    // 第2张：使用场景
     if (quantity >= 2) {
-      prompts.push(`有人物使用${title}的生活场景图，${platformStyle}${skillHint}，真实日常瞬间，展现实际好处和快乐，自然有代入感，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+      const scene2Hint = textHighlights[1] ? `，画面呼应：${textHighlights[1]}` : ''
+      prompts.push(`有人物使用${title}的生活场景图，${platformStyle}${skillHint}，真实日常瞬间，展现实际好处和快乐，自然有代入感${scene2Hint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
-    // 第3张：效果/细节 - 说服力
+    // 第3张：效果/细节
     if (quantity >= 3) {
-      prompts.push(`${title}的特写细节和效果展示图，${platformStyle}${skillHint}，展示品质和变化，有说服力的证据，高端质感，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+      const scene3Hint = textHighlights[2] ? `，画面呼应：${textHighlights[2]}` : ''
+      prompts.push(`${title}的特写细节和效果展示图，${platformStyle}${skillHint}，展示品质和变化，有说服力的证据，高端质感${scene3Hint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
-    // 第4张及以后：多角度多场景，避免千篇一律
+    // 第4张及以后：多角度多场景
     const extraScenes = [
       '开箱/拆封瞬间，惊喜感满满，仪式感场景',
       '与朋友分享/推荐的社交场景，欢快温馨氛围',
@@ -856,10 +952,34 @@ ${input.orderDescription}
     ]
     for (let i = 3; i < quantity; i++) {
       const sceneHint = extraScenes[(i - 3) % extraScenes.length]
-      prompts.push(`${title}的${sceneHint}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+      const textHint = textHighlights[i] ? `，画面呼应：${textHighlights[i]}` : ''
+      prompts.push(`${title}的${sceneHint}${textHint}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
     return prompts
+  }
+
+  /**
+   * 从文案内容中提取关键视觉描述句（非LLM方式，用于模板降级）
+   * 将文案按段落切分，取每段的核心短句
+   */
+  private extractTextHighlights(textContent: string, count: number): string[] {
+    if (!textContent || textContent.length < 50) return Array(count).fill('')
+
+    const highlights: string[] = []
+    // 按段落分割
+    const paragraphs = textContent.split(/\n+/).filter(p => p.trim().length > 10)
+    // 取前N个段落的摘要
+    for (let i = 0; i < count; i++) {
+      if (i < paragraphs.length) {
+        // 取段落中前40字，去掉markdown标记
+        const cleaned = paragraphs[i].replace(/[#*\[\]()>!]/g, '').trim()
+        highlights.push(cleaned.substring(0, 40))
+      } else {
+        highlights.push('')
+      }
+    }
+    return highlights
   }
 
   /**
