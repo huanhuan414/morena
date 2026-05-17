@@ -32,7 +32,7 @@ interface AvatarAccount {
 
 const PLATFORMS = [
   { id: 'douyin', label: '抖音' },
-  { id: 'wechat', label: '微信公众号' },
+  { id: 'wechat_mp', label: '微信公众号' },
   { id: 'xiaohongshu', label: '小红书' },
 ]
 
@@ -292,7 +292,7 @@ export default function AvatarAccountConfigPage() {
         showToast({ title: '请输入小红书个人主页链接', icon: 'none' })
         return
       }
-    } else if (platformId === 'wechat') {
+    } else if (platformId === 'wechat_mp') {
       // 微信公众号：需要填入 appid 和 AppKey
       if (!appid || !appkey) {
         showToast({ title: '请填写 AppID 和 AppKey', icon: 'none' })
@@ -311,8 +311,8 @@ export default function AvatarAccountConfigPage() {
       avatar_id: avatarId,
       platform: platformId,
       account_name: accountName || '',
-      appid: platformId === 'wechat' ? appid : undefined,
-      appkey: platformId === 'wechat' ? appkey : undefined,
+      appid: platformId === 'wechat_mp' ? appid : undefined,
+      appkey: platformId === 'wechat_mp' ? appkey : undefined,
       account_url: platformId === 'xiaohongshu' ? xiaohongshuUrl : undefined,
     }
 
@@ -586,7 +586,7 @@ export default function AvatarAccountConfigPage() {
                   </View>
 
                   {/* 统计数据 - 微信公众号不显示 */}
-                  {account.platform !== 'wechat' && (
+                  {account.platform !== 'wechat_mp' && (
                     <View className="account-stats">
                       <View className="stat-item">
                         <Text className="stat-label">粉丝数</Text>
@@ -604,7 +604,7 @@ export default function AvatarAccountConfigPage() {
                   )}
 
                   {/* 微信公众号显示 AppID 和验证状态 */}
-                  {account.platform === 'wechat' && (
+                  {account.platform === 'wechat_mp' && (
                     <View className="wechat-config-info">
                       <View className="wechat-config-item">
                         <Text className="wechat-config-label">AppID：</Text>
