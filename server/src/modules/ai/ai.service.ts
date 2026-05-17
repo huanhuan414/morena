@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { LLMClient, Config, Message } from 'coze-coding-dev-sdk'
+
+// 火山引擎豆包 API 直连配置
+const ARK_API_KEY = '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
+const ARK_MODEL = 'doubao-seed-2-0-pro-260215'
 
 type AiTaskStatus = 'processing' | 'completed' | 'failed'
 
@@ -13,13 +17,7 @@ type AiTask = {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name)
-  private readonly client: LLMClient
   private readonly tasks = new Map<string, AiTask>()
-
-  constructor() {
-    const config = new Config()
-    this.client = new LLMClient(config)
-  }
 
   startGenerate(params: { prompt: string; platforms: string[]; contentType: string }) {
     const requestId = `${Date.now()}_${Math.random().toString(16).slice(2)}`
@@ -50,6 +48,10 @@ export class AiService {
     }
   }
 
+  /**
+   * 直接调用火山引擎 ARK Responses API（豆包大模型）
+   * API 文档: https://www.volcengine.com/docs/82379/1399202
+   */
   async generateContent(params: {
     prompt: string
     platforms: string[]
@@ -64,25 +66,61 @@ export class AiService {
       '你是一位资深内容策划与社交媒体运营专家，擅长为不同平台产出结构化、可执行、可落地的爆款内容任务描述。'
 
     try {
-      const messages: Message[] = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ]
+      this.logger.log('调用火山引擎豆包API生成内容...')
 
-      this.logger.log('调用豆包大模型生成内容...')
-
-      // 使用 invoke 方法（非流式）
-      const response = await this.client.invoke(messages, {
-        model: 'doubao-seed-2-0-lite-260215',
-        temperature: 0.8
+      const response = await fetch(`${ARK_BASE_URL}/responses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ARK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: ARK_MODEL,
+          input: [
+            {
+              role: 'system',
+              content: [{ type: 'input_text', text: systemPrompt }],
+            },
+            {
+              role: 'user',
+              content: [{ type: 'input_text', text: prompt }],
+            },
+          ],
+        }),
       })
 
-      this.logger.log('内容生成成功')
-      return {
-        content: response.content
+      if (!response.ok) {
+        const errText = await response.text()
+        this.logger.error(`ARK API 请求失败: status=${response.status}, body=${errText}`)
+        throw new Error(`ARK API 请求失败: ${response.status}`)
       }
+
+      const result = await response.json() as any
+
+      // 从 Responses API 返回格式中提取文本
+      // output 是数组，找 type=message 的项，取 content[0].text
+      const output = result?.output || []
+      let fullContent = ''
+
+      for (const item of output) {
+        if (item.type === 'message' && item.role === 'assistant') {
+          const content = item.content || []
+          for (const c of content) {
+            if (c.type === 'output_text' && c.text) {
+              fullContent += c.text
+            }
+          }
+        }
+      }
+
+      if (!fullContent) {
+        throw new Error('模型返回内容为空')
+      }
+
+      this.logger.log(`内容生成成功, 长度: ${fullContent.length}`)
+      return { content: fullContent }
     } catch (error) {
-      this.logger.error('内容生成失败:', error)
+      this.logger.error('内容生成失败:', error?.message || error)
       throw new Error(`内容生成失败: ${error.message}`)
     }
   }
