@@ -169,18 +169,23 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
             })
             const statusPayload: any = statusRes.data
             const task = statusPayload?.data
-            if (statusPayload?.code === 200 && task?.status === 'completed' && task?.content) {
-              stopAiPolling()
-              setForm(prev => ({ ...prev, description: task.content }))
-              setAiLoading(false)
-              Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
-              return
-            }
-            if (statusPayload?.code === 200 && task?.status === 'failed') {
-              stopAiPolling()
-              setAiLoading(false)
-              Taro.showToast({ title: task?.error || 'AI帮写失败，请手动输入', icon: 'none' })
-              return
+            if (statusPayload?.code === 200) {
+              // 渐进式显示：processing 状态下如果有部分内容就实时更新
+              if (task?.content) {
+                setForm(prev => ({ ...prev, description: task.content }))
+              }
+              if (task?.status === 'completed') {
+                stopAiPolling()
+                setAiLoading(false)
+                Taro.showToast({ title: 'AI帮写成功', icon: 'success' })
+                return
+              }
+              if (task?.status === 'failed') {
+                stopAiPolling()
+                setAiLoading(false)
+                Taro.showToast({ title: task?.error || 'AI帮写失败，请手动输入', icon: 'none' })
+                return
+              }
             }
             if (statusPayload?.code === 404) {
               stopAiPolling()
@@ -190,7 +195,7 @@ ${form.description ? `**【补充说明】** ${form.description}` : ''}
           } catch {
             return
           }
-        }, 1000)
+        }, 500)
       } else {
         const msg = payload?.message || payload?.msg || 'AI帮写失败，请手动输入'
         Taro.showToast({ title: msg, icon: 'none' })

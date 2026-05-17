@@ -40,18 +40,12 @@ export class ContentGenerationService implements OnModuleInit {
   }
 
   /**
-   * 统一 LLM 调用方法：直接调用火山引擎 ARK Responses API（豆包大模型）
-   * 替代 coze-coding-dev-sdk 的 LLMClient
+   * 统一 LLM 调用方法：使用 Chat Completions API（比 Responses API 更快）
    */
   private async invokeLlm(messages: { role: string; content: string }[]): Promise<string> {
-    const input = messages.map(m => ({
-      role: m.role,
-      content: [{ type: 'input_text', text: m.content }],
-    }))
+    this.logger.log(`[ARK] 调用 LLM (Chat Completions), messages=${messages.length}条`)
 
-    this.logger.log(`[ARK] 调用 LLM, messages=${messages.length}条`)
-
-    const response = await fetch(`${ARK_BASE_URL}/responses`, {
+    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +53,7 @@ export class ContentGenerationService implements OnModuleInit {
       },
       body: JSON.stringify({
         model: ARK_MODEL,
-        input,
+        messages,
       }),
     })
 
@@ -70,26 +64,14 @@ export class ContentGenerationService implements OnModuleInit {
     }
 
     const result = await response.json() as any
-    const output = result?.output || []
-    let fullContent = ''
+    const content = result?.choices?.[0]?.message?.content
 
-    for (const item of output) {
-      if (item.type === 'message' && item.role === 'assistant') {
-        const content = item.content || []
-        for (const c of content) {
-          if (c.type === 'output_text' && c.text) {
-            fullContent += c.text
-          }
-        }
-      }
-    }
-
-    if (!fullContent) {
+    if (!content) {
       throw new Error('模型返回内容为空')
     }
 
-    this.logger.log(`[ARK] LLM 调用成功, 返回内容长度: ${fullContent.length}`)
-    return fullContent
+    this.logger.log(`[ARK] LLM 调用成功, 返回内容长度: ${content.length}`)
+    return content
   }
 
   /**
