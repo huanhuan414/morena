@@ -442,6 +442,7 @@ export default function OrderDetailPage() {
                 generating: { label: '内容生成中', color: '#8B5CF6', icon: '🎨' },
                 preview: { label: '内容已生成', color: '#F59E0B', icon: '📝' },
                 publishing: { label: '发布中', color: '#6366F1', icon: '📤' },
+                published: { label: '已发布', color: '#059669', icon: '📡' },
                 awaiting_acceptance: { label: '待验收', color: '#EF4444', icon: '🔍' },
                 feedback_submitted: { label: '已提交反馈', color: '#F97316', icon: '📋' },
                 completed: { label: '已验收', color: '#10B981', icon: '✅' },

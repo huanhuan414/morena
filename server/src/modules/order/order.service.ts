@@ -60,6 +60,7 @@ export class OrderService {
     const value = String(status || '').trim().toLowerCase()
     if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
     if (['completed', 'revision_requested'].includes(value)) return 'preview'
+    if (['published'].includes(value)) return 'published'
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'
     return value || 'generating'
@@ -412,7 +413,7 @@ export class OrderService {
       }
     }
     
-    // 获取每个订单的分身派单摘要
+    // 获取每个订单的分身派单摘要（含内容生成状态的normalize映射）
     let dispatchSummaries: Record<string, any[]> = {}
     if (orderIds.length > 0) {
       const placeholders = orderIds.map(() => '?').join(', ')
@@ -425,14 +426,36 @@ export class OrderService {
          ORDER BY d.created_at ASC`,
         orderIds
       )
+
+      // 查询内容生成状态用于normalize
+      let contentMap: Record<string, any> = {}
+      try {
+        const contentRows = await db.query(
+          `SELECT id, order_id, avatar_id, status, content_type FROM content_generation_requests WHERE order_id IN (${placeholders}) ORDER BY updated_at DESC`,
+          orderIds
+        )
+        for (const cr of contentRows || []) {
+          const key = `${cr.orderId}_${cr.avatarId}`
+          if (!contentMap[key]) contentMap[key] = cr
+        }
+      } catch (err) {
+        console.log('[getOrders] content_generation_requests query error:', err)
+      }
+
       for (const row of dispatchRows || []) {
-        // SQL别名 order_id → orderId, avatar_id → avatarId
         if (!dispatchSummaries[row.orderId]) dispatchSummaries[row.orderId] = []
+        const contentRecord = contentMap[`${row.orderId}_${row.avatarId}`]
+        const normalizedStatus = contentRecord
+          ? this.normalizeContentStatus(contentRecord.status)
+          : this.normalizeDispatchStatus(row.status)
+
         dispatchSummaries[row.orderId].push({
           avatarId: row.avatarId,
           avatarName: row.avatarName,
           avatarUrl: row.avatarUrl,
-          status: row.status,
+          status: normalizedStatus,
+          dispatchStatus: row.status,
+          contentStatus: contentRecord?.status || null,
           respondedAt: row.respondedAt,
           expiresAt: row.expiresAt,
         })
@@ -878,12 +901,8 @@ export class OrderService {
       console.warn('[handlePaymentSuccess] 首单引导通知发送失败(忽略):', (e as any)?.message || e)
     }
 
-    try {
-      const dispatchResult = await this.dispatchService.dispatchToAllAvatars(orderId)
-      console.log('[handlePaymentSuccess] 自动派单结果:', dispatchResult)
-    } catch (err) {
-      console.error('[handlePaymentSuccess] 自动派单失败:', err)
-    }
+    // 派单和短信通知由前端匹配确认页触发（POST /api/order-dispatch/:orderId/dispatch-all）
+    // 不在支付成功时自动派单，等待发单方在匹配页确认后再执行
 
     return this.getOrderById(orderId)
   }

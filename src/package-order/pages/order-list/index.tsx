@@ -95,8 +95,8 @@ function getPhaseText(order: any): string {
   const phase = STATUS_CONFIG[order.status]?.phase ?? -1
   const ds = order.dispatchSummary
   const total = order.avatarCount || 0
-  const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
-  const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+  const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(s.status)).length : 0
+  const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(s.status)).length : 0
   switch (phase) {
     case 0: return '等待支付'
     case 1: return total > 0 ? `匹配 ${total} 个分身中` : '匹配分身中'
@@ -213,21 +213,25 @@ export default function OrderListPage() {
     Taro.navigateTo({ url: '/package-order/pages/order-create/index' })
   }, [])
 
-  // 渲染进度条色段
+  // 渲染进度条色段（使用normalize后的统一状态）
   const renderProgress = (order: any) => {
     const ds = order.dispatchSummary
     const total = order.avatarCount || 0
     if (total <= 0) return null
-    const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
-    const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+    // normalize状态: pending/accepted/generating/preview/publishing/published/awaiting_acceptance/feedback_submitted/completed
+    const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(s.status)).length : 0
+    const generating = Array.isArray(ds) ? ds.filter((s: any) => ['generating', 'preview'].includes(s.status)).length : 0
+    const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(s.status)).length : 0
     if (accepted === 0 && published === 0) return null
     const acceptedPct = (accepted / total) * 100
     const publishedPct = (published / total) * 100
+    const generatingPct = (generating / total) * 100
     return (
       <View className="ol-avatar-progress">
         <View className="ol-progress-track">
           <View className="ol-progress-seg" style={{ width: `${publishedPct}%`, backgroundColor: '#059669' }} />
-          <View className="ol-progress-seg" style={{ width: `${acceptedPct - publishedPct}%`, backgroundColor: '#10B981' }} />
+          <View className="ol-progress-seg" style={{ width: `${generatingPct}%`, backgroundColor: '#F59E0B' }} />
+          <View className="ol-progress-seg" style={{ width: `${acceptedPct - generatingPct - publishedPct}%`, backgroundColor: '#10B981' }} />
           <View className="ol-progress-seg" style={{ flex: 1, backgroundColor: '#E5E7EB' }} />
         </View>
         <View className="ol-progress-labels">
@@ -235,6 +239,12 @@ export default function OrderListPage() {
             <View className="ol-progress-label-item">
               <View style={{ width: '12rpx', height: '12rpx', borderRadius: '50%', backgroundColor: '#10B981' }} />
               <Text className="ol-progress-label-text" style={{ color: '#10B981' }}>{accepted} 接单</Text>
+            </View>
+          )}
+          {generating > 0 && (
+            <View className="ol-progress-label-item">
+              <View style={{ width: '12rpx', height: '12rpx', borderRadius: '50%', backgroundColor: '#F59E0B' }} />
+              <Text className="ol-progress-label-text" style={{ color: '#F59E0B' }}>{generating} 制作中</Text>
             </View>
           )}
           {published > 0 && (
