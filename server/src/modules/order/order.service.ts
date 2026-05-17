@@ -6,6 +6,13 @@ import { EarningService } from '../earning/earning.service'
 import { NotificationService } from '../notification/notification.service'
 import { OrderDispatchService } from '../order-dispatch/order-dispatch.service'
 import { WechatPayService } from '../payment/wechat-pay.service'
+import {
+  deriveOrderStatusFromWorkflowDetailed,
+  isDispatchAccepted,
+  isDispatchCompleted,
+  normalizeDispatchStatus as normalizeDispatchStatusValue,
+  normalizeFulfillmentStatus,
+} from './order-status'
 
 /**
  * 字段命名规则说明：
@@ -37,32 +44,15 @@ export class OrderService {
   }
 
   private normalizeDispatchStatus(status?: string): string {
-    if (status === 'confirmed') {
-      return 'accepted'
-    }
-    return status || 'pending'
+    return normalizeDispatchStatusValue(status)
   }
 
   private isAcceptedDispatchStatus(status?: string): boolean {
-    return [
-      'accepted',
-      'generating',
-      'preview',
-      'publishing',
-      'published',
-      'feedback_submitted',
-      'awaiting_acceptance',
-      'completed'
-    ].includes(this.normalizeDispatchStatus(status))
+    return isDispatchAccepted(this.normalizeDispatchStatus(status))
   }
 
   private normalizeContentStatus(status?: string): string {
-    const value = String(status || '').trim().toLowerCase()
-    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
-    if (['completed', 'revision_requested'].includes(value)) return 'preview'
-    if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
-    if (['settled', 'done'].includes(value)) return 'completed'
-    return value || 'generating'
+    return normalizeFulfillmentStatus(status)
   }
 
   // 订单状态流转映射
@@ -79,22 +69,14 @@ export class OrderService {
       )
 
       const allDispatchStatuses = (dispatches || []).map((d: any) => d.status)
-      const allContentStatuses = (contents || []).map((c: any) => this.normalizeContentStatus(c.status))
+      const fulfillmentStatuses = (contents || []).map((c: any) => this.normalizeContentStatus(c.status))
       const totalDispatches = allDispatchStatuses.length
-      const totalContents = allContentStatuses.length
+      const totalContents = fulfillmentStatuses.length
 
       if (totalDispatches === 0) return
 
-      const hasPending = allDispatchStatuses.includes('pending')
-      const hasAccepted = allDispatchStatuses.includes('accepted') || allDispatchStatuses.includes('feedback_submitted')
-      const acceptedDispatchCount = allDispatchStatuses.filter(s => ['accepted', 'feedback_submitted'].includes(s)).length
-      const completedDispatchCount = allDispatchStatuses.filter(s => ['completed', 'settled', 'done'].includes(s)).length
-
-      const hasProcessing = allContentStatuses.some(s => ['processing', 'publishing'].includes(s))
-      const hasRevisionRequested = allContentStatuses.some(s => s === 'revision_requested')
-      const allContentCompleted = totalContents > 0 && allContentStatuses.every(s => s === 'completed')
-      const allContentAwaitingAcceptance = totalContents > 0 && allContentStatuses.every(s => ['awaiting_acceptance', 'completed'].includes(s))
-      const allContentSubmitted = totalContents > 0 && allContentStatuses.every(s => ['completed', 'published', 'awaiting_acceptance'].includes(s))
+      const normalizedDispatches = allDispatchStatuses.map((s) => this.normalizeDispatchStatus(s))
+      const completedDispatchCount = normalizedDispatches.filter((s) => isDispatchCompleted(s)).length
 
       const currentOrder = await this.getOrderById(orderId)
       if (!currentOrder) return
@@ -103,27 +85,16 @@ export class OrderService {
 
       let newStatus: string | null = null
 
-      if (completedDispatchCount >= requiredAvatarCount) {
-        newStatus = 'completed'
-      } else if (hasRevisionRequested) {
-        newStatus = 'revision_requested'
-      } else if (allContentAwaitingAcceptance) {
-        newStatus = 'awaiting_acceptance'
-      } else if (allContentSubmitted) {
-        newStatus = 'awaiting_acceptance'
-        if (allContentStatuses.some(s => ['published', 'completed'].includes(s)) && !allContentStatuses.some(s => s === 'awaiting_acceptance')) {
-          newStatus = 'submitted'
-        }
-      } else if (hasProcessing) {
-        newStatus = 'in_progress'
-      } else if (hasAccepted && !hasPending) {
-        if (acceptedDispatchCount >= requiredAvatarCount) {
-          newStatus = 'in_progress'
+      const derived = deriveOrderStatusFromWorkflowDetailed({
+        dispatchStatuses: allDispatchStatuses,
+        fulfillmentStatuses
+      })
+      if (derived.status) {
+        if (derived.status === 'completed' && completedDispatchCount < requiredAvatarCount) {
+          newStatus = null
         } else {
-          newStatus = 'pending_acceptance'
+          newStatus = derived.status
         }
-      } else if (hasAccepted && hasPending) {
-        newStatus = 'pending_acceptance'
       }
 
       if (newStatus && newStatus !== currentStatus) {
@@ -339,13 +310,40 @@ export class OrderService {
       }
     })
 
+    const hasAwaitingAcceptance = avatarStats.some((a: any) =>
+      ['awaiting_acceptance', 'feedback_submitted', 'preview'].includes(a.status)
+    )
+    const isAllVerified = avatarStats.length > 0 && avatarStats.every((a: any) =>
+      ['completed', 'rejected'].includes(a.status)
+    )
+    let effectiveStatus = order.status
+    if (isAllVerified) {
+      effectiveStatus = 'completed'
+    } else if (hasAwaitingAcceptance) {
+      effectiveStatus = 'pending_verify'
+    } else if (order.status === 'awaiting_acceptance' && avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)) {
+      effectiveStatus = 'submitted'
+    }
+
+    const totalAvatars = avatarStats.length
+    const acceptedAvatars = avatarStats.filter((row: any) =>
+      ['accepted', 'in_progress', 'content_generated', 'submitted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(row.status)
+    ).length
+    const completedAvatars = avatarStats.filter((row: any) => row.status === 'completed').length
+    const pendingAvatars = avatarStats.filter((row: any) => row.status === 'pending').length
+    const rejectedAvatars = avatarStats.filter((row: any) => row.status === 'rejected').length
+    const totalPublished = avatarStats.filter((row: any) => ['published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(row.status)).length
+
     const summaryStats = {
-      totalAvatars: avatarStats.length,
-      acceptedAvatars: avatarStats.filter((row: any) => ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
-      completedAvatars: avatarStats.filter((row: any) => row.status === 'completed').length,
+      effectiveStatus,
+      totalAvatars,
+      acceptedAvatars,
+      completedAvatars,
+      pendingAvatars,
+      rejectedAvatars,
       totalPosts: 0,
       totalPlatforms: 0,
-      totalPublished: avatarStats.filter((row: any) => ['published', 'awaiting_acceptance', 'completed'].includes(row.status)).length,
+      totalPublished,
       totalManual: 0,
       totalViews: 0,
       totalLikes: 0,
@@ -417,10 +415,10 @@ export class OrderService {
     if (orderIds.length > 0) {
       const placeholders = orderIds.map(() => '?').join(', ')
       const dispatchRows = await db.query(
-        `SELECT d.order_id, d.target_avatar_id as avatar_id, d.status, d.responded_at, d.expires_at,
+        `SELECT d.order_id, COALESCE(d.avatar_id, d.target_avatar_id) as avatar_id, d.status, d.responded_at, d.expires_at,
                 a.name as avatar_name, a.avatar_url
          FROM order_dispatch_requests d
-         LEFT JOIN avatars a ON d.target_avatar_id = a.id
+         LEFT JOIN avatars a ON COALESCE(d.avatar_id, d.target_avatar_id) = a.id
          WHERE d.order_id IN (${placeholders})
          ORDER BY d.created_at ASC`,
         orderIds
@@ -497,6 +495,17 @@ export class OrderService {
       
       const dispatchedCount = dispatchCounts[row.id] || 0
       const needAvatarCount = row.expectedQuantity || row.avatarCount || 0
+
+      const ds = dispatchSummaries[row.id] || []
+      const totalAvatars = Number(needAvatarCount || 0)
+      const normalizedStatuses = Array.isArray(ds) ? ds.map((s: any) => this.normalizeDispatchStatus(s?.status)) : []
+      const acceptedAvatars = normalizedStatuses.filter((s: string) =>
+        ['accepted', 'confirmed', 'in_progress', 'content_generated', 'submitted', 'published', 'completed', 'awaiting_acceptance', 'feedback_submitted', 'preview', 'generating', 'publishing'].includes(s)
+      ).length
+      const completedAvatars = normalizedStatuses.filter((s: string) => s === 'completed').length
+      const pendingAvatars = Math.max(0, totalAvatars - acceptedAvatars)
+      const rejectedAvatars = normalizedStatuses.filter((s: string) => s === 'rejected').length
+      const totalPublished = normalizedStatuses.filter((s: string) => ['published', 'completed', 'awaiting_acceptance', 'feedback_submitted'].includes(s)).length
       
       return {
         id: row.id,
@@ -512,6 +521,23 @@ export class OrderService {
         avatarStats: row.avatarStats || [],
         isPaid: row.isPaid,
         createdAt,
+        summary_stats: {
+          effectiveStatus: row.status,
+          totalAvatars,
+          acceptedAvatars,
+          completedAvatars,
+          pendingAvatars,
+          rejectedAvatars,
+          totalPosts: 0,
+          totalPlatforms: 0,
+          totalPublished,
+          totalManual: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          totalShares: 0,
+          avatarStats: []
+        },
         dispatchSummary: dispatchSummaries[row.id] || [],
         latestEvent: latestEvents[row.id] || null,
       }

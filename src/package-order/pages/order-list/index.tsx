@@ -93,10 +93,10 @@ function formatTime(dateStr: string): string {
 // 进度文案
 function getPhaseText(order: any): string {
   const phase = STATUS_CONFIG[order.status]?.phase ?? -1
-  const ds = order.dispatchSummary
-  const total = order.avatarCount || 0
-  const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
-  const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+  const stats = order?.summary_stats
+  const total = stats?.totalAvatars ?? order.avatarCount ?? 0
+  const accepted = stats?.acceptedAvatars ?? 0
+  const published = stats?.totalPublished ?? 0
   switch (phase) {
     case 0: return '等待支付'
     case 1: return total > 0 ? `匹配 ${total} 个分身中` : '匹配分身中'
@@ -215,11 +215,11 @@ export default function OrderListPage() {
 
   // 渲染进度条色段
   const renderProgress = (order: any) => {
-    const ds = order.dispatchSummary
-    const total = order.avatarCount || 0
+    const stats = order?.summary_stats
+    const total = stats?.totalAvatars ?? order.avatarCount ?? 0
     if (total <= 0) return null
-    const accepted = Array.isArray(ds) ? ds.filter((s: any) => ['accepted', 'in_progress', 'content_generated', 'submitted', 'published', 'completed'].includes(s.status)).length : 0
-    const published = Array.isArray(ds) ? ds.filter((s: any) => ['published', 'completed'].includes(s.status)).length : 0
+    const accepted = stats?.acceptedAvatars ?? 0
+    const published = stats?.totalPublished ?? 0
     if (accepted === 0 && published === 0) return null
     const acceptedPct = (accepted / total) * 100
     const publishedPct = (published / total) * 100

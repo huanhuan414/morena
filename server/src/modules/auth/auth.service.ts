@@ -197,9 +197,7 @@ export class AuthService {
       console.error('[processReferral] daily limit check failed:', (e as any)?.message || e)
     }
     
-    // 发放邀请奖励（给邀请人）
-    const REWARD_AMOUNT = 10 // 邀请奖励金额
-    const REWARD_CREDITS = 50 // 邀请奖励积分
+    const INVITER_REWARD = 5
     
     console.log('[processReferral] 创建邀请记录, referrer_id:', inviter.id, 'referred_id:', inviteeId)
     
@@ -209,9 +207,8 @@ export class AuthService {
       id: referralId,
       referrer_id: inviter.id,
       referred_id: inviteeId,
-      referral_code: referralCode,
-      status: 'completed',
-      reward_amount: REWARD_AMOUNT,
+      status: 'pending',
+      reward_amount: INVITER_REWARD,
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     console.log('[processReferral] insert 结果:', JSON.stringify(insertResult))
@@ -219,33 +216,8 @@ export class AuthService {
     if (insertResult.error) {
       throw new Error(`创建邀请记录失败: ${insertResult.error.message || JSON.stringify(insertResult.error)}`)
     }
-    
-    // 添加收益记录
-    const earningId = require('uuid').v4()
-    const earningInsertResult = await db.insert('earnings', {
-      id: earningId,
-      user_id: inviter.id,
-      type: 'referral_bonus',
-      amount: REWARD_AMOUNT,
-      description: `邀请新用户奖励`,
-      status: 'settled',
-      created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    })
-    console.log('[processReferral] earnings insert 结果:', JSON.stringify(earningInsertResult))
-    
-    if (earningInsertResult.error) {
-      console.error('[processReferral] 创建收益记录失败:', earningInsertResult.error)
-    }
-    
-    // 更新邀请人余额和总收益
-    await db.update('users', inviter.id, {
-      credits: inviter.credits + REWARD_CREDITS,
-      balance: (inviter.balance || 0) + REWARD_AMOUNT,
-      total_earnings: (inviter.total_earnings || 0) + REWARD_AMOUNT,
-      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    })
-    
-    return { inviterId: inviter.id, reward: REWARD_AMOUNT }
+
+    return { inviterId: inviter.id, reward: 0 }
   }
 
   /**

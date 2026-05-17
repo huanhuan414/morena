@@ -375,7 +375,7 @@ export default function AvatarManagePage() {
     }
 
     closeOnboarding()
-    navigateTo({ url: '/pages/mind-chat/index' })
+    Taro.switchTab({ url: '/pages/mind-chat/index' })
   }
 
   const deleteAvatar = async (avatarId: string) => {

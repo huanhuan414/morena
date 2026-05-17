@@ -292,17 +292,7 @@ export default function OrderDetailPage() {
   console.log('[OrderDetail] avatarStats:', JSON.stringify(avatarStats))
   console.log('[OrderDetail] hasVerifiableAvatars:', hasVerifiableAvatars, 'hasAwaitingAcceptance:', hasAwaitingAcceptance, 'isAllVerified:', isAllVerified, 'order.status:', order.status)
 
-  // 确定页面上展示的 effective 状态
-  let effectiveStatus = order.status
-  if (isAllVerified) {
-    effectiveStatus = 'completed'
-  } else if (hasAwaitingAcceptance) {
-    // 有分身内容已生成/待验收 → 显示"待验收"
-    effectiveStatus = 'pending_verify'
-  } else if (order.status === 'awaiting_acceptance' && avatarStats.some((a: any) => a.publishFeedback && Object.keys(a.publishFeedback).length > 0)) {
-    effectiveStatus = 'submitted'
-  }
-  console.log('[OrderDetail] effectiveStatus:', effectiveStatus)
+  const effectiveStatus = order?.summary_stats?.effectiveStatus || order.status
   const statusCfg = STATUS_CONFIG[effectiveStatus] || { label: effectiveStatus, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
   const currentPhase = getPhaseIndex(effectiveStatus)
   const isPayable = order.status === 'pending_payment'
@@ -314,13 +304,13 @@ export default function OrderDetailPage() {
   const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
 
   // 分身统计 — 使用 normalizedStatus（avatarStats.status），不使用 raw dispatchStatus
-  const totalAvatars = order.avatarCount || 0
-  const acceptedCount = avatarStats.filter((a: any) =>
+  const totalAvatars = order?.summary_stats?.totalAvatars ?? order.avatarCount ?? 0
+  const acceptedCount = order?.summary_stats?.acceptedAvatars ?? avatarStats.filter((a: any) =>
     ['accepted', 'generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(a.status)
   ).length
-  const completedCount = avatarStats.filter((a: any) => a.status === 'completed').length
-  const pendingCount = avatarStats.filter((a: any) => a.status === 'pending').length
-  const rejectedCount = avatarStats.filter((a: any) => a.status === 'rejected').length
+  const completedCount = order?.summary_stats?.completedAvatars ?? avatarStats.filter((a: any) => a.status === 'completed').length
+  const pendingCount = order?.summary_stats?.pendingAvatars ?? avatarStats.filter((a: any) => a.status === 'pending').length
+  const rejectedCount = order?.summary_stats?.rejectedAvatars ?? avatarStats.filter((a: any) => a.status === 'rejected').length
 
   return (
     <View className="od-page">

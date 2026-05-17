@@ -1,10 +1,14 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject, forwardRef } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { OrderService } from '../order/order.service'
 
 @Controller('content-generation')
 export class ContentGenerationController {
-  constructor(@Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService) {}
+  constructor(
+    @Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService,
+    @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+  ) {}
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)
@@ -209,7 +213,7 @@ export class ContentGenerationController {
       
       // 更新内容的发布凭证和验证状态
       await db.query(
-        `UPDATE content_generation_requests 
+        `UPDATE content_generation_requests
          SET publish_url = ?, publish_screenshot = ?, verification_status = 'pending', verified_at = NULL
          WHERE id = ?`,
         [body.publishUrl || null, body.publishScreenshot || null, contentId]
@@ -247,7 +251,7 @@ export class ContentGenerationController {
       const verificationStatus = body.verified ? 'verified' : 'failed'
 
       await db.query(
-        `UPDATE content_generation_requests 
+        `UPDATE content_generation_requests
          SET verification_status = ?, verified_at = NOW()
          WHERE id = ?`,
         [verificationStatus, contentId]
@@ -283,6 +287,50 @@ export class ContentGenerationController {
       return { code: 200, message: body.verified ? '验证通过' : '验证失败，需重新发布' }
     } catch (error: any) {
       return { code: 500, message: '验证失败', error: error.message }
+    }
+  }
+
+  @Post('order/:orderId/retry-publish')
+  @HttpCode(HttpStatus.OK)
+  async retryPublish(@Param('orderId') orderId: string) {
+    try {
+      const db = await getMySQLClient()
+      const rows = await db.query('SELECT id, status FROM orders WHERE id = ? LIMIT 1', [orderId])
+      const order = rows?.[0] || rows?.data?.[0]
+      if (!order) {
+        return { code: 404, message: '订单不存在', data: null }
+      }
+
+      const currentStatus = String(order.status || '')
+      if (!['publish_failed', 'publish_timeout'].includes(currentStatus)) {
+        return { code: 400, message: '当前订单状态不可重试', data: { status: currentStatus } }
+      }
+
+      const orderUpdateResult = await db.query(
+        `UPDATE orders SET publish_verified = 0, status = 'submitted', updated_at = NOW() WHERE id = ?`,
+        [orderId]
+      )
+      const contentUpdateResult = await db.query(
+        `UPDATE content_generation_requests
+         SET verification_status = 'pending', verified_at = NULL
+         WHERE order_id = ? AND verification_status = 'failed'`,
+        [orderId]
+      )
+
+      await this.orderService.syncOrderStatusByContent(orderId)
+
+      return {
+        code: 200,
+        message: '已触发重试',
+        data: {
+          orderId,
+          status: 'submitted',
+          updatedOrders: orderUpdateResult?.affectedRows ?? null,
+          resetContents: contentUpdateResult?.affectedRows ?? null,
+        }
+      }
+    } catch (error: any) {
+      return { code: 500, message: '重试失败', error: error.message }
     }
   }
 

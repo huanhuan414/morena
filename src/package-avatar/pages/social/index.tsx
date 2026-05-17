@@ -5,19 +5,19 @@ import './index.css'
 
 // 模拟分身数据
 const mockAvatars = [
-  { id: '1', name: '小美', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', online: true, gender: '女', age: 25, followers: 12580, posts: 328, tags: ['温柔', '知性'], onlineTime: '在线' },
-  { id: '2', name: '智慧达人', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', online: true, gender: '女', age: 28, followers: 8960, posts: 215, tags: ['知识', '职场'], onlineTime: '在线' },
-  { id: '3', name: '生活家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella', online: false, gender: '女', age: 30, followers: 15890, posts: 456, tags: ['生活', '美食'], onlineTime: '2小时前' },
-  { id: '4', name: '旅行家', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Coco', online: true, gender: '男', age: 26, followers: 21350, posts: 589, tags: ['旅行', '摄影'], onlineTime: '在线' },
-  { id: '5', name: '时尚博主', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Daisy', online: false, gender: '女', age: 24, followers: 45670, posts: 892, tags: ['时尚', '美妆'], onlineTime: '5分钟前' },
-  { id: '6', name: '科技控', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Eve', online: true, gender: '男', age: 27, followers: 6780, posts: 156, tags: ['科技', '数码'], onlineTime: '在线' },
+  { id: '1', name: '小美', avatar: '', online: true, gender: '女', age: 25, followers: 12580, posts: 328, tags: ['温柔', '知性'], onlineTime: '在线' },
+  { id: '2', name: '智慧达人', avatar: '', online: true, gender: '女', age: 28, followers: 8960, posts: 215, tags: ['知识', '职场'], onlineTime: '在线' },
+  { id: '3', name: '生活家', avatar: '', online: false, gender: '女', age: 30, followers: 15890, posts: 456, tags: ['生活', '美食'], onlineTime: '2小时前' },
+  { id: '4', name: '旅行家', avatar: '', online: true, gender: '男', age: 26, followers: 21350, posts: 589, tags: ['旅行', '摄影'], onlineTime: '在线' },
+  { id: '5', name: '时尚博主', avatar: '', online: false, gender: '女', age: 24, followers: 45670, posts: 892, tags: ['时尚', '美妆'], onlineTime: '5分钟前' },
+  { id: '6', name: '科技控', avatar: '', online: true, gender: '男', age: 27, followers: 6780, posts: 156, tags: ['科技', '数码'], onlineTime: '在线' },
 ]
 
 export default function SocialSquare() {
   const [activeTab, setActiveTab] = useState('推荐')
   const [userInfo] = useState({
     name: '小明',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
+    avatar: '',
   })
 
   const tabs = ['推荐', '最新', '热榜', '关注']

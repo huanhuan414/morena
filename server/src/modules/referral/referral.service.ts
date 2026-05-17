@@ -64,62 +64,27 @@ export class ReferralService {
       throw new Error('您已被邀请过')
     }
     
-    // 邀请人奖励：3元现金
-    const INVITER_REWARD = 3
-    const INVITEE_REWARD = 2
+    const INVITER_REWARD = 5
+    const INVITEE_REWARD = 5
     
     const id = crypto.randomUUID()
     await db.insert('referrals', {
       id,
       referrer_id: inviter.id,
       referred_id: inviteeId,
-      referral_code: code,
-      status: 'completed',
+      status: 'pending',
       reward_amount: INVITER_REWARD,
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     
-    // 给邀请人发放奖励并立即结算
-    const inviterEarning = await this.earningService.createEarning(inviter.id, {
-      type: 'referral_bonus',
-      amount: INVITER_REWARD,
-      source: 'invite_friend',
-      description: '邀请好友奖励'
-    })
-    
-    // 立即结算邀请人奖励
-    if (inviterEarning?.id) {
-      await this.earningService.updateEarningStatus(inviterEarning.id, 'settled')
-      await db.query(
-        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
-        [INVITER_REWARD, INVITER_REWARD, inviter.id]
-      )
-    }
-    
-    // 给被邀请人发放奖励并立即结算
-    const inviteeEarning = await this.earningService.createEarning(inviteeId, {
-      type: 'referral_bonus',
-      amount: INVITEE_REWARD,
-      source: 'be_invited',
-      description: '受邀注册奖励'
-    })
-    
-    // 立即结算被邀请人奖励
-    if (inviteeEarning?.id) {
-      await this.earningService.updateEarningStatus(inviteeEarning.id, 'settled')
-      await db.query(
-        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
-        [INVITEE_REWARD, INVITEE_REWARD, inviteeId]
-      )
-    }
-    
-    // 更新邀请人的邀请计数
+    // 注册时先记录为 pending，首次创建分身后再触发奖励结算。
+    // 这里仍维护邀请计数，便于邀请看板与后台统计即时展示。
     const inviterRecord = await db.queryOne('users', { id: inviter.id }) as any
     await db.updateWhere('users', { id: inviter.id }, {
       referral_count: (inviterRecord?.referral_count || 0) + 1,
       updated_at: new Date()
     })
-    
+
     return { 
       success: true,
       inviterReward: INVITER_REWARD,
@@ -142,11 +107,64 @@ export class ReferralService {
     return {
       referralCode,
       totalInvited: referrals?.length || 0,
-      totalReward: completedCount * 3,
-      pendingReward: pendingCount * 3,
-      inviterReward: 3,
-      inviteeReward: 2,
+      totalReward: completedCount * 5,
+      pendingReward: pendingCount * 5,
+      totalInvites: referrals?.length || 0,
+      pendingInvites: pendingCount,
+      completedInvites: completedCount,
+      inviterReward: 5,
+      inviteeReward: 5,
+      totalEarned: completedCount * 5
     }
+  }
+
+  async settleReferralOnFirstAvatar(inviteeId: string) {
+    const db = getMySQLClient()
+    const pending = await db.queryOne('referrals', { referred_id: inviteeId, status: 'pending' }) as any
+    const referral = pending?.data
+    if (!referral) return { skipped: true }
+
+    const inviterId = referral.referrer_id || referral.referrerId
+    if (!inviterId) return { skipped: true }
+
+    const INVITER_REWARD = 5
+    const INVITEE_REWARD = 5
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+
+    await db.updateWhere('referrals', { id: referral.id }, {
+      status: 'completed',
+      reward_amount: INVITER_REWARD,
+    })
+
+    await db.insert('earnings', {
+      id: crypto.randomUUID(),
+      user_id: inviterId,
+      type: 'referral_bonus',
+      amount: INVITER_REWARD,
+      description: '邀请好友奖励',
+      status: 'completed',
+      created_at: now,
+    })
+    await db.insert('earnings', {
+      id: crypto.randomUUID(),
+      user_id: inviteeId,
+      type: 'referral_bonus',
+      amount: INVITEE_REWARD,
+      description: '受邀创建分身奖励',
+      status: 'completed',
+      created_at: now,
+    })
+
+    await db.query(
+      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
+      [INVITER_REWARD, INVITER_REWARD, now, inviterId]
+    )
+    await db.query(
+      'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ?, updated_at = ? WHERE id = ?',
+      [INVITEE_REWARD, INVITEE_REWARD, now, inviteeId]
+    )
+
+    return { completed: true, inviterId }
   }
 
   /**

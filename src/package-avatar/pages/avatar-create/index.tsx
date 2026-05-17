@@ -45,6 +45,7 @@ const BENEFITS = [
 
 const STEP_LABELS = ['形象设定', '风格定位', '技能选择']
 const AVATAR_CREATE_DRAFT_KEY = 'avatar_create_draft_v3'
+const MIND_CHAT_FOCUS_AVATAR_KEY = 'mind_chat_focus_avatar'
 
 export default function AvatarCreate() {
   const statusBarHeight = getStatusBarHeight()
@@ -399,6 +400,7 @@ export default function AvatarCreate() {
         if (createdAvatarId) {
           console.log('[avatar-create] Setting onboarding storage, avatarId =', createdAvatarId)
           Taro.setStorageSync('onboarding_new_avatar_id', createdAvatarId)
+          Taro.setStorageSync(MIND_CHAT_FOCUS_AVATAR_KEY, { avatarId: createdAvatarId, ts: Date.now() })
           console.log('[avatar-create] Storage set, verifying:', Taro.getStorageSync('onboarding_new_avatar_id'))
         } else {
           console.log('[avatar-create] WARNING: createdAvatarId is empty!')
