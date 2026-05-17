@@ -63,6 +63,8 @@ export class AiSkillService {
 
   /**
    * 后台执行图片生成
+   * - 有输入图片 → /v1/images/edits（multipart/form-data，参考图 + prompt）
+   * - 无输入图片 → /v1/images/generations（JSON，纯文生图）
    */
   private async doGenerate(
     recordId: string,
@@ -72,61 +74,18 @@ export class AiSkillService {
   ) {
     const pool = getPool();
     try {
-      // 构建请求体 - 使用 prompt + image_url 格式（aaigc API 兼容）
-      const requestBody: any = {
-        model: IMAGE_GEN_MODEL,
-        prompt: fullPrompt,
-        n: 1,
-        size: skillType === 'fashion_makeover' ? '1536x1024' : '1024x1536',
-      };
+      const size = skillType === 'fashion_makeover' ? '1536x1024' : '1024x1536';
 
-      // 如果有输入图片，作为 image_url 引用传入
-      if (inputImageUrl) {
-        requestBody.image_url = inputImageUrl;
-      }
-
-      console.log(`[AiSkillService] calling API, skillType=${skillType}, hasImage=${!!inputImageUrl}, promptLen=${fullPrompt.length}`);
-
-      const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${IMAGE_GEN_API_KEY}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[AiSkillService] API error: ${response.status} ${errorText}`);
-        // 如果 prompt + image_url 格式不被接受，尝试 fallback 到 input 数组格式
-        if (response.status >= 400 && response.status < 500) {
-          console.log(`[AiSkillService] Trying fallback format with input array...`);
-          await this.doGenerateFallback(recordId, skillType, fullPrompt, inputImageUrl);
-          return;
-        }
-        throw new Error(`图片生成API错误: ${response.status} ${errorText.slice(0, 200)}`);
-      }
-
-      const result = (await response.json()) as any;
-      console.log(`[AiSkillService] API response:`, JSON.stringify(result).slice(0, 300));
-
-      // 解析结果图片 URL
       let resultImageUrl = '';
-      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-        const firstItem = result.data[0];
-        if (firstItem.url) {
-          resultImageUrl = firstItem.url;
-        } else if (firstItem.b64_json) {
-          // base64 图片上传到 TOS
-          console.log('[AiSkillService] 收到 base64 图片，上传到 TOS');
-          const buffer = Buffer.from(firstItem.b64_json, 'base64');
-          resultImageUrl = await this.storageService.uploadImageFromBuffer(
-            buffer,
-            `ai-skill/${skillType}/${recordId}.png`,
-          );
-        }
+
+      if (inputImageUrl) {
+        // 有参考图 → 用 /v1/images/edits 端点（multipart/form-data）
+        console.log(`[AiSkillService] Using /v1/images/edits with reference image, skillType=${skillType}`);
+        resultImageUrl = await this.callEditsApi(fullPrompt, inputImageUrl, size);
+      } else {
+        // 无参考图 → 用 /v1/images/generations 端点（JSON）
+        console.log(`[AiSkillService] Using /v1/images/generations (text-only), skillType=${skillType}`);
+        resultImageUrl = await this.callGenerationsApi(fullPrompt, size);
       }
 
       if (!resultImageUrl) {
@@ -151,84 +110,147 @@ export class AiSkillService {
   }
 
   /**
-   * Fallback: 使用 input 数组格式（OpenAI 原生 images/edits 兼容格式）
+   * 调用 /v1/images/generations（纯文生图，JSON 格式）
    */
-  private async doGenerateFallback(
-    recordId: string,
-    skillType: SkillType,
-    fullPrompt: string,
-    inputImageUrl?: string,
-  ) {
-    const pool = getPool();
-    try {
-      const inputItems: any[] = [
-        { type: 'text', text: fullPrompt },
-      ];
-      if (inputImageUrl) {
-        inputItems.push({
-          type: 'image_url',
-          image_url: { url: inputImageUrl },
-        });
-      }
+  private async callGenerationsApi(prompt: string, size: string): Promise<string> {
+    const requestBody = {
+      model: IMAGE_GEN_MODEL,
+      prompt,
+      n: 1,
+      size,
+    };
 
-      const requestBody: any = {
-        model: IMAGE_GEN_MODEL,
-        input: inputItems,
-        n: 1,
-        size: skillType === 'fashion_makeover' ? '1536x1024' : '1024x1536',
-      };
+    const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
+    console.log(`[AiSkillService] POST ${apiUrl}, promptLen=${prompt.length}`);
 
-      console.log(`[AiSkillService] Fallback: calling API with input array format`);
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${IMAGE_GEN_API_KEY}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-      const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${IMAGE_GEN_API_KEY}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Fallback API error: ${response.status} ${errorText.slice(0, 200)}`);
-      }
-
-      const result = (await response.json()) as any;
-      console.log(`[AiSkillService] Fallback API response:`, JSON.stringify(result).slice(0, 300));
-
-      let resultImageUrl = '';
-      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-        const firstItem = result.data[0];
-        if (firstItem.url) {
-          resultImageUrl = firstItem.url;
-        } else if (firstItem.b64_json) {
-          const buffer = Buffer.from(firstItem.b64_json, 'base64');
-          resultImageUrl = await this.storageService.uploadImageFromBuffer(
-            buffer,
-            `ai-skill/${skillType}/${recordId}.png`,
-          );
-        }
-      }
-
-      if (!resultImageUrl) {
-        throw new Error('Fallback: 图片生成返回数据为空');
-      }
-
-      await pool.query(
-        `UPDATE ai_skill_records SET result_image_url = ?, status = 'completed', updated_at = NOW() WHERE id = ?`,
-        [resultImageUrl, recordId],
-      );
-
-      console.log(`[AiSkillService] Fallback 生成成功, recordId=${recordId}`);
-    } catch (error: any) {
-      console.error(`[AiSkillService] Fallback 生成失败, recordId=${recordId}:`, error.message);
-      await pool.query(
-        `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
-        [error.message?.slice(0, 500) || '未知错误', recordId],
-      );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`generations API error: ${response.status} ${errorText.slice(0, 200)}`);
     }
+
+    const result = (await response.json()) as any;
+    console.log(`[AiSkillService] generations response:`, JSON.stringify(result).slice(0, 300));
+
+    return this.extractResultImageUrl(result, 'generations');
+  }
+
+  /**
+   * 调用 /v1/images/edits（参考图 + prompt，multipart/form-data）
+   * 下载输入图片 → 构建 FormData → 发送请求
+   */
+  private async callEditsApi(prompt: string, inputImageUrl: string, size: string): Promise<string> {
+    // 1. 下载输入图片
+    console.log(`[AiSkillService] Downloading input image: ${inputImageUrl.substring(0, 80)}`);
+    const imageResponse = await fetch(inputImageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`下载输入图片失败: ${imageResponse.status}`);
+    }
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    console.log(`[AiSkillService] Downloaded image: ${imageBuffer.length} bytes, type=${contentType}`);
+
+    // 2. 构建 multipart/form-data
+    const boundary = `----FormBoundary${crypto.randomBytes(16).toString('hex')}`;
+    const parts: Buffer[] = [];
+
+    // 添加 model 字段
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${IMAGE_GEN_MODEL}\r\n`
+    ));
+
+    // 添加 prompt 字段
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="prompt"\r\n\r\n${prompt}\r\n`
+    ));
+
+    // 添加 n 字段
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="n"\r\n\r\n1\r\n`
+    ));
+
+    // 添加 size 字段
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="size"\r\n\r\n${size}\r\n`
+    ));
+
+    // 添加 image 文件
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="input.${ext}"\r\nContent-Type: ${contentType}\r\n\r\n`
+    ));
+    parts.push(imageBuffer);
+    parts.push(Buffer.from(`\r\n`));
+
+    // 结束标记
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const bodyBuffer = Buffer.concat(parts);
+
+    // 3. 发送请求
+    const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/edits`;
+    console.log(`[AiSkillService] POST ${apiUrl} (multipart/form-data), imageLen=${imageBuffer.length}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${IMAGE_GEN_API_KEY}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body: bodyBuffer,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[AiSkillService] edits API error: ${response.status} ${errorText.slice(0, 300)}`);
+
+      // 如果 edits 端点不可用，fallback 到 generations（不带图片）
+      if (response.status === 404 || response.status === 405) {
+        console.log(`[AiSkillService] /edits endpoint not available, falling back to /generations without image`);
+        return this.callGenerationsApi(prompt, size);
+      }
+      throw new Error(`edits API error: ${response.status} ${errorText.slice(0, 200)}`);
+    }
+
+    const result = (await response.json()) as any;
+    console.log(`[AiSkillService] edits response:`, JSON.stringify(result).slice(0, 300));
+
+    return this.extractResultImageUrl(result, 'edits');
+  }
+
+  /**
+   * 从 API 响应中提取结果图片 URL
+   */
+  private async extractResultImageUrl(result: any, apiName: string): Promise<string> {
+    if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+      throw new Error(`${apiName}: 图片生成返回数据为空`);
+    }
+
+    const firstItem = result.data[0];
+
+    if (firstItem.url) {
+      return firstItem.url;
+    }
+
+    if (firstItem.b64_json) {
+      console.log(`[AiSkillService] 收到 base64 图片，上传到 TOS`);
+      const buffer = Buffer.from(firstItem.b64_json, 'base64');
+      const url = await this.storageService.uploadImageFromBuffer(
+        buffer,
+        `ai-skill/${Date.now()}.png`,
+      );
+      return url;
+    }
+
+    throw new Error(`${apiName}: 未找到图片 URL 或 base64 数据`);
   }
 
   /**
