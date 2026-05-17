@@ -312,12 +312,11 @@ export class UserStatsService {
       }
       
       try {
-        const result = await db.queryWhere('content_generation_requests', where, {
-          orderBy: 'created_at',
-          orderDirection: 'desc',
-          limit: 50
-        }) as any
-        // queryWhere 直接返回数组，不是 { data: [] } 格式
+        // 只选择列表展示需要的字段，排除 images 大字段（可能含数MB base64数据）
+        // content 只取前200字符做预览，额外计算 image_count
+        const avatarIdParams = avatarIds.map(() => '?').join(',')
+        const sql = `SELECT id, order_id, avatar_id, content_type, platform, platforms, status, created_at, updated_at, video_url, publish_feedback, SUBSTRING(content, 1, 200) as content, CASE WHEN images IS NULL THEN 0 WHEN images LIKE '[%' THEN JSON_LENGTH(images) WHEN images LIKE '%%,%%' THEN LENGTH(images) - LENGTH(REPLACE(images, ',', '')) + 1 WHEN LENGTH(images) > 0 THEN 1 ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id IN (${avatarIdParams}) ORDER BY created_at DESC LIMIT 50`
+        const result = await db.query(sql, avatarIds) as any
         contents = Array.isArray(result) ? result : (result?.data || [])
       } catch (e) {
         contents = []

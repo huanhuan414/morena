@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView, Image as TaroImage } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -108,7 +108,6 @@ export default function GeneratedContentPage() {
         }))
 
         const parsedContents = rawContents.map((c: any) => {
-          const images = safeParseJSON(c.images)
           const platforms = safeParseJSON(c.platforms)
           return {
             ...c,
@@ -118,7 +117,8 @@ export default function GeneratedContentPage() {
             avatarId: c.avatarId || c.avatar_id || '',
             avatarName: c.avatarName || c.avatar_name || '我的分身',
             avatarUrl: c.avatarUrl || c.avatar_url || '',
-            images,
+            images: [], // 列表不返回images大字段，详情页单独加载
+            imageCount: c.imageCount || c.image_count || 0,
             platforms,
             tags: safeParseJSON(c.tags),
             platform: canonicalizePlatform(c.platform || platforms[0] || ''),
@@ -391,7 +391,6 @@ export default function GeneratedContentPage() {
             const platformKey = content.platform || (content.platforms?.[0]) || ''
             const platformInfo = getPlatformInfo(platformKey)
             const contentText = content.content || ''
-            const images = content.images || []
             let videoUrls: string[] = []
             try {
               const rawVideoUrl = content.video_url || content.videoUrl || ''
@@ -464,26 +463,16 @@ export default function GeneratedContentPage() {
                   </View>
                 ) : (
                   <View>
-                    {/* 图文内容卡片：显示文案+配图 */}
+                    {/* 图文内容卡片：显示文案+图片数量标签 */}
                     <Text className="content-preview">
                       {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
                     </Text>
-                    {images.length > 0 && (
+                    {content.imageCount > 0 && (
                       <View className="image-preview-row">
-                        {images.slice(0, 3).map((img: string, idx: number) => (
-                          <TaroImage
-                            key={idx}
-                            src={img}
-                            className="preview-image"
-                            mode="aspectFill"
-                            onClick={() => Taro.previewImage({ urls: images, current: img })}
-                          />
-                        ))}
-                        {images.length > 3 && (
-                          <View className="more-images">
-                            <Text style={{ fontSize: 12, color: '#64748B' }}>+{images.length - 3}</Text>
-                          </View>
-                        )}
+                        <View className="more-images">
+                          <ImagePlus size={12} color="#64748B" />
+                          <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>{content.imageCount}张配图</Text>
+                        </View>
                       </View>
                     )}
                   </View>
