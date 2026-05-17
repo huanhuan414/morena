@@ -14,6 +14,7 @@ export function getPool(): Pool {
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      decimalNumbers: true,
     });
   }
   return pool;
@@ -59,6 +60,10 @@ function convertKeysToCamel(obj: any): any {
   if (obj instanceof Date) {
     // 将 Date 对象转换为 ISO 字符串
     return obj.toISOString();
+  }
+  // 处理 MySQL DECIMAL 类型（mysql2 返回的 BigDecimal 对象，如 {7150 -2 false finite true}）
+  if (typeof obj === 'object' && obj !== null && typeof obj.toFixed === 'function') {
+    return Number(obj);
   }
   if (typeof obj === 'object') {
     const result: any = {};
