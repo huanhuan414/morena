@@ -23,9 +23,9 @@ export class AiSkillService {
   constructor(private readonly storageService: StorageService) {}
 
   /**
-   * 生成 AI 技能图片
+   * 发起 AI 技能图片生成（异步，立即返回 recordId）
    */
-  async generate(
+  async startGenerate(
     userId: string,
     skillType: SkillType,
     inputImageUrl?: string,
@@ -45,7 +45,7 @@ export class AiSkillService {
     // 生成记录 ID
     const recordId = `skill_${crypto.randomUUID().replace(/-/g, '').substring(0, 20)}`;
 
-    // 写入 pending 记录
+    // 写入 generating 记录
     const pool = getPool();
     await pool.query(
       `INSERT INTO ai_skill_records (id, user_id, skill_type, input_image_url, input_text, prompt, status, created_at)
@@ -53,8 +53,26 @@ export class AiSkillService {
       [recordId, userId, skillType, inputImageUrl || null, inputText || null, fullPrompt],
     );
 
+    // 异步执行生成（不 await，后台运行）
+    this.doGenerate(recordId, skillType, fullPrompt, inputImageUrl).catch((err) => {
+      console.error(`[AiSkillService] doGenerate unhandled error for ${recordId}:`, err.message);
+    });
+
+    return { id: recordId, skillType, status: 'generating' };
+  }
+
+  /**
+   * 后台执行图片生成
+   */
+  private async doGenerate(
+    recordId: string,
+    skillType: SkillType,
+    fullPrompt: string,
+    inputImageUrl?: string,
+  ) {
+    const pool = getPool();
     try {
-      // 构建请求体
+      // 构建请求体 - 使用 prompt + image_url 格式（aaigc API 兼容）
       const requestBody: any = {
         model: IMAGE_GEN_MODEL,
         prompt: fullPrompt,
@@ -62,12 +80,12 @@ export class AiSkillService {
         size: skillType === 'fashion_makeover' ? '1536x1024' : '1024x1536',
       };
 
-      // 如果有输入图片，作为 image 引用传入
+      // 如果有输入图片，作为 image_url 引用传入
       if (inputImageUrl) {
         requestBody.image_url = inputImageUrl;
       }
 
-      console.log(`[AiSkillService] calling API, skillType=${skillType}, hasImage=${!!inputImageUrl}`);
+      console.log(`[AiSkillService] calling API, skillType=${skillType}, hasImage=${!!inputImageUrl}, promptLen=${fullPrompt.length}`);
 
       const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
       const response = await fetch(apiUrl, {
@@ -82,11 +100,17 @@ export class AiSkillService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[AiSkillService] API error: ${response.status} ${errorText}`);
-        throw new Error(`图片生成API错误: ${response.status}`);
+        // 如果 prompt + image_url 格式不被接受，尝试 fallback 到 input 数组格式
+        if (response.status >= 400 && response.status < 500) {
+          console.log(`[AiSkillService] Trying fallback format with input array...`);
+          await this.doGenerateFallback(recordId, skillType, fullPrompt, inputImageUrl);
+          return;
+        }
+        throw new Error(`图片生成API错误: ${response.status} ${errorText.slice(0, 200)}`);
       }
 
       const result = (await response.json()) as any;
-      console.log(`[AiSkillService] API response:`, JSON.stringify(result).slice(0, 200));
+      console.log(`[AiSkillService] API response:`, JSON.stringify(result).slice(0, 300));
 
       // 解析结果图片 URL
       let resultImageUrl = '';
@@ -116,20 +140,94 @@ export class AiSkillService {
       );
 
       console.log(`[AiSkillService] 生成成功, recordId=${recordId}, url=${resultImageUrl.substring(0, 80)}`);
-
-      return {
-        id: recordId,
-        skillType,
-        resultImageUrl,
-        status: 'completed',
-      };
     } catch (error: any) {
       // 更新记录为 failed
+      console.error(`[AiSkillService] 生成失败, recordId=${recordId}:`, error.message);
       await pool.query(
         `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
-        [error.message, recordId],
+        [error.message?.slice(0, 500) || '未知错误', recordId],
       );
-      throw error;
+    }
+  }
+
+  /**
+   * Fallback: 使用 input 数组格式（OpenAI 原生 images/edits 兼容格式）
+   */
+  private async doGenerateFallback(
+    recordId: string,
+    skillType: SkillType,
+    fullPrompt: string,
+    inputImageUrl?: string,
+  ) {
+    const pool = getPool();
+    try {
+      const inputItems: any[] = [
+        { type: 'text', text: fullPrompt },
+      ];
+      if (inputImageUrl) {
+        inputItems.push({
+          type: 'image_url',
+          image_url: { url: inputImageUrl },
+        });
+      }
+
+      const requestBody: any = {
+        model: IMAGE_GEN_MODEL,
+        input: inputItems,
+        n: 1,
+        size: skillType === 'fashion_makeover' ? '1536x1024' : '1024x1536',
+      };
+
+      console.log(`[AiSkillService] Fallback: calling API with input array format`);
+
+      const apiUrl = `${IMAGE_GEN_BASE_URL}/v1/images/generations`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${IMAGE_GEN_API_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fallback API error: ${response.status} ${errorText.slice(0, 200)}`);
+      }
+
+      const result = (await response.json()) as any;
+      console.log(`[AiSkillService] Fallback API response:`, JSON.stringify(result).slice(0, 300));
+
+      let resultImageUrl = '';
+      if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+        const firstItem = result.data[0];
+        if (firstItem.url) {
+          resultImageUrl = firstItem.url;
+        } else if (firstItem.b64_json) {
+          const buffer = Buffer.from(firstItem.b64_json, 'base64');
+          resultImageUrl = await this.storageService.uploadImageFromBuffer(
+            buffer,
+            `ai-skill/${skillType}/${recordId}.png`,
+          );
+        }
+      }
+
+      if (!resultImageUrl) {
+        throw new Error('Fallback: 图片生成返回数据为空');
+      }
+
+      await pool.query(
+        `UPDATE ai_skill_records SET result_image_url = ?, status = 'completed', updated_at = NOW() WHERE id = ?`,
+        [resultImageUrl, recordId],
+      );
+
+      console.log(`[AiSkillService] Fallback 生成成功, recordId=${recordId}`);
+    } catch (error: any) {
+      console.error(`[AiSkillService] Fallback 生成失败, recordId=${recordId}:`, error.message);
+      await pool.query(
+        `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
+        [error.message?.slice(0, 500) || '未知错误', recordId],
+      );
     }
   }
 
@@ -182,7 +280,7 @@ export class AiSkillService {
   }
 
   /**
-   * 获取单条记录
+   * 获取单条记录（轮询状态用）
    */
   async getRecord(userId: string, recordId: string) {
     const pool = getPool();

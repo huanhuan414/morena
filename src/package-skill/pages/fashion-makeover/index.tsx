@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -8,23 +8,13 @@ import { Network } from '@/network'
 import { Upload, Sparkles, History, Shirt, ArrowLeft, Image as ImageIcon, Save, Expand } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 
-const BUILT_IN_PROMPT = `请根据用户输入的【主题】或上传的【参考图片】，创作一张横向 4:3 的高完成度「AI服装灵感方案 / AI Fashion Inspiration Board」。
-
-【任务定位】
-这不是普通穿搭拼图，不是简单的几套衣服展示，也不是电商商品推荐图，而是一张兼具「灵感提取 + 视觉转译 + 3套完整穿搭方案 + 专业提案感 + 实际上身效果」的中文高质量服装灵感设计图。
-
-整张图的核心目标是：
-1. 清楚呈现灵感来源；
-2. 从灵感中提取色彩、气质、廓形、材质、细节与场景氛围；
-3. 将这些视觉语言转译成 3 套有逻辑的完整穿搭方案；
-4. 让用户第一眼觉得高级、时髦、专业，第二眼能看懂整套方案为什么这样设计，第三眼觉得这 3 套 look 既有审美表达，也真实可穿。`
-
 interface HistoryRecord {
   id: string
   inputImageUrl: string
   inputText: string
   resultImageUrl: string
   status: string
+  errorMessage: string
   createdAt: string
 }
 
@@ -52,7 +42,9 @@ export default function FashionMakeoverPage() {
   const [inputText, setInputText] = useState('')
   const [generating, setGenerating] = useState(false)
   const [resultImageUrl, setResultImageUrl] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
+  const pollingRef = useRef(false)
 
   useDidShow(() => {
     loadHistory()
@@ -62,7 +54,7 @@ export default function FashionMakeoverPage() {
     try {
       const res = await Network.request({
         url: '/api/ai-skill/history',
-        data: { skillType: 'fashion_makeover', limit: 20 }
+        data: { skillType: 'fashion_makeover', pageSize: 20 }
       })
       console.log('[衣品改造] 历史记录:', res.data)
       const rawData = res.data?.data
@@ -113,8 +105,9 @@ export default function FashionMakeoverPage() {
     }
     setGenerating(true)
     setResultImageUrl('')
+    setErrorMessage('')
     try {
-      console.log('[衣品改造] 开始生成')
+      console.log('[衣品改造] 开始生成, hasImage:', !!inputImageUrl, 'inputText:', inputText)
       const res = await Network.request({
         url: '/api/ai-skill/generate',
         method: 'POST',
@@ -122,34 +115,48 @@ export default function FashionMakeoverPage() {
           skillType: 'fashion_makeover',
           inputImageUrl: inputImageUrl || undefined,
           inputText: inputText.trim() || undefined,
-          prompt: BUILT_IN_PROMPT
         }
       })
-      console.log('[衣品改造] 生成结果:', res.data)
+      console.log('[衣品改造] 生成响应:', res.data)
       const data = res.data?.data
-      if (data?.resultImageUrl) {
+      if (data?.id && (data?.status === 'generating' || data?.status === 'pending')) {
+        // 异步模式：立即拿到 recordId，开始轮询
+        startPolling(data.id)
+      } else if (data?.resultImageUrl) {
+        // 同步返回了结果（兜底）
         setResultImageUrl(data.resultImageUrl)
+        setGenerating(false)
         Taro.showToast({ title: '生成成功', icon: 'success' })
         loadHistory()
-      } else if (data?.status === 'pending' || data?.status === 'generating') {
-        pollResult(data.id)
       } else {
-        Taro.showToast({ title: data?.errorMessage || '生成失败', icon: 'none' })
+        // 提交失败
+        setGenerating(false)
+        setErrorMessage(data?.errorMessage || res.data?.msg || '提交失败，请重试')
+        Taro.showToast({ title: res.data?.msg || '提交失败', icon: 'none' })
       }
-    } catch (e) {
-      console.error('[衣品改造] 生成失败:', e)
-      Taro.showToast({ title: '生成失败，请重试', icon: 'none' })
-    } finally {
+    } catch (e: any) {
+      console.error('[衣品改造] 生成请求失败:', e)
       setGenerating(false)
+      setErrorMessage(e?.message || '网络错误，请重试')
+      Taro.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
   }
 
-  const pollResult = async (recordId: string) => {
+  /** 开始轮询生成状态 */
+  const startPolling = (recordId: string) => {
+    if (pollingRef.current) return
+    pollingRef.current = true
     let attempts = 0
     const maxAttempts = 60
-    const poll = async (): Promise<void> => {
-      if (attempts >= maxAttempts) {
-        Taro.showToast({ title: '生成超时，请稍后查看历史', icon: 'none' })
+
+    const poll = async () => {
+      if (attempts >= maxAttempts || !pollingRef.current) {
+        pollingRef.current = false
+        setGenerating(false)
+        if (attempts >= maxAttempts) {
+          setErrorMessage('生成超时，请稍后在历史记录中查看')
+          Taro.showToast({ title: '生成超时', icon: 'none' })
+        }
         return
       }
       attempts++
@@ -159,24 +166,29 @@ export default function FashionMakeoverPage() {
           url: `/api/ai-skill/record/${recordId}`
         })
         const data = res.data?.data
-        console.log(`[衣品改造] 轮询 #${attempts}:`, data?.status)
+        console.log(`[衣品改造] 轮询 #${attempts}: status=${data?.status}`)
         if (data?.status === 'completed' && data?.resultImageUrl) {
           setResultImageUrl(data.resultImageUrl)
+          setGenerating(false)
+          pollingRef.current = false
           Taro.showToast({ title: '生成成功', icon: 'success' })
           loadHistory()
           return
         } else if (data?.status === 'failed') {
-          Taro.showToast({ title: data.errorMessage || '生成失败', icon: 'none' })
+          setGenerating(false)
+          pollingRef.current = false
+          const msg = data?.errorMessage || '生成失败'
+          setErrorMessage(msg)
+          Taro.showToast({ title: msg, icon: 'none' })
           return
         }
-        return poll()
-      } catch {
-        return poll()
+        poll()
+      } catch (e) {
+        console.error(`[衣品改造] 轮询异常 #${attempts}:`, e)
+        poll()
       }
     }
-    setGenerating(true)
-    await poll()
-    setGenerating(false)
+    poll()
   }
 
   const handlePreviewImage = (url: string) => {
@@ -231,10 +243,7 @@ export default function FashionMakeoverPage() {
           <View
             style={{
               flex: 1,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
               paddingTop: '8px', paddingBottom: '8px',
               borderRadius: '10px',
               backgroundColor: activeTab === 'generate' ? '#ffffff' : 'transparent',
@@ -248,10 +257,7 @@ export default function FashionMakeoverPage() {
           <View
             style={{
               flex: 1,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
               paddingTop: '8px', paddingBottom: '8px',
               borderRadius: '10px',
               backgroundColor: activeTab === 'history' ? '#ffffff' : 'transparent',
@@ -299,7 +305,7 @@ export default function FashionMakeoverPage() {
                 </View>
 
                 {/* 自定义输入 */}
-                <View style={{ marginTop: '12px', backgroundColor: '#F5F5F7', borderRadius: '10px', padding: '0 12px' }}>
+                <View style={{ marginTop: '12px', backgroundColor: '#F5F5F7', borderRadius: '10px', paddingLeft: '12px', paddingRight: '12px' }}>
                   <Input
                     style={{ width: '100%', fontSize: '14px', height: '40px' }}
                     placeholder="或自定义主题，如：日系森女、极简黑白..."
@@ -334,7 +340,7 @@ export default function FashionMakeoverPage() {
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
-                      onClick={() => setInputImageUrl('')}
+                      onClick={() => { setInputImageUrl(''); setResultImageUrl(''); setErrorMessage(''); }}
                     >
                       <Text style={{ color: '#ffffff', fontSize: '14px' }}>✕</Text>
                     </View>
@@ -374,7 +380,7 @@ export default function FashionMakeoverPage() {
             <View style={{ marginBottom: '12px' }}>
               <Button
                 className="w-full"
-                style={{ backgroundColor: PRIMARY, borderRadius: '12px', height: '44px' }}
+                style={{ backgroundColor: generating ? '#F9A8BA' : PRIMARY, borderRadius: '12px', height: '44px' }}
                 disabled={(!inputImageUrl && !inputText.trim()) || generating}
                 onClick={handleGenerate}
               >
@@ -391,11 +397,30 @@ export default function FashionMakeoverPage() {
             {generating && !resultImageUrl && (
               <Card style={{ marginBottom: '12px' }}>
                 <CardContent style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <View style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-                    <Sparkles size={24} color={PRIMARY} />
+                  <View style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                    <Sparkles size={28} color={PRIMARY} />
                   </View>
                   <Text className="block text-sm font-semibold" style={{ color: PRIMARY }}>AI 正在创作穿搭灵感</Text>
-                  <Text className="block text-xs mt-2" style={{ color: '#999999' }}>预计需要 15-30 秒，请耐心等待...</Text>
+                  <Text className="block text-xs mt-2" style={{ color: '#999999' }}>正在生成 3 套穿搭方案...</Text>
+                  <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>预计需要 15-60 秒，请勿离开页面</Text>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 生成失败提示 */}
+            {errorMessage && !generating && (
+              <Card style={{ marginBottom: '12px' }}>
+                <CardContent style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <View style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                    <Text style={{ fontSize: '20px', color: '#EF4444' }}>✕</Text>
+                  </View>
+                  <Text className="block text-sm font-semibold" style={{ color: '#EF4444' }}>生成失败</Text>
+                  <Text className="block text-xs mt-2" style={{ color: '#999999', textAlign: 'center' }}>{errorMessage}</Text>
+                  <View style={{ marginTop: '12px' }}>
+                    <Button size="sm" style={{ backgroundColor: PRIMARY, borderRadius: '20px', paddingLeft: '24px', paddingRight: '24px' }} onClick={handleGenerate}>
+                      <Text style={{ color: '#ffffff', fontSize: '13px' }}>重新生成</Text>
+                    </Button>
+                  </View>
                 </CardContent>
               </Card>
             )}
@@ -413,6 +438,34 @@ export default function FashionMakeoverPage() {
                       </View>
                     )}
                   </View>
+
+                  {/* 参考图 vs 结果对比（如果有参考图） */}
+                  {inputImageUrl && (
+                    <View style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginBottom: '12px' }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={inputImageUrl}
+                            style={{ width: '100%', height: '120px' }}
+                            mode="aspectFill"
+                            onClick={() => handlePreviewImage(inputImageUrl)}
+                          />
+                        </View>
+                        <Text className="block text-xs text-center mt-1" style={{ color: '#999999' }}>参考图</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={resultImageUrl}
+                            style={{ width: '100%', height: '120px' }}
+                            mode="aspectFill"
+                            onClick={() => handlePreviewImage(resultImageUrl)}
+                          />
+                        </View>
+                        <Text className="block text-xs text-center mt-1" style={{ color: PRIMARY }}>灵感方案</Text>
+                      </View>
+                    </View>
+                  )}
 
                   {/* 全尺寸结果 */}
                   <View style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
@@ -488,7 +541,7 @@ export default function FashionMakeoverPage() {
                   <Card key={item.id} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
                     <CardContent style={{ padding: '12px' }}>
                       <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                        {/* 缩略图 */}
+                        {/* 输入图缩略图 */}
                         {item.inputImageUrl ? (
                           <Image
                             src={item.inputImageUrl}
@@ -527,6 +580,12 @@ export default function FashionMakeoverPage() {
                           />
                         )}
                       </View>
+                      {/* 失败记录展示错误信息 */}
+                      {item.status === 'failed' && item.errorMessage && (
+                        <View style={{ marginTop: '8px', paddingLeft: '64px' }}>
+                          <Text className="block text-xs" style={{ color: '#EF4444' }}>{item.errorMessage.slice(0, 60)}</Text>
+                        </View>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
@@ -7,15 +7,13 @@ import { Network } from '@/network'
 import { Upload, Sparkles, History, Hand, ArrowLeft, Image as ImageIcon, Save, Expand } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 
-const BUILT_IN_PROMPT = `根据我的手掌，我想让你制作一个完整的中文掌相阅读指南，分析手掌，指南的风格应该干净而简约，细线条，圆角卡片，整体看起来非常高端。
-专注于掌相阅读，创建一条简单黑白轮廓图，展示我的主要掌纹，作为一件小艺术品。尽你所能`
-
 interface HistoryRecord {
   id: string
   inputImageUrl: string
   inputText: string
   resultImageUrl: string
   status: string
+  errorMessage: string
   createdAt: string
 }
 
@@ -31,7 +29,9 @@ export default function PalmReadingPage() {
   const [inputImageUrl, setInputImageUrl] = useState('')
   const [generating, setGenerating] = useState(false)
   const [resultImageUrl, setResultImageUrl] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
+  const pollingRef = useRef(false)
 
   useDidShow(() => {
     loadHistory()
@@ -41,7 +41,7 @@ export default function PalmReadingPage() {
     try {
       const res = await Network.request({
         url: '/api/ai-skill/history',
-        data: { skillType: 'palm_reading', limit: 20 }
+        data: { skillType: 'palm_reading', pageSize: 20 }
       })
       console.log('[掌相阅读] 历史记录:', res.data)
       const rawData = res.data?.data
@@ -92,6 +92,7 @@ export default function PalmReadingPage() {
     }
     setGenerating(true)
     setResultImageUrl('')
+    setErrorMessage('')
     try {
       console.log('[掌相阅读] 开始生成, inputImageUrl:', inputImageUrl)
       const res = await Network.request({
@@ -100,34 +101,48 @@ export default function PalmReadingPage() {
         data: {
           skillType: 'palm_reading',
           inputImageUrl,
-          prompt: BUILT_IN_PROMPT
         }
       })
-      console.log('[掌相阅读] 生成结果:', res.data)
+      console.log('[掌相阅读] 生成响应:', res.data)
       const data = res.data?.data
-      if (data?.resultImageUrl) {
+      if (data?.id && (data?.status === 'generating' || data?.status === 'pending')) {
+        // 异步模式：立即拿到 recordId，开始轮询
+        startPolling(data.id)
+      } else if (data?.resultImageUrl) {
+        // 同步返回了结果（兜底）
         setResultImageUrl(data.resultImageUrl)
+        setGenerating(false)
         Taro.showToast({ title: '生成成功', icon: 'success' })
         loadHistory()
-      } else if (data?.status === 'pending' || data?.status === 'generating') {
-        pollResult(data.id)
       } else {
-        Taro.showToast({ title: data?.errorMessage || '生成失败', icon: 'none' })
+        // 提交失败
+        setGenerating(false)
+        setErrorMessage(data?.errorMessage || res.data?.msg || '提交失败，请重试')
+        Taro.showToast({ title: res.data?.msg || '提交失败', icon: 'none' })
       }
-    } catch (e) {
-      console.error('[掌相阅读] 生成失败:', e)
-      Taro.showToast({ title: '生成失败，请重试', icon: 'none' })
-    } finally {
+    } catch (e: any) {
+      console.error('[掌相阅读] 生成请求失败:', e)
       setGenerating(false)
+      setErrorMessage(e?.message || '网络错误，请重试')
+      Taro.showToast({ title: '网络错误，请重试', icon: 'none' })
     }
   }
 
-  const pollResult = async (recordId: string) => {
+  /** 开始轮询生成状态 */
+  const startPolling = (recordId: string) => {
+    if (pollingRef.current) return
+    pollingRef.current = true
     let attempts = 0
-    const maxAttempts = 60
-    const poll = async (): Promise<void> => {
-      if (attempts >= maxAttempts) {
-        Taro.showToast({ title: '生成超时，请稍后查看历史', icon: 'none' })
+    const maxAttempts = 60 // 最多轮询 60 次，约 3 分钟
+
+    const poll = async () => {
+      if (attempts >= maxAttempts || !pollingRef.current) {
+        pollingRef.current = false
+        setGenerating(false)
+        if (attempts >= maxAttempts) {
+          setErrorMessage('生成超时，请稍后在历史记录中查看')
+          Taro.showToast({ title: '生成超时', icon: 'none' })
+        }
         return
       }
       attempts++
@@ -137,24 +152,31 @@ export default function PalmReadingPage() {
           url: `/api/ai-skill/record/${recordId}`
         })
         const data = res.data?.data
-        console.log(`[掌相阅读] 轮询 #${attempts}:`, data?.status)
+        console.log(`[掌相阅读] 轮询 #${attempts}: status=${data?.status}`)
         if (data?.status === 'completed' && data?.resultImageUrl) {
           setResultImageUrl(data.resultImageUrl)
+          setGenerating(false)
+          pollingRef.current = false
           Taro.showToast({ title: '生成成功', icon: 'success' })
           loadHistory()
           return
         } else if (data?.status === 'failed') {
-          Taro.showToast({ title: data.errorMessage || '生成失败', icon: 'none' })
+          setGenerating(false)
+          pollingRef.current = false
+          const msg = data?.errorMessage || '生成失败'
+          setErrorMessage(msg)
+          Taro.showToast({ title: msg, icon: 'none' })
           return
         }
-        return poll()
-      } catch {
-        return poll()
+        // 继续轮询
+        poll()
+      } catch (e) {
+        console.error(`[掌相阅读] 轮询异常 #${attempts}:`, e)
+        // 网络抖动，继续轮询
+        poll()
       }
     }
-    setGenerating(true)
-    await poll()
-    setGenerating(false)
+    poll()
   }
 
   const handlePreviewImage = (url: string) => {
@@ -209,10 +231,7 @@ export default function PalmReadingPage() {
           <View
             style={{
               flex: 1,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
               paddingTop: '8px', paddingBottom: '8px',
               borderRadius: '10px',
               backgroundColor: activeTab === 'generate' ? '#ffffff' : 'transparent',
@@ -226,10 +245,7 @@ export default function PalmReadingPage() {
           <View
             style={{
               flex: 1,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
               paddingTop: '8px', paddingBottom: '8px',
               borderRadius: '10px',
               backgroundColor: activeTab === 'history' ? '#ffffff' : 'transparent',
@@ -270,7 +286,7 @@ export default function PalmReadingPage() {
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
-                      onClick={() => setInputImageUrl('')}
+                      onClick={() => { setInputImageUrl(''); setResultImageUrl(''); setErrorMessage(''); }}
                     >
                       <Text style={{ color: '#ffffff', fontSize: '14px' }}>✕</Text>
                     </View>
@@ -311,7 +327,7 @@ export default function PalmReadingPage() {
             <View style={{ marginBottom: '12px' }}>
               <Button
                 className="w-full"
-                style={{ backgroundColor: PRIMARY, borderRadius: '12px', height: '44px' }}
+                style={{ backgroundColor: generating ? '#B89DF5' : PRIMARY, borderRadius: '12px', height: '44px' }}
                 disabled={!inputImageUrl || generating}
                 onClick={handleGenerate}
               >
@@ -324,20 +340,39 @@ export default function PalmReadingPage() {
               </Button>
             </View>
 
-            {/* 生成中提示 */}
+            {/* 生成中提示 - 实时进度 */}
             {generating && !resultImageUrl && (
               <Card style={{ marginBottom: '12px' }}>
                 <CardContent style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <View style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-                    <Sparkles size={24} color={PRIMARY} />
+                  <View style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: PRIMARY_FAINT, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                    <Sparkles size={28} color={PRIMARY} />
                   </View>
                   <Text className="block text-sm font-semibold" style={{ color: PRIMARY }}>AI 正在解读您的掌纹</Text>
-                  <Text className="block text-xs mt-2" style={{ color: '#999999' }}>预计需要 15-30 秒，请耐心等待...</Text>
+                  <Text className="block text-xs mt-2" style={{ color: '#999999' }}>图片已上传，正在生成分析图...</Text>
+                  <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>预计需要 15-60 秒，请勿离开页面</Text>
                 </CardContent>
               </Card>
             )}
 
-            {/* 生成结果 */}
+            {/* 生成失败提示 */}
+            {errorMessage && !generating && (
+              <Card style={{ marginBottom: '12px' }}>
+                <CardContent style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <View style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                    <Text style={{ fontSize: '20px', color: '#EF4444' }}>✕</Text>
+                  </View>
+                  <Text className="block text-sm font-semibold" style={{ color: '#EF4444' }}>生成失败</Text>
+                  <Text className="block text-xs mt-2" style={{ color: '#999999', textAlign: 'center' }}>{errorMessage}</Text>
+                  <View style={{ marginTop: '12px' }}>
+                    <Button size="sm" style={{ backgroundColor: PRIMARY, borderRadius: '20px', paddingLeft: '24px', paddingRight: '24px' }} onClick={handleGenerate}>
+                      <Text style={{ color: '#ffffff', fontSize: '13px' }}>重新生成</Text>
+                    </Button>
+                  </View>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 生成结果 - 原图对比 */}
             {resultImageUrl && (
               <Card style={{ marginBottom: '16px' }}>
                 <CardContent style={{ padding: '16px' }}>
@@ -346,45 +381,41 @@ export default function PalmReadingPage() {
                     <Text className="block text-sm font-semibold" style={{ color: '#1A1A2E' }}>掌相解读结果</Text>
                   </View>
 
-                  {/* 原图 vs 结果 对比 */}
-                  {inputImageUrl && (
-                    <View style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginBottom: '12px' }}>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
-                          <Image
-                            src={inputImageUrl}
-                            style={{ width: '100%', height: '120px' }}
-                            mode="aspectFill"
-                            onClick={() => handlePreviewImage(inputImageUrl)}
-                          />
-                        </View>
-                        <Text className="block text-xs text-center mt-1" style={{ color: '#999999' }}>原图</Text>
+                  {/* 原图 vs 解读结果 对比 */}
+                  <View style={{ display: 'flex', flexDirection: 'row', gap: '8px', marginBottom: '12px' }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                        <Image
+                          src={inputImageUrl}
+                          style={{ width: '100%', height: '140px' }}
+                          mode="aspectFill"
+                          onClick={() => handlePreviewImage(inputImageUrl)}
+                        />
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
-                          <Image
-                            src={resultImageUrl}
-                            style={{ width: '100%', height: '120px' }}
-                            mode="aspectFill"
-                            onClick={() => handlePreviewImage(resultImageUrl)}
-                          />
-                        </View>
-                        <Text className="block text-xs text-center mt-1" style={{ color: PRIMARY }}>解读结果</Text>
-                      </View>
+                      <Text className="block text-xs text-center mt-1" style={{ color: '#999999' }}>我的手掌</Text>
                     </View>
-                  )}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                        <Image
+                          src={resultImageUrl}
+                          style={{ width: '100%', height: '140px' }}
+                          mode="aspectFill"
+                          onClick={() => handlePreviewImage(resultImageUrl)}
+                        />
+                      </View>
+                      <Text className="block text-xs text-center mt-1" style={{ color: PRIMARY }}>掌相解读</Text>
+                    </View>
+                  </View>
 
                   {/* 全尺寸结果 */}
-                  {!inputImageUrl && (
-                    <View style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
-                      <Image
-                        src={resultImageUrl}
-                        style={{ width: '100%' }}
-                        mode="widthFix"
-                        onClick={() => handlePreviewImage(resultImageUrl)}
-                      />
-                    </View>
-                  )}
+                  <View style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+                    <Image
+                      src={resultImageUrl}
+                      style={{ width: '100%' }}
+                      mode="widthFix"
+                      onClick={() => handlePreviewImage(resultImageUrl)}
+                    />
+                  </View>
 
                   {/* 操作按钮 */}
                   <View style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
@@ -450,7 +481,7 @@ export default function PalmReadingPage() {
                   <Card key={item.id} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
                     <CardContent style={{ padding: '12px' }}>
                       <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                        {/* 缩略图 */}
+                        {/* 输入图缩略图 */}
                         {item.inputImageUrl ? (
                           <Image
                             src={item.inputImageUrl}
@@ -487,6 +518,12 @@ export default function PalmReadingPage() {
                           />
                         )}
                       </View>
+                      {/* 失败记录展示错误信息 */}
+                      {item.status === 'failed' && item.errorMessage && (
+                        <View style={{ marginTop: '8px', paddingLeft: '64px' }}>
+                          <Text className="block text-xs" style={{ color: '#EF4444' }}>{item.errorMessage.slice(0, 60)}</Text>
+                        </View>
+                      )}
                     </CardContent>
                   </Card>
                 ))}

@@ -14,7 +14,7 @@ export class AiSkillController {
 
   /**
    * POST /api/ai-skill/generate
-   * 生成 AI 技能图片
+   * 发起 AI 技能图片生成（异步，立即返回 recordId）
    */
   @Post('generate')
   @HttpCode(HttpStatus.OK)
@@ -30,19 +30,20 @@ export class AiSkillController {
       return { code: 400, msg: '请选择技能类型', data: null };
     }
 
-    console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!body.inputImageUrl}`);
+    console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!body.inputImageUrl}, hasText=${!!body.inputText}`);
 
     try {
-      const result = await this.aiSkillService.generate(
+      const result = await this.aiSkillService.startGenerate(
         userId,
         body.skillType as SkillType,
         body.inputImageUrl,
         body.inputText,
       );
-      return { code: 200, msg: '生成成功', data: result };
+      // 立即返回 recordId，前端轮询状态
+      return { code: 200, msg: '已提交生成任务', data: result };
     } catch (error: any) {
       console.error('[AiSkillController] generate error:', error.message);
-      return { code: 500, msg: error.message || '生成失败', data: null };
+      return { code: 500, msg: error.message || '提交失败', data: null };
     }
   }
 
