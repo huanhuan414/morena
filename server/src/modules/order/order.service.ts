@@ -58,7 +58,7 @@ export class OrderService {
 
   private normalizeContentStatus(status?: string): string {
     const value = String(status || '').trim().toLowerCase()
-    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
+    if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
     if (['completed', 'revision_requested'].includes(value)) return 'preview'
     if (['feedback_submitted'].includes(value)) return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'

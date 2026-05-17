@@ -657,6 +657,46 @@
   line-height: 1.2;
 }
 
+/* 完成提示横幅 */
+.cc-done-banner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 20rpx;
+  background: linear-gradient(135deg, #F0FDF4, #DCFCE7);
+  border-radius: 20rpx;
+  border: 2rpx solid #BBF7D0;
+}
+
+.cc-done-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #16A34A;
+}
+
+/* 媒体为空提示 */
+.cc-media-empty {
+  padding: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-media-empty-text {
+  font-size: 26rpx;
+  color: #94A3B8;
+}
+
+/* 步骤勾选 */
+.cc-step-check {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 6rpx;
+  background: #22C55E;
+}
+
 /* 旋转动画 */
 .spinning-icon {
   animation: cc-spin 1s linear infinite;

@@ -201,7 +201,7 @@ export class OrderProcessingService {
   private normalizeWorkflowStatus(status?: string): string {
     const value = String(status || '').trim().toLowerCase()
     if (!value) return 'queuing'
-    if (['pending', 'processing', 'generating_text', 'generating_images'].includes(value)) return 'generating'
+    if (['pending', 'processing', 'generating_text', 'generating_images', 'generating_video'].includes(value)) return 'generating'
     if (['completed', 'revision_requested'].includes(value)) return 'preview'
     if (value === 'feedback_submitted') return 'awaiting_acceptance'
     if (['settled', 'done'].includes(value)) return 'completed'

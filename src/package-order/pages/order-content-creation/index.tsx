@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, Image as TaroImage, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Network } from '@/network'
-import { ArrowLeft, Loader, RefreshCw, Send, FileText, Image as ImageIcon, Video as VideoIcon, Wallet, Users, Sparkles } from 'lucide-react-taro'
+import { ArrowLeft, Loader, RefreshCw, Send, FileText, Image as ImageIcon, Video as VideoIcon, Wallet, Users, Sparkles, CircleCheck } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { canonicalizePlatforms, getPlatformLabel, getPlatformMeta } from '@/constants/publish-platform'
@@ -36,7 +36,46 @@ interface ProcessingData {
   orderId: string
   orderTitle: string
   status: string
+  rawStatus?: string
   generatedContent: GeneratedContent | null
+}
+
+/** rawStatus → 生成步骤映射 */
+interface StepInfo { key: string; label: string; done: boolean; active: boolean }
+
+function buildSteps(rawStatus: string, contentType: string): StepInfo[] {
+  const isVideo = contentType === 'video'
+  const s = rawStatus || ''
+
+  const textDone = ['generating_images', 'generating_video', 'completed', 'preview', 'feedback_submitted', 'settled', 'awaiting_acceptance', 'published'].includes(s)
+  const mediaDone = ['completed', 'preview', 'feedback_submitted', 'settled', 'awaiting_acceptance', 'published'].includes(s)
+  const textActive = ['pending', 'processing', 'generating_text'].includes(s)
+  const imageActive = s === 'generating_images'
+  const videoActive = s === 'generating_video'
+
+  return [
+    { key: 'queuing', label: '排队等待', done: !['pending', 'queuing'].includes(s) && s !== '', active: ['pending', 'queuing'].includes(s) },
+    { key: 'text', label: '文案创作', done: textDone, active: textActive },
+    ...(isVideo
+      ? [{ key: 'video', label: '视频生成（约1-3分钟）', done: mediaDone, active: videoActive }]
+      : [{ key: 'images', label: '配图生成', done: mediaDone, active: imageActive }]
+    ),
+    { key: 'done', label: '生成完成', done: mediaDone, active: false },
+  ]
+}
+
+/** rawStatus → 用户可读的描述文案 */
+function getStatusDesc(rawStatus: string, contentType: string): string {
+  const isVideo = contentType === 'video'
+  const map: Record<string, string> = {
+    'pending': '任务排队中，请稍候...',
+    'queuing': '任务排队中，请稍候...',
+    'processing': '正在准备生成任务...',
+    'generating_text': 'AI 正在创作文案...',
+    'generating_images': 'AI 正在生成配图...',
+    'generating_video': isVideo ? 'AI 正在生成视频，通常需要1-3分钟...' : 'AI 正在生成视频...',
+  }
+  return map[rawStatus] || (isVideo ? 'AI 正在创作视频内容...' : 'AI 正在创作内容与配图...')
 }
 
 export default function OrderContentCreation() {
@@ -54,6 +93,7 @@ export default function OrderContentCreation() {
       setOrderId(id)
       fetchOrderInfo(id)
     }
+    return () => stopPolling()
   }, [])
 
   const fetchOrderInfo = async (id: string) => {
@@ -82,19 +122,24 @@ export default function OrderContentCreation() {
       if (res.data?.code === 200 && res.data?.data) {
         const data = res.data.data as ProcessingData
         setProcessingData(data)
-        if (data.status === 'preview' && data.generatedContent) {
+        const raw = data.rawStatus || data.status
+        const finishedStatuses = ['completed', 'preview', 'feedback_submitted', 'settled', 'awaiting_acceptance', 'published']
+        const generatingStatuses = ['pending', 'queuing', 'processing', 'generating_text', 'generating_images', 'generating_video', 'generating']
+
+        if (finishedStatuses.includes(raw) || finishedStatuses.includes(data.status)) {
           setPageStatus('completed')
           stopPolling()
         } else if (data.status === 'failed') {
           setPageStatus('failed')
           setErrorMsg('内容生成失败')
           stopPolling()
-        } else if (['queuing', 'generating', 'publishing'].includes(data.status)) {
+        } else if (generatingStatuses.includes(raw) || generatingStatuses.includes(data.status)) {
           setPageStatus('generating')
           startPolling(id)
-        } else if (['published', 'awaiting_acceptance', 'completed'].includes(data.status)) {
-          setPageStatus('completed')
-          stopPolling()
+        } else {
+          // 未知状态，继续轮询
+          setPageStatus('generating')
+          startPolling(id)
         }
       } else {
         console.log('[内容生成] 无生成记录，开始生成')
@@ -170,17 +215,18 @@ export default function OrderContentCreation() {
         if (res.data?.code === 200 && res.data?.data) {
           const data = res.data.data as ProcessingData
           setProcessingData(data)
-          if (data.status === 'preview') {
+          const raw = data.rawStatus || data.status
+          const finishedStatuses = ['completed', 'preview', 'feedback_submitted', 'settled', 'awaiting_acceptance', 'published']
+
+          if (finishedStatuses.includes(raw) || finishedStatuses.includes(data.status)) {
             setPageStatus('completed')
             stopPolling()
           } else if (data.status === 'failed') {
             setPageStatus('failed')
             setErrorMsg('内容生成失败')
             stopPolling()
-          } else if (['published', 'awaiting_acceptance', 'completed'].includes(data.status)) {
-            setPageStatus('completed')
-            stopPolling()
           }
+          // 其他状态继续轮询
         }
       } catch (err) {
         console.error('[内容生成] 轮询错误:', err)
@@ -194,10 +240,6 @@ export default function OrderContentCreation() {
       pollTimer.current = null
     }
   }
-
-  useEffect(() => {
-    return () => stopPolling()
-  }, [])
 
   const handleRegenerate = async () => {
     setPageStatus('generating')
@@ -227,20 +269,35 @@ export default function OrderContentCreation() {
     const requestId = processingData?.requestId || ''
     const avatarId = processingData?.avatarId || ''
     const images = content.images || []
+    const videos = content.videos || []
+    const contentType = orderInfo?.contentType || 'image_text'
 
     const query = [
       `platforms=${encodeURIComponent(targetPlatforms.join(','))}`,
       `content=${encodeURIComponent(content.content || '')}`,
       `title=${encodeURIComponent(title)}`,
       `images=${encodeURIComponent(images.join(','))}`,
-      `contentType=${encodeURIComponent('图文')}`,
+      `contentType=${encodeURIComponent(contentType === 'video' ? '视频' : '图文')}`,
       `orderId=${encodeURIComponent(orderId)}`,
       `requestId=${encodeURIComponent(requestId)}`,
       `avatarId=${encodeURIComponent(avatarId)}`,
+      ...(videos.length > 0 ? [`videos=${encodeURIComponent(videos.join(','))}`] : []),
     ].join('&')
 
     Taro.navigateTo({
       url: `/package-order/pages/order-publish-guide/index?${query}`
+    })
+  }
+
+  const playVideo = (url: string) => {
+    console.log('播放视频:', url)
+    Taro.previewMedia({
+      sources: [{ url, type: 'video' }],
+      current: 0
+    }).catch(() => {
+      Taro.setClipboardData({ data: url }).then(() => {
+        Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
+      })
     })
   }
 
@@ -253,13 +310,10 @@ export default function OrderContentCreation() {
   const displayPlatformName = getPlatformLabel(platformName)
   const platformColor = getPlatformMeta(platformName)?.color || '#6366F1'
 
-  // 生成中的步骤状态
-  const currentStatus = processingData?.status || ''
-  const steps = [
-    { key: 'queuing', label: '排队等待', done: ['generating', 'preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus) },
-    { key: 'text', label: '内容生成中', done: ['preview', 'publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus), active: currentStatus === 'generating' },
-    { key: 'images', label: '预览待确认', done: ['publishing', 'published', 'awaiting_acceptance', 'completed'].includes(currentStatus), active: currentStatus === 'preview' },
-  ]
+  const contentType = orderInfo?.contentType || 'image_text'
+  const isVideoType = contentType === 'video'
+  const rawStatus = processingData?.rawStatus || processingData?.status || ''
+  const steps = buildSteps(rawStatus, contentType)
 
   const statusBarHeight = getStatusBarHeight()
 
@@ -293,7 +347,7 @@ export default function OrderContentCreation() {
               </View>
               <View className="cc-order-type">
                 <FileText size={12} color="#6366F1" />
-                <Text className="cc-order-type-text">{(orderInfo as any)?.contentType === 'video' ? '视频创作' : (orderInfo as any)?.contentType === 'text' ? '文案创作' : '图文创作'}</Text>
+                <Text className="cc-order-type-text">{isVideoType ? '视频创作' : contentType === 'text' ? '文案创作' : '图文创作'}</Text>
               </View>
             </View>
             <Text className="cc-order-title">{orderInfo.title}</Text>
@@ -325,7 +379,7 @@ export default function OrderContentCreation() {
           </View>
         )}
 
-        {/* 生成中 */}
+        {/* 生成中 - 带详细步骤 */}
         {pageStatus === 'generating' && (
           <View className="cc-generating-card">
             <View className="cc-gen-ring">
@@ -334,23 +388,26 @@ export default function OrderContentCreation() {
               </View>
             </View>
             <Text className="cc-gen-title">AI 正在创作</Text>
-            <Text className="cc-gen-desc">根据订单需求智能生成内容与配图</Text>
+            <Text className="cc-gen-desc">{getStatusDesc(rawStatus, contentType)}</Text>
 
-            {/* 步骤进度 */}
+            {/* 详细步骤进度 */}
             <View className="cc-gen-steps">
               {steps.map((step) => (
                 <View key={step.key} className={`cc-step ${step.done ? 'done' : ''} ${step.active ? 'active' : ''}`}>
-                  <View className="cc-step-dot" />
+                  <View className="cc-step-dot">
+                    {step.done && <View className="cc-step-check" />}
+                  </View>
                   <Text className="cc-step-text">{step.label}</Text>
+                  {step.active && <Loader size={12} color="#6366F1" className="spinning-icon" />}
                 </View>
               ))}
             </View>
 
-            {/* 文案已生成 - 显示文案预览 */}
-            {processingData?.generatedContent?.content && currentStatus === 'generating_images' && (
+            {/* 文案已生成 - 实时预览 */}
+            {processingData?.generatedContent?.content && ['generating_images', 'generating_video'].includes(rawStatus) && (
               <View className="cc-partial-preview">
                 <View className="cc-partial-header">
-                  <FileText size={14} color="#8B5CF6" />
+                  <CircleCheck size={14} color="#22C55E" />
                   <Text className="cc-partial-title">文案已生成</Text>
                 </View>
                 <View className="cc-partial-body">
@@ -359,8 +416,8 @@ export default function OrderContentCreation() {
               </View>
             )}
 
-            {/* 配图已部分生成 - 显示图片预览 */}
-            {processingData?.generatedContent?.images && processingData.generatedContent.images.length > 0 && currentStatus === 'generating_images' && (
+            {/* 配图部分生成中 - 实时预览 */}
+            {processingData?.generatedContent?.images && processingData.generatedContent.images.length > 0 && rawStatus === 'generating_images' && (
               <View className="cc-partial-preview">
                 <View className="cc-partial-header">
                   <ImageIcon size={14} color="#8B5CF6" />
@@ -388,6 +445,12 @@ export default function OrderContentCreation() {
         {/* 生成完成 */}
         {pageStatus === 'completed' && processingData?.generatedContent && (
           <View className="cc-content-section">
+            {/* 完成提示 */}
+            <View className="cc-done-banner">
+              <CircleCheck size={20} color="#22C55E" />
+              <Text className="cc-done-text">内容生成完成</Text>
+            </View>
+
             {/* 文案内容 */}
             {processingData.generatedContent.content && (
               <View className="cc-content-card">
@@ -430,33 +493,36 @@ export default function OrderContentCreation() {
               <View className="cc-content-card">
                 <View className="cc-card-header">
                   <VideoIcon size={15} color="#6366F1" />
-                  <Text className="cc-card-title">视频</Text>
+                  <Text className="cc-card-title">视频 ({processingData.generatedContent.videos.length}个)</Text>
                 </View>
                 {processingData.generatedContent.videos.map((v: string, idx: number) => (
                   <View
                     key={idx}
                     className="cc-video-cover"
-                    onClick={() => {
-                      console.log('播放视频:', v)
-                      Taro.previewMedia({
-                        sources: [{ url: v, type: 'video' }],
-                        current: 0
-                      }).catch((err) => {
-                        console.error('previewMedia 失败:', err)
-                        Taro.setClipboardData({ data: v }).then(() => {
-                          Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
-                        })
-                      })
-                    }}
+                    onClick={() => playVideo(v)}
                   >
                     <View className="cc-video-play">
                       <View className="cc-play-circle">
                         <View className="cc-play-triangle" />
                       </View>
                     </View>
-                    <Text className="cc-video-label">视频 {idx + 1} · 点击播放</Text>
+                    <Text className="cc-video-label">视频 {idx + 1} · 15秒 · 点击播放</Text>
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* 无图片也无视频时的提示 */}
+            {(!processingData.generatedContent.images || processingData.generatedContent.images.length === 0) &&
+             (!processingData.generatedContent.videos || processingData.generatedContent.videos.length === 0) && (
+              <View className="cc-content-card">
+                <View className="cc-card-header">
+                  {isVideoType ? <VideoIcon size={15} color="#F59E0B" /> : <ImageIcon size={15} color="#F59E0B" />}
+                  <Text className="cc-card-title">{isVideoType ? '视频' : '配图'}</Text>
+                </View>
+                <View className="cc-media-empty">
+                  <Text className="cc-media-empty-text">{isVideoType ? '视频生成中或生成失败，文案已保存' : '配图生成中或生成失败，文案已保存'}</Text>
+                </View>
               </View>
             )}
 
@@ -464,12 +530,27 @@ export default function OrderContentCreation() {
             <View className="cc-action-bar">
               <View className="cc-action-btn cc-action-secondary" onClick={handleRegenerate}>
                 <RefreshCw size={16} color="#6366F1" />
-                <Text className="cc-action-text cc-action-secondary-text">重新生成</Text>
+                <Text className="cc-action-secondary-text">重新生成</Text>
               </View>
               <View className="cc-action-btn cc-action-primary" onClick={handlePublish}>
                 <Send size={16} color="#FFFFFF" />
-                <Text className="cc-action-text cc-action-primary-text">发布内容</Text>
+                <Text className="cc-action-primary-text">发布内容</Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* 生成完成但无内容 */}
+        {pageStatus === 'completed' && !processingData?.generatedContent && (
+          <View className="cc-failed-card">
+            <View className="cc-failed-icon">
+              <ImageIcon size={40} color="#F59E0B" />
+            </View>
+            <Text className="cc-failed-title">内容为空</Text>
+            <Text className="cc-failed-desc">生成完成但没有内容，请重新生成</Text>
+            <View className="cc-failed-btn" onClick={handleRegenerate}>
+              <RefreshCw size={16} color="#6366F1" />
+              <Text className="cc-failed-btn-text">重新生成</Text>
             </View>
           </View>
         )}
