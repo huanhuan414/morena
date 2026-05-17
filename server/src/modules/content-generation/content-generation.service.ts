@@ -267,7 +267,7 @@ export class ContentGenerationService implements OnModuleInit {
     if (isArticlePlatform && needText && needImage) {
       // ===== 图文文章模式 =====
       try {
-        const imageCount = input.contentQuantity || 3
+        const imageCount = this.getDefaultImageCount(platform, contentType)
         this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
         textContent = await this.generateArticleContent(platform, input, imageCount)
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
@@ -370,6 +370,35 @@ export class ContentGenerationService implements OnModuleInit {
   private isArticlePlatform(platform: string): boolean {
     const articlePlatforms = ['wechat_mp', 'wechat_channel', 'toutiao', 'zhihu', 'wechat_official']
     return articlePlatforms.includes(platform)
+  }
+
+  /**
+   * 根据平台和内容类型智能设置默认配图数量
+   * 不同平台对配图数量的要求差异很大：
+   * - 文章类平台（公众号/头条/知乎）：需要多张配图穿插文中，增强阅读体验
+   * - 小红书：高度视觉化平台，6-9张图片是标配
+   * - 朋友圈/微博：1-3张简洁明了
+   * - 抖音/快手：以视频为主，图文时3-6张
+   */
+  private getDefaultImageCount(platform: string, contentType: string): number {
+    const isVideo = contentType === 'video' || contentType === 'video_text'
+    // 视频类型不需要生成配图（由视频生成环节处理）
+    if (isVideo) return 0
+
+    const countMap: Record<string, number> = {
+      wechat_mp: 5,          // 微信公众号：5张配图分散在文章中
+      wechat_official: 5,    // 微信公众号（旧key同上）
+      wechat_channel: 4,     // 视频号图文：4张
+      toutiao: 5,            // 今日头条：5张配图
+      zhihu: 4,              // 知乎：4张配图
+      xiaohongshu: 9,        // 小红书：9张是标准笔记格式
+      wechat_moments: 3,     // 朋友圈：3张（1+2布局）
+      weibo: 3,              // 微博：3张（1+2布局）
+      douyin: 6,             // 抖音图文：6张（滑动式）
+      kuaishou: 6,           // 快手图文：6张
+      bilibili: 4,           // B站：4张
+    }
+    return countMap[platform] || 3
   }
 
   /**
@@ -729,7 +758,7 @@ ${input.orderDescription}
    * 生成配图 — 增强版：融合技能图片策略
    */
   private async generateImages(platform: string, input: any, textContent: string): Promise<string[]> {
-    const quantity = input.contentQuantity || 1
+    const quantity = this.getDefaultImageCount(platform, input.contentType || 'image')
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
     // 根据平台选择合适的图片尺寸
@@ -801,8 +830,8 @@ ${input.orderDescription}
     // 通用中文指令：图片中所有文字必须使用中文
     const chineseTextRule = '图片中出现的所有文字、标语、标签必须使用中文，禁止出现英文文字'
 
-    // 第1张：主图 - 产品核心展示，强吸引力
-    prompts.push(`${title}的核心展示图，${platformStyle}${skillHint}，居中构图，高端品质，吸引眼球，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+    // 第1张：封面主图 - 强吸引力，决定用户是否点击
+    prompts.push(`${title}的封面主图，${platformStyle}${skillHint}，居中构图，高端品质，极强吸引力，让人忍不住点进来看，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`)
 
     // 第2张：使用场景 - 生活化代入感
     if (quantity >= 2) {
@@ -814,9 +843,20 @@ ${input.orderDescription}
       prompts.push(`${title}的特写细节和效果展示图，${platformStyle}${skillHint}，展示品质和变化，有说服力的证据，高端质感，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
-    // 第4张及以后：更多角度
+    // 第4张及以后：多角度多场景，避免千篇一律
+    const extraScenes = [
+      '开箱/拆封瞬间，惊喜感满满，仪式感场景',
+      '与朋友分享/推荐的社交场景，欢快温馨氛围',
+      '使用前后对比，直观展示效果变化',
+      '收纳/摆放展示，融入家居或日常环境，美观协调',
+      '户外/旅行携带场景，便携实用，生活化展示',
+      '细节工艺特写，质感与做工，体现高端品质',
+      '多角度外观展示，全面呈现产品设计之美',
+      '搭配/组合使用场景，创意玩法，提升生活品质',
+    ]
     for (let i = 3; i < quantity; i++) {
-      prompts.push(`${title}的创意推广图，独特视角${i + 1}，${platformStyle}${skillHint}，吸睛设计，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
+      const sceneHint = extraScenes[(i - 3) % extraScenes.length]
+      prompts.push(`${title}的${sceneHint}，${platformStyle}${skillHint}，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
     return prompts
