@@ -239,6 +239,10 @@ export default function GeneratedContentPage() {
           { key: 'urge', label: '催验收', icon: Bell, type: 'primary' },
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
         ]
+      case 'generating':
+        return [
+          { key: 'view', label: '查看进度', icon: Eye, type: 'default' },
+        ]
       case 'completed':
         return [
           { key: 'view', label: '查看', icon: Eye, type: 'default' },
