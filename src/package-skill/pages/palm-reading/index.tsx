@@ -36,7 +36,8 @@ export default function PalmReadingPage() {
         data: { skillType: 'palm_reading', limit: 20 }
       })
       console.log('[掌相阅读] 历史记录:', res.data)
-      const list = res.data?.data || []
+      const rawData = res.data?.data
+      const list = Array.isArray(rawData) ? rawData : (rawData?.list || [])
       setHistory(list)
     } catch (e) {
       console.error('[掌相阅读] 加载历史失败:', e)

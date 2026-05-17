@@ -136,7 +136,7 @@ export default function SkillsSquare() {
       })
       return
     }
-    if (hexId === 'fashion_makeover') {
+    if (hexId === 'fashion_advice') {
       Taro.navigateTo({
         url: `/package-skill/pages/fashion-makeover/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}`,
       })
