@@ -450,34 +450,30 @@ export default function OrderDetailPage() {
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
               return (
-                <View key={avatar.avatarId || idx} className="od-avatar-item">
-                  <View className="od-avatar-left">
-                    {avatar.avatarUrl ? (
-                      <Image src={avatar.avatarUrl} className="od-avatar-img" mode="aspectFill" />
-                    ) : (
-                      <View className="od-avatar-placeholder">
-                        <Text className="block od-avatar-placeholder-text">{(avatar.avatarName || '?')[0]}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View className="od-avatar-center">
-                    <Text className="block od-avatar-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
+                <View key={avatar.avatarId || idx} className="od-av-item">
+                  {avatar.avatarUrl ? (
+                    <Image src={avatar.avatarUrl} className="od-av-img" mode="aspectFill" />
+                  ) : (
+                    <View className="od-av-placeholder">
+                      <Text className="block od-av-placeholder-text">{(avatar.avatarName || '?')[0]}</Text>
+                    </View>
+                  )}
+                  <View className="od-av-info">
+                    <Text className="block od-av-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
                     {avatar.rejectReason && (
-                      <Text className="block od-avatar-reason">拒绝原因: {avatar.rejectReason}</Text>
+                      <Text className="block od-av-reason">拒绝原因: {avatar.rejectReason}</Text>
                     )}
                     {avatar.contentType && avatarStatus !== 'pending' && avatarStatus !== 'rejected' && avatarStatus !== 'expired' && (
-                      <Text className="block od-avatar-content-type">
+                      <Text className="block od-av-meta">
                         {avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType}
                       </Text>
                     )}
                     {avatar.contentUpdatedAt && (
-                      <Text className="block od-avatar-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
+                      <Text className="block od-av-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
                     )}
                   </View>
-                  <View className="od-avatar-right">
-                    <View className="od-avatar-badge" style={{ backgroundColor: `${cfg.color}15`, borderColor: cfg.color }}>
-                      <Text className="block od-avatar-badge-text" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</Text>
-                    </View>
+                  <View className="od-av-badge" style={{ backgroundColor: `${cfg.color}15`, borderColor: cfg.color }}>
+                    <Text className="block od-av-badge-text" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</Text>
                   </View>
                 </View>
               )
