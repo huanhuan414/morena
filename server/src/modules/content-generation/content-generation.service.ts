@@ -770,6 +770,7 @@ ${input.orderDescription}
 3. 画面描述要具体：场景、人物动作、表情、道具、光影
 4. 不需要分镜编号、时间标记、表格格式
 5. 直接输出描述文本，不要加任何前缀说明
+6. 视频总时长为15秒，画面描述应匹配15秒视频节奏
 
 示例输出：
 "一位年轻女性在温馨的咖啡厅里，手持精致的产品包装盒，惊喜地打开展示内部。特写镜头捕捉她满意的微笑和产品的精美细节。随后切到户外阳光下的使用场景，自然光影中产品质感更加突出。结尾画面是她举起产品对镜头竖起大拇指推荐。"`
@@ -828,9 +829,13 @@ ${input.orderDescription}
     const videoGuide = platformVideoGuide[platform] || platformVideoGuide.douyin
     const skillVideoStrategy = skillStrategy?.videoStrategy || ''
 
+    // 风格偏好和领域偏好指令
+    const styleInstruction = getStyleInstruction(input.contentStyles || input.preferredStyles || [])
+    const nicheInstruction = getNicheInstruction(input.nicheTags || input.industryTags || [])
+
     const systemPrompt = this.buildEnhancedSystemPrompt(platform, input)
 
-    const prompt = `${systemPrompt}【商单任务 - 视频脚本创作】
+    const prompt = `${systemPrompt}${styleInstruction ? `\n【创作风格要求 - 必须体现在脚本中】\n${styleInstruction}\n\n` : ''}${nicheInstruction ? `\n【专业领域要求 - 必须体现在脚本中】\n${nicheInstruction}\n\n` : ''}【商单任务 - 视频脚本创作】
 品牌/产品名：${input.orderTitle}
 详细创作要求：
 ${input.orderDescription}
@@ -838,20 +843,27 @@ ${input.orderDescription}
 
 ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\n` : ''}【${videoGuide}】
 
+【时长硬性约束 - 必须严格遵守】
+1. 视频总时长严格控制在15秒以内，不得超过
+2. 脚本场景数量控制在2-4个，每个场景3-5秒
+3. 旁白/口播总字数不超过45字（15秒视频，每秒3字）
+4. 画面描述精炼，直接给出核心视觉
+
 【视频脚本格式】
 每个场景包含：
 - 场景编号和时间（如：场景1 0-3秒）
 - 画面描述（具体的视觉内容）
-- 旁白/口播文案（说出来的话）
+- 旁白/口播文案（说出来的话，严格控制字数）
 - 字幕/文字提示（画面上出现的文字）
-- BGM/音效（背景音乐和音效描述）
 
 【绝对红线】
 1. 脚本必须围绕"${input.orderTitle}"来创作
-2. 禁止出现AI痕迹
-3. 直接输出脚本，不要额外注释
+2. 脚本时长不得超过15秒
+3. 禁止出现AI痕迹
+4. 风格和领域偏好必须体现在脚本创作中
+5. 直接输出脚本，不要额外注释
 
-请创作一个完整的视频脚本：`
+请创作一个15秒以内的完整视频脚本：`
 
     try {
       const messages = []
@@ -1147,6 +1159,9 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         content: [
           { type: 'text', text: prompt },
         ],
+        settings: {
+          duration: 15,
+        },
       }),
     })
 
