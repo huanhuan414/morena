@@ -114,12 +114,13 @@ DialogOverlay.displayName = "DialogOverlay"
 
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof View> {
     closeClassName?: string
+    overlayClassName?: string
 }
 
 const DialogContent = React.forwardRef<
     React.ElementRef<typeof View>,
     DialogContentProps
->(({ className, children, style, closeClassName, ...props }, ref) => {
+>(({ className, children, style, closeClassName, overlayClassName, ...props }, ref) => {
     const context = React.useContext(DialogContext)
     const offset = useKeyboardOffset()
     const state = context?.open ? "open" : "closed"
@@ -130,7 +131,7 @@ const DialogContent = React.forwardRef<
               className="fixed inset-0 z-50"
               onClick={() => context?.onOpenChange?.(false)}
             >
-              <DialogOverlay />
+              <DialogOverlay className={overlayClassName} />
               <View
                 ref={ref}
                 data-state={state}

@@ -805,18 +805,29 @@
 
 /* ═══════ 分身详情弹窗 ═══════ */
 
+/* 遮罩层加深，突出弹窗与页面的层次感 */
+.od-dialog-overlay {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
 /* 弹窗容器 - 固定宽高、整体感 */
 .od-dialog-content {
-  overflow: hidden;
+  overflow: hidden !important;
   border-radius: 28rpx !important;
   border: none !important;
-  background: #F8F9FC !important;
-  box-shadow: 0 32rpx 80rpx rgba(0, 0, 0, 0.25), 0 0 0 1rpx rgba(99, 102, 241, 0.08) !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 32rpx 80rpx rgba(0, 0, 0, 0.3), 0 0 0 1rpx rgba(99, 102, 241, 0.1) !important;
+  /* 强制固定宽度，不随内容变化 */
+  width: 660rpx !important;
+  max-width: calc(100vw - 64rpx) !important;
+  display: flex !important;
 }
 .od-dialog-body {
   display: flex;
   flex-direction: column;
   height: 72vh;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -971,19 +982,21 @@
 .od-dialog-scroll {
   flex: 1;
   min-height: 0;
+  background: #F5F6FA;
 }
 .od-dialog-content-inner {
   padding: 24rpx 28rpx 32rpx 28rpx;
+  overflow-x: hidden;
 }
 
 /* ─── 内容卡片 ─── */
 .od-dialog-card {
   background: #FFFFFF;
-  border: none;
+  border: 1rpx solid #F0F0F5;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
 }
 .od-dialog-card:last-child {
   margin-bottom: 0;
@@ -1021,7 +1034,9 @@
   background: #F9FAFB;
   border-radius: 12rpx;
   padding: 24rpx;
-  border: none;
+  border: 1rpx solid #F0F0F5;
+  overflow-x: hidden;
+  word-break: break-all;
 }
 
 /* ─── 图片网格 ─── */
@@ -1150,6 +1165,7 @@
   align-items: center;
   justify-content: center;
   padding: 80rpx 0;
+  background: #F5F6FA;
 }
 .od-dialog-empty-icon-wrap {
   width: 100rpx;
@@ -1160,7 +1176,8 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid #F0F0F5;
 }
 .od-dialog-empty-text {
   font-size: 30rpx;
@@ -1179,6 +1196,7 @@
   justify-content: center;
   flex: 1;
   padding: 80rpx 40rpx;
+  background: #F5F6FA;
 }
 .od-dialog-no-content-icon {
   width: 120rpx;
@@ -1190,6 +1208,7 @@
   justify-content: center;
   margin-bottom: 24rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid #F0F0F5;
 }
 .od-dialog-no-content-title {
   font-size: 30rpx;
