@@ -75,7 +75,7 @@ function safeParseJSON(val: any): any[] {
 function getContentTypeInfo(type: string): { icon: any; name: string } {
   switch (type) {
     case 'article': return { icon: FileText, name: '图文文章' }
-    case 'video_text': return { icon: Play, name: '文案+视频' }
+    case 'video_text': case 'video_script': case 'video': return { icon: Play, name: '视频' }
     default: return { icon: ImagePlus, name: '文案+配图' }
   }
 }
@@ -242,7 +242,7 @@ export default function GeneratedContentPage() {
   // 获取卡片底部按钮配置
   const getCardActions = (rawStatus: string, contentType?: string) => {
     const status = BACKEND_STATUS_TO_TAB[rawStatus] || rawStatus
-    const isVideo = contentType === 'video_text'
+    const isVideo = ['video_text', 'video_script', 'video'].includes(contentType || '')
     switch (status) {
       case 'preview':
         return [
@@ -400,6 +400,7 @@ export default function GeneratedContentPage() {
             const videoUrls: string[] = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
             const actions = getCardActions(content.status, content.contentType)
+            const isVideo = ['video', 'video_text'].includes(content.contentType)
 
             return (
               <View key={content.id} className="content-card">
@@ -430,7 +431,7 @@ export default function GeneratedContentPage() {
                 </View>
 
                 {/* 视频生成中状态提示 */}
-                {content.contentType === 'video_text' && videoUrls.length === 0 && BACKEND_STATUS_TO_TAB[content.status] === 'generating' && (
+                {isVideo && videoUrls.length === 0 && BACKEND_STATUS_TO_TAB[content.status] === 'generating' && (
                   <View className="generating-phase-hint">
                     <View className="generating-spinner" />
                     <Text className="generating-phase-text">{GENERATING_PHASE[content.status] || '内容生成中...'}</Text>
@@ -438,7 +439,7 @@ export default function GeneratedContentPage() {
                 )}
 
                 {/* 视频内容卡片：只显示视频封面+简要文案 */}
-                {content.contentType === 'video_text' ? (
+                {isVideo ? (
                   <View>
                     {contentText && (
                       <Text className="content-preview">
