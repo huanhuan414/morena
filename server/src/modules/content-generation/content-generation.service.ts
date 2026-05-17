@@ -1265,9 +1265,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         content: [
           { type: 'text', text: prompt },
         ],
-        settings: {
-          duration: 15,
-        },
+        duration: 15,
       }),
     })
 

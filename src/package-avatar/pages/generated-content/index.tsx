@@ -429,58 +429,63 @@ export default function GeneratedContentPage() {
                   <Text className="type-tag-text">{typeInfo.name}</Text>
                 </View>
 
-                {/* 内容预览 */}
-                <Text className="content-preview">
-                  {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
-                </Text>
-
-                {/* 图片预览 */}
-                {images.length > 0 && (
-                  <View className="image-preview-row">
-                    {images.slice(0, 3).map((img: string, idx: number) => (
-                      <TaroImage
-                        key={idx}
-                        src={img}
-                        className="preview-image"
-                        mode="aspectFill"
-                        onClick={() => Taro.previewImage({ urls: images, current: img })}
-                      />
-                    ))}
-                    {images.length > 3 && (
-                      <View className="more-images">
-                        <Text style={{ fontSize: 12, color: '#64748B' }}>+{images.length - 3}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* 视频内容 - 封面卡点击播放，避免小程序Video原生组件浮层 */}
-                {videoUrls.length > 0 && (
-                  <View className="card-video-list">
-                    {videoUrls.map((url: string, idx: number) => (
-                      <View key={idx} className="gc-video-cover-card" onClick={() => playVideo(url)}>
-                        <View className="gc-video-cover-bg">
-                          <View className="gc-video-play-btn">
-                            <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
-                          </View>
-                          <View className="gc-video-cover-label">
-                            <Text className="gc-video-cover-text">点击播放视频</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-                    <View className="video-detail-entry" onClick={() => handleView(content)}>
-                      <Eye size={14} color="#6366F1" />
-                      <Text className="video-detail-text">查看详情</Text>
-                    </View>
-                  </View>
-                )}
-
                 {/* 视频生成中状态提示 */}
                 {content.contentType === 'video_text' && videoUrls.length === 0 && BACKEND_STATUS_TO_TAB[content.status] === 'generating' && (
                   <View className="generating-phase-hint">
                     <View className="generating-spinner" />
                     <Text className="generating-phase-text">{GENERATING_PHASE[content.status] || '内容生成中...'}</Text>
+                  </View>
+                )}
+
+                {/* 视频内容卡片：只显示视频封面+简要文案 */}
+                {content.contentType === 'video_text' ? (
+                  <View>
+                    {contentText && (
+                      <Text className="content-preview">
+                        {contentText.length > 80 ? contentText.substring(0, 80) + '...' : contentText}
+                      </Text>
+                    )}
+                    {videoUrls.length > 0 && (
+                      <View className="card-video-list">
+                        {videoUrls.map((url: string, idx: number) => (
+                          <View key={idx} className="gc-video-cover-card" onClick={() => playVideo(url)}>
+                            <View className="gc-video-cover-bg">
+                              <View className="gc-video-play-btn">
+                                <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                              </View>
+                              <View className="gc-video-cover-label">
+                                <Text className="gc-video-cover-text">点击播放视频</Text>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View>
+                    {/* 图文内容卡片：显示文案+配图 */}
+                    <Text className="content-preview">
+                      {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
+                    </Text>
+                    {images.length > 0 && (
+                      <View className="image-preview-row">
+                        {images.slice(0, 3).map((img: string, idx: number) => (
+                          <TaroImage
+                            key={idx}
+                            src={img}
+                            className="preview-image"
+                            mode="aspectFill"
+                            onClick={() => Taro.previewImage({ urls: images, current: img })}
+                          />
+                        ))}
+                        {images.length > 3 && (
+                          <View className="more-images">
+                            <Text style={{ fontSize: 12, color: '#64748B' }}>+{images.length - 3}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
                   </View>
                 )}
 
