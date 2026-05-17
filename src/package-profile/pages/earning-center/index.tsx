@@ -107,6 +107,7 @@ export default function EarningCenterPage() {
 
   const getTypeInfo = (type: string) => {
     const typeMap: Record<string, { label: string; icon: string; color: string }> = {
+      order_reward: { label: '订单收益', icon: '💰', color: '#00ff88' },
       order_income: { label: '订单收益', icon: '💰', color: '#00ff88' },
       referral_bonus: { label: '邀请奖励', icon: '🎁', color: '#bf00ff' },
       withdrawal: { label: '提现', icon: '💸', color: '#ff6b6b' }
@@ -116,8 +117,11 @@ export default function EarningCenterPage() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      completed: { label: '已完成', color: '#00ff88' },
       pending: { label: '待处理', color: '#ffaa00' },
+      settled: { label: '已到账', color: '#00ff88' },
+      completed: { label: '已到账', color: '#00ff88' },
+      rejected: { label: '已拒绝', color: '#ff6b6b' },
+      expired: { label: '已过期', color: '#999999' },
       processing: { label: '处理中', color: '#00f5ff' }
     }
     return statusMap[status] || { label: status, color: '#fff' }

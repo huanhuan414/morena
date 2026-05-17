@@ -88,12 +88,12 @@ export class UserStatsService {
         }
       }
       
-      // 4. 统计累计收益（只从 earnings 表计算，status='completed'）
+      // 4. 统计累计收益（只从 earnings 表计算，status='settled' 或 'completed'）
       userResult = await db.queryOne('users', { id: userId }) as any
       
       const earningsResult = await db.queryWhere(
         'earnings',
-        `user_id = '${userId}' AND status = 'completed'`
+        `user_id = '${userId}' AND status IN ('settled', 'completed')`
       ) as any[]
       totalEarnings = earningsResult?.reduce(
         (sum: number, e: any) => sum + Number(e.amount || 0), 0

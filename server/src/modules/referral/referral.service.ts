@@ -79,20 +79,39 @@ export class ReferralService {
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     })
     
-    await this.earningService.createEarning(inviter.id, {
+    // 给邀请人发放奖励并立即结算
+    const inviterEarning = await this.earningService.createEarning(inviter.id, {
       type: 'referral_bonus',
       amount: INVITER_REWARD,
       source: 'invite_friend',
       description: '邀请好友奖励'
     })
     
-    // 给被邀请人发放奖励：2元现金
-    await this.earningService.createEarning(inviteeId, {
+    // 立即结算邀请人奖励
+    if (inviterEarning?.id) {
+      await this.earningService.updateEarningStatus(inviterEarning.id, 'settled')
+      await db.query(
+        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
+        [INVITER_REWARD, INVITER_REWARD, inviter.id]
+      )
+    }
+    
+    // 给被邀请人发放奖励并立即结算
+    const inviteeEarning = await this.earningService.createEarning(inviteeId, {
       type: 'referral_bonus',
       amount: INVITEE_REWARD,
       source: 'be_invited',
       description: '受邀注册奖励'
     })
+    
+    // 立即结算被邀请人奖励
+    if (inviteeEarning?.id) {
+      await this.earningService.updateEarningStatus(inviteeEarning.id, 'settled')
+      await db.query(
+        'UPDATE users SET balance = balance + ?, total_earnings = total_earnings + ? WHERE id = ?',
+        [INVITEE_REWARD, INVITEE_REWARD, inviteeId]
+      )
+    }
     
     // 更新邀请人的邀请计数
     const inviterRecord = await db.queryOne('users', { id: inviter.id }) as any
@@ -114,20 +133,19 @@ export class ReferralService {
   async getReferralStats(userId: string) {
     const db = getMySQLClient()
     
-    // 获取或生成邀请码
     const referralCode = await this.generateReferralCode(userId)
     
     const referrals = await db.query('referrals', { referrer_id: userId }) as any
     const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
+    const pendingCount = (referrals?.length || 0) - completedCount
     
     return {
       referralCode,
-      totalInvites: referrals?.length || 0,
-      pendingInvites: (referrals?.length || 0) - completedCount,
-      completedInvites: completedCount,
+      totalInvited: referrals?.length || 0,
+      totalReward: completedCount * 3,
+      pendingReward: pendingCount * 3,
       inviterReward: 3,
       inviteeReward: 2,
-      totalEarned: completedCount * 3
     }
   }
 

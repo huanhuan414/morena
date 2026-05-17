@@ -1011,8 +1011,13 @@ export class OrderService {
       [orderId, 'completed']
     )
 
+    const participantCount = dispatchRequests.length
+    if (participantCount === 0) {
+      console.warn(`[OrderService] 订单 ${orderId} 没有参与者，跳过结算`)
+      return
+    }
+
     const totalAmount = Number(order.budget || 0)
-    const participantCount = dispatchRequests.length || 1
     const amountPerAvatar = totalAmount / participantCount
 
     // 读取DB返回值 → camelCase

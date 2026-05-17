@@ -37,27 +37,15 @@ export default function ReferralCenter() {
 
   const loadReferralData = async () => {
     try {
-      const res = await Network.request({ url: '/api/referral/code' })
-      console.log('[ReferralCenter] referral/code response:', res.data)
-      const data = res.data?.data || res.data || {}
-      let code = data.referralCode || data.code || ''
-      if (!code) {
-        const genRes = await Network.request({
-          url: '/api/referral/code',
-          method: 'POST',
-        })
-        code = genRes.data?.data?.referralCode || genRes.data?.data?.code || ''
-      }
-
       const statsRes = await Network.request({ url: '/api/referral/stats' })
       console.log('[ReferralCenter] stats response:', statsRes.data)
       const statsData = statsRes.data?.data || statsRes.data || {}
 
       setStats({
-        referralCode: code,
-        totalInvited: statsData.totalInvited || statsData.total_invited || 0,
-        totalReward: Number(statsData.totalReward || statsData.total_reward || 0),
-        pendingReward: Number(statsData.pendingReward || statsData.pending_reward || 0),
+        referralCode: statsData.referralCode || '',
+        totalInvited: statsData.totalInvited || 0,
+        totalReward: Number(statsData.totalReward || 0),
+        pendingReward: Number(statsData.pendingReward || 0),
       })
 
       const listRes = await Network.request({ url: '/api/referral/list' })
