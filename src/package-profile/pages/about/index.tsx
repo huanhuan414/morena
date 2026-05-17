@@ -1,6 +1,6 @@
 import { navigateBack } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { ArrowLeft , Sparkles, Shield, Zap, Users, Globe, Heart, Star } from 'lucide-react-taro'
+import { ArrowLeft, Sparkles, Shield, Zap, Users, Globe, Heart, Star } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import '@/styles/variables.css'
 import './index.css'

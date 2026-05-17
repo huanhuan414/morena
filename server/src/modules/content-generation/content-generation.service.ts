@@ -348,8 +348,8 @@ export class ContentGenerationService implements OnModuleInit {
       }
     }
 
-    // 5. 更新为完成状态
-    await this.updateStatus(requestId, input.orderId, 'completed', {
+    // 5. 更新为预览状态
+    await this.updateStatus(requestId, input.orderId, 'preview', {
       content: textContent,
       images,
       videos,
@@ -1107,7 +1107,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
 
     try {
       const db = getMySQLClient()
-      if (status === 'completed' && generatedContent) {
+      if ((status === 'preview' || status === 'completed') && generatedContent) {
         await db.query(
           'UPDATE content_generation_requests SET status = ?, content = ?, images = ?, video_url = ? WHERE id = ?',
           [
@@ -1118,7 +1118,7 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
             requestId
           ]
         )
-        this.logger.log(`完成状态已写入数据库: requestId=${requestId}`)
+        this.logger.log(`预览状态已写入数据库: requestId=${requestId}`)
       } else if (status === 'failed') {
         await db.query(
           'UPDATE content_generation_requests SET status = ? WHERE id = ?',

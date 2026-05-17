@@ -23,6 +23,19 @@ export class ReferralController {
     return { code: 200, data: { referralCode: '' }, message: '获取成功' }
   }
 
+  @Post('code')
+  async postReferralCode(@Headers('x-user-id') userId: string) {
+    try {
+      if (this.referralService) {
+        const code = await this.referralService.generateReferralCode(userId)
+        return { code: 200, data: { referralCode: code }, message: '获取成功' }
+      }
+    } catch (e) {
+      console.error('[ReferralController] postReferralCode error:', e.message)
+    }
+    return { code: 200, data: { referralCode: '' }, message: '获取成功' }
+  }
+
   @Post('use')
   async useReferralCode(
     @Headers('x-user-id') userId: string,

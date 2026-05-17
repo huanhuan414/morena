@@ -1,10 +1,44 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus, Inject, forwardRef } from '@nestjs/common'
 import { ContentGenerationService } from './content-generation.service'
 import { getMySQLClient } from '../../storage/database/mysql-client'
+import { OrderService } from '../order/order.service'
 
 @Controller('content-generation')
 export class ContentGenerationController {
-  constructor(@Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService) {}
+  private contentGenerationColumns: Set<string> | null = null
+
+  constructor(
+    @Inject(ContentGenerationService) private readonly contentGenerationService: ContentGenerationService,
+    @Inject(forwardRef(() => OrderService)) private readonly orderService: OrderService,
+  ) {}
+
+  private async getContentGenerationColumns(db: any) {
+    if (this.contentGenerationColumns) return this.contentGenerationColumns
+    try {
+      const [rows]: any = await db.query(
+        `SELECT COLUMN_NAME as column_name
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'content_generation_requests'`
+      )
+      this.contentGenerationColumns = new Set(
+        (rows || []).map((r: any) => String(r.column_name || r.columnName || '').toLowerCase()).filter(Boolean)
+      )
+    } catch {
+      this.contentGenerationColumns = new Set()
+    }
+    return this.contentGenerationColumns
+  }
+
+  private pickPayload(columns: Set<string>, payload: Record<string, any>) {
+    const picked: Record<string, any> = {}
+    for (const [key, value] of Object.entries(payload || {})) {
+      if (columns.has(key.toLowerCase())) {
+        picked[key] = value
+      }
+    }
+    return picked
+  }
 
   @Post('generate')
   @HttpCode(HttpStatus.OK)
@@ -206,14 +240,24 @@ export class ContentGenerationController {
   ) {
     try {
       const db = await getMySQLClient()
+      const columns = await this.getContentGenerationColumns(db)
       
       // 更新内容的发布凭证和验证状态
-      await db.query(
-        `UPDATE content_generation_requests 
-         SET publish_url = ?, publish_screenshot = ?, verification_status = 'pending', verified_at = NULL
-         WHERE id = ?`,
-        [body.publishUrl || null, body.publishScreenshot || null, contentId]
-      )
+      const payload: any = {
+        publish_url: body.publishUrl || null,
+        publish_screenshot: body.publishScreenshot || null,
+        verification_status: 'pending',
+        verified_at: null,
+        updated_at: new Date(),
+      }
+      const picked = this.pickPayload(columns, payload)
+      const setClause = Object.keys(picked).map((k) => `${k} = ?`).join(', ')
+      if (setClause) {
+        await db.query(
+          `UPDATE content_generation_requests SET ${setClause} WHERE id = ?`,
+          [...Object.values(picked), contentId]
+        )
+      }
 
       // 同时更新关联订单的发布凭证
       const [contents]: any = await db.query(
@@ -244,14 +288,22 @@ export class ContentGenerationController {
   ) {
     try {
       const db = await getMySQLClient()
+      const columns = await this.getContentGenerationColumns(db)
       const verificationStatus = body.verified ? 'verified' : 'failed'
 
-      await db.query(
-        `UPDATE content_generation_requests 
-         SET verification_status = ?, verified_at = NOW()
-         WHERE id = ?`,
-        [verificationStatus, contentId]
-      )
+      const payload: any = {
+        verification_status: verificationStatus,
+        verified_at: new Date(),
+        updated_at: new Date(),
+      }
+      const picked = this.pickPayload(columns, payload)
+      const setClause = Object.keys(picked).map((k) => `${k} = ?`).join(', ')
+      if (setClause) {
+        await db.query(
+          `UPDATE content_generation_requests SET ${setClause} WHERE id = ?`,
+          [...Object.values(picked), contentId]
+        )
+      }
 
       // 如果验证通过，更新关联订单
       const [contents]: any = await db.query(
@@ -271,11 +323,13 @@ export class ContentGenerationController {
             [contents[0].orderId]
           )
           // 记录超时日志
-          await db.query(
-            `INSERT INTO order_timeout_logs (id, order_id, event_type, old_status, new_status, notes)
-             VALUES (UUID(), ?, 'publish_timeout', 'published', 'publish_failed', ?)`,
-            [contents[0].orderId, body.reason || '发布验证失败']
-          )
+          try {
+            await db.query(
+              `INSERT INTO order_timeout_logs (id, order_id, event_type, old_status, new_status, notes)
+               VALUES (UUID(), ?, 'publish_timeout', 'published', 'publish_failed', ?)`,
+              [contents[0].orderId, body.reason || '发布验证失败']
+            )
+          } catch {}
         }
       }
 
@@ -283,6 +337,64 @@ export class ContentGenerationController {
       return { code: 200, message: body.verified ? '验证通过' : '验证失败，需重新发布' }
     } catch (error: any) {
       return { code: 500, message: '验证失败', error: error.message }
+    }
+  }
+
+  @Post('order/:orderId/retry-publish')
+  @HttpCode(HttpStatus.OK)
+  async retryPublish(@Param('orderId') orderId: string) {
+    try {
+      const db = await getMySQLClient()
+      const columns = await this.getContentGenerationColumns(db)
+      const rows = await db.query('SELECT id, status FROM orders WHERE id = ? LIMIT 1', [orderId])
+      const order = rows?.[0] || rows?.data?.[0]
+      if (!order) {
+        return { code: 404, message: '订单不存在', data: null }
+      }
+
+      const currentStatus = String(order.status || '')
+      if (!['publish_failed', 'publish_timeout'].includes(currentStatus)) {
+        return { code: 400, message: '当前订单状态不可重试', data: { status: currentStatus } }
+      }
+
+      const orderUpdateResult = await db.query(
+        `UPDATE orders SET publish_verified = 0, status = 'submitted', updated_at = NOW() WHERE id = ?`,
+        [orderId]
+      )
+      let contentUpdateResult: any = null
+      if (columns.has('verification_status') && columns.has('verified_at')) {
+        contentUpdateResult = await db.query(
+          `UPDATE content_generation_requests
+           SET verification_status = 'pending', verified_at = NULL
+           WHERE order_id = ? AND verification_status = 'failed'`,
+          [orderId]
+        )
+      } else {
+        const payload: any = { updated_at: new Date() }
+        const picked = this.pickPayload(columns, payload)
+        const setClause = Object.keys(picked).map((k) => `${k} = ?`).join(', ')
+        if (setClause) {
+          contentUpdateResult = await db.query(
+            `UPDATE content_generation_requests SET ${setClause} WHERE order_id = ?`,
+            [...Object.values(picked), orderId]
+          )
+        }
+      }
+
+      await this.orderService.syncOrderStatusByContent(orderId)
+
+      return {
+        code: 200,
+        message: '已触发重试',
+        data: {
+          orderId,
+          status: 'submitted',
+          updatedOrders: orderUpdateResult?.affectedRows ?? null,
+          resetContents: contentUpdateResult?.affectedRows ?? null,
+        }
+      }
+    } catch (error: any) {
+      return { code: 500, message: '重试失败', error: error.message }
     }
   }
 

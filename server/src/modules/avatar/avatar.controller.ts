@@ -89,7 +89,7 @@ export class AvatarController {
   async getAvatarDetail(@Param('id') id: string) {
     try {
       const avatar = await this.avatarService.getAvatarById(id)
-      return { code: 200, msg: 'success', data: avatar }
+      return { code: 200, msg: 'success', data: avatar?.data ?? null }
     } catch (err) {
       console.error('获取分身详情失败:', err)
       return { code: 500, msg: '服务器错误', data: null }

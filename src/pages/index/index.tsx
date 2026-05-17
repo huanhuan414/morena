@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Wallet, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
+import { Avatar as UiAvatar } from '@/components/ui/avatar'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
@@ -321,7 +322,7 @@ const Index: React.FC = () => {
         <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 50}px` }}>
           <View className="header-left">
             <View className="avatar-wrapper">
-              <Image className="avatar" src={userAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'} />
+              <UiAvatar src={userAvatar || ''} name={userName} size={96} />
               <View className="online-dot" />
             </View>
             <View className="header-info">

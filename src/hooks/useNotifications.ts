@@ -24,6 +24,24 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null)
   const lastFetchTime = useRef<number>(0)
 
+  const normalizeNotification = useCallback((n: any): Notification => {
+    const isRead = Boolean(n?.isRead ?? n?.is_read)
+    const createdAt = n?.createdAt || n?.created_at || ''
+    let metadata = n?.metadata
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata) } catch { metadata = {} }
+    }
+    return {
+      id: n?.id,
+      type: n?.type,
+      title: n?.title,
+      content: n?.content,
+      isRead,
+      createdAt,
+      metadata: metadata || {}
+    }
+  }, [])
+
   // 获取通知列表
   const fetchNotifications = useCallback(async () => {
     try {
@@ -33,7 +51,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       console.log('[useNotifications] 获取通知:', res.data)
       
       if (res.data?.code === 200 && res.data?.data) {
-        const list = res.data.data.list || []
+        const list = (res.data.data.list || res.data.data || []).map(normalizeNotification)
         setNotifications(list)
         setUnreadCount(res.data.data.total || list.filter((n: any) => !n.isRead).length)
         lastFetchTime.current = Date.now()
@@ -41,7 +59,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch (err) {
       console.error('[useNotifications] 获取通知失败:', err)
     }
-  }, [])
+  }, [normalizeNotification])
 
   // 获取未读数量
   const fetchUnreadCount = useCallback(async () => {
@@ -62,7 +80,9 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             url: '/api/notifications'
           })
           if (notifRes.data?.data?.list?.length > 0) {
-            const unreadNotifications = notifRes.data.data.list.filter((n: any) => !n.isRead)
+            const unreadNotifications = notifRes.data.data.list
+              .map(normalizeNotification)
+              .filter((n: any) => !n.isRead)
             if (unreadNotifications.length > 0) {
               const latest = unreadNotifications[0]
               setCurrentNotification(latest)
@@ -75,7 +95,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } catch (err) {
       console.error('[useNotifications] 获取未读数量失败:', err)
     }
-  }, [onNewNotification])
+  }, [onNewNotification, normalizeNotification])
 
   // 标记单条为已读
   const markAsRead = useCallback(async (notificationId: string) => {

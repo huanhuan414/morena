@@ -24,8 +24,8 @@ export class VoiceCallService {
     const db = getMySQLClient()
 
     // 获取好友分身信息
-    const friendResult = await db.query('avatars', { id: friendAvatarId })
-    const friendAvatar = friendResult?.data?.[0]
+    const friendResult = await db.queryOne('avatars', { id: friendAvatarId })
+    const friendAvatar = friendResult?.data
 
     if (!friendAvatar) {
       throw new Error('好友分身不存在')
@@ -89,11 +89,11 @@ export class VoiceCallService {
     const db = getMySQLClient()
 
     // 获取分身信息
-    const avatarResult = await db.query('avatars', { id: avatarId })
-    const avatar = avatarResult?.data?.[0]
+    const avatarResult = await db.queryOne('avatars', { id: avatarId })
+    const avatar = avatarResult?.data
     
-    const friendResult = await db.query('avatars', { id: friendAvatarId })
-    const friendAvatar = friendResult?.data?.[0]
+    const friendResult = await db.queryOne('avatars', { id: friendAvatarId })
+    const friendAvatar = friendResult?.data
 
     if (!avatar || !friendAvatar) {
       throw new Error('分身不存在')

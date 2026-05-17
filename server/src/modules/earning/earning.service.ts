@@ -14,7 +14,7 @@ export class EarningService {
     const user = await db.queryOne('users', { id: userId })
     
     const completedEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND status = 'completed'`
+      `user_id = '${userId}' AND status IN ('settled', 'completed')`
     ) as any
     const totalEarnings = completedEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
     
@@ -27,7 +27,7 @@ export class EarningService {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     
     const monthlyEarnings = await db.queryWhere('earnings',
-      `user_id = '${userId}' AND status = 'completed' AND created_at >= '${monthStart.toISOString()}'`
+      `user_id = '${userId}' AND status IN ('settled', 'completed') AND created_at >= '${monthStart.toISOString()}'`
     ) as any
     const monthlyAmount = monthlyEarnings?.reduce((sum: number, e: any) => sum + Number(e.amount), 0) || 0
     
@@ -131,6 +131,13 @@ export class EarningService {
     amount: number
   }>) {
     const pool = getPool()
+
+    // 检查是否已经创建过收益记录
+    const [existingEarnings] = await pool.query('SELECT id FROM earnings WHERE order_id = ?', [orderId]) as any[]
+    if (existingEarnings && existingEarnings.length > 0) {
+      console.log(`[EarningService] 订单 ${orderId} 已创建收益记录，跳过重复创建`)
+      return []
+    }
 
     const results = []
     for (const participant of participants) {

@@ -88,12 +88,12 @@ export class UserStatsService {
         }
       }
       
-      // 4. 统计累计收益（只从 earnings 表计算，status='completed'）
+      // 4. 统计累计收益（只从 earnings 表计算，status='settled' 或 'completed'）
       userResult = await db.queryOne('users', { id: userId }) as any
       
       const earningsResult = await db.queryWhere(
         'earnings',
-        `user_id = '${userId}' AND status = 'completed'`
+        `user_id = '${userId}' AND status IN ('settled', 'completed')`
       ) as any[]
       totalEarnings = earningsResult?.reduce(
         (sum: number, e: any) => sum + Number(e.amount || 0), 0
@@ -101,11 +101,11 @@ export class UserStatsService {
       
       // 5. 获取用户邀请码和邀请人数（与 ReferralService 逻辑一致：查 users.referral_code，没有则生成并写入）
       try {
-        const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}'`) as any[]
+        const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}' AND status = 'completed'`) as any[]
         invitedCount = referralResult?.length || 0
 
-        if (userResult?.referralCode) {
-          referralCode = userResult.referralCode
+        if (userResult?.referral_code) {
+          referralCode = userResult.referral_code
         } else {
           // 自动生成邀请码并写入 users 表（与 ReferralService.generateReferralCode 一致）
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

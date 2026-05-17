@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { View, Text, Button } from '@tarojs/components'
+import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { useState } from 'react'
 import { Network } from '@/network'
 import { Copy, Share2, Gift, Users, Wallet, TrendingUp, Crown, Star, Sparkles, User, ArrowLeft } from 'lucide-react-taro'
@@ -23,33 +23,29 @@ export default function ReferralCenter() {
   })
   const [referralList, setReferralList] = useState([])
 
+  useShareAppMessage(() => {
+    return {
+      title: `邀请你加入Morena AI，双方各得${INVITER_BASE_REWARD}元奖励！`,
+      path: `/pages/login/index?inviteCode=${stats.referralCode}`,
+      imageUrl: '/assets/images/share-invite.png'
+    }
+  })
+
   useDidShow(() => {
     loadReferralData()
   })
 
   const loadReferralData = async () => {
     try {
-      const res = await Network.request({ url: '/api/referral/code' })
-      console.log('[ReferralCenter] referral/code response:', res.data)
-      const data = res.data?.data || res.data || {}
-      let code = data.referralCode || data.code || ''
-      if (!code) {
-        const genRes = await Network.request({
-          url: '/api/referral/code',
-          method: 'POST',
-        })
-        code = genRes.data?.data?.referralCode || genRes.data?.data?.code || ''
-      }
-
       const statsRes = await Network.request({ url: '/api/referral/stats' })
       console.log('[ReferralCenter] stats response:', statsRes.data)
       const statsData = statsRes.data?.data || statsRes.data || {}
 
       setStats({
-        referralCode: code,
-        totalInvited: statsData.totalInvited || statsData.total_invited || 0,
-        totalReward: Number(statsData.totalReward || statsData.total_reward || 0),
-        pendingReward: Number(statsData.pendingReward || statsData.pending_reward || 0),
+        referralCode: statsData.referralCode || '',
+        totalInvited: statsData.totalInvited || 0,
+        totalReward: Number(statsData.totalReward || 0),
+        pendingReward: Number(statsData.pendingReward || 0),
       })
 
       const listRes = await Network.request({ url: '/api/referral/list' })
@@ -70,16 +66,6 @@ export default function ReferralCenter() {
     Taro.setClipboardData({
       data: stats.referralCode,
       success: () => Taro.showToast({ title: '邀请码已复制', icon: 'success' }),
-    })
-  }
-
-  const handleShareToFriend = () => {
-    if (!stats.referralCode) return
-    Taro.showModal({
-      title: '分享给好友',
-      content: `我的Morena AI邀请码: ${stats.referralCode}，快来注册创建分身，双方各得${INVITER_BASE_REWARD}元现金奖励！`,
-      showCancel: false,
-      confirmText: '知道了',
     })
   }
 
@@ -157,10 +143,20 @@ export default function ReferralCenter() {
             <Copy size={14} color="#fff" />
             <Text className="ref-btn-text">复制邀请码</Text>
           </View>
-          <View className="ref-btn-share" onClick={handleShareToFriend}>
+          <Button 
+            className="ref-btn-share" 
+            open-type="share"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              margin: 0,
+              lineHeight: 'normal'
+            }}
+          >
             <Share2 size={14} color="#7C3AED" />
             <Text className="ref-btn-text-purple">分享给好友</Text>
-          </View>
+          </Button>
         </View>
       </View>
 

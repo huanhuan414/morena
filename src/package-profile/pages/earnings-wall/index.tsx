@@ -1,4 +1,4 @@
-import Taro, { useLoad, navigateBack } from '@tarojs/taro'
+import Taro, { useLoad, useDidShow, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import { ArrowLeft, Trophy, TrendingUp, Sparkles, Medal, Crown, Zap, Flame, Star } from 'lucide-react-taro'
@@ -65,6 +65,9 @@ export default function EarningsWallPage() {
   useLoad(() => {
     const systemInfo = Taro.getSystemInfoSync()
     setStatusBarHeight(systemInfo.statusBarHeight || 20)
+  })
+
+  useDidShow(() => {
     fetchEarningsData()
   })
 

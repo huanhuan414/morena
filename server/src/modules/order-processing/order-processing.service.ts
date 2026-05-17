@@ -4,6 +4,7 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getCache, setCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { NotificationService } from '../notification/notification.service'
+import { normalizeFulfillmentStatus } from '../order/order-status'
 
 const URGE_ACCEPTANCE_COOLDOWN_MS = 60 * 60 * 1000
 const lastUrgeAcceptanceAt = new Map<string, number>()
@@ -353,7 +354,7 @@ export class OrderProcessingService {
       userId: record.userId || record.user_id,
       platform: this.canonicalizePlatform(record.platform),
       rawStatus: record.status || 'completed',
-      status: this.normalizeWorkflowStatus(record.status || 'completed'),
+      status: normalizeFulfillmentStatus(record.status || 'completed'),
       contentType: config.contentType || config.content_type || 'image',
       generatedContent: {
         title: config.title || '',

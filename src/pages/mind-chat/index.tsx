@@ -87,7 +87,13 @@ const MindChat: React.FC = () => {
   const [showOnboardingDialog, setShowOnboardingDialog] = useState(false)
   const [newAvatarId, setNewAvatarId] = useState('')
   const { isLoggedIn } = useUserStore()
-  const hasPageShownRef = useRef(false)
+  const [scrollIntoView, setScrollIntoView] = useState('')
+  const [highlightAvatarId, setHighlightAvatarId] = useState('')
+  const didInitLoadRef = useRef(false)
+  const skipNextTabLoadRef = useRef(false)
+  const pendingFocusAvatarIdRef = useRef('')
+  const highlightTimerRef = useRef<any>(null)
+  const clearScrollTimerRef = useRef<any>(null)
   const activeTabRef = useRef<CloneType>('my')
 
   const loadAvatarSkills = async (avatarId: string): Promise<AvatarSkill[]> => {
@@ -257,34 +263,79 @@ const MindChat: React.FC = () => {
     activeTabRef.current = activeTab
   }, [activeTab])
 
-  useEffect(() => {
-    hasPageShownRef.current = true
-    void loadCurrentTabData()
-  }, [])
-
   useDidShow(() => {
-    if (hasPageShownRef.current) {
-      void loadCurrentTabData()
-    }
-    hasPageShownRef.current = true
+    void (async () => {
+      const focusRaw = Taro.getStorageSync('mind_chat_focus_avatar')
+      const newAvatarIdFromStorage = Taro.getStorageSync('onboarding_new_avatar_id')
+      const focusAvatarId = (() => {
+        if (!focusRaw) return ''
+        if (typeof focusRaw === 'string') return focusRaw
+        if (typeof focusRaw === 'object' && focusRaw?.avatarId) return String(focusRaw.avatarId)
+        return ''
+      })()
 
-    // 检测是否从创建分身页面跳转过来（引导开启托管）
-    // switchTab 不支持 query 参数，使用 Storage 传递
-    const newAvatarIdFromStorage = Taro.getStorageSync('onboarding_new_avatar_id')
-    if (newAvatarIdFromStorage) {
-      Taro.removeStorageSync('onboarding_new_avatar_id')
-      setNewAvatarId(newAvatarIdFromStorage)
-      // 延迟显示引导弹窗，等页面和数据加载完成
-      setTimeout(() => {
-        setShowOnboardingDialog(true)
-      }, 800)
-    }
+      const effectiveFocusAvatarId = focusAvatarId || (newAvatarIdFromStorage ? String(newAvatarIdFromStorage) : '')
+
+      if (effectiveFocusAvatarId) {
+        Taro.removeStorageSync('mind_chat_focus_avatar')
+        Taro.removeStorageSync('onboarding_new_avatar_id')
+        pendingFocusAvatarIdRef.current = effectiveFocusAvatarId
+        if (searchValue) setSearchValue('')
+        if (activeTabRef.current !== 'my') {
+          skipNextTabLoadRef.current = true
+          setActiveTab('my')
+        }
+        await loadMyClones()
+      } else {
+        await loadCurrentTabData()
+      }
+
+      didInitLoadRef.current = true
+
+      if (newAvatarIdFromStorage) {
+        setNewAvatarId(String(newAvatarIdFromStorage))
+        setTimeout(() => {
+          setShowOnboardingDialog(true)
+        }, 800)
+      }
+    })()
   })
 
   useEffect(() => {
-    if (!hasPageShownRef.current) return
+    if (!didInitLoadRef.current) return
+    if (skipNextTabLoadRef.current) {
+      skipNextTabLoadRef.current = false
+      return
+    }
     void loadCurrentTabData()
   }, [activeTab, loadCurrentTabData])
+
+  useEffect(() => {
+    const avatarId = pendingFocusAvatarIdRef.current
+    if (!avatarId) return
+    if (!myClones.some(c => c.id === avatarId)) return
+
+    pendingFocusAvatarIdRef.current = ''
+    setScrollIntoView(`avatar-${avatarId}`)
+    setHighlightAvatarId(avatarId)
+
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightAvatarId(prev => prev === avatarId ? '' : prev)
+    }, 2500)
+
+    if (clearScrollTimerRef.current) clearTimeout(clearScrollTimerRef.current)
+    clearScrollTimerRef.current = setTimeout(() => {
+      setScrollIntoView('')
+    }, 350)
+  }, [myClones])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      if (clearScrollTimerRef.current) clearTimeout(clearScrollTimerRef.current)
+    }
+  }, [])
 
   const filteredClones = (activeTab === 'my' ? myClones : squareClones).filter(clone =>
     clone.name.toLowerCase().includes(searchValue.toLowerCase())
@@ -420,7 +471,7 @@ const MindChat: React.FC = () => {
       </View>
 
       {/* 内容区域 */}
-      <ScrollView className="content-scroll" scrollY>
+      <ScrollView className="content-scroll" scrollY scrollWithAnimation scrollIntoView={scrollIntoView}>
         {loading ? (
           <View className="loading-state">
             <Loader size={32} className="animate-spin" />
@@ -530,7 +581,12 @@ const MindChat: React.FC = () => {
                 {filteredClones.map((clone, index) => {
                   const levelInfo = getAvatarLevel(clone.posts, clone.totalEarnings || 0)
                   return (
-                    <View key={clone.id} className="clone-card" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <View
+                      key={clone.id}
+                      id={`avatar-${clone.id}`}
+                      className={cn('clone-card', highlightAvatarId === clone.id && 'highlight')}
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
                       {/* 封面 */}
                       <View className="clone-cover">
                         <Image className="cover-image" src={clone.image} mode="aspectFill" />

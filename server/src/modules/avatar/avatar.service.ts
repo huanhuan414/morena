@@ -6,13 +6,17 @@ import { getMySQLClient } from '../../storage/database/mysql-client'
 import { getSharedCache } from '../../common/shared-cache'
 import { ReverseGeocodingService } from '../../services/reverse-geocoding.service'
 import { sharedMemoryAvatars } from '../user-stats/user-stats.service'
+import { ReferralService } from '../referral/referral.service'
 
 // 测试用户ID列表
 const TEST_USER_IDS = ['dev_user', 'test_user', 'guest-user-id', 'anonymous']
 
 @Injectable()
 export class AvatarService {
-  constructor(@Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService) {}
+  constructor(
+    @Inject(ReverseGeocodingService) private readonly reverseGeocodingService: ReverseGeocodingService,
+    @Inject(ReferralService) private readonly referralService: ReferralService
+  ) {}
   private avatarColumnsCache: Set<string> | null = null
 
   private hasOwnKey(obj: any, key: string) {
@@ -98,6 +102,7 @@ export class AvatarService {
   async createAvatar(userId: string, avatarData: any) {
     // 统一用户ID规范：必须有有效的用户ID
     const effectiveUserId = userId && !TEST_USER_IDS.includes(userId) ? userId : userId
+    const isTestUser = effectiveUserId && TEST_USER_IDS.includes(effectiveUserId)
     
     if (!effectiveUserId) {
       console.warn('[AvatarService] 创建分身时userId为空，使用默认测试ID')
@@ -127,6 +132,14 @@ export class AvatarService {
     // 尝试使用数据库
     try {
       const db = getMySQLClient()
+      let isFirstAvatar = false
+      try {
+        const countResult = await db.query('SELECT COUNT(*) as count FROM avatars WHERE user_id = ?', [effectiveUserId || 'dev_user'])
+        const row = (countResult as any)?.data?.[0] || (Array.isArray(countResult) ? (countResult as any)[0] : null)
+        const count = Number(row?.count ?? row?.['COUNT(*)'] ?? 0)
+        isFirstAvatar = count === 0
+      } catch {}
+
       const insertData = {
         id,
         user_id: effectiveUserId || 'dev_user',
@@ -142,27 +155,36 @@ export class AvatarService {
         status: avatarData.voice_type === 'clone' ? 'training' : 'active',
       }
 
-      console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', insertData)
-      const result = await db.insert('avatars', insertData)
+      const columns = await this.getAvatarTableColumns()
+      const filteredInsertData = Object.fromEntries(
+        Object.entries(insertData)
+          .filter(([key, value]) => value !== undefined && columns.has(String(key).toLowerCase()))
+      )
+
+      console.log('[AvatarService] 创建分身，用户ID:', effectiveUserId, '数据:', filteredInsertData)
+      const result = await db.insert('avatars', filteredInsertData)
       
       console.log('[AvatarService] 插入结果:', result)
 
       // 检查是否有错误
       if (result.error) {
-        console.warn('[AvatarService] 数据库插入失败，使用内存缓存:', result.error.message)
-        // 使用内存缓存
-        const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
-        userAvatars.unshift(newAvatar)
-        sharedMemoryAvatars.set(effectiveUserId, userAvatars)
-        
-        // 同步到全局共享缓存（供 UserStatsService 使用）
-        const sharedCache = getSharedCache()
-        const cacheKey = `avatars_${effectiveUserId}`
-        const cachedAvatars = sharedCache.get(cacheKey) || []
-        cachedAvatars.unshift(newAvatar)
-        sharedCache.set(cacheKey, cachedAvatars)
-        
-        return { success: true, id, data: newAvatar }
+        if (isTestUser) {
+          console.warn('[AvatarService] 测试用户数据库插入失败，使用内存缓存:', result.error.message)
+          const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
+          userAvatars.unshift(newAvatar)
+          sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+
+          const sharedCache = getSharedCache()
+          const cacheKey = `avatars_${effectiveUserId}`
+          const cachedAvatars = sharedCache.get(cacheKey) || []
+          cachedAvatars.unshift(newAvatar)
+          sharedCache.set(cacheKey, cachedAvatars)
+
+          return { success: true, id, data: newAvatar }
+        }
+
+        console.warn('[AvatarService] 数据库插入失败:', result.error.message)
+        return { success: false, error: result.error.message || '创建分身失败', data: null }
       }
 
       if ((result as any)?.data?.affectedRows > 0) {
@@ -170,33 +192,44 @@ export class AvatarService {
         const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
         userAvatars.unshift(newAvatar)
         sharedMemoryAvatars.set(effectiveUserId, userAvatars)
-        
+
         // 同步到全局共享缓存（供 UserStatsService 使用）
         const sharedCache = getSharedCache()
         const cacheKey = `avatars_${effectiveUserId}`
         const cachedAvatars = sharedCache.get(cacheKey) || []
         cachedAvatars.unshift(newAvatar)
         sharedCache.set(cacheKey, cachedAvatars)
-        
+
+        try {
+          if (isFirstAvatar && this.referralService?.settleReferralOnFirstAvatar) {
+            await this.referralService.settleReferralOnFirstAvatar(effectiveUserId)
+          }
+        } catch (e) {
+          console.error('[AvatarService] settleReferralOnFirstAvatar failed:', (e as any)?.message || e)
+        }
+
         return { success: true, id: (result as any)?.data?.insertId, data: newAvatar }
       }
       
       return { success: false, error: '创建分身失败' }
     } catch (error) {
-      console.warn('[AvatarService] 数据库不可用，使用内存缓存:', error.message)
-      // 使用内存缓存
-      const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
-      userAvatars.unshift(newAvatar)
-      sharedMemoryAvatars.set(effectiveUserId, userAvatars)
-      
-      // 同步到全局共享缓存（供 UserStatsService 使用）
-      const sharedCache = getSharedCache()
-      const cacheKey = `avatars_${effectiveUserId}`
-      const cachedAvatars = sharedCache.get(cacheKey) || []
-      cachedAvatars.unshift(newAvatar)
-      sharedCache.set(cacheKey, cachedAvatars)
-      
-      return { success: true, id, data: newAvatar }
+      if (isTestUser) {
+        console.warn('[AvatarService] 测试用户数据库不可用，使用内存缓存:', error.message)
+        const userAvatars = sharedMemoryAvatars.get(effectiveUserId) || []
+        userAvatars.unshift(newAvatar)
+        sharedMemoryAvatars.set(effectiveUserId, userAvatars)
+
+        const sharedCache = getSharedCache()
+        const cacheKey = `avatars_${effectiveUserId}`
+        const cachedAvatars = sharedCache.get(cacheKey) || []
+        cachedAvatars.unshift(newAvatar)
+        sharedCache.set(cacheKey, cachedAvatars)
+
+        return { success: true, id, data: newAvatar }
+      }
+
+      console.warn('[AvatarService] 数据库不可用:', error.message)
+      return { success: false, error: error.message || '创建分身失败', data: null }
     }
   }
 
@@ -280,7 +313,7 @@ export class AvatarService {
       const avatarId = avatar.id || avatar.avatarId
       const earnings = earningsMap[avatarId] || { total: 0, today: 0 }
 
-      const defaultAvatarUrl = avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatar.id)}&size=200`
+      const defaultAvatarUrl = avatar.avatarUrl || avatar.avatar_url || avatar.photo || process.env.DEFAULT_AVATAR_URL || ''
 
       return {
         ...avatar,
@@ -328,9 +361,9 @@ export class AvatarService {
       data: {
         ...avatar,
         config,
-        avatar_url: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`, // 蛇形兼容前端
-        photo: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
-        avatarUrl: avatar.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(avatar.name || avatarId)}&size=200`,
+        avatar_url: avatar.avatarUrl || avatar.avatar_url || avatar.photo || process.env.DEFAULT_AVATAR_URL || '',
+        photo: avatar.avatarUrl || avatar.avatar_url || avatar.photo || process.env.DEFAULT_AVATAR_URL || '',
+        avatarUrl: avatar.avatarUrl || avatar.avatar_url || avatar.photo || process.env.DEFAULT_AVATAR_URL || '',
         tags: personality.tags || [],
         abilities: personality.abilities || {},
         trust_enabled: trustEnabled,

@@ -18,16 +18,7 @@ const AVATAR_COUNT = 100
 
 // 头像URL列表（使用公开可用的头像图片）
 const AVATAR_URLS = [
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=1',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=2',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=3',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=4',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=5',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=6',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=7',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=8',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=9',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=10',
+  '',
 ]
 
 // 分身名字前缀
