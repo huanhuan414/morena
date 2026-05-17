@@ -67,21 +67,23 @@ export class ContentGenerationService implements OnModuleInit {
     try {
       const db = getMySQLClient()
       const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
-      const placeholders = stuckStatuses.map(() => '?').join(',')
-      const [rows] = await db.query(
-        `SELECT id, status, content_type, updated_at FROM content_generation_requests WHERE status IN (${placeholders}) AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
-        stuckStatuses
-      )
-      const stuckRecords = rows as any[]
+      const stuckRecords: any[] = []
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+      for (const status of stuckStatuses) {
+        const records = await db.from('content_generation_requests').findMany({ status })
+        for (const r of records) {
+          const updatedAt = new Date(r.updatedAt)
+          if (updatedAt < tenMinutesAgo) {
+            stuckRecords.push(r)
+          }
+        }
+      }
       if (stuckRecords.length === 0) return
 
       this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
       for (const record of stuckRecords) {
-        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}, updated_at=${record.updated_at}`)
-        await db.query(
-          'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
-          ['completed', record.id]
-        )
+        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}`)
+        await db.update('content_generation_requests', record.id, { status: 'completed' })
         // 清除缓存
         setCache(record.id, null)
       }
