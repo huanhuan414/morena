@@ -328,7 +328,8 @@
   margin-bottom: 16rpx;
 }
 
-.preview-image {
+.preview-image,
+.image-thumb {
   width: 180rpx;
   height: 180rpx;
   border-radius: 12rpx;

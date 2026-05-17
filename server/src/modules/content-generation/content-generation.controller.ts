@@ -112,6 +112,53 @@ export class ContentGenerationController {
     }
   }
 
+  /**
+   * 获取内容的图片URL列表（轻量接口，不查询content等大字段）
+   * 过滤掉 base64 数据，只返回 URL 格式的图片
+   */
+  @Get('content-images/:contentId')
+  async getContentImages(@Param('contentId') contentId: string) {
+    try {
+      const db = getMySQLClient()
+      const results = await db.query(
+        'SELECT images FROM content_generation_requests WHERE id = ? LIMIT 1',
+        [contentId]
+      ) as any[]
+      const rows = Array.isArray(results) ? results : []
+      if (!rows || rows.length === 0) {
+        return { code: 404, message: '内容不存在', data: { images: [] } }
+      }
+      let images: string[] = []
+      const raw = rows[0]?.images
+      if (typeof raw === 'string') {
+        try { images = JSON.parse(raw) } catch { images = [] }
+      } else if (Array.isArray(raw)) {
+        images = raw
+      }
+
+      // 分离 URL 和 base64 图片
+      const urlImages: string[] = []
+      const base64Images: { index: number; data: string }[] = []
+      images.forEach((img: string, idx: number) => {
+        if (typeof img === 'string' && img.startsWith('http')) {
+          urlImages.push(img)
+        } else if (typeof img === 'string' && img.startsWith('data:image/')) {
+          base64Images.push({ index: idx, data: img })
+        }
+      })
+
+      // 如果有 base64 图片，异步上传到 TOS 并更新数据库（不阻塞当前请求）
+      if (base64Images.length > 0) {
+        this.contentGenerationService.migrateBase64ImagesToTos(contentId, images).catch(() => {})
+      }
+
+      // 当前请求只返回已有的 URL 图片
+      return { code: 200, message: '获取成功', data: { images: urlImages } }
+    } catch (error: any) {
+      return { code: 500, message: '获取失败', data: { images: [] } }
+    }
+  }
+
   @Get('content/:contentId')
   async getContentById(@Param('contentId') contentId: string) {
     try {

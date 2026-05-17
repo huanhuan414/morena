@@ -312,11 +312,12 @@ export class UserStatsService {
       }
       
       try {
-        // 只选择列表展示需要的字段，排除 images 大字段（可能含数MB base64数据）
-        // content 只取前200字符做预览，额外计算 image_count
+        // 选择列表展示需要的字段（base64 图片已迁移到 TOS，images 字段现在只存 URL）
         const avatarIdParams = avatarIds.map(() => '?').join(',')
-        const sql = `SELECT id, order_id, avatar_id, content_type, platform, platforms, status, created_at, updated_at, video_url, publish_feedback, SUBSTRING(content, 1, 200) as content, CASE WHEN images IS NULL THEN 0 WHEN images LIKE '[%' THEN JSON_LENGTH(images) WHEN images LIKE '%%,%%' THEN LENGTH(images) - LENGTH(REPLACE(images, ',', '')) + 1 WHEN LENGTH(images) > 0 THEN 1 ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id IN (${avatarIdParams}) ORDER BY created_at DESC LIMIT 50`
+        const sql = `SELECT id, order_id, avatar_id, content_type, platform, platforms, status, created_at, updated_at, video_url, images, publish_feedback, SUBSTRING(content, 1, 200) as content, CASE WHEN images IS NOT NULL AND images != '' AND images != '[]' THEN JSON_LENGTH(images) ELSE 0 END as image_count FROM content_generation_requests WHERE avatar_id IN (${avatarIdParams}) ORDER BY created_at DESC LIMIT 50`
+        const t0 = Date.now()
         const result = await db.query(sql, avatarIds) as any
+        console.log(`[getAvatarContents] SQL query took ${Date.now() - t0}ms`)
         contents = Array.isArray(result) ? result : (result?.data || [])
       } catch (e) {
         contents = []
@@ -341,12 +342,14 @@ export class UserStatsService {
       if (!Array.isArray(platforms)) {
         platforms = platforms ? [String(platforms)] : []
       }
-      // images: 解析 JSON 字符串
+      // images: 解析 JSON 字符串，过滤掉 base64 数据（只保留 URL 图片）
       let images = content.images
       if (typeof images === 'string') {
         try { images = JSON.parse(images) } catch { images = [] }
       }
       if (!Array.isArray(images)) images = images ? [String(images)] : []
+      // 过滤掉 base64 图片，只保留 URL（base64 数据可达数 MB，不应在列表接口传输）
+      images = images.filter((img: string) => typeof img === 'string' && img.startsWith('http'))
       return {
         ...content,
         // 确保前端常用的字段都有值（兼容 camelCase 和 snake_case）

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Image } from '@tarojs/components'
 import { ArrowLeft, Clock, FileText, ImagePlus, Play, Eye, Send, MessageSquare, Bell, Trash2, RefreshCw } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { getStatusBarHeight } from '@/utils/safe-area'
@@ -117,8 +117,7 @@ export default function GeneratedContentPage() {
             avatarId: c.avatarId || c.avatar_id || '',
             avatarName: c.avatarName || c.avatar_name || '我的分身',
             avatarUrl: c.avatarUrl || c.avatar_url || '',
-            images: [], // 列表不返回images大字段，详情页单独加载
-            imageCount: c.imageCount || c.image_count || 0,
+            images: Array.isArray(c.images) ? c.images.filter((img: string) => typeof img === 'string' && img.startsWith('http')) : [],
             platforms,
             tags: safeParseJSON(c.tags),
             platform: canonicalizePlatform(c.platform || platforms[0] || ''),
@@ -131,11 +130,33 @@ export default function GeneratedContentPage() {
         setAvatars(parsedAvatars)
         setContents(parsedContents)
         console.log('[已生成内容] 解析后: avatars=', parsedAvatars.length, 'contents=', parsedContents.length)
+
+        // 对图片为空的记录异步加载（列表API可能未返回images，或base64尚未迁移）
+        const needLoadImages = parsedContents.filter((c: any) => !Array.isArray(c.images) || c.images.length === 0)
+        if (needLoadImages.length > 0) {
+          loadImagesForContents(needLoadImages)
+        }
       }
     } catch (err) {
       console.error('[已生成内容] 加载失败:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 异步加载图片：逐条请求，避免一次性传输大量数据
+  const loadImagesForContents = async (contentList: any[]) => {
+    for (const item of contentList) {
+      if (!item.id) continue
+      try {
+        const res = await Network.request({ url: `/api/content-generation/content-images/${item.id}` })
+        const images = res?.data?.data?.images
+        if (Array.isArray(images) && images.length > 0) {
+          setContents(prev => prev.map(c => c.id === item.id ? { ...c, images } : c))
+        }
+      } catch {
+        // 图片加载失败不影响页面
+      }
     }
   }
 
@@ -463,18 +484,36 @@ export default function GeneratedContentPage() {
                   </View>
                 ) : (
                   <View>
-                    {/* 图文内容卡片：显示文案+图片数量标签 */}
+                    {/* 图文内容卡片：显示文案+图片缩略图（图片异步加载） */}
                     <Text className="content-preview">
                       {contentText.length > 120 ? contentText.substring(0, 120) + '...' : contentText}
                     </Text>
-                    {content.imageCount > 0 && (
+                    {Array.isArray(content.images) && content.images.length > 0 ? (
+                      <View className="image-preview-row">
+                        {content.images.slice(0, 3).map((img: string, idx: number) => (
+                          <Image
+                            key={idx}
+                            src={img}
+                            className="image-thumb"
+                            mode="aspectFill"
+                            onClick={() => Taro.previewImage({ current: img, urls: content.images })}
+                          />
+                        ))}
+                        {content.images.length > 3 && (
+                          <View className="more-images">
+                            <ImagePlus size={12} color="#64748B" />
+                            <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>+{content.images.length - 3}</Text>
+                          </View>
+                        )}
+                      </View>
+                    ) : content.imageCount > 0 ? (
                       <View className="image-preview-row">
                         <View className="more-images">
                           <ImagePlus size={12} color="#64748B" />
                           <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>{content.imageCount}张配图</Text>
                         </View>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 )}
 

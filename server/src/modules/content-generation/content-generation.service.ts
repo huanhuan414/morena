@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/co
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
+import { StorageService } from '../storage/storage.service'
 import {
   SKILL_STRATEGIES,
   getSkillStrategy,
@@ -34,7 +35,8 @@ export class ContentGenerationService implements OnModuleInit {
 
   constructor(
     @Inject(forwardRef(() => OrderService))
-    private readonly orderService: OrderService
+    private readonly orderService: OrderService,
+    private readonly storageService: StorageService
   ) {
     this.logger.log('ContentGenerationService 初始化，使用 ARK API 直连')
   }
@@ -1394,7 +1396,23 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     let imageUrl = ''
     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
       const firstItem = result.data[0]
-      imageUrl = firstItem.url || (firstItem.b64_json ? `data:image/png;base64,${firstItem.b64_json}` : '')
+      if (firstItem.url) {
+        imageUrl = firstItem.url
+      } else if (firstItem.b64_json) {
+        // base64 图片上传到 TOS 对象存储，数据库只存 URL
+        this.logger.log('[ImageHTTP] API返回base64，上传到TOS对象存储...')
+        try {
+          const base64Data = firstItem.b64_json
+          const buffer = Buffer.from(base64Data, 'base64')
+          const fileName = `ai-generated/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+          imageUrl = await this.storageService.uploadImageFromBuffer(buffer, fileName)
+          this.logger.log(`[ImageHTTP] base64上传TOS成功: ${imageUrl.slice(0, 80)}...`)
+        } catch (uploadErr: any) {
+          this.logger.error(`[ImageHTTP] base64上传TOS失败: ${uploadErr.message}`)
+          // 降级：仍然返回 base64（保证功能不中断）
+          imageUrl = `data:image/png;base64,${firstItem.b64_json}`
+        }
+      }
     }
 
     if (!imageUrl) {
@@ -1531,5 +1549,45 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     }
 
     throw new Error('Seedance视频生成超时（5分钟）')
+  }
+
+  /**
+   * 将数据库中存储的 base64 图片迁移到 TOS 对象存储
+   * 上传成功后更新数据库，只保留 URL
+   */
+  async migrateBase64ImagesToTos(requestId: string, images: string[]): Promise<void> {
+    try {
+      const updatedImages: string[] = []
+      for (const img of images) {
+        if (typeof img === 'string' && img.startsWith('data:image/')) {
+          // base64 → Buffer → 上传 TOS → 获取 URL
+          const matches = img.match(/^data:image\/(\w+);base64,(.+)$/)
+          if (matches) {
+            const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
+            const buffer = Buffer.from(matches[2], 'base64')
+            const filename = `content-images/${requestId}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`
+            const url = await this.storageService.uploadImageFromBuffer(buffer, filename)
+            console.log(`[TOS迁移] base64→URL: ${filename} → ${url}`)
+            updatedImages.push(url)
+          } else {
+            // 无法解析的 base64，跳过
+          }
+        } else if (typeof img === 'string' && img.startsWith('http')) {
+          updatedImages.push(img)
+        }
+      }
+
+      // 更新数据库
+      if (updatedImages.length > 0) {
+        const db = getMySQLClient()
+        await db.query(
+          'UPDATE content_generation_requests SET images = ? WHERE id = ?',
+          [JSON.stringify(updatedImages), requestId]
+        )
+        console.log(`[TOS迁移] 已更新 ${requestId} 的图片: ${updatedImages.length} 张`)
+      }
+    } catch (error) {
+      console.error(`[TOS迁移] 迁移失败 ${requestId}:`, error.message)
+    }
   }
 }
