@@ -184,7 +184,7 @@ export default function OrderContentCreation() {
   // 获取订单信息
   useEffect(() => {
     if (!orderId) return
-    Network.request({ url: `/api/orders/${orderId}` })
+    Network.request({ url: `/api/order/${orderId}` })
       .then(res => {
         const data = res.data?.data || res.data
         if (data) setOrderInfo(data)
