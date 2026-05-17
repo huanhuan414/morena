@@ -181,21 +181,35 @@ export class SubscriptionService {
 
     switch (type) {
       case 'check_avatars': {
-        const maxAvatars = features.maxAvatars || features.max_avatars || 1
-        const allowed = currentCount < maxAvatars
+        // 测试阶段：取消分身数量限制，所有用户都可以创建无限分身
         return {
-          allowed,
-          limit: maxAvatars,
+          allowed: true,
+          limit: 999,
           current: currentCount,
-          reason: allowed ? undefined : `当前套餐最多创建 ${maxAvatars} 个分身，请升级套餐`,
+          reason: undefined,
         }
+        // 原有代码（保留作为备用方案）：
+        // const maxAvatars = features.maxAvatars || features.max_avatars || 1
+        // const allowed = currentCount < maxAvatars
+        // return {
+        //   allowed,
+        //   limit: maxAvatars,
+        //   current: currentCount,
+        //   reason: allowed ? undefined : `当前套餐最多创建 ${maxAvatars} 个分身，请升级套餐`,
+        // }
       }
       case 'check_orders': {
-        const canReceive = features.canReceiveOrders || features.can_receive_orders || false
+        // 测试阶段：取消接单套餐限制，所有用户都可以接单
         return {
-          allowed: canReceive,
-          reason: canReceive ? undefined : '接单赚钱需要专业版及以上套餐，请升级',
+          allowed: true,
+          reason: undefined,
         }
+        // 原有代码（保留作为备用方案）：
+        // const canReceive = features.canReceiveOrders || features.can_receive_orders || false
+        // return {
+        //   allowed: canReceive,
+        //   reason: canReceive ? undefined : '接单赚钱需要专业版及以上套餐，请升级',
+        // }
       }
       case 'check_skills': {
         const skillUses = features.skillUsesPerDay || features.skill_uses_per_day || 3

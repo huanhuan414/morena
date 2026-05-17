@@ -104,8 +104,9 @@ export class UserStatsService {
         const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}' AND status = 'completed'`) as any[]
         invitedCount = referralResult?.length || 0
 
-        if (userResult?.referral_code) {
-          referralCode = userResult.referral_code
+        // 修复：同时检查 referral_code 和 referralCode（由于 convertKeysToCamel 转换）
+        if (userResult?.referral_code || userResult?.referralCode) {
+          referralCode = userResult.referral_code || userResult.referralCode
         } else {
           // 自动生成邀请码并写入 users 表（与 ReferralService.generateReferralCode 一致）
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

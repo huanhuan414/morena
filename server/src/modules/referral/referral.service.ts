@@ -15,12 +15,20 @@ export class ReferralService {
     const db = getMySQLClient()
     
     const user = await db.queryOne('users', { id: userId }) as any
+    console.log('[ReferralService] generateReferralCode - userId:', userId)
+    console.log('[ReferralService] user data:', { 
+      referral_code: user?.referral_code, 
+      referralCode: user?.referralCode 
+    })
     
     if (user?.referral_code || user?.referralCode) {
-      return user.referral_code || user.referralCode
+      const existingCode = user.referral_code || user.referralCode
+      console.log('[ReferralService] returning existing code:', existingCode)
+      return existingCode
     }
     
     const code = this.generateUniqueCode()
+    console.log('[ReferralService] generating new code:', code)
     
     await db.updateWhere('users', { id: userId }, {
       referral_code: code,
@@ -101,20 +109,22 @@ export class ReferralService {
     const referralCode = await this.generateReferralCode(userId)
     
     const referrals = await db.query('referrals', { referrer_id: userId }) as any
-    const completedCount = referrals?.filter((r: any) => r.status === 'completed').length || 0
-    const pendingCount = (referrals?.length || 0) - completedCount
+    const completedReferrals = referrals?.filter((r: any) => r.status === 'completed') || []
+    const pendingCount = (referrals?.length || 0) - completedReferrals.length
+    
+    const totalReward = completedReferrals.reduce((sum: number, r: any) => sum + Number(r.reward_amount || 0), 0)
     
     return {
       referralCode,
       totalInvited: referrals?.length || 0,
-      totalReward: completedCount * 5,
+      totalReward,
       pendingReward: pendingCount * 5,
       totalInvites: referrals?.length || 0,
       pendingInvites: pendingCount,
-      completedInvites: completedCount,
+      completedInvites: completedReferrals.length,
       inviterReward: 5,
       inviteeReward: 5,
-      totalEarned: completedCount * 5
+      totalEarned: totalReward
     }
   }
 
