@@ -129,6 +129,19 @@ export default function SkillsSquare() {
 
   const handleTrySkill = (skill: Skill) => {
     const hexId = skill.id
+    // 掌相阅读和衣品改造有专门的体验页面
+    if (hexId === 'palm_reading') {
+      Taro.navigateTo({
+        url: `/package-skill/pages/palm-reading/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}`,
+      })
+      return
+    }
+    if (hexId === 'fashion_makeover') {
+      Taro.navigateTo({
+        url: `/package-skill/pages/fashion-makeover/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}`,
+      })
+      return
+    }
     Taro.navigateTo({
       url: `/package-skill/pages/skill-try/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}&category=${encodeURIComponent(skill.category)}`,
     })

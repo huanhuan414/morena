@@ -77,6 +77,8 @@ export default defineAppConfig({
         'pages/skill-training/index',
         'pages/skills-square/index',
         'pages/skill-try/index',
+        'pages/palm-reading/index',
+        'pages/fashion-makeover/index',
       ],
     },
     {
