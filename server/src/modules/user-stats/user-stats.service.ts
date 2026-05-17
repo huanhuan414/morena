@@ -46,8 +46,9 @@ export class UserStatsService {
     }
 
     // 尝试使用数据库
+    let db: any = null
     try {
-      const db = getMySQLClient()
+      db = getMySQLClient()
       
       // 1. 获取用户所有活跃分身（过滤已删除/训练中的）
       const dbAvatars = await db.query('avatars', { user_id: userId, status: 'active' }) as any[]
@@ -60,12 +61,15 @@ export class UserStatsService {
       const avatarIds = avatarList.map((a: any) => a.id)
       avatarCount = avatarList.length
       
-      // 2. 统计待接订单数（从 order_dispatch_requests 表查询，状态为 pending 的分派请求）
+      // 2. 统计待接订单数（从 order_dispatch_requests 关联 orders，只统计订单仍有效的分派请求）
       if (avatarIds.length > 0) {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         try {
           const pendingResult = await db.query(
-            `SELECT COUNT(*) as cnt FROM order_dispatch_requests WHERE avatar_id IN (${avatarIdList}) AND status = 'pending'`
+            `SELECT COUNT(*) as cnt FROM order_dispatch_requests r
+             INNER JOIN orders o ON r.order_id = o.id
+               AND o.status IN ('pending', 'pending_payment', 'awaiting_acceptance', 'pending_acceptance', 'accepted', 'in_progress')
+             WHERE r.avatar_id IN (${avatarIdList}) AND r.status = 'pending'`
           ) as any[]
           pendingOrders = pendingResult?.[0]?.cnt || 0
         } catch (e) {
@@ -74,15 +78,16 @@ export class UserStatsService {
         }
       }
       
-      // 3. 统计生成内容数
+      // 3. 统计生成内容数（只统计已完成的内容，排除 pending/failed）
       if (avatarIds.length > 0) {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         try {
-          const contentResult = await db.queryWhere(
-            'content_generation_requests',
-            `avatar_id IN (${avatarIdList})`
+          const contentResult = await db.query(
+            `SELECT COUNT(*) as cnt FROM content_generation_requests
+             WHERE avatar_id IN (${avatarIdList})
+               AND status NOT IN ('pending', 'failed', 'cancelled')`
           ) as any[]
-          generatedContents = contentResult?.length || 0
+          generatedContents = contentResult?.[0]?.cnt || 0
         } catch (e) {
           generatedContents = 0
         }
@@ -99,16 +104,14 @@ export class UserStatsService {
         (sum: number, e: any) => sum + Number(e.amount || 0), 0
       ) || 0
       
-      // 5. 获取用户邀请码和邀请人数（与 ReferralService 逻辑一致：查 users.referral_code，没有则生成并写入）
+      // 5. 获取用户邀请码和邀请人数
       try {
         const referralResult = await db.queryWhere('referrals', `referrer_id = '${userId}' AND status = 'completed'`) as any[]
         invitedCount = referralResult?.length || 0
 
-        // 修复：同时检查 referral_code 和 referralCode（由于 convertKeysToCamel 转换）
         if (userResult?.referral_code || userResult?.referralCode) {
           referralCode = userResult.referral_code || userResult.referralCode
         } else {
-          // 自动生成邀请码并写入 users 表（与 ReferralService.generateReferralCode 一致）
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
           referralCode = ''
           for (let i = 0; i < 6; i++) {
@@ -121,17 +124,16 @@ export class UserStatsService {
         }
       } catch (e) {}
       
-      // 6. 统计分身总工作时长（基于 content_generation 的记录数 × 平均30分钟）
+      // 6. 统计分身总工作时长（只统计有效完成的任务，每个任务约30分钟）
       if (avatarIds.length > 0) {
         const avatarIdList = avatarIds.map((id: string) => `'${id}'`).join(',')
         try {
-          const contentResult = await db.queryWhere(
-            'content_generation_requests',
-            `avatar_id IN (${avatarIdList})`
+          const contentResult = await db.query(
+            `SELECT COUNT(*) as cnt FROM content_generation_requests
+             WHERE avatar_id IN (${avatarIdList})
+               AND status IN ('completed', 'approved', 'published', 'awaiting_acceptance', 'settled', 'done')`
           ) as any[]
-          const completedCount = (Array.isArray(contentResult) ? contentResult : []).filter(
-            (c: any) => c.status === 'completed' || c.status === 'approved'
-          ).length
+          const completedCount = contentResult?.[0]?.cnt || 0
           totalWorkHours = Math.round(completedCount * 0.5 * 10) / 10 // 每个任务约30分钟
         } catch (e) {}
       }
@@ -151,6 +153,49 @@ export class UserStatsService {
       totalEarnings = cachedStats.totalEarnings || 0
     }
     
+    // 计算每个分身的统计（从 content_generation_requests 实时查询，不依赖缓存列）
+    let avatarStatsResult: any[] = []
+    if (db) {
+      try {
+        for (const a of avatarList) {
+          let avatarTotalOrders = 0
+          let avatarCompletedOrders = 0
+          let avatarEarnings = 0
+
+          try {
+            const statsResult = await db.query(
+              `SELECT
+                 COUNT(DISTINCT cgr.order_id) as total_orders,
+                 COUNT(DISTINCT CASE WHEN cgr.status IN ('completed','approved','published','awaiting_acceptance','settled','done','preview') THEN cgr.order_id END) as completed_orders
+               FROM content_generation_requests cgr
+               WHERE cgr.avatar_id = ?
+                 AND cgr.status NOT IN ('pending', 'cancelled')`,
+              [a.id]
+            ) as any[]
+            avatarTotalOrders = statsResult?.[0]?.totalOrders || statsResult?.[0]?.total_orders || 0
+            avatarCompletedOrders = statsResult?.[0]?.completedOrders || statsResult?.[0]?.completed_orders || 0
+          } catch (e) { console.error(`[user-stats] avatar stats error for ${a.id}:`, e.message) }
+
+          try {
+            const earnResult = await db.query(
+              `SELECT COALESCE(SUM(amount), 0) as total FROM earnings
+               WHERE avatar_id = ? AND status IN ('settled', 'completed')`,
+              [a.id]
+            ) as any[]
+            avatarEarnings = Number(earnResult?.[0]?.total || 0)
+          } catch (e) {}
+
+          avatarStatsResult.push({
+            id: a.id,
+            totalOrders: avatarTotalOrders,
+            completedOrders: avatarCompletedOrders,
+            totalEarnings: avatarEarnings,
+          })
+        }
+      } catch (e) { console.error('[user-stats] avatar stats error:', e.message) }
+    }
+    const avatarStatsMap = new Map(avatarStatsResult.map((s: any) => [s.id, s]))
+
     const allHostingEnabled = avatarCount > 0 && avatarList.every((a: any) => a.isHosted === 1 || a.hostingEnabled === 1)
 
     return {
@@ -159,20 +204,18 @@ export class UserStatsService {
       generatedContents,
       totalEarnings,
       allHostingEnabled,
-      avatars: avatarList.map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        avatarUrl: a.avatar_url || '',
-        hostingEnabled: a.hosting_enabled || 0,
-        isHosted: a.is_hosted || 0,
-        
-        serviceHours: a.service_hours || '24h',
-        totalOrders: a.total_orders || 0,
-        completedOrders: a.completed_orders || 0,
-        totalEarnings: a.total_earnings || 0,
-        todayEarnings: a.today_earnings || 0,
-        status: a.status || 'active'
-      })),
+      avatars: avatarList.map((a: any) => {
+        const stats = avatarStatsMap.get(a.id)
+        return {
+          id: a.id,
+          name: a.name || a.nickname || '分身',
+          avatar: a.avatar_url || a.avatarUrl || '',
+          status: a.status || 'active',
+          totalOrders: stats?.totalOrders || 0,
+          completedOrders: stats?.completedOrders || 0,
+          totalEarnings: stats?.totalEarnings || 0,
+        }
+      }),
       nickname: userResult?.nickname || '',
       avatar: userResult?.avatar || '',
       referralCode,
