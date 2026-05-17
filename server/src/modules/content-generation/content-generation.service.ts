@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common'
 import { Config, LLMClient, Message } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
@@ -13,9 +13,11 @@ import {
 } from './content-strategy'
 
 @Injectable()
-export class ContentGenerationService {
+export class ContentGenerationService implements OnModuleInit {
   private readonly logger = new Logger(ContentGenerationService.name)
   private readonly llmClient: LLMClient
+  // 超时阈值：10分钟（毫秒）
+  private readonly GENERATION_TIMEOUT_MS = 10 * 60 * 1000
 
   // 图片生成：直接 HTTP 调用 api.aaigc.top（coze SDK ImageGenerationClient 线上报 Invalid URL）
   private readonly imageGenBaseUrl = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top'
@@ -38,6 +40,54 @@ export class ContentGenerationService {
     this.logger.log(`[Config] apiKey存在: ${!!process.env.COZE_WORKLOAD_IDENTITY_API_KEY}`)
     this.logger.log(`[Config] baseUrl: ${process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn'}`)
     this.llmClient = new LLMClient(config)
+  }
+
+  /**
+   * 模块初始化时检查并恢复卡住的内容生成任务
+   */
+  async onModuleInit() {
+    this.logger.log('ContentGenerationService 初始化，检查卡住的生成任务...')
+    try {
+      await this.recoverStuckGenerations()
+    } catch (err: any) {
+      this.logger.warn(`恢复卡住任务时出错: ${err.message}`)
+    }
+    // 每5分钟检查一次
+    setInterval(() => {
+      this.recoverStuckGenerations().catch(err => {
+        this.logger.warn(`定时恢复卡住任务时出错: ${err.message}`)
+      })
+    }, 5 * 60 * 1000)
+  }
+
+  /**
+   * 恢复卡住的生成任务（状态超过10分钟未更新则标记为completed）
+   */
+  private async recoverStuckGenerations() {
+    try {
+      const db = getMySQLClient()
+      const stuckStatuses = ['generating_text', 'generating_images', 'generating_video', 'pending', 'processing']
+      const placeholders = stuckStatuses.map(() => '?').join(',')
+      const [rows] = await db.query(
+        `SELECT id, status, content_type, updated_at FROM content_generation_requests WHERE status IN (${placeholders}) AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
+        stuckStatuses
+      )
+      const stuckRecords = rows as any[]
+      if (stuckRecords.length === 0) return
+
+      this.logger.warn(`发现 ${stuckRecords.length} 条卡住的生成任务，将自动完成`)
+      for (const record of stuckRecords) {
+        this.logger.warn(`恢复卡住任务: id=${record.id}, status=${record.status}, updated_at=${record.updated_at}`)
+        await db.query(
+          'UPDATE content_generation_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+          ['completed', record.id]
+        )
+        // 清除缓存
+        setCache(record.id, null)
+      }
+    } catch (err: any) {
+      this.logger.warn(`恢复卡住任务失败: ${err.message}`)
+    }
   }
 
   /**
