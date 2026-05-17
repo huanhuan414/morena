@@ -355,7 +355,7 @@ export class OrderProcessingService {
       platform: this.canonicalizePlatform(record.platform),
       rawStatus: record.status || 'completed',
       status: normalizeFulfillmentStatus(record.status || 'completed'),
-      contentType: config.contentType || config.content_type || 'image',
+      contentType: config.contentType || config.content_type || record.contentType || record.content_type || 'image',
       generatedContent: {
         title: config.title || '',
         content: record.content || '',
