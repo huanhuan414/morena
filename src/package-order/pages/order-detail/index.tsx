@@ -5,7 +5,7 @@ import { Network } from '@/network'
 import {
   ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
   CreditCard, Send, Trash2,
-  FileText, CircleDot, Camera, Video
+  FileText, CircleDot, Camera, Video, ChevronDown, ChevronUp, Play, Eye, Image as ImageIcon
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
@@ -132,6 +132,7 @@ export default function OrderDetailPage() {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
+  const [expandedAvatarIds, setExpandedAvatarIds] = useState<Set<string>>(new Set())
   const pollingRef = useRef<any>(null)
   const statusBarHeight = getStatusBarHeight()
 
@@ -260,6 +261,18 @@ export default function OrderDetailPage() {
   const handleVerify = useCallback(() => {
     Taro.navigateTo({ url: `/package-order/pages/order-acceptance/index?orderId=${orderId}` })
   }, [orderId])
+
+  const toggleAvatarExpand = useCallback((avatarId: string) => {
+    setExpandedAvatarIds(prev => {
+      const next = new Set(prev)
+      if (next.has(avatarId)) {
+        next.delete(avatarId)
+      } else {
+        next.add(avatarId)
+      }
+      return next
+    })
+  }, [])
 
   if (loading) {
     return (
@@ -440,32 +453,205 @@ export default function OrderDetailPage() {
                 expired: { label: '已过期', color: '#9CA3AF', icon: '⏰' },
               }
               const cfg = statusConfig[avatarStatus] || statusConfig.pending
+              const hasContent = ['preview', 'publishing', 'published', 'awaiting_acceptance', 'feedback_submitted', 'completed'].includes(avatarStatus)
+              const isExpanded = expandedAvatarIds.has(avatar.avatarId)
+              const contentTypeLabel = avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType
+              // 解析图片和视频
+              const avatarImages: string[] = Array.isArray(avatar.images) ? avatar.images : []
+              const avatarVideoUrls: string[] = Array.isArray(avatar.videoUrl) ? avatar.videoUrl : []
+              const publishFeedback = avatar.publishFeedback || {}
+              const hasFeedback = publishFeedback && Object.keys(publishFeedback).length > 0
+
               return (
-                <View key={avatar.avatarId || idx} className="od-av-item">
-                  {avatar.avatarUrl ? (
-                    <Image src={avatar.avatarUrl} className="od-av-img" mode="aspectFill" />
-                  ) : (
-                    <View className="od-av-placeholder">
-                      <Text className="block od-av-placeholder-text">{(avatar.avatarName || '?')[0]}</Text>
+                <View key={avatar.avatarId || idx} className="od-av-wrap">
+                  {/* 分身主行 */}
+                  <View className="od-av-item" onClick={() => hasContent && toggleAvatarExpand(avatar.avatarId)}>
+                    {avatar.avatarUrl ? (
+                      <Image src={avatar.avatarUrl} className="od-av-img" mode="aspectFill" />
+                    ) : (
+                      <View className="od-av-placeholder">
+                        <Text className="block od-av-placeholder-text">{(avatar.avatarName || '?')[0]}</Text>
+                      </View>
+                    )}
+                    <View className="od-av-info">
+                      <Text className="block od-av-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
+                      {avatar.rejectReason && (
+                        <Text className="block od-av-reason">拒绝原因: {avatar.rejectReason}</Text>
+                      )}
+                      {avatar.contentType && avatarStatus !== 'pending' && avatarStatus !== 'rejected' && avatarStatus !== 'expired' && (
+                        <Text className="block od-av-meta">{contentTypeLabel}</Text>
+                      )}
+                      {avatar.contentUpdatedAt && (
+                        <Text className="block od-av-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
+                      )}
+                    </View>
+                    <View className="od-av-right">
+                      <View className="od-av-badge" style={{ backgroundColor: `${cfg.color}15`, borderColor: cfg.color }}>
+                        <Text className="block od-av-badge-text" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</Text>
+                      </View>
+                      {hasContent && (
+                        <View className="od-av-expand-icon">
+                          {isExpanded ? <ChevronUp size={14} color="#9CA3AF" /> : <ChevronDown size={14} color="#9CA3AF" />}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* 展开内容区 */}
+                  {hasContent && isExpanded && (
+                    <View className="od-av-content">
+                      {/* 文案内容 */}
+                      {avatar.content && (
+                        <View className="od-av-content-block">
+                          <View className="od-av-content-header">
+                            <FileText size={14} color="#6366F1" />
+                            <Text className="block od-av-content-label">生成文案</Text>
+                          </View>
+                          <Text className="block od-av-content-text">{avatar.content}</Text>
+                        </View>
+                      )}
+
+                      {/* 图片 */}
+                      {avatarImages.length > 0 && (
+                        <View className="od-av-content-block">
+                          <View className="od-av-content-header">
+                            <ImageIcon size={14} color="#6366F1" />
+                            <Text className="block od-av-content-label">生成配图 ({avatarImages.length})</Text>
+                          </View>
+                          <View className="od-av-images-grid">
+                            {avatarImages.map((img: string, imgIdx: number) => (
+                              <Image
+                                key={imgIdx}
+                                src={img}
+                                className="od-av-img-thumb"
+                                mode="aspectFill"
+                                onClick={() => {
+                                  Taro.previewImage({ current: img, urls: avatarImages })
+                                }}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* 视频 */}
+                      {avatarVideoUrls.length > 0 && (
+                        <View className="od-av-content-block">
+                          <View className="od-av-content-header">
+                            <Video size={14} color="#6366F1" />
+                            <Text className="block od-av-content-label">生成视频</Text>
+                          </View>
+                          {avatarVideoUrls.map((vUrl: string, vIdx: number) => (
+                            <View
+                              key={vIdx}
+                              className="od-av-video-card"
+                              onClick={() => {
+                                const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
+                                if (isMiniApp) {
+                                  Taro.previewMedia({ sources: [{ url: vUrl, type: 'video' }] })
+                                } else {
+                                  window.open(vUrl, '_blank')
+                                }
+                              }}
+                            >
+                              <View className="od-av-video-play">
+                                <Play size={32} color="#fff" />
+                              </View>
+                              <Text className="block od-av-video-label">点击播放视频</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* 发布反馈 */}
+                      {hasFeedback && (
+                        <View className="od-av-content-block">
+                          <View className="od-av-content-header">
+                            <Eye size={14} color="#059669" />
+                            <Text className="block od-av-content-label od-av-content-label-green">发布反馈</Text>
+                          </View>
+                          {/* 按平台遍历反馈 */}
+                          {Object.keys(publishFeedback).map(platformKey => {
+                            const pf = publishFeedback[platformKey]
+                            if (!pf || typeof pf !== 'object') return null
+                            return (
+                              <View key={platformKey} className="od-av-feedback-platform">
+                                <Text className="block od-av-feedback-platform-name">{PLATFORM_MAP[platformKey] || platformKey}</Text>
+                                {pf.link && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">发布链接</Text>
+                                    <Text className="block od-av-feedback-val od-av-feedback-link">{pf.link}</Text>
+                                  </View>
+                                )}
+                                {pf.publishUrl && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">发布链接</Text>
+                                    <Text className="block od-av-feedback-val od-av-feedback-link">{pf.publishUrl}</Text>
+                                  </View>
+                                )}
+                                {pf.publishTime && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">发布时间</Text>
+                                    <Text className="block od-av-feedback-val">{formatTime(pf.publishTime)}</Text>
+                                  </View>
+                                )}
+                                {pf.views !== undefined && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">浏览量</Text>
+                                    <Text className="block od-av-feedback-val">{pf.views}</Text>
+                                  </View>
+                                )}
+                                {pf.likes !== undefined && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">点赞数</Text>
+                                    <Text className="block od-av-feedback-val">{pf.likes}</Text>
+                                  </View>
+                                )}
+                                {pf.comments !== undefined && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">评论数</Text>
+                                    <Text className="block od-av-feedback-val">{pf.comments}</Text>
+                                  </View>
+                                )}
+                                {pf.remark && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">备注</Text>
+                                    <Text className="block od-av-feedback-val">{pf.remark}</Text>
+                                  </View>
+                                )}
+                                {/* 反馈中的图片 */}
+                                {Array.isArray(pf.images) && pf.images.length > 0 && (
+                                  <View className="od-av-feedback-item">
+                                    <Text className="block od-av-feedback-key">截图</Text>
+                                    <View className="od-av-images-grid">
+                                      {pf.images.map((img: string, imgIdx: number) => (
+                                        <Image
+                                          key={imgIdx}
+                                          src={img}
+                                          className="od-av-img-thumb"
+                                          mode="aspectFill"
+                                          onClick={() => {
+                                            Taro.previewImage({ current: img, urls: pf.images })
+                                          }}
+                                        />
+                                      ))}
+                                    </View>
+                                  </View>
+                                )}
+                              </View>
+                            )
+                          })}
+                        </View>
+                      )}
+
+                      {/* 无内容提示 */}
+                      {!avatar.content && avatarImages.length === 0 && avatarVideoUrls.length === 0 && !hasFeedback && (
+                        <View className="od-av-empty-content">
+                          <Text className="block od-av-empty-content-text">暂无详细内容</Text>
+                        </View>
+                      )}
                     </View>
                   )}
-                  <View className="od-av-info">
-                    <Text className="block od-av-name">{avatar.avatarName || `分身${idx + 1}`}</Text>
-                    {avatar.rejectReason && (
-                      <Text className="block od-av-reason">拒绝原因: {avatar.rejectReason}</Text>
-                    )}
-                    {avatar.contentType && avatarStatus !== 'pending' && avatarStatus !== 'rejected' && avatarStatus !== 'expired' && (
-                      <Text className="block od-av-meta">
-                        {avatar.contentType === 'image_text' || avatar.contentType === 'image' ? '图文' : avatar.contentType === 'video' ? '视频' : avatar.contentType === 'text' ? '纯文案' : avatar.contentType}
-                      </Text>
-                    )}
-                    {avatar.contentUpdatedAt && (
-                      <Text className="block od-av-time">更新于 {formatTime(avatar.contentUpdatedAt)}</Text>
-                    )}
-                  </View>
-                  <View className="od-av-badge" style={{ backgroundColor: `${cfg.color}15`, borderColor: cfg.color }}>
-                    <Text className="block od-av-badge-text" style={{ color: cfg.color }}>{cfg.icon} {cfg.label}</Text>
-                  </View>
                 </View>
               )
             })}

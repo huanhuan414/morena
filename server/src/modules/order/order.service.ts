@@ -300,7 +300,7 @@ export class OrderService {
 
     let processingRows: any[] = []
     try {
-      const sql = `SELECT id, order_id, avatar_id, status, content_type, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
+      const sql = `SELECT id, order_id, avatar_id, status, content_type, content, images, video_url, publish_feedback, created_at, updated_at FROM content_generation_requests WHERE order_id = ? ORDER BY updated_at DESC, created_at DESC`
       processingRows = await db.query(sql, [orderId])
     } catch (err) {
       console.log('[OrderService] processingRows error:', err)
@@ -334,6 +334,9 @@ export class OrderService {
         contentStatus: processing?.status || null,
         rejectReason: row.rejectReason || null,
         contentType: processing?.contentType || order.contentType || 'image_text',
+        content: processing?.content || null,
+        images: this.safeParseJson<any[]>(processing?.images, []),
+        videoUrl: this.safeParseJson<string[]>(processing?.videoUrl, []),
         contentUpdatedAt: processing?.updatedAt ? new Date(processing.updatedAt).toISOString() : null,
         publishFeedback: this.safeParseJson(processing?.publishFeedback, {}),
         createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
