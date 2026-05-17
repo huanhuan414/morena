@@ -794,4 +794,103 @@ export class AvatarService {
       }
     }
   }
+
+  // ==================== 账号管理 ====================
+
+  async getAccounts(avatarId: string) {
+    const db = await getMySQLClient()
+    const results = await db.query('avatar_accounts', { avatar_id: avatarId })
+    if (!results || results.length === 0) return []
+    return results.map(r => this.normalizeAccount(r))
+  }
+
+  async createAccount(data: Record<string, any>) {
+    const db = await getMySQLClient()
+    const id = `acct_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+    const record = {
+      id,
+      avatar_id: data.avatar_id || '',
+      platform: data.platform || '',
+      account_name: data.account_name || '',
+      followers: data.followers || 0,
+      total_exposure: data.total_exposure || 0,
+      total_works: data.total_works || 0,
+      avg_likes_per_work: data.avg_likes_per_work || 0,
+      avg_comments_per_work: data.avg_comments_per_work || 0,
+      avg_shares_per_work: data.avg_shares_per_work || 0,
+      appid: data.appid || null,
+      appkey: data.appkey || null,
+      account_url: data.account_url || null,
+      extra_info: data.extra_info || null,
+      platform_user_id: data.platform_user_id || null,
+      status: 'active',
+    }
+    await db.insert('avatar_accounts', record)
+    return this.normalizeAccount(record)
+  }
+
+  async updateAccount(id: string, data: Record<string, any>) {
+    const db = await getMySQLClient()
+    const updateData: Record<string, any> = { updated_at: new Date() }
+
+    // Only update fields that are provided
+    const updatableFields = [
+      'platform', 'account_name', 'followers', 'total_exposure', 'total_works',
+      'avg_likes_per_work', 'avg_comments_per_work', 'avg_shares_per_work',
+      'appid', 'appkey', 'account_url', 'extra_info', 'platform_user_id', 'status',
+    ]
+
+    for (const field of updatableFields) {
+      if (data[field] !== undefined) {
+        updateData[field] = data[field]
+      }
+    }
+
+    await db.update('avatar_accounts', id, updateData)
+
+    // Return updated record
+    const results = await db.query('avatar_accounts', { id })
+    if (results && results.length > 0) {
+      return this.normalizeAccount(results[0])
+    }
+    return { id, ...updateData }
+  }
+
+  async deleteAccount(id: string) {
+    const db = await getMySQLClient()
+    await db.delete('avatar_accounts', id)
+    return { success: true }
+  }
+
+  private normalizeAccount(record: any) {
+    if (!record) return null
+    return {
+      id: record.id,
+      avatarId: record.avatar_id || record.avatarId,
+      avatar_id: record.avatar_id || record.avatarId,
+      platform: record.platform,
+      accountName: record.account_name || record.accountName || '',
+      account_name: record.account_name || record.accountName || '',
+      followers: record.followers || 0,
+      totalExposure: record.total_exposure || record.totalExposure || 0,
+      total_exposure: record.total_exposure || record.totalExposure || 0,
+      totalWorks: record.total_works || record.totalWorks || 0,
+      total_works: record.total_works || record.totalWorks || 0,
+      avgLikesPerWork: record.avg_likes_per_work || record.avgLikesPerWork || 0,
+      avg_likes_per_work: record.avg_likes_per_work || record.avgLikesPerWork || 0,
+      avgCommentsPerWork: record.avg_comments_per_work || record.avgCommentsPerWork || 0,
+      avg_comments_per_work: record.avg_comments_per_work || record.avgCommentsPerWork || 0,
+      avgSharesPerWork: record.avg_shares_per_work || record.avgSharesPerWork || 0,
+      avg_shares_per_work: record.avg_shares_per_work || record.avgSharesPerWork || 0,
+      appid: record.appid || '',
+      appkey: record.appkey || '',
+      accountUrl: record.account_url || record.accountUrl || '',
+      account_url: record.account_url || record.accountUrl || '',
+      extraInfo: record.extra_info || record.extraInfo || '',
+      extra_info: record.extra_info || record.extraInfo || '',
+      status: record.status || 'active',
+      createdAt: record.created_at || record.createdAt,
+      updatedAt: record.updated_at || record.updatedAt,
+    }
+  }
 }

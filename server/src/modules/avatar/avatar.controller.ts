@@ -280,4 +280,53 @@ export class AvatarController {
       return { code: 500, msg: err.message || '服务器错误', data: null }
     }
   }
+
+  // ==================== 账号管理 ====================
+
+  @Get(':avatarId/accounts')
+  async getAccounts(@Param('avatarId') avatarId: string) {
+    try {
+      const accounts = await this.avatarService.getAccounts(avatarId)
+      return { code: 200, msg: 'success', data: accounts }
+    } catch (err) {
+      console.error('获取账号列表失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: [] }
+    }
+  }
+
+  @Post('accounts')
+  async createAccount(@Body() body: Record<string, any>) {
+    try {
+      const account = await this.avatarService.createAccount(body)
+      return { code: 200, msg: 'success', data: account }
+    } catch (err) {
+      console.error('创建账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Put('accounts/:id')
+  async updateAccount(
+    @Param('id') id: string,
+    @Body() body: Record<string, any>
+  ) {
+    try {
+      const account = await this.avatarService.updateAccount(id, body)
+      return { code: 200, msg: 'success', data: account }
+    } catch (err) {
+      console.error('更新账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
+
+  @Delete('accounts/:id')
+  async deleteAccount(@Param('id') id: string) {
+    try {
+      await this.avatarService.deleteAccount(id)
+      return { code: 200, msg: 'success', data: null }
+    } catch (err) {
+      console.error('删除账号失败:', err)
+      return { code: 500, msg: err.message || '服务器错误', data: null }
+    }
+  }
 }
