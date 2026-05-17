@@ -329,4 +329,19 @@ export class AvatarController {
       return { code: 500, msg: err.message || '服务器错误', data: null }
     }
   }
+
+  /**
+   * 发布内容到微信公众号草稿箱
+   * Body: { accountId, title, content, imageUrls, digest? }
+   */
+  @Post('publish/wechat-draft')
+  async publishWechatDraft(@Body() body: Record<string, any>) {
+    try {
+      const result = await this.avatarService.publishWechatDraft(body)
+      return { code: 200, msg: 'success', data: result }
+    } catch (err) {
+      console.error('发布公众号草稿失败:', err)
+      return { code: 500, msg: err.message || '发布失败', data: null }
+    }
+  }
 }

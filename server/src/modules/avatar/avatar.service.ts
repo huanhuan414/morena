@@ -893,4 +893,194 @@ export class AvatarService {
       updatedAt: record.updated_at || record.updatedAt,
     }
   }
+
+  /**
+   * 发布内容到微信公众号草稿箱
+   * 1. 用 appid + appkey 获取 access_token
+   * 2. 上传图片到微信素材库（获取 media_id）
+   * 3. 将图片 URL 替换为微信素材 URL
+   * 4. 调用新建草稿接口
+   */
+  async publishWechatDraft(params: {
+    accountId: string
+    title: string
+    content: string
+    imageUrls?: string[]
+    digest?: string
+  }) {
+    const { accountId, title, content, imageUrls = [], digest } = params
+
+    // 1. 获取账号信息
+    const db = await getMySQLClient()
+    const accounts = await db.query('avatar_accounts', { id: accountId })
+    if (!accounts || accounts.length === 0) {
+      throw new Error('账号不存在')
+    }
+    const account = accounts[0]
+    const appid = account.appid
+    const appsecret = account.appkey
+
+    if (!appid || !appsecret) {
+      throw new Error('缺少 AppID 或 AppSecret，请先完善公众号配置')
+    }
+
+    console.log(`[微信发布] 开始发布，appid: ${appid}, title: ${title}`)
+
+    // 2. 获取 access_token
+    const tokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${appsecret}`
+    const tokenRes = await fetch(tokenUrl)
+    const tokenData = await tokenRes.json()
+    if (tokenData.errcode) {
+      console.error('[微信发布] 获取access_token失败:', tokenData)
+      throw new Error(`获取access_token失败: ${tokenData.errmsg} (errcode: ${tokenData.errcode})`)
+    }
+    const accessToken = tokenData.access_token
+    console.log(`[微信发布] access_token 获取成功`)
+
+    // 3. 上传图片到微信素材库（thumb_media_id 用于封面）
+    let thumbMediaId = ''
+    let processedContent = content
+
+    if (imageUrls.length > 0) {
+      // 上传第一张图作为封面（thumb）
+      try {
+        const thumbResult = await this.uploadWechatMedia(accessToken, imageUrls[0], 'thumb')
+        thumbMediaId = thumbResult.media_id
+        console.log(`[微信发布] 封面上传成功, thumb_media_id: ${thumbMediaId}`)
+      } catch (err) {
+        console.error('[微信发布] 封面上传失败:', err.message)
+        // 封面失败不阻断，继续发布
+      }
+
+      // 上传所有图片到微信素材库，替换 content 中的图片 URL
+      for (let i = 0; i < imageUrls.length; i++) {
+        try {
+          const imgResult = await this.uploadWechatMedia(accessToken, imageUrls[i], 'image')
+          if (imgResult.url) {
+            // 替换 content 中的图片 URL 为微信素材 URL
+            processedContent = processedContent.replace(imageUrls[i], imgResult.url)
+            console.log(`[微信发布] 图片${i + 1}上传成功, 微信URL: ${imgResult.url.substring(0, 80)}`)
+          }
+        } catch (err) {
+          console.error(`[微信发布] 图片${i + 1}上传失败:`, err.message)
+        }
+      }
+    }
+
+    // 4. 处理 HTML 内容
+    // 将 Markdown 格式内容转换为微信兼容的 HTML
+    processedContent = this.convertToWechatHtml(processedContent)
+
+    // 5. 调用新建草稿接口
+    const draftUrl = `https://api.weixin.qq.com/cgi-bin/draft/add?access_token=${accessToken}`
+    const draftBody = {
+      articles: [{
+        title: title || '无标题',
+        author: '',
+        digest: digest || title || '',
+        content: processedContent,
+        thumb_media_id: thumbMediaId,
+        need_open_comment: 0,
+        only_fans_can_comment: 0,
+      }]
+    }
+
+    const draftRes = await fetch(draftUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draftBody),
+    })
+    const draftData = await draftRes.json()
+
+    if (draftData.errcode && draftData.errcode !== 0) {
+      console.error('[微信发布] 创建草稿失败:', draftData)
+      throw new Error(`创建草稿失败: ${draftData.errmsg} (errcode: ${draftData.errcode})`)
+    }
+
+    const mediaId = draftData.media_id
+    console.log(`[微信发布] 草稿创建成功, media_id: ${mediaId}`)
+
+    return {
+      mediaId,
+      thumbMediaId,
+      message: '已成功发布到公众号草稿箱',
+    }
+  }
+
+  /**
+   * 上传图片到微信素材库
+   */
+  private async uploadWechatMedia(accessToken: string, imageUrl: string, type: 'thumb' | 'image') {
+    // 1. 下载图片
+    console.log(`[微信发布] 下载图片: ${imageUrl.substring(0, 80)}`)
+    const imgRes = await fetch(imageUrl)
+    if (!imgRes.ok) {
+      throw new Error(`下载图片失败: HTTP ${imgRes.status}`)
+    }
+    const imgBuffer = await imgRes.arrayBuffer()
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+
+    // 2. 上传到微信
+    const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=${type}`
+    const filename = type === 'thumb' ? 'thumb.jpg' : 'image.jpg'
+
+    const formData = new FormData()
+    const blob = new Blob([imgBuffer], { type: contentType })
+    formData.append('media', blob, filename)
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    })
+    const uploadData = await uploadRes.json()
+
+    if (uploadData.errcode) {
+      throw new Error(`上传素材失败: ${uploadData.errmsg}`)
+    }
+
+    return uploadData
+  }
+
+  /**
+   * 将 Markdown/文本内容转换为微信兼容的 HTML
+   * 微信公众号编辑器支持有限的 HTML 标签
+   */
+  private convertToWechatHtml(text: string): string {
+    if (!text) return ''
+
+    let html = text
+
+    // 处理标题 (# ## ###)
+    html = html.replace(/^### (.+)$/gm, '<h3 style="font-size:16px;font-weight:bold;margin:20px 0 10px;color:#333">$1</h3>')
+    html = html.replace(/^## (.+)$/gm, '<h2 style="font-size:18px;font-weight:bold;margin:24px 0 12px;color:#333">$1</h2>')
+    html = html.replace(/^# (.+)$/gm, '<h1 style="font-size:22px;font-weight:bold;margin:28px 0 14px;color:#333">$1</h1>')
+
+    // 处理加粗 (**text**)
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:bold;color:#333">$1</strong>')
+
+    // 处理斜体 (*text*)
+    html = html.replace(/\*(.+?)\*/g, '<em style="font-style:italic">$1</em>')
+
+    // 处理无序列表 (- item)
+    html = html.replace(/^- (.+)$/gm, '<p style="padding-left:20px;margin:6px 0;color:#555">• $1</p>')
+
+    // 处理有序列表 (1. item)
+    html = html.replace(/^\d+\. (.+)$/gm, '<p style="padding-left:20px;margin:6px 0;color:#555">$1</p>')
+
+    // 处理分割线 (---)
+    html = html.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #eee;margin:20px 0"/>')
+
+    // 处理段落（连续换行）
+    html = html.replace(/\n\n/g, '</p><p style="margin:12px 0;line-height:1.8;color:#555">')
+    html = html.replace(/\n/g, '<br/>')
+
+    // 包裹在容器中
+    html = `<section style="padding:10px;font-size:15px;line-height:1.8;color:#555"><p style="margin:12px 0;line-height:1.8;color:#555">${html}</p></section>`
+
+    // 清理残留的 markdown 标记
+    html = html.replace(/\[IMG_\d+\]/g, '')
+    html = html.replace(/\[IMG\d+\]/g, '')
+
+    return html
+  }
 }

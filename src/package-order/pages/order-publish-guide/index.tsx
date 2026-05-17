@@ -175,30 +175,31 @@ export default function OrderPublishGuide() {
     }
 
     try {
-      const statusIdentifier = requestId || orderId
-      if (!statusIdentifier) {
-        setLoading(false)
-        return
-      }
+      // 直接调用分身账号 API 获取绑定状态
       const res = await Network.request({
-        url: `/api/order-processing/status/${statusIdentifier}`
+        url: `/api/avatar/${avatarId}/accounts`
       })
       
       const resData = res.data as any
-      if (resData?.code === 200 && resData?.data) {
-        if (resData.data.avatarId && !avatarId) {
-          setAvatarId(resData.data.avatarId)
-        }
-        if (Array.isArray(resData.data.avatarAccounts)) {
-          setAvatarAccounts(resData.data.avatarAccounts)
-        }
+      console.log('[发布引导] 获取分身账号:', resData?.code, resData?.data?.length)
+      if (resData?.code === 200 && Array.isArray(resData.data)) {
+        // 将后端返回的账号数据映射为前端格式
+        const accounts: AvatarAccount[] = resData.data.map((a: any) => ({
+          id: a.id,
+          platform: a.platform || a.platformKey,
+          account_name: a.accountName || a.account_name || '',
+          account_url: a.accountUrl || a.account_url || '',
+          appid: a.appid || '',
+          appkey: a.appkey || '',
+        }))
+        setAvatarAccounts(accounts)
       }
     } catch (error) {
       console.error('获取分身账号信息失败:', error)
     } finally {
       setLoading(false)
     }
-  }, [avatarId, orderId, requestId])
+  }, [avatarId])
 
   // 获取分身绑定的账号信息
   useEffect(() => {
@@ -231,7 +232,12 @@ export default function OrderPublishGuide() {
     if (!config || !config.requiresBinding) {
       return { required: false, bound: true }
     }
-    const account = avatarAccounts.find(a => a.platform === platform)
+    // 规范化匹配：wechat/wechat_mp/wechat_official 都应该匹配
+    const canonical = canonicalizePlatform(platform) as CanonicalPlatformKey
+    const account = avatarAccounts.find(a => {
+      const aCanonical = canonicalizePlatform(a.platform) as CanonicalPlatformKey
+      return aCanonical === canonical
+    })
     return { required: true, bound: !!account, account }
   }
 
@@ -297,22 +303,71 @@ export default function OrderPublishGuide() {
   }
 
   // 处理微信公众号
-  const handleOpenWechatMp = (account?: AvatarAccount) => {
-    if (account?.account_url) {
-      Taro.showModal({
-        title: '前往公众号后台',
-        content: `即将打开：${account.account_name}\n\n请在打开的页面中发布内容`,
-        confirmText: '打开',
-        cancelText: '取消'
-      })
-    } else {
+  const handleOpenWechatMp = async (account?: AvatarAccount) => {
+    if (!account) {
       Taro.showModal({
         title: '发布到公众号',
         content: '请前往微信公众平台 (mp.weixin.qq.com) 登录并发布内容',
         confirmText: '知道了',
         showCancel: false
       })
+      return
     }
+
+    // 有绑定账号，直接发布到草稿箱
+    Taro.showModal({
+      title: '发布到公众号草稿箱',
+      content: `将发布到「${account.account_name || '公众号'}」的草稿箱\n\n发布后可在微信公众平台草稿箱中编辑和群发`,
+      confirmText: '确认发布',
+      cancelText: '取消',
+      success: async (res) => {
+        if (res.confirm) {
+          setPublishing(true)
+          Taro.showLoading({ title: '发布中...' })
+          try {
+            const result = await Network.request({
+              url: '/api/avatar/publish/wechat-draft',
+              method: 'POST',
+              data: {
+                accountId: account.id,
+                title: title || '无标题',
+                content: content,
+                imageUrls: images,
+                digest: title,
+              }
+            })
+            Taro.hideLoading()
+            const resData = result.data as any
+            console.log('[发布引导] 公众号草稿发布结果:', resData)
+            if (resData?.code === 200 && resData?.data) {
+              Taro.showModal({
+                title: '发布成功',
+                content: `已成功发布到公众号草稿箱！\n\n请前往微信公众平台 → 草稿箱 中查看、编辑和群发`,
+                confirmText: '我知道了',
+                showCancel: false,
+              })
+            } else {
+              Taro.showModal({
+                title: '发布失败',
+                content: resData?.msg || '请检查公众号 AppID 和 AppSecret 是否正确',
+                confirmText: '知道了',
+                showCancel: false,
+              })
+            }
+          } catch (error: any) {
+            Taro.hideLoading()
+            Taro.showModal({
+              title: '发布失败',
+              content: error.message || '网络错误，请重试',
+              confirmText: '知道了',
+              showCancel: false,
+            })
+          } finally {
+            setPublishing(false)
+          }
+        }
+      }
+    })
   }
 
   // 完成发布
