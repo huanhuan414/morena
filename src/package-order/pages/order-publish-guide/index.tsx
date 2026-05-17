@@ -148,6 +148,8 @@ export default function OrderPublishGuide() {
         }
       }
       fetchContentById()
+      // URL 参数中的 orderId 作为回退
+      if (params.orderId) setOrderId(params.orderId)
       return
     }
 

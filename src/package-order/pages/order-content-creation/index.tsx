@@ -255,37 +255,15 @@ export default function OrderContentCreation() {
   }
 
   const handlePublish = () => {
-    const content = processingData?.generatedContent
-    if (!content) {
+    const requestId = processingData?.requestId || ''
+    const publishOrderId = processingData?.orderId || orderInfo?.id || orderId
+    if (!requestId) {
       Taro.showToast({ title: '暂无可发布内容', icon: 'none' })
       return
     }
-    const targetPlatforms = content.platforms?.length
-      ? canonicalizePlatforms(content.platforms)
-      : orderInfo?.platforms?.length
-        ? canonicalizePlatforms(orderInfo.platforms)
-        : ['wechat_channel']
-    const title = orderInfo?.title || processingData?.orderTitle || '内容发布'
-    const requestId = processingData?.requestId || ''
-    const avatarId = processingData?.avatarId || ''
-    const images = content.images || []
-    const videos = content.videos || []
-    const contentType = orderInfo?.contentType || 'image_text'
-
-    const query = [
-      `platforms=${encodeURIComponent(targetPlatforms.join(','))}`,
-      `content=${encodeURIComponent(content.content || '')}`,
-      `title=${encodeURIComponent(title)}`,
-      `images=${encodeURIComponent(images.join(','))}`,
-      `contentType=${encodeURIComponent(contentType === 'video' ? '视频' : '图文')}`,
-      `orderId=${encodeURIComponent(orderId)}`,
-      `requestId=${encodeURIComponent(requestId)}`,
-      `avatarId=${encodeURIComponent(avatarId)}`,
-      ...(videos.length > 0 ? [`videos=${encodeURIComponent(videos.join(','))}`] : []),
-    ].join('&')
-
+    // 通过 requestId 从后端获取完整数据，避免 URL 参数过长截断
     Taro.navigateTo({
-      url: `/package-order/pages/order-publish-guide/index?${query}`
+      url: `/package-order/pages/order-publish-guide/index?contentId=${encodeURIComponent(requestId)}&orderId=${encodeURIComponent(publishOrderId)}`
     })
   }
 

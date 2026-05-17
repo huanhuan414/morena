@@ -1,5 +1,4 @@
 import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common'
-import { Config, LLMClient, Message } from 'coze-coding-dev-sdk'
 import { getMySQLClient } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
@@ -12,10 +11,14 @@ import {
   detectSkillFromOrder,
 } from './content-strategy'
 
+// 火山引擎豆包 ARK API 直连配置（与 AiService 一致）
+const ARK_API_KEY = '0a6405d5-b7ae-4afa-88e3-c707ae379a47'
+const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3'
+const ARK_MODEL = 'doubao-seed-2-0-pro-260215'
+
 @Injectable()
 export class ContentGenerationService implements OnModuleInit {
   private readonly logger = new Logger(ContentGenerationService.name)
-  private readonly llmClient: LLMClient
   // 超时阈值：10分钟（毫秒）
   private readonly GENERATION_TIMEOUT_MS = 10 * 60 * 1000
 
@@ -33,13 +36,60 @@ export class ContentGenerationService implements OnModuleInit {
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService
   ) {
-    const config = new Config({
-      apiKey: process.env.COZE_WORKLOAD_IDENTITY_API_KEY,
-      baseUrl: process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn',
+    this.logger.log('ContentGenerationService 初始化，使用 ARK API 直连')
+  }
+
+  /**
+   * 统一 LLM 调用方法：直接调用火山引擎 ARK Responses API（豆包大模型）
+   * 替代 coze-coding-dev-sdk 的 LLMClient
+   */
+  private async invokeLlm(messages: { role: string; content: string }[]): Promise<string> {
+    const input = messages.map(m => ({
+      role: m.role,
+      content: [{ type: 'input_text', text: m.content }],
+    }))
+
+    this.logger.log(`[ARK] 调用 LLM, messages=${messages.length}条`)
+
+    const response = await fetch(`${ARK_BASE_URL}/responses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ARK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: ARK_MODEL,
+        input,
+      }),
     })
-    this.logger.log(`[Config] apiKey存在: ${!!process.env.COZE_WORKLOAD_IDENTITY_API_KEY}`)
-    this.logger.log(`[Config] baseUrl: ${process.env.COZE_INTEGRATION_BASE_URL || 'https://api.coze.cn'}`)
-    this.llmClient = new LLMClient(config)
+
+    if (!response.ok) {
+      const errText = await response.text()
+      this.logger.error(`[ARK] API 请求失败: status=${response.status}, body=${errText.slice(0, 200)}`)
+      throw new Error(`ARK API 请求失败: ${response.status}`)
+    }
+
+    const result = await response.json() as any
+    const output = result?.output || []
+    let fullContent = ''
+
+    for (const item of output) {
+      if (item.type === 'message' && item.role === 'assistant') {
+        const content = item.content || []
+        for (const c of content) {
+          if (c.type === 'output_text' && c.text) {
+            fullContent += c.text
+          }
+        }
+      }
+    }
+
+    if (!fullContent) {
+      throw new Error('模型返回内容为空')
+    }
+
+    this.logger.log(`[ARK] LLM 调用成功, 返回内容长度: ${fullContent.length}`)
+    return fullContent
   }
 
   /**
@@ -480,8 +530,8 @@ ${input.orderDescription}
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages as Message[])
-      return response?.content || ''
+      const response = await this.invokeLlm(messages)
+      return response || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
       return `## ${input.orderTitle}\n\n${input.orderDescription}\n\n[IMG_1]`
@@ -685,8 +735,8 @@ ${input.orderDescription}
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages as Message[])
-      return response?.content || ''
+      const response = await this.invokeLlm(messages)
+      return response || ''
     } catch (err: any) {
       this.logger.warn(`LLM调用失败: ${err.message}`)
       return `${input.orderTitle}\n\n${input.orderDescription}`
@@ -855,8 +905,8 @@ ${input.orderDescription}
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `请从以下视频脚本中提取核心视觉画面描述：\n\n${videoScript.substring(0, 2000)}` }
       ]
-      const response = await this.llmClient.invoke(messages as Message[])
-      const prompt = response?.content || ''
+      const response = await this.invokeLlm(messages)
+      const prompt = response || ''
       // 限制 prompt 长度，Seedance 对过长 prompt 效果不好
       return prompt.substring(0, 500)
     } catch (err: any) {
@@ -946,8 +996,8 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
         messages.push({ role: 'system', content: systemPrompt })
       }
       messages.push({ role: 'user', content: prompt })
-      const response = await this.llmClient.invoke(messages as Message[])
-      return response?.content || ''
+      const response = await this.invokeLlm(messages)
+      return response || ''
     } catch (err: any) {
       this.logger.warn(`视频脚本LLM调用失败: ${err.message}`)
       return ''
@@ -1138,13 +1188,13 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
 
 中文关键词：`
 
-      const response = await this.llmClient.invoke(
-        [{ role: 'user', content: llmPrompt }] as Message[]
+      const keywords = await this.invokeLlm(
+        [{ role: 'user', content: llmPrompt }]
       )
-      const keywords = response?.content?.trim() || ''
-      this.logger.log(`LLM关键词提取结果: ${keywords}`)
-      if (keywords) {
-        return keywords
+      const trimmedKeywords = keywords?.trim() || ''
+      this.logger.log(`LLM关键词提取结果: ${trimmedKeywords}`)
+      if (trimmedKeywords) {
+        return trimmedKeywords
       }
     } catch (err: any) {
       this.logger.warn(`LLM关键词提取失败: ${err.message}`)
