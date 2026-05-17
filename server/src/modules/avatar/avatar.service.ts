@@ -967,6 +967,18 @@ export class AvatarService {
       }
     }
 
+    // 4. 如果没有封面图，生成一张默认封面并上传
+    if (!thumbMediaId) {
+      try {
+        console.log('[微信发布] 无封面图，生成默认封面')
+        const defaultThumb = await this.generateDefaultThumb(accessToken, title)
+        thumbMediaId = defaultThumb
+        console.log(`[微信发布] 默认封面上传成功, thumb_media_id: ${thumbMediaId}`)
+      } catch (err) {
+        console.error('[微信发布] 默认封面生成失败:', err.message)
+      }
+    }
+
     // 4. 处理 HTML 内容
     // 将 Markdown 格式内容转换为微信兼容的 HTML
     processedContent = this.convertToWechatHtml(processedContent)
@@ -1082,5 +1094,74 @@ export class AvatarService {
     html = html.replace(/\[IMG\d+\]/g, '')
 
     return html
+  }
+
+  /**
+   * 生成默认封面图并上传到微信
+   * 使用图片生成API创建一个简单的封面图
+   */
+  private async generateDefaultThumb(accessToken: string, title: string): Promise<string> {
+    // 方案1: 使用图片生成API创建封面
+    try {
+      const imageApiKey = process.env.IMAGE_API_KEY || 'sk-z1CFQbVdKI6x7ciJLwQkp1vPJPp8P9lQWW0jJGQWUdkSuQsK'
+      const imageApiUrl = process.env.IMAGE_API_URL || 'https://api.aaigc.top/v1/images/generations'
+      const imageModel = process.env.IMAGE_MODEL || 'gpt-image-2-all'
+
+      const prompt = `微信公众号文章封面图，简约大气的设计风格，渐变蓝色背景，中央有装饰性几何图形，无文字，尺寸900x383像素，专业杂志风格`
+
+      console.log(`[微信发布] 使用图片API生成封面, prompt: ${prompt.substring(0, 80)}`)
+
+      const imgRes = await fetch(imageApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${imageApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: imageModel,
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+        }),
+      })
+
+      const imgData = await imgRes.json()
+      if (imgData.data && imgData.data[0]) {
+        const imageUrl = imgData.data[0].url || (imgData.data[0].b64_json ? `data:image/png;base64,${imgData.data[0].b64_json}` : null)
+        if (imageUrl) {
+          // 下载并上传到微信
+          const uploadResult = await this.uploadWechatMedia(accessToken, imageUrl, 'thumb')
+          return uploadResult.media_id
+        }
+      }
+    } catch (err) {
+      console.error('[微信发布] 图片API生成封面失败:', err.message)
+    }
+
+    // 方案2: 创建一个最简单的1x1像素PNG并上传
+    try {
+      // 最小合法PNG文件 (1x1 透明像素)
+      const minimalPng = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64'
+      )
+      const blob = new Blob([minimalPng], { type: 'image/png' })
+      const formData = new FormData()
+      formData.append('media', blob, 'thumb.png')
+
+      const uploadUrl = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=thumb`
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      })
+      const uploadData = await uploadRes.json()
+      if (uploadData.media_id) {
+        return uploadData.media_id
+      }
+      throw new Error(uploadData.errmsg || '上传默认封面失败')
+    } catch (err) {
+      console.error('[微信发布] 上传默认封面失败:', err.message)
+      throw err
+    }
   }
 }

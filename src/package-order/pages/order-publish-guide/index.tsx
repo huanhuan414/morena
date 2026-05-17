@@ -234,10 +234,13 @@ export default function OrderPublishGuide() {
     }
     // 规范化匹配：wechat/wechat_mp/wechat_official 都应该匹配
     const canonical = canonicalizePlatform(platform) as CanonicalPlatformKey
+    console.log('[发布引导] 绑定检查:', { platform, canonical, accountsCount: avatarAccounts.length, accountPlatforms: avatarAccounts.map(a => a.platform) })
     const account = avatarAccounts.find(a => {
       const aCanonical = canonicalizePlatform(a.platform) as CanonicalPlatformKey
+      console.log('[发布引导] 匹配:', a.platform, '→', aCanonical, '===', canonical, '?', aCanonical === canonical)
       return aCanonical === canonical
     })
+    console.log('[发布引导] 匹配结果:', { bound: !!account, accountName: account?.account_name })
     return { required: true, bound: !!account, account }
   }
 
@@ -250,10 +253,15 @@ export default function OrderPublishGuide() {
 
   // 处理打开APP/发布
   const handleOpenApp = (platform: string) => {
+    console.log('[发布引导] handleOpenApp:', { platform, avatarAccountsCount: avatarAccounts.length })
     const info = getValidatedPlatformMeta(platform)
-    if (!info) return
+    if (!info) {
+      console.log('[发布引导] 平台信息未找到:', platform)
+      return
+    }
 
     const bindingStatus = getPlatformBindingStatus(platform)
+    console.log('[发布引导] 绑定状态:', bindingStatus)
     
     if (bindingStatus.required && !bindingStatus.bound) {
       Taro.showModal({
@@ -304,7 +312,9 @@ export default function OrderPublishGuide() {
 
   // 处理微信公众号
   const handleOpenWechatMp = async (account?: AvatarAccount) => {
+    console.log('[发布引导] handleOpenWechatMp called, account:', JSON.stringify(account))
     if (!account) {
+      console.log('[发布引导] 无绑定账号，显示手动发布提示')
       Taro.showModal({
         title: '发布到公众号',
         content: '请前往微信公众平台 (mp.weixin.qq.com) 登录并发布内容',
@@ -315,59 +325,64 @@ export default function OrderPublishGuide() {
     }
 
     // 有绑定账号，直接发布到草稿箱
-    Taro.showModal({
-      title: '发布到公众号草稿箱',
-      content: `将发布到「${account.account_name || '公众号'}」的草稿箱\n\n发布后可在微信公众平台草稿箱中编辑和群发`,
-      confirmText: '确认发布',
-      cancelText: '取消',
-      success: async (res) => {
-        if (res.confirm) {
-          setPublishing(true)
-          Taro.showLoading({ title: '发布中...' })
-          try {
-            const result = await Network.request({
-              url: '/api/avatar/publish/wechat-draft',
-              method: 'POST',
-              data: {
-                accountId: account.id,
-                title: title || '无标题',
-                content: content,
-                imageUrls: images,
-                digest: title,
-              }
-            })
-            Taro.hideLoading()
-            const resData = result.data as any
-            console.log('[发布引导] 公众号草稿发布结果:', resData)
-            if (resData?.code === 200 && resData?.data) {
-              Taro.showModal({
-                title: '发布成功',
-                content: `已成功发布到公众号草稿箱！\n\n请前往微信公众平台 → 草稿箱 中查看、编辑和群发`,
-                confirmText: '我知道了',
-                showCancel: false,
-              })
-            } else {
-              Taro.showModal({
-                title: '发布失败',
-                content: resData?.msg || '请检查公众号 AppID 和 AppSecret 是否正确',
-                confirmText: '知道了',
-                showCancel: false,
-              })
-            }
-          } catch (error: any) {
-            Taro.hideLoading()
-            Taro.showModal({
-              title: '发布失败',
-              content: error.message || '网络错误，请重试',
-              confirmText: '知道了',
-              showCancel: false,
-            })
-          } finally {
-            setPublishing(false)
+    try {
+      const modalRes = await Taro.showModal({
+        title: '发布到公众号草稿箱',
+        content: `将发布到「${account.account_name || '公众号'}」的草稿箱\n\n发布后可在微信公众平台草稿箱中编辑和群发`,
+        confirmText: '确认发布',
+        cancelText: '取消',
+      })
+      if (!modalRes.confirm) return
+
+      setPublishing(true)
+      Taro.showLoading({ title: '发布中...' })
+      try {
+        console.log('[发布引导] 开始调用草稿箱API, accountId:', account.id, 'title:', title?.substring(0, 30), 'images:', images.length)
+        const result = await Network.request({
+          url: '/api/avatar/publish/wechat-draft',
+          method: 'POST',
+          data: {
+            accountId: account.id,
+            title: title || '无标题',
+            content: content,
+            imageUrls: images,
+            digest: title,
           }
+        })
+        Taro.hideLoading()
+        const resData = result.data as any
+        console.log('[发布引导] 公众号草稿发布结果:', resData)
+        if (resData?.code === 200 && resData?.data) {
+          Taro.showModal({
+            title: '发布成功',
+            content: `已成功发布到公众号草稿箱！\n\n请前往微信公众平台 → 草稿箱 中查看、编辑和群发`,
+            confirmText: '我知道了',
+            showCancel: false,
+          })
+        } else {
+          Taro.showModal({
+            title: '发布失败',
+            content: resData?.msg || '请检查公众号 AppID 和 AppSecret 是否正确',
+            confirmText: '知道了',
+            showCancel: false,
+          })
         }
+      } catch (error: any) {
+        Taro.hideLoading()
+        console.error('[发布引导] 草稿箱发布异常:', error)
+        Taro.showModal({
+          title: '发布失败',
+          content: error.message || '网络错误，请重试',
+          confirmText: '知道了',
+          showCancel: false,
+        })
+      } finally {
+        setPublishing(false)
       }
-    })
+    } catch (e) {
+      // showModal 本身失败（不太可能）
+      console.error('[发布引导] showModal失败:', e)
+    }
   }
 
   // 完成发布
