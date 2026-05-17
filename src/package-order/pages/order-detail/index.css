@@ -782,6 +782,9 @@
 .od-avatar-empty { text-align: center; padding: 40rpx 0; color: #9CA3AF; font-size: 26rpx; }
 
 /* ═══════ 分身点击提示 ═══════ */
+.od-av-wrap {
+  transition: background 0.15s;
+}
 .od-av-right {
   display: flex;
   flex-direction: row;
@@ -791,8 +794,10 @@
   gap: 8rpx;
 }
 .od-av-view-hint {
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #EEF2FF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,110 +806,214 @@
 /* ═══════ 分身详情弹窗 ═══════ */
 .od-dialog-content {
   overflow: hidden;
+  border-radius: 24rpx !important;
+  border: none !important;
 }
 .od-dialog-body {
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  height: 75vh;
+  overflow: hidden;
 }
+
+/* 弹窗头部 */
 .od-dialog-header {
-  padding: 28rpx 28rpx 0 28rpx;
-  border-bottom: none;
+  position: relative;
+  padding: 32rpx 32rpx 28rpx 32rpx;
+  flex-shrink: 0;
+  overflow: hidden;
 }
-.od-dialog-avatar-row {
+.od-dialog-header-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #EEF2FF, #F5F3FF, #FDF4FF);
+}
+.od-dialog-header-content {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 .od-dialog-avatar {
-  width: 72rpx;
-  height: 72rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   flex-shrink: 0;
+  border: 4rpx solid rgba(99, 102, 241, 0.2);
 }
 .od-dialog-avatar-ph {
-  width: 72rpx;
-  height: 72rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
-  background: #EEF2FF;
+  background: linear-gradient(135deg, #C7D2FE, #A5B4FC);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border: 4rpx solid rgba(99, 102, 241, 0.2);
 }
 .od-dialog-avatar-ph-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #6366F1;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #4338CA;
 }
 .od-dialog-avatar-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 .od-dialog-title {
-  font-size: 30rpx !important;
-  font-weight: 600;
+  font-size: 32rpx;
+  font-weight: 700;
   color: #1F2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.od-dialog-desc {
-  font-size: 22rpx !important;
-  color: #9CA3AF;
-  margin-top: 4rpx;
-}
-
-/* 弹窗 Tabs */
-.od-dialog-tabs-wrap {
-  flex: 1;
-  min-height: 0;
-  padding: 0 28rpx;
-}
-.od-dialog-tabs {
-  width: 100%;
-}
-.od-dialog-tabs-list {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  margin-bottom: 16rpx;
-}
-.od-dialog-tab-trigger {
-  flex: 1;
-  text-align: center;
-  font-size: 24rpx;
-}
-.od-dialog-tab-content {
-  flex: 1;
-  min-height: 0;
-}
-
-/* 弹窗 Section */
-.od-dialog-section {
-  margin-bottom: 24rpx;
-}
-.od-dialog-section:last-child {
-  margin-bottom: 0;
-}
-.od-dialog-section-header {
+.od-dialog-meta-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8rpx;
-  margin-bottom: 12rpx;
+  gap: 10rpx;
 }
-.od-dialog-section-label {
-  font-size: 24rpx;
-  font-weight: 600;
+.od-dialog-type-tag {
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(99, 102, 241, 0.1);
+}
+.od-dialog-type-tag-text {
+  font-size: 20rpx;
+  font-weight: 500;
   color: #6366F1;
+}
+.od-dialog-status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.od-dialog-status-text {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+/* 弹窗主体 */
+.od-dialog-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 自定义 Tab 栏 */
+.od-dialog-tabs-bar {
+  display: flex;
+  flex-direction: row;
+  padding: 0 32rpx;
+  margin-bottom: 4rpx;
+  flex-shrink: 0;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+.od-dialog-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 20rpx 0 16rpx 0;
+  position: relative;
+  cursor: pointer;
+}
+.od-dialog-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #6366F1;
+}
+.od-dialog-tab-text {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.od-dialog-tab-badge {
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 16rpx;
+  background: #6366F1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.od-dialog-tab-badge-text {
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* 滚动区域 */
+.od-dialog-scroll {
+  flex: 1;
+  min-height: 0;
+}
+.od-dialog-content-inner {
+  padding: 24rpx 32rpx 32rpx 32rpx;
+}
+
+/* 内容卡片 */
+.od-dialog-card {
+  background: #FFFFFF;
+  border: 1rpx solid #F3F4F6;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+.od-dialog-card:last-child {
+  margin-bottom: 0;
+}
+.od-dialog-card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+.od-dialog-card-icon-wrap {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-dialog-card-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #374151;
+  flex: 1;
+}
+.od-dialog-card-count {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  flex-shrink: 0;
 }
 
 /* Markdown 内容区 */
 .od-dialog-markdown-body {
-  background: #F9FAFB;
+  background: #FAFAFA;
   border-radius: 12rpx;
-  padding: 16rpx;
-  overflow: hidden;
+  padding: 20rpx;
+  border: 1rpx solid #F5F5F5;
 }
 
 /* 图片网格 */
@@ -914,11 +1023,17 @@
   flex-wrap: wrap;
   gap: 12rpx;
 }
-.od-dialog-img-thumb {
-  width: 180rpx;
-  height: 180rpx;
+.od-dialog-img-wrap {
+  width: calc((100% - 24rpx) / 3);
+  aspect-ratio: 1;
   border-radius: 12rpx;
-  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+.od-dialog-img-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 12rpx;
 }
 
 /* 视频卡片 */
@@ -928,106 +1043,148 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 280rpx;
+  aspect-ratio: 16/9;
   background: linear-gradient(135deg, #1F2937, #111827);
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   position: relative;
+  overflow: hidden;
+}
+.od-dialog-video-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.3) 100%);
 }
 .od-dialog-video-play {
-  width: 80rpx;
-  height: 80rpx;
+  width: 88rpx;
+  height: 88rpx;
   border-radius: 50%;
   background: rgba(99, 102, 241, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12rpx;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  margin-bottom: 16rpx;
 }
 .od-dialog-video-play-icon {
-  font-size: 32rpx;
+  font-size: 36rpx;
   color: #fff;
-  margin-left: 4rpx;
+  margin-left: 6rpx;
 }
 .od-dialog-video-label {
   font-size: 22rpx;
   color: rgba(255,255,255,0.7);
+  position: relative;
+  z-index: 1;
 }
 
-/* 反馈平台 */
-.od-dialog-feedback-platform {
-  background: #F9FAFB;
+/* 反馈数据 */
+.od-dialog-feedback-data {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  background: #FAFAFA;
   border-radius: 12rpx;
-  padding: 16rpx;
-  margin-bottom: 16rpx;
+  padding: 4rpx 0;
+  border: 1rpx solid #F5F5F5;
 }
-.od-dialog-feedback-platform:last-child {
-  margin-bottom: 0;
-}
-.od-dialog-feedback-platform-header {
+.od-dialog-feedback-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8rpx;
-  margin-bottom: 12rpx;
-}
-.od-dialog-feedback-platform-dot {
-  width: 12rpx;
-  height: 12rpx;
-  border-radius: 50%;
-  background: #6366F1;
-}
-.od-dialog-feedback-platform-name {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #374151;
-}
-.od-dialog-feedback-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 8rpx 0;
-  gap: 8rpx;
+  padding: 14rpx 20rpx;
+  gap: 12rpx;
 }
 .od-dialog-feedback-key {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #9CA3AF;
   flex-shrink: 0;
   min-width: 100rpx;
 }
 .od-dialog-feedback-val {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #374151;
   flex: 1;
   min-width: 0;
   word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .od-dialog-feedback-link {
   color: #6366F1;
+  text-decoration: underline;
 }
-.od-dialog-feedback-images {
-  margin-top: 8rpx;
-  padding-left: 24rpx;
+.od-dialog-feedback-num {
+  font-weight: 600;
+  color: #1F2937;
+  font-variant-numeric: tabular-nums;
+}
+.od-dialog-feedback-screenshots {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #F3F4F6;
+}
+.od-dialog-feedback-ss-label {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  margin-bottom: 12rpx;
 }
 
 /* 弹窗空态 */
 .od-dialog-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 60rpx 0;
 }
-.od-dialog-empty-text {
-  font-size: 26rpx;
-  color: #9CA3AF;
-}
-.od-dialog-no-content {
+.od-dialog-empty-icon-wrap {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #F9FAFB;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 20rpx;
+}
+.od-dialog-empty-text {
+  font-size: 28rpx;
+  color: #6B7280;
+  font-weight: 500;
+}
+.od-dialog-empty-sub {
+  font-size: 22rpx;
+  color: #D1D5DB;
+  margin-top: 8rpx;
+}
+.od-dialog-no-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
   padding: 80rpx 40rpx;
 }
-.od-dialog-no-content-text {
-  font-size: 26rpx;
+.od-dialog-no-content-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: #F9FAFB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+.od-dialog-no-content-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8rpx;
+}
+.od-dialog-no-content-desc {
+  font-size: 24rpx;
   color: #9CA3AF;
   text-align: center;
 }

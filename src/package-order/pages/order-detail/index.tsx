@@ -6,11 +6,10 @@ import {
   ArrowLeft, Loader, Users, CircleCheckBig, CircleX, Clock,
   CreditCard, Send, Trash2,
   FileText, CircleDot, Camera, Video, Eye, Image as ImageIcon,
-  ExternalLink, ThumbsUp, MessageCircle, ChartBarIncreasing, Calendar
+  ExternalLink, ThumbsUp, MessageCircle, Calendar
 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import './index.css'
 
@@ -497,7 +496,10 @@ export default function OrderDetailPage() {
 
         {/* ===== 分身详情弹窗 ===== */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="od-dialog-content" style={{ maxWidth: '680rpx', width: 'calc(100vw - 48rpx)', maxHeight: '80vh', padding: 0 }}>
+          <DialogContent
+            className="od-dialog-content"
+            style={{ width: 'calc(100vw - 48rpx)', maxWidth: '680rpx', height: '75vh', padding: 0, gap: 0 }}
+          >
             {selectedAvatar && (() => {
               const av = selectedAvatar
               const avatarStatus = av.status || 'pending'
@@ -507,12 +509,16 @@ export default function OrderDetailPage() {
               const publishFeedback = av.publishFeedback || {}
               const hasFeedback = publishFeedback && Object.keys(publishFeedback).length > 0
               const contentTypeLabel = av.contentType === 'image_text' || av.contentType === 'image' ? '图文' : av.contentType === 'video' ? '视频' : av.contentType === 'text' ? '纯文案' : av.contentType || '内容'
+              const avatarStatusCfg = STATUS_CONFIG[avatarStatus] || { label: avatarStatus, color: '#9CA3AF', bgColor: '#F9FAFB' }
+              const previewCount = (av.content ? 1 : 0) + avatarImages.length + avatarVideoUrls.length
+              const feedbackPlatformCount = hasFeedback ? Object.keys(publishFeedback).length : 0
 
               return (
                 <View className="od-dialog-body">
-                  {/* 弹窗头部 */}
-                  <DialogHeader className="od-dialog-header">
-                    <View className="od-dialog-avatar-row">
+                  {/* 弹窗头部 - 渐变背景 */}
+                  <View className="od-dialog-header">
+                    <View className="od-dialog-header-bg" />
+                    <View className="od-dialog-header-content">
                       {av.avatarUrl ? (
                         <Image src={av.avatarUrl} className="od-dialog-avatar" mode="aspectFill" />
                       ) : (
@@ -521,31 +527,64 @@ export default function OrderDetailPage() {
                         </View>
                       )}
                       <View className="od-dialog-avatar-info">
-                        <DialogTitle className="od-dialog-title">{av.avatarName || '分身'}</DialogTitle>
-                        <DialogDescription className="od-dialog-desc">
-                          {contentTypeLabel} · {formatTime(av.contentUpdatedAt || av.createdAt || '')}
-                        </DialogDescription>
+                        <Text className="block od-dialog-title">{av.avatarName || '分身'}</Text>
+                        <View className="od-dialog-meta-row">
+                          <View className="od-dialog-type-tag">
+                            <Text className="block od-dialog-type-tag-text">{contentTypeLabel}</Text>
+                          </View>
+                          <View className="od-dialog-status-dot" style={{ backgroundColor: avatarStatusCfg.color }} />
+                          <Text className="block od-dialog-status-text" style={{ color: avatarStatusCfg.color }}>{avatarStatusCfg.label}</Text>
+                        </View>
                       </View>
                     </View>
-                  </DialogHeader>
+                  </View>
 
                   {hasContent ? (
-                    <View className="od-dialog-tabs-wrap">
-                      <Tabs value={dialogTab} onValueChange={setDialogTab} className="od-dialog-tabs">
-                        <TabsList className="od-dialog-tabs-list">
-                          <TabsTrigger value="content" className="od-dialog-tab-trigger">生成内容</TabsTrigger>
-                          <TabsTrigger value="feedback" className="od-dialog-tab-trigger" >发布反馈</TabsTrigger>
-                        </TabsList>
+                    <View className="od-dialog-main">
+                      {/* Tab 切换栏 */}
+                      <View className="od-dialog-tabs-bar">
+                        <View
+                          className={`od-dialog-tab-item ${dialogTab === 'content' ? 'od-dialog-tab-active' : ''}`}
+                          onClick={() => setDialogTab('content')}
+                        >
+                          <FileText size={14} color={dialogTab === 'content' ? '#6366F1' : '#9CA3AF'} />
+                          <Text className="block od-dialog-tab-text" style={{ color: dialogTab === 'content' ? '#6366F1' : '#6B7280' }}>
+                            生成内容
+                          </Text>
+                          {previewCount > 0 && (
+                            <View className="od-dialog-tab-badge">
+                              <Text className="block od-dialog-tab-badge-text">{previewCount}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View
+                          className={`od-dialog-tab-item ${dialogTab === 'feedback' ? 'od-dialog-tab-active' : ''}`}
+                          onClick={() => setDialogTab('feedback')}
+                        >
+                          <Send size={14} color={dialogTab === 'feedback' ? '#6366F1' : '#9CA3AF'} />
+                          <Text className="block od-dialog-tab-text" style={{ color: dialogTab === 'feedback' ? '#6366F1' : '#6B7280' }}>
+                            发布反馈
+                          </Text>
+                          {feedbackPlatformCount > 0 && (
+                            <View className="od-dialog-tab-badge">
+                              <Text className="block od-dialog-tab-badge-text">{feedbackPlatformCount}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
 
-                        {/* ===== 生成内容 Tab ===== */}
-                        <TabsContent value="content" className="od-dialog-tab-content">
-                          <ScrollView scrollY style={{ maxHeight: '55vh' }}>
+                      {/* 内容区域 */}
+                      <ScrollView scrollY className="od-dialog-scroll">
+                        {dialogTab === 'content' && (
+                          <View className="od-dialog-content-inner">
                             {/* 文案内容 - Markdown 渲染 */}
                             {av.content && (
-                              <View className="od-dialog-section">
-                                <View className="od-dialog-section-header">
-                                  <FileText size={14} color="#6366F1" />
-                                  <Text className="block od-dialog-section-label">生成文案</Text>
+                              <View className="od-dialog-card">
+                                <View className="od-dialog-card-header">
+                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#EEF2FF' }}>
+                                    <FileText size={14} color="#6366F1" />
+                                  </View>
+                                  <Text className="block od-dialog-card-title">生成文案</Text>
                                 </View>
                                 <View className="od-dialog-markdown-body">
                                   <MarkdownRenderer content={av.content} />
@@ -555,22 +594,26 @@ export default function OrderDetailPage() {
 
                             {/* 图片 */}
                             {avatarImages.length > 0 && (
-                              <View className="od-dialog-section">
-                                <View className="od-dialog-section-header">
-                                  <ImageIcon size={14} color="#6366F1" />
-                                  <Text className="block od-dialog-section-label">生成配图 ({avatarImages.length})</Text>
+                              <View className="od-dialog-card">
+                                <View className="od-dialog-card-header">
+                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FEF3C7' }}>
+                                    <ImageIcon size={14} color="#F59E0B" />
+                                  </View>
+                                  <Text className="block od-dialog-card-title">生成配图</Text>
+                                  <Text className="block od-dialog-card-count">{avatarImages.length}张</Text>
                                 </View>
                                 <View className="od-dialog-images-grid">
                                   {avatarImages.map((img: string, imgIdx: number) => (
-                                    <Image
-                                      key={imgIdx}
-                                      src={img}
-                                      className="od-dialog-img-thumb"
-                                      mode="aspectFill"
-                                      onClick={() => {
-                                        Taro.previewImage({ current: img, urls: avatarImages })
-                                      }}
-                                    />
+                                    <View key={imgIdx} className="od-dialog-img-wrap">
+                                      <Image
+                                        src={img}
+                                        className="od-dialog-img-thumb"
+                                        mode="aspectFill"
+                                        onClick={() => {
+                                          Taro.previewImage({ current: img, urls: avatarImages })
+                                        }}
+                                      />
+                                    </View>
                                   ))}
                                 </View>
                               </View>
@@ -578,10 +621,12 @@ export default function OrderDetailPage() {
 
                             {/* 视频 */}
                             {avatarVideoUrls.length > 0 && (
-                              <View className="od-dialog-section">
-                                <View className="od-dialog-section-header">
-                                  <Video size={14} color="#6366F1" />
-                                  <Text className="block od-dialog-section-label">生成视频</Text>
+                              <View className="od-dialog-card">
+                                <View className="od-dialog-card-header">
+                                  <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#FCE7F3' }}>
+                                    <Video size={14} color="#EC4899" />
+                                  </View>
+                                  <Text className="block od-dialog-card-title">生成视频</Text>
                                 </View>
                                 {avatarVideoUrls.map((vUrl: string, vIdx: number) => (
                                   <View
@@ -594,6 +639,7 @@ export default function OrderDetailPage() {
                                       }
                                     }}
                                   >
+                                    <View className="od-dialog-video-overlay" />
                                     <View className="od-dialog-video-play">
                                       <Text className="block od-dialog-video-play-icon">▶</Text>
                                     </View>
@@ -606,94 +652,103 @@ export default function OrderDetailPage() {
                             {/* 无内容提示 */}
                             {!av.content && avatarImages.length === 0 && avatarVideoUrls.length === 0 && (
                               <View className="od-dialog-empty">
+                                <View className="od-dialog-empty-icon-wrap">
+                                  <FileText size={32} color="#D1D5DB" />
+                                </View>
                                 <Text className="block od-dialog-empty-text">暂无生成内容</Text>
+                                <Text className="block od-dialog-empty-sub">内容生成后将在此展示</Text>
                               </View>
                             )}
-                          </ScrollView>
-                        </TabsContent>
+                          </View>
+                        )}
 
-                        {/* ===== 发布反馈 Tab ===== */}
-                        <TabsContent value="feedback" className="od-dialog-tab-content">
-                          <ScrollView scrollY style={{ maxHeight: '55vh' }}>
+                        {dialogTab === 'feedback' && (
+                          <View className="od-dialog-content-inner">
                             {hasFeedback ? (
                               Object.keys(publishFeedback).map(platformKey => {
                                 const pf = publishFeedback[platformKey]
                                 if (!pf || typeof pf !== 'object') return null
+                                const pName = PLATFORM_MAP[platformKey] || platformKey
                                 return (
-                                  <View key={platformKey} className="od-dialog-feedback-platform">
-                                    <View className="od-dialog-feedback-platform-header">
-                                      <View className="od-dialog-feedback-platform-dot" />
-                                      <Text className="block od-dialog-feedback-platform-name">{PLATFORM_MAP[platformKey] || platformKey}</Text>
+                                  <View key={platformKey} className="od-dialog-card">
+                                    <View className="od-dialog-card-header">
+                                      <View className="od-dialog-card-icon-wrap" style={{ backgroundColor: '#ECFDF5' }}>
+                                        <Send size={14} color="#059669" />
+                                      </View>
+                                      <Text className="block od-dialog-card-title">{pName}</Text>
                                     </View>
-                                    {pf.link && (
-                                      <View className="od-dialog-feedback-row">
-                                        <ExternalLink size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">发布链接</Text>
-                                        <Text className="block od-dialog-feedback-val od-dialog-feedback-link">{pf.link}</Text>
-                                      </View>
-                                    )}
-                                    {pf.publishUrl && (
-                                      <View className="od-dialog-feedback-row">
-                                        <ExternalLink size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">发布链接</Text>
-                                        <Text className="block od-dialog-feedback-val od-dialog-feedback-link">{pf.publishUrl}</Text>
-                                      </View>
-                                    )}
-                                    {pf.publishTime && (
-                                      <View className="od-dialog-feedback-row">
-                                        <Calendar size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">发布时间</Text>
-                                        <Text className="block od-dialog-feedback-val">{formatTime(pf.publishTime)}</Text>
-                                      </View>
-                                    )}
-                                    {pf.views !== undefined && (
-                                      <View className="od-dialog-feedback-row">
-                                        <ChartBarIncreasing size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">浏览量</Text>
-                                        <Text className="block od-dialog-feedback-val">{pf.views}</Text>
-                                      </View>
-                                    )}
-                                    {pf.likes !== undefined && (
-                                      <View className="od-dialog-feedback-row">
-                                        <ThumbsUp size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">点赞数</Text>
-                                        <Text className="block od-dialog-feedback-val">{pf.likes}</Text>
-                                      </View>
-                                    )}
-                                    {pf.comments !== undefined && (
-                                      <View className="od-dialog-feedback-row">
-                                        <MessageCircle size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">评论数</Text>
-                                        <Text className="block od-dialog-feedback-val">{pf.comments}</Text>
-                                      </View>
-                                    )}
-                                    {pf.remark && (
-                                      <View className="od-dialog-feedback-row">
-                                        <FileText size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">备注</Text>
-                                        <Text className="block od-dialog-feedback-val">{pf.remark}</Text>
-                                      </View>
-                                    )}
-                                    {/* 反馈中的图片 */}
-                                    {Array.isArray(pf.images) && pf.images.length > 0 && (
-                                      <View className="od-dialog-feedback-row">
-                                        <ImageIcon size={12} color="#9CA3AF" />
-                                        <Text className="block od-dialog-feedback-key">截图</Text>
-                                      </View>
-                                    )}
-                                    {Array.isArray(pf.images) && pf.images.length > 0 && (
-                                      <View className="od-dialog-images-grid od-dialog-feedback-images">
-                                        {pf.images.map((img: string, imgIdx: number) => (
-                                          <Image
-                                            key={imgIdx}
-                                            src={img}
-                                            className="od-dialog-img-thumb"
-                                            mode="aspectFill"
+                                    <View className="od-dialog-feedback-data">
+                                      {(pf.link || pf.publishUrl) && (
+                                        <View className="od-dialog-feedback-item">
+                                          <ExternalLink size={13} color="#6366F1" />
+                                          <Text className="block od-dialog-feedback-key">发布链接</Text>
+                                          <Text
+                                            className="block od-dialog-feedback-val od-dialog-feedback-link"
                                             onClick={() => {
-                                              Taro.previewImage({ current: img, urls: pf.images })
+                                              const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv())
+                                              if (isMiniApp) {
+                                                Taro.setClipboardData({ data: pf.link || pf.publishUrl })
+                                              }
                                             }}
-                                          />
-                                        ))}
+                                          >
+                                            {pf.link || pf.publishUrl}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      {pf.publishTime && (
+                                        <View className="od-dialog-feedback-item">
+                                          <Calendar size={13} color="#9CA3AF" />
+                                          <Text className="block od-dialog-feedback-key">发布时间</Text>
+                                          <Text className="block od-dialog-feedback-val">{formatTime(pf.publishTime)}</Text>
+                                        </View>
+                                      )}
+                                      {pf.views !== undefined && (
+                                        <View className="od-dialog-feedback-item">
+                                          <Eye size={13} color="#3B82F6" />
+                                          <Text className="block od-dialog-feedback-key">浏览量</Text>
+                                          <Text className="block od-dialog-feedback-val od-dialog-feedback-num">{pf.views?.toLocaleString?.() || pf.views}</Text>
+                                        </View>
+                                      )}
+                                      {pf.likes !== undefined && (
+                                        <View className="od-dialog-feedback-item">
+                                          <ThumbsUp size={13} color="#F59E0B" />
+                                          <Text className="block od-dialog-feedback-key">点赞数</Text>
+                                          <Text className="block od-dialog-feedback-val od-dialog-feedback-num">{pf.likes?.toLocaleString?.() || pf.likes}</Text>
+                                        </View>
+                                      )}
+                                      {pf.comments !== undefined && (
+                                        <View className="od-dialog-feedback-item">
+                                          <MessageCircle size={13} color="#10B981" />
+                                          <Text className="block od-dialog-feedback-key">评论数</Text>
+                                          <Text className="block od-dialog-feedback-val od-dialog-feedback-num">{pf.comments?.toLocaleString?.() || pf.comments}</Text>
+                                        </View>
+                                      )}
+                                      {pf.remark && (
+                                        <View className="od-dialog-feedback-item">
+                                          <FileText size={13} color="#9CA3AF" />
+                                          <Text className="block od-dialog-feedback-key">备注</Text>
+                                          <Text className="block od-dialog-feedback-val">{pf.remark}</Text>
+                                        </View>
+                                      )}
+                                    </View>
+                                    {/* 反馈截图 */}
+                                    {Array.isArray(pf.images) && pf.images.length > 0 && (
+                                      <View className="od-dialog-feedback-screenshots">
+                                        <Text className="block od-dialog-feedback-ss-label">发布截图</Text>
+                                        <View className="od-dialog-images-grid">
+                                          {pf.images.map((img: string, imgIdx: number) => (
+                                            <View key={imgIdx} className="od-dialog-img-wrap">
+                                              <Image
+                                                src={img}
+                                                className="od-dialog-img-thumb"
+                                                mode="aspectFill"
+                                                onClick={() => {
+                                                  Taro.previewImage({ current: img, urls: pf.images })
+                                                }}
+                                              />
+                                            </View>
+                                          ))}
+                                        </View>
                                       </View>
                                     )}
                                   </View>
@@ -701,21 +756,39 @@ export default function OrderDetailPage() {
                               })
                             ) : (
                               <View className="od-dialog-empty">
+                                <View className="od-dialog-empty-icon-wrap">
+                                  <Send size={32} color="#D1D5DB" />
+                                </View>
                                 <Text className="block od-dialog-empty-text">暂无发布反馈</Text>
+                                <Text className="block od-dialog-empty-sub">发布后将在此展示反馈数据</Text>
                               </View>
                             )}
-                          </ScrollView>
-                        </TabsContent>
-                      </Tabs>
+                          </View>
+                        )}
+                      </ScrollView>
                     </View>
                   ) : (
                     <View className="od-dialog-no-content">
-                      <Text className="block od-dialog-no-content-text">
-                        {avatarStatus === 'generating' ? '内容正在生成中，请稍后查看...' :
-                         avatarStatus === 'pending' ? '分身尚未接单' :
-                         avatarStatus === 'rejected' ? '分身已拒绝此订单' :
-                         avatarStatus === 'expired' ? '分身接单已过期' :
+                      <View className="od-dialog-no-content-icon">
+                        {avatarStatus === 'generating' ? <Loader size={40} color="#8B5CF6" /> :
+                         avatarStatus === 'pending' ? <Clock size={40} color="#9CA3AF" /> :
+                         <CircleX size={40} color="#EF4444" />}
+                      </View>
+                      <Text className="block od-dialog-no-content-title">
+                        {avatarStatus === 'generating' ? '内容生成中' :
+                         avatarStatus === 'accepted' ? '准备生成中' :
+                         avatarStatus === 'pending' ? '等待接单' :
+                         avatarStatus === 'rejected' ? '已拒绝订单' :
+                         avatarStatus === 'expired' ? '接单已过期' :
                          '暂无内容'}
+                      </Text>
+                      <Text className="block od-dialog-no-content-desc">
+                        {avatarStatus === 'generating' ? '分身正在创作内容，请稍后查看' :
+                         avatarStatus === 'accepted' ? '分身已接单，即将开始创作' :
+                         avatarStatus === 'pending' ? '等待分身确认接单' :
+                         avatarStatus === 'rejected' ? '该分身已拒绝此订单' :
+                         avatarStatus === 'expired' ? '分身未在规定时间内接单' :
+                         '内容生成后将在此展示'}
                       </Text>
                     </View>
                   )}
