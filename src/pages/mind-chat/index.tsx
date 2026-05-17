@@ -266,6 +266,7 @@ const MindChat: React.FC = () => {
   useDidShow(() => {
     void (async () => {
       const focusRaw = Taro.getStorageSync('mind_chat_focus_avatar')
+      const newAvatarIdFromStorage = Taro.getStorageSync('onboarding_new_avatar_id')
       const focusAvatarId = (() => {
         if (!focusRaw) return ''
         if (typeof focusRaw === 'string') return focusRaw
@@ -273,9 +274,12 @@ const MindChat: React.FC = () => {
         return ''
       })()
 
-      if (focusAvatarId) {
+      const effectiveFocusAvatarId = focusAvatarId || (newAvatarIdFromStorage ? String(newAvatarIdFromStorage) : '')
+
+      if (effectiveFocusAvatarId) {
         Taro.removeStorageSync('mind_chat_focus_avatar')
-        pendingFocusAvatarIdRef.current = focusAvatarId
+        Taro.removeStorageSync('onboarding_new_avatar_id')
+        pendingFocusAvatarIdRef.current = effectiveFocusAvatarId
         if (searchValue) setSearchValue('')
         if (activeTabRef.current !== 'my') {
           skipNextTabLoadRef.current = true
@@ -288,10 +292,8 @@ const MindChat: React.FC = () => {
 
       didInitLoadRef.current = true
 
-      const newAvatarIdFromStorage = Taro.getStorageSync('onboarding_new_avatar_id')
       if (newAvatarIdFromStorage) {
-        Taro.removeStorageSync('onboarding_new_avatar_id')
-        setNewAvatarId(newAvatarIdFromStorage)
+        setNewAvatarId(String(newAvatarIdFromStorage))
         setTimeout(() => {
           setShowOnboardingDialog(true)
         }, 800)

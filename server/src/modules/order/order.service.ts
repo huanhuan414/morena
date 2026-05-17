@@ -819,17 +819,45 @@ export class OrderService {
       // TODO: 调用微信退款API
     }
     const db = getMySQLClient()
-    await db.updateWhere('orders', { id: orderId }, {
-      status: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled',
-      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-    })
-    // 取消关联的派单请求
-    await db.updateWhere('dispatch_requests', { order_id: orderId, status: 'pending' }, {
-      status: 'expired',
-      updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-    })
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const newStatus = 'cancelled'
+    await db.updateWhere('orders', { id: orderId }, { status: newStatus, updated_at: now })
+    await db.query(
+      `UPDATE order_dispatch_requests
+       SET status = 'expired', responded_at = NOW(), updated_at = NOW()
+       WHERE order_id = ? AND status = 'pending'`,
+      [orderId]
+    )
+    await db.query(
+      `UPDATE content_generation_requests
+       SET status = 'cancelled', updated_at = NOW()
+       WHERE order_id = ? AND status IN ('pending', 'processing', 'generating', 'preview', 'submitted', 'publishing')`,
+      [orderId]
+    )
+    try {
+      const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+      await db.query(
+        `INSERT INTO order_events (id, order_id, dispatch_id, avatar_id, user_id, event_type, source, visibility, title, content, event_data, icon, color, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          eventId,
+          orderId,
+          null,
+          order.avatarId || null,
+          userId,
+          'cancel',
+          'publisher',
+          'both',
+          '订单已取消',
+          null,
+          JSON.stringify({ oldStatus: order.status, newStatus }),
+          'XCircle',
+          '#ef4444',
+        ]
+      )
+    } catch {}
     console.log(`[cancelOrder] 订单${orderId}已取消，原状态: ${order.status}`)
-    return { success: true, orderId, newStatus: order.isPaid === 1 ? 'cancelled' : 'auto_cancelled' }
+    return { success: true, orderId, newStatus }
   }
 
   /**
@@ -848,6 +876,14 @@ export class OrderService {
       throw new Error('只有已完成或已取消的订单才能删除')
     }
     const db = getMySQLClient()
+    const earningCountRows = await db.query(
+      'SELECT COUNT(*) as count FROM earnings WHERE order_id = ?',
+      [orderId]
+    )
+    const earningCount = Number(earningCountRows?.[0]?.count ?? earningCountRows?.data?.[0]?.count ?? 0)
+    if (earningCount > 0) {
+      throw new Error('该订单已产生收益记录，禁止删除')
+    }
     await db.query('DELETE FROM order_dispatch_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM content_generation_requests WHERE order_id = ?', [orderId])
     await db.query('DELETE FROM order_results WHERE order_id = ?', [orderId])

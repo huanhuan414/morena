@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Injectable } from '@nestjs/common'
+import * as crypto from 'crypto'
 
 // 共享内存存储
 const sharedMemoryNotifications: Map<string, any[]> = new Map()
@@ -25,6 +26,38 @@ const TEMPLATE_DEFS: Record<string, any> = {
 
 @Injectable()
 export class NotificationService {
+  private notificationColumns: Set<string> | null = null
+
+  private async getNotificationColumns() {
+    if (this.notificationColumns) return this.notificationColumns
+    try {
+      const { getMySQLClient } = await import('../../storage/database/mysql-client')
+      const db = getMySQLClient()
+      const rows = await db.query(
+        `SELECT COLUMN_NAME as column_name
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'notifications'`
+      )
+      const list = Array.isArray(rows) ? rows : (rows?.data || [])
+      this.notificationColumns = new Set(
+        (list || []).map((r: any) => String(r.columnName ?? r.column_name ?? '').toLowerCase()).filter(Boolean)
+      )
+    } catch {
+      this.notificationColumns = new Set(['id', 'user_id', 'type', 'title', 'content', 'is_read', 'data', 'created_at'])
+    }
+    return this.notificationColumns
+  }
+
+  private pickNotificationPayload(columns: Set<string>, payload: Record<string, any>) {
+    const picked: Record<string, any> = {}
+    for (const [key, value] of Object.entries(payload || {})) {
+      if (columns.has(key.toLowerCase())) {
+        picked[key] = value
+      }
+    }
+    return picked
+  }
   private removeFromMemoryOrder(userId: string, ids: string[]) {
     if (!ids || ids.length === 0) return
     const idSet = new Set(ids)
@@ -85,22 +118,26 @@ export class NotificationService {
     try {
       const { getMySQLClient } = await import('../../storage/database/mysql-client')
       const db = getMySQLClient()
+      const columns = await this.getNotificationColumns()
 
       const remaining: any[] = []
       for (let i = notifications.length - 1; i >= 0; i--) {
         const n = notifications[i]
         try {
-          await db.insert('notifications', {
+          const base: any = {
             id: n.id,
             user_id: n.user_id || userId,
             type: n.type,
             title: n.title,
             content: n.content,
-            metadata: JSON.stringify(n.metadata || {}),
             is_read: Boolean(n.is_read),
             created_at: n.created_at ? new Date(n.created_at) : new Date(),
-            updated_at: n.updated_at ? new Date(n.updated_at) : new Date(),
-          })
+          }
+          const metadataJson = JSON.stringify(n.metadata || {})
+          if (columns.has('metadata')) base.metadata = metadataJson
+          if (columns.has('data')) base.data = metadataJson
+          if (columns.has('updated_at')) base.updated_at = n.updated_at ? new Date(n.updated_at) : new Date()
+          await db.insert('notifications', this.pickNotificationPayload(columns, base))
           flushed += 1
         } catch {
           remaining.unshift(n)
@@ -152,7 +189,8 @@ export class NotificationService {
     const isRead = this.normalizeReadFlag(row?.isRead ?? row?.is_read)
     const createdAt = row?.createdAt || row?.created_at
     const updatedAt = row?.updatedAt || row?.updated_at
-    const metadata = this.safeParseJson(row?.metadata, row?.metadata || {})
+    const metadataSource = row?.metadata ?? row?.data
+    const metadata = this.safeParseJson(metadataSource, metadataSource || {})
 
     return {
       ...row,
@@ -223,17 +261,21 @@ export class NotificationService {
     try {
       const { getMySQLClient } = await import('../../storage/database/mysql-client')
       const db = getMySQLClient()
-      await db.insert('notifications', {
+      const columns = await this.getNotificationColumns()
+      const base: any = {
         id,
         user_id: data.user_id,
         type: data.type,
         title: data.title,
         content: data.content,
-        metadata: JSON.stringify(data.metadata || {}),
         is_read: false,
         created_at: new Date(),
-        updated_at: new Date()
-      })
+      }
+      const metadataJson = JSON.stringify(data.metadata || {})
+      if (columns.has('metadata')) base.metadata = metadataJson
+      if (columns.has('data')) base.data = metadataJson
+      if (columns.has('updated_at')) base.updated_at = new Date()
+      await db.insert('notifications', this.pickNotificationPayload(columns, base))
       await this.flushMemoryNotificationsToDb(data.user_id)
     } catch (dbError) {
       // 数据库写入失败，使用内存缓存
@@ -275,10 +317,10 @@ export class NotificationService {
       const { getMySQLClient } = await import('../../storage/database/mysql-client')
       const db = getMySQLClient()
       await this.flushMemoryNotificationsToDb(userId)
-      await db.updateWhere('notifications', { id: notificationId, user_id: userId }, {
-        is_read: true,
-        updated_at: new Date()
-      })
+      const columns = await this.getNotificationColumns()
+      const base: any = { is_read: true }
+      if (columns.has('updated_at')) base.updated_at = new Date()
+      await db.updateWhere('notifications', { id: notificationId, user_id: userId }, this.pickNotificationPayload(columns, base))
     } catch (dbError) {
       // 数据库更新失败，更新内存缓存
       const notifications = sharedMemoryNotifications.get(userId) || []
@@ -299,11 +341,11 @@ export class NotificationService {
       const db = getMySQLClient()
       await this.flushMemoryNotificationsToDb(userId)
       const notifications = await db.query('notifications', { user_id: userId, is_read: false }) as any[]
+      const columns = await this.getNotificationColumns()
       for (const n of notifications || []) {
-        await db.updateWhere('notifications', { id: n.id }, {
-          is_read: true,
-          updated_at: new Date()
-        })
+        const base: any = { is_read: true }
+        if (columns.has('updated_at')) base.updated_at = new Date()
+        await db.updateWhere('notifications', { id: n.id }, this.pickNotificationPayload(columns, base))
       }
     } catch (dbError) {
       // 数据库更新失败，更新内存缓存
