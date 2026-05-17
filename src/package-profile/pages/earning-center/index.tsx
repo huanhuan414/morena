@@ -123,6 +123,22 @@ export default function EarningCenterPage() {
     return statusMap[status] || { label: status, color: '#fff' }
   }
 
+  const formatTime = (time: string) => {
+    if (!time) return ''
+    try {
+      const date = new Date(time)
+      if (Number.isNaN(date.getTime())) return time
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hour = String(date.getHours()).padStart(2, '0')
+      const minute = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hour}:${minute}`
+    } catch (e) {
+      return time
+    }
+  }
+
   return (
     <View className="earning-page">
       {/* 顶部导航 */}
@@ -222,7 +238,7 @@ export default function EarningCenterPage() {
                       </View>
                       <View className="record-info">
                         <Text className="record-desc">{record.description || typeInfo.label}</Text>
-                        <Text className="record-time">{record.created_at}</Text>
+                        <Text className="record-time">{formatTime(record.created_at)}</Text>
                       </View>
                     </View>
                     <View className="record-right">
