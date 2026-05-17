@@ -318,7 +318,7 @@ export default function PendingOrderListPage() {
           <View className="po-stat-divider" />
           <View className="po-stat-chip">
             <Wallet size={14} color="#34D399" />
-            <Text className="po-stat-num">¥{orders.reduce((s, o) => s + o.expectedEarnings, 0).toFixed(0)}</Text>
+            <Text className="po-stat-num">¥{orders.reduce((s, o) => s + o.expectedEarnings, 0).toFixed(2)}</Text>
             <Text className="po-stat-label">预期收益</Text>
           </View>
           <View className="po-stat-divider" />
@@ -446,7 +446,7 @@ export default function PendingOrderListPage() {
                       <Text className="po-reward-value">{perUnitBudget}</Text>
                       <Text className="po-reward-unit">/分身</Text>
                     </View>
-                    <Text className="po-reward-hint">共{order.expectedQuantity}个分身 · 总额¥{order.budget.toFixed(0)}</Text>
+                    <Text className="po-reward-hint">共{order.expectedQuantity}个分身 · 总额¥{order.budget.toFixed(2)}</Text>
                   </View>
                   <View className="po-reward-divider" />
                   <View className="po-reward-right">
@@ -622,7 +622,7 @@ export default function PendingOrderListPage() {
                         <Text className="po-cb-title">你将获得</Text>
                         <View className="po-cb-item">
                           <TrendingUp size={14} color="#10B981" />
-                          <Text className="po-cb-text po-cb-green">¥{order.expectedEarnings.toFixed(0)} 创作收益</Text>
+                          <Text className="po-cb-text po-cb-green">¥{order.expectedEarnings.toFixed(2)} 创作收益</Text>
                         </View>
                         <View className="po-cb-item">
                           <TrendingUp size={14} color="#10B981" />
@@ -659,7 +659,7 @@ export default function PendingOrderListPage() {
                     ) : (
                       <>
                         <Sparkles size={16} color="#fff" />
-                        <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.expectedEarnings.toFixed(0)}</Text>
+                        <Text className="po-btn-label po-btn-label-primary">接单赚¥{order.expectedEarnings.toFixed(2)}</Text>
                         <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
                       </>
                     )}

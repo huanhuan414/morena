@@ -392,8 +392,11 @@ export default function GeneratedContentPage() {
             const platformInfo = getPlatformInfo(platformKey)
             const contentText = content.content || ''
             const images = content.images || []
-            const rawVideoUrl = content.video_url || content.videoUrl || ''
-            const videoUrls: string[] = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
+            let videoUrls: string[] = []
+            try {
+              const rawVideoUrl = content.video_url || content.videoUrl || ''
+              videoUrls = Array.isArray(rawVideoUrl) ? rawVideoUrl : (typeof rawVideoUrl === 'string' && rawVideoUrl.trim() ? (rawVideoUrl.startsWith('[') ? JSON.parse(rawVideoUrl) : [rawVideoUrl]) : [])
+            } catch { videoUrls = [] }
             const avatarName = content.avatar_name || content.avatarName || '我的分身'
             const actions = getCardActions(content.status, content.contentType)
             const isVideo = ['video', 'video_text'].includes(content.contentType)
