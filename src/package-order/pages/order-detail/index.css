@@ -804,29 +804,32 @@
 }
 
 /* ═══════ 分身详情弹窗 ═══════ */
+
+/* 弹窗容器 - 固定宽高、整体感 */
 .od-dialog-content {
   overflow: hidden;
-  border-radius: 24rpx !important;
+  border-radius: 28rpx !important;
   border: none !important;
+  background: #F8F9FC !important;
+  box-shadow: 0 32rpx 80rpx rgba(0, 0, 0, 0.25), 0 0 0 1rpx rgba(99, 102, 241, 0.08) !important;
 }
 .od-dialog-body {
   display: flex;
   flex-direction: column;
-  height: 75vh;
+  height: 72vh;
   overflow: hidden;
 }
 
-/* 弹窗头部 */
+/* ─── 弹窗头部 ─── */
 .od-dialog-header {
   position: relative;
-  padding: 32rpx 32rpx 28rpx 32rpx;
+  padding: 36rpx 32rpx 28rpx 32rpx;
   flex-shrink: 0;
   overflow: hidden;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #A855F7 100%);
 }
 .od-dialog-header-bg {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, #EEF2FF, #F5F3FF, #FDF4FF);
+  display: none;
 }
 .od-dialog-header-content {
   position: relative;
@@ -836,71 +839,75 @@
   gap: 20rpx;
 }
 .od-dialog-avatar {
-  width: 80rpx;
-  height: 80rpx;
+  width: 84rpx;
+  height: 84rpx;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 4rpx solid rgba(99, 102, 241, 0.2);
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
 }
 .od-dialog-avatar-ph {
-  width: 80rpx;
-  height: 80rpx;
+  width: 84rpx;
+  height: 84rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #C7D2FE, #A5B4FC);
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 4rpx solid rgba(99, 102, 241, 0.2);
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
 }
 .od-dialog-avatar-ph-text {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 700;
-  color: #4338CA;
+  color: #fff;
 }
 .od-dialog-avatar-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 10rpx;
 }
 .od-dialog-title {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  color: #1F2937;
+  color: #FFFFFF;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 .od-dialog-meta-row {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10rpx;
+  gap: 12rpx;
 }
 .od-dialog-type-tag {
-  padding: 2rpx 12rpx;
+  padding: 4rpx 14rpx;
   border-radius: 8rpx;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(255, 255, 255, 0.2);
 }
 .od-dialog-type-tag-text {
   font-size: 20rpx;
   font-weight: 500;
-  color: #6366F1;
+  color: rgba(255, 255, 255, 0.9);
 }
 .od-dialog-status-dot {
-  width: 12rpx;
-  height: 12rpx;
+  width: 14rpx;
+  height: 14rpx;
   border-radius: 50%;
   flex-shrink: 0;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
 }
 .od-dialog-status-text {
   font-size: 22rpx;
   font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* 弹窗主体 */
+/* ─── 弹窗主体 ─── */
 .od-dialog-main {
   flex: 1;
   min-height: 0;
@@ -909,14 +916,15 @@
   overflow: hidden;
 }
 
-/* 自定义 Tab 栏 */
+/* ─── Tab 切换栏 ─── */
 .od-dialog-tabs-bar {
   display: flex;
   flex-direction: row;
   padding: 0 32rpx;
-  margin-bottom: 4rpx;
+  margin-bottom: 0;
   flex-shrink: 0;
-  border-bottom: 1rpx solid #F3F4F6;
+  background: #FFFFFF;
+  border-bottom: 1rpx solid #E5E7EB;
 }
 .od-dialog-tab-item {
   flex: 1;
@@ -925,7 +933,7 @@
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  padding: 20rpx 0 16rpx 0;
+  padding: 24rpx 0 20rpx 0;
   position: relative;
   cursor: pointer;
 }
@@ -933,22 +941,22 @@
   content: '';
   position: absolute;
   bottom: 0;
-  left: 20%;
-  right: 20%;
+  left: 15%;
+  right: 15%;
   height: 6rpx;
   border-radius: 3rpx;
-  background: #6366F1;
+  background: linear-gradient(90deg, #6366F1, #A855F7);
 }
 .od-dialog-tab-text {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
 }
 .od-dialog-tab-badge {
-  min-width: 32rpx;
-  height: 32rpx;
+  min-width: 34rpx;
+  height: 34rpx;
   padding: 0 8rpx;
-  border-radius: 16rpx;
-  background: #6366F1;
+  border-radius: 17rpx;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -959,23 +967,23 @@
   color: #fff;
 }
 
-/* 滚动区域 */
+/* ─── 滚动区域 ─── */
 .od-dialog-scroll {
   flex: 1;
   min-height: 0;
 }
 .od-dialog-content-inner {
-  padding: 24rpx 32rpx 32rpx 32rpx;
+  padding: 24rpx 28rpx 32rpx 28rpx;
 }
 
-/* 内容卡片 */
+/* ─── 内容卡片 ─── */
 .od-dialog-card {
   background: #FFFFFF;
-  border: 1rpx solid #F3F4F6;
+  border: none;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 .od-dialog-card:last-child {
   margin-bottom: 0;
@@ -984,51 +992,52 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12rpx;
-  margin-bottom: 16rpx;
+  gap: 14rpx;
+  margin-bottom: 18rpx;
 }
 .od-dialog-card-icon-wrap {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 10rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .od-dialog-card-title {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   flex: 1;
 }
 .od-dialog-card-count {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #9CA3AF;
   flex-shrink: 0;
 }
 
-/* Markdown 内容区 */
+/* ─── Markdown 内容区 ─── */
 .od-dialog-markdown-body {
-  background: #FAFAFA;
+  background: #F9FAFB;
   border-radius: 12rpx;
-  padding: 20rpx;
-  border: 1rpx solid #F5F5F5;
+  padding: 24rpx;
+  border: none;
 }
 
-/* 图片网格 */
+/* ─── 图片网格 ─── */
 .od-dialog-images-grid {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 .od-dialog-img-wrap {
-  width: calc((100% - 24rpx) / 3);
+  width: calc((100% - 20rpx) / 3);
   aspect-ratio: 1;
   border-radius: 12rpx;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 .od-dialog-img-thumb {
   width: 100%;
@@ -1036,7 +1045,7 @@
   border-radius: 12rpx;
 }
 
-/* 视频卡片 */
+/* ─── 视频卡片 ─── */
 .od-dialog-video-card {
   display: flex;
   flex-direction: column;
@@ -1044,57 +1053,59 @@
   justify-content: center;
   width: 100%;
   aspect-ratio: 16/9;
-  background: linear-gradient(135deg, #1F2937, #111827);
+  background: linear-gradient(135deg, #1E1B4B, #312E81);
   border-radius: 16rpx;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(49, 46, 129, 0.25);
 }
 .od-dialog-video-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.3) 100%);
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.2) 100%);
 }
 .od-dialog-video-play {
-  width: 88rpx;
-  height: 88rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
-  background: rgba(99, 102, 241, 0.9);
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 1;
-  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8rpx 32rpx rgba(99, 102, 241, 0.5);
   margin-bottom: 16rpx;
 }
 .od-dialog-video-play-icon {
-  font-size: 36rpx;
+  font-size: 40rpx;
   color: #fff;
   margin-left: 6rpx;
 }
 .od-dialog-video-label {
-  font-size: 22rpx;
-  color: rgba(255,255,255,0.7);
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.75);
   position: relative;
   z-index: 1;
+  font-weight: 500;
 }
 
-/* 反馈数据 */
+/* ─── 反馈数据 ─── */
 .od-dialog-feedback-data {
   display: flex;
   flex-direction: column;
-  gap: 2rpx;
-  background: #FAFAFA;
+  gap: 0;
+  background: #F9FAFB;
   border-radius: 12rpx;
   padding: 4rpx 0;
-  border: 1rpx solid #F5F5F5;
+  border: none;
 }
 .od-dialog-feedback-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 14rpx 20rpx;
-  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  gap: 14rpx;
 }
 .od-dialog-feedback-key {
   font-size: 24rpx;
@@ -1116,14 +1127,15 @@
   text-decoration: underline;
 }
 .od-dialog-feedback-num {
-  font-weight: 600;
+  font-weight: 700;
   color: #1F2937;
   font-variant-numeric: tabular-nums;
+  font-size: 26rpx;
 }
 .od-dialog-feedback-screenshots {
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #F3F4F6;
+  border-top: 1rpx solid #E5E7EB;
 }
 .od-dialog-feedback-ss-label {
   font-size: 22rpx;
@@ -1131,31 +1143,32 @@
   margin-bottom: 12rpx;
 }
 
-/* 弹窗空态 */
+/* ─── 弹窗空态 ─── */
 .od-dialog-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60rpx 0;
+  padding: 80rpx 0;
 }
 .od-dialog-empty-icon-wrap {
-  width: 96rpx;
-  height: 96rpx;
+  width: 100rpx;
+  height: 100rpx;
   border-radius: 50%;
-  background: #F9FAFB;
+  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 .od-dialog-empty-text {
-  font-size: 28rpx;
+  font-size: 30rpx;
   color: #6B7280;
-  font-weight: 500;
+  font-weight: 600;
 }
 .od-dialog-empty-sub {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #D1D5DB;
   margin-top: 8rpx;
 }
@@ -1171,11 +1184,12 @@
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background: #F9FAFB;
+  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 }
 .od-dialog-no-content-title {
   font-size: 30rpx;
@@ -1187,4 +1201,20 @@
   font-size: 24rpx;
   color: #9CA3AF;
   text-align: center;
+  line-height: 1.6;
+}
+
+/* 弹窗关闭按钮 - 白色适配深色头部 */
+.od-dialog-close-btn {
+  top: 28rpx !important;
+  right: 24rpx !important;
+  width: 48rpx !important;
+  height: 48rpx !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  opacity: 1 !important;
+}
+.od-dialog-close-btn:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
 }

@@ -498,7 +498,8 @@ export default function OrderDetailPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent
             className="od-dialog-content"
-            style={{ width: 'calc(100vw - 48rpx)', maxWidth: '680rpx', height: '75vh', padding: 0, gap: 0 }}
+            closeClassName="od-dialog-close-btn"
+            style={{ width: 'calc(100vw - 64rpx)', maxWidth: '660rpx', height: '72vh', padding: 0, gap: 0 }}
           >
             {selectedAvatar && (() => {
               const av = selectedAvatar
