@@ -51,16 +51,28 @@ interface StepDef {
   longEstTime: string // 长耗时（视频）
 }
 
-const STEPS: StepDef[] = [
+const STEPS_IMAGE: StepDef[] = [
   { key: 'queued', label: '排队中', icon: 'clock', estTime: '约10秒', longEstTime: '约10秒' },
   { key: 'text', label: '生成文案', icon: 'text', estTime: '约30秒', longEstTime: '约40秒' },
-  { key: 'media', label: '生成配图', icon: 'image', estTime: '约60秒', longEstTime: '约5~8分钟' },
+  { key: 'media', label: '生成配图', icon: 'image', estTime: '约60秒', longEstTime: '约60秒' },
   { key: 'done', label: '内容完成', icon: 'done', estTime: '', longEstTime: '' },
 ]
 
-// rawStatus → 当前步骤索引 (0-based)
-function getStepIndex(rawStatus: string, contentType?: string): number {
+const STEPS_VIDEO: StepDef[] = [
+  { key: 'queued', label: '排队中', icon: 'clock', estTime: '约10秒', longEstTime: '约10秒' },
+  { key: 'text', label: '生成文案', icon: 'text', estTime: '约30秒', longEstTime: '约40秒' },
+  { key: 'media', label: '生成视频', icon: 'video', estTime: '约5~8分钟', longEstTime: '约5~8分钟' },
+  { key: 'done', label: '内容完成', icon: 'done', estTime: '', longEstTime: '' },
+]
+
+// 获取当前步骤列表
+function getSteps(contentType?: string): StepDef[] {
   const isVideo = contentType === 'video' || contentType === 'video_text'
+  return isVideo ? STEPS_VIDEO : STEPS_IMAGE
+}
+
+// rawStatus → 当前步骤索引 (0-based)
+function getStepIndex(rawStatus: string): number {
   switch (rawStatus) {
     case 'pending':
     case 'processing':
@@ -68,7 +80,7 @@ function getStepIndex(rawStatus: string, contentType?: string): number {
     case 'generating_text':
       return 1
     case 'generating_images':
-      return isVideo ? 2 : 2 // 图片/视频都在这一步
+      return 2
     case 'generating_video':
       return 2
     case 'completed':
@@ -81,8 +93,9 @@ function getStepIndex(rawStatus: string, contentType?: string): number {
 // 步骤状态：waiting / active / done
 type StepState = 'waiting' | 'active' | 'done'
 
-function getStepStates(currentStep: number): StepState[] {
-  return STEPS.map((_, i) => {
+function getStepStates(currentStep: number, totalSteps?: number): StepState[] {
+  const count = totalSteps || 4
+  return Array.from({ length: count }, (_, i) => {
     if (i < currentStep) return 'done'
     if (i === currentStep) return 'active'
     return 'waiting'
@@ -122,7 +135,6 @@ export default function OrderContentCreation() {
   const startTimeRef = useRef<number>(Date.now())
 
   const orderId = router.params.orderId || ''
-  const isVideo = processingData?.contentType === 'video' || processingData?.contentType === 'video_text'
 
   // 计时器
   useEffect(() => {
@@ -195,8 +207,11 @@ export default function OrderContentCreation() {
 
   // 当前步骤
   const rawStatus = processingData?.rawStatus || 'pending'
-  const currentStep = getStepIndex(rawStatus, processingData?.contentType)
-  const stepStates = getStepStates(currentStep)
+  const contentType = processingData?.contentType || orderInfo?.contentType || 'image_text'
+  const isVideo = contentType === 'video' || contentType === 'video_text'
+  const steps = getSteps(contentType)
+  const currentStep = getStepIndex(rawStatus)
+  const stepStates = getStepStates(currentStep, steps.length)
   const isCompleted = rawStatus === 'completed'
   const isGenerating = !isCompleted
 
@@ -300,7 +315,7 @@ export default function OrderContentCreation() {
 
           {/* 步骤进度条 */}
           <View className="cc-step-progress">
-            {STEPS.map((step, i) => {
+            {steps.map((step, i) => {
               const state = stepStates[i]
               const isActive = state === 'active'
               const isDone = state === 'done'
@@ -348,7 +363,7 @@ export default function OrderContentCreation() {
           {isGenerating && (
             <View className="cc-step-hint">
               <Sparkles size={14} color="#8B5CF6" />
-              <Text className="cc-step-hint-text">{getStepHint(rawStatus, processingData?.contentType)}</Text>
+              <Text className="cc-step-hint-text">{getStepHint(rawStatus, contentType)}</Text>
             </View>
           )}
 
