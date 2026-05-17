@@ -875,11 +875,12 @@ export class OrderService {
     )
 
     // 读取DB返回值 → camelCase (order.userId)
+    // 只通知支付成功，不暗示已分配分身（分身匹配由前端确认页触发）
     await this.notificationService.createNotification({
       user_id: order.userId,
       type: 'order_paid',
       title: '订单支付成功',
-      content: `订单"${order.title}"支付成功，正在分配分身...`,
+      content: `订单"${order.title}"支付成功，请选择分身进行匹配`,
       metadata: { orderId, transactionId }
     })
 
