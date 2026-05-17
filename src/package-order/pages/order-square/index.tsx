@@ -170,7 +170,8 @@ export default function OrderSquarePage() {
     setScrollTop(prev => prev + 1)
   }
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (platform?: string) => {
+    const currentPlatform = platform ?? selectedPlatform
     setRefresherTriggered(true)
     try {
       const res = await Network.request({
@@ -196,24 +197,23 @@ export default function OrderSquarePage() {
             createdAt: formatCreatedAt(item.createdAt || item.created_at)
           })) as OrderItem[]
 
-          const filtered = selectedPlatform === 'all'
+          const filtered = currentPlatform === 'all'
             ? mapped
-            : mapped.filter((item) => item.platform === selectedPlatform)
+            : mapped.filter((item) => item.platform === currentPlatform)
           
           setOrders(filtered)
           setIsDemo(false)
         } else {
-          // 无真实数据 → 展示示例数据刺激用户
-          setOrders(getDemoOrdersForPlatform(selectedPlatform))
+          setOrders(getDemoOrdersForPlatform(currentPlatform))
           setIsDemo(true)
         }
       } else {
-        setOrders(getDemoOrdersForPlatform(selectedPlatform))
+        setOrders(getDemoOrdersForPlatform(currentPlatform))
         setIsDemo(true)
       }
     } catch (error) {
       console.error('获取订单失败:', error)
-      setOrders(getDemoOrdersForPlatform(selectedPlatform))
+      setOrders(getDemoOrdersForPlatform(currentPlatform))
       setIsDemo(true)
     } finally {
       setRefresherTriggered(false)
@@ -230,7 +230,7 @@ export default function OrderSquarePage() {
     if (isDemo) {
       setOrders(getDemoOrdersForPlatform(key))
     } else {
-      fetchOrders()
+      fetchOrders(key)
     }
   }
 
@@ -388,7 +388,7 @@ export default function OrderSquarePage() {
         scrollY
         refresherEnabled
         refresherTriggered={refresherTriggered}
-        onRefresherRefresh={fetchOrders}
+        onRefresherRefresh={() => fetchOrders()}
         onScroll={handleScroll}
         scrollTop={scrollTop}
         scrollWithAnimation
