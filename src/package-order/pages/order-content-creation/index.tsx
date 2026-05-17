@@ -84,8 +84,15 @@ function getStepIndex(rawStatus: string): number {
     case 'generating_video':
       return 2
     case 'completed':
+    case 'published':
+    case 'awaiting_acceptance':
+    case 'feedback_submitted':
+    case 'settled':
+    case 'done':
+    case 'preview':
       return 3
     default:
+      // 未知状态如果有内容也算完成
       return 0
   }
 }
@@ -119,6 +126,14 @@ function getStepHint(rawStatus: string, contentType?: string): string {
       return '正在合成15秒视频，这个过程需要5~8分钟，请耐心等待...'
     case 'completed':
       return '内容生成完成！'
+    case 'published':
+      return '内容已发布'
+    case 'awaiting_acceptance':
+    case 'feedback_submitted':
+      return '等待发单方确认'
+    case 'settled':
+    case 'done':
+      return '订单已完成'
     default:
       return '处理中...'
   }
@@ -177,8 +192,9 @@ export default function OrderContentCreation() {
             generatedContent: data.generatedContent,
           })
 
-          // 完成后停止计时
-          if (data.rawStatus === 'completed' || data.status === 'completed' || data.status === 'preview') {
+          // 生成完成后停止计时和轮询（completed / published / awaiting_acceptance 等都算完成）
+          const postGenStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview']
+          if (postGenStatuses.includes(data.rawStatus) || postGenStatuses.includes(data.status)) {
             if (timerRef.current) clearInterval(timerRef.current)
             if (pollRef.current) clearInterval(pollRef.current)
           }
@@ -212,8 +228,10 @@ export default function OrderContentCreation() {
   const steps = getSteps(contentType)
   const currentStep = getStepIndex(rawStatus)
   const stepStates = getStepStates(currentStep, steps.length)
-  const isCompleted = rawStatus === 'completed'
-  const isGenerating = !isCompleted
+  // 生成中的状态集合 —— 只有这些状态算"还在生成"
+  const GENERATING_STATUSES = ['pending', 'processing', 'generating_text', 'generating_images', 'generating_video']
+  const isCompleted = !GENERATING_STATUSES.includes(rawStatus) && rawStatus !== 'failed'
+  const isGenerating = GENERATING_STATUSES.includes(rawStatus)
 
   // 内容数据
   const genContent = processingData?.generatedContent
@@ -221,7 +239,18 @@ export default function OrderContentCreation() {
   const images = genContent?.images || []
   const videos = genContent?.videos || []
 
-  // 发布按钮
+  // 完成状态文案
+  const getCompletedLabel = useCallback((status: string) => {
+    switch (status) {
+      case 'completed': return '内容生成完成'
+      case 'published': return '内容已发布'
+      case 'awaiting_acceptance':
+      case 'feedback_submitted': return '等待发单方确认'
+      case 'settled':
+      case 'done': return '订单已结算'
+      default: return '内容生成完成'
+    }
+  }, [])
   const handlePublish = () => {
     if (!processingData?.requestId) return
     Taro.navigateTo({
@@ -412,16 +441,16 @@ export default function OrderContentCreation() {
         </View>
 
         {/* 完成状态 - 内容展示 */}
-        {isCompleted && genContent && (
+        {isCompleted && (
           <View className="cc-content-section">
             {/* 完成横幅 */}
             <View className="cc-done-banner">
               <CircleCheck size={20} color="#16A34A" />
-              <Text className="cc-done-text">内容生成完成 · 耗时{formatElapsed(elapsed)}</Text>
+              <Text className="cc-done-text">{getCompletedLabel(rawStatus)} · 耗时{formatElapsed(elapsed)}</Text>
             </View>
 
             {/* 平台标签 */}
-            {genContent.platforms && genContent.platforms.length > 0 && (
+            {genContent?.platforms && genContent.platforms.length > 0 && (
               <View className="cc-platform-bar">
                 {genContent.platforms.map(p => {
                   const meta = getPlatformMeta(p)
