@@ -978,7 +978,7 @@ async getExecutionProgress(orderId: string) {
         platforms: normalizedPlatforms,
         contentType: order.contentType || order.content_type || 'image_text',
         targetAudience: request.target_audience || order.targetAudience || '年轻用户',
-        contentQuantity: request.quantityPerAvatar || request.expectedQuantity || order.quantityPerAvatar || order.expectedQuantity || 3,
+        contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
         avatarName,
         avatarPersonality,
         avatarSkills,

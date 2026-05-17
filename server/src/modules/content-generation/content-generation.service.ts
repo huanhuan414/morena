@@ -135,6 +135,7 @@ export class ContentGenerationService implements OnModuleInit {
           platform,
           status: 'processing',
           content_type: effectiveContentType,
+          content_quantity: input.contentQuantity || 1,
           content: '',
           images: null,
           video_url: null,
@@ -493,32 +494,40 @@ ${input.orderDescription}
   private async generateArticleImages(platform: string, input: any, textContent: string, imageCount: number): Promise<string[]> {
     const imageContexts = this.extractImageContexts(textContent, imageCount)
     const productKeywords = await this.extractProductKeywords(input.orderTitle || '', input.orderDescription || '')
+    const title = input.orderTitle || '产品'
 
     // 技能专属图片风格
     const skillStrategy = getSkillStrategy(input.primarySkill)
     const skillImageStyle = skillStrategy?.imageStrategy || ''
 
+    // 平台视觉风格（中文描述）
     const styleMap: Record<string, string> = {
-      wechat_mp: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, 4K',
-      wechat_channel: 'trendy lifestyle photo, eye-catching, modern composition, social media optimized, 4K',
-      toutiao: 'professional news style photo, informative and clear, editorial quality, 4K',
-      zhihu: 'professional and informative, clean data visualization style, high quality, 4K'
+      wechat_mp: '专业编辑风格，杂志品质，构图干净整洁，温暖高端感，4K',
+      wechat_channel: '潮流生活风，吸睛抢眼，现代构图，社交短视频封面风格，4K',
+      toutiao: '专业资讯风格，信息清晰，编辑级品质，4K',
+      zhihu: '专业学术风，干净数据可视化风格，高品质，4K'
     }
     const platformStyle = styleMap[platform] || styleMap.wechat_mp
 
+    const chineseTextRule = '图片中出现的所有文字、标语、标签必须使用中文，禁止出现英文文字'
+
     const prompts = imageContexts.map((context, i) => {
-      const contextHint = context ? `context in article: ${context.substring(0, 100)}` : ''
-      const skillHint = skillImageStyle ? `, ${skillImageStyle}` : ''
+      const contextHint = context ? `，文章上下文：${context.substring(0, 100)}` : ''
+      const skillHint = skillImageStyle ? `，${skillImageStyle}` : ''
       return i === 0
-        ? `Featured hero image for article about ${productKeywords}, ${platformStyle}${skillHint}, ${contextHint}, captivating and professional, main visual, 4K`
-        : `Supporting image ${i + 1} for article about ${productKeywords}, ${platformStyle}${skillHint}, ${contextHint}, relevant to the topic, 4K`
+        ? `${title}文章封面主图，${platformStyle}${skillHint}${contextHint}，吸睛专业，主视觉，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
+        : `${title}文章配图${i + 1}，${platformStyle}${skillHint}${contextHint}，与主题相关，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`
     })
+
+    // 文章配图用横版
+    const articleImageSize = platform === 'wechat_mp' || platform === 'wechat_official' || platform === 'toutiao' || platform === 'zhihu'
+      ? '1536x1024' : '1024x1024'
 
     this.logger.log(`开始并行生成${imageCount}张文章配图...`)
     const results = await Promise.allSettled(
       prompts.map((prompt, i) => {
         this.logger.log(`正在生成文章第${i + 1}张配图，提示词: ${prompt.substring(0, 80)}...`)
-        return this.generateImageViaHttp(prompt)
+        return this.generateImageViaHttp(prompt, articleImageSize)
       })
     )
 
@@ -688,13 +697,23 @@ ${input.orderDescription}
    * 生成配图 — 增强版：融合技能图片策略
    */
   private async generateImages(platform: string, input: any, textContent: string): Promise<string[]> {
-    const quantity = input.contentQuantity || 3
+    const quantity = input.contentQuantity || 1
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
+
+    // 根据平台选择合适的图片尺寸
+    const sizeMap: Record<string, string> = {
+      wechat_moments: '1024x1024',   // 朋友圈：1:1方形
+      xiaohongshu: '1024x1536',      // 小红书：3:4竖版
+      douyin: '1024x1536',           // 抖音：3:4竖版
+      wechat_mp: '1536x1024',        // 公众号：横版
+      wechat_official: '1536x1024',   // 视频号：横版
+    }
+    const imageSize = sizeMap[platform] || '1024x1536'
 
     const results = await Promise.allSettled(
       imagePrompts.map((prompt, i) => {
         this.logger.log(`正在生成第${i + 1}张图片，提示词: ${prompt.substring(0, 80)}...`)
-        return this.generateImageViaHttp(prompt)
+        return this.generateImageViaHttp(prompt, imageSize)
       })
     )
 
@@ -717,51 +736,55 @@ ${input.orderDescription}
    * 构建图片提示词 — 增强版：融合技能图片策略
    */
   private async buildImagePrompts(platform: string, input: any, textContent: string, quantity: number): Promise<string[]> {
-    const title = input.orderTitle || 'product'
+    const title = input.orderTitle || '产品'
     const desc = input.orderDescription || ''
-    const audience = input.targetAudience || 'young people'
+    const audience = input.targetAudience || '年轻人'
 
     // 技能专属图片策略
     const skillStrategy = getSkillStrategy(input.primarySkill)
     const skillImageStyle = skillStrategy?.imageStrategy || ''
 
+    // 平台视觉风格（中文描述，图片中的文字必须为中文）
     const styleMap: Record<string, string> = {
-      wechat: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo',
-      wechat_moments: 'warm lifestyle photo, natural lighting, cozy and intimate atmosphere, like a friend sharing on moments, high quality mobile photo, 1:1 square format',
-      wechat_mp: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, suitable for article illustration',
-      wechat_official: 'professional editorial photo, magazine quality, clean composition, warm and inviting, high-end feel, suitable for article illustration',
-      wechat_channel: 'trendy lifestyle photo, eye-catching, modern composition, social media optimized, short video cover style',
-      xiaohongshu: 'aesthetic flat lay, trendy pastel tones, clean minimal composition, Instagram worthy, soft natural light, lifestyle inspiration',
-      douyin: 'vibrant eye-catching, dynamic composition, high contrast colors, trending visual style, thumb-stopping thumbnail, bold and fresh',
-      weibo: 'bold modern design, clean professional look, striking visual impact, celebrity endorsement style',
-      bilibili: 'creative playful, colorful, anime-inspired elements, fun and imaginative, youth culture',
-      kuaishou: 'authentic real-life, down-to-earth, natural unposed, relatable everyday scene, warm and genuine',
-      toutiao: 'professional news style photo, informative and clear, editorial quality, impactful',
-      zhihu: 'professional and informative, clean data visualization style, high quality, academic feel'
+      wechat: '温馨生活风照片，自然光线，亲切真实的朋友圈分享感，高质量手机拍摄',
+      wechat_moments: '温馨生活风照片，自然光线，亲切真实的朋友圈分享感，高质量手机拍摄，1:1方形构图',
+      wechat_mp: '专业编辑风格图片，杂志品质，构图干净整洁，温暖高端感，适合文章配图',
+      wechat_official: '专业编辑风格图片，杂志品质，构图干净整洁，温暖高端感，适合文章配图',
+      wechat_channel: '潮流生活风照片，吸睛抢眼，现代构图，社交短视频封面风格',
+      xiaohongshu: 'ins风精美摆拍，柔和粉彩色调，干净极简构图，自然柔光，生活灵感',
+      douyin: '活力吸睛风，动态构图，高对比色彩，潮流视觉风格，拇指停留级封面',
+      weibo: '大胆现代设计，干净专业外观，强烈视觉冲击，明星代言风格',
+      bilibili: '创意趣味风，色彩丰富，二次元元素，活泼想象，年轻文化',
+      kuaishou: '真实接地气风，自然不做作，生活化场景，温暖质朴',
+      toutiao: '专业资讯风图片，信息清晰，编辑级品质，有冲击力',
+      zhihu: '专业学术风，干净数据可视化风格，高品质，知性感'
     }
     const platformStyle = styleMap[platform] || styleMap.wechat
 
     const productKeywords = await this.extractProductKeywords(title, desc)
 
     const prompts: string[] = []
-    const skillHint = skillImageStyle ? `, ${skillImageStyle}` : ''
+    const skillHint = skillImageStyle ? `，${skillImageStyle}` : ''
+
+    // 通用中文指令：图片中所有文字必须使用中文
+    const chineseTextRule = '图片中出现的所有文字、标语、标签必须使用中文，禁止出现英文文字'
 
     // 第1张：主图 - 产品核心展示，强吸引力
-    prompts.push(`Professional product showcase for ${productKeywords}, ${platformStyle}${skillHint}, central composition, premium quality, attractive and desirable, targeting ${audience}, 4K, commercial photography`)
+    prompts.push(`${title}的核心展示图，${platformStyle}${skillHint}，居中构图，高端品质，吸引眼球，面向${audience}，4K商业摄影级别，${chineseTextRule}。产品关键词参考：${productKeywords}`)
 
     // 第2张：使用场景 - 生活化代入感
     if (quantity >= 2) {
-      prompts.push(`Lifestyle scene of a person using ${productKeywords}, ${platformStyle}${skillHint}, relatable everyday moment, showing real benefits and joy, natural and engaging, targeting ${audience}, 4K`)
+      prompts.push(`有人物使用${title}的生活场景图，${platformStyle}${skillHint}，真实日常瞬间，展现实际好处和快乐，自然有代入感，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
     // 第3张：效果/细节 - 说服力
     if (quantity >= 3) {
-      prompts.push(`Close-up detail and effect of ${productKeywords}, ${platformStyle}${skillHint}, showing quality and transformation, convincing evidence, premium feel, targeting ${audience}, 4K`)
+      prompts.push(`${title}的特写细节和效果展示图，${platformStyle}${skillHint}，展示品质和变化，有说服力的证据，高端质感，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
     // 第4张及以后：更多角度
     for (let i = 3; i < quantity; i++) {
-      prompts.push(`Creative promotional image for ${productKeywords}, unique angle ${i + 1}, ${platformStyle}${skillHint}, eye-catching design, appealing to ${audience}, 4K`)
+      prompts.push(`${title}的创意推广图，独特视角${i + 1}，${platformStyle}${skillHint}，吸睛设计，面向${audience}，4K，${chineseTextRule}。产品关键词参考：${productKeywords}`)
     }
 
     return prompts
@@ -1079,57 +1102,56 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   }
 
   /**
-   * 从订单标题和描述中提取英文产品关键词
+   * 从订单标题和描述中提取产品关键词（中文，用于中文图片prompt）
    */
   private async extractProductKeywords(title: string, desc: string): Promise<string> {
-    const keywordMap: Record<string, string> = {
-      '护肤品': 'skincare products', '面膜': 'face mask', '口红': 'lipstick', '粉底': 'foundation',
-      '香水': 'perfume', '洗发水': 'shampoo', '沐浴露': 'body wash', '防晒': 'sunscreen',
-      '手机': 'smartphone', '耳机': 'earphones', '电脑': 'laptop', '平板': 'tablet',
-      '衣服': 'fashion clothing', '鞋子': 'shoes', '包包': 'handbag', '手表': 'watch',
-      '零食': 'snacks', '茶叶': 'tea', '咖啡': 'coffee', '饮品': 'drinks',
-      'AI助手': 'AI assistant app', '智能助手': 'smart AI assistant', '赚钱': 'money making app',
-      '课程': 'online course', '培训': 'training program', '健身': 'fitness program',
-      '旅行': 'travel', '美食': 'gourmet food', '家居': 'home decor', '办公': 'office',
-      '美白': 'whitening', '抗老': 'anti-aging', '补水': 'hydrating', '修复': 'repairing',
-      '副业': 'side hustle', '收入': 'income',
-      '减肥': 'weight loss', '瘦身': 'slimming', '增肌': 'muscle building',
-    }
-
     const fullText = `${title} ${desc}`
-    const matchedKeywords: string[] = []
 
-    for (const [cn, en] of Object.entries(keywordMap)) {
-      if (fullText.includes(cn) && !matchedKeywords.includes(en)) {
-        matchedKeywords.push(en)
+    // 中文关键词直接匹配（prompt已改为中文，关键词也用中文）
+    const keywordList: string[] = [
+      '护肤品', '面膜', '口红', '粉底', '香水', '洗发水', '沐浴露', '防晒',
+      '手机', '耳机', '电脑', '平板', '衣服', '鞋子', '包包', '手表',
+      '零食', '茶叶', '咖啡', '饮品', 'AI助手', '智能助手', '赚钱',
+      '课程', '培训', '健身', '旅行', '美食', '家居', '办公',
+      '美白', '抗老', '补水', '修复', '副业', '收入', '减肥', '瘦身', '增肌',
+      '数字分身', '人机共生', '拉新', '推广', '变现', '自动化',
+    ]
+
+    const matchedKeywords: string[] = []
+    for (const kw of keywordList) {
+      if (fullText.includes(kw) && !matchedKeywords.includes(kw)) {
+        matchedKeywords.push(kw)
       }
     }
 
-    if (matchedKeywords.length < 2) {
-      try {
-        this.logger.log(`本地关键词匹配不足(${matchedKeywords.length})，调用LLM动态翻译...`)
-        const llmPrompt = `将以下中文产品/服务描述翻译成3-5个英文关键词，用于AI图片生成的提示词。只输出关键词，用逗号分隔，不要解释。
+    if (matchedKeywords.length >= 2) {
+      return matchedKeywords.slice(0, 4).join('、')
+    }
+
+    // 关键词不足时，用LLM从标题描述中提取中文关键词
+    try {
+      this.logger.log(`本地关键词匹配不足(${matchedKeywords.length})，调用LLM提取中文关键词...`)
+      const llmPrompt = `从以下产品/服务描述中提取3-5个中文关键词，用于AI图片生成的提示词。只输出关键词，用顿号分隔，不要解释。
 
 产品标题：${title}
 产品描述：${desc.substring(0, 300)}
 
-英文关键词：`
+中文关键词：`
 
-        const response = await this.llmClient.invoke(
-          [{ role: 'user', content: llmPrompt }] as Message[]
-        )
-        const keywords = response?.content?.trim() || ''
-        this.logger.log(`LLM翻译结果: ${keywords}`)
-        if (keywords) {
-          return keywords
-        }
-      } catch (err: any) {
-        this.logger.warn(`LLM关键词翻译失败: ${err.message}`)
+      const response = await this.llmClient.invoke(
+        [{ role: 'user', content: llmPrompt }] as Message[]
+      )
+      const keywords = response?.content?.trim() || ''
+      this.logger.log(`LLM关键词提取结果: ${keywords}`)
+      if (keywords) {
+        return keywords
       }
+    } catch (err: any) {
+      this.logger.warn(`LLM关键词提取失败: ${err.message}`)
     }
 
     if (matchedKeywords.length > 0) {
-      return matchedKeywords.slice(0, 4).join(' and ')
+      return matchedKeywords.slice(0, 4).join('、')
     }
 
     return 'premium product service'
