@@ -635,7 +635,7 @@ export class OrderService {
 
     let platformClause = ''
     if (platform && platform !== 'all') {
-      platformClause = ` AND (JSON_CONTAINS(o.platforms, '"${platform}"') OR o.platform = '${platform}')`
+      platformClause = ` AND (o.platforms LIKE '%"${platform}"%' OR o.platform = '${platform}')`
     }
 
     const whereClause = `
