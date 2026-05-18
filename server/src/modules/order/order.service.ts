@@ -653,7 +653,8 @@ export class OrderService {
                 (SELECT a.avatar_url FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
                 (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
                 u.avatar
-              ) as publisher_avatar
+              ) as publisher_avatar,
+              (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
@@ -684,7 +685,8 @@ export class OrderService {
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',
-      publisherAvatar: row.publisherAvatar || row.publisher_avatar || ''
+      publisherAvatar: row.publisherAvatar || row.publisher_avatar || '',
+      acceptCount: Number(row.acceptCount || row.accept_count || 0)
     }))
 
     return {
