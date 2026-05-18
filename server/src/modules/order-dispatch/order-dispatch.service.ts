@@ -772,8 +772,8 @@ async getExecutionProgress(orderId: string) {
     })
     
     // 检查是否所有需要的分身都已接单
-    const requiredCount = request.expectedQuantity || request.expected_quantity || 1
-    console.log(`[acceptOrder] 检查接单进度: expectedQuantity=${request.expectedQuantity}, expected_quantity=${request.expected_quantity}, requiredCount=${requiredCount}`)
+    const requiredCount = request.avatarCount || request.avatar_count || 1
+    console.log(`[acceptOrder] 检查接单进度: avatarCount=${request.avatarCount}, avatar_count=${request.avatar_count}, requiredCount=${requiredCount}`)
     const acceptedCountRows = await db.query(
       'SELECT COUNT(*) as count FROM order_dispatch_requests WHERE order_id = ? AND status = ?',
       [orderId, 'accepted']
