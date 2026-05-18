@@ -465,9 +465,7 @@ export class ContentGenerationService implements OnModuleInit {
    * 根据平台和内容类型智能设置默认配图数量
    * 不同平台对配图数量的要求差异很大：
    * - 文章类平台（公众号/头条/知乎）：需要多张配图穿插文中，增强阅读体验
-   * - 小红书：高度视觉化平台，6-9张图片是标配
-   * - 朋友圈/微博：1-3张简洁明了
-   * - 抖音/快手：以视频为主，图文时3-6张
+   * - 所有平台统一3张配图
    */
   private getDefaultImageCount(platform: string, contentType: string): number {
     const isVideo = contentType === 'video' || contentType === 'video_text'
@@ -475,17 +473,17 @@ export class ContentGenerationService implements OnModuleInit {
     if (isVideo) return 0
 
     const countMap: Record<string, number> = {
-      wechat_mp: 5,          // 微信公众号：5张配图分散在文章中
-      wechat_official: 5,    // 微信公众号（旧key同上）
-      wechat_channel: 4,     // 视频号图文：4张
-      toutiao: 5,            // 今日头条：5张配图
-      zhihu: 4,              // 知乎：4张配图
-      xiaohongshu: 9,        // 小红书：9张是标准笔记格式
+      wechat_mp: 3,          // 微信公众号：3张配图
+      wechat_official: 3,    // 微信公众号（旧key同上）
+      wechat_channel: 3,     // 视频号图文：3张
+      toutiao: 3,            // 今日头条：3张配图
+      zhihu: 3,              // 知乎：3张配图
+      xiaohongshu: 3,        // 小红书：3张配图
       wechat_moments: 3,     // 朋友圈：3张（1+2布局）
       weibo: 3,              // 微博：3张（1+2布局）
-      douyin: 6,             // 抖音图文：6张（滑动式）
-      kuaishou: 6,           // 快手图文：6张
-      bilibili: 4,           // B站：4张
+      douyin: 3,             // 抖音图文：3张
+      kuaishou: 3,           // 快手图文：3张
+      bilibili: 3,           // B站：3张
     }
     return countMap[platform] || 3
   }
