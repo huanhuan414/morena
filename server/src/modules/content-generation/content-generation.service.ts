@@ -281,7 +281,7 @@ export class ContentGenerationService implements OnModuleInit {
         this.logger.log(`图文文章生成完成: ${textContent.length}字`)
         await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
 
-        images = await this.generateArticleImages(platform, input, textContent, imageCount)
+        images = await this.generateArticleImages(platform, input, textContent, imageCount, requestId)
         this.logger.log(`文章配图生成完成: ${images.length}张`)
 
         textContent = this.replaceImagePlaceholders(textContent, images)
@@ -330,7 +330,7 @@ export class ContentGenerationService implements OnModuleInit {
           if (needImage) {
             try {
               this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
-              images = await this.generateImages(platform, input, textContent)
+              images = await this.generateImages(platform, input, textContent, requestId)
               this.logger.log(`图片生成完成: ${images.length}张`)
               await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
             } catch (err: any) {
@@ -639,7 +639,7 @@ ${input.orderDescription}
   /**
    * 生成图文文章的配图 - 增强版：融合技能图片策略 + LLM上下文感知
    */
-  private async generateArticleImages(platform: string, input: any, textContent: string, imageCount: number): Promise<string[]> {
+  private async generateArticleImages(platform: string, input: any, textContent: string, imageCount: number, requestId: string): Promise<string[]> {
     // 用LLM从文章内容中为每张图生成精准的视觉描述
     const imageVisualDescs = await this.generateContextAwareImageDescs(textContent, imageCount, input.orderTitle || '产品')
 
@@ -673,23 +673,23 @@ ${input.orderDescription}
     const articleImageSize = platform === 'wechat_mp' || platform === 'wechat_official' || platform === 'toutiao' || platform === 'zhihu'
       ? '1536x1024' : '1024x1024'
 
-    this.logger.log(`开始并行生成${imageCount}张文章配图...`)
-    const results = await Promise.allSettled(
-      prompts.map((prompt, i) => {
-        this.logger.log(`正在生成文章第${i + 1}张配图，提示词: ${prompt.substring(0, 80)}...`)
-        return this.generateImageViaHttp(prompt, articleImageSize)
-      })
-    )
-
+    // 逐张生成并逐张保存，让前端轮询时能实时看到新图片
+    this.logger.log(`开始逐张生成${imageCount}张文章配图...`)
     const images: string[] = []
-    results.forEach((result, i) => {
-      if (result.status === 'fulfilled' && result.value) {
-        images.push(result.value)
-        this.logger.log(`文章第${i + 1}张配图生成成功`)
-      } else if (result.status === 'rejected') {
-        this.logger.warn(`文章第${i + 1}张配图生成失败: ${result.reason?.message || result.reason}`)
+    for (let i = 0; i < prompts.length; i++) {
+      try {
+        this.logger.log(`正在生成文章第${i + 1}张配图，提示词: ${prompts[i].substring(0, 80)}...`)
+        const url = await this.generateImageViaHttp(prompts[i], articleImageSize)
+        if (url) {
+          images.push(url)
+          this.logger.log(`文章第${i + 1}张配图生成成功，已保存到数据库 (${images.length}/${imageCount})`)
+          // 每生成一张就更新数据库和缓存，前端下次轮询即可看到
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, [], 'generating_images')
+        }
+      } catch (err: any) {
+        this.logger.warn(`文章第${i + 1}张配图生成失败: ${err.message}`)
       }
-    })
+    }
 
     return images
   }
@@ -914,7 +914,7 @@ ${input.orderDescription}
   /**
    * 生成配图 — 增强版：融合技能图片策略
    */
-  private async generateImages(platform: string, input: any, textContent: string): Promise<string[]> {
+  private async generateImages(platform: string, input: any, textContent: string, requestId: string): Promise<string[]> {
     const quantity = this.getDefaultImageCount(platform, input.contentType || 'image')
     const imagePrompts = await this.buildImagePrompts(platform, input, textContent, quantity)
 
@@ -928,24 +928,23 @@ ${input.orderDescription}
     }
     const imageSize = sizeMap[platform] || '1024x1536'
 
-    const results = await Promise.allSettled(
-      imagePrompts.map((prompt, i) => {
-        this.logger.log(`正在生成第${i + 1}张图片，提示词: ${prompt.substring(0, 80)}...`)
-        return this.generateImageViaHttp(prompt, imageSize)
-      })
-    )
-
+    // 逐张生成并逐张保存，让前端轮询时能实时看到新图片
+    this.logger.log(`开始逐张生成${quantity}张配图...`)
     const images: string[] = []
-    results.forEach((result, i) => {
-      if (result.status === 'fulfilled' && result.value) {
-        images.push(result.value)
-        this.logger.log(`第${i + 1}张图片生成成功`)
-      } else if (result.status === 'rejected') {
-        this.logger.warn(`第${i + 1}张图片生成失败: ${result.reason?.message || result.reason}`)
-      } else if (result.status === 'fulfilled') {
-        this.logger.warn(`第${i + 1}张图片响应格式异常: ${JSON.stringify(result.value)}`)
+    for (let i = 0; i < imagePrompts.length; i++) {
+      try {
+        this.logger.log(`正在生成第${i + 1}张图片，提示词: ${imagePrompts[i].substring(0, 80)}...`)
+        const url = await this.generateImageViaHttp(imagePrompts[i], imageSize)
+        if (url) {
+          images.push(url)
+          this.logger.log(`第${i + 1}张图片生成成功，已保存到数据库 (${images.length}/${quantity})`)
+          // 每生成一张就更新数据库和缓存，前端下次轮询即可看到
+          await this.updatePartialContent(requestId, input.orderId, textContent, images, [], 'generating_images')
+        }
+      } catch (err: any) {
+        this.logger.warn(`第${i + 1}张图片生成失败: ${err.message}`)
       }
-    })
+    }
 
     return images
   }

@@ -132,7 +132,7 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
       if (isTextOnly) return 'AI正在创作文案...'
       return isVideo
         ? '正在根据文案提取视觉场景，准备视频素材...'
-        : '正在根据文案生成配图，确保图片风格与内容匹配...'
+        : '正在逐张生成配图，每张生成后即可预览...'
     case 'generating_video':
       return '正在合成视频，视频生成通常需要10~20分钟，请耐心等待...'
     case 'completed':
@@ -475,7 +475,7 @@ export default function OrderContentCreation() {
             <View className="cc-partial-preview">
               <View className="cc-partial-header">
                 <ImageIcon size={14} color="#8B5CF6" />
-                <Text className="cc-partial-title">配图预览 ({images.length})</Text>
+                <Text className="cc-partial-title">配图预览 ({images.length}张已生成)</Text>
               </View>
               <View className="cc-partial-body">
                 <View className="cc-images-grid">
