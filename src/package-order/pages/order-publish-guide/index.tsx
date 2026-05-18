@@ -17,7 +17,7 @@ import {
   FileText, Image as ImageIcon, Video,
   Play,
   Send, Save, ChevronRight,
-  MessageSquare, CircleAlert, LayoutPanelLeft
+  MessageSquare, CircleAlert, LayoutPanelLeft, Clock
 } from 'lucide-react-taro'
 import './index.css'
 
@@ -86,12 +86,16 @@ export default function OrderPublishGuide() {
   const [requestId, setRequestId] = useState<string>('')
   const [publishing, setPublishing] = useState(false)
   const [orderId, setOrderId] = useState<string>('')
+  const [readonly, setReadonly] = useState(false)
+  const [contentStatus, setContentStatus] = useState<string>('')
 
-  // 解析 URL 参数
   useEffect(() => {
     const params = router.params
 
-    // 如果有 contentId，从后端拉取完整数据
+    if (params.readonly === 'true') {
+      setReadonly(true)
+    }
+
     if (params.contentId) {
       const fetchContentById = async () => {
         try {
@@ -104,7 +108,6 @@ export default function OrderPublishGuide() {
             const data = resData.data
             if (data.content) setContent(data.content)
             if (data.images && data.images.length > 0) setImages(data.images)
-            // 解析视频：兼容 videos 数组和 videoUrl 字符串
             if (data.videos && data.videos.length > 0) {
               setVideos(data.videos)
             } else if (data.videoUrl) {
@@ -141,6 +144,7 @@ export default function OrderPublishGuide() {
               }
               setContentType(typeMap[data.contentType] || '图文')
             }
+            if (data.status) setContentStatus(data.status)
             setRequestId(params.contentId || '')
           }
         } catch (error) {
@@ -148,12 +152,10 @@ export default function OrderPublishGuide() {
         }
       }
       fetchContentById()
-      // URL 参数中的 orderId 作为回退
       if (params.orderId) setOrderId(params.orderId)
       return
     }
 
-    // 兼容旧逻辑：从 URL 参数直接取值
     const platformsFromQuery = params.platforms ? getValidatedPlatforms(params.platforms.split(',')) : []
     if (platformsFromQuery.length > 0) {
       setPlatforms(platformsFromQuery)
@@ -847,8 +849,7 @@ export default function OrderPublishGuide() {
           </View>
         </View>
 
-        {/* 完成发布按钮 */}
-        {requestId && (
+        {requestId && !readonly && !['awaiting_acceptance', 'feedback_submitted'].includes(contentStatus) && (
           <View className="fixed-bottom-bar">
             <View
               className="complete-publish-btn"
@@ -859,6 +860,15 @@ export default function OrderPublishGuide() {
               ) : (
                 <Text className="complete-publish-text">完成发布</Text>
               )}
+            </View>
+          </View>
+        )}
+
+        {['awaiting_acceptance', 'feedback_submitted'].includes(contentStatus) && (
+          <View className="fixed-bottom-bar">
+            <View className="status-hint-bar">
+              <Clock size={16} color="#8B5CF6" />
+              <Text className="status-hint-text">已提交反馈，等待发单者验收</Text>
             </View>
           </View>
         )}

@@ -188,11 +188,16 @@ export default function GeneratedContentPage() {
   const handleView = (content: any) => {
     const normalizedStatus = BACKEND_STATUS_TO_TAB[content.status] || content.status
     if (normalizedStatus === 'generating') {
-      // 生成中 → 跳转内容创作页查看进度
       const query = `orderId=${encodeURIComponent(content.orderId || '')}&requestId=${encodeURIComponent(content.id || '')}`
       Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?${query}` })
+    } else if (normalizedStatus === 'awaiting_acceptance') {
+      const query = [
+        `contentId=${encodeURIComponent(content.id || '')}`,
+        `orderId=${encodeURIComponent(content.orderId || '')}`,
+        `readonly=true`,
+      ].filter(Boolean).join('&')
+      Taro.navigateTo({ url: `/package-order/pages/order-publish-guide/index?${query}` })
     } else {
-      // 已完成/已发布 → 跳转发布引导页查看详情
       const query = [
         `contentId=${encodeURIComponent(content.id || '')}`,
         `orderId=${encodeURIComponent(content.orderId || '')}`,

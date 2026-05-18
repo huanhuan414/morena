@@ -161,9 +161,10 @@
 /* 内容区域 */
 .page-content {
   flex: 1;
-  height: 0;
   padding: 24rpx;
   padding-bottom: 180rpx;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 配额提示条 */
