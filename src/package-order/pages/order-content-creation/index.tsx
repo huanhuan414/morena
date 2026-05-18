@@ -52,6 +52,12 @@ interface StepDef {
   longEstTime: string // 长耗时（视频）
 }
 
+const STEPS_TEXT: StepDef[] = [
+  { key: 'queued', label: '排队中', icon: 'clock', estTime: '约10秒', longEstTime: '约10秒' },
+  { key: 'text', label: '生成文案', icon: 'text', estTime: '约30秒', longEstTime: '约40秒' },
+  { key: 'done', label: '内容完成', icon: 'done', estTime: '', longEstTime: '' },
+]
+
 const STEPS_IMAGE: StepDef[] = [
   { key: 'queued', label: '排队中', icon: 'clock', estTime: '约10秒', longEstTime: '约10秒' },
   { key: 'text', label: '生成文案', icon: 'text', estTime: '约30秒', longEstTime: '约40秒' },
@@ -68,8 +74,9 @@ const STEPS_VIDEO: StepDef[] = [
 
 // 获取当前步骤列表
 function getSteps(contentType?: string): StepDef[] {
-  const isVideo = contentType === 'video' || contentType === 'video_text'
-  return isVideo ? STEPS_VIDEO : STEPS_IMAGE
+  if (contentType === 'video' || contentType === 'video_text') return STEPS_VIDEO
+  if (contentType === 'text') return STEPS_TEXT
+  return STEPS_IMAGE
 }
 
 // rawStatus → 当前步骤索引 (0-based)
@@ -114,6 +121,7 @@ function getStepStates(currentStep: number, totalSteps?: number): StepState[] {
 function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolean): string {
   if (isTimeout) return '生成时间较长，可稍后在生成内容页查看结果'
   const isVideo = contentType === 'video' || contentType === 'video_text'
+  const isTextOnly = contentType === 'text'
   switch (rawStatus) {
     case 'pending':
     case 'processing':
@@ -121,6 +129,7 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
     case 'generating_text':
       return 'AI正在创作文案，根据您的风格和领域偏好定制内容...'
     case 'generating_images':
+      if (isTextOnly) return 'AI正在创作文案...'
       return isVideo
         ? '正在根据文案提取视觉场景，准备视频素材...'
         : '正在根据文案生成配图，确保图片风格与内容匹配...'

@@ -442,11 +442,13 @@ const Index: React.FC = () => {
   // 内容类型标签
   const getContentTypeTag = (order: OrderItem) => {
     const typeMap: Record<string, { text: string; color: string; bg: string }> = {
-      'content': { text: '图文', color: '#6366F1', bg: '#EEF2FF' },
+      'image_text': { text: '图文', color: '#6366F1', bg: '#EEF2FF' },
+      'image': { text: '图片', color: '#6366F1', bg: '#EEF2FF' },
+      'text': { text: '纯文案', color: '#10B981', bg: '#ECFDF5' },
       'video': { text: '视频', color: '#EC4899', bg: '#FDF2F8' },
       'marketing': { text: '营销', color: '#F59E0B', bg: '#FFFBEB' },
     }
-    return typeMap[order.contentType || ''] || null
+    return typeMap[order.contentType || ''] || { text: '图文', color: '#6366F1', bg: '#EEF2FF' }
   }
 
   return (
@@ -949,7 +951,7 @@ const Index: React.FC = () => {
 
         {/* 加载更多提示 */}
         {orders.length > 0 && (
-          <View className="load-more-wrap">
+          <View className="load-more-wrapper">
             {ordersLoading && orderPage > 1 ? (
               <Text className="load-more-text">加载中...</Text>
             ) : hasMoreOrders ? (
