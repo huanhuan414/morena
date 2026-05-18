@@ -660,16 +660,25 @@ export class OrderService {
                 (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
                 u.avatar
               ) as publisher_avatar,
-              (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count
+              (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count,
+              o.avatar_count as required_count
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
+       HAVING accept_count < required_count
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ${safePageSize} OFFSET ${offset}`
     )
 
     const totalRows = await db.query(
-      `SELECT COUNT(*) as total FROM orders o ${whereClause}`
+      `SELECT COUNT(*) as total FROM (
+        SELECT o.id,
+          (SELECT COUNT(DISTINCT avatar_id) FROM order_dispatch_requests WHERE order_id = o.id AND status IN ('accepted', 'in_progress', 'completed')) as accept_count,
+          o.avatar_count as required_count
+        FROM orders o
+        ${whereClause}
+        HAVING accept_count < required_count
+      ) as t`
     )
     const total = Number(totalRows?.[0]?.total || 0)
 

@@ -780,6 +780,56 @@ async getExecutionProgress(orderId: string) {
     )
     const acceptedCount = acceptedCountRows?.[0]?.count || 0
     
+    // 📌 如果已接单数量 > 需要数量，踢掉一个未接单的匹配分身（被抢了）
+    if (acceptedCount > requiredCount) {
+      // 找到该订单中仍处于 pending 状态的分派记录（按创建时间最早优先踢出）
+      const pendingDispatches = await db.query(
+        `SELECT id, avatar_id, user_id FROM order_dispatch_requests 
+         WHERE order_id = ? AND status = 'pending' 
+         ORDER BY created_at ASC LIMIT 1`,
+        [orderId]
+      )
+      const kickedDispatch = pendingDispatches?.[0]
+      if (kickedDispatch) {
+        const kickedAvatarId = kickedDispatch.avatarId || kickedDispatch.avatar_id
+        const kickedUserId = kickedDispatch.userId || kickedDispatch.user_id
+        
+        // 更新被踢分派记录状态为 kicked
+        await db.updateWhere('order_dispatch_requests', { id: kickedDispatch.id }, {
+          status: 'kicked',
+          reject_reason: '订单已被其他分身抢先接单，名额已满',
+          updated_at: new Date()
+        })
+        console.log(`[acceptOrder] 踢出未接单分身: avatarId=${kickedAvatarId}, dispatchId=${kickedDispatch.id}`)
+        
+        // 获取被踢分身名称和订单标题
+        let kickedAvatarName = '分身'
+        try {
+          const avatarInfo = await db.query('SELECT name FROM avatars WHERE id = ?', [kickedAvatarId])
+          kickedAvatarName = avatarInfo?.[0]?.name || '分身'
+        } catch {}
+        
+        // 通知被踢分身所属用户：你的分身订单被别人抢了
+        try {
+          await this.notificationService.createNotification({
+            user_id: kickedUserId,
+            type: 'order_snatched',
+            title: '订单被抢',
+            content: `你的分身"${kickedAvatarName}"的订单"${request.orderTitle || request.order_title || '内容创作'}"已被其他分身抢先接单，你太慢了！`,
+            metadata: {
+              avatarId: kickedAvatarId,
+              orderId,
+              dispatchRequestId: kickedDispatch.id,
+              kickedReason: 'order_snatched'
+            }
+          })
+          console.log(`[acceptOrder] 已通知被踢分身用户: userId=${kickedUserId}`)
+        } catch (err) {
+          console.error('[acceptOrder] 创建被踢通知失败:', err)
+        }
+      }
+    }
+    
     // 只有当已接单数量 >= 需要数量时，才更新订单状态为 in_progress
     if (acceptedCount >= requiredCount) {
       await db.updateWhere('orders', { id: orderId }, {
