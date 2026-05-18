@@ -452,13 +452,22 @@ ${imageHint}
     }
 
     if (firstItem.b64_json) {
-      console.log(`[AiSkillService] 收到 base64 图片，上传到 TOS`);
-      const buffer = Buffer.from(firstItem.b64_json, 'base64');
-      const url = await this.storageService.uploadImageFromBuffer(
-        buffer,
-        `ai-skill/${Date.now()}.png`,
-      );
-      return url;
+      console.log(`[AiSkillService] 收到 base64 图片，上传到 veImageX CDN`);
+      try {
+        const buffer = Buffer.from(firstItem.b64_json, 'base64');
+        const fileName = `ai-skill_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`;
+        const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File);
+        console.log(`[AiSkillService] base64 图片转存 veImageX CDN 成功: ${uploadResult.url.slice(0, 80)}...`);
+        return uploadResult.url;
+      } catch (volcErr: any) {
+        console.warn(`[AiSkillService] veImageX 上传失败: ${volcErr.message}，降级到对象存储`);
+        const buffer = Buffer.from(firstItem.b64_json, 'base64');
+        const url = await this.storageService.uploadImageFromBuffer(
+          buffer,
+          `ai-skill/${Date.now()}.png`,
+        );
+        return url;
+      }
     }
 
     throw new Error(`${apiName}: 未找到图片 URL 或 base64 数据`);

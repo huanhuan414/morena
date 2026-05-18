@@ -29,6 +29,7 @@ export default function PalmReadingPage() {
   const [inputImageUrl, setInputImageUrl] = useState('')
   const [generating, setGenerating] = useState(false)
   const [resultImageUrl, setResultImageUrl] = useState('')
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [errorMessage, setErrorMessage] = useState('')
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const pollingRef = useRef(false)
@@ -240,7 +241,7 @@ export default function PalmReadingPage() {
         </View>
 
         {/* 描述 */}
-        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8 }}>
+        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8, textAlign: 'center' }}>
           上传手掌照片，AI 为您生成专属掌相分析图
         </Text>
       </View>
@@ -538,13 +539,22 @@ export default function PalmReadingPage() {
                         </View>
                       </View>
                       {/* 结果图展示 */}
-                      {item.status === 'completed' && item.resultImageUrl && (
+                      {item.status === 'completed' && item.resultImageUrl && !failedImages.has(item.id) && (
                         <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }} onClick={() => handlePreviewImage(item.resultImageUrl)}>
                           <Image
                             src={item.resultImageUrl}
                             style={{ width: '100%', height: '160px' }}
                             mode="aspectFill"
+                            onError={() => {
+                              console.log('[掌相阅读] 结果图加载失败:', item.resultImageUrl?.slice(0, 80))
+                              setFailedImages(prev => new Set(prev).add(item.id))
+                            }}
                           />
+                        </View>
+                      )}
+                      {item.status === 'completed' && item.resultImageUrl && failedImages.has(item.id) && (
+                        <View style={{ marginTop: '10px', borderRadius: '8px', height: '80px', backgroundColor: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text className="block text-xs" style={{ color: '#999999' }}>图片已过期</Text>
                         </View>
                       )}
                       {/* 失败记录展示错误信息 */}

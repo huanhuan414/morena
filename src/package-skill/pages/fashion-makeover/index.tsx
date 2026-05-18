@@ -43,6 +43,7 @@ export default function FashionMakeoverPage() {
   const [generating, setGenerating] = useState(false)
   const [resultImageUrl, setResultImageUrl] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const pollingRef = useRef(false)
 
@@ -252,7 +253,7 @@ export default function FashionMakeoverPage() {
         </View>
 
         {/* 描述 */}
-        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8 }}>
+        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8, textAlign: 'center' }}>
           上传参考图或输入穿搭主题，AI 生成 3 套穿搭灵感方案
         </Text>
       </View>
@@ -600,13 +601,22 @@ export default function FashionMakeoverPage() {
                         </View>
                       </View>
                       {/* 结果图展示 */}
-                      {item.status === 'completed' && item.resultImageUrl && (
+                      {item.status === 'completed' && item.resultImageUrl && !failedImages.has(item.id) && (
                         <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }} onClick={() => handlePreviewImage(item.resultImageUrl)}>
                           <Image
                             src={item.resultImageUrl}
                             style={{ width: '100%', height: '160px' }}
                             mode="aspectFill"
+                            onError={() => {
+                              console.log('[衣品改造] 结果图加载失败:', item.resultImageUrl?.slice(0, 80))
+                              setFailedImages(prev => new Set(prev).add(item.id))
+                            }}
                           />
+                        </View>
+                      )}
+                      {item.status === 'completed' && item.resultImageUrl && failedImages.has(item.id) && (
+                        <View style={{ marginTop: '10px', borderRadius: '8px', height: '80px', backgroundColor: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text className="block text-xs" style={{ color: '#999999' }}>图片已过期</Text>
                         </View>
                       )}
                       {/* 失败记录展示错误信息 */}

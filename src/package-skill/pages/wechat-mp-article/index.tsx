@@ -325,7 +325,7 @@ export default function WechatMpArticle() {
         </View>
 
         {/* 描述 */}
-        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8 }}>
+        <Text className="block text-sm text-white leading-relaxed" style={{ opacity: 0.8, textAlign: 'center' }}>
           输入主题描述，AI 一键生成爆款公众号文章并发布
         </Text>
       </View>
