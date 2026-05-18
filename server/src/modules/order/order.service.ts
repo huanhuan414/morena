@@ -889,7 +889,7 @@ export class OrderService {
       user_id: order.userId,
       type: 'order_paid',
       title: '订单支付成功',
-      content: `订单"${order.title}"支付成功，请选择分身进行匹配`,
+      content: `订单"${order.title}"支付成功，正在匹配分身`,
       metadata: { orderId, transactionId }
     })
 

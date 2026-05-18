@@ -220,15 +220,13 @@ const Index: React.FC = () => {
     { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: '高薪急单', tagColor: '#F59E0B' },
     { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
-    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
-    { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
+    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
   ] : [
     { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
     { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: pendingOrders > 0 ? pendingOrders + '单待接' : '去接单', tagColor: '#F59E0B' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
     { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
-    { label: '邀请赚钱', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
-    { label: '收益提现', icon: Wallet, color: '#10B981', bg: 'linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 100%)', path: '/package-profile/pages/earning-center/index', tag: '秒到账', tagColor: '#10B981' },
+    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
   ]
 
   const getGreeting = () => {
