@@ -633,7 +633,7 @@ const MindChat: React.FC = () => {
                               onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                             >
                               <Plus size={11} color="#8b5cf6" />
-                              <Text className="add-skill-text">添加技能</Text>
+                            <Text className="add-skill-text">添加技能</Text>
                             </View>
                           )}
                         </View>
@@ -659,7 +659,7 @@ const MindChat: React.FC = () => {
                                 onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                               >
                                 <Plus size={10} color="#8b5cf6" />
-                                <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加</Text>
+                              <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加</Text>
                               </View>
                             </>
                           ) : (
@@ -668,7 +668,7 @@ const MindChat: React.FC = () => {
                               onClick={() => Taro.navigateTo({ url: `/package-skill/pages/skills-square/index?avatarId=${clone.id}` })}
                             >
                               <Plus size={10} color="#8b5cf6" />
-                              <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
+                            <Text className="skill-tag-text" style={{ color: '#8b5cf6' }}>添加技能</Text>
                             </View>
                           )}
                         </View>
@@ -773,7 +773,7 @@ const MindChat: React.FC = () => {
                 <Star size={18} color="#f59e0b" />
                 <View className="square-hero-info">
                   <Text className="square-hero-title">发现有趣的AI分身</Text>
-                  <Text className="square-hero-desc">关注、交友、一起玩耍</Text>
+                  <Text className="square-hero-desc">关注、私聊、一起玩耍</Text>
                 </View>
               </View>
               {hasAnyClone && (
@@ -841,7 +841,7 @@ const MindChat: React.FC = () => {
                       </View>
                       <View className="square-action-btn square-follow-btn" onClick={handleSquareConnect}>
                         <ChevronsRight size={13} color="#ffffff" />
-                        <Text className="square-action-text-white">交友</Text>
+                        <Text className="square-action-text-white">私聊</Text>
                       </View>
                     </View>
                   </View>

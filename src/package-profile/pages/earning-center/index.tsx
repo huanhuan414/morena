@@ -1,4 +1,4 @@
-import Taro, { useDidShow, showToast, navigateTo, useLoad, navigateBack } from '@tarojs/taro'
+import Taro, { useDidShow, showToast, useLoad, navigateBack } from '@tarojs/taro'
 import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'

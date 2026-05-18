@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Wallet, Sparkles, Target, ArrowRight, CircleDollarSign, HandCoins, Eye } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Grid2x2, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { useUserStore } from '@/stores/user'
@@ -130,7 +130,7 @@ const Index: React.FC = () => {
   }
 
   // 实时动态
-  const [activities, setActivities] = useState<any[]>([])
+  const [, setActivities] = useState<any[]>([])
 
   const fetchActivities = async () => {
     try {
@@ -217,15 +217,13 @@ const Index: React.FC = () => {
   // 根据用户状态决定快捷功能 - 核心转化路径
   const quickActions = mindClones === 0 ? [
     { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: '0元开始', tagColor: '#6366F1' },
-    { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: '高薪急单', tagColor: '#F59E0B' },
-    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
     { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
   ] : [
     { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
-    { label: '接单赚钱', icon: HandCoins, color: '#F59E0B', bg: 'linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%)', path: '/package-order/pages/pending-order/index', tag: pendingOrders > 0 ? pendingOrders + '单待接' : '去接单', tagColor: '#F59E0B' },
     { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
-    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '更多机会', tagColor: '#0EA5E9' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
     { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
   ]
 
@@ -432,7 +430,7 @@ const Index: React.FC = () => {
                 <FileText size={28} color="#10B981" />
               </View>
               <Text className="stat-value-small" style={{ color: '#10B981' }}>{generatedContents}</Text>
-              <Text className="stat-label-small">生成内容</Text>
+              <Text className="stat-label-small">我的订单</Text>
               <Text className="stat-hint" style={{ color: generatedContents > 0 ? '#10B981' : '#94A3B8' }}>
                 {generatedContents > 0 ? '去发布' : '暂无内容'}
               </Text>

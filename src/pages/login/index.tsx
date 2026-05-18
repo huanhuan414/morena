@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, Button, Image } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
 import { Button as UIButton } from '@/components/ui/button'
+import { WeappButton } from '@/components/ui/weapp-button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Gift } from 'lucide-react-taro'
@@ -419,14 +420,14 @@ const Login: React.FC = () => {
               </View>
             </View>
 
-            <Button
+            <WeappButton
               className="login-wechat-phone-btn"
               open-type="getPhoneNumber"
               onGetPhoneNumber={handleGetPhoneNumber}
               disabled={wechatLoading || !agreed}
             >
               {wechatLoading ? '授权中...' : '授权登录'}
-            </Button>
+            </WeappButton>
 
             {renderAgreement()}
           </View>
@@ -446,7 +447,7 @@ const Login: React.FC = () => {
               <Text className="profile-panel-desc">设置你的头像和昵称，让大家认识你</Text>
 
               <View className="profile-avatar-row">
-                <Button
+                <WeappButton
                   className="profile-avatar-btn"
                   open-type="chooseAvatar"
                   onChooseAvatar={handleChooseProfileAvatar}
@@ -457,7 +458,7 @@ const Login: React.FC = () => {
                     mode="aspectFill"
                   />
                   {avatarUploading && <View className="profile-avatar-loading" />}
-                </Button>
+                </WeappButton>
                 <Text className="profile-avatar-hint">点击选择头像</Text>
               </View>
 
@@ -472,13 +473,13 @@ const Login: React.FC = () => {
               </View>
 
               <View className="profile-panel-actions">
-                <Button
+                <WeappButton
                   className="profile-save-btn"
                   onClick={handleSaveProfile}
                   disabled={profileSaving}
                 >
                   {profileSaving ? '保存中...' : '保存'}
-                </Button>
+                </WeappButton>
                 <View className="profile-skip-btn" onClick={handleSkipProfile}>
                   <Text className="profile-skip-text">跳过</Text>
                 </View>
