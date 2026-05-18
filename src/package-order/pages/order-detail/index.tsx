@@ -143,6 +143,7 @@ export default function OrderDetailPage() {
 
   const orderId = Taro.getCurrentInstance().router?.params?.id
   const action = Taro.getCurrentInstance().router?.params?.action
+  const currentUserId = Taro.getStorageSync('userId')
 
   const fetchDetail = useCallback(async () => {
     if (!orderId) return
@@ -307,11 +308,12 @@ export default function OrderDetailPage() {
   const effectiveStatus = order?.summary_stats?.effectiveStatus || order.status
   const statusCfg = STATUS_CONFIG[effectiveStatus] || { label: effectiveStatus, color: '#9CA3AF', bgColor: '#F9FAFB', phase: -1, desc: '' }
   const currentPhase = getPhaseIndex(effectiveStatus)
-  const isPayable = order.status === 'pending_payment'
-  const isCancellable = ['pending_payment', 'pending'].includes(order.status)
-  const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status)
-  // 去验收：有分身处于 preview/awaiting_acceptance/feedback_submitted 状态，且尚未全部完成
-  const isVerifiable = hasAwaitingAcceptance && !isAllVerified && !['cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status)
+  const orderUserId = order.userId || order.user_id
+  const isOrderOwner = orderUserId && currentUserId && orderUserId === currentUserId
+  const isPayable = order.status === 'pending_payment' && isOrderOwner
+  const isCancellable = ['pending_payment', 'pending'].includes(order.status) && isOrderOwner
+  const isDeletable = ['cancelled', 'auto_cancelled', 'timeout', 'expired', 'completed'].includes(order.status) && isOrderOwner
+  const isVerifiable = hasAwaitingAcceptance && !isAllVerified && !['cancelled', 'auto_cancelled', 'timeout', 'expired'].includes(order.status) && isOrderOwner
   const isAbnormal = statusCfg.phase === -1 && order.status !== 'pending_payment'
   const ctConfig = CONTENT_TYPE_MAP[order.contentType] || CONTENT_TYPE_MAP.text
 
