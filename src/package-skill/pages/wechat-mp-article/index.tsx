@@ -36,15 +36,51 @@ export default function WechatMpArticle() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [genStatus, setGenStatus] = useState<string>('')
+  const [genProgress, setGenProgress] = useState<string>('')
+  const [genImages, setGenImages] = useState<string[]>([])
   const [result, setResult] = useState<{ title: string; content: string; images: string[] } | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [wechatAccounts, setWechatAccounts] = useState<any[]>([])
+  const [pollTimer, setPollTimer] = useState<ReturnType<typeof setInterval> | null>(null)
 
   useDidShow(() => {
     fetchHistory()
     fetchWechatAccounts()
+    // 恢复进行中的生成状态
+    recoverGeneratingStatus()
   })
+
+  // 页面隐藏时不断开轮询（后台继续轮询）
+  // useDidHide 中不清理 pollTimer，让轮询继续
+  // 但组件卸载时需要清理
+  // 注意：Taro 页面不会被卸载，只是隐藏
+
+  const recoverGeneratingStatus = async () => {
+    try {
+      const res = await Network.request({
+        url: '/api/ai-skill/history',
+        data: { skillType: 'wechat_mp_article', page: 1, pageSize: 5 },
+      })
+      if (res.data?.code === 200 && res.data?.data?.list) {
+        const records = res.data.data.list as HistoryRecord[]
+        const inProgress = records.find(r =>
+          r.status === 'generating' || r.status === 'generating_text' || r.status === 'generating_images'
+        )
+        if (inProgress) {
+          setGenerating(true)
+          // 恢复已有的图片
+          if (inProgress.article?.images?.length) {
+            setGenImages(inProgress.article.images)
+          }
+          startPolling(inProgress.id)
+        }
+      }
+    } catch (err) {
+      console.error('[公众号爆款] 恢复状态失败:', err)
+    }
+  }
 
   const fetchHistory = async () => {
     try {
@@ -148,6 +184,9 @@ export default function WechatMpArticle() {
 
     setGenerating(true)
     setResult(null)
+    setGenStatus('generating_text')
+    setGenProgress('正在生成爆款文章...')
+    setGenImages([])
 
     try {
       const res = await Network.request({
@@ -162,28 +201,38 @@ export default function WechatMpArticle() {
       console.log('[公众号爆款] 生成请求:', res.data)
 
       if (res.data?.code === 200 && res.data?.data?.id) {
-        // 开始轮询
-        pollResult(res.data.data.id)
+        startPolling(res.data.data.id)
       } else {
         Taro.showToast({ title: res.data?.msg || '生成失败', icon: 'none' })
         setGenerating(false)
+        setGenStatus('')
+        setGenProgress('')
       }
     } catch (err) {
       Taro.showToast({ title: '请求失败', icon: 'none' })
       setGenerating(false)
+      setGenStatus('')
+      setGenProgress('')
     }
   }
 
-  const pollResult = async (id: string) => {
+  const startPolling = (id: string) => {
+    // 清理之前的轮询
+    if (pollTimer) {
+      clearInterval(pollTimer)
+    }
+
     let attempts = 0
-    const maxAttempts = 120 // 最多轮询2分钟
+    const maxAttempts = 300 // 最多轮询10分钟（3张图可能需要较长时间）
 
     const timer = setInterval(async () => {
       attempts++
       if (attempts > maxAttempts) {
         clearInterval(timer)
+        setPollTimer(null)
         setGenerating(false)
-        Taro.showToast({ title: '生成超时，请稍后在历史记录中查看', icon: 'none' })
+        setGenStatus('timeout')
+        setGenProgress('生成超时，请稍后在历史记录中查看')
         return
       }
 
@@ -192,26 +241,53 @@ export default function WechatMpArticle() {
           url: `/api/ai-skill/record/${id}`,
         })
         const record = res.data?.data
-        if (record?.status === 'completed') {
+        if (!record) return
+
+        const status = record.status
+        const meta = record.metadata || {}
+
+        // 更新状态和进度
+        if (status === 'generating_text') {
+          setGenStatus('generating_text')
+          setGenProgress('正在生成爆款文章...')
+        } else if (status === 'generating_images') {
+          const imagesSoFar = meta.images || []
+          setGenImages(imagesSoFar)
+          setGenStatus('generating_images')
+          const current = imagesSoFar.length
+          const total = meta.totalImages || 3
+          setGenProgress(`正在生成配图 (${current}/${total})...`)
+        } else if (status === 'completed') {
           clearInterval(timer)
+          setPollTimer(null)
           setGenerating(false)
+          setGenStatus('completed')
+          setGenProgress('生成完成！')
+          const images = meta.images || record.article?.images || []
+          setGenImages(images)
           if (record.article) {
             setResult({
               title: record.article.title,
               content: record.article.content,
-              images: record.article.images || [],
+              images,
             })
           }
           fetchHistory()
-        } else if (record?.status === 'failed') {
+        } else if (status === 'failed') {
           clearInterval(timer)
+          setPollTimer(null)
           setGenerating(false)
+          setGenStatus('failed')
+          setGenProgress(record.errorMessage || '生成失败')
           Taro.showToast({ title: record.errorMessage || '生成失败', icon: 'none' })
         }
       } catch (err) {
         // 继续轮询
+        console.error('[公众号爆款] 轮询异常:', err)
       }
     }, 2000)
+
+    setPollTimer(timer)
   }
 
   const handlePublish = async () => {
@@ -583,10 +659,52 @@ export default function WechatMpArticle() {
 
             {/* 生成中进度提示 */}
             {generating && (
-              <View style={{ marginBottom: '24px', backgroundColor: PRIMARY_FAINT, borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Loader size={32} color={PRIMARY} />
-                <Text className="block text-sm mt-3" style={{ color: PRIMARY }}>AI 正在创作爆款文章...</Text>
-                <Text className="block text-xs mt-1" style={{ color: '#999999' }}>预计需要30-60秒</Text>
+              <View style={{ marginBottom: '24px', backgroundColor: PRIMARY_FAINT, borderRadius: '12px', padding: '16px' }}>
+                {/* 状态步骤 */}
+                <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* 步骤1：文案生成 */}
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                    {genStatus === 'generating_text' ? (
+                      <Loader size={16} color={PRIMARY} />
+                    ) : genStatus === 'generating_images' || genStatus === 'completed' ? (
+                      <View style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: '10px' }}>✓</Text>
+                      </View>
+                    ) : (
+                      <View style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#ddd' }} />
+                    )}
+                    <Text className="block text-sm" style={{ color: genStatus === 'generating_text' ? PRIMARY : (genStatus === 'generating_images' || genStatus === 'completed' ? '#333' : '#999') }}>
+                      生成爆款文案
+                    </Text>
+                  </View>
+                  {/* 步骤2：配图生成 */}
+                  <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                    {genStatus === 'generating_images' ? (
+                      <Loader size={16} color={PRIMARY} />
+                    ) : genStatus === 'completed' ? (
+                      <View style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: '10px' }}>✓</Text>
+                      </View>
+                    ) : (
+                      <View style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#ddd' }} />
+                    )}
+                    <Text className="block text-sm" style={{ color: genStatus === 'generating_images' ? PRIMARY : (genStatus === 'completed' ? '#333' : '#999') }}>
+                      生成配图 {genStatus === 'generating_images' ? `(${genImages.length}/${3})` : ''}
+                    </Text>
+                  </View>
+                </View>
+                {/* 进度文字 */}
+                <Text className="block text-xs mt-3" style={{ color: '#999' }}>{genProgress}</Text>
+                {/* 已生成的图片预览 */}
+                {genImages.length > 0 && (
+                  <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                    {genImages.map((url, idx) => (
+                      <View key={idx} style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${PRIMARY_BORDER}` }}>
+                        <Image src={url} mode="aspectFill" style={{ width: '100%', height: '100%' }} />
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
           </View>

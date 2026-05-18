@@ -47,6 +47,12 @@ export class AiSkillService {
 
       console.log(`[AiSkillService] 公众号爆款生成: inputCount=${inputCount}, inputText=${inputText?.substring(0, 50)}`);
 
+      // 更新状态为 generating_text
+      await pool.query(
+        `UPDATE ai_skill_records SET status = 'generating_text', metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', '正在生成爆款文章...'), updated_at = NOW() WHERE id = ?`,
+        [recordId],
+      );
+
       // Step 2: 用 LLM 生成文章（含 [IMG_N] 占位符）
       let articleContent = '';
       let articleTitle = '';
@@ -55,14 +61,20 @@ export class AiSkillService {
         articleTitle = llmResult.title;
         articleContent = llmResult.content;
         console.log(`[AiSkillService] 文章生成成功: title=${articleTitle}, contentLen=${articleContent.length}`);
+
+        // 文章生成成功后立即保存到 metadata，并更新状态
+        await pool.query(
+          `UPDATE ai_skill_records SET 
+            status = 'generating_images',
+            metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', '文章生成成功，正在生成配图...', '$.articleTitle', ?, '$.articleContent', ?),
+            updated_at = NOW() WHERE id = ?`,
+          [articleTitle, articleContent, recordId],
+        );
       } catch (err: any) {
         throw new Error(`文章生成失败: ${err.message}`);
       }
 
       // Step 3: 根据图片数量决定策略
-      // - 0 张输入 → 生成3张配图
-      // - 1-2 张输入 → 保留输入图 + 生成补齐到3张
-      // - ≥3 张输入 → 使用输入图，不额外生成
       let imageUrls: string[] = [...inputImageUrls];
       let needGenerate = 0;
 
@@ -74,13 +86,26 @@ export class AiSkillService {
 
       if (needGenerate > 0) {
         console.log(`[AiSkillService] 需要生成${needGenerate}张配图`);
-        // 逐张生成配图
+        // 逐张生成配图，每生成一张就保存到 metadata
         for (let i = 0; i < needGenerate; i++) {
           try {
             const imagePrompt = `微信公众号文章配图，主题：${inputText || articleTitle}，风格：高端简约商务，宽幅横版`;
             const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
             imageUrls.push(url);
             console.log(`[AiSkillService] 生成配图${i + 1}成功`);
+
+            // 每生成一张图就更新 metadata，前端可以逐步看到图片
+            const currentImageUrls = imageUrls.filter(Boolean);
+            await pool.query(
+              `UPDATE ai_skill_records SET 
+                metadata = JSON_SET(COALESCE(metadata, '{}'), '$.progress', ?, '$.images', ?),
+                updated_at = NOW() WHERE id = ?`,
+              [
+                `配图生成中(${currentImageUrls.length}/${inputCount + needGenerate})...`,
+                JSON.stringify(currentImageUrls),
+                recordId,
+              ],
+            );
           } catch (err: any) {
             console.error(`[AiSkillService] 生成配图${i + 1}失败:`, err.message);
           }
@@ -489,7 +514,7 @@ ${imageHint}
     }
 
     const [rows] = await pool.query(
-      `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at
+      `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at, metadata
        FROM ai_skill_records ${whereClause}
        ORDER BY created_at DESC
        LIMIT ? OFFSET ?`,
@@ -514,6 +539,7 @@ ${imageHint}
         status: r.status,
         errorMessage: r.error_message || r.errorMessage,
         createdAt: r.created_at || r.createdAt,
+        metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
         // 公众号文章类型，解析 article 数据
         article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
       })),
@@ -529,7 +555,7 @@ ${imageHint}
   async getRecord(userId: string, recordId: string) {
     const pool = getPool();
     const [rows] = await pool.query(
-      `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at
+      `SELECT id, skill_type, input_image_url, input_text, result_image_url, status, error_message, created_at, metadata
        FROM ai_skill_records WHERE id = ? AND user_id = ?`,
       [recordId, userId],
     );
@@ -549,6 +575,7 @@ ${imageHint}
       status: r.status,
       errorMessage: r.error_message || r.errorMessage,
       createdAt: r.created_at || r.createdAt,
+      metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : (r.metadata || null),
       article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
     };
   }
