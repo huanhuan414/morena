@@ -4,7 +4,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Network } from '@/network'
-import { Upload, Sparkles, History, Hand, ArrowLeft, Image as ImageIcon, Save, Expand } from 'lucide-react-taro'
+import { Upload, Sparkles, History, Hand, ArrowLeft, Image as ImageIcon, Save, Expand, Trash2 } from 'lucide-react-taro'
 import { getStatusBarHeight } from '@/utils/safe-area'
 
 interface HistoryRecord {
@@ -181,6 +181,33 @@ export default function PalmReadingPage() {
 
   const handlePreviewImage = (url: string) => {
     Taro.previewImage({ urls: [url], current: url })
+  }
+
+  const handleDeleteRecord = (id: string) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: '确定要删除这条记录吗？删除后不可恢复。',
+      confirmText: '删除',
+      confirmColor: '#EF4444',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            const result = await Network.request({
+              url: `/api/ai-skill/record/${id}`,
+              method: 'DELETE',
+            })
+            if (result.data?.code === 200) {
+              Taro.showToast({ title: '已删除', icon: 'success' })
+              loadHistory()
+            } else {
+              Taro.showToast({ title: result.data?.msg || '删除失败', icon: 'none' })
+            }
+          } catch (err) {
+            Taro.showToast({ title: '删除失败', icon: 'none' })
+          }
+        }
+      },
+    })
   }
 
   return (
@@ -478,9 +505,9 @@ export default function PalmReadingPage() {
             ) : (
               <View style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {history.map((item) => (
-                  <Card key={item.id} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
+                  <Card key={item.id}>
                     <CardContent style={{ padding: '12px' }}>
-                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }} onClick={() => item.resultImageUrl && handlePreviewImage(item.resultImageUrl)}>
                         {/* 输入图缩略图 */}
                         {item.inputImageUrl ? (
                           <Image
@@ -509,16 +536,15 @@ export default function PalmReadingPage() {
                           </View>
                           <Text className="block text-xs mt-1" style={{ color: '#cccccc' }}>{item.createdAt}</Text>
                         </View>
-                        {/* 结果缩略图 */}
-                        {item.resultImageUrl && (
-                          <Image
-                            src={item.resultImageUrl}
-                            style={{ width: '44px', height: '44px', borderRadius: '6px', flexShrink: 0 }}
-                            mode="aspectFill"
-                          />
-                        )}
+                        {/* 删除按钮 */}
+                        <View
+                          style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          onClick={(e) => { e.stopPropagation && e.stopPropagation(); handleDeleteRecord(item.id); }}
+                        >
+                          <Trash2 size={14} color="#EF4444" />
+                        </View>
                       </View>
-                      {/* 失败记录展示错误信息 */}
+                        {/* 失败记录展示错误信息 */}
                       {item.status === 'failed' && item.errorMessage && (
                         <View style={{ marginTop: '8px', paddingLeft: '64px' }}>
                           <Text className="block text-xs" style={{ color: '#EF4444' }}>{item.errorMessage.slice(0, 60)}</Text>

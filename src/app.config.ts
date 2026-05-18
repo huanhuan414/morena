@@ -79,6 +79,7 @@ export default defineAppConfig({
         'pages/skill-try/index',
         'pages/palm-reading/index',
         'pages/fashion-makeover/index',
+        'pages/wechat-mp-article/index',
       ],
     },
     {

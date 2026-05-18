@@ -5,7 +5,7 @@ import { VolcengineService } from '../upload/volcengine.service';
 import * as crypto from 'crypto';
 
 /** 技能类型 */
-export type SkillType = 'palm_reading' | 'fashion_makeover';
+export type SkillType = 'palm_reading' | 'fashion_makeover' | 'wechat_mp_article';
 
 /** 内置提示词 */
 const SKILL_PROMPTS: Record<SkillType, string> = {
@@ -13,6 +13,7 @@ const SKILL_PROMPTS: Record<SkillType, string> = {
     '根据我的手掌，我想让你制作一个完整的中文掌相阅读指南，分析手掌，指南的风格应该干净而简约，细线条，圆角卡片，整体看起来非常高端。专注于掌相阅读，创建一条简单黑白轮廓图，展示我的主要掌纹，作为一件小艺术品。尽你所能',
   fashion_makeover:
     '请根据用户输入的【主题】或上传的【参考图片】，创作一张横向 4:3 的高完成度「AI服装灵感方案 / AI Fashion Inspiration Board」。\n\n【任务定位】\n这不是普通穿搭拼图，不是简单的几套衣服展示，也不是电商商品推荐图，而是一张兼具「灵感提取 + 视觉转译 + 3套完整穿搭方案 + 专业提案感 + 实际上身效果」的中文高质量服装灵感设计图。\n\n整张图的核心目标是：\n1. 清楚呈现灵感来源；\n2. 从灵感中提取色彩、气质、廓形、材质、细节与场景氛围；\n3. 将这些视觉语言转译成 3 套有逻辑的完整穿搭方案；\n4. 让用户第一眼觉得高级、时髦、专业，第二眼能看懂整套方案为什么这样设计，第三眼觉得这 3 套 look 既有审美表达，也真实可穿。',
+  wechat_mp_article: '',
 };
 
 const IMAGE_GEN_BASE_URL = process.env.IMAGE_GEN_API_BASE_URL || 'https://api.aaigc.top';
@@ -27,6 +28,185 @@ export class AiSkillService {
   ) {}
 
   /**
+   * 后台执行公众号爆款图文生成
+   * 1. 用 LLM 生成文章内容
+   * 2. 根据输入图片数量决定图片生成策略
+   * 3. 将图片插入文章合适位置
+   */
+  private async doGenerateArticle(
+    recordId: string,
+    fullPrompt: string,
+    inputImageUrl?: string,
+    inputText?: string,
+  ) {
+    const pool = getPool();
+    try {
+      // Step 1: 解析输入图片（可能是多张，逗号分隔）
+      const inputImageUrls: string[] = inputImageUrl ? inputImageUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
+      const inputCount = inputImageUrls.length;
+
+      console.log(`[AiSkillService] 公众号爆款生成: inputCount=${inputCount}, inputText=${inputText?.substring(0, 50)}`);
+
+      // Step 2: 用 LLM 生成文章（含 [IMG_N] 占位符）
+      let articleContent = '';
+      let articleTitle = '';
+      try {
+        const llmResult = await this.callLlmForArticle(inputText || '', inputCount);
+        articleTitle = llmResult.title;
+        articleContent = llmResult.content;
+        console.log(`[AiSkillService] 文章生成成功: title=${articleTitle}, contentLen=${articleContent.length}`);
+      } catch (err: any) {
+        throw new Error(`文章生成失败: ${err.message}`);
+      }
+
+      // Step 3: 根据图片数量决定策略
+      // - 0 张输入 → 生成3张配图
+      // - 1-2 张输入 → 保留输入图 + 生成补齐到3张
+      // - ≥3 张输入 → 使用输入图，不额外生成
+      let imageUrls: string[] = [...inputImageUrls];
+      let needGenerate = 0;
+
+      if (inputCount === 0) {
+        needGenerate = 3;
+      } else if (inputCount < 3) {
+        needGenerate = 3 - inputCount;
+      }
+
+      if (needGenerate > 0) {
+        console.log(`[AiSkillService] 需要生成${needGenerate}张配图`);
+        // 逐张生成配图
+        for (let i = 0; i < needGenerate; i++) {
+          try {
+            const imagePrompt = `微信公众号文章配图，主题：${inputText || articleTitle}，风格：高端简约商务，宽幅横版`;
+            const url = await this.callGenerationsApi(imagePrompt, '1536x1024');
+            imageUrls.push(url);
+            console.log(`[AiSkillService] 生成配图${i + 1}成功`);
+          } catch (err: any) {
+            console.error(`[AiSkillService] 生成配图${i + 1}失败:`, err.message);
+          }
+        }
+      }
+
+      // Step 4: 将图片插入文章中的占位符位置
+      // 如果文章中有 [IMG_N] 占位符，替换它们
+      let processedContent = articleContent;
+      for (let i = 0; i < imageUrls.length; i++) {
+        const imgTag = `\n<img src="${imageUrls[i]}" style="width:100%;border-radius:8px;margin:12px 0;" />\n`;
+        if (processedContent.includes(`[IMG_${i + 1}]`)) {
+          processedContent = processedContent.replace(`[IMG_${i + 1}]`, imgTag);
+        } else if (processedContent.includes(`[IMG]`)) {
+          processedContent = processedContent.replace(`[IMG]`, imgTag);
+        } else {
+          // 没有占位符，在段落间插入
+          const paragraphs = processedContent.split('\n\n');
+          const insertPos = Math.min(Math.floor(paragraphs.length * (i + 1) / (imageUrls.length + 1)), paragraphs.length);
+          paragraphs.splice(insertPos, 0, imgTag);
+          processedContent = paragraphs.join('\n\n');
+        }
+      }
+
+      // 清理残留占位符
+      processedContent = processedContent.replace(/\[IMG_\d+\]/g, '').replace(/\[IMG\]/g, '');
+
+      // Step 5: 保存结果
+      // 对于文章类型，result_image_url 存文章内容，images 存图片URL列表
+      // 扩展：用 result_image_url 存第一张图片，额外字段存文章
+      const firstImage = imageUrls.length > 0 ? imageUrls[0] : '';
+      await pool.query(
+        `UPDATE ai_skill_records SET
+          result_image_url = ?,
+          input_text = ?,
+          status = 'completed',
+          error_message = ?,
+          updated_at = NOW()
+        WHERE id = ?`,
+        [
+          firstImage,
+          JSON.stringify({ title: articleTitle, content: processedContent, images: imageUrls, inputText: inputText || '' }),
+          articleTitle,
+          recordId,
+        ],
+      );
+
+      console.log(`[AiSkillService] 公众号爆款生成成功, recordId=${recordId}`);
+    } catch (error: any) {
+      console.error(`[AiSkillService] 公众号爆款生成失败, recordId=${recordId}:`, error.message);
+      await pool.query(
+        `UPDATE ai_skill_records SET status = 'failed', error_message = ?, updated_at = NOW() WHERE id = ?`,
+        [error.message?.slice(0, 500) || '未知错误', recordId],
+      );
+    }
+  }
+
+  /**
+   * 调用 LLM 生成公众号爆款文章
+   */
+  private async callLlmForArticle(userDescription: string, imageCount: number): Promise<{ title: string; content: string }> {
+    const ARK_API_KEY = process.env.ARK_API_KEY || '0a6405d5-b7ae-4afa-88e3-c707ae379a47';
+    const ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
+    const ARK_MODEL = 'doubao-seed-2-0-pro-260215';
+
+    const imageHint = imageCount > 0
+      ? `用户提供了${imageCount}张参考图片，请在文章中用 [IMG_1]${imageCount >= 2 ? ', [IMG_2]' : ''}${imageCount >= 3 ? ', [IMG_3]' : ''} 标记图片插入位置（根据上下文选择合适段落之间插入）。`
+      : '请在文章中用 [IMG_1], [IMG_2], [IMG_3] 标记3张配图的插入位置（在相关段落之间分散插入）。';
+
+    const systemPrompt = `你是一位资深的微信公众号爆款内容创作专家，擅长写出10万+阅读量的公众号文章。
+
+要求：
+1. 标题要有吸引力，使用爆款标题技巧（数字、疑问、悬念、对比等）
+2. 文章结构清晰：开头引人入胜→核心观点展开→案例/数据支撑→金句总结→引导关注
+3. 段落短小精悍，每段2-3句话
+4. 使用金句、排比等修辞手法增强感染力
+5. 适当使用emoji增加可读性
+6. 结尾要有引导关注的CTA
+${imageHint}
+
+请直接返回 JSON 格式：
+{"title": "文章标题", "content": "文章正文内容（Markdown格式，包含[IMG_N]占位符）"}`;
+
+    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ARK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: ARK_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `请根据以下描述写一篇公众号爆款文章：\n\n${userDescription}` },
+        ],
+        temperature: 0.8,
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`LLM API error: ${response.status} ${errText.slice(0, 200)}`);
+    }
+
+    const result = await response.json() as any;
+    const text = result.choices?.[0]?.message?.content || '';
+
+    // 尝试解析 JSON
+    try {
+      // 提取 JSON 部分（可能被 ```json 包裹）
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return { title: parsed.title || '公众号爆款文章', content: parsed.content || '' };
+      }
+    } catch (e) {
+      // JSON 解析失败，用整个文本作为内容
+    }
+
+    // 降级：第一行作为标题，其余作为内容
+    const lines = text.split('\n').filter(Boolean);
+    return { title: lines[0]?.replace(/^#+\s*/, '') || '公众号爆款文章', content: lines.slice(1).join('\n\n') || text };
+  }
+
+  /**
    * 发起 AI 技能图片生成（异步，立即返回 recordId）
    */
   async startGenerate(
@@ -36,12 +216,17 @@ export class AiSkillService {
     inputText?: string,
   ) {
     const builtInPrompt = SKILL_PROMPTS[skillType];
-    if (!builtInPrompt) {
+    if (!builtInPrompt && skillType !== 'wechat_mp_article') {
       throw new Error(`不支持的技能类型: ${skillType}`);
     }
 
+    // 公众号爆款生成需要输入文本
+    if (skillType === 'wechat_mp_article' && (!inputText || !inputText.trim())) {
+      throw new Error('请输入文章描述');
+    }
+
     // 构建完整提示词
-    let fullPrompt = builtInPrompt;
+    let fullPrompt = builtInPrompt || '';
     if (inputText && inputText.trim()) {
       fullPrompt += `\n\n用户附加描述：${inputText.trim()}`;
     }
@@ -58,9 +243,15 @@ export class AiSkillService {
     );
 
     // 异步执行生成（不 await，后台运行）
-    this.doGenerate(recordId, skillType, fullPrompt, inputImageUrl).catch((err) => {
-      console.error(`[AiSkillService] doGenerate unhandled error for ${recordId}:`, err.message);
-    });
+    if (skillType === 'wechat_mp_article') {
+      this.doGenerateArticle(recordId, fullPrompt, inputImageUrl, inputText).catch((err) => {
+        console.error(`[AiSkillService] doGenerateArticle unhandled error for ${recordId}:`, err.message);
+      });
+    } else {
+      this.doGenerate(recordId, skillType, fullPrompt, inputImageUrl).catch((err) => {
+        console.error(`[AiSkillService] doGenerate unhandled error for ${recordId}:`, err.message);
+      });
+    }
 
     return { id: recordId, skillType, status: 'generating' };
   }
@@ -314,6 +505,8 @@ export class AiSkillService {
         status: r.status,
         errorMessage: r.error_message || r.errorMessage,
         createdAt: r.created_at || r.createdAt,
+        // 公众号文章类型，解析 article 数据
+        article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
       })),
       total,
       page,
@@ -347,6 +540,53 @@ export class AiSkillService {
       status: r.status,
       errorMessage: r.error_message || r.errorMessage,
       createdAt: r.created_at || r.createdAt,
+      article: r.skill_type === 'wechat_mp_article' && r.input_text ? this.parseArticleData(r.input_text) : null,
     };
+  }
+
+  /**
+   * 解析文章数据（从 input_text 字段中提取 JSON）
+   */
+  private parseArticleData(rawInputText: string): { title: string; content: string; images: string[]; inputText: string } | null {
+    try {
+      // input_text 在完成时被存为 JSON 字符串
+      if (rawInputText.startsWith('{')) {
+        return JSON.parse(rawInputText);
+      }
+    } catch (e) {
+      // 解析失败返回 null
+    }
+    return null;
+  }
+
+  /**
+   * 删除单条记录
+   */
+  async deleteRecord(userId: string, recordId: string) {
+    const pool = getPool();
+    const [result] = await pool.query(
+      `DELETE FROM ai_skill_records WHERE id = ? AND user_id = ?`,
+      [recordId, userId],
+    );
+    const affected = (result as any).affectedRows || 0;
+    if (affected === 0) {
+      throw new Error('记录不存在或无权删除');
+    }
+    return { success: true };
+  }
+
+  /**
+   * 批量删除记录
+   */
+  async deleteRecords(userId: string, recordIds: string[]) {
+    if (!recordIds || recordIds.length === 0) return { success: true, deleted: 0 };
+    const pool = getPool();
+    const placeholders = recordIds.map(() => '?').join(',');
+    const [result] = await pool.query(
+      `DELETE FROM ai_skill_records WHERE id IN (${placeholders}) AND user_id = ?`,
+      [...recordIds, userId],
+    );
+    const affected = (result as any).affectedRows || 0;
+    return { success: true, deleted: affected };
   }
 }

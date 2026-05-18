@@ -142,6 +142,12 @@ export default function SkillsSquare() {
       })
       return
     }
+    if (hexId === 'content_writing') {
+      Taro.navigateTo({
+        url: `/package-skill/pages/wechat-mp-article/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}`,
+      })
+      return
+    }
     Taro.navigateTo({
       url: `/package-skill/pages/skill-try/index?skillId=${hexId}&skillName=${encodeURIComponent(skill.name)}&category=${encodeURIComponent(skill.category)}`,
     })

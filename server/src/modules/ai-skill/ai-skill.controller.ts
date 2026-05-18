@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, Param, Req, HttpCode, HttpStatus, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AiSkillService, SkillType } from './ai-skill.service';
@@ -19,7 +19,7 @@ export class AiSkillController {
   @Post('generate')
   @HttpCode(HttpStatus.OK)
   async generate(
-    @Body() body: { skillType: SkillType; inputImageUrl?: string; inputText?: string },
+    @Body() body: { skillType: SkillType; inputImageUrl?: string; inputText?: string; inputImageUrls?: string[] },
     @Req() req: any,
   ) {
     const userId = req.headers['x-user-id'];
@@ -30,13 +30,19 @@ export class AiSkillController {
       return { code: 400, msg: '请选择技能类型', data: null };
     }
 
-    console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!body.inputImageUrl}, hasText=${!!body.inputText}`);
+    // 合并图片URL：inputImageUrls 优先，否则用 inputImageUrl
+    let imageUrl = body.inputImageUrl;
+    if (body.inputImageUrls && body.inputImageUrls.length > 0) {
+      imageUrl = body.inputImageUrls.join(',');
+    }
+
+    console.log(`[AiSkillController] generate: userId=${userId}, skillType=${body.skillType}, hasImage=${!!imageUrl}, imageCount=${body.inputImageUrls?.length || 0}, hasText=${!!body.inputText}`);
 
     try {
       const result = await this.aiSkillService.startGenerate(
         userId,
         body.skillType as SkillType,
-        body.inputImageUrl,
+        imageUrl,
         body.inputText,
       );
       // 立即返回 recordId，前端轮询状态
@@ -102,5 +108,49 @@ export class AiSkillController {
     const imageUrl = await this.storageService.uploadImage(file);
     console.log('[AiSkill] 图片URL:', imageUrl);
     return { code: 200, msg: 'ok', data: { imageUrl } };
+  }
+
+  /**
+   * DELETE /api/ai-skill/record/:id
+   * 删除单条记录
+   */
+  @Delete('record/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteRecord(@Param('id') id: string, @Req() req: any) {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+      return { code: 401, msg: '请先登录', data: null };
+    }
+
+    try {
+      const result = await this.aiSkillService.deleteRecords(userId, [id]);
+      return { code: 200, msg: '删除成功', data: result };
+    } catch (error: any) {
+      return { code: 400, msg: error.message || '删除失败', data: null };
+    }
+  }
+
+  /**
+   * POST /api/ai-skill/records/delete
+   * 批量删除记录
+   */
+  @Post('records/delete')
+  @HttpCode(HttpStatus.OK)
+  async deleteRecords(@Body() body: { ids: string[] }, @Req() req: any) {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+      return { code: 401, msg: '请先登录', data: null };
+    }
+
+    if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
+      return { code: 400, msg: '请选择要删除的记录', data: null };
+    }
+
+    try {
+      const result = await this.aiSkillService.deleteRecords(userId, body.ids);
+      return { code: 200, msg: '删除成功', data: result };
+    } catch (error: any) {
+      return { code: 400, msg: error.message || '删除失败', data: null };
+    }
   }
 }

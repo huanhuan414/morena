@@ -38,7 +38,7 @@ export interface SkillStrategy {
 export const SKILL_STRATEGIES: Record<string, SkillStrategy> = {
   'skill_001': {
     skillId: 'skill_001',
-    skillName: '图文爆款生成',
+    skillName: '公众号爆款生成',
     contentTypes: ['image_text', 'text', 'image'],
     coreCapability: '你是顶级新媒体爆款写手，精通各平台的内容算法和用户心理，擅长制造情绪共鸣和传播裂变',
     generationStrategy: `【图文爆款核心策略】
