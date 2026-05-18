@@ -816,7 +816,7 @@ export default function AvatarAccountConfigPage() {
                 </>
               )}
 
-              {PLATFORMS[platformIndex].id === 'wechat' && (
+              {PLATFORMS[platformIndex].id === 'wechat_mp' && (
                 <>
                   <View className="form-item">
                     <Text className="form-label required">AppID</Text>
