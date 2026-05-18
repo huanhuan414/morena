@@ -547,6 +547,18 @@
   font-weight: 600;
   color: #6366F1;
 }
+.home-content-type-badge {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+.home-content-type-text {
+  font-size: 20rpx;
+  font-weight: 600;
+}
+.demo-strip {
+  background: #A78BFA;
+}
 .home-publish-time {
   font-size: 22rpx;
   color: #CBD5E1;
@@ -559,7 +571,7 @@
   flex-direction: row;
   align-items: center;
   gap: 10rpx;
-  margin-bottom: 14rpx;
+  margin-bottom: 8rpx;
 }
 .home-order-title {
   font-size: 28rpx;
@@ -582,6 +594,37 @@
 .home-match-text {
   font-size: 20rpx;
   font-weight: 600;
+}
+
+/* 订单描述 */
+.home-order-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #64748B;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 信息行 */
+.home-order-info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+.home-info-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4rpx;
+}
+.home-info-text {
+  font-size: 22rpx;
+  color: #94A3B8;
 }
 
 /* 卡片底部 */

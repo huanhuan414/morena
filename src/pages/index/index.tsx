@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket } from 'lucide-react-taro'
+import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -23,8 +23,62 @@ interface OrderItem {
   publisher: { nickname: string; rating: number }
   matchScore?: number
   createdAt: string
-  isAssigned?: boolean
+  isDemo?: boolean
+  urgency?: string
+  contentType?: string
 }
+
+// 精心设计的示例数据 — 刺激用户接单欲望
+const DEMO_ORDERS: OrderItem[] = [
+  {
+    id: 'demo_1', title: '小红书美妆种草笔记撰写',
+    description: '需要3篇原创种草笔记，要求真实感强、配图精美，符合小红书调性。',
+    platform: 'xiaohongshu', estimatedEarning: 420, deliveryDays: 2,
+    requirements: ['原创撰写', '3篇起', '配图3张/篇'],
+    publisher: { nickname: '花西子品牌方', rating: 4.9 },
+    createdAt: '30分钟前', isDemo: true, urgency: 'urgent', acceptCount: 3, matchScore: 95, contentType: 'content'
+  },
+  {
+    id: 'demo_2', title: '抖音短视频脚本创作',
+    description: '为新品30秒短视频创作脚本，需突出产品卖点和使用场景，节奏感强。',
+    platform: 'douyin', estimatedEarning: 680, deliveryDays: 3,
+    requirements: ['脚本撰写', '分镜设计', '配音稿'],
+    publisher: { nickname: '科技新品局', rating: 4.8 },
+    createdAt: '1小时前', isDemo: true, urgency: 'urgent', acceptCount: 5, matchScore: 88, contentType: 'video'
+  },
+  {
+    id: 'demo_3', title: '微信公众号品牌推广软文',
+    description: '撰写品牌推广软文，要求文笔流畅、传播力强，阅读量目标10w+。',
+    platform: 'wechat_mp', estimatedEarning: 560, deliveryDays: 2,
+    requirements: ['原创撰写', 'SEO优化', '配图设计'],
+    publisher: { nickname: '新消费品牌', rating: 4.7 },
+    createdAt: '2小时前', isDemo: true, urgency: 'normal', acceptCount: 2, matchScore: 82, contentType: 'marketing'
+  },
+  {
+    id: 'demo_4', title: 'B站数码产品深度测评',
+    description: '数码产品深度测评内容，包含图文和视频脚本，需要专业性和可读性。',
+    platform: 'bilibili', estimatedEarning: 1200, deliveryDays: 5,
+    requirements: ['深度测评', '对比分析', '实拍素材'],
+    publisher: { nickname: '数码研究所', rating: 4.95 },
+    createdAt: '3小时前', isDemo: true, urgency: 'hot', acceptCount: 8, matchScore: 91, contentType: 'content'
+  },
+  {
+    id: 'demo_5', title: '快手美食探店视频脚本',
+    description: '探店短视频脚本创作，需要创意拍摄方案和剪辑建议，吸引本地流量。',
+    platform: 'kuaishou', estimatedEarning: 380, deliveryDays: 2,
+    requirements: ['脚本撰写', '拍摄方案', '剪辑建议'],
+    publisher: { nickname: '城市美食家', rating: 4.6 },
+    createdAt: '5小时前', isDemo: true, urgency: 'normal', acceptCount: 1, matchScore: 76, contentType: 'video'
+  },
+  {
+    id: 'demo_6', title: '小红书旅行攻略图文',
+    description: '撰写热门旅行目的地攻略，包含行程规划、美食推荐、拍照打卡点。',
+    platform: 'xiaohongshu', estimatedEarning: 350, deliveryDays: 3,
+    requirements: ['原创撰写', '配图9张+', '行程规划'],
+    publisher: { nickname: '旅行研究所', rating: 4.8 },
+    createdAt: '6小时前', isDemo: true, urgency: 'normal', acceptCount: 0, matchScore: 73, contentType: 'content'
+  }
+]
 
 const Index: React.FC = () => {
   const [userName, setUserName] = useState('用户')
@@ -51,7 +105,6 @@ const Index: React.FC = () => {
   // ===== 订单广场相关状态 =====
   const [activePlatform, setActivePlatform] = useState('all')
   const [orders, setOrders] = useState<OrderItem[]>([])
-  const [assignedOrders, setAssignedOrders] = useState<any[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, boolean>>({})
   const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, boolean>>({})
@@ -61,7 +114,7 @@ const Index: React.FC = () => {
     ...PLATFORM_UI_ORDER.map((key) => ({ key, label: getPlatformLabel(key) }))
   ]
 
-  // 获取公开订单列表
+  // 获取公开订单列表（订单广场数据）
   const fetchOrders = useCallback(async () => {
     try {
       setOrdersLoading(true)
@@ -69,48 +122,52 @@ const Index: React.FC = () => {
         url: '/api/order/open',
         data: activePlatform !== 'all' ? { platform: activePlatform } : {}
       })
-      console.log('[首页] 获取公开订单:', res.data)
+      console.log('[首页] 获取公开订单 URL:/api/order/open, Method:GET, Params:', activePlatform !== 'all' ? { platform: activePlatform } : {}, 'Response:', res.data)
 
       if (res.data?.code === 200 && res.data?.data) {
         const rawOrders = Array.isArray(res.data.data) ? res.data.data : (res.data.data.orders || res.data.data.list || [])
-        const mapped: OrderItem[] = rawOrders.map((o: any) => ({
-          id: o.id,
-          title: o.title || '未命名订单',
-          description: o.description || o.requirements || '',
-          platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
-          estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
-          deliveryDays: o.deliveryDays || o.delivery_days || 3,
-          acceptCount: o.acceptCount || o.accept_count || 0,
-          requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
-          publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
-          matchScore: o.matchScore || o.match_score,
-          createdAt: o.createdAt || o.created_at || '',
-          isAssigned: false
-        }))
-
-        // 把分配给当前用户的订单标记出来
-        const assignedIds = new Set(assignedOrders.map((a: any) => a.orderId))
-        mapped.forEach(o => {
-          if (assignedIds.has(o.id)) o.isAssigned = true
-        })
-
-        setOrders(mapped)
+        if (rawOrders.length > 0) {
+          const mapped: OrderItem[] = rawOrders.map((o: any) => ({
+            id: o.id,
+            title: o.title || '未命名订单',
+            description: o.description || o.requirements || '',
+            platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
+            estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
+            deliveryDays: o.deliveryDays || o.delivery_days || 3,
+            acceptCount: o.acceptCount || o.accept_count || 0,
+            requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
+            publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
+            matchScore: o.matchScore || o.match_score,
+            createdAt: o.createdAt || o.created_at || '',
+          }))
+          setOrders(mapped)
+        } else {
+          // API 无数据时用 demo 兜底
+          setOrders(filterDemoByPlatform(activePlatform))
+        }
+      } else {
+        setOrders(filterDemoByPlatform(activePlatform))
       }
     } catch (err) {
       console.error('获取公开订单失败:', err)
+      setOrders(filterDemoByPlatform(activePlatform))
     } finally {
       setOrdersLoading(false)
     }
-  }, [activePlatform, assignedOrders])
+  }, [activePlatform])
 
-  // 获取分配给当前用户的待接订单
+  // 根据 Tab 筛选 demo 数据
+  const filterDemoByPlatform = (platform: string) => {
+    if (platform === 'all') return DEMO_ORDERS
+    return DEMO_ORDERS.filter(o => o.platform === platform).length > 0
+      ? DEMO_ORDERS.filter(o => o.platform === platform)
+      : DEMO_ORDERS
+  }
+
+  // 获取分配给当前用户的待接订单（仅弹窗通知用）
   const fetchAssignedOrders = useCallback(async () => {
     try {
-      const res = await Network.request({
-        url: '/api/order-dispatch/pending-requests'
-      })
-      console.log('[首页] 获取待接订单:', res.data)
-
+      const res = await Network.request({ url: '/api/order-dispatch/pending-requests' })
       if (res.data?.code === 200 && res.data?.data) {
         const seen = new Set<string>()
         const items = (res.data.data || []).filter((item: any) => {
@@ -121,7 +178,6 @@ const Index: React.FC = () => {
           seen.add(oid)
           return true
         })
-        setAssignedOrders(items)
 
         // 弹窗通知
         if (items.length > 0 && !showOrderModal && !orderModalData) {
@@ -153,6 +209,11 @@ const Index: React.FC = () => {
 
   // 接单
   const handleAcceptOrder = async (orderId: string) => {
+    // demo 订单不能真正接单
+    if (orderId.startsWith('demo_')) {
+      Taro.showToast({ title: '示例订单，请先创建分身', icon: 'none' })
+      return
+    }
     if (acceptingOrderIds[orderId] || acceptedOrderIds[orderId]) return
     setAcceptingOrderIds(prev => ({ ...prev, [orderId]: true }))
     try {
@@ -175,6 +236,7 @@ const Index: React.FC = () => {
         url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`,
         method: 'POST'
       })
+      console.log('[首页] 接单 URL:', `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderId}`, 'Method:POST', 'Response:', res.data)
       if (res.data?.code === 200) {
         setAcceptedOrderIds(prev => ({ ...prev, [orderId]: true }))
         Taro.showToast({ title: '接单成功', icon: 'success' })
@@ -191,7 +253,6 @@ const Index: React.FC = () => {
     }
   }
 
-  // 获取待接订单通知（弹窗用）
   const getPlatformName = (platform: string): string => {
     const nameMap: Record<string, string> = {
       'wechat': '微信', 'wechat_mp': '公众号', 'xiaohongshu': '小红书',
@@ -349,8 +410,10 @@ const Index: React.FC = () => {
 
   // 紧急程度标签
   const getUrgencyTag = (order: OrderItem) => {
+    if (order.urgency === 'urgent' || order.urgency === 'hot') return { text: order.urgency === 'hot' ? '热门' : '紧急', color: '#EF4444', bg: '#FEF2F2' }
     if (order.deliveryDays <= 1) return { text: '紧急', color: '#EF4444', bg: '#FEF2F2' }
     if (order.deliveryDays <= 3) return { text: '较急', color: '#F59E0B', bg: '#FFFBEB' }
+    if (order.urgency === 'hot') return { text: '热门', color: '#F97316', bg: '#FFF7ED' }
     return null
   }
 
@@ -360,6 +423,16 @@ const Index: React.FC = () => {
     if (score >= 80) return '#10B981'
     if (score >= 60) return '#F59E0B'
     return '#6366F1'
+  }
+
+  // 内容类型标签
+  const getContentTypeTag = (order: OrderItem) => {
+    const typeMap: Record<string, { text: string; color: string; bg: string }> = {
+      'content': { text: '图文', color: '#6366F1', bg: '#EEF2FF' },
+      'video': { text: '视频', color: '#EC4899', bg: '#FDF2F8' },
+      'marketing': { text: '营销', color: '#F59E0B', bg: '#FFFBEB' },
+    }
+    return typeMap[order.contentType || ''] || null
   }
 
   return (
@@ -607,12 +680,7 @@ const Index: React.FC = () => {
           <View className="section-header">
             <View className="section-title-row">
               <ShoppingBag size={24} color="#6366F1" />
-              <Text className="section-title">待接订单</Text>
-              {assignedOrders.length > 0 && (
-                <View className="assigned-count-badge">
-                  <Text className="assigned-count-text">{assignedOrders.length}单待我接</Text>
-                </View>
-              )}
+              <Text className="section-title">订单广场</Text>
             </View>
             <View className="section-more" onClick={() => goToPage('/package-order/pages/order-square/index')}>
               <Text className="section-more-text">查看全部</Text>
@@ -642,26 +710,33 @@ const Index: React.FC = () => {
                 <Text className="order-loading-text">加载中...</Text>
               </View>
             ) : orders.length > 0 ? (
-              orders.slice(0, 5).map(order => {
+              orders.slice(0, 6).map(order => {
                 const platformConfig = getPlatformMeta(order.platform) || { color: '#7B3FE4', icon: '📋', name: order.platform }
                 const urgencyTag = getUrgencyTag(order)
-                const isAssigned = order.isAssigned
+                const contentTypeTag = getContentTypeTag(order)
+                const isDemo = order.isDemo
 
                 return (
                   <View
                     key={order.id}
                     className="home-order-card"
-                    onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })}
+                    onClick={() => {
+                      if (isDemo) {
+                        goToPage('/package-order/pages/order-square/index')
+                      } else {
+                        Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })
+                      }
+                    }}
                   >
                     {/* 卡片顶部条 */}
                     {urgencyTag && (
                       <View className="home-card-strip" style={{ background: urgencyTag.color }} />
                     )}
-                    {isAssigned && (
-                      <View className="home-card-strip assigned-strip" />
+                    {isDemo && (
+                      <View className="home-card-strip demo-strip" />
                     )}
 
-                    {/* 头部：平台 + 紧急 + 时间 */}
+                    {/* 头部：平台 + 紧急 + 内容类型 */}
                     <View className="home-card-header">
                       <View className="home-card-header-left">
                         <View className="home-platform-badge" style={{ background: `${platformConfig.color}15` }}>
@@ -675,9 +750,9 @@ const Index: React.FC = () => {
                             <Text className="home-urgency-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
                           </View>
                         )}
-                        {isAssigned && (
-                          <View className="home-assigned-badge">
-                            <Text className="home-assigned-text">待我接</Text>
+                        {contentTypeTag && (
+                          <View className="home-content-type-badge" style={{ background: contentTypeTag.bg }}>
+                            <Text className="home-content-type-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
                           </View>
                         )}
                       </View>
@@ -687,7 +762,7 @@ const Index: React.FC = () => {
                     {/* 标题 + 匹配度 */}
                     <View className="home-order-title-row">
                       <Text className="home-order-title">{order.title}</Text>
-                      {order.matchScore && order.matchScore >= 80 && (
+                      {order.matchScore && order.matchScore >= 70 && (
                         <View className="home-match-badge" style={{ background: `${getMatchColor(order.matchScore)}15` }}>
                           <TrendingUp size={12} color={getMatchColor(order.matchScore)} />
                           <Text className="home-match-text" style={{ color: getMatchColor(order.matchScore) }}>
@@ -695,6 +770,28 @@ const Index: React.FC = () => {
                           </Text>
                         </View>
                       )}
+                    </View>
+
+                    {/* 描述 */}
+                    {order.description && (
+                      <Text className="home-order-desc">{order.description}</Text>
+                    )}
+
+                    {/* 信息行：交付周期 + 已接单 + 发布者 */}
+                    <View className="home-order-info-row">
+                      <View className="home-info-item">
+                        <Clock size={12} color="#94A3B8" />
+                        <Text className="home-info-text">{order.deliveryDays}天交付</Text>
+                      </View>
+                      {order.acceptCount > 0 && (
+                        <View className="home-info-item">
+                          <Users size={12} color="#94A3B8" />
+                          <Text className="home-info-text">{order.acceptCount}人已接</Text>
+                        </View>
+                      )}
+                      <View className="home-info-item">
+                        <Text className="home-info-text">{order.publisher?.nickname || '匿名'}</Text>
+                      </View>
                     </View>
 
                     {/* 标签 + 收益 + 接单按钮 */}
@@ -712,11 +809,11 @@ const Index: React.FC = () => {
                       </View>
                       <View onClick={(e) => e.stopPropagation()}>
                         <View
-                          className={`home-accept-btn ${acceptedOrderIds[order.id] ? 'accepted' : ''} ${acceptingOrderIds[order.id] ? 'loading' : ''}`}
+                          className={`home-accept-btn ${isDemo ? 'demo' : ''} ${acceptedOrderIds[order.id] ? 'accepted' : ''} ${acceptingOrderIds[order.id] ? 'loading' : ''}`}
                           onClick={() => handleAcceptOrder(order.id)}
                         >
                           <Text className="home-accept-btn-text">
-                            {acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单')}
+                            {isDemo ? '去接单' : (acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单'))}
                           </Text>
                         </View>
                       </View>
