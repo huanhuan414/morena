@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig } from 'lucide-react-taro'
+import { Bell, Settings, Users, FileText, Coins, Plus, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown } from 'lucide-react-taro'
 import { Network } from '@/network'
 import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { PLATFORM_UI_ORDER, getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
@@ -16,16 +16,22 @@ interface OrderItem {
   title: string
   description: string
   platform: string
+  platforms: string[]
   estimatedEarning: number
   deliveryDays: number
   acceptCount: number
-  requirements: string[]
-  publisher: { nickname: string; rating: number }
+  requirements: any
+  targetAudience: string
+  priority: number
+  deadline: string | null
+  contentDeadlineAt: string | null
+  contentType: string
+  publisher: { nickname: string; rating: number; avatar?: string }
   matchScore?: number
   createdAt: string
-  isDemo?: boolean
-  urgency?: string
-  contentType?: string
+  avatarCount: number
+  quantityPerAvatar: number
+  urgency: 'urgent' | 'high' | 'normal' | 'low'
 }
 
 const Index: React.FC = () => {
@@ -49,6 +55,8 @@ const Index: React.FC = () => {
   const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
     pollInterval: 10000
   })
+
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
 
   // ===== 订单广场相关状态 =====
   const [activePlatform, setActivePlatform] = useState('all')
@@ -78,16 +86,26 @@ const Index: React.FC = () => {
         const mapped: OrderItem[] = rawOrders.map((o: any) => ({
           id: o.id,
           title: o.title || '未命名订单',
-          description: o.description || o.requirements || '',
+          description: o.description || '',
           platform: canonicalizePlatform(o.platform || o.platforms?.[0]),
-          estimatedEarning: Number(o.budget || o.estimatedEarning || 0),
+          platforms: Array.isArray(o.platforms) ? o.platforms : (o.platform ? [o.platform] : []),
+          estimatedEarning: Number(o.budget || o.price || o.estimatedEarning || 0),
           deliveryDays: o.deliveryDays || o.delivery_days || 3,
           acceptCount: o.acceptCount || o.accept_count || 0,
-          requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
-          publisher: { nickname: o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0 },
+          requirements: o.requirements || {},
+          targetAudience: o.targetAudience || o.target_audience || '',
+          priority: Number(o.priority || 0),
+          deadline: o.deadline || null,
+          contentDeadlineAt: o.contentDeadlineAt || o.content_deadline_at || null,
+          contentType: o.contentType || o.content_type || 'image',
+          publisher: { nickname: o.publisherNickname || o.publisher?.nickname || o.owner_nickname || '匿名', rating: o.publisher?.rating || 5.0, avatar: o.publisherAvatar || o.publisher?.avatar || '' },
           matchScore: o.matchScore || o.match_score,
           createdAt: o.createdAt || o.created_at || '',
+          avatarCount: o.avatarCount || o.avatar_count || 1,
+          quantityPerAvatar: o.quantityPerAvatar || o.quantity_per_avatar || 1,
+          urgency: o.urgency || (o.priority >= 4 ? 'urgent' : o.priority >= 3 ? 'high' : o.priority >= 2 ? 'normal' : 'low'),
         }))
+        console.log('[首页] 订单数据映射完成，共', mapped.length, '条')
         setOrders(mapped)
       } else {
         setOrders([])
@@ -345,11 +363,23 @@ const Index: React.FC = () => {
   }
 
   // 紧急程度标签
+  // 截止时间格式化
+  const formatDeadline = (deadline: string | null) => {
+    if (!deadline) return null
+    const diff = new Date(deadline).getTime() - Date.now()
+    if (diff <= 0) return { text: '已截止', color: '#EF4444', urgent: true }
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(hours / 24)
+    if (days > 0) return { text: `${days}天后`, color: '#6B7280', urgent: false }
+    if (hours > 6) return { text: `${hours}小时后`, color: '#F59E0B', urgent: false }
+    return { text: `${hours}小时后`, color: '#EF4444', urgent: true }
+  }
+
   const getUrgencyTag = (order: OrderItem) => {
-    if (order.urgency === 'urgent' || order.urgency === 'hot') return { text: order.urgency === 'hot' ? '热门' : '紧急', color: '#EF4444', bg: '#FEF2F2' }
+    if (order.urgency === 'urgent') return { text: '紧急', color: '#EF4444', bg: '#FEF2F2' }
     if (order.deliveryDays <= 1) return { text: '紧急', color: '#EF4444', bg: '#FEF2F2' }
     if (order.deliveryDays <= 3) return { text: '较急', color: '#F59E0B', bg: '#FFFBEB' }
-    if (order.urgency === 'hot') return { text: '热门', color: '#F97316', bg: '#FFF7ED' }
+    if (order.urgency === 'high') return { text: '优先', color: '#F97316', bg: '#FFF7ED' }
     return null
   }
 
@@ -639,7 +669,7 @@ const Index: React.FC = () => {
             </View>
           </ScrollView>
 
-          {/* 订单列表 - 待接订单风格卡片 */}
+          {/* 订单列表 - 待接订单风格卡片 orders.length=${orders.length} */}
           <View className="home-order-list">
             {ordersLoading ? (
               <View className="po-loading">
@@ -652,52 +682,61 @@ const Index: React.FC = () => {
                 const urgencyTag = getUrgencyTag(order)
                 const contentTypeTag = getContentTypeTag(order)
                 const priorityColor = urgencyTag ? urgencyTag.color : '#6366F1'
+                const isExpanded = expandedOrderId === order.id
+                const deadlineInfo = formatDeadline(order.deadline || order.contentDeadlineAt)
+                const reqTags = Array.isArray(order.requirements)
+                  ? (order.requirements as string[]).slice(0, 4)
+                  : (typeof order.requirements === 'object' && order.requirements?.skills)
+                    ? (order.requirements.skills as string[]).slice(0, 4)
+                    : []
 
                 return (
                   <View
                     key={order.id}
                     className="po-card"
-                    onClick={() => Taro.navigateTo({ url: `/package-order/pages/order-detail/index?orderId=${order.id}` })}
                   >
                     {/* 优先级色条 */}
                     <View className="po-priority-bar" style={{ background: priorityColor }} />
 
-                    {/* 卡片头部：平台 + badges */}
-                    <View className="po-card-top">
-                      <View className="po-card-badges">
-                        <View className="po-platform-pill" style={{ background: `${platformConfig.color}15` }}>
-                          <Text className="po-platform-pill-text" style={{ color: platformConfig.color }}>
-                            {platformConfig.icon} {getPlatformLabel(order.platform)}
-                          </Text>
+                    {/* 卡片头部：分身+匹配度 | 平台pill+类型pill+优先级pill */}
+                    <View className="po-card-top" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
+                      <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8rpx' }}>
+                        {order.matchScore != null && order.matchScore > 0 && (
+                          <View className="po-avatar-match" style={{ background: `${getMatchColor(order.matchScore)}15`, color: getMatchColor(order.matchScore) }}>
+                            {order.matchScore}%匹配
+                          </View>
+                        )}
+                        <View className="po-card-badges">
+                          <View className="po-platform-pill" style={{ background: `${platformConfig.color}15` }}>
+                            <Text className="po-platform-pill-text" style={{ color: platformConfig.color }}>
+                              {platformConfig.icon} {getPlatformLabel(order.platform)}
+                            </Text>
+                          </View>
+                          {contentTypeTag && (
+                            <View className="po-type-pill" style={{ background: contentTypeTag.bg }}>
+                              <Text className="po-type-pill-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
+                            </View>
+                          )}
+                          {urgencyTag && (
+                            <View className="po-priority-pill" style={{ background: urgencyTag.bg }}>
+                              <Text className="po-priority-pill-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
+                            </View>
+                          )}
                         </View>
-                        {contentTypeTag && (
-                          <View className="po-type-pill" style={{ background: contentTypeTag.bg }}>
-                            <Text className="po-type-pill-text" style={{ color: contentTypeTag.color }}>{contentTypeTag.text}</Text>
-                          </View>
-                        )}
-                        {urgencyTag && (
-                          <View className="po-priority-pill" style={{ background: urgencyTag.bg }}>
-                            <Text className="po-priority-pill-text" style={{ color: urgencyTag.color }}>{urgencyTag.text}</Text>
-                          </View>
-                        )}
                       </View>
-                      {order.matchScore != null && order.matchScore > 0 && (
-                        <View className="po-avatar-match" style={{ background: `${getMatchColor(order.matchScore)}15`, color: getMatchColor(order.matchScore) }}>
-                          {order.matchScore}%匹配
-                        </View>
-                      )}
+                      <ChevronDown size={16} color="#9CA3AF" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                     </View>
 
                     {/* 标题 */}
-                    <Text className="po-card-title">{order.title}</Text>
+                    <Text className="po-card-title" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>{order.title}</Text>
 
                     {/* 描述 */}
                     {order.description && (
-                      <Text className="po-card-desc">{order.description}</Text>
+                      <Text className="po-card-desc" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>{order.description}</Text>
                     )}
 
                     {/* 回报卡片：收益 + 交付周期 */}
-                    <View className="po-reward-card">
+                    <View className="po-reward-card" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                       <View className="po-reward-left">
                         <View className="po-reward-amount">
                           <Text className="po-reward-symbol">¥</Text>
@@ -729,16 +768,89 @@ const Index: React.FC = () => {
                     </View>
 
                     {/* 需求标签 */}
-                    {order.requirements.length > 0 && (
-                      <View className="po-match-tags" style={{ marginBottom: '12rpx' }}>
-                        {order.requirements.slice(0, 3).map((req, idx) => (
+                    {reqTags.length > 0 && (
+                      <View className="po-match-tags" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
+                        {reqTags.map((req: string, idx: number) => (
                           <Text key={idx} className="po-match-tag po-match-tag-skill">{req}</Text>
                         ))}
                       </View>
                     )}
 
+                    {/* 目标受众行 */}
+                    {order.targetAudience && (
+                      <View className="po-audience-row" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
+                        <Users size={14} color="#9CA3AF" />
+                        <Text className="po-audience-text">目标受众：{order.targetAudience}</Text>
+                      </View>
+                    )}
+
+                    {/* 截止时间行 */}
+                    {deadlineInfo && (
+                      <View className="po-deadline-row" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
+                        <Clock size={14} color={deadlineInfo.color} />
+                        <Text className="po-deadline-text" style={{ color: deadlineInfo.color }}>
+                          截止：{deadlineInfo.text}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* 展开详情区 */}
+                    {isExpanded && (
+                      <View className="po-expanded-area">
+                        {/* 创作要求 */}
+                        {order.description && (
+                          <View className="po-req-block">
+                            <Text className="po-req-block-title">📝 创作要求</Text>
+                            <Text className="po-req-block-content">{order.description}</Text>
+                          </View>
+                        )}
+
+                        {/* 接单后流程 */}
+                        <View className="po-steps">
+                          <View className="po-step">
+                            <View className="po-step-dot" style={{ background: '#6366F1' }} />
+                            <Text className="po-step-label">接单确认</Text>
+                          </View>
+                          <View className="po-step-line" />
+                          <View className="po-step">
+                            <View className="po-step-dot" style={{ background: '#F59E0B' }} />
+                            <Text className="po-step-label">内容创作</Text>
+                          </View>
+                          <View className="po-step-line" />
+                          <View className="po-step">
+                            <View className="po-step-dot" style={{ background: '#10B981' }} />
+                            <Text className="po-step-label">审核结算</Text>
+                          </View>
+                        </View>
+
+                        {/* 付出与回报 */}
+                        <View className="po-cost-benefit">
+                          <View className="po-cost-item">
+                            <Text className="po-cost-label">创作数量</Text>
+                            <Text className="po-cost-value">{order.quantityPerAvatar || 1}条/分身</Text>
+                          </View>
+                          <View className="po-cost-item">
+                            <Text className="po-cost-label">分身数量</Text>
+                            <Text className="po-cost-value">{order.avatarCount || 1}个</Text>
+                          </View>
+                          <View className="po-cost-item">
+                            <Text className="po-cost-label">总收益</Text>
+                            <Text className="po-cost-value po-cost-value-highlight">¥{((order.estimatedEarning || 0) * (order.quantityPerAvatar || 1) * (order.avatarCount || 1)).toFixed(2)}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
                     {/* 操作按钮 */}
                     <View className="po-card-actions">
+                      {!acceptedOrderIds[order.id] && (
+                        <View
+                          className="po-btn po-btn-decline"
+                          onClick={(e) => { e.stopPropagation() }}
+                        >
+                          <Text className="po-btn-label">婉拒</Text>
+                        </View>
+                      )}
                       <View
                         className="po-btn po-btn-accept"
                         onClick={(e) => {

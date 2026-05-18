@@ -641,8 +641,9 @@ export class OrderService {
     `
 
     const rows = await db.query(
-      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.requirements,
-              o.budget, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
+      `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.platform,
+              o.requirements, o.target_audience, o.priority, o.deadline, o.content_deadline_at,
+              o.budget, o.price, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.created_at, o.updated_at,
               COALESCE(
                 (SELECT a.name FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
@@ -653,11 +654,12 @@ export class OrderService {
                 (SELECT a.avatar_url FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
                 (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
                 u.avatar
-              ) as publisher_avatar
+              ) as publisher_avatar,
+              (SELECT COUNT(*) FROM order_dispatch_requests r WHERE r.order_id = o.id AND r.status = 'accepted') as accept_count
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
-       ORDER BY o.created_at DESC
+       ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ${safePageSize} OFFSET ${offset}`
     )
 
@@ -674,13 +676,20 @@ export class OrderService {
       title: row.title,
       description: row.description || '',
       contentType: row.contentType || row.content_type,
+      platform: row.platform || 'general',
       platforms: this.safeParseJson<any[]>(row.platforms, []),
       requirements: this.safeParseJson<Record<string, any>>(row.requirements, {}),
+      targetAudience: row.targetAudience || row.target_audience || '',
+      priority: Number(row.priority ?? 0),
+      deadline: row.deadline || null,
+      contentDeadlineAt: row.contentDeadlineAt || row.content_deadline_at || null,
       budget: Number(row.budget || 0),
+      price: Number(row.price || row.price || 0),
       status: row.status,
       avatarCount: row.expectedQuantity || row.expected_quantity || row.avatarCount || row.avatar_count || 1,
       quantityPerAvatar: row.quantityPerAvatar || row.quantity_per_avatar || 1,
       isPaid: row.isPaid ?? row.is_paid ?? 0,
+      acceptCount: Number(row.acceptCount || row.accept_count || 0),
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
       updatedAt: row.updatedAt || row.updated_at || null,
       publisherNickname: row.publisherNickname || row.publisher_nickname || '发布方',

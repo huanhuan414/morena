@@ -657,9 +657,214 @@
   color: #6366F1;
 }
 
-/* 操作按钮 */
+/* 目标受众行 */
+.po-audience-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+.po-audience-icon {
+  flex-shrink: 0;
+}
+.po-audience-text {
+  font-size: 22rpx;
+  color: #64748B;
+}
+
+/* 截止时间行 */
+.po-deadline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+.po-deadline-icon {
+  flex-shrink: 0;
+}
+.po-deadline-text {
+  font-size: 22rpx;
+  font-weight: 500;
+}
+.po-deadline-urgent {
+  color: #EF4444;
+}
+.po-deadline-normal {
+  color: #64748B;
+}
+.po-deadline-safe {
+  color: #22C55E;
+}
+
+/* 展开详情 */
+.po-expand-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 12rpx 0;
+  margin-top: 8rpx;
+}
+.po-expand-text {
+  font-size: 22rpx;
+  color: #6366F1;
+  font-weight: 500;
+}
+.po-expand-icon {
+  transition: transform 0.2s;
+}
+.po-expand-icon.expanded {
+  transform: rotate(180deg);
+}
+.po-expand-content {
+  padding-top: 12rpx;
+  border-top: 2rpx solid #F1F5F9;
+  margin-top: 4rpx;
+}
+
+/* 创作要求 */
+.po-req-block {
+  margin-bottom: 20rpx;
+}
+.po-req-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 10rpx;
+}
+.po-req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.po-req-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8rpx;
+}
+.po-req-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: #6366F1;
+  margin-top: 10rpx;
+  flex-shrink: 0;
+}
+.po-req-text {
+  font-size: 22rpx;
+  color: #64748B;
+  line-height: 1.5;
+}
+
+/* 接单后流程步骤 */
+.po-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+.po-step-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+.po-step-dot {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.po-step-dot-active {
+  background: #6366F1;
+}
+.po-step-dot-done {
+  background: #22C55E;
+}
+.po-step-num {
+  font-size: 18rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+.po-step-label {
+  font-size: 24rpx;
+  color: #334155;
+  font-weight: 500;
+}
+.po-step-connector {
+  width: 2rpx;
+  height: 16rpx;
+  background: #E2E8F0;
+  margin-left: 13rpx;
+}
+
+/* 付出与回报 */
+.po-cost-benefit {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.po-cb-card {
+  flex: 1;
+  border-radius: 12rpx;
+  padding: 16rpx;
+}
+.po-cb-cost {
+  background: #FEF2F2;
+}
+.po-cb-benefit {
+  background: #F0FDF4;
+}
+.po-cb-label {
+  display: block;
+  font-size: 22rpx;
+  color: #94A3B8;
+  margin-bottom: 6rpx;
+}
+.po-cb-value {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.po-cb-cost .po-cb-value {
+  color: #DC2626;
+}
+.po-cb-benefit .po-cb-value {
+  color: #16A34A;
+}
+
+/* 操作按钮行 */
 .po-card-actions {
   margin-top: 16rpx;
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+.po-btn-decline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18rpx 24rpx;
+  border-radius: 40rpx;
+  background: #F1F5F9;
+  flex-shrink: 0;
+}
+.po-btn-decline:active {
+  background: #E2E8F0;
+}
+.po-btn-decline-text {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #64748B;
 }
 .po-btn-accept {
   display: flex;
@@ -670,6 +875,7 @@
   background: linear-gradient(135deg, #6366F1, #8B5CF6);
   padding: 18rpx 0;
   border-radius: 40rpx;
+  flex: 1;
 }
 .po-btn-accept:active {
   opacity: 0.85;
