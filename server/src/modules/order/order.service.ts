@@ -665,7 +665,7 @@ export class OrderService {
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}
-       HAVING accept_count < IFNULL(NULLIF(required_count, 0), 1)
+       HAVING accept_count < COALESCE(required_count, 1)
        ORDER BY o.priority DESC, o.created_at DESC
        LIMIT ${safePageSize} OFFSET ${offset}`
     )
@@ -677,7 +677,7 @@ export class OrderService {
           o.avatar_count as required_count
         FROM orders o
         ${whereClause}
-        HAVING accept_count < IFNULL(NULLIF(required_count, 0), 1)
+        HAVING accept_count < COALESCE(required_count, 1)
       ) as t`
     )
     const total = Number(totalRows?.[0]?.total || 0)
