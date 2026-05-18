@@ -909,87 +909,124 @@ async getExecutionProgress(orderId: string) {
   }
 
   /**
-   * 启动内容生成流程
+   * 启动内容生成流程（带重试和兜底）
    */
   private async startContentGeneration(orderId: string, avatarId: string, request: any) {
-    try {
-      const db = getMySQLClient()
-      const order = await this.getOrderById(orderId)
-      if (!order) {
-        console.warn(`[startContentGeneration] 订单不存在: ${orderId}`)
-        return
-      }
+    const MAX_RETRIES = 3
+    let lastError: any = null
 
-      const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
-      const normalizedPlatforms = platforms.map((p: string) => p === 'general' ? 'wechat' : p)
-
-      // 获取分身完整信息（技能、风格、领域、人设）
-      let avatarName: string | undefined
-      let avatarPersonality: string | undefined
-      let avatarSkills: string[] = []
-      let contentStyles: string[] = []
-      let nicheTags: string[] = []
-
-      if (avatarId) {
-        try {
-          const avatarRows = await db.query(
-            'SELECT name, personality, content_styles, niche_tags FROM avatars WHERE id = ? AND status = \'active\'',
-            [avatarId]
-          ) as [any[], any]
-          const avatar = avatarRows?.[0]
-          if (avatar) {
-            avatarName = avatar.name
-            avatarPersonality = avatar.personality
-            contentStyles = typeof avatar.contentStyles === 'string' ? JSON.parse(avatar.contentStyles) : (avatar.contentStyles || [])
-            nicheTags = typeof avatar.nicheTags === 'string' ? JSON.parse(avatar.nicheTags) : (avatar.nicheTags || [])
-          }
-
-          // 获取分身技能
-          const skillRows = await db.query(
-            'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
-            [avatarId]
-          ) as [any[], any]
-          avatarSkills = skillRows?.map((s: any) => s.skillId || s.skill_id) || []
-        } catch (err: any) {
-          console.warn('[startContentGeneration] 获取分身信息失败:', err.message)
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await this._doStartContentGeneration(orderId, avatarId, request)
+        return // 成功，直接返回
+      } catch (err: any) {
+        lastError = err
+        console.warn(`[startContentGeneration] 第${attempt}次尝试失败: ${err.message}`)
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, 2000 * attempt)) // 递增等待
         }
       }
-
-      // 解析订单的风格和领域偏好
-      let preferredStyles: string[] = []
-      let industryTags: string[] = []
-      try {
-        preferredStyles = order.preferredStyles 
-          ? (typeof order.preferredStyles === 'string' ? JSON.parse(order.preferredStyles) : order.preferredStyles)
-          : []
-        industryTags = order.industryTags
-          ? (typeof order.industryTags === 'string' ? JSON.parse(order.industryTags) : order.industryTags)
-          : []
-      } catch (_) {}
-
-      // 调用内容生成服务
-      await this.contentGenerationService.generateContent({
-        orderId,
-        avatarId,
-        orderTitle: request.order_title || order.title || '内容生成',
-        orderDescription: request.description || order.description || '',
-        platforms: normalizedPlatforms,
-        contentType: order.contentType || order.content_type || 'image_text',
-        targetAudience: request.target_audience || order.targetAudience || '年轻用户',
-        contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
-        avatarName,
-        avatarPersonality,
-        avatarSkills,
-        contentStyles,
-        nicheTags,
-        preferredStyles,
-        industryTags,
-      })
-
-      console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)
-    } catch (err) {
-      console.error('[startContentGeneration] 生成失败:', err)
     }
+
+    // 所有重试都失败，创建 failed 记录兜底，确保前端能感知到
+    console.error(`[startContentGeneration] ${MAX_RETRIES}次重试全部失败，创建兜底 failed 记录: orderId=${orderId}`)
+    try {
+      const db = getMySQLClient()
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      await db.insert('content_generation_requests', {
+        id: requestId,
+        order_id: orderId,
+        avatar_id: avatarId,
+        content_type: 'image_text',
+        content_quantity: 1,
+        status: 'failed',
+        error_message: `内容生成启动失败(${MAX_RETRIES}次重试): ${lastError?.message || '未知错误'}`,
+        order_title: request?.order_title || '',
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+    } catch (fallbackErr: any) {
+      console.error('[startContentGeneration] 创建兜底记录也失败:', fallbackErr.message)
+    }
+  }
+
+  /**
+   * 实际执行内容生成
+   */
+  private async _doStartContentGeneration(orderId: string, avatarId: string, request: any) {
+    const db = getMySQLClient()
+    const order = await this.getOrderById(orderId)
+    if (!order) {
+      throw new Error(`订单不存在: ${orderId}`)
+    }
+
+    const platforms = order.platforms ? JSON.parse(order.platforms) : ['wechat']
+    const normalizedPlatforms = platforms.map((p: string) => p === 'general' ? 'wechat' : p)
+
+    // 获取分身完整信息（技能、风格、领域、人设）
+    let avatarName: string | undefined
+    let avatarPersonality: string | undefined
+    let avatarSkills: string[] = []
+    let contentStyles: string[] = []
+    let nicheTags: string[] = []
+
+    if (avatarId) {
+      try {
+        const avatarRows = await db.query(
+          'SELECT name, personality, content_styles, niche_tags FROM avatars WHERE id = ? AND status = \'active\'',
+          [avatarId]
+        ) as [any[], any]
+        const avatar = avatarRows?.[0]
+        if (avatar) {
+          avatarName = avatar.name
+          avatarPersonality = avatar.personality
+          contentStyles = typeof avatar.contentStyles === 'string' ? JSON.parse(avatar.contentStyles) : (avatar.contentStyles || [])
+          nicheTags = typeof avatar.nicheTags === 'string' ? JSON.parse(avatar.nicheTags) : (avatar.nicheTags || [])
+        }
+
+        // 获取分身技能
+        const skillRows = await db.query(
+          'SELECT skill_id FROM avatar_skills WHERE avatar_id = ?',
+          [avatarId]
+        ) as [any[], any]
+        avatarSkills = skillRows?.map((s: any) => s.skillId || s.skill_id) || []
+      } catch (err: any) {
+        console.warn('[startContentGeneration] 获取分身信息失败:', err.message)
+      }
+    }
+
+    // 解析订单的风格和领域偏好
+    let preferredStyles: string[] = []
+    let industryTags: string[] = []
+    try {
+      preferredStyles = order.preferredStyles 
+        ? (typeof order.preferredStyles === 'string' ? JSON.parse(order.preferredStyles) : order.preferredStyles)
+        : []
+      industryTags = order.industryTags
+        ? (typeof order.industryTags === 'string' ? JSON.parse(order.industryTags) : order.industryTags)
+        : []
+    } catch (_) {}
+
+    // 调用内容生成服务
+    await this.contentGenerationService.generateContent({
+      orderId,
+      avatarId,
+      orderTitle: request.order_title || order.title || '内容生成',
+      orderDescription: request.description || order.description || '',
+      platforms: normalizedPlatforms,
+      contentType: order.contentType || order.content_type || 'image_text',
+      targetAudience: request.target_audience || order.targetAudience || '年轻用户',
+      contentQuantity: request.quantityPerAvatar || request.quantity_per_avatar || order.quantityPerAvatar || order.quantity_per_avatar || 1,
+      avatarName,
+      avatarPersonality,
+      avatarSkills,
+      contentStyles,
+      nicheTags,
+      preferredStyles,
+      industryTags,
+    })
+
+    console.log(`[startContentGeneration] 内容生成已启动: orderId=${orderId}, avatarId=${avatarId}, skills=${avatarSkills.join(',')}`)
   }
 
   /**

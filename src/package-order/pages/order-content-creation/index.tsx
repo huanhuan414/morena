@@ -111,7 +111,8 @@ function getStepStates(currentStep: number, totalSteps?: number): StepState[] {
 }
 
 // 获取当前步骤描述文案
-function getStepHint(rawStatus: string, contentType?: string): string {
+function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolean): string {
+  if (isTimeout) return '生成时间较长，可稍后在生成内容页查看结果'
   const isVideo = contentType === 'video' || contentType === 'video_text'
   switch (rawStatus) {
     case 'pending':
@@ -124,7 +125,7 @@ function getStepHint(rawStatus: string, contentType?: string): string {
         ? '正在根据文案提取视觉场景，准备视频素材...'
         : '正在根据文案生成配图，确保图片风格与内容匹配...'
     case 'generating_video':
-      return '正在合成15秒视频，这个过程需要5~8分钟，请耐心等待...'
+      return '正在合成视频，这个过程需要几分钟，请耐心等待...'
     case 'completed':
       return '内容生成完成！'
     case 'published':
@@ -135,6 +136,10 @@ function getStepHint(rawStatus: string, contentType?: string): string {
     case 'settled':
     case 'done':
       return '订单已完成'
+    case 'partial_failed':
+      return '部分内容生成失败，可点击重新生成'
+    case 'failed':
+      return '内容生成失败，可点击重新生成'
     default:
       return '处理中...'
   }
@@ -148,6 +153,8 @@ export default function OrderContentCreation() {
   const [elapsed, setElapsed] = useState(0) // 已用秒数
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
+  const pollCountRef = useRef(0) // 轮询计数
+  const [isTimeout, setIsTimeout] = useState(false) // 轮询超时
   const startTimeRef = useRef<number>(Date.now())
 
   const orderId = router.params.orderId || ''
@@ -177,6 +184,12 @@ export default function OrderContentCreation() {
 
     const fetchStatus = async () => {
       try {
+        pollCountRef.current += 1
+        // 超过150次（约5分钟）标记超时
+        if (pollCountRef.current > 150 && !isTimeout) {
+          setIsTimeout(true)
+        }
+
         const res = await Network.request({ url: `/api/order-processing/status/${orderId}` })
         console.log('[content-creation] status response:', JSON.stringify(res.data))
         const data = res.data?.data || res.data
@@ -193,9 +206,9 @@ export default function OrderContentCreation() {
             generatedContent: data.generatedContent,
           })
 
-          // 生成完成后停止计时和轮询（completed / published / awaiting_acceptance 等都算完成）
-          const postGenStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview']
-          if (postGenStatuses.includes(data.rawStatus) || postGenStatuses.includes(data.status)) {
+          // 终态：生成完成后停止计时和轮询
+          const terminalStatuses = ['completed', 'published', 'awaiting_acceptance', 'feedback_submitted', 'settled', 'done', 'preview', 'failed', 'partial_failed']
+          if (terminalStatuses.includes(data.rawStatus) || terminalStatuses.includes(data.status)) {
             if (timerRef.current) clearInterval(timerRef.current)
             if (pollRef.current) clearInterval(pollRef.current)
           }
@@ -414,7 +427,7 @@ export default function OrderContentCreation() {
           {isGenerating && (
             <View className="cc-step-hint">
               <Sparkles size={14} color="#8B5CF6" />
-              <Text className="cc-step-hint-text">{getStepHint(rawStatus, contentType)}</Text>
+              <Text className="cc-step-hint-text">{getStepHint(rawStatus, contentType, isTimeout)}</Text>
             </View>
           )}
 

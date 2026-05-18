@@ -454,6 +454,9 @@ export class OrderProcessingService {
    * 查询订单处理状态
    * 优先从数据库查询，数据库无数据则从缓存查询
    */
+  private readonly STUCK_STATUSES = ['processing', 'generating_text', 'generating_images', 'generating_video']
+  private readonly STUCK_TIMEOUT_MS = 10 * 60 * 1000 // 10分钟
+
   async getProcessingStatus(identifier: string, userId?: string): Promise<any> {
     this.logger.log(`查询订单处理状态: identifier=${identifier}, userId=${userId || ''}`)
 
@@ -462,6 +465,27 @@ export class OrderProcessingService {
       const record = await this.findRecordByIdentifier(identifier)
       if (record) {
         this.logger.log(`从数据库找到记录: id=${record.id}, status=${record.status}`)
+
+        // 卡住检测：processing/generating_* 状态超过10分钟 → 标记 failed
+        if (this.STUCK_STATUSES.includes(record.status)) {
+          const updatedAt = new Date(record.updated_at || record.created_at)
+          const elapsed = Date.now() - updatedAt.getTime()
+          if (elapsed > this.STUCK_TIMEOUT_MS) {
+            this.logger.warn(`检测到卡住记录: id=${record.id}, status=${record.status}, 已耗时${Math.round(elapsed / 60000)}分钟，标记为 failed`)
+            try {
+              const db = getMySQLClient()
+              await db.query(
+                'UPDATE content_generation_requests SET status = ?, error_message = ?, updated_at = NOW() WHERE id = ?',
+                ['failed', `生成超时(卡在${record.status}状态超过10分钟)`, record.id]
+              )
+              record.status = 'failed'
+              record.error_message = `生成超时(卡在${record.status}状态超过10分钟)`
+            } catch (updateErr: any) {
+              this.logger.warn(`更新卡住记录失败: ${updateErr.message}`)
+            }
+          }
+        }
+
         const normalized = this.normalizeRecord(record)
         setCache(record.id, normalized)
         setCache(normalized.order_id, normalized)

@@ -302,35 +302,45 @@ export class ContentGenerationService implements OnModuleInit {
         }
       }
 
-      // 视频类型：生成视频脚本作为文案内容（分身参考+发布指引）
-      if (needVideoScript && !textContent) {
-        try {
-          this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
-          const skillStrategy = getSkillStrategy(primarySkill)
-          textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
-          this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
-          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
-        } catch (err: any) {
-          this.logger.warn(`视频脚本生成失败: ${err.message}`)
-          textFailed = true
+      // 文案是后续生成的基础，文案失败则跳过图片生成
+      if (textFailed && !textContent) {
+        this.logger.warn(`文案生成失败，跳过后续图片/视频生成`)
+      } else {
+        // 视频类型：生成视频脚本作为文案内容（分身参考+发布指引）
+        if (needVideoScript && !textContent) {
+          try {
+            this.updateDetailedStatus(requestId, input.orderId, 'generating_text')
+            const skillStrategy = getSkillStrategy(primarySkill)
+            textContent = await this.generateVideoScript(platform, input, '', skillStrategy) || ''
+            this.logger.log(`视频脚本生成完成: ${textContent.length}字`)
+            await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_video')
+          } catch (err: any) {
+            this.logger.warn(`视频脚本生成失败: ${err.message}`)
+            textFailed = true
+          }
         }
-      }
 
-      if (needImage) {
-        try {
-          this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
-          images = await this.generateImages(platform, input, textContent)
-          this.logger.log(`图片生成完成: ${images.length}张`)
-          await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
-        } catch (err: any) {
-          this.logger.warn(`图片生成失败: ${err.message}`)
-          imageFailed = true
+        // 视频脚本失败则跳过视频生成
+        if (needVideoScript && textFailed && !textContent) {
+          this.logger.warn(`视频脚本生成失败，跳过视频生成`)
+        } else {
+          if (needImage) {
+            try {
+              this.updateDetailedStatus(requestId, input.orderId, 'generating_images')
+              images = await this.generateImages(platform, input, textContent)
+              this.logger.log(`图片生成完成: ${images.length}张`)
+              await this.updatePartialContent(requestId, input.orderId, textContent, images, videos, 'generating_images')
+            } catch (err: any) {
+              this.logger.warn(`图片生成失败: ${err.message}`)
+              imageFailed = true
+            }
+          }
         }
       }
     }
 
-    // 3. 生成视频
-    if (needVideo) {
+    // 3. 生成视频（文案/脚本是视频生成的基础）
+    if (needVideo && !textFailed) {
       try {
         this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
         videos = await this.generateVideos(platform, input, textContent, images)
@@ -339,6 +349,9 @@ export class ContentGenerationService implements OnModuleInit {
         this.logger.warn(`视频生成失败: ${err.message}`)
         videoFailed = true
       }
+    } else if (needVideo && textFailed) {
+      this.logger.warn(`文案/脚本生成失败，跳过视频生成`)
+      videoFailed = true
     }
 
     // 4. 内容质量自检（仅文本内容）
