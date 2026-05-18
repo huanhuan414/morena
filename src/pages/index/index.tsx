@@ -1,304 +1,460 @@
-import { useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { View, Text, ScrollView } from '@tarojs/components'
-import { Bell, Settings, Users, Plus, Zap, TrendingUp, Sparkles, Target, Eye, ShoppingBag, ChevronRight, Gift, Rocket, Clock, CircleCheckBig, ChevronDown, ChevronUp } from 'lucide-react-taro'
+import { Bell, Settings, Users, ShoppingBag, FileText, Coins, Plus, Rocket, ChevronRight, Send, Gift, Zap, TrendingUp, Sparkles, Target, ArrowRight, CircleDollarSign, Eye, Clock, ChevronDown, ChevronUp } from 'lucide-react-taro'
 import { Network } from '@/network'
-import { BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
+import { QUICK_ACTION_TAG, BANNER_TITLE, BANNER_DESC } from '@/constants/referral-rewards'
 import { getPlatformLabel, getPlatformMeta, canonicalizePlatform } from '@/constants/publish-platform'
 import { useUserStore } from '@/stores/user'
 import { useNotifications } from '@/hooks/useNotifications'
+import { Avatar as UiAvatar } from '@/components/ui/avatar'
 import { getStatusBarHeight } from '@/utils/safe-area'
 import './index.css'
 
-// 订单广场公开订单
-interface SquareOrder {
-  id: string
-  title: string
-  description: string
-  platforms: string[]
-  budget: number
-  expectedQuantity: number
-  contentType: string
-  deliveryDays: number
-  acceptCount: number
-  requirements: string[]
-  publisher: string
-  createdAt: string
-  priority: string
-  targetAudience: string
-  deadline: string
-  status: string
-}
-
-// 内容类型映射
-const CONTENT_TYPE_MAP: Record<string, { label: string; color: string; effort: string }> = {
-  image_text: { label: '图文', color: '#3B82F6', effort: '约15分钟' },
-  video: { label: '视频', color: '#8B5CF6', effort: '约20分钟' },
-  text: { label: '纯文字', color: '#64748B', effort: '约10分钟' },
-}
-
-// 优先级映射
-const PRIORITY_MAP: Record<string, { label: string; color: string; icon: typeof Zap }> = {
-  urgent: { label: '紧急', color: '#EF4444', icon: Zap },
-  high: { label: '优先', color: '#F59E0B', icon: TrendingUp },
-  normal: { label: '常规', color: '#6366F1', icon: Clock },
-}
-
-const platformTabs = [
-  { key: 'all', label: '全部' },
-  { key: 'douyin', label: '抖音' },
-  { key: 'xiaohongshu', label: '小红书' },
-  { key: 'wechat_moments', label: '朋友圈' },
-  { key: 'wechat_official', label: '公众号' },
-  { key: 'wechat_channels', label: '视频号' },
-  { key: 'bilibili', label: 'B站' },
-  { key: 'kuaishou', label: '快手' },
-  { key: 'zhihu', label: '知乎' },
-  { key: 'toutiao', label: '今日头条' },
-]
-
-export default function IndexPage() {
-  const { userInfo } = useUserStore()
-  const { unreadCount } = useNotifications()
-  const [statusBarHeight] = useState(getStatusBarHeight())
-
-  // 用户分身信息
+const Index: React.FC = () => {
+  const [userName, setUserName] = useState('用户')
   const [mindClones, setMindClones] = useState(0)
+  const [userAvatar, setUserAvatar] = useState('')
   const [allHostingEnabled, setAllHostingEnabled] = useState(false)
-  const [currentAvatarId, setCurrentAvatarId] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [invitedCount, setInvitedCount] = useState(0)
-
-  // 订单广场
-  const [orders, setOrders] = useState<SquareOrder[]>([])
-  const [ordersLoading, setOrdersLoading] = useState(false)
-  const [activePlatform, setActivePlatform] = useState('all')
-  const [expandedCard, setExpandedCard] = useState<string | null>(null)
-  const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null)
-  const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, boolean>>({})
-
-  // 增长活动
+  const [totalEarnings, setTotalEarnings] = useState(0)
+  const [pendingOrders, setPendingOrders] = useState(0)
+  const [generatedContents, setGeneratedContents] = useState(0)
   const [growthCampaign, setGrowthCampaign] = useState<any>(null)
+  const [trackedCampaignId, setTrackedCampaignId] = useState('')
+  const { avatarId: currentAvatarId, setAvatarId } = useUserStore(state => state)
 
-  useDidShow(() => {
-    fetchAvatarInfo()
-    fetchOrders()
-    fetchGrowthCampaign()
-    fetchReferralInfo()
+  const [showOrderModal, setShowOrderModal] = useState(false)
+  const [orderModalData, setOrderModalData] = useState<any>(null)
+  const loadUserFromStorage = useUserStore(state => state.loadUserFromStorage)
+
+  const { unreadCount, showModal, currentNotification, closeModal } = useNotifications({
+    pollInterval: 10000
   })
 
-  const fetchAvatarInfo = async () => {
+  // 获取待接订单通知
+  const fetchOrderNotifications = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar' })
-      if (res.data?.code === 200 && Array.isArray(res.data?.data)) {
-        const avatars = res.data.data
-        setMindClones(avatars.length)
-        setAllHostingEnabled(avatars.length > 0 && avatars.every((a: any) => a.is_hosted))
-        if (avatars.length > 0) {
-          setCurrentAvatarId(avatars[0].id)
+      const res = await Network.request({
+        url: '/api/order-dispatch/pending-requests'
+      })
+      console.log('[首页] 获取待接订单:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const seen = new Set<string>()
+        const orders = (res.data.data || []).filter((item: any) => {
+          const oid = item.orderId
+          // 防御：过滤掉分身不存在或数据不完整的记录
+          if (!item.avatarId && !item.avatar_id) return false
+          if (!item.avatarName && !item.avatar_name) return false
+          if (seen.has(oid)) return false
+          seen.add(oid)
+          return true
+        }).map((item: any) => {
+          let platforms = item.platforms
+          if (typeof platforms === 'string') {
+            try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
+          }
+          if (!Array.isArray(platforms)) platforms = platforms ? [platforms] : ['通用']
+          const platformKey = platforms[0] || '通用'
+          const platformName = getPlatformName(platformKey)
+          
+          return {
+            id: item.orderId,
+            dispatchId: item.dispatchId,
+            avatarId: item.avatarId,
+            platform: platformName,
+            platformColor: getPlatformColor(platformName),
+            title: item.title || '新订单',
+            budget: item.budget ? `¥${item.budget}` : '待定',
+            deadline: '长期有效'
+          }
+        })
+        
+        if (orders.length > 0 && !showOrderModal && !orderModalData) {
+          setOrderModalData(orders[0])
+          setShowOrderModal(true)
         }
       }
     } catch (err) {
-      console.error('获取分身信息失败:', err)
+      console.error('获取待接订单失败:', err)
     }
   }
 
-  const fetchReferralInfo = async () => {
+  const getPlatformName = (platform: string): string => {
+    const nameMap: Record<string, string> = {
+      'wechat': '微信', 'wechat_mp': '公众号', 'xiaohongshu': '小红书',
+      'douyin': '抖音', 'kuaishou': '快手', 'bilibili': 'B站',
+      'weibo': '微博', 'zhihu': '知乎',
+    }
+    return nameMap[platform] || platform
+  }
+
+  const getPlatformColor = (platform: string) => {
+    const colors: Record<string, string> = {
+      '微信': '#07C160', '公众号': '#07C160', '小红书': '#FF2442',
+      '抖音': '#00F2EA', '微博': '#FF8200', '快手': '#FF4906',
+      'B站': '#FB7299', '知乎': '#0084FF',
+    }
+    return colors[platform] || '#6366F1'
+  }
+
+  // 获取统计数据
+  const fetchStats = async () => {
     try {
-      const res = await Network.request({ url: '/api/referral/code' })
-      if (res.data?.code === 200) {
-        setReferralCode(res.data.data?.code || '')
-        setInvitedCount(res.data.data?.invitedCount || 0)
+      const storedUserInfo = await Taro.getStorage({ key: 'userInfo' }).catch(() => null)
+      if (!storedUserInfo?.data?.id) {
+        console.log('用户未登录，静默跳转到登录页')
+        Taro.navigateTo({ url: '/pages/login/index' })
+        return
+      }
+      
+      const res = await Network.request({ url: '/api/user-stats/overview' })
+      console.log('统计数据:', res.data)
+      
+      if (res.data?.code === 200 && res.data?.data) {
+        const d = res.data.data
+        setMindClones(d.avatarCount || 0)
+        setUserName(d.nickname || '用户')
+        setUserAvatar(d.avatarUrl || '')
+        setAllHostingEnabled(d.allHostingEnabled || false)
+        setReferralCode(d.referralCode || '')
+        setInvitedCount(d.invitedCount || 0)
+        setTotalEarnings(Number(d.totalEarnings || 0))
+        setPendingOrders(d.pendingOrders || 0)
+        setGeneratedContents(d.generatedContents || 0)
       }
     } catch (err) {
-      console.error('获取邀请码失败:', err)
+      console.error('获取统计数据失败:', err)
+    }
+  }
+
+  // 实时动态
+  const [, setActivities] = useState<any[]>([])
+
+  const fetchActivities = async () => {
+    try {
+      const res = await Network.request({ url: '/api/activities/recent' })
+      if (res.data?.code === 200 && res.data?.data) {
+        const mappedActivities = res.data.data.map((item: any) => {
+          let ActivityIcon = Coins
+          if (item.type === 'chat') ActivityIcon = Users
+          else if (item.type === 'content') ActivityIcon = FileText
+          else if (item.type === 'order') ActivityIcon = ShoppingBag
+          else if (item.type === 'earning') ActivityIcon = Coins
+          
+          return {
+            name: item.title,
+            action: item.type === 'earning' ? '收益到账' : item.type === 'chat' ? '对话完成' : item.type === 'content' ? '内容生成' : '订单完成',
+            desc: item.description,
+            icon: ActivityIcon,
+            time: getTimeAgo(item.timestamp),
+            amount: item.type === 'earning' ? '+¥' + (Math.random() * 100 + 50).toFixed(2) : null,
+            type: item.type === 'earning' ? 'coin' : item.type === 'order' ? 'order' : 'chat'
+          }
+        })
+        setActivities(mappedActivities)
+      }
+    } catch (err) {
+      console.error('获取实时动态失败:', err)
+    }
+  }
+
+  const trackGrowthCampaign = async (eventType: 'exposure' | 'click') => {
+    try {
+      await Network.request({
+        url: '/api/activities/campaign/track',
+        method: 'POST',
+        data: { eventType }
+      })
+    } catch (err) {
+      console.error('记录活动事件失败:', err)
     }
   }
 
   const fetchGrowthCampaign = async () => {
     try {
       const res = await Network.request({ url: '/api/activities/campaign/active' })
-      if (res.data?.code === 200 && res.data?.data) {
-        setGrowthCampaign(res.data.data)
+      const campaign = res.data?.data || null
+      setGrowthCampaign(campaign)
+      if (campaign?.id && trackedCampaignId !== campaign.id) {
+        await trackGrowthCampaign('exposure')
+        setTrackedCampaignId(campaign.id)
       }
     } catch (err) {
-      console.error('获取活动信息失败:', err)
+      console.error('获取增长活动失败:', err)
+      setGrowthCampaign(null)
+    }
+  }
+  
+  const getTimeAgo = (timestamp: string): string => {
+    const diffMs = Date.now() - new Date(timestamp).getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 60) return diffMins <= 1 ? '刚刚' : diffMins + '分钟前'
+    const diffHours = Math.floor(diffMs / 3600000)
+    if (diffHours < 24) return diffHours + '小时前'
+    return Math.floor(diffMs / 86400000) + '天前'
+  }
+
+  useEffect(() => {
+    loadUserFromStorage().then(() => {
+      fetchStats()
+      fetchActivities()
+      fetchGrowthCampaign()
+      fetchOrderNotifications()
+    }).catch(err => console.error('初始化数据加载失败:', err))
+  }, [])
+
+  useDidShow(() => {
+    loadUserFromStorage().then(() => {
+      fetchStats()
+      fetchActivities()
+      fetchGrowthCampaign()
+      fetchOrderNotifications()
+    }).catch(err => console.error('刷新数据失败:', err))
+  })
+
+  // 根据用户状态决定快捷功能 - 核心转化路径
+  const quickActions = mindClones === 0 ? [
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: '0元开始', tagColor: '#6366F1' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
+    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
+    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
+  ] : [
+    { label: '创建分身', icon: Plus, color: '#6366F1', bg: 'linear-gradient(135deg, #EEF2FF 0%, #C7D2FE 100%)', path: '/package-avatar/pages/avatar-create/index', tag: mindClones + '个', tagColor: '#6366F1' },
+    { label: '我要发单', icon: Send, color: '#8B5CF6', bg: 'linear-gradient(135deg, #F5F3FF 0%, #DDD6FE 100%)', path: '/package-order/pages/order-create/index', tag: '推广引流', tagColor: '#8B5CF6' },
+    { label: '订单广场', icon: Grid2x2, color: '#0EA5E9', bg: 'linear-gradient(135deg, #F0F9FF 0%, #BAE6FD 100%)', path: '/package-order/pages/order-square/index', tag: '我要接单', tagColor: '#0EA5E9' },
+    { label: '邀请好友', icon: Gift, color: '#EC4899', bg: 'linear-gradient(135deg, #FDF2F8 0%, #FBCFE8 100%)', path: '/package-profile/pages/referral-center/index', tag: QUICK_ACTION_TAG, tagColor: '#EC4899' },
+  ]
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 6) return '夜深了'
+    if (hour < 9) return '早上好'
+    if (hour < 12) return '上午好'
+    if (hour < 14) return '中午好'
+    if (hour < 18) return '下午好'
+    if (hour < 22) return '晚上好'
+    return '夜深了'
+  }
+
+  // 获取价值主张文案 - 根据用户状态动态调整
+  const getValueProp = () => {
+    if (mindClones === 0) return '创建AI分身，开始自动赚钱'
+    if (!allHostingEnabled) return '开启托管，让分身24h替你接单'
+    if (pendingOrders > 0) return `${pendingOrders}个新订单等你来接`
+    return '分身正在努力为你赚钱中'
+  }
+
+  const goToPage = (path: string) => {
+    if (path === "/pages/mind-chat/index" || path === "/pages/index/index" || path === "/pages/profile/index") {
+      Taro.switchTab({ url: path })
+      return
+    }
+    Taro.navigateTo({ url: path })
+  }
+
+  const handleOrderAccept = async () => {
+    if (orderModalData?.id) {
+      try {
+        let avatarIdToUse = currentAvatarId
+        if (!avatarIdToUse || avatarIdToUse === 'undefined') {
+          const avatarRes = await Network.request({ url: '/api/avatar' })
+          if (avatarRes.data?.code === 200 && avatarRes.data?.data?.length > 0) {
+            avatarIdToUse = avatarRes.data.data[0].id || ''
+            if (!avatarIdToUse) {
+              Taro.showToast({ title: '分身数据异常', icon: 'none' })
+              return
+            }
+            setAvatarId(avatarIdToUse)
+          } else {
+            Taro.showToast({ title: '请先创建分身', icon: 'none' })
+            return
+          }
+        }
+        const res = await Network.request({
+          url: `/api/order-dispatch/avatar/${avatarIdToUse}/accept/${orderModalData.id}`,
+          method: 'POST'
+        })
+        if (res.data?.code === 200) {
+          setShowOrderModal(false)
+          Taro.navigateTo({ url: `/package-order/pages/order-content-creation/index?orderId=${orderModalData.id}` })
+        } else {
+          Taro.showToast({ title: res.data?.message || '接单失败', icon: 'none' })
+        }
+      } catch (err) {
+        console.error('接受订单失败:', err)
+        Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
+      }
     }
   }
 
-  // 获取订单广场数据
-  const fetchOrders = useCallback(async () => {
-    setOrdersLoading(true)
-    try {
-      const res = await Network.request({
-        url: '/api/order/open',
-        data: activePlatform !== 'all' ? { platform: activePlatform } : {}
-      })
-      console.log('[首页] 订单广场 URL:/api/order/open, Method:GET, Params:', activePlatform !== 'all' ? { platform: activePlatform } : {}, 'Response:', res.data)
-
-      if (res.data?.code === 200 && res.data?.data) {
-        const rawOrders = Array.isArray(res.data.data) ? res.data.data : (res.data.data.orders || res.data.data.list || [])
-        const mapped: SquareOrder[] = rawOrders.map((o: any) => {
-          let platforms = o.platforms || o.platform
-          if (typeof platforms === 'string') {
-            try { platforms = JSON.parse(platforms) } catch { platforms = [platforms] }
-          }
-          if (!Array.isArray(platforms)) platforms = platforms ? [platforms] : ['general']
-          platforms = platforms.map(canonicalizePlatform)
-
-          return {
-            id: o.id,
-            title: o.title || '未命名订单',
-            description: o.description || o.requirements || '',
-            platforms,
-            budget: Number(o.budget || 0),
-            expectedQuantity: Number(o.expected_quantity || o.expectedQuantity || 1),
-            contentType: o.content_type || o.contentType || 'image_text',
-            deliveryDays: o.delivery_days || o.deliveryDays || 3,
-            acceptCount: o.accept_count || o.acceptCount || 0,
-            requirements: Array.isArray(o.requirements) ? o.requirements : (o.tags ? o.tags.split(',').filter(Boolean) : []),
-            publisher: o.publisher?.nickname || o.owner_nickname || o.publisher_name || '匿名',
-            createdAt: o.created_at || o.createdAt || '',
-            priority: o.priority || 'normal',
-            targetAudience: o.target_audience || o.targetAudience || '',
-            deadline: o.deadline || '',
-            status: o.status || 'open',
-          }
-        })
-        setOrders(mapped)
-      } else {
-        setOrders([])
-      }
-    } catch (err) {
-      console.error('获取订单广场数据失败:', err)
-      setOrders([])
-    } finally {
-      setOrdersLoading(false)
-    }
-  }, [activePlatform])
+  const handleOrderDismiss = () => { setShowOrderModal(false) }
 
   const enableAllTrust = async () => {
     try {
-      const res = await Network.request({ url: '/api/avatar' })
-      if (res.data?.code === 200 && Array.isArray(res.data?.data)) {
-        for (const avatar of res.data.data) {
-          if (!avatar.is_hosted) {
-            await Network.request({
-              url: `/api/avatar/${avatar.id}/trust`,
-              method: 'POST',
-              data: { enabled: true }
-            })
-          }
-        }
-        setAllHostingEnabled(true)
-        Taro.showToast({ title: '已全部开启托管', icon: 'success' })
+      const res = await Network.request({
+        url: '/api/avatar/trust/all',
+        method: 'PUT',
+        data: { trust_enabled: true }
+      })
+      if (res.data?.code === 200) {
+        Taro.showToast({ title: '已开启所有分身托管', icon: 'success' })
+        fetchStats()
+      } else {
+        Taro.showToast({ title: res.data?.msg || '开启失败', icon: 'none' })
       }
     } catch (err) {
       console.error('开启托管失败:', err)
+      Taro.showToast({ title: '开启失败', icon: 'none' })
     }
   }
-
-  // 接单
-  const handleAcceptOrder = async (orderId: string) => {
-    if (acceptingOrderId || acceptedOrderIds[orderId]) return
-    setAcceptingOrderId(orderId)
-    try {
-      const avatarId = currentAvatarId
-      if (!avatarId) {
-        Taro.showToast({ title: '请先创建分身', icon: 'none' })
-        return
-      }
-      const res = await Network.request({
-        url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}`,
-        method: 'POST',
-      })
-      console.log('[首页] 接单响应:', res.data)
-      if (res.data?.code === 200) {
-        Taro.showToast({ title: '接单成功', icon: 'success' })
-        setAcceptedOrderIds(prev => ({ ...prev, [orderId]: true }))
-      } else {
-        Taro.showToast({ title: res.data?.msg || '接单失败', icon: 'none' })
-      }
-    } catch (err) {
-      console.error('接单失败:', err)
-      Taro.showToast({ title: '接单失败，请重试', icon: 'none' })
-    } finally {
-      setAcceptingOrderId(null)
-    }
-  }
-
-  const goToPage = (url: string) => Taro.navigateTo({ url })
-
-  // 安全解析 requirements
-  const safeParseRequirements = (req: any): string[] => {
-    if (Array.isArray(req)) return req
-    if (typeof req === 'string') {
-      try { const p = JSON.parse(req); return Array.isArray(p) ? p : [req] } catch { return req.split(/[,，]/).filter(Boolean) }
-    }
-    return []
-  }
-
-  // 获取内容类型信息
-  const getContentTypeInfo = (type: string) => CONTENT_TYPE_MAP[type] || CONTENT_TYPE_MAP.image_text
-
-  // 筛选
-  const filteredOrders = orders.filter(order => {
-    if (activePlatform !== 'all' && !order.platforms.includes(activePlatform)) return false
-    return true
-  })
 
   return (
     <View className="index-page">
-      {/* 顶部渐变Header */}
-      <View className="index-header-gradient" style={{ paddingTop: `${statusBarHeight}px` }}>
-        <View className="header-grid-bg" />
-        <View className="header-content">
-          <View className="header-row">
-            <View className="header-left">
-              <Text className="header-greeting">Hi, {userInfo?.nickname || '探索者'}</Text>
-              <Text className="header-sub">发现好订单，AI帮你赚</Text>
+      {/* 顶部通栏 */}
+      <View className="header">
+        <View className="header-bg" />
+        <View className="header-content" style={{ paddingTop: `${getStatusBarHeight() + 50}px` }}>
+          <View className="header-left">
+            <View className="avatar-wrapper">
+              <UiAvatar src={userAvatar || ''} name={userName} size={96} />
+              <View className="online-dot" />
             </View>
-            <View className="header-right">
-              <View className="header-icon-btn" onClick={() => goToPage('/package-profile/pages/notifications/index')}>
-                <Bell size={20} color="#fff" />
-                {unreadCount > 0 && (
-                  <View className="header-badge">
-                    <Text className="header-badge-text">{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                  </View>
-                )}
-              </View>
-              <View className="header-icon-btn" onClick={() => Taro.switchTab({ url: '/pages/profile/index' })}>
-                <Settings size={20} color="#fff" />
+            <View className="header-info">
+              <Text className="nickname">{getGreeting()}，{userName}</Text>
+              <View className="subtitle-wrapper">
+                <Sparkles size={22} color="rgba(255,255,255,0.9)" />
+                <Text className="subtitle">{getValueProp()}</Text>
               </View>
             </View>
           </View>
-
-          {/* 统计栏 */}
-          <View className="header-stats">
-            <View className="h-stat-item" onClick={() => Taro.switchTab({ url: '/pages/mind-chat/index' })}>
-              <Text className="h-stat-value">{mindClones}</Text>
-              <Text className="h-stat-label">AI分身</Text>
+          <View className="header-right">
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/notifications/index' })}>
+              <Bell size={32} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View className="notification-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </View>
+              )}
             </View>
-            <View className="h-stat-divider" />
-            <View className="h-stat-item" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
-              <Text className="h-stat-value">{filteredOrders.length}</Text>
-              <Text className="h-stat-label">可接订单</Text>
-            </View>
-            <View className="h-stat-divider" />
-            <View className="h-stat-item" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
-              <Text className="h-stat-value">¥{filteredOrders.reduce((s, o) => s + o.budget, 0).toFixed(0)}</Text>
-              <Text className="h-stat-label">订单总额</Text>
+            <View className="icon-btn" onClick={() => Taro.navigateTo({ url: '/package-profile/pages/settings/index' })}>
+              <Settings size={32} color="#FFFFFF" />
             </View>
           </View>
         </View>
       </View>
 
-      <ScrollView className="main-scroll" scrollY>
-        {/* ===== 增长活动 Banner ===== */}
+      {/* 主内容区 */}
+      <ScrollView scrollY className="content" enhanced showScrollbar={false}>
+
+        {/* 新用户引导：赚钱攻略（仅无分身时显示） */}
+        {mindClones === 0 && (
+          <View className="guide-section">
+            <View className="guide-header">
+              <View className="guide-header-left">
+                <Target size={28} color="#6366F1" />
+                <Text className="guide-title">3步开始赚钱</Text>
+              </View>
+              <View className="guide-badge">新手必看</View>
+            </View>
+            <View className="guide-steps">
+              <View className="guide-step" onClick={() => goToPage('/package-avatar/pages/avatar-create/index')}>
+                <View className="step-number">1</View>
+                <View className="step-content">
+                  <Text className="step-title">创建AI分身</Text>
+                  <Text className="step-desc">打造你的数字分身，0成本起步</Text>
+                </View>
+                <ArrowRight size={28} color="#94A3B8" />
+              </View>
+              <View className="step-connector" />
+              <View className="guide-step" onClick={enableAllTrust}>
+                <View className="step-number">2</View>
+                <View className="step-content">
+                  <Text className="step-title">开启自动托管</Text>
+                  <Text className="step-desc">AI自动接单，24h不间断赚钱</Text>
+                </View>
+                <ArrowRight size={28} color="#94A3B8" />
+              </View>
+              <View className="step-connector" />
+              <View className="guide-step">
+                <View className="step-number step-number-done">3</View>
+                <View className="step-content">
+                  <Text className="step-title">坐享收益</Text>
+                  <Text className="step-desc">内容发布后自动结算，随时提现</Text>
+                </View>
+                <CircleDollarSign size={32} color="#10B981" />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* 核心数据区 - 根据用户状态展示不同重点 */}
+        <View className="stats-section">
+          {/* 有收益时突出显示 */}
+          {totalEarnings > 0 && (
+            <View className="earning-highlight" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+              <View className="earning-highlight-left">
+                <TrendingUp size={32} color="#10B981" />
+                <Text className="earning-highlight-label">累计收益</Text>
+              </View>
+              <View className="earning-highlight-right">
+                <Text className="earning-highlight-value">¥{totalEarnings.toFixed(2)}</Text>
+                <ChevronRight size={28} color="#10B981" />
+              </View>
+            </View>
+          )}
+          <View className="stats-row">
+            <View className="stat-item" onClick={() => goToPage('/pages/mind-chat/index')}>
+              <View className="stat-icon-small" style={{ background: '#EEF2FF' }}>
+                <Users size={28} color="#6366F1" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#6366F1' }}>{mindClones}</Text>
+              <Text className="stat-label-small">我的分身</Text>
+              <Text className="stat-hint" style={{ color: mindClones > 0 ? '#6366F1' : '#94A3B8' }}>
+                {mindClones > 0 ? '管理分身' : '创建分身'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-order/pages/pending-order/index')}>
+              <View className="stat-icon-small" style={{ background: '#FFFBEB' }}>
+                <ShoppingBag size={28} color="#F59E0B" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#F59E0B' }}>{pendingOrders}</Text>
+              <Text className="stat-label-small">待接订单</Text>
+              <Text className="stat-hint" style={{ color: pendingOrders > 0 ? '#F59E0B' : '#94A3B8' }}>
+                {pendingOrders > 0 ? '去接单赚钱' : '暂无待接'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-avatar/pages/generated-content/index')}>
+              <View className="stat-icon-small" style={{ background: '#ECFDF5' }}>
+                <FileText size={28} color="#10B981" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#10B981' }}>{generatedContents}</Text>
+              <Text className="stat-label-small">我的订单</Text>
+              <Text className="stat-hint" style={{ color: generatedContents > 0 ? '#10B981' : '#94A3B8' }}>
+                {generatedContents > 0 ? '去发布' : '暂无内容'}
+              </Text>
+            </View>
+            <View className="stat-item" onClick={() => goToPage('/package-profile/pages/earning-center/index')}>
+              <View className="stat-icon-small" style={{ background: '#FDF2F8' }}>
+                <Coins size={28} color="#EC4899" />
+              </View>
+              <Text className="stat-value-small" style={{ color: '#EC4899' }}>¥{totalEarnings > 0 ? totalEarnings.toFixed(0) : '0'}</Text>
+              <Text className="stat-label-small">累计收益</Text>
+              <Text className="stat-hint" style={{ color: totalEarnings > 0 ? '#EC4899' : '#94A3B8' }}>
+                {totalEarnings > 0 ? '去提现' : '开始赚取'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 推广Banner - 根据用户阶段精准引导 */}
         {growthCampaign && (
           <View
             className="banner"
             onClick={async () => {
+              await trackGrowthCampaign('click')
               goToPage('/package-profile/pages/referral-center/index')
             }}
           >
@@ -323,7 +479,6 @@ export default function IndexPage() {
           </View>
         )}
 
-        {/* ===== 核心操作 Banner ===== */}
         <View
           className="banner"
           onClick={() => {
@@ -396,266 +551,150 @@ export default function IndexPage() {
           </View>
         </View>
 
-        {/* ===== 订单广场板块 ===== */}
-        <View className="order-square-section">
-          {/* 板块标题 */}
-          <View className="sq-section-header">
-            <View className="sq-section-title-row">
-              <ShoppingBag size={24} color="#6366F1" />
-              <Text className="sq-section-title">订单广场</Text>
-            </View>
-            <View className="sq-section-more" onClick={() => goToPage('/package-order/pages/order-square/index')}>
-              <Text className="sq-section-more-text">查看全部</Text>
+        {/* 快捷功能 - 每项附带利益点 */}
+        <View className="section">
+          <View className="section-header">
+            <Text className="section-title">赚钱工具</Text>
+            <View className="section-more">
+              <Text className="section-more-text">全部功能</Text>
               <ChevronRight size={24} color="#9CA3AF" />
             </View>
           </View>
-
-          {/* 平台筛选 Tab */}
-          <ScrollView scrollX className="sq-platform-scroll" enhanced showScrollbar={false}>
-            <View className="sq-platform-tags">
-              {platformTabs.map(tab => (
-                <View
-                  key={tab.key}
-                  className={`sq-platform-tag ${activePlatform === tab.key ? 'active' : ''}`}
-                  onClick={() => setActivePlatform(tab.key)}
-                >
-                  <Text className="sq-platform-tag-text">{tab.label}</Text>
+          <View className="quick-grid">
+            {quickActions.map((action) => (
+              <View 
+                key={action.label} 
+                className="quick-item" 
+                onClick={() => goToPage(action.path)}
+              >
+                <View className="quick-icon" style={{ background: action.bg }}>
+                  <action.icon size={40} color={action.color} />
                 </View>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* 订单列表 —— 复刻待接订单卡片样式 */}
-          <View className="sq-order-list">
-            {ordersLoading ? (
-              <View className="sq-loading">
-                <View className="sq-spinner" />
-                <Text className="sq-loading-text">加载中...</Text>
+                <Text className="quick-label">{action.label}</Text>
+                <Text className="quick-tag" style={{ color: action.tagColor, background: action.tagColor + '15' }}>{action.tag}</Text>
               </View>
-            ) : filteredOrders.length > 0 ? (
-              filteredOrders.slice(0, 10).map((order) => {
-                const ctInfo = getContentTypeInfo(order.contentType)
-                const isAccepting = acceptingOrderId === order.id
-                const isExpanded = expandedCard === order.id
-                const priorityInfo = PRIORITY_MAP[order.priority] || PRIORITY_MAP.normal
-                const PriorityIcon = priorityInfo.icon
-                const perUnitBudget = order.expectedQuantity > 0 ? (order.budget / order.expectedQuantity).toFixed(1) : order.budget.toFixed(1)
-                const requirementList = safeParseRequirements(order.requirements)
-
-                return (
-                  <View
-                    key={order.id}
-                    className="sq-card"
-                    onClick={() => {
-                      if (!isExpanded) setExpandedCard(order.id)
-                    }}
-                  >
-                    {/* 紧急度指示条 */}
-                    {(order.priority === 'urgent' || order.priority === 'high') && (
-                      <View className="sq-priority-bar" style={{ backgroundColor: priorityInfo.color }} />
-                    )}
-
-                    {/* 卡片头部：发布者 + 优先级 + 平台 + 类型 */}
-                    <View className="sq-card-top">
-                      <View className="sq-publisher-chip">
-                        <View className="sq-publisher-dot">
-                          <Text className="sq-publisher-letter">{(order.publisher || '匿').charAt(0)}</Text>
-                        </View>
-                        <Text className="sq-publisher-name">{order.publisher}</Text>
-                        <Text className="sq-publisher-label">发布</Text>
-                      </View>
-                      <View className="sq-card-badges">
-                        {order.priority !== 'normal' && (
-                          <View className="sq-priority-pill" style={{ background: `${priorityInfo.color}15` }}>
-                            <PriorityIcon size={12} color={priorityInfo.color} />
-                            <Text className="sq-priority-pill-text" style={{ color: priorityInfo.color }}>{priorityInfo.label}</Text>
-                          </View>
-                        )}
-                        {order.platforms.slice(0, 2).map(pKey => {
-                          const meta = getPlatformMeta(pKey)
-                          return (
-                            <View key={pKey} className="sq-platform-pill" style={{ background: `${meta?.color || '#6366F1'}15` }}>
-                              <Text className="sq-platform-pill-text" style={{ color: meta?.color || '#6366F1' }}>{getPlatformLabel(pKey)}</Text>
-                            </View>
-                          )
-                        })}
-                        <View className="sq-type-pill" style={{ background: `${ctInfo.color}15` }}>
-                          <Text className="sq-type-pill-text" style={{ color: ctInfo.color }}>{ctInfo.label}</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* 标题 */}
-                    <Text className="sq-card-title">{order.title}</Text>
-
-                    {/* 描述 */}
-                    {order.description && (
-                      <Text className="sq-card-desc" numberOfLines={isExpanded ? 100 : 2}>{order.description}</Text>
-                    )}
-
-                    {/* ===== 回报卡片 ===== */}
-                    <View className="sq-reward-card">
-                      <View className="sq-reward-left">
-                        <View className="sq-reward-amount">
-                          <Text className="sq-reward-symbol">¥</Text>
-                          <Text className="sq-reward-value">{perUnitBudget}</Text>
-                          <Text className="sq-reward-unit">/分身</Text>
-                        </View>
-                        <Text className="sq-reward-hint">共{order.expectedQuantity}个分身 · 总额¥{order.budget.toFixed(2)}</Text>
-                      </View>
-                      <View className="sq-reward-divider" />
-                      <View className="sq-reward-right">
-                        <View className="sq-reward-meta">
-                          <Clock size={14} color="#6366F1" />
-                          <Text className="sq-reward-meta-text">{ctInfo.effort}</Text>
-                        </View>
-                        <Text className="sq-reward-meta-sub">预计耗时</Text>
-                      </View>
-                    </View>
-
-                    {/* ===== 接单后流程 ===== */}
-                    <View className="sq-what-section">
-                      <Text className="sq-section-label">接单后流程</Text>
-                      <View className="sq-steps">
-                        <View className="sq-step">
-                          <View className="sq-step-dot sq-step-dot-1">
-                            <Text className="sq-step-num">1</Text>
-                          </View>
-                          <Text className="sq-step-text">AI自动创作</Text>
-                        </View>
-                        <View className="sq-step-line" />
-                        <View className="sq-step">
-                          <View className="sq-step-dot sq-step-dot-2">
-                            <Text className="sq-step-num">2</Text>
-                          </View>
-                          <Text className="sq-step-text">确认发布</Text>
-                        </View>
-                        <View className="sq-step-line" />
-                        <View className="sq-step">
-                          <View className="sq-step-dot sq-step-dot-3">
-                            <Text className="sq-step-num">3</Text>
-                          </View>
-                          <Text className="sq-step-text">获得收益</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* 目标受众 */}
-                    {order.targetAudience && (
-                      <View className="sq-audience-row">
-                        <Target size={14} color="#8B5CF6" />
-                        <Text className="sq-audience-label">目标受众：</Text>
-                        <Text className="sq-audience-text">{order.targetAudience}</Text>
-                      </View>
-                    )}
-
-                    {/* 已接单信息 */}
-                    {order.acceptCount > 0 && (
-                      <View className="sq-accept-info">
-                        <Users size={14} color="#6366F1" />
-                        <Text className="sq-accept-text">{order.acceptCount}人已接单</Text>
-                      </View>
-                    )}
-
-                    {/* 展开更多 */}
-                    <View className="sq-expand-row" onClick={(e) => { e.stopPropagation(); setExpandedCard(isExpanded ? null : order.id) }}>
-                      <Text className="sq-expand-text">{isExpanded ? '收起详情' : '查看详情'}</Text>
-                      {isExpanded ? <ChevronUp size={14} color="#94A3B8" /> : <ChevronDown size={14} color="#94A3B8" />}
-                    </View>
-
-                    {/* 展开区：需求详情 */}
-                    {isExpanded && (
-                      <View className="sq-expand-area">
-                        {requirementList.length > 0 && (
-                          <View className="sq-req-block">
-                            <Text className="sq-req-title">创作要求</Text>
-                            {requirementList.slice(0, 5).map((req, idx) => (
-                              <View key={idx} className="sq-req-item">
-                                <View className="sq-req-dot" />
-                                <Text className="sq-req-text">{req}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-                        <View className="sq-cost-benefit">
-                          <View className="sq-cost-side">
-                            <Text className="sq-cb-title">你需要做</Text>
-                            <View className="sq-cb-item">
-                              <CircleCheckBig size={14} color="#6366F1" />
-                              <Text className="sq-cb-text">AI自动生成{ctInfo.label}内容</Text>
-                            </View>
-                            <View className="sq-cb-item">
-                              <CircleCheckBig size={14} color="#6366F1" />
-                              <Text className="sq-cb-text">确认后一键发布到{order.platforms.map(p => getPlatformLabel(p)).join('、')}</Text>
-                            </View>
-                            <View className="sq-cb-item">
-                              <CircleCheckBig size={14} color="#6366F1" />
-                              <Text className="sq-cb-text">等待验收通过即可结算</Text>
-                            </View>
-                          </View>
-                          <View className="sq-benefit-side">
-                            <Text className="sq-cb-title">你将获得</Text>
-                            <View className="sq-cb-item">
-                              <TrendingUp size={14} color="#10B981" />
-                              <Text className="sq-cb-text sq-cb-green">¥{perUnitBudget} 创作收益</Text>
-                            </View>
-                            <View className="sq-cb-item">
-                              <TrendingUp size={14} color="#10B981" />
-                              <Text className="sq-cb-text sq-cb-green">分身活跃度提升</Text>
-                            </View>
-                            <View className="sq-cb-item">
-                              <TrendingUp size={14} color="#10B981" />
-                              <Text className="sq-cb-text sq-cb-green">接单信誉加分</Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* 接单按钮 */}
-                    <View className="sq-card-actions">
-                      <View
-                        className={`sq-btn-accept ${acceptedOrderIds[order.id] ? 'accepted' : ''} ${isAccepting ? 'loading' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleAcceptOrder(order.id)
-                        }}
-                      >
-                        {isAccepting ? (
-                          <>
-                            <View className="sq-btn-mini-spinner" />
-                            <Text className="sq-btn-label sq-btn-label-primary">接单中...</Text>
-                          </>
-                        ) : acceptedOrderIds[order.id] ? (
-                          <>
-                            <CircleCheckBig size={16} color="#fff" />
-                            <Text className="sq-btn-label sq-btn-label-primary">已接单</Text>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={16} color="#fff" />
-                            <Text className="sq-btn-label sq-btn-label-primary">接单赚¥{perUnitBudget}</Text>
-                            <ChevronRight size={14} color="rgba(255,255,255,0.7)" />
-                          </>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                )
-              })
-            ) : (
-              <View className="sq-empty">
-                <ShoppingBag size={48} color="#CBD5E1" />
-                <Text className="sq-empty-title">暂无可接订单</Text>
-                <Text className="sq-empty-desc">切换平台看看或稍后再来</Text>
-              </View>
-            )}
+            ))}
           </View>
         </View>
 
+        {/* 实时动态 - 社交证明，激发行动 */}
+        {/* <View className="section">
+          <View className="section-header">
+            <View className="section-title-row">
+              <View className="title-dot" />
+              <Text className="section-title">实时收益</Text>
+            </View>
+            <View className="live-indicator">
+              <View className="live-dot" />
+              <Text className="live-text">LIVE</Text>
+            </View>
+          </View>
+          
+          <ScrollView scrollX className="activity-scroll-container" enhanced showScrollbar={false}>
+            <View className="activity-scroll-track">
+              {activities.length > 0 ? activities.map((item, index) => (
+                <View key={`${item.name}-${index}`} className="activity-card">
+                  <View className="activity-card-header">
+                    <View className="activity-icon-wrapper" style={{ background: item.type === 'coin' ? '#ECFDF5' : item.type === 'order' ? '#EEF2FF' : '#F5F3FF' }}>
+                      <item.icon size={28} color={item.type === 'coin' ? '#10B981' : item.type === 'order' ? '#6366F1' : '#8B5CF6'} />
+                    </View>
+                    <View className="activity-time-badge">{item.time}</View>
+                  </View>
+                  <View className="activity-card-content">
+                    <Text className="activity-name">{item.name}</Text>
+                    <Text className="activity-action">{item.action}</Text>
+                    {item.amount && (
+                      <Text className="activity-amount" style={{ color: item.type === 'coin' ? '#10B981' : '#6366F1' }}>
+                        {item.amount}
+                      </Text>
+                    )}
+                    {!item.amount && item.desc && (
+                      <Text className="activity-desc">{item.desc}</Text>
+                    )}
+                  </View>
+                </View>
+              )) : (
+                <View className="activity-empty">
+                  <Eye size={40} color="#CBD5E1" />
+                  <Text className="activity-empty-text">其他用户正在赚钱中...</Text>
+                  <Text className="activity-empty-hint">创建分身即可开始</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </View> */}
+
         {/* 底部留白 */}
-        <View className="bottom-spacer" />
+        {/* <View className="bottom-spacer" /> */}
       </ScrollView>
+
+      {/* 订单通知弹窗 */}
+      {showOrderModal && orderModalData && (
+        <View className="order-modal-overlay" onClick={handleOrderDismiss}>
+          <View className="order-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="order-modal-header">
+              <Text className="order-modal-title">新订单通知</Text>
+              <View className="order-modal-close" onClick={handleOrderDismiss}>
+                <Text className="order-modal-close-text">×</Text>
+              </View>
+            </View>
+            
+            <View className="order-modal-content">
+              <View className="order-modal-platform" style={{ background: orderModalData.platformColor }}>
+                {orderModalData.platform}
+              </View>
+              <Text className="order-modal-order-title">{orderModalData.title}</Text>
+              
+              <View className="order-modal-info">
+                <View className="order-modal-info-item">
+                  <Text className="order-modal-info-label">预算</Text>
+                  <Text className="order-modal-info-value" style={{ color: '#F59E0B' }}>{orderModalData.budget}</Text>
+                </View>
+                <View className="order-modal-info-item">
+                  <Text className="order-modal-info-label">截止</Text>
+                  <Text className="order-modal-info-value" style={{ color: '#EF4444' }}>{orderModalData.deadline}</Text>
+                </View>
+              </View>
+            </View>
+            
+            <View className="order-modal-actions">
+              <View className="order-modal-btn dismiss" onClick={handleOrderDismiss}>
+                <Text className="order-modal-btn-text dismiss">暂不接单</Text>
+              </View>
+              <View className="order-modal-btn accept" onClick={handleOrderAccept}>
+                <Text className="order-modal-btn-text accept">立即接单</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 通知弹窗 */}
+      {showModal && currentNotification && (
+        <View className="notification-modal-overlay" onClick={closeModal}>
+          <View className="notification-modal" onClick={(e) => e.stopPropagation()}>
+            <View className="notification-modal-header">
+              <Text className="notification-modal-title">{currentNotification.title}</Text>
+              <View className="notification-modal-close" onClick={closeModal}>
+                <Text className="notification-modal-close-text">×</Text>
+              </View>
+            </View>
+            <View className="notification-modal-content">
+              <Text className="notification-modal-text">{currentNotification.content}</Text>
+              <Text className="notification-modal-time">
+                {new Date(currentNotification.createdAt).toLocaleString()}
+              </Text>
+            </View>
+            <View className="notification-modal-footer">
+              <View className="notification-modal-btn" onClick={closeModal}>
+                <Text className="notification-modal-btn-text">我知道了</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
+
+export default Index
