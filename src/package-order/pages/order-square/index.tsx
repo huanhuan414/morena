@@ -153,6 +153,8 @@ export default function OrderSquarePage() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [scrollTop, setScrollTop] = useState(0)
   const [refresherTriggered, setRefresherTriggered] = useState(false)
+  const [acceptingOrderIds, setAcceptingOrderIds] = useState<Record<string, true>>({})
+  const [acceptedOrderIds, setAcceptedOrderIds] = useState<Record<string, true>>({})
 
 
   useDidShow(() => {
@@ -279,19 +281,33 @@ export default function OrderSquarePage() {
 
   const doAcceptOrder = async (avatarId: string, orderId: string) => {
     try {
+      setAcceptingOrderIds((prev) => ({ ...prev, [orderId]: true }))
       const res = await Network.request({
         url: `/api/order-dispatch/avatar/${avatarId}/accept/${orderId}`,
         method: 'POST'
       })
       if (res.data?.code === 200) {
         showToast({ title: '接单成功', icon: 'success' })
+        setAcceptedOrderIds((prev) => ({ ...prev, [orderId]: true }))
+        setAcceptingOrderIds((prev) => {
+          const { [orderId]: _, ...rest } = prev
+          return rest
+        })
         fetchOrders()
       } else {
         showToast({ title: res.data?.message || '接单失败', icon: 'none' })
+        setAcceptingOrderIds((prev) => {
+          const { [orderId]: _, ...rest } = prev
+          return rest
+        })
       }
     } catch (error) {
       console.error('接单失败:', error)
       showToast({ title: '接单失败', icon: 'none' })
+      setAcceptingOrderIds((prev) => {
+        const { [orderId]: _, ...rest } = prev
+        return rest
+      })
     }
   }
 
@@ -484,17 +500,23 @@ export default function OrderSquarePage() {
                       <Text className="rating-text">{order.publisher.rating}</Text>
                     </View>
                   </View>
-                  <Button
-                    size="sm"
-                    className="accept-btn"
+                  <View
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleAcceptOrder(order.id)
                     }}
                   >
-                    <Zap size={14} color="#fff" />
-                    <Text className="accept-btn-text">接单</Text>
-                  </Button>
+                    <Button
+                      size="sm"
+                      className="accept-btn"
+                      disabled={Boolean(acceptingOrderIds[order.id] || acceptedOrderIds[order.id])}
+                      onClick={() => handleAcceptOrder(order.id)}
+                    >
+                      <Zap size={14} color="#fff" />
+                      <Text className="accept-btn-text">
+                        {acceptedOrderIds[order.id] ? '已接单' : (acceptingOrderIds[order.id] ? '接单中' : '接单')}
+                      </Text>
+                    </Button>
+                  </View>
                 </View>
               </View>
             )

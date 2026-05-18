@@ -4,6 +4,7 @@ import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { StorageService } from '../storage/storage.service'
+import { VolcengineService } from '../upload/volcengine.service'
 import {
   SKILL_STRATEGIES,
   getSkillStrategy,
@@ -37,7 +38,8 @@ export class ContentGenerationService implements OnModuleInit {
   constructor(
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly volcengineService: VolcengineService
   ) {
     this.logger.log('ContentGenerationService 初始化，使用 ARK API 直连')
   }
@@ -1490,18 +1492,36 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
       const firstItem = result.data[0]
       if (firstItem.url) {
-        imageUrl = firstItem.url
+        // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
+        try {
+          this.logger.log(`[ImageHTTP] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
+          const imgResponse = await fetch(firstItem.url)
+          if (imgResponse.ok) {
+            const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+            const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+            const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+            imageUrl = uploadResult.url
+            this.logger.log(`[ImageHTTP] 图片转存veImageX CDN成功: ${imageUrl.slice(0, 80)}...`)
+          } else {
+            this.logger.warn(`[ImageHTTP] 下载临时图片失败: ${imgResponse.status}，使用原始URL`)
+            imageUrl = firstItem.url
+          }
+        } catch (downloadErr: any) {
+          this.logger.warn(`[ImageHTTP] 图片转存veImageX CDN失败: ${downloadErr.message}，使用原始URL`)
+          imageUrl = firstItem.url
+        }
       } else if (firstItem.b64_json) {
-        // base64 图片上传到 TOS 对象存储，数据库只存 URL
-        this.logger.log('[ImageHTTP] API返回base64，上传到TOS对象存储...')
+        // base64 图片上传到 veImageX CDN
+        this.logger.log('[ImageHTTP] API返回base64，上传到veImageX CDN...')
         try {
           const base64Data = firstItem.b64_json
           const buffer = Buffer.from(base64Data, 'base64')
-          const fileName = `ai-generated/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
-          imageUrl = await this.storageService.uploadImageFromBuffer(buffer, fileName)
-          this.logger.log(`[ImageHTTP] base64上传TOS成功: ${imageUrl.slice(0, 80)}...`)
+          const fileName = `ai-generated_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+          const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+          imageUrl = uploadResult.url
+          this.logger.log(`[ImageHTTP] base64上传veImageX成功: ${imageUrl.slice(0, 80)}...`)
         } catch (uploadErr: any) {
-          this.logger.error(`[ImageHTTP] base64上传TOS失败: ${uploadErr.message}`)
+          this.logger.error(`[ImageHTTP] base64上传veImageX失败: ${uploadErr.message}`)
           // 降级：仍然返回 base64（保证功能不中断）
           imageUrl = `data:image/png;base64,${firstItem.b64_json}`
         }
@@ -1671,11 +1691,28 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
           const videoUrl = await this.pollSeedanceTask(seedance_task_id)
 
           if (videoUrl) {
-            // 视频生成成功，更新记录
-            this.logger.log(`[VideoPoll] 视频生成成功: requestId=${id}, url=${videoUrl.slice(0, 80)}...`)
+            // 视频生成成功，下载并转存到自己的CDN
+            let finalVideoUrl = videoUrl
+            try {
+              this.logger.log(`[VideoPoll] 下载临时视频并转存veImageX CDN: ${videoUrl.slice(0, 80)}...`)
+              const videoResponse = await fetch(videoUrl)
+              if (videoResponse.ok) {
+                const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+                const fileName = `content-video/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp4`
+                const uploadResult = await this.volcengineService.uploadVideo(videoBuffer, fileName)
+                finalVideoUrl = uploadResult.url
+                this.logger.log(`[VideoPoll] 视频转存veImageX CDN成功: ${finalVideoUrl.slice(0, 80)}...`)
+              } else {
+                this.logger.warn(`[VideoPoll] 下载临时视频失败: ${videoResponse.status}，使用原始URL`)
+              }
+            } catch (downloadErr: any) {
+              this.logger.warn(`[VideoPoll] 视频转存CDN失败: ${downloadErr.message}，使用原始URL`)
+            }
+            // 更新记录
+            this.logger.log(`[VideoPoll] 视频生成成功: requestId=${id}, url=${finalVideoUrl.slice(0, 80)}...`)
             await pool.execute(
               'UPDATE content_generation_requests SET status = ?, video_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
-              ['preview', videoUrl, id]
+              ['preview', finalVideoUrl, id]
             )
             // 同步订单状态
             try {
@@ -1735,14 +1772,15 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
       const updatedImages: string[] = []
       for (const img of images) {
         if (typeof img === 'string' && img.startsWith('data:image/')) {
-          // base64 → Buffer → 上传 TOS → 获取 URL
+          // base64 → Buffer → 上传 veImageX CDN → 获取永久 URL
           const matches = img.match(/^data:image\/(\w+);base64,(.+)$/)
           if (matches) {
             const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
             const buffer = Buffer.from(matches[2], 'base64')
-            const filename = `content-images/${requestId}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`
-            const url = await this.storageService.uploadImageFromBuffer(buffer, filename)
-            console.log(`[TOS迁移] base64→URL: ${filename} → ${url}`)
+            const filename = `content-images_${requestId}_${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
+            const uploadResult = await this.volcengineService.uploadImage({ buffer, originalname: filename, mimetype: 'image/png' } as Express.Multer.File)
+            const url = uploadResult.url
+            console.log(`[CDN迁移] base64→永久URL: ${filename} → ${url.slice(0, 80)}...`)
             updatedImages.push(url)
           } else {
             // 无法解析的 base64，跳过

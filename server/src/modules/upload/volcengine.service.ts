@@ -16,13 +16,13 @@ export class VolcengineService {
   private readonly logger = new Logger(VolcengineService.name);
   private client: ImageXClient;
 
-  // 完整的服务ID
+  // 图片服务
   private readonly FULL_SERVICE_ID = 'tos-cn-i-699z2ac540';
-  // 短ID（用于模板参数）
   private readonly SHORT_ID = '699z2ac540';
-  // 自定义域名
-  // 🔴 使用自定义域名
   private readonly CUSTOM_DOMAIN = 'voic.51webjs.com';
+
+  // 视频服务
+  private readonly VIDEO_SHORT_ID = '4rj1sb5o2t';
 
   constructor() {
     this.client = new ImageXClient({
@@ -163,5 +163,87 @@ export class VolcengineService {
     // 🔴 无论原格式是什么，都强制使用PNG格式
     // 因为火山引擎CDN可能只支持PNG格式访问
     return 'png';
+  }
+
+  /**
+   * 上传视频到 veImageX 视频服务（永久CDN URL，不会过期）
+   */
+  async uploadVideo(videoBuffer: Buffer, fileName?: string): Promise<{ url: string }> {
+    this.logger.log(`[VolcengineService] 开始上传视频，大小: ${videoBuffer.length} bytes`);
+
+    try {
+      const name = fileName || `video_${Date.now()}.mp4`;
+      const storeKey = this.generateVideoStoreKey(name);
+      this.logger.log(`[VolcengineService] Video StoreKey: ${storeKey}`);
+
+      // 1. 获取上传凭证
+      const applyRes = await this.client.ApplyImageUpload({
+        ServiceId: this.VIDEO_SHORT_ID,
+        UploadNum: 1,
+        StoreKeys: [storeKey],
+      });
+
+      if (applyRes.ResponseMetadata?.Error) {
+        throw new Error(`获取视频上传凭证失败: ${applyRes.ResponseMetadata.Error.Message}`);
+      }
+
+      if (!applyRes.Result?.UploadAddress?.StoreInfos?.length) {
+        throw new Error('视频上传凭证响应格式错误');
+      }
+
+      const uploadAddress = applyRes.Result.UploadAddress;
+
+      // 2. 上传文件
+      await this.client.DoUpload(
+        [videoBuffer],
+        uploadAddress.UploadHosts[0],
+        uploadAddress.StoreInfos
+      );
+
+      this.logger.log(`[VolcengineService] 视频文件上传成功`);
+
+      // 3. 确认上传
+      const commitRes = await this.client.CommitImageUpload({
+        ServiceId: this.VIDEO_SHORT_ID,
+        SessionKey: uploadAddress.SessionKey,
+      });
+
+      if (commitRes.ResponseMetadata?.Error) {
+        throw new Error(`确认视频上传失败: ${commitRes.ResponseMetadata.Error.Message}`);
+      }
+
+      if (!commitRes.Result?.Results?.length) {
+        throw new Error('确认视频上传响应中没有结果');
+      }
+
+      const result = commitRes.Result.Results[0] as any;
+
+      if (!result.Uri) {
+        throw new Error('视频上传结果中没有URI');
+      }
+
+      // 4. 构建视频访问URL
+      // 视频URL格式与图片类似：https://{domain}/{serviceId}/user%2F{file}~tplv-{shortId}-video.mp4
+      const uri = result.Uri;
+      const encodedUri = uri.replace('user/', 'user%2F');
+      const url = `https://${this.CUSTOM_DOMAIN}/${encodedUri}~tplv-${this.VIDEO_SHORT_ID}-video.mp4`;
+
+      this.logger.log(`[VolcengineService] 视频URL: ${url}`);
+      return { url };
+
+    } catch (error: any) {
+      this.logger.error(`[VolcengineService] 视频上传失败: ${error.message}`);
+      throw new Error(`上传视频失败: ${error.message}`);
+    }
+  }
+
+  private generateVideoStoreKey(originalName: string): string {
+    const ext = originalName.split('.').pop() || 'mp4';
+    let hash = '';
+    for (let i = 0; i < 8; i++) {
+      hash += Math.random().toString(16).substring(2, 6);
+    }
+    hash = hash.substring(0, 32);
+    return `user/${hash}.${ext}`;
   }
 }

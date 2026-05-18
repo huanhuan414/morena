@@ -48,6 +48,22 @@ export class AuthController {
     }
   }
 
+  @Post('wechat-phone-login')
+  async wechatPhoneLogin(
+    @Body('code') code: string,
+    @Body('phoneCode') phoneCode: string,
+    @Body('nickname') nickname?: string,
+    @Body('avatar') avatar?: string,
+    @Body('referral_code') referralCode?: string,
+  ) {
+    const result = await this.authService.wechatPhoneLogin(code, phoneCode, nickname, avatar, referralCode)
+    return {
+      code: 200,
+      data: result,
+      message: result.isNewUser ? '注册成功' : '登录成功',
+    }
+  }
+
   /**
    * 通过 code 获取 openid（供支付使用）
    */

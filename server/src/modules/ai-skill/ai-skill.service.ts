@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { getPool } from '../../storage/database/mysql-client';
 import { StorageService } from '../storage/storage.service';
+import { VolcengineService } from '../upload/volcengine.service';
 import * as crypto from 'crypto';
 
 /** 技能类型 */
@@ -20,7 +21,10 @@ const IMAGE_GEN_MODEL = process.env.IMAGE_GEN_MODEL || 'gpt-image-2-all';
 
 @Injectable()
 export class AiSkillService {
-  constructor(private readonly storageService: StorageService) {}
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly volcengineService: VolcengineService
+  ) {}
 
   /**
    * 发起 AI 技能图片生成（异步，立即返回 recordId）
@@ -237,7 +241,23 @@ export class AiSkillService {
     const firstItem = result.data[0];
 
     if (firstItem.url) {
-      return firstItem.url;
+      // 下载临时URL并转存到veImageX CDN，避免第三方链接过期
+      try {
+        console.log(`[AiSkillService] 下载临时图片并转存veImageX CDN: ${firstItem.url.slice(0, 80)}...`)
+        const imgResponse = await fetch(firstItem.url)
+        if (imgResponse.ok) {
+          const imgBuffer = Buffer.from(await imgResponse.arrayBuffer())
+          const fileName = `ai-skill_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.png`
+          const uploadResult = await this.volcengineService.uploadImage({ buffer: imgBuffer, originalname: fileName, mimetype: 'image/png' } as Express.Multer.File)
+          console.log(`[AiSkillService] 图片转存veImageX CDN成功: ${uploadResult.url.slice(0, 80)}...`)
+          return uploadResult.url
+        } else {
+          console.warn(`[AiSkillService] 下载临时图片失败: ${imgResponse.status}，使用原始URL`)
+        }
+      } catch (downloadErr: any) {
+        console.warn(`[AiSkillService] 图片转存veImageX CDN失败: ${downloadErr.message}，使用原始URL`)
+      }
+      return firstItem.url
     }
 
     if (firstItem.b64_json) {

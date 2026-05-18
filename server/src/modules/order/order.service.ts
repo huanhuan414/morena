@@ -644,7 +644,16 @@ export class OrderService {
       `SELECT o.id, o.user_id, o.avatar_id, o.title, o.description, o.content_type, o.platforms, o.requirements,
               o.budget, o.status, o.expected_quantity, o.avatar_count, o.quantity_per_avatar, o.is_paid,
               o.created_at, o.updated_at,
-              u.nickname as publisher_nickname, u.avatar as publisher_avatar
+              COALESCE(
+                (SELECT a.name FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
+                (SELECT a.name FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
+                u.nickname
+              ) as publisher_nickname,
+              COALESCE(
+                (SELECT a.avatar_url FROM avatars a WHERE a.id = o.avatar_id LIMIT 1),
+                (SELECT a.avatar_url FROM avatars a WHERE a.user_id = o.user_id AND a.status = 'active' ORDER BY a.created_at DESC LIMIT 1),
+                u.avatar
+              ) as publisher_avatar
        FROM orders o
        LEFT JOIN users u ON u.id = o.user_id
        ${whereClause}

@@ -62,7 +62,7 @@ export class StorageService {
         contentType: file.mimetype || 'image/jpeg'
       })
       // 生成临时URL
-      return await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
+      return await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 365 * 10 })
     }
   }
 
@@ -109,9 +109,8 @@ export class StorageService {
 
       this.logger.log(`[StorageService] 文件上传成功, key: ${key}`)
 
-      // 生成临时URL
-      this.logger.log(`[StorageService] 开始生成预签名URL...`)
-      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
+      // 生成预签名URL - 10年有效期，确保内容不会过期
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 365 * 10 })
       this.logger.log(`[StorageService] 视频上传成功: ${url.substring(0, 80)}...`)
       return url
     } catch (error: any) {
@@ -136,8 +135,7 @@ export class StorageService {
         contentType: 'audio/mp3'
       })
       // 生成临时URL
-      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 30 })
-      this.logger.log(`[StorageService] 音频上传成功: ${url}`)
+      const url = await this.storage.generatePresignedUrl({ key, expireTime: 86400 * 365 * 10 })
       return url
     } catch (error) {
       this.logger.error('[StorageService] 音频上传失败:', error)

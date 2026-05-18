@@ -2,23 +2,31 @@ import React, { useState, useEffect } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text, Image } from '@tarojs/components'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Button as UIButton } from '@/components/ui/button'
+import { WeappButton } from '@/components/ui/weapp-button'
 import { Network } from '@/network'
 import { useUserStore } from '@/stores/user'
 import { Gift } from 'lucide-react-taro'
-import logoImg from '@/assets/logo.jpg'
 import './index.css'
 
 const Login: React.FC = () => {
-  const [loginTab, setLoginTab] = useState<'account' | 'wechat'>('account')
+  const [loginTab, setLoginTab] = useState<'account' | 'wechat'>('wechat')
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [referralCode, setReferralCode] = useState('')
+  const [wechatReferralCode, setWechatReferralCode] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [codeLoading, setCodeLoading] = useState(false)
   const [wechatLoading, setWechatLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [showProfilePanel, setShowProfilePanel] = useState(false)
+  const [profileNickname, setProfileNickname] = useState('')
+  const [profileAvatarTemp, setProfileAvatarTemp] = useState('')
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [loginResult, setLoginResult] = useState<any>(null)
   const { setUserInfo, setToken } = useUserStore(state => state)
 
   useEffect(() => {
@@ -26,6 +34,7 @@ const Login: React.FC = () => {
     const inviteCode = instance?.router?.params?.inviteCode || instance?.router?.params?.referralCode || ''
     if (inviteCode) {
       setReferralCode(inviteCode.toUpperCase())
+      setWechatReferralCode(inviteCode.toUpperCase())
     }
   }, [])
 
@@ -154,9 +163,86 @@ const Login: React.FC = () => {
     }
   }
 
-  const handleWechatLogin = async () => {
+  const handleChooseProfileAvatar = async (e: any) => {
+    const tempUrl = e.detail.avatarUrl
+    if (!tempUrl) return
+
+    setProfileAvatarTemp(tempUrl)
+    setAvatarUploading(true)
+    try {
+      const uploadRes = await Network.uploadFile({
+        url: '/api/upload/image',
+        filePath: tempUrl,
+        name: 'file',
+      })
+      let resData = uploadRes.data
+      if (typeof resData === 'string') {
+        try { resData = JSON.parse(resData) } catch (_) { /* ignore */ }
+      }
+      const imageUrl = (resData as any)?.data?.url || (resData as any)?.url || ''
+      if (imageUrl) {
+        setProfileAvatarUrl(imageUrl)
+      }
+    } catch (err) {
+      console.error('[头像上传失败]', err)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (!loginResult) return
+
+    setProfileSaving(true)
+    try {
+      const userId = loginResult.user?.id || loginResult.userId
+      const token = loginResult.token
+      const updateData: Record<string, string> = {}
+      if (profileNickname.trim()) updateData.nickname = profileNickname.trim()
+      if (profileAvatarUrl) updateData.avatar = profileAvatarUrl
+
+      if (Object.keys(updateData).length > 0) {
+        await Network.request({
+          url: '/api/user/profile',
+          method: 'PUT',
+          data: updateData,
+          header: {
+            'x-user-id': userId,
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+        if (profileNickname.trim()) {
+          loginResult.user.nickname = profileNickname.trim()
+        }
+        if (profileAvatarUrl) {
+          loginResult.user.avatar = profileAvatarUrl
+        }
+      }
+
+      setShowProfilePanel(false)
+      navigateAfterLogin(loginResult)
+    } catch (err) {
+      console.error('[保存资料失败]', err)
+      setShowProfilePanel(false)
+      navigateAfterLogin(loginResult)
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  const handleSkipProfile = () => {
+    setShowProfilePanel(false)
+    navigateAfterLogin(loginResult)
+  }
+
+  const handleGetPhoneNumber = async (e: any) => {
     if (!agreed) {
       Taro.showToast({ title: '请先同意用户协议', icon: 'none' })
+      return
+    }
+
+    if (e.detail.errMsg !== 'getPhoneNumber:ok' || !e.detail.code) {
+      Taro.showToast({ title: '获取手机号授权失败', icon: 'none' })
       return
     }
 
@@ -168,14 +254,28 @@ const Login: React.FC = () => {
         return
       }
 
+      const requestData: Record<string, string> = {
+        code: loginRes.code,
+        phoneCode: e.detail.code,
+      }
+      if (wechatReferralCode.trim()) {
+        requestData.referral_code = wechatReferralCode.trim()
+      }
+
       const res = await Network.request({
-        url: '/api/auth/wechat-login',
+        url: '/api/auth/wechat-phone-login',
         method: 'POST',
-        data: { code: loginRes.code }
+        data: requestData,
       })
 
       if (res.data?.code === 200 && res.data?.data) {
-        navigateAfterLogin(res.data.data)
+        const data = res.data.data
+        if (data.isNewUser) {
+          setLoginResult(data)
+          setShowProfilePanel(true)
+        } else {
+          navigateAfterLogin(data)
+        }
       } else {
         Taro.showToast({ title: res.data?.message || '微信登录失败', icon: 'none' })
       }
@@ -210,16 +310,16 @@ const Login: React.FC = () => {
       <View className="login-card">
         <View className="login-tabs">
           <View
-            className={`login-tab ${loginTab === 'account' ? 'active' : ''}`}
-            onClick={() => setLoginTab('account')}
-          >
-            <Text className={`login-tab-text ${loginTab === 'account' ? 'active' : ''}`}>账号登录</Text>
-          </View>
-          <View
             className={`login-tab ${loginTab === 'wechat' ? 'active' : ''}`}
             onClick={() => setLoginTab('wechat')}
           >
             <Text className={`login-tab-text ${loginTab === 'wechat' ? 'active' : ''}`}>授权登录</Text>
+          </View>
+          <View
+            className={`login-tab ${loginTab === 'account' ? 'active' : ''}`}
+            onClick={() => setLoginTab('account')}
+          >
+            <Text className={`login-tab-text ${loginTab === 'account' ? 'active' : ''}`}>账号登录</Text>
           </View>
         </View>
 
@@ -256,7 +356,7 @@ const Login: React.FC = () => {
                   />
                 </View>
                 <View className="login-code-btn-wrap">
-                  <Button
+                  <UIButton
                     variant="outline"
                     size="sm"
                     disabled={countdown > 0 || codeLoading}
@@ -266,7 +366,7 @@ const Login: React.FC = () => {
                     <Text className="login-code-btn-text">
                       {codeLoading ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
                     </Text>
-                  </Button>
+                  </UIButton>
                 </View>
               </View>
             </View>
@@ -286,7 +386,7 @@ const Login: React.FC = () => {
               </View>
             </View>
 
-            <Button
+            <UIButton
               variant="default"
               size="lg"
               disabled={loading || !agreed}
@@ -294,7 +394,7 @@ const Login: React.FC = () => {
               className="login-submit-btn"
             >
               <Text className="login-submit-btn-text">{loading ? '登录中...' : '登录'}</Text>
-            </Button>
+            </UIButton>
 
             {renderAgreement()}
           </View>
@@ -303,29 +403,91 @@ const Login: React.FC = () => {
         {loginTab === 'wechat' && (
           <View className="login-tab-content">
             <Text className="login-card-title block">微信授权登录</Text>
-            <Text className="login-card-desc block">使用微信账号快速登录，无需输入手机号</Text>
+            <Text className="login-card-desc block">使用微信绑定手机号快速登录，未注册将自动创建账号</Text>
 
-            <View className="login-wechat-area">
-              <View className="login-wechat-icon-wrap">
-                <Image src={logoImg} className="login-wechat-icon" />
+            <View className="login-field">
+              <View className="login-referral-label-row">
+                <Gift size={14} color="#8B5CF6" />
+                <Text className="login-field-label block">邀请码（选填）</Text>
               </View>
-              {/* <Text className="login-wechat-hint block">点击下方按钮，授权微信账号登录</Text> */}
+              <View className="login-input-wrap">
+                <Input
+                  placeholder="输入邀请码可获得额外积分奖励"
+                  value={wechatReferralCode}
+                  onInput={(e: any) => setWechatReferralCode(e.detail.value.toUpperCase())}
+                  className="login-input"
+                />
+              </View>
             </View>
 
-            <Button
-              variant="default"
-              size="lg"
+            <WeappButton
+              className="login-wechat-phone-btn"
+              open-type="getPhoneNumber"
+              onGetPhoneNumber={handleGetPhoneNumber}
               disabled={wechatLoading || !agreed}
-              onClick={handleWechatLogin}
-              className="login-submit-btn login-wechat-btn"
             >
-              <Text className="login-submit-btn-text">{wechatLoading ? '授权中...' : '微信授权登录'}</Text>
-            </Button>
+              {wechatLoading ? '授权中...' : '授权登录'}
+            </WeappButton>
 
             {renderAgreement()}
           </View>
         )}
       </View>
+
+      {showProfilePanel && (
+        <View className="profile-panel-mask" onClick={handleSkipProfile}>
+          <View className="profile-panel" onClick={(e) => e.stopPropagation()}>
+            <View className="profile-panel-header">
+              <Text className="profile-panel-title">完善个人资料</Text>
+              <View className="profile-panel-close" onClick={handleSkipProfile}>
+                <Text className="profile-panel-close-icon">✕</Text>
+              </View>
+            </View>
+            <View className="profile-panel-body">
+              <Text className="profile-panel-desc">设置你的头像和昵称，让大家认识你</Text>
+
+              <View className="profile-avatar-row">
+                <WeappButton
+                  className="profile-avatar-btn"
+                  open-type="chooseAvatar"
+                  onChooseAvatar={handleChooseProfileAvatar}
+                >
+                  <Image
+                    className="profile-avatar-img"
+                    src={profileAvatarTemp || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI9FhqR6no4pKIrgIbEDk0buZVIu06SsNIoHviaBcE3NPaYQTPHfOqdpJxQO3cTPx5VibeVg/0'}
+                    mode="aspectFill"
+                  />
+                  {avatarUploading && <View className="profile-avatar-loading" />}
+                </WeappButton>
+                <Text className="profile-avatar-hint">点击选择头像</Text>
+              </View>
+
+              <View className="profile-nickname-wrap">
+                <Input
+                  type="nickname"
+                  placeholder="请输入昵称"
+                  value={profileNickname}
+                  onInput={(e: any) => setProfileNickname(e.detail.value)}
+                  className="profile-nickname-input"
+                />
+              </View>
+
+              <View className="profile-panel-actions">
+                <WeappButton
+                  className="profile-save-btn"
+                  onClick={handleSaveProfile}
+                  disabled={profileSaving}
+                >
+                  {profileSaving ? '保存中...' : '保存'}
+                </WeappButton>
+                <View className="profile-skip-btn" onClick={handleSkipProfile}>
+                  <Text className="profile-skip-text">跳过</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

@@ -12,8 +12,8 @@ import {
   type PlatformMeta
 } from '@/constants/publish-platform'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
-import { 
-  ArrowLeft, Copy, Check, 
+import {
+  ArrowLeft, Copy, Check,
   FileText, Image as ImageIcon, Video,
   Play,
   Send, Save, ChevronRight,
@@ -179,7 +179,7 @@ export default function OrderPublishGuide() {
       const res = await Network.request({
         url: `/api/avatar/${avatarId}/accounts`
       })
-      
+
       const resData = res.data as any
       console.log('[发布引导] 获取分身账号:', resData?.code, resData?.data?.length)
       if (resData?.code === 200 && Array.isArray(resData.data)) {
@@ -262,7 +262,7 @@ export default function OrderPublishGuide() {
 
     const bindingStatus = getPlatformBindingStatus(platform)
     console.log('[发布引导] 绑定状态:', bindingStatus)
-    
+
     if (bindingStatus.required && !bindingStatus.bound) {
       Taro.showModal({
         title: '需要绑定账号',
@@ -408,7 +408,7 @@ export default function OrderPublishGuide() {
                 platforms: canonicalizePlatforms(platforms)
               }
             })
-            
+
             if (result.data?.code === 200) {
               Taro.showToast({ title: '发布成功', icon: 'success' })
               // 跳转到发布反馈页面
@@ -464,39 +464,77 @@ export default function OrderPublishGuide() {
   }
 
   // 保存所有图片
-  const handleSaveAllImages = () => {
+  const checkPhotoAlbumPermission = async (): Promise<boolean> => {
+    try {
+      const settingRes = await Taro.getSetting()
+      const authSetting = settingRes.authSetting || {}
+
+      if (authSetting['scope.writePhotosAlbum'] === true) {
+        return true
+      }
+
+      if (authSetting['scope.writePhotosAlbum'] === false) {
+        return false
+      }
+
+      try {
+        await Taro.authorize({ scope: 'scope.writePhotosAlbum' })
+        return true
+      } catch {
+        return false
+      }
+    } catch {
+      return false
+    }
+  }
+
+  const handleSaveAllImages = async () => {
     if (images.length === 0) return
+
+    const hasPermission = await checkPhotoAlbumPermission()
+    if (!hasPermission) {
+      const { confirm } = await Taro.showModal({
+        title: '需要相册权限',
+        content: '请在设置中开启相册权限，才能保存图片到本地',
+        confirmText: '去设置',
+        confirmColor: '#6366F1',
+      })
+      if (confirm) {
+        Taro.openSetting()
+      }
+      return
+    }
+
     Taro.showLoading({ title: '保存中...' })
     let savedCount = 0
-    
-    const saveNext = (index: number) => {
-      if (index >= images.length) {
-        Taro.hideLoading()
-        Taro.showToast({ title: `已保存${savedCount}张图片`, icon: 'success' })
-        return
-      }
-      
-      Network.downloadFile({
-        url: images[index],
-        success: (res) => {
-          Taro.saveImageToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: () => {
-              savedCount++
-              saveNext(index + 1)
-            },
-            fail: () => {
-              saveNext(index + 1)
-            }
-          })
-        },
-        fail: () => {
-          saveNext(index + 1)
+    let failedCount = 0
+
+    for (let i = 0; i < images.length; i++) {
+      try {
+        const res: any = await Network.downloadFile({ url: images[i] })
+        if (res.statusCode === 200) {
+          try {
+            await Taro.saveImageToPhotosAlbum({ filePath: res.tempFilePath })
+            savedCount++
+          } catch {
+            failedCount++
+          }
+        } else {
+          failedCount++
         }
-      })
+      } catch {
+        failedCount++
+      }
     }
-    
-    saveNext(0)
+
+    Taro.hideLoading()
+    if (savedCount === 0 && failedCount > 0) {
+      Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+    } else if (failedCount === 0) {
+      Taro.showToast({ title: `已保存${savedCount}张图片`, icon: 'success' })
+    } else {
+      Taro.showToast({ title: `已保存${savedCount}张，${failedCount}张失败`, icon: 'none' })
+    }
   }
 
   const statusBarHeight = getStatusBarHeight()
@@ -564,7 +602,7 @@ export default function OrderPublishGuide() {
             <Text className="section-title">目标平台</Text>
             <Text className="section-subtitle">选择要发布的平台</Text>
           </View>
-          
+
           <View className="platform-grid">
             {platforms.map((platform) => {
               const config = getValidatedPlatformMeta(platform) || {
@@ -577,7 +615,7 @@ export default function OrderPublishGuide() {
               const isSelected = currentPlatform === platform
 
               return (
-                <View 
+                <View
                   key={platform}
                   className={`platform-card ${isSelected ? 'platform-selected' : ''}`}
                   style={{
@@ -622,7 +660,7 @@ export default function OrderPublishGuide() {
               <Text className="guide-platform-desc">
                 {getValidatedPlatformMeta(currentPlatform)?.description}
               </Text>
-              
+
               <View className="guide-tips">
                 <Text className="tips-header">发布技巧</Text>
                 {(getValidatedPlatformMeta(currentPlatform)?.contentTips || []).map((tip, index) => (
@@ -633,16 +671,16 @@ export default function OrderPublishGuide() {
                 ))}
               </View>
 
-              <View 
+              <View
                 className="publish-btn"
                 style={{ backgroundColor: getValidatedPlatformMeta(currentPlatform)?.color }}
                 onClick={() => handleOpenApp(currentPlatform)}
               >
                 <Send size={18} color="#FFFFFF" />
                 <Text className="publish-btn-text">
-                  {getPlatformBindingStatus(currentPlatform).required && 
-                   !getPlatformBindingStatus(currentPlatform).bound 
-                    ? '去绑定账号' 
+                  {getPlatformBindingStatus(currentPlatform).required &&
+                    !getPlatformBindingStatus(currentPlatform).bound
+                    ? '去绑定账号'
                     : '开始发布'}
                 </Text>
                 <ChevronRight size={18} color="#FFFFFF" />
@@ -711,7 +749,7 @@ export default function OrderPublishGuide() {
                   <Text className="save-all-text">保存全部</Text>
                 </View>
               </View>
-              
+
               <View className="image-grid">
                 {images.map((url, index) => (
                   <View key={url} className="image-grid-item">
@@ -722,7 +760,7 @@ export default function OrderPublishGuide() {
                       onClick={() => handlePreviewImage(images, url)}
                     />
                     <View className="image-index">{index + 1}</View>
-                    <View 
+                    <View
                       className="image-save-btn"
                       onClick={() => handleSaveImage(url)}
                     >
@@ -744,42 +782,42 @@ export default function OrderPublishGuide() {
                 </View>
               </View>
               {videos.map((url, index) => (
-                  <View
-                    key={index}
-                    className="gc-video-cover-card"
-                    onClick={() => {
-                      const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv() as string)
-                      if (isMiniApp) {
-                        Taro.previewMedia({
-                          sources: [{ url, type: 'video' }],
-                          current: 0
-                        }).catch(() => {
-                          Taro.setClipboardData({ data: url }).then(() => {
-                            Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
-                          })
+                <View
+                  key={index}
+                  className="gc-video-cover-card"
+                  onClick={() => {
+                    const isMiniApp = ([Taro.ENV_TYPE.WEAPP, Taro.ENV_TYPE.TT] as string[]).includes(Taro.getEnv() as string)
+                    if (isMiniApp) {
+                      Taro.previewMedia({
+                        sources: [{ url, type: 'video' }],
+                        current: 0
+                      }).catch(() => {
+                        Taro.setClipboardData({ data: url }).then(() => {
+                          Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
                         })
-                      } else {
-                        Taro.previewMedia({
-                          sources: [{ url, type: 'video' }],
-                          current: 0
-                        }).catch(() => {
-                          Taro.setClipboardData({ data: url }).then(() => {
-                            Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
-                          })
+                      })
+                    } else {
+                      Taro.previewMedia({
+                        sources: [{ url, type: 'video' }],
+                        current: 0
+                      }).catch(() => {
+                        Taro.setClipboardData({ data: url }).then(() => {
+                          Taro.showToast({ title: '视频链接已复制，请在浏览器中打开', icon: 'none', duration: 2000 })
                         })
-                      }
-                    }}
-                  >
-                    <View className="gc-video-cover-bg">
-                      <View className="gc-video-play-btn">
-                        <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
-                      </View>
-                      <View className="gc-video-cover-label">
-                        <Text className="gc-video-cover-text">视频 {index + 1} · 点击播放</Text>
-                      </View>
+                      })
+                    }
+                  }}
+                >
+                  <View className="gc-video-cover-bg">
+                    <View className="gc-video-play-btn">
+                      <Play size={32} color="#fff" style={{ marginLeft: 4 }} />
+                    </View>
+                    <View className="gc-video-cover-label">
+                      <Text className="gc-video-cover-text">视频 {index + 1} · 点击播放</Text>
                     </View>
                   </View>
-                ))
+                </View>
+              ))
               }
             </View>
           )}
@@ -812,7 +850,7 @@ export default function OrderPublishGuide() {
         {/* 完成发布按钮 */}
         {requestId && (
           <View className="fixed-bottom-bar">
-            <View 
+            <View
               className="complete-publish-btn"
               onClick={handleCompletePublish}
             >

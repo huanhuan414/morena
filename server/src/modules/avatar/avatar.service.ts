@@ -273,6 +273,8 @@ export class AvatarService {
     const avatarIds = rows.map((a: any) => a.id || a.avatarId)
     let earningsMap: Record<string, { total: number; today: number }> = {}
     
+    console.log('[AvatarService] 分身ID列表:', avatarIds)
+    
     if (avatarIds.length > 0) {
       try {
         const db = getMySQLClient()
@@ -280,13 +282,16 @@ export class AvatarService {
         today.setHours(0, 0, 0, 0)
         
         const idList = avatarIds.map(id => `'${id}'`).join(', ')
+        console.log('[AvatarService] SQL查询条件 - idList:', idList)
+        console.log('[AvatarService] SQL查询条件 - today:', today)
+        
         const earningsRows = await db.query(
           `SELECT 
             avatar_id,
             SUM(amount) as total_earnings,
             SUM(CASE WHEN created_at >= ? THEN amount ELSE 0 END) as today_earnings
            FROM earnings 
-           WHERE avatar_id IN (${idList}) AND status = 'completed'
+           WHERE avatar_id IN (${idList}) AND status IN ('settled', 'completed')
            GROUP BY avatar_id`,
           [today]
         )
