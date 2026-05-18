@@ -62,7 +62,7 @@ const STEPS_IMAGE: StepDef[] = [
 const STEPS_VIDEO: StepDef[] = [
   { key: 'queued', label: '排队中', icon: 'clock', estTime: '约10秒', longEstTime: '约10秒' },
   { key: 'text', label: '生成文案', icon: 'text', estTime: '约30秒', longEstTime: '约40秒' },
-  { key: 'media', label: '生成视频', icon: 'video', estTime: '约5~8分钟', longEstTime: '约5~8分钟' },
+  { key: 'media', label: '生成视频', icon: 'video', estTime: '约10~20分钟', longEstTime: '约10~20分钟' },
   { key: 'done', label: '内容完成', icon: 'done', estTime: '', longEstTime: '' },
 ]
 
@@ -125,7 +125,7 @@ function getStepHint(rawStatus: string, contentType?: string, isTimeout?: boolea
         ? '正在根据文案提取视觉场景，准备视频素材...'
         : '正在根据文案生成配图，确保图片风格与内容匹配...'
     case 'generating_video':
-      return '正在合成视频，这个过程需要几分钟，请耐心等待...'
+      return '正在合成视频，视频生成通常需要10~20分钟，请耐心等待...'
     case 'completed':
       return '内容生成完成！'
     case 'published':
@@ -185,8 +185,9 @@ export default function OrderContentCreation() {
     const fetchStatus = async () => {
       try {
         pollCountRef.current += 1
-        // 超过150次（约5分钟）标记超时
-        if (pollCountRef.current > 150 && !isTimeout) {
+        // 超过600次（约20分钟）标记超时
+        if (pollCountRef.current > 600 && !isTimeout) {
+          // 视频生成可能需要较长时间（10-20分钟），600次 x 2秒 = 20分钟超时
           setIsTimeout(true)
         }
 

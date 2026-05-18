@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common'
-import { getMySQLClient } from '../../storage/database/mysql-client'
+import { Cron } from '@nestjs/schedule'
+import { getMySQLClient, getPool } from '../../storage/database/mysql-client'
 import { setCache, getCache } from '../../common/shared-cache'
 import { OrderService } from '../order/order.service'
 import { StorageService } from '../storage/storage.service'
@@ -339,14 +340,20 @@ export class ContentGenerationService implements OnModuleInit {
       }
     }
 
-    // 3. 生成视频（文案/脚本是视频生成的基础）
+    // 3. 生成视频（异步模式：只创建 Seedance 任务，不等待结果）
+    // 视频结果由 pollPendingVideoTasks 定时任务轮询获取
     if (needVideo && !textFailed) {
       try {
         this.updateDetailedStatus(requestId, input.orderId, 'generating_video')
-        videos = await this.generateVideos(platform, input, textContent, images)
-        this.logger.log(`视频生成完成: ${videos.length}个`)
+        await this.generateVideos(platform, input, textContent, images, requestId)
+        // 视频任务是异步的，此时 videos 为空，状态保持 generating_video
+        // 如果 Seedance 任务创建成功，seedance_task_id 已存到数据库
+        // 如果 Seedance 任务创建失败，videos 也为空，后续会被空结果检测标记为失败
+        this.logger.log(`Seedance异步视频任务已提交: requestId=${requestId}`)
+        // 视频异步生成中，直接进入最终状态判断
+        // 如果有 seedance_task_id，说明视频正在后台生成，不算失败
       } catch (err: any) {
-        this.logger.warn(`视频生成失败: ${err.message}`)
+        this.logger.warn(`视频任务提交失败: ${err.message}`)
         videoFailed = true
       }
     } else if (needVideo && textFailed) {
@@ -373,17 +380,31 @@ export class ContentGenerationService implements OnModuleInit {
     }
 
     // 5. 根据各环节成败决定最终状态
-    // 注意：generateImages/generateVideos 返回空数组时不抛异常，但实际生成失败
-    // 所以除了检查 failed 标志，还要检查"需要生成但结果为空"的情况
+    // 视频是异步模式：如果 Seedance 任务已提交（有 seedance_task_id），则视频不算失败
+    // 需要查询数据库确认是否有 seedance_task_id
+    let videoTaskSubmitted = false
+    if (needVideo && !videoFailed) {
+      try {
+        const pool = getPool()
+        const [taskRows]: any = await pool.execute(
+          'SELECT seedance_task_id FROM content_generation_requests WHERE id = ?',
+          [requestId]
+        )
+        videoTaskSubmitted = taskRows?.length > 0 && !!taskRows[0].seedance_task_id
+      } catch (e: any) {
+        this.logger.warn(`查询seedance_task_id失败: ${e.message}`)
+      }
+    }
+
     const imageMissing = needImage && !imageFailed && images.length === 0
-    const videoMissing = needVideo && !videoFailed && videos.length === 0
+    const videoMissing = needVideo && !videoFailed && videos.length === 0 && !videoTaskSubmitted
     if (imageMissing) {
       imageFailed = true
       this.logger.warn(`配图生成返回空结果，标记为失败`)
     }
     if (videoMissing) {
       videoFailed = true
-      this.logger.warn(`视频生成返回空结果，标记为失败`)
+      this.logger.warn(`视频生成返回空结果且无后台任务，标记为失败`)
     }
 
     const hasAnyContent = textContent || images.length > 0 || videos.length > 0
@@ -397,8 +418,13 @@ export class ContentGenerationService implements OnModuleInit {
     if (!hasAnyContent || allRequiredFailed) {
       // 全部失败
       finalStatus = 'failed'
+    } else if (videoTaskSubmitted) {
+      // 视频还在后台生成中，保持 generating_video 状态
+      // 定时任务 pollPendingVideoTasks 会在视频完成后更新状态
+      finalStatus = 'generating_video'
+      this.logger.log(`视频任务在后台生成中，保持 generating_video 状态`)
     } else if (textFailed || imageFailed || videoFailed) {
-      // 部分失败
+      // 部分失败（视频不在后台生成中）
       if (needText && textFailed && !textContent) failedParts.push('文案')
       if (needImage && imageFailed && images.length === 0) failedParts.push('配图')
       if (needVideo && videoFailed && videos.length === 0) failedParts.push('视频')
@@ -1046,7 +1072,11 @@ ${input.orderDescription}
   /**
    * 生成视频 — 从已有文案/脚本中提取视觉 prompt + Seedance 2.0 视频生成
    */
-  private async generateVideos(platform: string, input: any, textContent: string, images: string[]): Promise<string[]> {
+  /**
+   * 生成视频 — 异步模式：只创建 Seedance 任务，存 taskId 到数据库
+   * 视频结果由 pollPendingVideoTasks 定时任务轮询获取
+   */
+  private async generateVideos(platform: string, input: any, textContent: string, images: string[], requestId: string): Promise<string[]> {
     const { primarySkill } = input
     const skillStrategy = getSkillStrategy(primarySkill)
 
@@ -1064,25 +1094,29 @@ ${input.orderDescription}
     this.logger.log(`视频脚本准备完成: ${videoScript.length}字`)
 
     // 2. 从脚本中提取适合 Seedance 的视觉描述 prompt
-    // Seedance 是文生视频模型，需要简短的视觉画面描述，不需要表格脚本
     const seedancePrompt = await this.extractVisualPrompt(videoScript, input)
     this.logger.log(`Seedance视觉prompt提取完成: ${seedancePrompt.substring(0, 80)}...`)
 
-    // 3. 使用 Seedance API 生成视频
-    const videoUrls: string[] = []
-
+    // 3. 创建 Seedance 异步任务（不等待视频生成完成）
     try {
-      this.logger.log(`调用Seedance视频生成API: prompt=${seedancePrompt.substring(0, 50)}...`)
-      const videoUrl = await this.generateVideoViaSeedance(seedancePrompt)
-      if (videoUrl) {
-        videoUrls.push(videoUrl)
-        this.logger.log('Seedance视频生成成功')
+      this.logger.log(`创建Seedance异步视频任务: prompt=${seedancePrompt.substring(0, 50)}...`)
+      const taskId = await this.createSeedanceTask(seedancePrompt)
+      if (taskId) {
+        // 存储 taskId 到数据库，后续由定时任务轮询
+        const pool = getPool()
+        await pool.execute(
+          'UPDATE content_generation_requests SET seedance_task_id = ? WHERE id = ?',
+          [taskId, requestId]
+        )
+        this.logger.log(`Seedance任务已创建并存储: taskId=${taskId}, requestId=${requestId}`)
+        // 返回空数组 — 视频尚未生成，状态保持 generating_video
+        return []
       }
     } catch (err: any) {
-      this.logger.warn(`Seedance视频生成失败: ${err.message}`)
+      this.logger.warn(`Seedance任务创建失败: ${err.message}`)
     }
 
-    return videoUrls
+    return []
   }
 
   /**
@@ -1483,14 +1517,12 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
   }
 
   /**
-   * 通过 HTTP 直接调用火山引擎 Seedance 2.0 视频生成（替代 coze SDK VideoGenerationClient）
-   * 异步流程：创建任务 → 轮询结果 → 返回视频 URL
+   * 创建 Seedance 异步视频生成任务，返回 taskId
    */
-  private async generateVideoViaSeedance(prompt: string): Promise<string> {
+  private async createSeedanceTask(prompt: string): Promise<string> {
     const createUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks`
     this.logger.log(`[Seedance] creating video task, prompt: ${prompt.slice(0, 80)}...`)
 
-    // 步骤1：创建异步视频生成任务
     const createResponse = await fetch(createUrl, {
       method: 'POST',
       headers: {
@@ -1520,94 +1552,178 @@ ${skillVideoStrategy ? `【技能专属视频策略】\n${skillVideoStrategy}\n\
     }
 
     this.logger.log(`[Seedance] task created: ${taskId}, status: ${createResult.status}`)
+    return taskId
+  }
 
-    // 步骤2：轮询任务状态，最长等待5分钟
-    const maxPollTime = 5 * 60 * 1000
-    const pollInterval = 10 * 1000
-    const startTime = Date.now()
+  /**
+   * 查询单个 Seedance 任务状态，返回视频 URL 或 null（还在生成中）或抛出异常（失败）
+   */
+  private async pollSeedanceTask(taskId: string): Promise<string | null> {
+    const pollUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks/${taskId}`
+    const pollResponse = await fetch(pollUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.seedanceApiKey}`,
+      },
+    })
 
-    while (Date.now() - startTime < maxPollTime) {
-      await new Promise(resolve => setTimeout(resolve, pollInterval))
-
-      const pollUrl = `${this.seedanceBaseUrl}/api/v3/contents/generations/tasks/${taskId}`
-      const pollResponse = await fetch(pollUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.seedanceApiKey}`,
-        },
-      })
-
-      if (!pollResponse.ok) {
-        this.logger.warn(`[Seedance] poll error: ${pollResponse.status}, retrying...`)
-        continue
-      }
-
-      const pollResult = await pollResponse.json() as any
-      const status = pollResult.status
-
-      this.logger.log(`[Seedance] task ${taskId} status: ${status}, response keys: ${Object.keys(pollResult).join(',')}`)
-
-      if (status === 'succeeded' || status === 'complete' || status === 'success') {
-        // 火山引擎 Seedance 响应格式：
-        // 格式1: content 是对象 { video_url: "https://..." }（最常见）
-        // 格式2: content 是数组 [{ type: "video_url", video_url: "..." }]
-        // 格式3: content 在 data.content 或 output.content 中
-        // 先检查 content 是对象且包含 video_url
-        if (pollResult.content && typeof pollResult.content === 'object' && !Array.isArray(pollResult.content)) {
-          const contentObj = pollResult.content as Record<string, any>
-          if (contentObj.video_url) {
-            this.logger.log(`[Seedance] 视频生成成功(content.video_url): ${contentObj.video_url.slice(0, 80)}...`)
-            return contentObj.video_url as string
-          }
-        }
-        let contentItems: any[] = []
-        if (Array.isArray(pollResult.content)) {
-          contentItems = pollResult.content
-        } else if (Array.isArray(pollResult.data?.content)) {
-          contentItems = pollResult.data.content
-        } else if (Array.isArray(pollResult.output?.content)) {
-          contentItems = pollResult.output.content
-        } else if (pollResult.content && typeof pollResult.content === 'string') {
-          // content 是字符串URL的情况
-          this.logger.log(`[Seedance] 视频生成成功(字符串URL): ${pollResult.content.slice(0, 80)}...`)
-          return pollResult.content
-        }
-        for (const item of contentItems) {
-          if (item.type === 'video_url' && item.video_url) {
-            this.logger.log(`[Seedance] 视频生成成功: ${item.video_url.slice(0, 80)}...`)
-            return item.video_url
-          }
-          if (item.type === 'video' && item.url) {
-            this.logger.log(`[Seedance] 视频生成成功: ${item.url.slice(0, 80)}...`)
-            return item.url
-          }
-          // 兜底：如果item本身就是URL字符串
-          if (typeof item === 'string' && (item.startsWith('http://') || item.startsWith('https://'))) {
-            this.logger.log(`[Seedance] 视频生成成功(直接URL): ${item.slice(0, 80)}...`)
-            return item
-          }
-        }
-        // 兜底：尝试从其他字段获取
-        if (pollResult.output?.video_url) {
-          return pollResult.output.video_url
-        }
-        if (pollResult.data?.video_url) {
-          return pollResult.data.video_url
-        }
-        this.logger.error(`[Seedance] 任务成功但未找到视频URL: ${JSON.stringify(pollResult).slice(0, 500)}`)
-        throw new Error('Seedance任务成功但未找到视频URL')
-      }
-
-      if (status === 'failed' || status === 'error') {
-        const errorMsg = pollResult.error?.message || pollResult.message || '未知错误'
-        this.logger.error(`[Seedance] task failed: ${errorMsg}`)
-        throw new Error(`Seedance视频生成失败: ${errorMsg}`)
-      }
-
-      // 状态为 processing/in_progress/queued 等，继续轮询
+    if (!pollResponse.ok) {
+      this.logger.warn(`[Seedance] poll error: ${pollResponse.status}`)
+      return null // 网络问题，下次重试
     }
 
-    throw new Error('Seedance视频生成超时（5分钟）')
+    const pollResult = await pollResponse.json() as any
+    const status = pollResult.status
+    this.logger.log(`[Seedance] task ${taskId} status: ${status}`)
+
+    if (status === 'succeeded' || status === 'complete' || status === 'success') {
+      // 解析视频 URL（多种格式兼容）
+      if (pollResult.content && typeof pollResult.content === 'object' && !Array.isArray(pollResult.content)) {
+        const contentObj = pollResult.content as Record<string, any>
+        if (contentObj.video_url) {
+          this.logger.log(`[Seedance] 视频生成成功(content.video_url): ${contentObj.video_url.slice(0, 80)}...`)
+          return contentObj.video_url as string
+        }
+      }
+      let contentItems: any[] = []
+      if (Array.isArray(pollResult.content)) {
+        contentItems = pollResult.content
+      } else if (Array.isArray(pollResult.data?.content)) {
+        contentItems = pollResult.data.content
+      } else if (Array.isArray(pollResult.output?.content)) {
+        contentItems = pollResult.output.content
+      } else if (pollResult.content && typeof pollResult.content === 'string') {
+        this.logger.log(`[Seedance] 视频生成成功(字符串URL): ${pollResult.content.slice(0, 80)}...`)
+        return pollResult.content
+      }
+      for (const item of contentItems) {
+        if (item.type === 'video_url' && item.video_url) {
+          this.logger.log(`[Seedance] 视频生成成功: ${item.video_url.slice(0, 80)}...`)
+          return item.video_url
+        }
+        if (item.type === 'video' && item.url) {
+          this.logger.log(`[Seedance] 视频生成成功: ${item.url.slice(0, 80)}...`)
+          return item.url
+        }
+        if (typeof item === 'string' && (item.startsWith('http://') || item.startsWith('https://'))) {
+          this.logger.log(`[Seedance] 视频生成成功(直接URL): ${item.slice(0, 80)}...`)
+          return item
+        }
+      }
+      if (pollResult.output?.video_url) return pollResult.output.video_url
+      if (pollResult.data?.video_url) return pollResult.data.video_url
+
+      this.logger.error(`[Seedance] 任务成功但未找到视频URL: ${JSON.stringify(pollResult).slice(0, 500)}`)
+      throw new Error('Seedance任务成功但未找到视频URL')
+    }
+
+    if (status === 'failed' || status === 'error') {
+      const errorMsg = pollResult.error?.message || pollResult.message || '未知错误'
+      this.logger.error(`[Seedance] task failed: ${errorMsg}`)
+      throw new Error(`Seedance视频生成失败: ${errorMsg}`)
+    }
+
+    // 状态为 running/processing/in_progress/queued 等，还在生成中
+    return null
+  }
+
+  /**
+   * 定时任务：每 30 秒扫描 generating_video 状态且有 seedance_task_id 的记录
+   * 轮询 Seedance 任务状态，完成后更新记录
+   * 超时保护：超过 30 分钟仍未完成的自动标记失败
+   */
+  @Cron('*/30 * * * * *')
+  async pollPendingVideoTasks() {
+    try {
+      const pool = getPool()
+
+      // 1. 超时保护：generating_video 超过 30 分钟自动标记失败
+      const [timeoutRows]: any = await pool.execute(
+        `SELECT id, order_id FROM content_generation_requests
+         WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+      )
+      if (timeoutRows && timeoutRows.length > 0) {
+        for (const row of timeoutRows) {
+          this.logger.warn(`[VideoPoll] 视频生成超时(>30min): requestId=${row.id}`)
+          await pool.execute(
+            'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+            ['partial_failed', '视频生成超时（30分钟）', row.id]
+          )
+          try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
+        }
+      }
+
+      // 2. 正常轮询：未超时的记录
+      const [rows]: any = await pool.execute(
+        `SELECT id, order_id, seedance_task_id, content, images, platform
+         FROM content_generation_requests
+         WHERE status = 'generating_video' AND seedance_task_id IS NOT NULL
+         ORDER BY created_at ASC LIMIT 10`
+      )
+
+      if (!rows || rows.length === 0) return
+
+      for (const record of rows) {
+        const { id, order_id, seedance_task_id, content, images, platform } = record
+        try {
+          this.logger.log(`[VideoPoll] 轮询任务: requestId=${id}, taskId=${seedance_task_id}`)
+          const videoUrl = await this.pollSeedanceTask(seedance_task_id)
+
+          if (videoUrl) {
+            // 视频生成成功，更新记录
+            this.logger.log(`[VideoPoll] 视频生成成功: requestId=${id}, url=${videoUrl.slice(0, 80)}...`)
+            await pool.execute(
+              'UPDATE content_generation_requests SET status = ?, video_url = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+              ['preview', videoUrl, id]
+            )
+            // 同步订单状态
+            try {
+              await this.syncOrderStatus(order_id)
+            } catch (e: any) {
+              this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
+            }
+          }
+          // null 表示还在生成中，下次再轮询
+        } catch (err: any) {
+          // Seedance 任务失败
+          this.logger.warn(`[VideoPoll] 视频任务失败: requestId=${id}, error=${err.message}`)
+          const hasImages = images && images !== '[]' && images !== ''
+          const finalStatus = hasImages ? 'partial_failed' : (content ? 'partial_failed' : 'failed')
+          await pool.execute(
+            'UPDATE content_generation_requests SET status = ?, error = ?, seedance_task_id = NULL, updated_at = NOW() WHERE id = ?',
+            [finalStatus, `视频生成失败: ${err.message}`, id]
+          )
+          try {
+            await this.syncOrderStatus(order_id)
+          } catch (e: any) {
+            this.logger.warn(`[VideoPoll] 同步订单状态失败: ${e.message}`)
+          }
+        }
+      }
+
+      // 3. 兜底：处理无 seedance_task_id 但卡在 generating_video 的旧记录
+      const [stuckRows]: any = await pool.execute(
+        `SELECT id, order_id, content, images FROM content_generation_requests
+         WHERE status = 'generating_video' AND seedance_task_id IS NULL
+         AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)`
+      )
+      if (stuckRows && stuckRows.length > 0) {
+        for (const row of stuckRows) {
+          this.logger.warn(`[VideoPoll] 无taskId的卡住记录: requestId=${row.id}, 标记为partial_failed`)
+          const hasImages = row.images && row.images !== '[]' && row.images !== ''
+          const hasContent = row.content && row.content.length > 0
+          const finalStatus = (hasImages || hasContent) ? 'partial_failed' : 'failed'
+          await pool.execute(
+            'UPDATE content_generation_requests SET status = ?, error = ?, updated_at = NOW() WHERE id = ?',
+            [finalStatus, '视频生成异常（无后台任务）', row.id]
+          )
+          try { await this.syncOrderStatus(row.order_id) } catch (e: any) { /* ignore */ }
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`[VideoPoll] 定时任务执行失败: ${err.message}`)
+    }
   }
 
   /**
