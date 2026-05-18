@@ -338,6 +338,47 @@ ${imageHint}
   }
 
   /**
+   * 批量查询所有技能每日使用次数
+   */
+  async getAllUsageLimits(userId: string): Promise<Record<string, { used: number; limit: number; remaining: number; isSubscribed: boolean }>> {
+    const isSubscribed = await this.isUserSubscribed(userId)
+    const limit = isSubscribed ? 3 : 1
+
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    const pool = getPool();
+    const [rows] = await pool.query(
+      `SELECT skill_type, COUNT(*) as cnt FROM ai_skill_records WHERE user_id = ? AND created_at >= ? AND created_at < ? GROUP BY skill_type`,
+      [userId, startOfDay, endOfDay]
+    )
+
+    const usageMap: Record<string, number> = {}
+    for (const row of rows as any[]) {
+      usageMap[row.skill_type] = Number(row.cnt)
+    }
+
+    // 技能ID → 对应的skill_type映射（数据库skills.id → ai_skill_records.skill_type）
+    // 多个skill_type可以映射到同一个技能ID（如content_writing关联wechat_mp_article和content_writing两种记录）
+    const skillIdToTypes: Record<string, string[]> = {
+      palm_reading: ['palm_reading'],
+      fashion_advice: ['fashion_makeover'],
+      content_writing: ['wechat_mp_article', 'content_writing'],
+      image_gen: ['image_gen'],
+      video_gen: ['video_gen'],
+    }
+
+    const result: Record<string, { used: number; limit: number; remaining: number; isSubscribed: boolean }> = {}
+    for (const [skillId, types] of Object.entries(skillIdToTypes)) {
+      const used = types.reduce((sum, t) => sum + (usageMap[t] || 0), 0)
+      result[skillId] = { used, limit, remaining: Math.max(0, limit - used), isSubscribed }
+    }
+
+    return result
+  }
+
+  /**
    * 检查用户是否订阅
    */
   private async isUserSubscribed(userId: string): Promise<boolean> {

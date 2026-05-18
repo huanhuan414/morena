@@ -86,6 +86,7 @@ export class AiSkillController {
 
   /**
    * GET /api/ai-skill/usage-limit?skillType=xxx
+   * GET /api/ai-skill/usage-limit （返回所有技能）
    * 获取技能每日使用次数限制
    */
   @Get('usage-limit')
@@ -94,8 +95,13 @@ export class AiSkillController {
     if (!userId) {
       return { code: 401, msg: '请先登录', data: null };
     }
-    const result = await this.aiSkillService.checkDailyLimit(userId, skillType as SkillType);
-    return { code: 200, msg: 'ok', data: result };
+    if (skillType) {
+      const result = await this.aiSkillService.checkDailyLimit(userId, skillType as SkillType);
+      return { code: 200, msg: 'ok', data: result };
+    }
+    // 不带 skillType 时返回所有技能的使用情况
+    const allLimits = await this.aiSkillService.getAllUsageLimits(userId);
+    return { code: 200, msg: 'ok', data: allLimits };
   }
 
   /**

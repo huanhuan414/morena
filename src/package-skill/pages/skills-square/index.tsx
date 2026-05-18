@@ -89,7 +89,9 @@ export default function SkillsSquare() {
       // 获取每个技能的每日使用限额
       try {
         const limitRes = await Network.request({ url: '/api/ai-skill/usage-limit' })
+        console.log('[SkillsSquare] usage-limit full response:', JSON.stringify(limitRes?.data))
         const limitsData = limitRes?.data?.data || {}
+        console.log('[SkillsSquare] limitsData:', JSON.stringify(limitsData))
         setUsageLimits(limitsData)
       } catch (e) {
         console.log('[SkillsSquare] 获取使用限额失败:', e)
