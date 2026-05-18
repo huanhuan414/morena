@@ -43,11 +43,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const EARNING_MAP: Record<string, string> = {
-  content: '¥3-15/单',
-  image: '¥2-10/单',
-  video: '¥5-30/单',
-  life: '¥2-8/单',
-  audio: '¥3-12/单',
+  content: '可赚¥3-15/单',
+  image: '可赚¥2-10/单',
+  video: '可赚¥5-30/单',
+  life: '可赚¥2-8/单',
+  audio: '可赚¥3-12/单',
 }
 
 export default function SkillsSquare() {
@@ -140,11 +140,7 @@ export default function SkillsSquare() {
   }
 
   const handleTrySkill = (skill: Skill) => {
-    const usage = usageLimits[skill.id]
-    if (usage && usage.remaining <= 0) {
-      Taro.showToast({ title: '今日使用次数已达上限', icon: 'none' })
-      return
-    }
+    // 次数用完仍可进入页面查看，仅在页面内生成时拦截
     const hexId = skill.id
     // 掌相阅读和衣品改造有专门的体验页面
     if (hexId === 'palm_reading') {
@@ -287,7 +283,7 @@ export default function SkillsSquare() {
                 const iconConfig = getIconConfig(skill.category)
                 const IconComp = iconConfig.Icon
                 const catLabel = CATEGORY_LABELS[skill.category] || '其他'
-                const earnLabel = EARNING_MAP[skill.category] || '¥2-10/单'
+                const earnLabel = EARNING_MAP[skill.category] || '可赚¥2-10/单'
                 return (
                   <View className="skill-card" key={skill.id}>
                     {/* 卡片顶部渐变装饰 */}
